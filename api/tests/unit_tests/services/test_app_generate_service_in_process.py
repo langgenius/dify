@@ -2,8 +2,10 @@
 
 import json
 from collections.abc import Callable, Generator
+from typing import Literal, cast
 
 import pytest
+import pytest_mock
 from sqlalchemy.orm import Session, sessionmaker
 
 import services.app_generate_service as module
@@ -13,6 +15,8 @@ from enums import DeploymentEdition
 from models.model import Account, App, AppMode
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
+from services.workflow_runtime.workflow_generator import BuilderExecutionAdmission
+from tests.unit_tests.installed_spies import installed_mock
 
 
 def _account() -> Account:
@@ -22,7 +26,7 @@ def _account() -> Account:
 
 
 class _RefusalAdmission:
-    """Record the refusal-only admission boundary used before dispatch."""
+    """Record only the refusal callback; these paths must not execute admission."""
 
     def __init__(self) -> None:
         self.refusals: list[tuple[Exception, bool]] = []
@@ -34,7 +38,11 @@ class _RefusalAdmission:
 @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
 @pytest.mark.parametrize("ending", ["complete", "close", "error"])
 def test_in_process_stream_does_not_enqueue_a_child_task_and_releases_its_rate_limit(
-    mocker, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], mode: AppMode, ending: str
+    mocker: pytest_mock.MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    mode: AppMode,
+    ending: str,
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     app = App(id="app-1", tenant_id="tenant", mode=mode)
@@ -87,7 +95,8 @@ def test_in_process_stream_does_not_enqueue_a_child_task_and_releases_its_rate_l
     assert generate.call_args.kwargs["streaming"] is True
     assert generate.call_args.kwargs["pause_state_config"].state_owner_user_id == "account-1"
     enqueue.assert_not_called()
-    limiter.exit.assert_not_called()
+    _installed_spy_1 = installed_mock(limiter.exit)
+    _installed_spy_1.assert_not_called()
 
     if ending == "error":
         with pytest.raises(ValueError, match="runtime failed"):
@@ -98,11 +107,12 @@ def test_in_process_stream_does_not_enqueue_a_child_task_and_releases_its_rate_l
         assert len(list(response)) == 1
 
     assert closed == [True]
-    limiter.exit.assert_called_once_with("request-1")
+    _installed_spy_2 = installed_mock(limiter.exit)
+    _installed_spy_2.assert_called_once_with("request-1")
 
 
 def test_posted_live_mode_cannot_select_builder_policy(
-    mocker, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
@@ -134,16 +144,19 @@ def test_posted_live_mode_cannot_select_builder_policy(
                 session=session,
                 workflow_execution_mode="in_process",
                 builder_execution=policy,
-                builder_execution_admit=_RefusalAdmission() if policy else None,
+                builder_execution_admit=cast(BuilderExecutionAdmission, _RefusalAdmission()) if policy else None,
             )
             list(response)
         assert generate.call_args.kwargs["builder_execution"] is policy
     assert marker.mode == "restricted"
-    assert limiter.exit.call_count == 2
+    _installed_spy_3 = installed_mock(limiter.exit)
+    assert _installed_spy_3.call_count == 2
 
 
 @pytest.mark.parametrize("mode", ["advanced-chat", "agent", "agent-chat"])
-def test_restricted_dispatch_rejects_other_modes_before_guardrails(mocker, mode: AppMode) -> None:
+def test_restricted_dispatch_rejects_other_modes_before_guardrails(
+    mocker: pytest_mock.MockerFixture, mode: AppMode
+) -> None:
     from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
@@ -161,12 +174,12 @@ def test_restricted_dispatch_rejects_other_modes_before_guardrails(mocker, mode:
             session=session,
             workflow_execution_mode="in_process",
             builder_execution=context(),
-            builder_execution_admit=_RefusalAdmission(),
+            builder_execution_admit=cast(BuilderExecutionAdmission, _RefusalAdmission()),
         )
     guardrails.assert_not_called()
 
 
-def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(mocker) -> None:
+def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(mocker: pytest_mock.MockerFixture) -> None:
     from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
@@ -186,14 +199,19 @@ def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(mocker) -
             request_id="request",
             workflow_execution_mode="in_process",
             builder_execution=context(),
-            builder_execution_admit=_RefusalAdmission(),
+            builder_execution_admit=cast(BuilderExecutionAdmission, _RefusalAdmission()),
         )
     agent.assert_not_called()
 
 
 @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
 @pytest.mark.parametrize("transport", ["in_process", "celery"])
-def test_pre_generator_tool_admission_failure_has_qualified_preparation_boundary(mocker, monkeypatch, mode, transport):
+def test_pre_generator_tool_admission_failure_has_qualified_preparation_boundary(
+    mocker: pytest_mock.MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: AppMode,
+    transport: Literal["in_process", "celery"],
+) -> None:
     from core.tools.errors import ToolProviderCredentialValidationError
     from services.dify_builder.native_launch_observation import NativeLaunchObservation
 

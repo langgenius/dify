@@ -5,6 +5,52 @@ queue publication are offline boundaries; Run/history, claims, grants, journal,
 checkpoint serialization and physical owned threads use their actual owners.
 """
 
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Never, Unpack
+
+from pydantic import JsonValue
+from typing_extensions import TypedDict
+
+from models.account import Account
+from models.workflow import Workflow
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    NativeDeliveryMessage,
+    require_instance,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from sqlalchemy.orm import Session
+
+    from core.dify_builder.models import Actor
+    from dify_app import DifyApp
+    from runtime_contracts.builder.native.contracts import (
+        NativeTestContextRef,
+    )
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+        RuntimeDeliveryCase,
+    )
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_0
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_0
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_0
+
+
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -12,6 +58,9 @@ from threading import Event
 
 import httpx
 import pytest
+from httpx._client import UseClientDefault
+from httpx._models import Response
+from httpx._types import AuthTypes
 from sqlalchemy import select
 
 from core.dify_builder.input_schema import schema_hash, start_schema
@@ -24,13 +73,20 @@ from models.dify_builder import (
     DifyBuilderTestInput,
 )
 from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestScope
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import WorkflowRun
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import decode_native_ref
-from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+from runtime_contracts.builder.native.runtime_contracts import CheckpointRef, NativeWorkflowOutcome
+from services.dify_builder.native_testing.api_service import NativeTestPublicReceipt
+from services.dify_builder.native_testing.host_lifetime import NativeHostLifetime
+from services.dify_builder.native_testing.lifecycle import NativeDispatchRef, NativeTestLifecycleService, WaitingReceipt
 from services.dify_builder.native_testing.observation_repository import bind_native_repository_observation
+from services.dify_builder.native_testing.repository import OwnedNativeTest
 from services.dify_builder.native_testing.runtime import DifyNativeRuntime, DifyNativeRuntimeOwner, build_native_api
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import RuntimeDeliveryCase
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    RuntimeDeliveryCase,
+    require_present,
+)
 from tests.test_containers_integration_tests.core.workflow.builder_native_runtime_diagnostics import (
     native_runtime_resume_diagnostics as native_runtime_resume_diagnostics,  # noqa: PLC0414
 )
@@ -52,7 +108,27 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_e
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_http_binding import literal_data
 
 
-def initial_graph(kind="root"):
+class PauseArguments(TypedDict, closed=True):
+    ref: NativeTestContextRef
+    checkpoint: CheckpointRef
+    pending_operation_ids: tuple[str, ...]
+    expected_generation: int
+
+
+class HttpSendArguments(TypedDict, total=False, closed=True):
+    stream: bool
+    auth: AuthTypes | UseClientDefault | None
+    follow_redirects: bool | UseClientDefault
+
+
+def published_callback(c: RuntimeDeliveryCase) -> Callable[..., None]:
+    def publish(**message: Unpack[NativeDeliveryMessage]) -> None:
+        c.published.append(message)
+
+    return publish
+
+
+def initial_graph(kind: str = "root") -> Graph:
     graph: Graph = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
@@ -77,7 +153,9 @@ def initial_graph(kind="root"):
     if kind == "root":
         return graph
     http = graph["nodes"][1]
-    http["data"][kind + "_id"] = "container"
+    http_data = http["data"]
+    assert isinstance(http_data, dict)
+    http_data[kind + "_id"] = "container"
     graph["nodes"] = [
         graph["nodes"][0],
         {
@@ -100,7 +178,7 @@ def initial_graph(kind="root"):
         },
         {"id": "body-start", "data": {"type": kind + "-start", kind + "_id": "container"}},
         http,
-        {"id": "end", "data": {"type": "end", "outputs": []}},
+        {"id": "end", "data": {"type": "end", "outputs": list[JsonValue]()}},
     ]
     graph["edges"] = [
         {"source": "start", "target": "container"},
@@ -112,15 +190,15 @@ def initial_graph(kind="root"):
 
 @pytest.fixture
 def runtime_case(
-    flask_app_with_containers,
-    native_owner,
-    no_live,
-    migrated_continuation_tables,
-    migrated_dispatch_claims,
-    mock_ssrf_proxy_requests,
-    monkeypatch,
-    request,
-):
+    flask_app_with_containers: DifyApp,
+    native_owner: _fixture_types_0.NativeOwner,
+    no_live: None,
+    migrated_continuation_tables: None,
+    migrated_dispatch_claims: None,
+    mock_ssrf_proxy_requests: Callable[..., httpx.Response],
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
+) -> Iterator[RuntimeDeliveryCase]:
     kind = request.param if hasattr(request, "param") else "root"
     assert migrated_continuation_tables is migrated_dispatch_claims is no_live is None
     from core.helper import ssrf_proxy
@@ -156,34 +234,39 @@ def runtime_case(
         db.session.close()
         public_key = generate_key_pair(actor.tenant_id)
         with factory.begin() as session:
-            session.get(Tenant, actor.tenant_id).encrypt_public_key = public_key
+            require_instance(session.get(Tenant, actor.tenant_id), Tenant).encrypt_public_key = public_key
             actual = session.get(Workflow, workflow.id)
-            actual.graph = json.dumps(initial_graph(kind))
-            actual._features = "{}"
-            actual._environment_variables = "{}"
+            require_instance(actual, Workflow).graph = json.dumps(initial_graph(kind))
+            require_instance(actual, Workflow)._features = "{}"
+            require_instance(actual, Workflow)._environment_variables = "{}"
             saved_input = session.get(DifyBuilderTestInput, input_id)
-            saved_input.inputs = {"items": ["one", "two"]} if kind == "iteration" else {}
-            saved_input.start_schema_hash = schema_hash(start_schema(actual.graph_dict, app.mode))
+            require_instance(saved_input, DifyBuilderTestInput).inputs = (
+                {"items": ["one", "two"]} if kind == "iteration" else {}
+            )
+            require_instance(saved_input, DifyBuilderTestInput).start_schema_hash = schema_hash(
+                start_schema(dict(require_instance(actual, Workflow).graph_dict), app.mode)
+            )
             builder = session.get(DifyBuilderSession, session_id)
             # This fixture exercises the independently qualified direct-start
             # API from an idle Builder state, not an ordinary queued test action.
-            builder.current_state = "build.review"
-            version = builder.version
+            require_instance(builder, DifyBuilderSession).current_state = "build.review"
+            version = require_instance(builder, DifyBuilderSession).version
             session.add(
                 DifyBuilderSessionCommit(
                     session_id=session_id,
                     version=version,
-                    state=builder.current_state,
+                    state=require_instance(builder, DifyBuilderSession).current_state,
                     actor="user",
                     context={"test_input_ref": input_id},
                 )
             )
-        published, sends = [], []
+        published: list[NativeDeliveryMessage] = []
+        sends: list[httpx.Request] = []
 
-        def publish(**message):
+        def publish(**message: Unpack[NativeDeliveryMessage]) -> None:
             published.append(message)
 
-        def send(_client, request, **_kwargs):
+        def send(_client: httpx.Client, request: httpx.Request, **_kwargs: object) -> Response:
             sends.append(request)
             assert request.url.host == "example.com"
             return httpx.Response(
@@ -224,28 +307,31 @@ def runtime_case(
             handler.removeFilter(filtering)
 
 
-def delivery(c, message):
+def delivery(c: RuntimeDeliveryCase, message: NativeDeliveryMessage) -> NativeTestLifecycleService:
     return c.owner.delivery(
         sessions=c.factory,
         delivery=NativeDispatchRef(decode_native_ref(message["ref"]), message["generation"], message["dispatch_id"]),
-        actor_hint=Actor(**message["actor"]),
+        actor_hint=Actor(account_id=message["actor"]["account_id"], tenant_id=message["actor"]["tenant_id"]),
     )
 
 
-def execute(c, lifecycle, message):
+def execute(
+    c: RuntimeDeliveryCase, lifecycle: NativeTestLifecycleService, message: NativeDeliveryMessage
+) -> NativeWorkflowOutcome | None:
     with c.app.app_context():
         return lifecycle.execute_dispatch(
             ref=decode_native_ref(message["ref"]), generation=message["generation"], dispatch_id=message["dispatch_id"]
         )
 
 
-def confirm(c):
+def confirm(c: RuntimeDeliveryCase) -> NativeTestPublicReceipt:
     receipt = c.api.get(actor=c.actor, session_id=c.session_id, request_id=c.request_id)
     assert receipt.status == "waiting"
     assert receipt.wait_reason == "approval"
     assert receipt.native_run_id
     assert 1 <= len(receipt.pending) <= (2 if c.kind == "iteration" else 1)
     for pending in receipt.pending:
+        assert pending.scope_digest is not None
         c.api.decide(
             actor=c.actor,
             session_id=c.session_id,
@@ -260,24 +346,28 @@ def confirm(c):
 
 
 @pytest.mark.parametrize("runtime_case", ["root", "loop", "iteration"], indirect=True)
-def test_actual_same_run_http_wait_checkpoint_cleanup_claimed_resume_and_duplicate(runtime_case):
+def test_actual_same_run_http_wait_checkpoint_cleanup_claimed_resume_and_duplicate(
+    runtime_case: RuntimeDeliveryCase,
+) -> None:
     c = runtime_case
     first = c.published[0]
     initial = delivery(c, first)
     waiting = execute(c, initial, first)
+    assert waiting is not None
     assert waiting.status == "waiting"
     assert c.sends == []
+    assert waiting.checkpoint_ref is not None
     checkpoint = c.api.store.read_checkpoint(ref=waiting.ref, checkpoint=waiting.checkpoint_ref)
     assert checkpoint.native_run_id == waiting.native_run_id
     assert checkpoint.node_journals
     assert checkpoint.approval_proposals
     with c.factory() as session:
         before = session.get(WorkflowRun, waiting.native_run_id)
-        created_at = before.created_at
-        assert before.status == "paused"
+        created_at = require_instance(before, WorkflowRun).created_at
+        assert require_instance(before, WorkflowRun).status == "paused"
         state = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == c.request_id))
-        assert state.cleanup_complete
-        assert session.get(NativeDispatch, first["dispatch_id"]).state == "completed"
+        assert require_instance(state, NativeInvocationState).cleanup_complete
+        assert require_instance(session.get(NativeDispatch, first["dispatch_id"]), NativeDispatch).state == "completed"
     completed = waiting
     second = resumed = None
     for index in range(3):
@@ -289,10 +379,11 @@ def test_actual_same_run_http_wait_checkpoint_cleanup_claimed_resume_and_duplica
             expected_generation=receipt.generation,
             idempotency_key=f"same-run-resume-{index}",
         )
-        c.api.lifecycle.publish_pending(publish=lambda **message: c.published.append(message))
+        c.api.lifecycle.publish_pending(publish=published_callback(c))
         second = c.published[-1]
         resumed = delivery(c, second)
         completed = execute(c, resumed, second)
+        assert completed is not None
         if completed.status != "waiting":
             break
     assert completed.status == "completed"
@@ -307,25 +398,34 @@ def test_actual_same_run_http_wait_checkpoint_cleanup_claimed_resume_and_duplica
     assert len(c.sends) == (2 if c.kind == "iteration" else 1)
     with c.factory() as session:
         run = session.get(WorkflowRun, completed.native_run_id)
-        assert run.created_at == created_at
-        assert run.status == "succeeded"
-        assert "response-canary" not in run.outputs
-        assert len(session.scalars(select(WorkflowRun).where(WorkflowRun.id == run.id)).all()) == 1
+        assert require_instance(run, WorkflowRun).created_at == created_at
+        assert require_instance(run, WorkflowRun).status == "succeeded"
+        outputs = require_instance(run, WorkflowRun).outputs
+        assert outputs is not None
+        assert "response-canary" not in outputs
+        assert (
+            len(
+                session.scalars(
+                    select(WorkflowRun).where(WorkflowRun.id == require_instance(run, WorkflowRun).id)
+                ).all()
+            )
+            == 1
+        )
 
 
 def test_real_resume_writer_refuses_wait_cleanup_before_source_finalize_then_same_command_succeeds(
-    runtime_case,
-    monkeypatch,
-):
+    runtime_case: RuntimeDeliveryCase,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     c = runtime_case
     message = c.published[0]
     lifecycle = delivery(c, message)
     held, release = Event(), Event()
     actual_pause = lifecycle.pause
 
-    def pause(**kwargs):
+    def pause(**kwargs: Unpack[PauseArguments]) -> WaitingReceipt:
         receipt = actual_pause(**kwargs)
-        if lifecycle._capacity._verifier._consumed:
+        if require_instance(require_present(lifecycle._capacity)._verifier, NativeHostLifetime)._consumed:
             held.set()  # Real wait and cleanup committed; no SQL writer held.
             assert release.wait(15)
         return receipt
@@ -349,17 +449,28 @@ def test_real_resume_writer_refuses_wait_cleanup_before_source_finalize_then_sam
                     select(NativeInvocationState).where(NativeInvocationState.request_id == c.request_id)
                 )
                 scope = session.get(NativeTestScope, c.request_id)
-                assert state.generation == scope.generation == 0
-                assert state.cleanup_complete
-                assert scope.spent_calls == scope.spent_dispatches == 0
+                assert (
+                    require_instance(state, NativeInvocationState).generation
+                    == require_instance(scope, NativeTestScope).generation
+                    == 0
+                )
+                assert require_instance(state, NativeInvocationState).cleanup_complete
+                assert (
+                    require_instance(scope, NativeTestScope).spent_calls
+                    == require_instance(scope, NativeTestScope).spent_dispatches
+                    == 0
+                )
                 assert (
                     len(session.scalars(select(NativeDispatch).where(NativeDispatch.request_id == c.request_id)).all())
                     == 1
                 )
-                assert session.get(NativeDispatch, message["dispatch_id"]).state == "claimed"
+                assert (
+                    require_instance(session.get(NativeDispatch, message["dispatch_id"]), NativeDispatch).state
+                    == "claimed"
+                )
         finally:
             release.set()
-        assert future.result(timeout=15).status == "waiting"
+        assert require_instance(future.result(timeout=15), NativeWorkflowOutcome).status == "waiting"
     c.api.resume(
         actor=c.actor,
         session_id=c.session_id,
@@ -369,14 +480,16 @@ def test_real_resume_writer_refuses_wait_cleanup_before_source_finalize_then_sam
     )
     with c.factory() as session:
         state = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == c.request_id))
-        assert state.generation == 1
-        assert state.state == "queued"
+        assert require_instance(state, NativeInvocationState).generation == 1
+        assert require_instance(state, NativeInvocationState).state == "queued"
         assert len(session.scalars(select(NativeDispatch).where(NativeDispatch.request_id == c.request_id)).all()) == 2
     assert c.sends == []
 
 
 @pytest.mark.parametrize("registered_before_cancel", [False, True])
-def test_actual_api_cancel_initial_outbox_before_delivery_is_logically_settled(runtime_case, registered_before_cancel):
+def test_actual_api_cancel_initial_outbox_before_delivery_is_logically_settled(
+    runtime_case: RuntimeDeliveryCase, registered_before_cancel: bool
+) -> None:
     c = runtime_case
     message = c.published[0]
     assert c.owner._requests == c.owner._current == {}
@@ -387,7 +500,7 @@ def test_actual_api_cancel_initial_outbox_before_delivery_is_logically_settled(r
     result = c.api.cancel(
         actor=c.actor, session_id=c.session_id, request_id=c.request_id, idempotency_key="before-worker"
     )
-    assert result.cancellation.status == "cancelled"
+    assert require_present(result.cancellation).status == "cancelled"
     assert result.status == "terminal"
     assert c.api.lifecycle.reconcile() == 0
     late = delivery(c, message)
@@ -404,8 +517,8 @@ def test_actual_api_cancel_initial_outbox_before_delivery_is_logically_settled(r
     assert c.sends == []
     with c.factory() as session:
         state = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == c.request_id))
-        assert state.generation == 0
-        assert state.cleanup_complete
+        assert require_instance(state, NativeInvocationState).generation == 0
+        assert require_instance(state, NativeInvocationState).cleanup_complete
         dispatches = session.scalars(select(NativeDispatch).where(NativeDispatch.request_id == c.request_id)).all()
         assert len(dispatches) == 1
         assert dispatches[0].state == "cancelled"
@@ -416,12 +529,15 @@ def test_actual_api_cancel_initial_outbox_before_delivery_is_logically_settled(r
         assert session.get(WorkflowRun, request.context["native_run_id"]) is None
 
 
-def test_actual_cancel_through_consumed_source_owner_does_not_ack_live_resumed_owner(runtime_case, monkeypatch):
+def test_actual_cancel_through_consumed_source_owner_does_not_ack_live_resumed_owner(
+    runtime_case: RuntimeDeliveryCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     c = runtime_case
     initial = delivery(c, c.published[0])
     waiting = execute(c, initial, c.published[0])
+    assert waiting is not None
     assert waiting.status == "waiting"
-    assert initial.runtime.host.lifetime._consumed
+    assert require_instance(initial.runtime, DifyNativeRuntime).host.lifetime._consumed
     receipt = confirm(c)
     c.api.resume(
         actor=c.actor,
@@ -430,7 +546,7 @@ def test_actual_cancel_through_consumed_source_owner_does_not_ack_live_resumed_o
         expected_generation=receipt.generation,
         idempotency_key="cancel-other-owner-resume",
     )
-    c.api.lifecycle.publish_pending(publish=lambda **message: c.published.append(message))
+    c.api.lifecycle.publish_pending(publish=published_callback(c))
     message = c.published[-1]
     assert message["generation"] == 1
     other = DifyNativeRuntimeOwner()
@@ -442,7 +558,7 @@ def test_actual_cancel_through_consumed_source_owner_does_not_ack_live_resumed_o
     entered, release = Event(), Event()
     actual_send = httpx.Client.send
 
-    def held_send(client, request, **kwargs):
+    def held_send(client: httpx.Client, request: httpx.Request, **kwargs: Unpack[HttpSendArguments]) -> Response:
         entered.set()
         assert release.wait(15)
         return actual_send(client, request, **kwargs)
@@ -458,17 +574,23 @@ def test_actual_cancel_through_consumed_source_owner_does_not_ack_live_resumed_o
                 request_id=c.request_id,
                 idempotency_key="cancel-through-old-process",
             )
-            assert result.cancellation.status in {"cancelling", "unknown"}
-            assert not resumed.runtime.host.lifetime._consumed
+            assert require_present(result.cancellation).status in {"cancelling", "unknown"}
+            assert not require_instance(resumed.runtime, DifyNativeRuntime).host.lifetime._consumed
             c.api.lifecycle.reconcile()
             with c.factory() as session:
                 state = session.scalar(
                     select(NativeInvocationState).where(NativeInvocationState.request_id == c.request_id)
                 )
-                assert state.generation == 1
-                assert not state.cleanup_complete
-                assert session.get(NativeDispatch, message["dispatch_id"]).state == "claimed"
-                assert session.get(NativeDispatch, c.published[0]["dispatch_id"]).state == "completed"
+                assert require_instance(state, NativeInvocationState).generation == 1
+                assert not require_instance(state, NativeInvocationState).cleanup_complete
+                assert (
+                    require_instance(session.get(NativeDispatch, message["dispatch_id"]), NativeDispatch).state
+                    == "claimed"
+                )
+                assert (
+                    require_instance(session.get(NativeDispatch, c.published[0]["dispatch_id"]), NativeDispatch).state
+                    == "completed"
+                )
         finally:
             release.set()
         # The actual worker closes or fails under the durable cancellation fence;
@@ -478,15 +600,19 @@ def test_actual_cancel_through_consumed_source_owner_does_not_ack_live_resumed_o
         try:
             future.result(timeout=15)
         except (BuilderExecutionPolicyError, NativeObservationError):
-            assert c.api.get(actor=c.actor, session_id=c.session_id, request_id=c.request_id).cancellation.status in {
+            assert require_present(
+                c.api.get(actor=c.actor, session_id=c.session_id, request_id=c.request_id).cancellation
+            ).status in {
                 "cancelling",
                 "unknown",
                 "cancelled",
             }
-    assert initial.runtime.host.lifetime._consumed
+    assert require_instance(initial.runtime, DifyNativeRuntime).host.lifetime._consumed
 
 
-def test_actual_initial_run_null_outputs_survive_first_native_node_persistence(runtime_case):
+def test_actual_initial_run_null_outputs_survive_first_native_node_persistence(
+    runtime_case: RuntimeDeliveryCase,
+) -> None:
     """Real mapped insert/read witness before any graph effect or cleanup claim."""
     from uuid import uuid4
 
@@ -497,7 +623,6 @@ def test_actual_initial_run_null_outputs_survive_first_native_node_persistence(r
     from graphon.entities import WorkflowExecution, WorkflowNodeExecution
     from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
     from libs.datetime_utils import naive_utc_now
-    from models.account import Account
     from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
     from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
@@ -505,7 +630,7 @@ def test_actual_initial_run_null_outputs_survive_first_native_node_persistence(r
     lifecycle = delivery(c, c.published[0])
     assert isinstance(lifecycle.runtime, DifyNativeRuntime)
     context = lifecycle.runtime.context
-    guard = lifecycle.runtime.host.native_observation
+    guard = require_instance(lifecycle.runtime, DifyNativeRuntime).host.native_observation
     with c.factory() as session:
         account = session.get(Account, context.actor_id)
         assert account is not None
@@ -585,7 +710,9 @@ def test_actual_initial_run_null_outputs_survive_first_native_node_persistence(r
     assert c.sends == []
 
 
-def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown(runtime_case, monkeypatch):
+def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown(
+    runtime_case: RuntimeDeliveryCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """CI-only actual WAIT/SQL/checkpoint/verifier race; no synthesized ACK or source settlement."""
     from models.dify_builder_native_tests import (
         NativeContinuation,
@@ -601,11 +728,11 @@ def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown
     lifecycle = delivery(c, message)
     held, release = Event(), Event()
     actual_pause = lifecycle.pause
-    waits = []
+    waits: list[WaitingReceipt] = []
 
-    def pause(**kwargs):
+    def pause(**kwargs: Unpack[PauseArguments]) -> WaitingReceipt:
         receipt = actual_pause(**kwargs)
-        if lifecycle._capacity._verifier._consumed:
+        if require_instance(require_present(lifecycle._capacity)._verifier, NativeHostLifetime)._consumed:
             waits.append(receipt)
             held.set()  # Real protected WAIT + consumed physical verifier, before finalizer.
             assert release.wait(15)
@@ -614,13 +741,13 @@ def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown
     monkeypatch.setattr(lifecycle, "pause", pause)
     # A separate API process owner has no retained worker lifetime to fabricate ACK.
     api = build_native_api(
-        sessions=c.factory, actor=c.actor, owner=DifyNativeRuntimeOwner(), publish=lambda **msg: c.published.append(msg)
+        sessions=c.factory, actor=c.actor, owner=DifyNativeRuntimeOwner(), publish=published_callback(c)
     )
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(execute, c, lifecycle, message)
         try:
             assert held.wait(15)
-            assert lifecycle.runtime.host.lifetime._consumed
+            assert require_instance(lifecycle.runtime, DifyNativeRuntime).host.lifetime._consumed
             waiting = waits[0]
             assert waiting.generation == 0
             assert waiting.wait_reason == "approval"
@@ -653,23 +780,43 @@ def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown
                 assert continuation is not None
                 assert continuation.generation == 0
                 assert continuation.payload_digest == waiting.checkpoint.payload_digest
-                assert set(state.pending_ids) == set(waiting.pending_operation_ids) == {row.id for row in pending}
+                assert (
+                    set(require_instance(state, NativeInvocationState).pending_ids)
+                    == set(waiting.pending_operation_ids)
+                    == {row.id for row in pending}
+                )
                 assert all(row.generation == 0 and row.category == "approval" for row in pending)
-                assert state.checkpoint_id == continuation.checkpoint_id
-                assert state.generation == scope.generation == source.generation == 0
-                assert state.cleanup_complete
-                assert source.state == "claimed"
-                assert (source.tenant_id, source.request_id, source.invocation_id) == (
+                assert require_instance(state, NativeInvocationState).checkpoint_id == continuation.checkpoint_id
+                assert (
+                    require_instance(state, NativeInvocationState).generation
+                    == require_instance(scope, NativeTestScope).generation
+                    == require_instance(source, NativeDispatch).generation
+                    == 0
+                )
+                assert require_instance(state, NativeInvocationState).cleanup_complete
+                assert require_instance(source, NativeDispatch).state == "claimed"
+                assert (
+                    require_instance(source, NativeDispatch).tenant_id,
+                    require_instance(source, NativeDispatch).request_id,
+                    require_instance(source, NativeDispatch).invocation_id,
+                ) == (
                     c.actor.tenant_id,
                     c.request_id,
                     ref.invocation_id,
                 )
                 native_run_id = checkpoint.native_run_id
                 run = session.get(WorkflowRun, native_run_id)
-                created_at = run.created_at
-                assert run.status == "paused"
-                assert request.context["native_run_id"] == run.id
-                assert scope.spent_calls == scope.spent_dispatches == 0
+                created_at = require_instance(run, WorkflowRun).created_at
+                assert require_instance(run, WorkflowRun).status == "paused"
+                assert (
+                    require_instance(request, DifyBuilderExecutionRequest).context["native_run_id"]
+                    == require_instance(run, WorkflowRun).id
+                )
+                assert (
+                    require_instance(scope, NativeTestScope).spent_calls
+                    == require_instance(scope, NativeTestScope).spent_dispatches
+                    == 0
+                )
                 operation_ids = {
                     row.id
                     for row in session.scalars(
@@ -681,7 +828,7 @@ def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown
             cancelled = api.cancel(
                 actor=c.actor, session_id=c.session_id, request_id=c.request_id, idempotency_key="ack-window-cancel"
             )
-            assert cancelled.cancellation.status == "cancelling"
+            assert require_present(cancelled.cancellation).status == "cancelling"
             assert cancelled.outcome is None
             assert cancelled.status == "running"
             assert cancelled.native_run_id == native_run_id
@@ -693,7 +840,7 @@ def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown
         with pytest.raises(BuilderExecutionPolicyError, match="native_dispatch_conflict"):
             future.result(timeout=15)
     assert c.sends == []
-    assert lifecycle.runtime.host.lifetime._consumed
+    assert require_instance(lifecycle.runtime, DifyNativeRuntime).host.lifetime._consumed
     for _ in range(2):
         for receipt in (
             api.get(actor=c.actor, session_id=c.session_id, request_id=c.request_id),
@@ -701,10 +848,10 @@ def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown
                 actor=c.actor, session_id=c.session_id, request_id=c.request_id, idempotency_key="ack-window-cancel"
             ),
         ):
-            assert receipt.cancellation.status == receipt.outcome == "unknown"
+            assert require_present(receipt.cancellation).status == receipt.outcome == "unknown"
             assert receipt.status == "terminal"
-            assert set(receipt.cancellation.operation_states) == operation_ids
-            assert set(receipt.cancellation.operation_states.values()) <= {"not_dispatched"}
+            assert set(require_present(receipt.cancellation).operation_states) == operation_ids
+            assert set(require_present(receipt.cancellation).operation_states.values()) <= {"not_dispatched"}
             assert receipt.native_run_id == native_run_id
             assert receipt.native_status == "paused"
             assert receipt.generation == 0
@@ -724,15 +871,23 @@ def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown
             source.generation,
             source.state,
         ) == (message["dispatch_id"], c.actor.tenant_id, c.request_id, ref.invocation_id, 0, "unknown")
-        assert state.state == "cancelled"
-        assert state.cleanup_complete
-        assert scope.cancelled
-        assert state.generation == scope.generation == 0
-        assert state.checkpoint_id == waiting.checkpoint.checkpoint_id
-        assert scope.spent_calls == scope.spent_dispatches == 0
+        assert require_instance(state, NativeInvocationState).state == "cancelled"
+        assert require_instance(state, NativeInvocationState).cleanup_complete
+        assert require_instance(scope, NativeTestScope).cancelled
+        assert (
+            require_instance(state, NativeInvocationState).generation
+            == require_instance(scope, NativeTestScope).generation
+            == 0
+        )
+        assert require_instance(state, NativeInvocationState).checkpoint_id == waiting.checkpoint.checkpoint_id
+        assert (
+            require_instance(scope, NativeTestScope).spent_calls
+            == require_instance(scope, NativeTestScope).spent_dispatches
+            == 0
+        )
         run = session.get(WorkflowRun, native_run_id)
-        assert run.status == "paused"
-        assert run.created_at == created_at
+        assert require_instance(run, WorkflowRun).status == "paused"
+        assert require_instance(run, WorkflowRun).created_at == created_at
         assert len(session.scalars(select(WorkflowRun).where(WorkflowRun.id == native_run_id)).all()) == 1
         assert {
             row.id
@@ -746,7 +901,9 @@ def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown
     assert c.sends == []
 
 
-def test_actual_settled_wait_completed_source_cancel_is_clean_and_preserves_native_pause(runtime_case):
+def test_actual_settled_wait_completed_source_cancel_is_clean_and_preserves_native_pause(
+    runtime_case: RuntimeDeliveryCase,
+) -> None:
     """Positive CI-only counterpart: real WAIT/source finalization precede API cancel."""
     from models.dify_builder_native_tests import NativeEffectAttempt, NativeEffectDispatchClaim, NativeEffectOperation
 
@@ -755,10 +912,12 @@ def test_actual_settled_wait_completed_source_cancel_is_clean_and_preserves_nati
     lifecycle = delivery(c, message)
     assert isinstance(lifecycle.runtime, DifyNativeRuntime)
     waiting = execute(c, lifecycle, message)
+    assert waiting is not None
     assert waiting.status == "waiting"
     assert waiting.wait_reason == "approval"
-    assert lifecycle.runtime.host.lifetime._consumed
+    assert require_instance(lifecycle.runtime, DifyNativeRuntime).host.lifetime._consumed
     assert c.sends == []
+    assert waiting.checkpoint_ref is not None
     checkpoint = c.api.store.read_checkpoint(ref=waiting.ref, checkpoint=waiting.checkpoint_ref)
     assert checkpoint.native_run_id == waiting.native_run_id
     assert checkpoint.generation == 0
@@ -774,21 +933,37 @@ def test_actual_settled_wait_completed_source_cancel_is_clean_and_preserves_nati
         )
         scope = session.get(NativeTestScope, c.request_id)
         source = session.get(NativeDispatch, message["dispatch_id"])
-        assert (source.tenant_id, source.request_id, source.invocation_id) == (
+        assert (
+            require_instance(source, NativeDispatch).tenant_id,
+            require_instance(source, NativeDispatch).request_id,
+            require_instance(source, NativeDispatch).invocation_id,
+        ) == (
             c.actor.tenant_id,
             c.request_id,
             waiting.ref.invocation_id,
         )
-        assert state.generation == scope.generation == source.generation == 0
-        assert state.cleanup_complete
-        assert source.state == "completed"
-        assert state.checkpoint_id == waiting.checkpoint_ref.checkpoint_id
-        pending_ids = tuple(state.pending_ids)
+        assert (
+            require_instance(state, NativeInvocationState).generation
+            == require_instance(scope, NativeTestScope).generation
+            == require_instance(source, NativeDispatch).generation
+            == 0
+        )
+        assert require_instance(state, NativeInvocationState).cleanup_complete
+        assert require_instance(source, NativeDispatch).state == "completed"
+        assert require_instance(state, NativeInvocationState).checkpoint_id == waiting.checkpoint_ref.checkpoint_id
+        pending_ids = tuple(require_instance(state, NativeInvocationState).pending_ids)
         assert pending_ids == waiting.pending_operation_ids
         run = session.get(WorkflowRun, waiting.native_run_id)
-        created_at, elapsed_time = run.created_at, run.elapsed_time
-        assert run.status == "paused"
-        assert scope.spent_calls == scope.spent_dispatches == 0
+        created_at, elapsed_time = (
+            require_instance(run, WorkflowRun).created_at,
+            require_instance(run, WorkflowRun).elapsed_time,
+        )
+        assert require_instance(run, WorkflowRun).status == "paused"
+        assert (
+            require_instance(scope, NativeTestScope).spent_calls
+            == require_instance(scope, NativeTestScope).spent_dispatches
+            == 0
+        )
         operation_ids = {
             row.id
             for row in session.scalars(
@@ -803,7 +978,7 @@ def test_actual_settled_wait_completed_source_cancel_is_clean_and_preserves_nati
             actor=c.actor, session_id=c.session_id, request_id=c.request_id, idempotency_key="settled-wait-cancel"
         )
         for receipt in (cancelled, c.api.get(actor=c.actor, session_id=c.session_id, request_id=c.request_id)):
-            assert (receipt.status, receipt.outcome, receipt.cancellation.status) == (
+            assert (receipt.status, receipt.outcome, require_present(receipt.cancellation).status) == (
                 "terminal",
                 "cancelled",
                 "cancelled",
@@ -813,8 +988,8 @@ def test_actual_settled_wait_completed_source_cancel_is_clean_and_preserves_nati
             assert receipt.generation == 0
             assert receipt.wait_reason is None
             assert receipt.pending == ()
-            assert set(receipt.cancellation.operation_states) == operation_ids
-            assert set(receipt.cancellation.operation_states.values()) == {"not_dispatched"}
+            assert set(require_present(receipt.cancellation).operation_states) == operation_ids
+            assert set(require_present(receipt.cancellation).operation_states.values()) == {"not_dispatched"}
         assert c.api.lifecycle.reconcile() == 0
         with pytest.raises(BuilderExecutionPolicyError, match="native_cancelled"):
             c.api.resume(
@@ -843,18 +1018,30 @@ def test_actual_settled_wait_completed_source_cancel_is_clean_and_preserves_nati
             waiting.ref.invocation_id,
         )
         assert source.state == "completed"
-        assert state.state == "cancelled"
-        assert state.cleanup_complete
-        assert state.generation == scope.generation == source.generation == 0
-        assert scope.cancelled
-        assert scope.spent_calls == scope.spent_dispatches == 0
-        assert session.get(DifyBuilderExecutionRequest, c.request_id).state == "sealed"
-        assert state.checkpoint_id == waiting.checkpoint_ref.checkpoint_id
-        assert tuple(state.pending_ids) == pending_ids
+        assert require_instance(state, NativeInvocationState).state == "cancelled"
+        assert require_instance(state, NativeInvocationState).cleanup_complete
+        assert (
+            require_instance(state, NativeInvocationState).generation
+            == require_instance(scope, NativeTestScope).generation
+            == source.generation
+            == 0
+        )
+        assert require_instance(scope, NativeTestScope).cancelled
+        assert (
+            require_instance(scope, NativeTestScope).spent_calls
+            == require_instance(scope, NativeTestScope).spent_dispatches
+            == 0
+        )
+        assert (
+            require_instance(session.get(DifyBuilderExecutionRequest, c.request_id), DifyBuilderExecutionRequest).state
+            == "sealed"
+        )
+        assert require_instance(state, NativeInvocationState).checkpoint_id == waiting.checkpoint_ref.checkpoint_id
+        assert tuple(require_instance(state, NativeInvocationState).pending_ids) == pending_ids
         run = session.get(WorkflowRun, waiting.native_run_id)
-        assert run.status == "paused"
-        assert run.created_at == created_at
-        assert run.elapsed_time == elapsed_time
+        assert require_instance(run, WorkflowRun).status == "paused"
+        assert require_instance(run, WorkflowRun).created_at == created_at
+        assert require_instance(run, WorkflowRun).elapsed_time == elapsed_time
         assert len(session.scalars(select(WorkflowRun).where(WorkflowRun.id == waiting.native_run_id)).all()) == 1
         assert {
             row.id
@@ -864,13 +1051,15 @@ def test_actual_settled_wait_completed_source_cancel_is_clean_and_preserves_nati
         } == operation_ids
         for model in (NativeEffectAttempt, NativeEffectDispatchClaim):
             assert session.scalar(select(model.id).where(model.request_id == c.request_id)) is None
-    assert lifecycle.runtime.host.lifetime._consumed
+    assert require_instance(lifecycle.runtime, DifyNativeRuntime).host.lifetime._consumed
     assert len(c.published) == 1
     assert c.sends == []
 
 
 @pytest.mark.parametrize("stop_path", ["initial-preparation-fault", "resumed-approved-redirect"])
-def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(runtime_case, monkeypatch, stop_path):
+def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(
+    runtime_case: RuntimeDeliveryCase, monkeypatch: pytest.MonkeyPatch, stop_path: str
+) -> None:
     """CI-only SQL/native STOP composition; never import/collect/run locally.
 
     The initial witness injects only a preparation ValueError to exercise the
@@ -890,11 +1079,12 @@ def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(runtim
     c = runtime_case
     first = c.published[0]
     initial = delivery(c, first)
-    cleanup_proofs, finalizations = [], []
+    cleanup_proofs: list[tuple[int, str]] = []
+    finalizations: list[tuple[int, str]] = []
     actual_cleanup = NativeHostLifetime.consume_cleanup
     actual_finalize = NativeTestLifecycleService.finalize_dispatch_locked
 
-    def consume(lifetime, *, ref, generation, dispatch_id):
+    def consume(lifetime: NativeHostLifetime, *, ref: NativeTestContextRef, generation: int, dispatch_id: str) -> None:
         # The real capacity owner calls this OUTSIDE its SQL writer, after the
         # actual reader/source, worker and dispatcher have all settled.
         if ref.request_id == c.request_id:
@@ -908,7 +1098,7 @@ def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(runtim
                 )
                 assert local is not None
                 assert not local.cleanup_complete
-                assert session.get(NativeDispatch, dispatch_id).state == "claimed"
+                assert require_instance(session.get(NativeDispatch, dispatch_id), NativeDispatch).state == "claimed"
             threads = tuple(item.thread for item in lifetime._threads)
             assert threads
             assert all(not thread.is_alive() for thread in threads)
@@ -919,7 +1109,16 @@ def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(runtim
             cleanup_proofs.append((generation, dispatch_id))
         return result
 
-    def finalize(lifecycle, *, session, owned, scope, dispatch_id, generation, outcome):
+    def finalize(
+        lifecycle: NativeTestLifecycleService,
+        *,
+        session: Session,
+        owned: OwnedNativeTest,
+        scope: NativeTestScope,
+        dispatch_id: str,
+        generation: int,
+        outcome: NativeWorkflowOutcome,
+    ) -> None:
         if owned.ref.request_id == c.request_id and outcome.status == "stopped":
             local = session.scalar(
                 select(NativeInvocationState).where(
@@ -927,9 +1126,9 @@ def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(runtim
                     NativeInvocationState.invocation_id == owned.ref.invocation_id,
                 )
             )
-            assert local.cleanup_complete
+            assert require_instance(local, NativeInvocationState).cleanup_complete
             assert (generation, dispatch_id) in cleanup_proofs
-            assert session.get(NativeDispatch, dispatch_id).state == "claimed"
+            assert require_instance(session.get(NativeDispatch, dispatch_id), NativeDispatch).state == "claimed"
             finalizations.append((generation, dispatch_id))
         return actual_finalize(
             lifecycle,
@@ -945,19 +1144,21 @@ def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(runtim
     monkeypatch.setattr(NativeTestLifecycleService, "finalize_dispatch_locked", finalize)
     if stop_path == "initial-preparation-fault":
 
-        def preparation_fault(_client, *_args, **_kwargs):
+        def preparation_fault(_client: object, *_args: object, **_kwargs: object) -> Never:
             raise ValueError("fixture_native_http_preparation_failure")
 
         monkeypatch.setattr(NativeHttpClient, "_prepare", preparation_fault)
         source, lifecycle = first, initial
         result = execute(c, lifecycle, source)
+        assert result is not None
         expected_reason, expected_sends, expected_generation = "native_http_preparation_failed", 0, 0
     else:
         waiting = execute(c, initial, first)
+        assert waiting is not None
         assert waiting.status == "waiting"
         assert c.sends == []
         with c.factory() as session:
-            original_started = session.get(WorkflowRun, waiting.native_run_id).created_at
+            original_started = require_instance(session.get(WorkflowRun, waiting.native_run_id), WorkflowRun).created_at
         receipt = c.api.get(actor=c.actor, session_id=c.session_id, request_id=c.request_id)
         assert receipt.status == "waiting"
         assert len(receipt.pending) == 1
@@ -968,7 +1169,7 @@ def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(runtim
             request_id=c.request_id,
             pending_operation_id=pending.pending_operation_id,
             decision="confirm",
-            scope_digest=pending.scope_digest,
+            scope_digest=require_instance(pending.scope_digest, str),
             expected_version=receipt.version,
             idempotency_key="known-stop-decision",
         )
@@ -979,13 +1180,15 @@ def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(runtim
             expected_generation=receipt.generation,
             idempotency_key="known-stop-resume",
         )
-        c.api.lifecycle.publish_pending(publish=lambda **message: c.published.append(message))
+        c.api.lifecycle.publish_pending(publish=published_callback(c))
         source = c.published[-1]
         lifecycle = delivery(c, source)
         assert source["generation"] == 1
         if stop_path == "resumed-approved-redirect":
 
-            def redirect(_client, request, **kwargs):
+            def redirect(
+                _client: httpx.Client, request: httpx.Request, **kwargs: Unpack[HttpSendArguments]
+            ) -> Response:
                 c.sends.append(request)
                 assert kwargs.get("follow_redirects") is False
                 return httpx.Response(
@@ -997,17 +1200,21 @@ def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(runtim
 
             monkeypatch.setattr(httpx.Client, "send", redirect)
         result = execute(c, lifecycle, source)
+        assert result is not None
         assert result.native_run_id == waiting.native_run_id
         with c.factory() as session:
-            assert session.get(WorkflowRun, result.native_run_id).created_at == original_started
+            assert (
+                require_instance(session.get(WorkflowRun, result.native_run_id), WorkflowRun).created_at
+                == original_started
+            )
         expected_reason = "native_http_redirect_limit"
         expected_sends, expected_generation = 1, 1
     assert result.status == "stopped"
     assert result.reason_code == expected_reason
     assert len(c.sends) == expected_sends
     assert source["generation"] == expected_generation
-    assert lifecycle.runtime.host.lifetime._consumed
-    assert not lifecycle.runtime.host.lifetime.unknown
+    assert require_instance(lifecycle.runtime, DifyNativeRuntime).host.lifetime._consumed
+    assert not require_instance(lifecycle.runtime, DifyNativeRuntime).host.lifetime.unknown
     assert finalizations == [(expected_generation, source["dispatch_id"])]
     assert (expected_generation, source["dispatch_id"]) in cleanup_proofs
     with c.factory() as session:
@@ -1015,16 +1222,18 @@ def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(runtim
         local = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == c.request_id))
         invocation = session.scalar(select(NativeTestInvocation).where(NativeTestInvocation.request_id == c.request_id))
         run = session.get(WorkflowRun, result.native_run_id)
-        assert request.state == "sealed"
-        assert not session.get(NativeTestScope, c.request_id).cancelled
-        assert not invocation.active
-        assert local.state == "stopped"
-        assert local.outcome["status"] == "stopped"
-        assert local.generation == expected_generation
-        assert local.cleanup_complete
-        assert local.outcome["native_run_id"] == result.native_run_id
-        assert session.get(NativeDispatch, source["dispatch_id"]).state == "completed"
-        assert run.status == "stopped"
+        assert require_instance(request, DifyBuilderExecutionRequest).state == "sealed"
+        assert not require_instance(session.get(NativeTestScope, c.request_id), NativeTestScope).cancelled
+        assert not require_instance(invocation, NativeTestInvocation).active
+        assert require_instance(local, NativeInvocationState).state == "stopped"
+        outcome = require_instance(local, NativeInvocationState).outcome
+        assert outcome is not None
+        assert outcome["status"] == "stopped"
+        assert require_instance(local, NativeInvocationState).generation == expected_generation
+        assert require_instance(local, NativeInvocationState).cleanup_complete
+        assert outcome["native_run_id"] == result.native_run_id
+        assert require_instance(session.get(NativeDispatch, source["dispatch_id"]), NativeDispatch).state == "completed"
+        assert require_instance(run, WorkflowRun).status == "stopped"
         claims = session.scalars(
             select(NativeEffectDispatchClaim).where(NativeEffectDispatchClaim.request_id == c.request_id)
         ).all()
@@ -1049,12 +1258,13 @@ def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(runtim
     assert finalizations == [(expected_generation, source["dispatch_id"])]
 
 
-def test_actual_denied_pending_cannot_borrow_stop_settlement_for_resume(runtime_case):
+def test_actual_denied_pending_cannot_borrow_stop_settlement_for_resume(runtime_case: RuntimeDeliveryCase) -> None:
     """A real denial remains unresolved; evidence settlement cannot admit it."""
     c = runtime_case
     source = c.published[0]
     lifecycle = delivery(c, source)
     waiting = execute(c, lifecycle, source)
+    assert waiting is not None
     assert waiting.status == "waiting"
     assert c.sends == []
     receipt = c.api.get(actor=c.actor, session_id=c.session_id, request_id=c.request_id)
@@ -1065,7 +1275,7 @@ def test_actual_denied_pending_cannot_borrow_stop_settlement_for_resume(runtime_
         request_id=c.request_id,
         pending_operation_id=pending.pending_operation_id,
         decision="deny",
-        scope_digest=pending.scope_digest,
+        scope_digest=require_instance(pending.scope_digest, str),
         expected_version=receipt.version,
         idempotency_key="known-stop-denial-admission-negative",
     )
@@ -1081,11 +1291,11 @@ def test_actual_denied_pending_cannot_borrow_stop_settlement_for_resume(runtime_
     assert len(c.published) == 1
     with c.factory() as session:
         local = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == c.request_id))
-        assert local.state == "waiting"
-        assert local.generation == 0
-        assert local.cleanup_complete
-        assert local.outcome is None
-        assert session.get(WorkflowRun, waiting.native_run_id).status == "paused"
-        assert session.get(NativeDispatch, source["dispatch_id"]).state == "completed"
+        assert require_instance(local, NativeInvocationState).state == "waiting"
+        assert require_instance(local, NativeInvocationState).generation == 0
+        assert require_instance(local, NativeInvocationState).cleanup_complete
+        assert require_instance(local, NativeInvocationState).outcome is None
+        assert require_instance(session.get(WorkflowRun, waiting.native_run_id), WorkflowRun).status == "paused"
+        assert require_instance(session.get(NativeDispatch, source["dispatch_id"]), NativeDispatch).state == "completed"
         assert len(session.scalars(select(NativeDispatch).where(NativeDispatch.request_id == c.request_id)).all()) == 1
     assert execute(c, lifecycle, source) is None

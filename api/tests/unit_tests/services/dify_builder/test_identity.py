@@ -6,6 +6,7 @@ helpers read persisted rows through a real SQLite session.
 """
 
 import pytest
+import pytest_mock
 from sqlalchemy.orm import Session
 
 from core.dify_builder.errors import NotFoundError
@@ -19,7 +20,7 @@ def _actor(account_id: str = "acc-1", tenant_id: str = "tenant-1") -> Actor:
     return Actor(account_id=account_id, tenant_id=tenant_id)
 
 
-def test_resolve_account_returns_account_on_hit(sqlite_session: Session, mocker) -> None:
+def test_resolve_account_returns_account_on_hit(sqlite_session: Session, mocker: pytest_mock.MockerFixture) -> None:
     session = sqlite_session
     account = Account(name="Actor", email="actor@example.test")
     account.id = "acc-1"
@@ -40,7 +41,7 @@ def test_resolve_account_raises_not_found_on_miss(sqlite_session: Session) -> No
         resolve_account(session, _actor(account_id="acc-missing"))
 
 
-def test_load_app_returns_app_on_tenant_match(sqlite_session: Session, mocker) -> None:
+def test_load_app_returns_app_on_tenant_match(sqlite_session: Session, mocker: pytest_mock.MockerFixture) -> None:
     session = sqlite_session
     app = App(id="app-1", tenant_id="tenant-1", name="Draft", mode="workflow", enable_site=False, enable_api=False)
     session.add(app)

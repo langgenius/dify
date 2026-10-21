@@ -7,6 +7,47 @@ not production worker-issued occurrence evidence; SQL races and encrypted input 
 whole-run Graphon trace/privacy/driver activation.
 """
 
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Literal, NotRequired, Unpack, cast
+
+from flask import Flask
+from pydantic import JsonValue
+from typing_extensions import TypedDict
+from werkzeug.local import LocalProxy
+
+from models.workflow import Workflow
+from runtime_contracts.builder.native.contracts import DispatchPermit, NativeTestContextRef
+from runtime_contracts.builder.native.runtime_contracts import NodeJournalState
+from services.dify_builder.native_testing.control import NativeControlRecord
+from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    InternalDecisionArguments,
+    PublicDecisionArguments,
+    require_instance,
+)
+
+if TYPE_CHECKING:
+    import services.dify_builder.native_testing.repository as _forward_types_0
+    import services.dify_builder.native_testing.state_store as _forward_types_1
+
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.dify_builder.models import Actor
+    from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+    from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+        HttpBindingCase,
+    )
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_0
+
+
 import json
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
@@ -23,10 +64,9 @@ from graphon.runtime import InitParams, RuntimeState, VariablePool
 from models.account import Tenant
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.dify_builder_native_tests import NativeInvocationState, NativeTestInvocation, NativeTestScope
-from models.workflow import Workflow
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.approval_contracts import NativeApprovalProposal, NativeApprovalTerms
-from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit, PolicyStop, operation_digest
+from runtime_contracts.builder.native.contracts import ApprovalWait, PolicyStop, operation_digest
 from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, ResolvedNativeTestContext
 from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
@@ -55,11 +95,12 @@ from services.dify_builder.native_testing.private_reads import validate_private_
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, native_workflow_revision
 from services.dify_builder.native_testing.runtime_bridge import NativeCollaborators, NativeRuntimeBridge
-from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, ObjectReceipt
 from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
     HttpBindingCase,
     HttpConsentCase,
     PreparedHttpCase,
+    require_present,
 )
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414 - shared pytest fixture
@@ -82,7 +123,7 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_e
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import raw_ledger_case
 
 
-def literal_data():
+def literal_data() -> dict[str, str | dict[str, str] | dict[str, list[dict[str, str]] | str]]:
     return {
         "type": "http-request",
         "version": "1",
@@ -99,13 +140,18 @@ def literal_data():
 class _RefusingConstructorControl:
     """Constructor-only binding has no host capable of accepting runtime control."""
 
-    def record_control(self, *, record):
+    def record_control(self, *, record: NativeControlRecord) -> NativeControlRefused:
         assert record is not None
         return NativeControlRefused()
 
 
 @pytest.fixture
-def http_case(native_owner, no_live, migrated_continuation_tables, migrated_dispatch_claims):
+def http_case(
+    native_owner: _fixture_types_0.NativeOwner,
+    no_live: None,
+    migrated_continuation_tables: None,
+    migrated_dispatch_claims: None,
+) -> HttpBindingCase:
     """Reuse shared migration/owner fixtures unchanged; initialize one real private HTTP context."""
     ledger_case = raw_ledger_case(native_owner, no_live)
     assert migrated_continuation_tables is None
@@ -120,47 +166,60 @@ def http_case(native_owner, no_live, migrated_continuation_tables, migrated_disp
     db.session.expunge(workflow)
     db.session.close()
     public_key = generate_key_pair(ledger_case.actor.tenant_id)
-    graph = {"nodes": [{"id": "http", "data": literal_data()}], "edges": []}
+    graph = {"nodes": [{"id": "http", "data": literal_data()}], "edges": list[dict[str, JsonValue]]()}
     inputs = {"flag": True}
     run_id = str(uuid4())
     with ledger_case.factory.begin() as session:
-        session.get(Tenant, ledger_case.actor.tenant_id).encrypt_public_key = public_key
+        require_instance(session.get(Tenant, ledger_case.actor.tenant_id), Tenant).encrypt_public_key = public_key
         request = session.get(DifyBuilderExecutionRequest, ledger_case.ref.request_id)
-        workflow = session.get(Workflow, request.workflow_id)
-        workflow.graph = json.dumps(graph)
-        revision = native_workflow_revision(workflow)
+        workflow = session.get(Workflow, require_instance(request, DifyBuilderExecutionRequest).workflow_id)
+        require_instance(workflow, Workflow).graph = json.dumps(graph)
+        revision = native_workflow_revision(require_instance(workflow, Workflow))
         descriptor = describe_http_resource(
             node_id="http",
             raw=literal_data(),
             workflow_revision=revision,
-            app_id=workflow.app_id,
-            workflow_id=workflow.id,
+            app_id=require_instance(workflow, Workflow).app_id,
+            workflow_id=require_instance(workflow, Workflow).id,
         )
-        request.context = {
-            **request.context,
-            "request_id": request.id,
+        require_instance(request, DifyBuilderExecutionRequest).context = {
+            **require_instance(request, DifyBuilderExecutionRequest).context,
+            "request_id": require_instance(request, DifyBuilderExecutionRequest).id,
             "invocation_id": ledger_case.ref.invocation_id,
             "native_run_id": run_id,
             "mode": "native",
-            "tenant_id": request.tenant_id,
-            "actor_id": request.actor_id,
-            "app_id": request.app_id,
-            "workflow_id": request.workflow_id,
-            "session_id": request.session_id,
-            "test_input_id": request.test_input_id,
+            "tenant_id": require_instance(request, DifyBuilderExecutionRequest).tenant_id,
+            "actor_id": require_instance(request, DifyBuilderExecutionRequest).actor_id,
+            "app_id": require_instance(request, DifyBuilderExecutionRequest).app_id,
+            "workflow_id": require_instance(request, DifyBuilderExecutionRequest).workflow_id,
+            "session_id": require_instance(request, DifyBuilderExecutionRequest).session_id,
+            "test_input_id": require_instance(request, DifyBuilderExecutionRequest).test_input_id,
             "execution_revision": revision,
             "input_revision": canonical_digest(inputs),
             "resource_manifest_digest": canonical_digest([descriptor]),
             "profile": build_native_http_profile().model_dump(mode="json"),
         }
-        request.context_digest = canonical_digest(request.context)
-        ref = ledger_case.ref.model_copy(update={"context_digest": request.context_digest})
-        app_id, workflow_id = request.app_id, request.workflow_id
-        session.get(DifyBuilderTestInput, request.test_input_id).inputs = inputs
+        require_instance(request, DifyBuilderExecutionRequest).context_digest = canonical_digest(
+            require_instance(request, DifyBuilderExecutionRequest).context
+        )
+        ref = ledger_case.ref.model_copy(
+            update={"context_digest": require_instance(request, DifyBuilderExecutionRequest).context_digest}
+        )
+        app_id, workflow_id = (
+            require_instance(request, DifyBuilderExecutionRequest).app_id,
+            require_instance(request, DifyBuilderExecutionRequest).workflow_id,
+        )
+        require_instance(
+            session.get(DifyBuilderTestInput, require_present(request).test_input_id), DifyBuilderTestInput
+        ).inputs = inputs
         scope = session.scalar(select(NativeTestScope).where(NativeTestScope.request_id == ref.request_id))
-        scope.max_calls = scope.max_dispatches = scope.max_cost_units = 16
-        scope.budget_limits = scope.budget_spent = {}
-        scope.profile = build_native_http_profile().limits
+        require_instance(scope, NativeTestScope).max_calls = require_instance(
+            scope, NativeTestScope
+        ).max_dispatches = require_instance(scope, NativeTestScope).max_cost_units = 16
+        require_instance(scope, NativeTestScope).budget_limits = require_instance(
+            scope, NativeTestScope
+        ).budget_spent = dict[str, int]()
+        require_instance(scope, NativeTestScope).profile = build_native_http_profile().limits
     loader = OwnedNativeTestLoader(ledger_case.factory, actor=ledger_case.actor, resolver=NativeHttpBindingResolver())
     store = NativeExecutionStateStore(loader)
     context = ResolvedNativeTestContext(
@@ -196,21 +255,24 @@ def http_case(native_owner, no_live, migrated_continuation_tables, migrated_disp
     )
 
 
-def prepare(c, execution_id=None, *, ref=None):
+def prepare(
+    c: HttpBindingCase, execution_id: str | None = None, *, ref: NativeTestContextRef | None = None
+) -> PreparedHttpCase:
     """Compose the SQL component fixture; this does not establish actual host ownership."""
     selected_ref = ref or c.ref
     journal = NodeOperationJournal(state=c.store, authorization=c.auth)
-    captured = {"prepared": []}
+    prepared: list[PreparedHttpBinding] = []
+    producers: list[NativeHttpBindingProducer] = []
     files = RefusingNativeHttpFiles()
 
     def on_prepared(*, binding: PreparedHttpBinding) -> None:
-        captured["prepared"].append(binding)
+        prepared.append(binding)
 
-    def collaborators(*, association):
+    def collaborators(*, association: NativeNodePreparation) -> NativeCollaborators:
         producer = NativeHttpBindingProducer(
             association=association, loader=c.loader, state_store=c.store, journal=journal
         )
-        captured["producer"] = producer
+        producers.append(producer)
         client = DeferredNativeHttpClient(
             producer=producer, authorization=c.auth, calls_factory=NativeCallAdapter, on_prepared=on_prepared
         )
@@ -218,10 +280,13 @@ def prepare(c, execution_id=None, *, ref=None):
             **{name: client if name == "http" else files for name in NativeCollaborators.__dataclass_fields__}
         )
 
-    def arguments(**kwargs):
+    def arguments(
+        *, node_id: str, node_data: object, node_class: type[object], collaborators: NativeCollaborators
+    ) -> dict[str, object]:
+        del node_id, node_data, node_class
         return {
             "http_request_config": native_http_config(),
-            "http_client": kwargs["collaborators"].http,
+            "http_client": collaborators.http,
             "file_manager": files,
             "tool_file_manager_factory": files,
             "file_reference_factory": files,
@@ -254,18 +319,22 @@ def prepare(c, execution_id=None, *, ref=None):
     association.attach(node)
     # Synthetic fixture UUID bound through the real public API; no worker/host execution claim.
     node.bind_execution_id(execution_id or str(uuid4()))
-    producer = captured["producer"]
+    producer = producers[0]
     producer.begin()
     arguments = native_http_request(raw=literal_data(), variable_pool=runtime.variable_pool)
     client = NativeHttpClient(
-        ref=selected_ref, calls=object(), intents=object(), max_redirect_hops=0, max_response_bytes=1048576
+        ref=selected_ref,
+        calls=NativeCallAdapter(state=c.store, authorization=c.auth, journal=journal, max_result_bytes=1048576),
+        intents=producer,
+        max_redirect_hops=0,
+        max_response_bytes=1048576,
     )
     request = client._prepare("POST", arguments.pop("url"), arguments)
     binding = producer.prepare(request=request, hop=0, previous_response=None)
     return PreparedHttpCase(producer=producer, binding=binding, journal=journal, association=association)
 
 
-def bindings(c):
+def bindings(c: HttpBindingCase) -> dict[str, JsonValue]:
     with c.factory() as session:
         row = session.scalar(
             select(NativeTestInvocation).where(
@@ -273,10 +342,10 @@ def bindings(c):
                 NativeTestInvocation.invocation_id == c.ref.invocation_id,
             )
         )
-        return row.bindings
+        return require_instance(row, NativeTestInvocation).bindings
 
 
-def test_real_http_snapshot_and_equal_install_preserve_other_entries(http_case):
+def test_real_http_snapshot_and_equal_install_preserve_other_entries(http_case: HttpBindingCase) -> None:
     c = http_case
     old = bindings(c)
     manifest = NativeHttpResourceSnapshot(session_factory=c.factory)(
@@ -294,6 +363,7 @@ def test_real_http_snapshot_and_equal_install_preserve_other_entries(http_case):
     assert all(current[key] == value for key, value in old.items())
     assert len(current) == len(old) + 1
     stored = current[operation_digest(first.binding.intent.key)]
+    assert isinstance(stored, dict)
     assert stored["execution_id"] == first.association.execution_id
     assert stored["invocation_digest"] == canonical_digest(first.binding.intent.model_dump(mode="json"))
     assert stored["cost_units"] == 1
@@ -303,7 +373,7 @@ def test_real_http_snapshot_and_equal_install_preserve_other_entries(http_case):
     assert c.store.load_result(ref=c.ref, result_ref=input_ref) == first.binding.request.material()
 
 
-def test_real_http_conflict_is_immutable_and_concurrent_merge_preserves_entries(http_case):
+def test_real_http_conflict_is_immutable_and_concurrent_merge_preserves_entries(http_case: HttpBindingCase) -> None:
     from threading import Barrier
 
     from flask import current_app
@@ -320,10 +390,10 @@ def test_real_http_conflict_is_immutable_and_concurrent_merge_preserves_entries(
             intent=conflict,
         )
     assert bindings(c) == before
-    app = current_app._get_current_object()
+    app = cast("LocalProxy[Flask]", current_app)._get_current_object()
     start = Barrier(2)
 
-    def prepare_in_worker(_):
+    def prepare_in_worker(_) -> PreparedHttpCase:
         # Flask's scoped RSA public-key lookup requires an independent worker app context.
         with app.app_context():
             start.wait(timeout=10)
@@ -337,12 +407,13 @@ def test_real_http_conflict_is_immutable_and_concurrent_merge_preserves_entries(
     assert len({operation_digest(item.binding.intent.key) for item in prepared}) == 2
 
 
-def test_real_http_opaque_wait_disclosure_and_known_destructive_never_auto_grants(http_case):
+def test_real_http_opaque_wait_disclosure_and_known_destructive_never_auto_grants(http_case: HttpBindingCase) -> None:
     c = http_case
     p = prepare(c)
     with c.factory.begin() as session:
-        session.scalar(
-            select(NativeTestScope).where(NativeTestScope.request_id == c.ref.request_id)
+        require_instance(
+            session.scalar(select(NativeTestScope).where(NativeTestScope.request_id == c.ref.request_id)),
+            NativeTestScope,
         ).task_approved = True
     cursor = p.journal.resolve_cursor(ref=c.ref, key=p.binding.intent.key)
     waiting = cursor.before_call(intent=p.binding.intent)
@@ -354,7 +425,7 @@ def test_real_http_opaque_wait_disclosure_and_known_destructive_never_auto_grant
         generation=0,
         payload=NativeCheckpointPayload(
             schema_version="1",
-            native_run_id=c.context.native_run_id,
+            native_run_id=require_instance(c.context.native_run_id, str),
             generation=0,
             generate_entity_json="{}",
             graph_runtime_state_json="{}",
@@ -374,23 +445,30 @@ def test_real_http_opaque_wait_disclosure_and_known_destructive_never_auto_grant
     )
     assert disclosure.approval_limits == terms
     assert disclosure.target == {"method": "POST", "origin": "https://example.com"}
+    assert disclosure.risk_notice is not None
     assert "internal actions are unknown" in disclosure.risk_notice
     assert "SENTINEL" not in disclosure.model_dump_json()
     # Changing stored classification does not rewrite the current policy or authorize.
     with c.factory.begin() as session:
         row = session.scalar(select(NativeTestInvocation).where(NativeTestInvocation.request_id == c.ref.request_id))
         identity = operation_digest(p.binding.intent.key)
-        row.bindings = {**row.bindings, identity: {**row.bindings[identity], "destructive": True}}
+        require_instance(row, NativeTestInvocation).bindings = {
+            **require_instance(row, NativeTestInvocation).bindings,
+            identity: {**require_instance(row, NativeTestInvocation).bindings[identity], "destructive": True},
+        }
     assert isinstance(c.auth.before_call(ref=c.ref, intent=p.binding.intent), PolicyStop)
 
 
 @pytest.mark.parametrize("phase", ["before_call", "claim"])
-def test_real_http_current_config_drift_stops_before_dispatch(http_case, monkeypatch, phase):
+def test_real_http_current_config_drift_stops_before_dispatch(
+    http_case: HttpBindingCase, monkeypatch: pytest.MonkeyPatch, phase: str
+) -> None:
     from configs import dify_config
 
     c = http_case
     p = prepare(c)
     intent = p.binding.intent
+    permit: DispatchPermit | None = None
     if phase == "claim":
         assert isinstance(c.auth.before_call(ref=c.ref, intent=intent), ApprovalWait)
         c.auth.decide(
@@ -402,23 +480,30 @@ def test_real_http_current_config_drift_stops_before_dispatch(http_case, monkeyp
             max_cost_units=1,
             expires_at=c.loader.load(ref=c.ref).expires_at,
         )
-        permit = c.auth.before_call(ref=c.ref, intent=intent)
+        permit = require_instance(c.auth.before_call(ref=c.ref, intent=intent), DispatchPermit)
         assert isinstance(permit, DispatchPermit)
     monkeypatch.setattr(dify_config, "HTTP_REQUEST_MAX_READ_TIMEOUT", dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT + 1)
     if phase == "before_call":
         assert isinstance(c.auth.before_call(ref=c.ref, intent=intent), PolicyStop)
     else:
+        assert permit is not None
         with pytest.raises(BuilderExecutionPolicyError):
             c.auth.claim_dispatch(ref=c.ref, intent=intent, permit=permit)
 
 
-def test_real_http_input_ack_and_external_work_stay_outside_install_writer(http_case, monkeypatch):
+def test_real_http_input_ack_and_external_work_stay_outside_install_writer(
+    http_case: HttpBindingCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     c = http_case
     active = False
     original_lock = c.loader.locked
 
     @contextmanager
-    def tracked_lock(**kwargs):
+    def tracked_lock(
+        **kwargs: Unpack[_ForwardArguments475],
+    ) -> _forward_types_0.Generator[
+        tuple[_forward_types_0.Session, _forward_types_0.OwnedNativeTest, _forward_types_0.NativeTestScope]
+    ]:
         nonlocal active
         with original_lock(**kwargs) as value:
             active = True
@@ -428,32 +513,37 @@ def test_real_http_input_ack_and_external_work_stay_outside_install_writer(http_
                 active = False
 
     monkeypatch.setattr(c.loader, "locked", tracked_lock)
-    for name, original in (
-        ("prepare_object", c.store.prepare_object),
-        ("load_result", c.store.load_result),
-        ("load_context", c.store.load_context),
-    ):
 
-        def checked(*args, _original=original, **kwargs):
+    def checked[**P, R](original: Callable[P, R]) -> Callable[P, R]:
+        def outside(*args: P.args, **kwargs: P.kwargs) -> R:
             assert not active, "protected/storage work under root writer"
-            return _original(*args, **kwargs)
+            return original(*args, **kwargs)
 
-        monkeypatch.setattr(c.store, name, checked)
+        return outside
+
+    monkeypatch.setattr(c.store, "prepare_object", checked(c.store.prepare_object))
+    monkeypatch.setattr(c.store, "load_result", checked(c.store.load_result))
+    monkeypatch.setattr(c.store, "load_context", checked(c.store.load_context))
     p = prepare(c)
     assert p.journal.snapshot(ref=c.ref)[0].input_result_ref
     assert operation_digest(p.binding.intent.key) in bindings(c)
 
 
-def test_real_http_unrelated_scope_advance_retains_invocation_generation(http_case):
+def test_real_http_unrelated_scope_advance_retains_invocation_generation(http_case: HttpBindingCase) -> None:
     c = http_case
     with c.factory.begin() as session:
-        session.scalar(select(NativeTestScope).where(NativeTestScope.request_id == c.ref.request_id)).generation = 4
+        require_instance(
+            session.scalar(select(NativeTestScope).where(NativeTestScope.request_id == c.ref.request_id)),
+            NativeTestScope,
+        ).generation = 4
     assert c.store.load_context(ref=c.ref).generation == 0
     p = prepare(c)
     assert operation_digest(p.binding.intent.key) in bindings(c)
 
 
-def test_real_http_foreign_actor_and_local_generation_drift_refuse_input_and_binding(http_case, monkeypatch):
+def test_real_http_foreign_actor_and_local_generation_drift_refuse_input_and_binding(
+    http_case: HttpBindingCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     c = http_case
     before = bindings(c)
     foreign = OwnedNativeTestLoader(
@@ -466,7 +556,7 @@ def test_real_http_foreign_actor_and_local_generation_drift_refuse_input_and_bin
     original_prepare = c.store.prepare_object
     changed = False
 
-    def advance_after_private_read(**kwargs):
+    def advance_after_private_read(**kwargs: Unpack[_ForwardArguments528]) -> ObjectReceipt:
         nonlocal changed
         receipt = original_prepare(**kwargs)
         if kwargs.get("kind") == "result" and not changed:
@@ -478,7 +568,7 @@ def test_real_http_foreign_actor_and_local_generation_drift_refuse_input_and_bin
                         NativeInvocationState.invocation_id == c.ref.invocation_id,
                     )
                 )
-                row.generation += 1
+                require_instance(row, NativeInvocationState).generation += 1
         return receipt
 
     monkeypatch.setattr(c.store, "prepare_object", advance_after_private_read)
@@ -487,7 +577,9 @@ def test_real_http_foreign_actor_and_local_generation_drift_refuse_input_and_bin
     assert bindings(c) == before
 
 
-def test_real_http_qualified_same_workflow_child_uses_local_generation_and_ancestor_authority(http_case):
+def test_real_http_qualified_same_workflow_child_uses_local_generation_and_ancestor_authority(
+    http_case: HttpBindingCase,
+) -> None:
     from runtime_contracts.builder.native.contracts import OperationKey
     from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
 
@@ -496,7 +588,15 @@ def test_real_http_qualified_same_workflow_child_uses_local_generation_and_ances
     class SameWorkflowChild:
         """Test-owned child compiler; exact same actual Workflow descriptor is qualified."""
 
-        def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
+        def resolve_child(
+            self,
+            *,
+            parent: ResolvedNativeTestContext,
+            ref: NativeTestContextRef,
+            child_app_id: str,
+            child_workflow_revision: str,
+            inputs: dict[str, JsonValue],
+        ) -> ResolvedNativeTestContext:
             assert child_app_id == parent.app_id
             assert child_workflow_revision == parent.graph_revision
             return parent.model_copy(
@@ -510,7 +610,7 @@ def test_real_http_qualified_same_workflow_child_uses_local_generation_and_ances
                 }
             )
 
-    inputs = {"child": True}
+    inputs: dict[str, JsonValue] = {"child": True}
     input_ref = c.store.store_node_inputs(ref=c.ref, generation=0, native_execution_id=str(uuid4()), inputs=inputs)
     child = NativeChildInvocationService(c.store, resolver=SameWorkflowChild()).get_or_create(
         parent_ref=c.ref,
@@ -521,7 +621,10 @@ def test_real_http_qualified_same_workflow_child_uses_local_generation_and_ances
         input_result_ref=input_ref,
     )
     with c.factory.begin() as session:
-        session.scalar(select(NativeTestScope).where(NativeTestScope.request_id == c.ref.request_id)).generation = 7
+        require_instance(
+            session.scalar(select(NativeTestScope).where(NativeTestScope.request_id == c.ref.request_id)),
+            NativeTestScope,
+        ).generation = 7
     p = prepare(c, ref=child)
     assert p.binding.intent.key.invocation_id == child.invocation_id
     assert c.store.load_context(ref=child).generation == 0
@@ -532,7 +635,7 @@ def test_real_http_qualified_same_workflow_child_uses_local_generation_and_ances
                 NativeTestInvocation.invocation_id == child.invocation_id,
             )
         )
-        assert operation_digest(p.binding.intent.key) in child_row.bindings
+        assert operation_digest(p.binding.intent.key) in require_instance(child_row, NativeTestInvocation).bindings
     with c.factory.begin() as session:
         state = session.scalar(
             select(NativeInvocationState).where(
@@ -540,13 +643,15 @@ def test_real_http_qualified_same_workflow_child_uses_local_generation_and_ances
                 NativeInvocationState.invocation_id == c.ref.invocation_id,
             )
         )
-        state.state = "unknown"
+        require_instance(state, NativeInvocationState).state = "unknown"
     with pytest.raises(BuilderExecutionPolicyError, match="native_ancestor_quarantined"):
         prepare(c, ref=child)
 
 
 @pytest.mark.parametrize("outcome", ["completed", "unknown"])
-def test_real_http_one_accounting_unit_and_native_correlation_spent_once(http_case, outcome):
+def test_real_http_one_accounting_unit_and_native_correlation_spent_once(
+    http_case: HttpBindingCase, outcome: Literal["completed", "failed", "unknown", "not_dispatched"]
+) -> None:
     from models.dify_builder_native_tests import NativeEffectAttempt
     from runtime_contracts.builder.native.contracts import RecordedResult
 
@@ -596,13 +701,25 @@ def test_real_http_one_accounting_unit_and_native_correlation_spent_once(http_ca
     assert isinstance(decision, RecordedResult if outcome == "completed" else PolicyStop)
     with c.factory() as session:
         scope = session.scalar(select(NativeTestScope).where(NativeTestScope.request_id == c.ref.request_id))
-        assert (scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units) == (1, 1, 1)
+        assert (
+            require_instance(scope, NativeTestScope).spent_calls,
+            require_instance(scope, NativeTestScope).spent_dispatches,
+            require_instance(scope, NativeTestScope).spent_cost_units,
+        ) == (1, 1, 1)
         attempt = session.scalar(select(NativeEffectAttempt).where(NativeEffectAttempt.request_id == c.ref.request_id))
-        assert attempt.execution_id == p.association.execution_id
-        assert attempt.invocation_digest == canonical_digest(intent.model_dump(mode="json"))
+        assert require_instance(attempt, NativeEffectAttempt).execution_id == p.association.execution_id
+        assert require_instance(attempt, NativeEffectAttempt).invocation_digest == canonical_digest(
+            intent.model_dump(mode="json")
+        )
 
 
-def _confirmed_http_resume(c, prepared, lifecycle, *, prior_journals=()):
+def _confirmed_http_resume(
+    c: HttpBindingCase,
+    prepared: PreparedHttpCase,
+    lifecycle: NativeTestLifecycleService,
+    *,
+    prior_journals: tuple[NodeJournalState, ...] = (),
+) -> HttpConsentCase:
     """Actual protected proposal/guard/resume, with explicit native snapshot fixture values."""
     from models.dify_builder_native_tests import NativeEffectGrant
 
@@ -619,7 +736,7 @@ def _confirmed_http_resume(c, prepared, lifecycle, *, prior_journals=()):
         generation=context.generation,
         payload=NativeCheckpointPayload(
             schema_version="1",
-            native_run_id=context.native_run_id,
+            native_run_id=require_instance(context.native_run_id, str),
             generation=context.generation,
             generate_entity_json="{}",
             graph_runtime_state_json="{}",
@@ -658,7 +775,7 @@ def _confirmed_http_resume(c, prepared, lifecycle, *, prior_journals=()):
         resolved=resolved,
         pending_operation_id=wait.pending_operation_id,
         expected_version=context.generation + 1,
-        scope_digest=disclosure.scope_digest,
+        scope_digest=require_instance(disclosure.scope_digest, str),
         idempotency_digest=canonical_digest({"decision": wait.pending_operation_id}),
         body_digest=canonical_digest(
             {"decision": "confirm", "scope": disclosure.scope_digest, "version": context.generation + 1}
@@ -669,7 +786,7 @@ def _confirmed_http_resume(c, prepared, lifecycle, *, prior_journals=()):
         invocation_workflow_id=context.workflow_id,
         invocation_revision=context.graph_revision,
     )
-    command = {
+    command: PublicDecisionArguments = {
         "ref": c.ref,
         "intent": resolved.intent,
         "decision": "approved",
@@ -681,7 +798,10 @@ def _confirmed_http_resume(c, prepared, lifecycle, *, prior_journals=()):
     }
     with c.factory() as session:
         request = session.get(DifyBuilderExecutionRequest, c.ref.request_id)
-        prior_decisions = sum(record.get("public_decision_saved") is True for record in request.observations)
+        prior_decisions = sum(
+            record.get("public_decision_saved") is True
+            for record in require_instance(request, DifyBuilderExecutionRequest).observations
+        )
     saved_receipt = receipt.model_copy(
         update={
             "pending": (disclosure.model_copy(update={"decision": "confirm", "decision_status": "confirmed"}),),
@@ -714,14 +834,14 @@ def _confirmed_http_resume(c, prepared, lifecycle, *, prior_journals=()):
     assert lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id) is False
     return HttpConsentCase(
         pending_id=wait.pending_operation_id,
-        scope=disclosure.scope_digest,
+        scope=require_instance(disclosure.scope_digest, str),
         guard=guard,
         command=command,
         grant_id=grant_id,
     )
 
 
-def _complete_confirmed_http(c, prepared):
+def _complete_confirmed_http(c: HttpBindingCase, prepared: PreparedHttpCase) -> PreparedHttpCase:
     """Manual fixture redelivery preserves the same bound public ID/key after real resume."""
     from runtime_contracts.builder.native.contracts import RecordedResult
 
@@ -743,7 +863,9 @@ def _complete_confirmed_http(c, prepared):
     return restored
 
 
-def test_real_identical_http_occurrences_require_independent_guarded_one_call_confirmations(http_case):
+def test_real_identical_http_occurrences_require_independent_guarded_one_call_confirmations(
+    http_case: HttpBindingCase,
+) -> None:
     from sqlalchemy import func
 
     from models.dify_builder_native_tests import NativeEffectAttempt, NativeEffectDispatchClaim, NativeEffectGrant
@@ -763,8 +885,10 @@ def test_real_identical_http_occurrences_require_independent_guarded_one_call_co
     second_wait = c.auth.before_call(ref=c.ref, intent=second.binding.intent)
     assert isinstance(second_wait, ApprovalWait)
     assert second_wait.pending_operation_id != approved_first.pending_id
+    mismatched_command = approved_first.command.copy()
+    mismatched_command["intent"] = second.binding.intent
     with pytest.raises(BuilderExecutionPolicyError, match="native_pending_conflict"):
-        c.auth.decide(**{**approved_first.command, "intent": second.binding.intent})
+        c.auth.decide(**mismatched_command)
     approved_second = _confirmed_http_resume(
         c, second, lifecycle, prior_journals=completed_first.journal.snapshot(ref=c.ref)
     )
@@ -774,14 +898,30 @@ def test_real_identical_http_occurrences_require_independent_guarded_one_call_co
     _complete_confirmed_http(c, second)
     # A trusted immutable reconfirmation never renews either completed operation.
     for prepared, approved in ((first, approved_first), (second, approved_second)):
-        reconfirm = {key: value for key, value in approved.command.items() if key != "pending_guard"}
+        reconfirm: InternalDecisionArguments = {
+            "ref": approved.command["ref"],
+            "intent": approved.command["intent"],
+            "decision": approved.command["decision"],
+            "max_calls": approved.command["max_calls"],
+            "max_dispatches": approved.command["max_dispatches"],
+            "max_cost_units": approved.command["max_cost_units"],
+            "expires_at": approved.command["expires_at"],
+        }
         assert c.auth.decide(**reconfirm) == approved.grant_id
         assert isinstance(c.auth.before_call(ref=c.ref, intent=prepared.binding.intent), RecordedResult)
     with c.factory() as session:
         scope = session.get(NativeTestScope, c.ref.request_id)
-        assert (scope.max_calls, scope.max_dispatches, scope.max_cost_units) == (16, 16, 16)
-        assert (scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units) == (2, 2, 2)
-        assert scope.generation == 2
+        assert (
+            require_instance(scope, NativeTestScope).max_calls,
+            require_instance(scope, NativeTestScope).max_dispatches,
+            require_instance(scope, NativeTestScope).max_cost_units,
+        ) == (16, 16, 16)
+        assert (
+            require_instance(scope, NativeTestScope).spent_calls,
+            require_instance(scope, NativeTestScope).spent_dispatches,
+            require_instance(scope, NativeTestScope).spent_cost_units,
+        ) == (2, 2, 2)
+        assert require_instance(scope, NativeTestScope).generation == 2
         grants = session.scalars(
             select(NativeEffectGrant).where(NativeEffectGrant.request_id == c.ref.request_id)
         ).all()
@@ -802,3 +942,17 @@ def test_real_identical_http_occurrences_require_independent_guarded_one_call_co
             assert (
                 session.scalar(select(func.count()).select_from(model).where(model.request_id == c.ref.request_id)) == 2
             )
+
+
+class _ForwardArguments475(TypedDict, closed=True):
+    ref: _forward_types_0.NativeTestContextRef
+    settlement: NotRequired[bool]
+
+
+class _ForwardArguments528(TypedDict, closed=True):
+    ref: _forward_types_1.NativeTestContextRef
+    tenant_id: str
+    kind: _forward_types_1.PayloadKind
+    logical_key: str
+    payload: _forward_types_1.JsonValue
+    max_bytes: NotRequired[int | None]

@@ -3,9 +3,12 @@
 import importlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from types import ModuleType
 from uuid import uuid4
 
 import pytest
+import sqlalchemy.orm
+from sqlalchemy import Table
 
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.dify_builder.models import Actor
@@ -14,11 +17,12 @@ from graphon.runtime import RuntimeState, VariablePool
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_stream import entity as workflow_entity
 
 
-def owner():
+def owner() -> ModuleType:
     return importlib.import_module("services.dify_builder.native_testing.confirmed_agent_continuation")
 
 
@@ -35,7 +39,9 @@ class PausedAgentSnapshot:
         return self.generate_entity
 
 
-def saved_state(*, paused=True, ref=REF, run_id=RUN):
+def saved_state(
+    *, paused: bool = True, ref: NativeTestContextRef = REF, run_id: str = RUN
+) -> tuple[PausedAgentSnapshot, str]:
     runtime = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
     runtime.graph_execution.start()
     execution = runtime.graph_execution.get_or_create_node_execution(frame_id="root", node_id="agent")
@@ -50,7 +56,7 @@ def saved_state(*, paused=True, ref=REF, run_id=RUN):
     return state, execution.execution_id
 
 
-def test_actual_graphon_pause_readback_retains_exact_execution_identity():
+def test_actual_graphon_pause_readback_retains_exact_execution_identity() -> None:
     saved, execution_id = saved_state()
     runtime = owner().validate_parent_snapshot(state=saved, ref=REF, native_run_id=RUN)
     assert runtime.graph_execution.paused
@@ -58,7 +64,7 @@ def test_actual_graphon_pause_readback_retains_exact_execution_identity():
 
 
 @pytest.mark.parametrize("drift", ["running", "run", "ref", "unmarked"])
-def test_parent_snapshot_refuses_unpaused_or_foreign_context(drift):
+def test_parent_snapshot_refuses_unpaused_or_foreign_context(drift: str) -> None:
     saved, _ = saved_state(
         paused=drift != "running",
         run_id=str(uuid4()) if drift == "run" else RUN,
@@ -70,7 +76,7 @@ def test_parent_snapshot_refuses_unpaused_or_foreign_context(drift):
         owner().validate_parent_snapshot(state=saved, ref=REF, native_run_id=RUN)
 
 
-def test_pending_intent_requires_actual_saved_operation_and_parent_occurrence():
+def test_pending_intent_requires_actual_saved_operation_and_parent_occurrence() -> None:
     from dify_agent.protocol.native_continuation import AgentPendingCall
     from dify_agent.protocol.native_testing import AgentEffectIntent, AgentOperationKey
 
@@ -111,7 +117,11 @@ def test_pending_intent_requires_actual_saved_operation_and_parent_occurrence():
 
 
 @pytest.mark.parametrize("drift", [None, "actor", "tenant", "app", "workflow", "resumed", "missing_pause", "running"])
-def test_actual_sql_parent_pause_requires_complete_owned_run_chain(sqlite_session_factory, drift, monkeypatch):
+def test_actual_sql_parent_pause_requires_complete_owned_run_chain(
+    sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
+    drift: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Real SQL predicates; C02 loader is an explicit already-authorized port."""
     from models.dify_builder import DifyBuilderExecutionRequest
     from models.workflow import WorkflowPause, WorkflowRun
@@ -134,6 +144,7 @@ def test_actual_sql_parent_pause_requires_complete_owned_run_chain(sqlite_sessio
     )
     with sqlite_session_factory.begin() as sql:
         for table in (DifyBuilderExecutionRequest.__table__, WorkflowRun.__table__, WorkflowPause.__table__):
+            assert isinstance(table, Table)
             table.create(sql.connection(), checkfirst=True)
         sql.add(
             DifyBuilderExecutionRequest(
@@ -162,7 +173,11 @@ def test_actual_sql_parent_pause_requires_complete_owned_run_chain(sqlite_sessio
             "triggered_from": "debugging",
             "version": "draft",
         }
-        field = {"actor": "created_by", "tenant": "tenant_id", "app": "app_id", "workflow": "workflow_id"}.get(drift)
+        field = (
+            None
+            if drift is None
+            else {"actor": "created_by", "tenant": "tenant_id", "app": "app_id", "workflow": "workflow_id"}.get(drift)
+        )
         if field:
             run_values[field] = str(uuid4())
         if drift == "running":
@@ -178,7 +193,9 @@ def test_actual_sql_parent_pause_requires_complete_owned_run_chain(sqlite_sessio
                 )
             )
     loader = OwnedNativeTestLoader(
-        sqlite_session_factory, actor=Actor(tenant_id=owned.tenant_id, account_id=owned.actor_id), resolver=object()
+        sqlite_session_factory,
+        actor=Actor(tenant_id=owned.tenant_id, account_id=owned.actor_id),
+        resolver=NativeHttpBindingResolver(),
     )
     monkeypatch.setattr(loader, "_load", lambda *_, **__: (owned, None))
     continuation = owner().ConfirmedAgentContinuation(

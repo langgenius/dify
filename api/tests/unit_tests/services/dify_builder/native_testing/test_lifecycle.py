@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from runtime_contracts.builder.native.contracts import JsonValue
 
 
-def test_pending_resolution_cannot_claim_configuration_without_account():
+def test_pending_resolution_cannot_claim_configuration_without_account() -> None:
     from services.dify_builder.native_testing.lifecycle import NativePendingResolution
 
     with pytest.raises(ValidationError):
@@ -24,7 +24,7 @@ def test_pending_resolution_cannot_claim_configuration_without_account():
         )
 
 
-def test_pending_resolution_cannot_replace_form_answer_with_account():
+def test_pending_resolution_cannot_replace_form_answer_with_account() -> None:
     from services.dify_builder.native_testing.lifecycle import NativePendingResolution
 
     with pytest.raises(ValidationError):
@@ -40,7 +40,7 @@ def test_pending_resolution_cannot_replace_form_answer_with_account():
         )
 
 
-def test_pending_resolution_never_coerces_client_boolean():
+def test_pending_resolution_never_coerces_client_boolean() -> None:
     from services.dify_builder.native_testing.lifecycle import NativePendingResolution
 
     with pytest.raises(ValidationError):
@@ -56,7 +56,7 @@ def test_pending_resolution_never_coerces_client_boolean():
         )
 
 
-def test_payload_codec_rejects_cross_owner_and_changed_typed_payload():
+def test_payload_codec_rejects_cross_owner_and_changed_typed_payload() -> None:
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
     from services.dify_builder.native_testing.state_store import decode_payload, encode_payload
 
@@ -77,7 +77,7 @@ def test_payload_codec_rejects_cross_owner_and_changed_typed_payload():
         )
 
 
-def test_payload_codec_snapshots_caller_mutation():
+def test_payload_codec_snapshots_caller_mutation() -> None:
     from services.dify_builder.native_testing.state_store import decode_payload, encode_payload
 
     payload = {"inputs": [True, 1, "1"]}
@@ -90,11 +90,11 @@ def test_payload_codec_snapshots_caller_mutation():
     }
 
 
-def test_controlling_proof_keeps_independently_unknown_and_completed_branches_inactive():
+def test_controlling_proof_keeps_independently_unknown_and_completed_branches_inactive() -> None:
     from models.dify_builder_native_tests import NativeInvocationState
     from services.dify_builder.native_testing.transitions import recoverable_invocation_ids
 
-    def state(identity, parent, status):
+    def state(identity: str, parent: str | None, status: str) -> NativeInvocationState:
         return NativeInvocationState(
             tenant_id="tenant",
             request_id="request",
@@ -104,7 +104,7 @@ def test_controlling_proof_keeps_independently_unknown_and_completed_branches_in
             context_object_id="context",
             generation=0,
             pending_ids=[],
-            resolution={},
+            resolution=[],
         )
 
     # Descendants precede parents deliberately; topology, not row order, decides.

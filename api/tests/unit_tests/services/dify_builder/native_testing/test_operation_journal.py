@@ -1,30 +1,40 @@
 """Journal ordering/reconstruction units; real SQL/encrypted owners remain CI-owned."""
 
+from __future__ import annotations
+
 import importlib
 import importlib.util
 from copy import deepcopy
 from dataclasses import dataclass
+from typing import Unpack, cast, override
 
 import pytest
+from typing_extensions import TypedDict
 
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.contracts import (
     ApprovalWait,
     CheckpointRef,
     DispatchPermit,
+    EffectDecision,
     EffectIntent,
     JsonValue,
     NativeTestContextRef,
+    OperationKey,
     PolicyStop,
     RecordedResult,
 )
 from runtime_contracts.builder.native.runtime_contracts import (
     NativeCheckpointPayload,
+    NativeStatePort,
     NodeJournalState,
     ResolvedNativeTestContext,
 )
 from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
-from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
+from services.dify_builder.native_testing.operation_journal import NodeOperationJournal, OperationCursor
+from services.dify_builder.native_testing.private_reads import PrivateReadOwner
+from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from tests.unit_tests.services.dify_builder.native_testing.test_claimed_resume_checkpoint import ClaimedCheckpointCase
 from tests.unit_tests.services.dify_builder.native_testing.test_claimed_resume_checkpoint import (
     metadata_case as metadata_case,  # noqa: PLC0414
@@ -37,23 +47,24 @@ INPUT: dict[str, JsonValue] = {"file": {"id": "file-1"}, "history": [True, 1, "1
 CP = CheckpointRef(checkpoint_id="checkpoint", payload_digest="b" * 64)
 
 
-def journal_class():
+def journal_class() -> type[NodeOperationJournal]:
     module = "services.dify_builder.native_testing.operation_journal"
     assert importlib.util.find_spec(module) is not None, "native occurrence journal is not implemented"
     return importlib.import_module(module).NodeOperationJournal
 
 
 class State:
+    context: ResolvedNativeTestContext
     """Owned-state port double; deliberately no SQL or object-store implementation."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.values: dict[str, JsonValue] = {"inputs": deepcopy(INPUT), "result": {"history": [False, 1, "1"]}}
         self.generation = 0
-        self.payload = None
-        self.failure = None
-        self.reads = []
+        self.payload: NativeCheckpointPayload | None = None
+        self.failure: Exception | None = None
+        self.reads: list[str] = []
 
-    def load_context(self, *, ref):
+    def load_context(self, *, ref: NativeTestContextRef) -> ResolvedNativeTestContext:
         if self.failure:
             raise self.failure
         if ref != REF:
@@ -62,12 +73,13 @@ class State:
             {**CONTEXT, "ref": ref, "generation": self.generation, "native_run_id": "run"}
         )
 
-    def read_checkpoint(self, *, ref, checkpoint):
+    def read_checkpoint(self, *, ref: NativeTestContextRef, checkpoint: CheckpointRef) -> NativeCheckpointPayload:
+        assert self.payload is not None
         self.load_context(ref=ref)
         assert checkpoint == CP
         return deepcopy(self.payload)
 
-    def load_result(self, *, ref, result_ref):
+    def load_result(self, *, ref: NativeTestContextRef, result_ref: str) -> JsonValue:
         self.load_context(ref=ref)
         self.reads.append(result_ref)
         if result_ref not in self.values:
@@ -76,11 +88,11 @@ class State:
 
 
 class Authorization:
-    def __init__(self, decision=None):
-        self.calls = []
-        self.decision = decision or RecordedResult(operation_id="operation", result_ref="result")
+    def __init__(self, decision: EffectDecision | None = None) -> None:
+        self.calls: list[tuple[NativeTestContextRef, EffectIntent]] = []
+        self.decision: EffectDecision = decision or RecordedResult(operation_id="operation", result_ref="result")
 
-    def before_call(self, *, ref, intent):
+    def before_call(self, *, ref: NativeTestContextRef, intent: EffectIntent) -> EffectDecision:
         self.calls.append((ref, deepcopy(intent)))
         return self.decision
 
@@ -100,7 +112,7 @@ class ClaimedJournalCase:
 class ImpostorCheckpointLifecycle:
     store: State
 
-    def claimed_resume_checkpoint(self, **_kwargs):
+    def claimed_resume_checkpoint(self, **_kwargs: object) -> CheckpointRef:
         return CP
 
 
@@ -108,7 +120,7 @@ class ImpostorCheckpointLifecycle:
 class ImpostorCheckpointPayload:
     payload: NativeCheckpointPayload
 
-    def model_dump(self, **_kwargs):
+    def model_dump(self, **_kwargs: object) -> dict[str, object]:
         return self.payload.model_dump()
 
 
@@ -119,12 +131,19 @@ class ImpostorRunContext:
     native_run_id: str
 
 
-def make_journal(state=None, authorization=None):
+def make_journal(
+    state: State | None = None, authorization: Authorization | None = None
+) -> tuple[NodeOperationJournal, State, Authorization]:
     state, authorization = state or State(), authorization or Authorization()
-    return journal_class()(state=state, authorization=authorization), state, authorization
+    return journal_class()(state=cast(NativeStatePort, state), authorization=authorization), state, authorization
 
 
-def intent(key, **changes):
+class IntentChanges(TypedDict, total=False, closed=True):
+    parameters: JsonValue
+    input_digest: str
+
+
+def intent(key: OperationKey, **changes: Unpack[IntentChanges]) -> EffectIntent:
     return EffectIntent(
         key=key,
         kind="tool",
@@ -138,13 +157,13 @@ def intent(key, **changes):
     )
 
 
-def bound(journal, path=PATH):
+def bound(journal: NodeOperationJournal, path: tuple[str, ...] = PATH) -> OperationCursor:
     cursor = journal.open(ref=REF, occurrence_path=path)
     cursor.bind_input(input_result_ref="inputs", inputs=INPUT)
     return cursor
 
 
-def payload(journals, generation=0):
+def payload(journals: tuple[NodeJournalState, ...], generation: int = 0) -> NativeCheckpointPayload:
     return NativeCheckpointPayload(
         schema_version="1",
         native_run_id="run",
@@ -158,7 +177,7 @@ def payload(journals, generation=0):
     )
 
 
-def test_iteration_and_child_identity_survive_delivery_restart():
+def test_iteration_and_child_identity_survive_delivery_restart() -> None:
     journal, _, _ = make_journal()
     first = bound(journal)
     original = first.next_key()
@@ -169,7 +188,7 @@ def test_iteration_and_child_identity_survive_delivery_restart():
     assert first.next_key() == original
 
 
-def test_completed_replay_rechecks_c02_and_reads_private_result_after_restart():
+def test_completed_replay_rechecks_c02_and_reads_private_result_after_restart() -> None:
     journal, state, authorization = make_journal()
     first = bound(journal)
     original = intent(first.next_key())
@@ -187,7 +206,7 @@ def test_completed_replay_rechecks_c02_and_reads_private_result_after_restart():
 
 
 @pytest.mark.parametrize("parameters", [{"value": 1}, {"value": "true"}, {"other": True}])
-def test_typed_intent_sequence_conflict_refuses_before_authorization(parameters):
+def test_typed_intent_sequence_conflict_refuses_before_authorization(parameters: dict[str, JsonValue]) -> None:
     journal, _, authorization = make_journal()
     cursor = bound(journal)
     cursor.before_call(intent=intent(cursor.next_key()))
@@ -197,10 +216,10 @@ def test_typed_intent_sequence_conflict_refuses_before_authorization(parameters)
     assert len(authorization.calls) == 1
 
 
-def test_input_typed_digest_and_owner_ref_are_checked_before_authorization():
+def test_input_typed_digest_and_owner_ref_are_checked_before_authorization() -> None:
     journal, state, authorization = make_journal()
     cursor = journal.open(ref=REF, occurrence_path=PATH)
-    changed = {**INPUT, "history": [1, 1, "1"]}
+    changed: dict[str, JsonValue] = {**INPUT, "history": [1, 1, "1"]}
     with pytest.raises(BuilderExecutionPolicyError, match="native_journal_input_mismatch"):
         cursor.bind_input(input_result_ref="inputs", inputs=changed)
     with pytest.raises(BuilderExecutionPolicyError, match="native_result_owner_mismatch"):
@@ -222,7 +241,7 @@ def test_input_typed_digest_and_owner_ref_are_checked_before_authorization():
         ),
     ],
 )
-def test_unknown_pending_or_incomplete_stream_is_never_a_replayable_result(decision):
+def test_unknown_pending_or_incomplete_stream_is_never_a_replayable_result(decision: EffectDecision) -> None:
     journal, state, authorization = make_journal(authorization=Authorization(decision))
     cursor = bound(journal)
     current = intent(cursor.next_key())
@@ -236,7 +255,7 @@ def test_unknown_pending_or_incomplete_stream_is_never_a_replayable_result(decis
     assert state.reads == ["inputs"]
 
 
-def test_only_contiguous_completed_prefix_can_advance_and_finish_checks_old_suffix():
+def test_only_contiguous_completed_prefix_can_advance_and_finish_checks_old_suffix() -> None:
     journal, _, authorization = make_journal()
     cursor = bound(journal)
     cursor.before_call(intent=intent(cursor.next_key()))
@@ -253,7 +272,7 @@ def test_only_contiguous_completed_prefix_can_advance_and_finish_checks_old_suff
         cursor.before_call(intent=intent(cursor.next_key()))
 
 
-def test_snapshot_isolated_from_caller_mutation_and_parallel_frames():
+def test_snapshot_isolated_from_caller_mutation_and_parallel_frames() -> None:
     journal, _, authorization = make_journal()
     cursor = bound(journal)
     original = intent(cursor.next_key())
@@ -261,6 +280,7 @@ def test_snapshot_isolated_from_caller_mutation_and_parallel_frames():
     assert isinstance(original.parameters, dict)
     original.parameters["value"] = "changed"
     saved = cursor.snapshot()
+    assert isinstance(saved.intents[0].parameters, dict)
     saved.intents[0].parameters["value"] = "also-changed"
     other = bound(journal, ("root", "parallel:right", "model"))
     other.before_call(intent=intent(other.next_key()))
@@ -273,7 +293,7 @@ def test_snapshot_isolated_from_caller_mutation_and_parallel_frames():
 @pytest.mark.parametrize(
     "change", ["owner", "cursor", "intent_order", "result_prefix", "duplicate", "input_digest", "generation", "run"]
 )
-def test_restore_rejects_malformed_or_stale_checkpoint_without_authorization(change):
+def test_restore_rejects_malformed_or_stale_checkpoint_without_authorization(change: str) -> None:
     journal, state, authorization = make_journal()
     cursor = bound(journal)
     cursor.before_call(intent=intent(cursor.next_key()))
@@ -285,7 +305,7 @@ def test_restore_rejects_malformed_or_stale_checkpoint_without_authorization(cha
     elif change == "cursor":
         saved["cursor"] = 2
     elif change == "intent_order":
-        saved["intents"] = []
+        saved["intents"] = list[dict[str, object]]()
     elif change == "result_prefix":
         saved["result_refs"] = ["result", "result"]
     elif change == "input_digest":
@@ -306,7 +326,7 @@ def test_restore_rejects_malformed_or_stale_checkpoint_without_authorization(cha
     assert len(authorization.calls) == 1
 
 
-def test_two_pause_generations_preserve_ordered_journals():
+def test_two_pause_generations_preserve_ordered_journals() -> None:
     journal, state, _ = make_journal()
     cursor = bound(journal)
     cursor.before_call(intent=intent(cursor.next_key()))
@@ -324,7 +344,7 @@ def test_two_pause_generations_preserve_ordered_journals():
         journal = restarted
 
 
-def test_owner_revocation_and_result_read_failure_never_publish_result():
+def test_owner_revocation_and_result_read_failure_never_publish_result() -> None:
     journal, state, authorization = make_journal()
     cursor = bound(journal)
     state.failure = BuilderExecutionPolicyError("native_owner_mismatch")
@@ -341,7 +361,7 @@ def test_owner_revocation_and_result_read_failure_never_publish_result():
         cursor.recorded_result()
 
 
-def test_unbound_cursor_can_reopen_same_identity_without_creating_input_material():
+def test_unbound_cursor_can_reopen_same_identity_without_creating_input_material() -> None:
     journal, state, authorization = make_journal()
     first = journal.open(ref=REF, occurrence_path=PATH)
     original = first.next_key()
@@ -350,7 +370,7 @@ def test_unbound_cursor_can_reopen_same_identity_without_creating_input_material
     assert authorization.calls == []
 
 
-def test_unknown_recheck_of_saved_result_cannot_advance_or_finish():
+def test_unknown_recheck_of_saved_result_cannot_advance_or_finish() -> None:
     journal, _, authorization = make_journal()
     cursor = bound(journal)
     cursor.before_call(intent=intent(cursor.next_key()))
@@ -364,7 +384,7 @@ def test_unknown_recheck_of_saved_result_cannot_advance_or_finish():
     assert len(authorization.calls) == 2
 
 
-def test_result_ref_conflict_and_generation_drift_never_expose_cached_replay():
+def test_result_ref_conflict_and_generation_drift_never_expose_cached_replay() -> None:
     journal, state, authorization = make_journal()
     cursor = bound(journal)
     cursor.before_call(intent=intent(cursor.next_key()))
@@ -381,7 +401,7 @@ def test_result_ref_conflict_and_generation_drift_never_expose_cached_replay():
     assert len(authorization.calls) == 2
 
 
-def test_null_and_closed_stream_material_replay_without_type_coercion():
+def test_null_and_closed_stream_material_replay_without_type_coercion() -> None:
     journal, state, authorization = make_journal()
     cursor = bound(journal)
     state.values["result"] = None
@@ -394,7 +414,7 @@ def test_null_and_closed_stream_material_replay_without_type_coercion():
     cursor.finish()
 
 
-def test_restore_generation_change_during_private_reads_is_atomic(monkeypatch):
+def test_restore_generation_change_during_private_reads_is_atomic(monkeypatch: pytest.MonkeyPatch) -> None:
     journal, state, authorization = make_journal()
     cursor = bound(journal)
     cursor.before_call(intent=intent(cursor.next_key()))
@@ -402,8 +422,8 @@ def test_restore_generation_change_during_private_reads_is_atomic(monkeypatch):
     restarted, _, _ = make_journal(state, authorization)
     original = state.load_result
 
-    def advance_during_read(**kwargs):
-        result = original(**kwargs)
+    def advance_during_read(*, ref: NativeTestContextRef, result_ref: str) -> JsonValue:
+        result = original(ref=ref, result_ref=result_ref)
         state.generation = 1
         return result
 
@@ -414,7 +434,7 @@ def test_restore_generation_change_during_private_reads_is_atomic(monkeypatch):
     assert len(authorization.calls) == 1
 
 
-def test_same_slot_unknown_recheck_invalidates_delivery_completed_prefix():
+def test_same_slot_unknown_recheck_invalidates_delivery_completed_prefix() -> None:
     journal, _, authorization = make_journal()
     cursor = bound(journal)
     current = intent(cursor.next_key())
@@ -437,14 +457,16 @@ def test_same_slot_unknown_recheck_invalidates_delivery_completed_prefix():
         ApprovalWait(pending_operation_id="pending", wait_reason="interaction"),
     ],
 )
-def test_c02_generation_change_never_exposes_decision_or_completion(monkeypatch, decision):
+def test_c02_generation_change_never_exposes_decision_or_completion(
+    monkeypatch: pytest.MonkeyPatch, decision: EffectDecision
+) -> None:
     journal, state, authorization = make_journal(authorization=Authorization(decision))
     cursor = bound(journal)
     current = intent(cursor.next_key())
     original = authorization.before_call
 
-    def advance_during_authorization(**kwargs):
-        reserved = original(**kwargs)
+    def advance_during_authorization(*, ref: NativeTestContextRef, intent: EffectIntent) -> EffectDecision:
+        reserved = original(ref=ref, intent=intent)
         state.generation = 1
         return reserved
 
@@ -460,7 +482,7 @@ def test_c02_generation_change_never_exposes_decision_or_completion(monkeypatch,
         cursor.finish()
 
 
-def test_same_generation_c02_permit_is_returned_without_replay_or_completion():
+def test_same_generation_c02_permit_is_returned_without_replay_or_completion() -> None:
     permit = DispatchPermit(
         permit_id="permit", attempt_id="attempt", operation_id="operation", expires_at="2030-01-01T00:00:00Z"
     )
@@ -476,7 +498,7 @@ def test_same_generation_c02_permit_is_returned_without_replay_or_completion():
         cursor.finish()
 
 
-def test_resolve_cursor_returns_only_existing_bound_current_issued_key_without_authorizing():
+def test_resolve_cursor_returns_only_existing_bound_current_issued_key_without_authorizing() -> None:
     journal, _, authorization = make_journal()
     cursor = bound(journal)
     key = cursor.next_key()
@@ -487,7 +509,7 @@ def test_resolve_cursor_returns_only_existing_bound_current_issued_key_without_a
 
 
 @pytest.mark.parametrize("stage", ["missing", "unbound", "unissued", "old-key", "generation", "owner"])
-def test_resolve_cursor_rejects_missing_or_untrusted_delivery_without_authorizing(stage):
+def test_resolve_cursor_rejects_missing_or_untrusted_delivery_without_authorizing(stage: str) -> None:
     journal, state, authorization = make_journal()
     cursor = bound(journal)
     key = cursor.next_key()
@@ -509,7 +531,7 @@ def test_resolve_cursor_rejects_missing_or_untrusted_delivery_without_authorizin
     assert authorization.calls == []
 
 
-def test_resolve_cursor_returns_replacement_identity_for_same_occurrence_only_after_input_and_key_prepare():
+def test_resolve_cursor_returns_replacement_identity_for_same_occurrence_only_after_input_and_key_prepare() -> None:
     journal, _, authorization = make_journal()
     first = bound(journal)
     key = first.next_key()
@@ -521,7 +543,7 @@ def test_resolve_cursor_returns_replacement_identity_for_same_occurrence_only_af
 
 
 @pytest.fixture
-def claimed_case(metadata_case, monkeypatch):
+def claimed_case(metadata_case: ClaimedCheckpointCase, monkeypatch: pytest.MonkeyPatch) -> ClaimedJournalCase:
     """Actual lifecycle selector; synthetic C03/SQL/permission boundary ports only."""
     from dataclasses import replace
 
@@ -532,7 +554,7 @@ def claimed_case(metadata_case, monkeypatch):
     c.scope.generation = 3
     authority = replace(c.authority, generation=2)
 
-    def permission(loader, ref):
+    def permission(loader: OwnedNativeTestLoader, ref: NativeTestContextRef) -> PrivateReadOwner:
         assert loader is c.loader
         if ref != c.ref:
             raise BuilderExecutionPolicyError("native_owner_mismatch")
@@ -541,7 +563,8 @@ def claimed_case(metadata_case, monkeypatch):
     monkeypatch.setattr("services.dify_builder.native_testing.lifecycle.validate_private_read", permission)
 
     class ClaimedState(State):
-        def load_context(self, *, ref):
+        @override
+        def load_context(self, *, ref: NativeTestContextRef) -> ResolvedNativeTestContext:
             if self.failure:
                 raise self.failure
             if ref != c.ref:
@@ -569,7 +592,7 @@ def claimed_case(metadata_case, monkeypatch):
         cancellation_ref="request",
         execution_mode="native",
     )
-    c.service.store = state
+    c.service.store = cast(NativeExecutionStateStore, state)
     source, _, authorization = make_journal(state)
     cursor = source.open(ref=c.ref, occurrence_path=PATH)
     cursor.bind_input(input_result_ref="inputs", inputs=INPUT)
@@ -589,7 +612,9 @@ def claimed_case(metadata_case, monkeypatch):
 
 
 @pytest.mark.parametrize("generation", [2, 4])
-def test_claimed_restore_authenticates_older_checkpoint_then_rechecks_c02(claimed_case, monkeypatch, generation):
+def test_claimed_restore_authenticates_older_checkpoint_then_rechecks_c02(
+    claimed_case: ClaimedJournalCase, monkeypatch: pytest.MonkeyPatch, generation: int
+) -> None:
     from dataclasses import replace
 
     c = claimed_case
@@ -616,21 +641,21 @@ def test_claimed_restore_authenticates_older_checkpoint_then_rechecks_c02(claime
     cursor.finish()
 
 
-def _retained_cursor(c):
+def _retained_cursor(c: ClaimedJournalCase) -> tuple[OperationCursor, NodeJournalState]:
     cursor = c.target.open(ref=c.owner.ref, occurrence_path=("retained",))
     cursor.bind_input(input_result_ref="inputs", inputs=INPUT)
     cursor.next_key()
     return cursor, cursor.snapshot()
 
 
-def _assert_retained(c, cursor, saved):
+def _assert_retained(c: ClaimedJournalCase, cursor: OperationCursor, saved: NodeJournalState) -> None:
     assert c.target._open[(c.owner.ref, ("retained",))] is cursor
     assert cursor.snapshot() == saved
     assert c.target._saved == {}
 
 
 @pytest.mark.parametrize("owner", ["namespace", "second_state", "subclass"])
-def test_claimed_restore_requires_actual_lifecycle_and_same_state(claimed_case, owner):
+def test_claimed_restore_requires_actual_lifecycle_and_same_state(claimed_case: ClaimedJournalCase, owner: str) -> None:
     from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
 
     c = claimed_case
@@ -638,17 +663,22 @@ def test_claimed_restore_requires_actual_lifecycle_and_same_state(claimed_case, 
     if owner == "namespace":
         lifecycle = ImpostorCheckpointLifecycle(store=c.state)
     elif owner == "second_state":
-        lifecycle = NativeTestLifecycleService(c.owner.loader, state_store=State())
+        lifecycle = NativeTestLifecycleService(c.owner.loader, state_store=cast(NativeExecutionStateStore, State()))
     else:
 
         class FakeLifecycle(NativeTestLifecycleService):
-            def claimed_resume_checkpoint(self, **_):
+            @override
+            def claimed_resume_checkpoint(self, **_: object) -> CheckpointRef:
                 return CP
 
-        lifecycle = FakeLifecycle(c.owner.loader, state_store=c.state)
+        lifecycle = FakeLifecycle(c.owner.loader, state_store=cast(NativeExecutionStateStore, c.state))
     with pytest.raises(BuilderExecutionPolicyError):
         c.target.restore_claimed(
-            ref=c.owner.ref, generation=2, dispatch_id="dispatch", lifecycle=lifecycle, expected_payload=c.expected
+            ref=c.owner.ref,
+            generation=2,
+            dispatch_id="dispatch",
+            lifecycle=cast(NativeTestLifecycleService, lifecycle),
+            expected_payload=c.expected,
         )
     _assert_retained(c, cursor, saved)
 
@@ -670,7 +700,9 @@ def test_claimed_restore_requires_actual_lifecycle_and_same_state(claimed_case, 
         "context_namespace",
     ],
 )
-def test_claimed_restore_revalidates_runtime_arguments_and_actual_context(claimed_case, fault):
+def test_claimed_restore_revalidates_runtime_arguments_and_actual_context(
+    claimed_case: ClaimedJournalCase, fault: str
+) -> None:
     c = claimed_case
     cursor, saved = _retained_cursor(c)
     ref, generation, expected = c.owner.ref, 2, c.expected
@@ -691,22 +723,29 @@ def test_claimed_restore_revalidates_runtime_arguments_and_actual_context(claime
     elif fault == "expected_payload":
         expected = expected.model_copy(update={"graph_runtime_state_json": '{"forged":true}'})
     elif fault == "actual_run":
+        assert c.state.payload is not None
         c.state.payload = c.state.payload.model_copy(update={"native_run_id": "other-run"})
     elif fault == "context_generation":
         c.state.context = c.state.context.model_copy(update={"generation": 3})
     elif fault == "context_mode":
         c.state.context = c.state.context.model_copy(update={"execution_mode": "mock"})
     else:
-        c.state.context = ImpostorRunContext(ref=ref, generation=2, native_run_id="run")
+        c.state.context = cast(
+            ResolvedNativeTestContext, ImpostorRunContext(ref=ref, generation=2, native_run_id="run")
+        )
     with pytest.raises(BuilderExecutionPolicyError):
         c.target.restore_claimed(
-            ref=ref, generation=generation, dispatch_id="dispatch", lifecycle=c.lifecycle, expected_payload=expected
+            ref=ref,
+            generation=cast(int, generation),
+            dispatch_id="dispatch",
+            lifecycle=c.lifecycle,
+            expected_payload=cast(NativeCheckpointPayload, expected),
         )
     _assert_retained(c, cursor, saved)
 
 
 @pytest.mark.parametrize("fault", ["input", "result", "sequence"])
-def test_claimed_restore_keeps_ordered_private_validation_atomic(claimed_case, fault):
+def test_claimed_restore_keeps_ordered_private_validation_atomic(claimed_case: ClaimedJournalCase, fault: str) -> None:
     c = claimed_case
     cursor, saved = _retained_cursor(c)
     if fault == "input":
@@ -714,6 +753,7 @@ def test_claimed_restore_keeps_ordered_private_validation_atomic(claimed_case, f
     elif fault == "result":
         c.state.values.pop("result")
     else:
+        assert c.state.payload is not None
         invalid = c.state.payload.node_journals[0].model_copy(update={"cursor": 2})
         c.state.payload = c.state.payload.model_copy(update={"node_journals": (invalid,)})
         c.expected = c.state.payload.model_copy(deep=True)
@@ -728,13 +768,15 @@ def test_claimed_restore_keeps_ordered_private_validation_atomic(claimed_case, f
 @pytest.mark.parametrize(
     "fault", ["unclaimed", "expired", "changed_reference", "context_generation", "context_run", "context_inputs"]
 )
-def test_claimed_restore_rechecks_actual_claim_and_context_after_private_reads(claimed_case, monkeypatch, fault):
+def test_claimed_restore_rechecks_actual_claim_and_context_after_private_reads(
+    claimed_case: ClaimedJournalCase, monkeypatch: pytest.MonkeyPatch, fault: str
+) -> None:
     c = claimed_case
     cursor, saved = _retained_cursor(c)
     original = c.state.load_result
 
-    def revoke_during_read(**kwargs):
-        value = original(**kwargs)
+    def revoke_during_read(*, ref: NativeTestContextRef, result_ref: str) -> JsonValue:
+        value = original(ref=ref, result_ref=result_ref)
         if fault == "unclaimed":
             c.owner.dispatch.state = "queued"
         elif fault == "expired":

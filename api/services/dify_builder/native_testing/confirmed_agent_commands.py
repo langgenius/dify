@@ -6,6 +6,7 @@ never admits another parent or child execution.
 """
 
 import logging
+from collections.abc import Callable
 from typing import Literal, cast
 
 from dify_agent.protocol.native_continuation import RedisStreamID
@@ -525,7 +526,7 @@ class ConfirmedAgentCommands:
         )
         return self.get(actor=actor, session_id=session_id, request_id=request_id)
 
-    def _publish_one(self, *, ref, generation, dispatch_id):
+    def _publish_one(self, *, ref, generation, dispatch_id) -> bool:
         context = self.api.store.load_context(ref=ref)
         with self.loader.session_factory() as session:
             row = session.scalar(
@@ -534,7 +535,7 @@ class ConfirmedAgentCommands:
             if row is None or row.generation != generation:
                 raise BuilderExecutionPolicyError("native_dispatch_mismatch")
             if row.state not in {"queued", "published"}:
-                return
+                return False
         if not context.native_run_id:
             raise BuilderExecutionPolicyError("native_run_mismatch")
         envelope = _ResumeDispatch(
@@ -546,7 +547,7 @@ class ConfirmedAgentCommands:
         try:
             self.publish(workflow_run_id=context.native_run_id, dispatch=envelope.model_dump(mode="json"))
         except Exception:
-            return  # The committed outbox remains queued, never fake running.
+            return False  # The committed outbox remains queued, never fake running.
         with self.loader.locked(ref=ref) as (session, owned, _):
             row = session.scalar(
                 owner_query(NativeDispatch, ref, owned.tenant_id).where(NativeDispatch.id == dispatch_id)
@@ -555,11 +556,12 @@ class ConfirmedAgentCommands:
                 raise BuilderExecutionPolicyError("native_dispatch_mismatch")
             if row.state == "queued":
                 row.state = "published"
+        return True
 
-    def publish_pending(self, *, limit=100):
+    def publish_pending(self, *, limit: int = 100, request_id: str | None = None) -> int:
         """A reconnect can reconcile this actor's retained ordinary resume outbox."""
         with self.loader.session_factory() as session:
-            rows = session.execute(
+            query = (
                 select(NativeDispatch, DifyBuilderExecutionRequest.context_digest)
                 .join(DifyBuilderExecutionRequest, DifyBuilderExecutionRequest.id == NativeDispatch.request_id)
                 .where(
@@ -568,16 +570,21 @@ class ConfirmedAgentCommands:
                     DifyBuilderExecutionRequest.context["profile"]["profile_id"].as_string() == PROFILE,
                     NativeDispatch.state.in_(("queued", "published")),
                 )
-                .limit(limit)
-            ).all()
+            )
+            if request_id is not None:
+                query = query.where(NativeDispatch.request_id == request_id)
+            rows = session.execute(query.order_by(NativeDispatch.id).limit(limit)).all()
+        published = 0
         for dispatch, digest in rows:
-            self._publish_one(
+            if self._publish_one(
                 ref=NativeTestContextRef(
                     request_id=dispatch.request_id, invocation_id=dispatch.invocation_id, context_digest=digest
                 ),
                 generation=dispatch.generation,
                 dispatch_id=dispatch.id,
-            )
+            ):
+                published += 1
+        return published
 
     def claim_resume(self, *, ref, native_run_id, generation, dispatch_id):
         context = self.api.store.load_context(ref=ref)
@@ -952,7 +959,14 @@ def finish_confirmed_agent_resume(*, payload) -> None:
 class ProfiledNativeTestCommands:
     """Select only from the authenticated stored request's server-owned profile."""
 
-    def __init__(self, *, sessions, actor, confirmed_factory, legacy_factory):
+    def __init__(
+        self,
+        *,
+        sessions,
+        actor,
+        confirmed_factory: Callable[[], ConfirmedAgentCommands],
+        legacy_factory: Callable[[], NativeTestApiService],
+    ):
         self.sessions, self.actor = sessions, actor
         self.confirmed_factory, self.legacy_factory = confirmed_factory, legacy_factory
 
@@ -974,6 +988,16 @@ class ProfiledNativeTestCommands:
         # Each concrete C04 service repeats current owner/RBAC/context validation;
         # the profile read confers no authority by itself.
         return self.confirmed_factory() if confirmed else self.legacy_factory()
+
+    def reconcile_pending(
+        self, *, actor, session_id, request_id: str, publish: Callable[..., None], limit: int = 100
+    ) -> int:
+        service = self._service(actor=actor, session_id=session_id, request_id=request_id)
+        lifecycle = service.api.lifecycle if isinstance(service, ConfirmedAgentCommands) else service.lifecycle
+        reconciled = lifecycle.reconcile(limit=limit, request_id=request_id)
+        if isinstance(service, ConfirmedAgentCommands):
+            return reconciled + service.publish_pending(limit=limit, request_id=request_id)
+        return reconciled + lifecycle.publish_pending(publish=publish, limit=limit, request_id=request_id)
 
     def start(self, **values):
         return self.legacy_factory().start(**values)

@@ -1,33 +1,60 @@
 """Safe diagnostics must survive the real cognition boundary without response data."""
 
 import json
+from collections.abc import Iterator
+from typing import Protocol
 
 import pytest
 
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from core.dify_builder.models import Session
+from core.model_manager import ModelInstance
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import build, llm
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 from services.dify_builder.agent.resources import TenantResources
+from services.dify_builder.application.runner import Env
+from services.dify_builder.repository import SqlDifyBuilderRepository
 from tests.unit_tests.core.dify_builder.test_runner import _new_env, _session
 from tests.unit_tests.core.model_fixtures import make_model_instance
-from tests.unit_tests.services.dify_builder.test_engine_on_sql_repo import engine, repo  # noqa: F401
+from tests.unit_tests.services.dify_builder.test_engine_on_sql_repo import engine as engine_fixture
+from tests.unit_tests.services.dify_builder.test_engine_on_sql_repo import repo as repo_fixture
+
+engine = engine_fixture
+repo = repo_fixture
+
+
+class DiagnosticFactory(Protocol):
+    def __call__(
+        self,
+        text: str = "{}",
+        *,
+        failure: BaseException | None = None,
+        stream_failure: BaseException | None = None,
+        metadata: bool = True,
+    ) -> ModelInstance: ...
 
 
 @pytest.fixture
-def diagnostic_model(monkeypatch):
+def diagnostic_model(monkeypatch: pytest.MonkeyPatch) -> DiagnosticFactory:
     """Keep the actual model owner and control only its provider invocation."""
 
-    def create(text="{}", *, failure=None, stream_failure=None, metadata=True):
+    def create(
+        text: str = "{}",
+        *,
+        failure: BaseException | None = None,
+        stream_failure: BaseException | None = None,
+        metadata: bool = True,
+    ) -> ModelInstance:
         model = make_model_instance(provider="langgenius/openai/openai", model="gpt-4")
 
-        def invoke(**_kwargs):
+        def invoke(**_kwargs: object) -> LLMResult | Iterator[LLMResultChunk]:
             if failure is not None:
                 raise failure
             if stream_failure is not None:
 
-                def chunks():
+                def chunks() -> Iterator[LLMResultChunk]:
                     raise stream_failure
                     yield
 
@@ -43,7 +70,9 @@ def diagnostic_model(monkeypatch):
     return create
 
 
-def test_provider_failure_is_scoped_safe_and_recoverable(monkeypatch, diagnostic_model):
+def test_provider_failure_is_scoped_safe_and_recoverable(
+    monkeypatch: pytest.MonkeyPatch, diagnostic_model: DiagnosticFactory
+) -> None:
     monkeypatch.setattr(
         build, "planning_catalogue", lambda *_a, **_k: TenantResources(models=[], datasets=[], tools=[])
     )
@@ -63,7 +92,7 @@ def test_provider_failure_is_scoped_safe_and_recoverable(monkeypatch, diagnostic
     assert "private prompt" not in json.dumps(records)
 
 
-def test_resolution_failure_and_callback_failure_do_not_crash(monkeypatch):
+def test_resolution_failure_and_callback_failure_do_not_crash(monkeypatch: pytest.MonkeyPatch) -> None:
     agent = LlmBuilderAgent("tenant")
     monkeypatch.setattr(agent, "_model", lambda: (_ for _ in ()).throw(ValueError("secret")))
     records = []
@@ -74,7 +103,7 @@ def test_resolution_failure_and_callback_failure_do_not_crash(monkeypatch):
     agent.analyze_goal("goal")
 
 
-def test_json_and_schema_have_distinct_codes(diagnostic_model):
+def test_json_and_schema_have_distinct_codes(diagnostic_model: DiagnosticFactory) -> None:
     records = []
     model = diagnostic_model()
     with diagnostics.scope(records.append, "plan"):
@@ -91,7 +120,7 @@ def test_json_and_schema_have_distinct_codes(diagnostic_model):
     assert any(r["code"] == "json_decode_failed" for r in records)
 
 
-def test_env_bounds_resets_and_correlates_diagnostics():
+def test_env_bounds_resets_and_correlates_diagnostics() -> None:
     env, _ = _new_env()
     session = _session()
     env.begin_operation(session)
@@ -106,7 +135,7 @@ def test_env_bounds_resets_and_correlates_diagnostics():
     assert env.diagnostics == []
 
 
-def test_generation_projection_retains_attempt_not_arbitrary_strings():
+def test_generation_projection_retains_attempt_not_arbitrary_strings() -> None:
     records = []
     with diagnostics.scope(records.append, "build-nodes"):
         diagnostics.generation(
@@ -117,7 +146,7 @@ def test_generation_projection_retains_attempt_not_arbitrary_strings():
     assert "secret" not in json.dumps(records)
 
 
-def test_wrapped_plugin_connection_refusal_is_classified_without_echo():
+def test_wrapped_plugin_connection_refusal_is_classified_without_echo() -> None:
     records = []
     with diagnostics.scope(records.append, "plan"):
         diagnostics.report(
@@ -127,7 +156,9 @@ def test_wrapped_plugin_connection_refusal_is_classified_without_echo():
     assert "secret" not in json.dumps(records)
 
 
-def test_cas_emission_and_reload_preserve_additive_safe_diagnostics(repo, monkeypatch, diagnostic_model):  # noqa: F811
+def test_cas_emission_and_reload_preserve_additive_safe_diagnostics(
+    repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch, diagnostic_model: DiagnosticFactory
+) -> None:
     from core.dify_builder.contract import AssistantTurnItem, ExecutionProgress
     from core.dify_builder.models import Action, DifyBuilderContext, Turn
     from core.dify_builder.state import PcState
@@ -147,7 +178,7 @@ def test_cas_emission_and_reload_preserve_additive_safe_diagnostics(repo, monkey
     session = _session()
     repo.create_session(session, DifyBuilderContext(), [])
 
-    def handler(env, _turn, session, context):
+    def handler(env: Env, _turn: Turn, session: Session, context: DifyBuilderContext) -> StepResult:
         assert env.agent.propose_plan_v1({}, goal_text="private goal") is None
         item = AssistantTurnItem(
             turn_id="trace-turn",
@@ -167,7 +198,7 @@ def test_cas_emission_and_reload_preserve_additive_safe_diagnostics(repo, monkey
     assert events[-1].item.payload["diagnostics"] == assistant.payload["diagnostics"]
 
 
-def test_catalogue_failure_differs_from_successful_empty():
+def test_catalogue_failure_differs_from_successful_empty() -> None:
     from services.dify_builder.agent.resources import _safe
 
     records = []
@@ -178,8 +209,9 @@ def test_catalogue_failure_differs_from_successful_empty():
     assert records[0]["code"] == "inventory_unavailable"
 
 
-def test_context_scope_does_not_leak_between_nested_calls():
-    outer, inner = [], []
+def test_context_scope_does_not_leak_between_nested_calls() -> None:
+    outer: list[dict[str, object]] = []
+    inner: list[dict[str, object]] = []
     with diagnostics.scope(outer.append, "outer"):
         with diagnostics.scope(inner.append, "inner"):
             diagnostics.report("empty_response")
@@ -189,7 +221,9 @@ def test_context_scope_does_not_leak_between_nested_calls():
     assert [r["span_id"] for r in inner] == ["inner"]
 
 
-def test_resolved_model_identifiers_are_bounded_without_extra_config(diagnostic_model):
+def test_resolved_model_identifiers_are_bounded_without_extra_config(
+    diagnostic_model: DiagnosticFactory,
+) -> None:
     agent = LlmBuilderAgent("tenant", {"provider": "langgenius/openai/openai", "name": "gpt-4", "api_key": "secret"})
     agent._model_instance = diagnostic_model(failure=ConnectionRefusedError())
     records = []
@@ -200,19 +234,20 @@ def test_resolved_model_identifiers_are_bounded_without_extra_config(diagnostic_
     assert "secret" not in json.dumps(records)
 
 
-def test_previous_operation_callback_cannot_contaminate_new_operation():
+def test_previous_operation_callback_cannot_contaminate_new_operation() -> None:
     env, _ = _new_env()
     agent = LlmBuilderAgent("tenant")
     env.agent = agent
     session = _session()
     env.begin_operation(session)
     old_callback = agent._diagnostic_callback
+    assert old_callback is not None
     env.begin_operation(session)
     old_callback({"code": "empty_response"})
     assert env.diagnostics == []
 
 
-def test_edit_fix_and_mock_response_shapes_are_observed(diagnostic_model):
+def test_edit_fix_and_mock_response_shapes_are_observed(diagnostic_model: DiagnosticFactory) -> None:
     from services.dify_builder.agent import edit, fix, mock_inputs
 
     model = diagnostic_model()
@@ -226,7 +261,7 @@ def test_edit_fix_and_mock_response_shapes_are_observed(diagnostic_model):
     assert {r["span_id"] for r in records if r["code"] == "response_schema_invalid"} == {"edit", "fix", "mock"}
 
 
-def test_graph_generation_retry_evidence_survives_success(monkeypatch):
+def test_graph_generation_retry_evidence_survives_success(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.application.ports import BuildNodesResult
 
     agent = LlmBuilderAgent("tenant")
@@ -245,7 +280,7 @@ def test_graph_generation_retry_evidence_survives_success(monkeypatch):
     assert "secret" not in json.dumps(records)
 
 
-def test_stream_iterator_failure_retains_scope(diagnostic_model):
+def test_stream_iterator_failure_retains_scope(diagnostic_model: DiagnosticFactory) -> None:
     records = []
     with diagnostics.scope(records.append, "respond-to-message"):
         with pytest.raises(TimeoutError):
@@ -255,7 +290,7 @@ def test_stream_iterator_failure_retains_scope(diagnostic_model):
     assert "secret" not in json.dumps(records)
 
 
-def test_http_history_serializer_retains_safe_diagnostics():
+def test_http_history_serializer_retains_safe_diagnostics() -> None:
     from controllers.console.dify_builder_fields import DifyBuilderConversationPageResponse
     from libs.helper import dump_response
 
@@ -280,7 +315,7 @@ def test_http_history_serializer_retains_safe_diagnostics():
     assert result["data"][0]["payload"]["diagnostics"] == [record]
 
 
-def test_http_session_snapshot_retains_safe_diagnostics():
+def test_http_session_snapshot_retains_safe_diagnostics() -> None:
     from dataclasses import asdict
 
     from controllers.console.dify_builder_fields import DifyBuilderSessionViewResponse
@@ -306,7 +341,9 @@ def test_http_session_snapshot_retains_safe_diagnostics():
     assert result["diagnostics"] == [record]
 
 
-def test_language_detection_failure_is_scoped_and_keeps_existing_fallback(diagnostic_model):
+def test_language_detection_failure_is_scoped_and_keeps_existing_fallback(
+    diagnostic_model: DiagnosticFactory,
+) -> None:
     from services.dify_builder.agent.localize import LanguageDetector
 
     records = []
@@ -317,7 +354,7 @@ def test_language_detection_failure_is_scoped_and_keeps_existing_fallback(diagno
     assert any(r["code"] == "deterministic_fallback" for r in records)
 
 
-def test_snapshot_history_preserves_identity_and_previous_failure_after_success():
+def test_snapshot_history_preserves_identity_and_previous_failure_after_success() -> None:
     from core.dify_builder.models import ConversationItem
 
     record = diagnostics.project({"code": "provider_invocation_failed"})
@@ -331,7 +368,7 @@ def test_snapshot_history_preserves_identity_and_previous_failure_after_success(
     assert safe[0]["session_id"] == "session"
 
 
-def test_existing_sse_dto_keeps_diagnostic_payload():
+def test_existing_sse_dto_keeps_diagnostic_payload() -> None:
     from controllers.console.dify_builder_fields import DifyBuilderConversationItemAppendedEventData
     from libs.helper import dump_response
 
@@ -358,7 +395,7 @@ def test_existing_sse_dto_keeps_diagnostic_payload():
     assert result["item"]["payload"]["diagnostics"] == [record]
 
 
-def test_native_preparation_diagnostic_is_persisted_with_handler_reply():
+def test_native_preparation_diagnostic_is_persisted_with_handler_reply() -> None:
     from core.dify_builder.models import Action, ConversationItem, DifyBuilderContext, Turn
     from core.dify_builder.state import PcState
     from services.dify_builder.application.runner import Runner, StepResult
@@ -368,7 +405,7 @@ def test_native_preparation_diagnostic_is_persisted_with_handler_reply():
     session = _session()
     memory_repo.create_session(session, DifyBuilderContext(), [])
 
-    def handler(_env, _turn, _session, context):
+    def handler(_env: Env, _turn: Turn, _session: Session, context: DifyBuilderContext) -> StepResult:
         diagnostics.report("native_preparation_failed", error=ConnectionRefusedError("private-secret-address"))
         return StepResult(
             next=PcState.FIX_AWAIT_APPROVAL,
@@ -388,7 +425,7 @@ def test_native_preparation_diagnostic_is_persisted_with_handler_reply():
     assert "secret" not in json.dumps(records)
 
 
-def test_resource_binding_refusal_retains_safe_code_and_target_without_private_message():
+def test_resource_binding_refusal_retains_safe_code_and_target_without_private_message() -> None:
     records = []
     with diagnostics.scope(records.append, "edit-apply"):
         diagnostics.report(

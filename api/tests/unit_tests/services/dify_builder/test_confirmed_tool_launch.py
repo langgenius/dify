@@ -14,8 +14,9 @@ import logging
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
+from threading import Thread
 from types import ModuleType
-from typing import TYPE_CHECKING, Literal, NoReturn, cast, override
+from typing import TYPE_CHECKING, Literal, Never, NoReturn, cast, override
 from uuid import uuid4
 
 import pytest
@@ -1652,9 +1653,7 @@ def install_native_generation(owner: Owner, monkeypatch: pytest.MonkeyPatch) -> 
 
         def worker() -> None:
             builder_execution_admit.admit_raw(workflow, app_model)
-            recorder = builder_execution_admit(
-                workflow, app_model, cast(WorkflowAppGenerateEntity, entity), "start", False
-            )
+            recorder = builder_execution_admit(workflow, app_model, entity, "start", False)
             assert isinstance(recorder, ConfirmedLaunchRecorder)
             dispatched(recorder)
             native_rows(owner, run_id, "node-exec-1")
@@ -1772,7 +1771,7 @@ def test_port_launches_reserved_command_natively_and_projects_sanitized_builder_
 
         def worker() -> None:
             launch.admit_raw(workflow, app_model)
-            recorder = launch(workflow, app_model, cast(WorkflowAppGenerateEntity, entity), "start", False)
+            recorder = launch(workflow, app_model, entity, "start", False)
             assert isinstance(recorder, ConfirmedLaunchRecorder)
             dispatched(recorder)
             native_rows(owner, run_id, "node-exec-1")
@@ -1947,7 +1946,7 @@ def _drive_generator_draft_saving(
     session = owner.factory()
     monkeypatch.setattr(app_generator_module, "db", ConfirmedDatabase(engine=engine, session=session))
 
-    def forbidden_driver(*_args, **_kwargs):
+    def forbidden_driver(*_args: object, **_kwargs: object) -> Never:
         raise AssertionError("captured generation must not execute the worker")
 
     generator = WorkflowAppGenerator(execution_driver=forbidden_driver)
@@ -1958,9 +1957,9 @@ def _drive_generator_draft_saving(
     native_thread = app_generator_module.threading.Thread
     worker_kwargs: dict[str, object] = {}
 
-    def thread(**kwargs: object):
-        worker_kwargs.update(cast(dict[str, object], kwargs["kwargs"]))
-        worker = native_thread(**kwargs)
+    def thread(*, target: Callable[..., object], kwargs: dict[str, object]) -> Thread:
+        worker_kwargs.update(kwargs)
+        worker = native_thread(target=target, kwargs=kwargs)
         monkeypatch.setattr(worker, "start", lambda: None)
         monkeypatch.setattr(worker, "is_alive", lambda: False)
         monkeypatch.setattr(worker, "join", lambda *_args, **_kwargs: None)

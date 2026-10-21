@@ -2,6 +2,7 @@
 
 from datetime import datetime
 
+import pytest_mock
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
@@ -34,7 +35,7 @@ def _credential(
     return row
 
 
-def test_default_account_binding_changes_when_same_named_default_changes(sqlite_session: Session):
+def test_default_account_binding_changes_when_same_named_default_changes(sqlite_session: Session) -> None:
     graph = {
         "nodes": [
             {
@@ -81,7 +82,7 @@ def test_default_account_binding_changes_when_same_named_default_changes(sqlite_
     assert before["send"] != after["send"]
 
 
-def test_explicit_account_version_changes_binding_without_exposing_credentials(sqlite_session: Session):
+def test_explicit_account_version_changes_binding_without_exposing_credentials(sqlite_session: Session) -> None:
     graph = {
         "nodes": [
             {
@@ -115,7 +116,7 @@ def test_explicit_account_version_changes_binding_without_exposing_credentials(s
     assert "credential-1" not in before["send"]
 
 
-def test_legacy_native_provider_row_binds_canonical_plugin_account(sqlite_session: Session):
+def test_legacy_native_provider_row_binds_canonical_plugin_account(sqlite_session: Session) -> None:
     graph = {
         "nodes": [
             {
@@ -145,7 +146,7 @@ def test_legacy_native_provider_row_binds_canonical_plugin_account(sqlite_sessio
     assert len(bindings["send"]) == 64
 
 
-def test_same_timestamp_credential_rotation_changes_binding(sqlite_session: Session):
+def test_same_timestamp_credential_rotation_changes_binding(sqlite_session: Session) -> None:
     graph = {
         "nodes": [
             {
@@ -181,7 +182,9 @@ def test_same_timestamp_credential_rotation_changes_binding(sqlite_session: Sess
     assert before != after
 
 
-def test_scope_binding_uses_semantic_variables_instead_of_reencrypted_storage(mocker):
+def test_scope_binding_uses_semantic_variables_instead_of_reencrypted_storage(
+    mocker: pytest_mock.MockerFixture,
+) -> None:
     variable = SecretVariable(name="DESTINATION", value="synthetic-value")
     workflow = Workflow(
         tenant_id="tenant", _environment_variables="synthetic-ciphertext-before", _conversation_variables="{}"

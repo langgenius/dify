@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, cast
 from unittest.mock import Mock, patch
 
 import pytest
+import pytest_mock
 from sqlalchemy.orm import sessionmaker
 
 from core.dify_builder.models import Actor
@@ -17,17 +18,21 @@ from graphon.nodes.base.node import Node
 from graphon.runtime import InitParams, RuntimeState
 from runtime_contracts.builder.native.contracts import NativeTestContextRef, OperationKey
 from services.dify_builder.native_testing.api_service import NativeTestApiService
+from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 from services.dify_builder.native_testing.control import (
     BoundaryOwnerState,
     NativeControlAccepted,
     NativeControlRecord,
     NativeControlSink,
 )
+from services.dify_builder.native_testing.runtime import DifyNativeRuntime
 from services.dify_builder.native_testing.runtime_bridge import (
     NativeCollaborators,
     NativeNodePreparation,
     NativeRuntimeBridge,
 )
+from tests.unit_tests.installed_spies import installed_mock
+from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
 
 if TYPE_CHECKING:
     from services.workflow_runtime.node_factory import DifyNodeFactory
@@ -37,7 +42,7 @@ from services.dify_builder.native_testing.context_binding import NativeContextUn
 from tests.unit_tests.services.dify_builder.native_testing.test_runtime_contracts import CONTEXT
 
 
-def _api():
+def _api() -> NativeTestApiService:
     return NativeTestApiService(
         session_factory=sessionmaker(),
         actor=Actor(account_id="actor-1", tenant_id="tenant-1"),
@@ -52,19 +57,19 @@ def _api():
 class _BridgeCollaborators:
     """Explicit collaborator composition port for constructor-only bridge tests."""
 
-    def __init__(self, bundle: NativeCollaborators):
+    def __init__(self, bundle: NativeCollaborators) -> None:
         self.bundle = bundle
 
     def provide(self, *, association: NativeNodePreparation) -> NativeCollaborators:
         assert isinstance(association, NativeNodePreparation)
         return self.bundle
 
-    def node_arguments(self, **_kwargs) -> Mapping[str, object]:
+    def node_arguments(self, **_kwargs: object) -> Mapping[str, object]:
         return {"http_client": self.bundle.http}
 
 
 def bridge_fixture(
-    mocker,
+    mocker: pytest_mock.MockerFixture,
 ) -> tuple[ResolvedNativeTestContext, NativeRuntimeBridge, NativeCollaborators, Mock, BoundaryOwnerState, Mock]:
     context = ResolvedNativeTestContext.model_validate(CONTEXT)
     state = _api().store
@@ -85,7 +90,7 @@ def bridge_fixture(
     return context, bridge, bundle, provider, owner, arguments
 
 
-def test_marked_factory_requires_bridge_before_eager_model_setup(mocker) -> None:
+def test_marked_factory_requires_bridge_before_eager_model_setup(mocker: pytest_mock.MockerFixture) -> None:
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from services.workflow_runtime import node_factory
 
@@ -108,7 +113,7 @@ def test_marked_factory_requires_bridge_before_eager_model_setup(mocker) -> None
     eager.assert_not_called()
 
 
-def test_factory_preserves_bridge_on_runtime_clone_and_checks_owners(mocker) -> None:
+def test_factory_preserves_bridge_on_runtime_clone_and_checks_owners(mocker: pytest_mock.MockerFixture) -> None:
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from services.workflow_runtime import node_factory
 
@@ -127,7 +132,7 @@ def test_factory_preserves_bridge_on_runtime_clone_and_checks_owners(mocker) -> 
         run_context={"_dify": run}, workflow_id=context.workflow_id, graph_config=context.graph, call_depth=0
     )
     factory = node_factory.DifyNodeFactory(
-        init_params=cast(InitParams, init),
+        init_params=init,
         runtime_state=cast(RuntimeState, object()),
         native_runtime=bridge,
     )
@@ -138,13 +143,13 @@ def test_factory_preserves_bridge_on_runtime_clone_and_checks_owners(mocker) -> 
     init.workflow_id = "foreign"
     with pytest.raises(NativeContextUnavailable, match="native_context_mismatch"):
         node_factory.DifyNodeFactory(
-            init_params=cast(InitParams, init),
+            init_params=init,
             runtime_state=cast(RuntimeState, object()),
             native_runtime=bridge,
         )
 
 
-def test_unmarked_factory_cannot_accept_native_bridge(mocker) -> None:
+def test_unmarked_factory_cannot_accept_native_bridge(mocker: pytest_mock.MockerFixture) -> None:
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from services.workflow_runtime import node_factory
 
@@ -162,7 +167,9 @@ def test_unmarked_factory_cannot_accept_native_bridge(mocker) -> None:
     eager.assert_not_called()
 
 
-def test_native_factory_constructs_real_registered_start_without_resolving_occurrence(mocker) -> None:
+def test_native_factory_constructs_real_registered_start_without_resolving_occurrence(
+    mocker: pytest_mock.MockerFixture,
+) -> None:
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from graphon.nodes.start.start_node import StartNode
     from graphon.runtime import RuntimeState, VariablePool
@@ -171,7 +178,7 @@ def test_native_factory_constructs_real_registered_start_without_resolving_occur
     context, bridge, bundle, provider, _, arguments = bridge_fixture(mocker)
     node: dict[str, object] = {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}
     context = context.model_copy(update={"graph": {"nodes": [node], "edges": []}})
-    bridge.state.load_context.return_value = context
+    installed_mock(bridge.state.load_context).return_value = context
     arguments.return_value = dict[str, object]()
 
     run = DifyRunContext(
@@ -217,7 +224,7 @@ class SyntheticSink:
 
 
 def preparation_fixture(
-    mocker,
+    mocker: pytest_mock.MockerFixture,
 ) -> tuple[ResolvedNativeTestContext, NativeRuntimeBridge, NativeNodePreparation, Node[BaseNodeData], Mock]:
     from graphon.nodes.start.start_node import StartNode
     from graphon.runtime import InitParams, RuntimeState, VariablePool
@@ -242,9 +249,9 @@ def preparation_fixture(
     return context, bridge, prepared, node, provider
 
 
-def test_preparation_and_constructor_cannot_open_context_or_bound_occurrence(mocker) -> None:
+def test_preparation_and_constructor_cannot_open_context_or_bound_occurrence(mocker: pytest_mock.MockerFixture) -> None:
     context, bridge, prepared, node, _ = preparation_fixture(mocker)
-    bridge.state.load_context.assert_not_called()
+    installed_mock(bridge.state.load_context).assert_not_called()
     for read in (
         lambda: prepared.execution_id,
         lambda: prepared.occurrence_path,
@@ -257,13 +264,13 @@ def test_preparation_and_constructor_cannot_open_context_or_bound_occurrence(moc
     for read in (lambda: prepared.execution_id, prepared.resolve, lambda: prepared.runtime_state):
         with pytest.raises(NativeContextUnavailable, match="native_execution_id_missing"):
             read()
-    bridge.state.load_context.assert_not_called()
+    installed_mock(bridge.state.load_context).assert_not_called()
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
     assert prepared.resolve().ref == context.ref
     assert prepared.runtime_state is node.runtime_state
 
 
-def test_constructor_effect_attempt_is_refused_before_any_context_read(mocker) -> None:
+def test_constructor_effect_attempt_is_refused_before_any_context_read(mocker: pytest_mock.MockerFixture) -> None:
     from graphon.nodes.start.start_node import StartNode
 
     context, bridge, _, provider, _, _ = bridge_fixture(mocker)
@@ -277,11 +284,13 @@ def test_constructor_effect_attempt_is_refused_before_any_context_read(mocker) -
         bridge.prepare_node(
             ref=context.ref, node_id="start", node_data={}, node_class=StartNode, runtime_state=object()
         )
-    bridge.state.load_context.assert_not_called()
+    installed_mock(bridge.state.load_context).assert_not_called()
 
 
 @pytest.mark.parametrize("mutation", ["class", "node_id", "runtime", "double", "ref", "binding", "rebind"])
-def test_association_rejects_foreign_or_changed_identity_without_context_read(mocker, mutation: str) -> None:
+def test_association_rejects_foreign_or_changed_identity_without_context_read(
+    mocker: pytest_mock.MockerFixture, mutation: str
+) -> None:
     from graphon.nodes.start.start_node import StartNode
 
     context, bridge, prepared, node, _ = preparation_fixture(mocker)
@@ -318,10 +327,12 @@ def test_association_rejects_foreign_or_changed_identity_without_context_read(mo
             with pytest.raises(NativeContextUnavailable) as caught:
                 prepared.resolve()
     assert "private-canary" not in str(caught.value)
-    bridge.state.load_context.assert_not_called()
+    installed_mock(bridge.state.load_context).assert_not_called()
 
 
-def test_preparation_requires_exact_owner_ref_and_explicit_control_dependencies(mocker) -> None:
+def test_preparation_requires_exact_owner_ref_and_explicit_control_dependencies(
+    mocker: pytest_mock.MockerFixture,
+) -> None:
     from graphon.nodes.start.start_node import StartNode
     from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
 
@@ -345,12 +356,12 @@ def test_preparation_requires_exact_owner_ref_and_explicit_control_dependencies(
         )
 
 
-def test_effect_revalidates_full_private_context_each_time(mocker) -> None:
+def test_effect_revalidates_full_private_context_each_time(mocker: pytest_mock.MockerFixture) -> None:
     context, bridge, prepared, node, _ = preparation_fixture(mocker)
     prepared.attach(node)
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
     assert prepared.resolve().ref == context.ref
-    bridge.state.load_context.return_value = context.model_copy(
+    installed_mock(bridge.state.load_context).return_value = context.model_copy(
         update={"ref": context.ref.model_copy(update={"invocation_id": "foreign"})}
     )
     with pytest.raises(NativeContextUnavailable, match="native_context_mismatch"):
@@ -439,7 +450,7 @@ class DeniedFiles:
 
 
 def native_factory(
-    mocker, config: Mapping[str, object], runtime: RuntimeState, witness: EffectsWitness
+    mocker: pytest_mock.MockerFixture, config: Mapping[str, object], runtime: RuntimeState, witness: EffectsWitness
 ) -> tuple[DifyNodeFactory, BoundaryOwnerState, SyntheticSink, list[NativeNodePreparation]]:
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from graphon.nodes.code.limits import CodeNodeLimits
@@ -528,7 +539,7 @@ def native_factory(
 
 
 def native_engine(
-    mocker, config: Mapping[str, object], runtime: RuntimeState, witness: EffectsWitness
+    mocker: pytest_mock.MockerFixture, config: Mapping[str, object], runtime: RuntimeState, witness: EffectsWitness
 ) -> tuple[Engine, BoundaryOwnerState, SyntheticSink, list[NativeNodePreparation]]:
     from graphon.engine.command import InMemoryChannel
     from graphon.graph.graph import Graph
@@ -549,7 +560,9 @@ def raw_node(node_id: str, kind: str, **data: object) -> dict[str, object]:
 
 
 @pytest.mark.parametrize("mode", ["allow", "wait"])
-def test_real_factory_http_effect_uses_public_binding_and_marked_control(mocker, mode: str) -> None:
+def test_real_factory_http_effect_uses_public_binding_and_marked_control(
+    mocker: pytest_mock.MockerFixture, mode: str
+) -> None:
     from graphon.engine_events.graph import GraphRunPausedEvent, GraphRunSucceededEvent
     from graphon.engine_events.node import NodeRunPauseRequestedEvent, NodeRunStartedEvent
     from graphon.runtime import RuntimeState, VariablePool
@@ -596,7 +609,9 @@ def test_real_factory_http_effect_uses_public_binding_and_marked_control(mocker,
 
 
 @pytest.mark.parametrize("kind", ["loop", "iteration"])
-def test_actual_engine_equal_inputs_distinct_occurrences_restore_retry_and_fresh_clone(mocker, kind: str) -> None:
+def test_actual_engine_equal_inputs_distinct_occurrences_restore_retry_and_fresh_clone(
+    mocker: pytest_mock.MockerFixture, kind: str
+) -> None:
     from graphon.engine_events.graph import GraphRunPartialSucceededEvent, GraphRunPausedEvent
     from graphon.runtime import RuntimeState, VariablePool
 
@@ -700,7 +715,9 @@ def test_actual_engine_equal_inputs_distinct_occurrences_restore_retry_and_fresh
     "reserved",
     ["node_id", "data", "graph_init_params", "graph_runtime_state", "native_control_owner", "native_control_sink"],
 )
-def test_constructor_adapter_cannot_replace_attached_identity_or_control_owner(mocker, reserved: str) -> None:
+def test_constructor_adapter_cannot_replace_attached_identity_or_control_owner(
+    mocker: pytest_mock.MockerFixture, reserved: str
+) -> None:
     from graphon.nodes.start.start_node import StartNode
 
     context, bridge, _, _, _, arguments = bridge_fixture(mocker)
@@ -710,11 +727,13 @@ def test_constructor_adapter_cannot_replace_attached_identity_or_control_owner(m
             ref=context.ref, node_id="start", node_data={}, node_class=StartNode, runtime_state=object()
         )
     assert "private-canary" not in str(caught.value)
-    bridge.state.load_context.assert_not_called()
+    installed_mock(bridge.state.load_context).assert_not_called()
 
 
 @pytest.mark.parametrize("invalid", [None, "missing-slot"])
-def test_missing_deferred_collaborator_never_uses_ordinary_fallback(mocker, invalid: str | None) -> None:
+def test_missing_deferred_collaborator_never_uses_ordinary_fallback(
+    mocker: pytest_mock.MockerFixture, invalid: str | None
+) -> None:
     from dataclasses import replace
 
     from graphon.nodes.start.start_node import StartNode
@@ -725,24 +744,26 @@ def test_missing_deferred_collaborator_never_uses_ordinary_fallback(mocker, inva
         bridge.prepare_node(
             ref=context.ref, node_id="start", node_data={}, node_class=StartNode, runtime_state=object()
         )
-    bridge.state.load_context.assert_not_called()
+    installed_mock(bridge.state.load_context).assert_not_called()
 
 
 @pytest.mark.parametrize("field", ["ref", "node_id", "node_class", "arguments"])
-def test_preparation_public_expected_identity_cannot_be_replaced(mocker, field: str) -> None:
+def test_preparation_public_expected_identity_cannot_be_replaced(mocker: pytest_mock.MockerFixture, field: str) -> None:
     _, _, prepared, _, _ = preparation_fixture(mocker)
     with pytest.raises(AttributeError):
         setattr(prepared, field, "private-canary")
 
 
-def test_constructor_argument_mapping_cannot_replace_control_dependencies(mocker) -> None:
+def test_constructor_argument_mapping_cannot_replace_control_dependencies(mocker: pytest_mock.MockerFixture) -> None:
     _, _, prepared, _, _ = preparation_fixture(mocker)
     with pytest.raises(TypeError):
         cast(dict[str, object], prepared.arguments)["native_control_owner"] = "private-canary"
 
 
 @pytest.mark.parametrize("mutation", ["id", "runtime", "ref", "execution_id"])
-def test_effect_rechecks_attached_identity_after_private_context_read(mocker, mutation: str) -> None:
+def test_effect_rechecks_attached_identity_after_private_context_read(
+    mocker: pytest_mock.MockerFixture, mutation: str
+) -> None:
     context, bridge, prepared, node, _ = preparation_fixture(mocker)
     prepared.attach(node)
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
@@ -759,13 +780,15 @@ def test_effect_rechecks_attached_identity_after_private_context_read(mocker, mu
             node.bind_execution_id("00000000-0000-4000-8000-000000000002")
         return context
 
-    bridge.state.load_context.side_effect = load
+    installed_mock(bridge.state.load_context).side_effect = load
     with pytest.raises(NativeContextUnavailable) as caught:
         prepared.resolve()
     assert "private-canary" not in str(caught.value)
 
 
-def test_bound_node_getter_requires_attachment_and_public_binding_without_context_read(mocker) -> None:
+def test_bound_node_getter_requires_attachment_and_public_binding_without_context_read(
+    mocker: pytest_mock.MockerFixture,
+) -> None:
     _, bridge, prepared, node, _ = preparation_fixture(mocker)
     with pytest.raises(NativeContextUnavailable, match="native_node_unattached"):
         _ = prepared.bound_node
@@ -774,14 +797,16 @@ def test_bound_node_getter_requires_attachment_and_public_binding_without_contex
         _ = prepared.bound_node
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
     assert prepared.bound_node is node
-    bridge.state.load_context.assert_not_called()
+    installed_mock(bridge.state.load_context).assert_not_called()
     property_name = "bound_node"
     with pytest.raises(AttributeError):
         setattr(prepared, property_name, object())
 
 
 @pytest.mark.parametrize("mutation", ["node_id", "runtime", "class", "ref", "execution_id"])
-def test_bound_node_getter_rejects_attached_identity_drift_without_context_read(mocker, mutation: str) -> None:
+def test_bound_node_getter_rejects_attached_identity_drift_without_context_read(
+    mocker: pytest_mock.MockerFixture, mutation: str
+) -> None:
     context, bridge, prepared, node, _ = preparation_fixture(mocker)
     prepared.attach(node)
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
@@ -801,11 +826,13 @@ def test_bound_node_getter_rejects_attached_identity_drift_without_context_read(
     with pytest.raises(NativeContextUnavailable) as caught:
         _ = prepared.bound_node
     assert "private-canary" not in str(caught.value)
-    bridge.state.load_context.assert_not_called()
+    installed_mock(bridge.state.load_context).assert_not_called()
 
 
 @pytest.mark.parametrize("foreign", ["owner", "sink"])
-def test_attach_rejects_foreign_control_composition_with_same_native_class_and_runtime(mocker, foreign: str) -> None:
+def test_attach_rejects_foreign_control_composition_with_same_native_class_and_runtime(
+    mocker: pytest_mock.MockerFixture, foreign: str
+) -> None:
     context, bridge, prepared, node, _ = preparation_fixture(mocker)
     arguments = dict(prepared.arguments)
     if foreign == "owner":
@@ -821,10 +848,10 @@ def test_attach_rejects_foreign_control_composition_with_same_native_class_and_r
     )
     with pytest.raises(NativeContextUnavailable, match="native_node_mismatch"):
         prepared.attach(other)
-    bridge.state.load_context.assert_not_called()
+    installed_mock(bridge.state.load_context).assert_not_called()
 
 
-def _delivery_runtime(mocker, case):
+def _delivery_runtime(mocker: pytest_mock.MockerFixture, case: LaunchCase) -> DifyNativeRuntime:
     from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
     from services.dify_builder.native_testing.runtime import DifyNativeResumeSettlement, DifyNativeRuntime
     from services.dify_builder.native_testing.sandbox.host import NativeCodeHostOwner
@@ -845,14 +872,16 @@ def _delivery_runtime(mocker, case):
         )
     runtime.host = case.host
     runtime._journal = case.journal
-    runtime.authorization = case.authorization
+    runtime.authorization = cast(EffectAuthorizationService, case.authorization)
     runtime.code_owner = NativeCodeHostOwner(host=case.host, loader=api.loader)
     load.reset_mock()
     return runtime
 
 
 @pytest.mark.parametrize("kind", ["code", "template-transform"])
-def test_code_delivery_composes_actual_native_protocol_without_eager_payload(mocker, kind):
+def test_code_delivery_composes_actual_native_protocol_without_eager_payload(
+    mocker: pytest_mock.MockerFixture, kind: str
+) -> None:
     from graphon.nodes.code.code_node import CodeNode
     from graphon.nodes.code.entities import CodeNodeData
     from graphon.nodes.template_transform.entities import TemplateTransformNodeData
@@ -860,7 +889,7 @@ def test_code_delivery_composes_actual_native_protocol_without_eager_payload(moc
         TemplateTransformNode,
     )
     from graphon.runtime import VariablePool
-    from services.dify_builder.native_testing.runtime import DifyNativeRuntime, build_delivery_bridge
+    from services.dify_builder.native_testing.runtime import build_delivery_bridge
     from services.dify_builder.native_testing.sandbox.executor import NativeCodeExecutor
     from tests.unit_tests.services.dify_builder.native_testing.test_code_host import (
         code_case,
@@ -876,7 +905,7 @@ def test_code_delivery_composes_actual_native_protocol_without_eager_payload(moc
     runtime.code_qualification = q
     store = runtime.lifecycle.store
     store.load_context.side_effect = AssertionError("eager protected input")
-    bridge = build_delivery_bridge(runtime=cast(DifyNativeRuntime, runtime))
+    bridge = build_delivery_bridge(runtime=runtime)
     state = RuntimeState(workflow_id=CONTEXT["workflow_id"], variable_pool=VariablePool(), start_at=0)
     cls = CodeNode if kind == "code" else TemplateTransformNode
     data = (
@@ -908,11 +937,11 @@ def test_code_delivery_composes_actual_native_protocol_without_eager_payload(moc
     store.load_context.assert_not_called()
 
 
-def test_default_delivery_refuses_code_before_protected_payload(mocker):
+def test_default_delivery_refuses_code_before_protected_payload(mocker: pytest_mock.MockerFixture) -> None:
     from graphon.nodes.code.code_node import CodeNode
     from graphon.nodes.code.entities import CodeNodeData
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-    from services.dify_builder.native_testing.runtime import DifyNativeRuntime, build_delivery_bridge
+    from services.dify_builder.native_testing.runtime import build_delivery_bridge
     from tests.unit_tests.services.dify_builder.native_testing.test_code_host import (
         code_case,
     )
@@ -924,7 +953,7 @@ def test_default_delivery_refuses_code_before_protected_payload(mocker):
     runtime = _delivery_runtime(mocker, case)
     store = runtime.lifecycle.store
     store.load_context.side_effect = AssertionError("unqualified payload read")
-    bridge = build_delivery_bridge(runtime=cast(DifyNativeRuntime, runtime))
+    bridge = build_delivery_bridge(runtime=runtime)
     with pytest.raises(BuilderExecutionPolicyError, match="native_capability_unavailable"):
         bridge.prepare_node(
             ref=case.state.context.ref,

@@ -2,6 +2,7 @@
 
 import io
 import logging
+from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
@@ -9,20 +10,18 @@ import pytest
 from configs.feature import LoggingConfig
 from dify_app import DifyApp
 from extensions import ext_logging
-from extensions.ext_logging import _apply_timezone
 from libs.sensitive_http_telemetry import (
     SensitiveHttpLogFilter,
     SensitiveHttpTelemetryUnavailable,
     assert_sensitive_http_telemetry_ready,
     sensitive_http_telemetry,
 )
-from tests.helpers.unit.config_override import config_overrides_context
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
 from tests.unit_tests.logging_helpers import protect_existing_log_routes
 
 
 @pytest.fixture
-def application_logging(monkeypatch):
+def application_logging(monkeypatch: pytest.MonkeyPatch) -> Iterator[io.StringIO]:
     """Own actual app sinks and restore the original process logging configuration."""
     from libs.sensitive_http_telemetry import _HTTP_LOGGERS
 
@@ -59,7 +58,9 @@ def application_logging(monkeypatch):
         engine.propagate = engine_propagation
 
 
-def test_normal_app_logging_protects_sql_errors_and_preserves_warning_threshold(application_logging):
+def test_normal_app_logging_protects_sql_errors_and_preserves_warning_threshold(
+    application_logging: io.StringIO,
+) -> None:
     engine = logging.getLogger("sqlalchemy.engine")
     assert_sensitive_http_telemetry_ready(additional_emitters=("sqlalchemy",))
     assert engine.propagate is True
@@ -75,7 +76,7 @@ def test_normal_app_logging_protects_sql_errors_and_preserves_warning_threshold(
 
 
 @pytest.mark.usefixtures("application_logging")
-def test_custom_unprotected_sql_sink_still_refuses_after_normal_init():
+def test_custom_unprotected_sql_sink_still_refuses_after_normal_init() -> None:
     assert_sensitive_http_telemetry_ready(additional_emitters=("sqlalchemy",))
     engine = logging.getLogger("sqlalchemy.engine")
     custom = logging.StreamHandler(io.StringIO())
@@ -103,7 +104,7 @@ def test_apply_timezone_uses_validated_logging_config(configured: str, expected_
     handler.setFormatter(logging.Formatter("%(asctime)s", datefmt="%Y-%m-%d %H:%M:%S"))
     try:
         with config_overrides_context(LOG_TZ=logging_config.LOG_TZ):
-            _apply_timezone([handler])
+            ext_logging._apply_timezone([handler])
 
         record = logging.LogRecord(__name__, logging.INFO, __file__, 1, "timezone check", (), None)
         record.created = datetime(2026, 1, 15, 12, tzinfo=UTC).timestamp()

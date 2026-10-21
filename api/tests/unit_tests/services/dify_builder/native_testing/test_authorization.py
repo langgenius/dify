@@ -1,14 +1,32 @@
 """Pure policy checks; atomic storage is exercised only against PostgreSQL in CI."""
 
+from collections.abc import MutableMapping
 from datetime import UTC, datetime, timedelta
+from typing import TypedDict, cast
 
 import pytest
+from sqlalchemy.orm import Session
 
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
-from runtime_contracts.builder.native.contracts import EffectIntent, OperationKey
+from runtime_contracts.builder.native.contracts import EffectIntent, JsonValue, OperationKey
+from services.dify_builder.native_testing.repository import NativeBinding
 
 
-def intent():
+class BudgetArguments(TypedDict):
+    execution_id: str
+    invocation_digest: str
+    requested: dict[str, int]
+    now: datetime
+
+
+class BudgetOverrides(TypedDict, total=False):
+    execution_id: str
+    invocation_digest: str
+    requested: dict[str, int]
+    now: datetime
+
+
+def intent() -> EffectIntent:
     return EffectIntent(
         key=OperationKey(invocation_id="inv", occurrence_path=("node", "iteration-0"), cursor=0),
         kind="tool",
@@ -22,7 +40,7 @@ def intent():
     )
 
 
-def binding(effect):
+def binding(effect: EffectIntent) -> NativeBinding:
     from services.dify_builder.native_testing.repository import NativeBinding
 
     return NativeBinding(
@@ -45,7 +63,7 @@ def binding(effect):
     )
 
 
-def test_forged_code_kind_cannot_use_task_approval():
+def test_forged_code_kind_cannot_use_task_approval() -> None:
     from services.dify_builder.native_testing.authorization import validate_binding
 
     effect = intent()
@@ -62,7 +80,7 @@ def test_forged_code_kind_cannot_use_task_approval():
         {"parameters": {"limit": True}},
     ],
 )
-def test_binding_rejects_resource_capability_key_and_typed_parameter_forgery(change):
+def test_binding_rejects_resource_capability_key_and_typed_parameter_forgery(change: dict[str, JsonValue]) -> None:
     from services.dify_builder.native_testing.authorization import validate_binding
 
     effect = intent()
@@ -70,7 +88,7 @@ def test_binding_rejects_resource_capability_key_and_typed_parameter_forgery(cha
         validate_binding(effect.model_copy(update=change), binding(effect))
 
 
-def test_valid_binding_does_not_autogrant_external_read():
+def test_valid_binding_does_not_autogrant_external_read() -> None:
     from services.dify_builder.native_testing.authorization import task_grant_allowed, validate_binding
 
     effect = intent()
@@ -80,7 +98,7 @@ def test_valid_binding_does_not_autogrant_external_read():
 
 
 @pytest.mark.parametrize("change", [{"egress": True}, {"new_data": True}, {"isolated": False}, {"destructive": True}])
-def test_task_grant_requires_all_isolation_conditions(change):
+def test_task_grant_requires_all_isolation_conditions(change: dict[str, JsonValue]) -> None:
     from services.dify_builder.native_testing.authorization import task_grant_allowed
 
     trusted = binding(intent()).model_copy(
@@ -91,7 +109,7 @@ def test_task_grant_requires_all_isolation_conditions(change):
     assert not task_grant_allowed(trusted, task_approved=False)
 
 
-def test_reservation_rejects_forged_identity_expiry_and_inflated_budget():
+def test_reservation_rejects_forged_identity_expiry_and_inflated_budget() -> None:
     from services.dify_builder.native_testing.repository import BudgetReservation
 
     now = datetime.now(UTC)
@@ -106,25 +124,36 @@ def test_reservation_rejects_forged_identity_expiry_and_inflated_budget():
     assert reservation.authorize(execution_id="exec", invocation_digest="c" * 64, requested={"cpu_ms": 8}, now=now) == {
         "cpu_ms": 8
     }
-    for kwargs in (
+    cases: tuple[BudgetOverrides, ...] = (
         {"execution_id": "other"},
         {"invocation_digest": "d" * 64},
         {"requested": {"cpu_ms": 9}},
         {"requested": {"cpu_ms": True}},
         {"requested": {"new_dimension": 1}},
         {"now": now + timedelta(seconds=31)},
-    ):
-        args = {"execution_id": "exec", "invocation_digest": "c" * 64, "requested": {"cpu_ms": 8}, "now": now}
+    )
+    for kwargs in cases:
+        args: BudgetArguments = {
+            "execution_id": "exec",
+            "invocation_digest": "c" * 64,
+            "requested": {"cpu_ms": 8},
+            "now": now,
+        }
         args.update(kwargs)
         with pytest.raises(BuilderExecutionPolicyError, match="invalid_budget_reservation"):
-            reservation.authorize(**args)
+            reservation.authorize(
+                execution_id=args["execution_id"],
+                invocation_digest=args["invocation_digest"],
+                requested=args["requested"],
+                now=args["now"],
+            )
 
 
-def test_serialized_revision_never_reads_resolved_secret_variables(monkeypatch):
+def test_serialized_revision_never_reads_resolved_secret_variables(monkeypatch: pytest.MonkeyPatch) -> None:
     from models.workflow import Workflow
     from services.dify_builder.native_testing.repository import native_workflow_revision
 
-    def forbidden_resolution(_self):
+    def forbidden_resolution(_self: object) -> None:
         raise AssertionError("revision hashing must never resolve secrets")
 
     workflow = Workflow(
@@ -137,7 +166,7 @@ def test_serialized_revision_never_reads_resolved_secret_variables(monkeypatch):
     assert native_workflow_revision(workflow) != original
 
 
-def test_reservation_profile_is_immutable_after_creation():
+def test_reservation_profile_is_immutable_after_creation() -> None:
     from services.dify_builder.native_testing.repository import BudgetReservation
 
     limits = {"cpu_ms": 10}
@@ -152,7 +181,7 @@ def test_reservation_profile_is_immutable_after_creation():
     limits["cpu_ms"] = 999
     assert reservation.limits["cpu_ms"] == 10
     with pytest.raises(TypeError):
-        reservation.profile["cpu_ms"] = 999
+        cast(MutableMapping[str, int], reservation.profile)["cpu_ms"] = 999
 
 
 @pytest.mark.parametrize(
@@ -162,7 +191,9 @@ def test_reservation_profile_is_immutable_after_creation():
         ({"limit": True}, "4d6f9f32e931369db2613ba4746f348cf99e5a98a1e6e2f8187e80738db8634c"),
     ],
 )
-def test_legacy_batch_scope_keeps_captured_digest_and_ignores_occurrence(parameters, golden):
+def test_legacy_batch_scope_keeps_captured_digest_and_ignores_occurrence(
+    parameters: dict[str, JsonValue], golden: str
+) -> None:
     from services.dify_builder.native_testing.authorization import _scope_digest
     from services.dify_builder.native_testing.repository import NativeBinding
 
@@ -180,7 +211,7 @@ def test_legacy_batch_scope_keeps_captured_digest_and_ignores_occurrence(paramet
     "key_change",
     [{"invocation_id": "another-inv"}, {"occurrence_path": ("node", "iteration-1")}, {"cursor": 1}],
 )
-def test_operation_scope_binds_each_actual_key_component(key_change):
+def test_operation_scope_binds_each_actual_key_component(key_change: dict[str, object]) -> None:
     from services.dify_builder.native_testing.authorization import _scope_digest
     from services.dify_builder.native_testing.repository import NativeBinding
 
@@ -193,7 +224,7 @@ def test_operation_scope_binds_each_actual_key_component(key_change):
     assert _scope_digest(effect, trusted) != _scope_digest(effect, binding(effect))
 
 
-def test_operation_scope_preserves_typed_parameters_and_excludes_transport_correlations():
+def test_operation_scope_preserves_typed_parameters_and_excludes_transport_correlations() -> None:
     from services.dify_builder.native_testing.authorization import _scope_digest
     from services.dify_builder.native_testing.repository import NativeBinding
 
@@ -206,7 +237,7 @@ def test_operation_scope_preserves_typed_parameters_and_excludes_transport_corre
     assert _scope_digest(effect, trusted) == _scope_digest(effect, correlated)
 
 
-def _binding_boundary(*, frozen, current):
+def _binding_boundary(*, frozen: dict[str, JsonValue], current: NativeBinding) -> NativeBinding:
     from sqlalchemy.orm import sessionmaker
 
     from core.dify_builder.models import Actor
@@ -236,12 +267,13 @@ def _binding_boundary(*, frozen, current):
     )
     with pytest.MonkeyPatch.context() as boundary:
         boundary.setattr(resolver, "resolve_binding", lambda **_kwargs: current)
-        return EffectAuthorizationService(loader)._binding(None, owned, effect)
+        with Session() as session:
+            return EffectAuthorizationService(loader)._binding(session, owned, effect)
 
 
 @pytest.mark.parametrize("invalid", [None, True, 1, "", "OPERATION", "other", ["operation"]])
 @pytest.mark.parametrize("source", ["frozen", "current"])
-def test_malformed_server_scope_is_rejected_at_c02_binding_boundary(invalid, source):
+def test_malformed_server_scope_is_rejected_at_c02_binding_boundary(invalid: JsonValue, source: str) -> None:
     effect = intent()
     trusted = binding(effect)
     raw = trusted.model_dump(mode="json")
@@ -255,7 +287,7 @@ def test_malformed_server_scope_is_rejected_at_c02_binding_boundary(invalid, sou
 
 
 @pytest.mark.parametrize(("frozen_mode", "current_mode"), [("batch", "operation"), ("operation", "batch")])
-def test_current_server_scope_classification_drift_is_rejected(frozen_mode, current_mode):
+def test_current_server_scope_classification_drift_is_rejected(frozen_mode: str, current_mode: str) -> None:
     trusted = binding(intent())
     frozen = {**trusted.model_dump(mode="json"), "approval_scope": frozen_mode}
     current = trusted.model_copy(update={"approval_scope": current_mode})
@@ -264,13 +296,13 @@ def test_current_server_scope_classification_drift_is_rejected(frozen_mode, curr
 
 
 @pytest.mark.parametrize("mode", ["batch", "operation"])
-def test_known_destructive_classification_remains_forbidden_in_each_scope(mode):
+def test_known_destructive_classification_remains_forbidden_in_each_scope(mode: str) -> None:
     trusted = binding(intent()).model_copy(update={"approval_scope": mode, "destructive": True})
     with pytest.raises(BuilderExecutionPolicyError, match="destructive_effect_forbidden"):
         _binding_boundary(frozen=trusted.model_dump(mode="json"), current=trusted)
 
 
-def test_client_effect_cannot_select_approval_scope():
+def test_client_effect_cannot_select_approval_scope() -> None:
     from pydantic import ValidationError
 
     with pytest.raises(ValidationError):

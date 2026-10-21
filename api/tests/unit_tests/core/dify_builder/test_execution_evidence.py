@@ -3,10 +3,12 @@
 from typing import Literal
 
 import pytest
+import pytest_mock
 
 from core.dify_builder.models import Run, RunVerification
 from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix, verification
 from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
+from tests.unit_tests.installed_spies import installed_mock
 
 
 def sample(
@@ -102,7 +104,7 @@ def test_denial_ids_block_even_when_native_failed_or_proof_incomplete(
     "outcome", ["execution_blocked", "native_failed", "execution_evidence_unknown", "simulation_completed"]
 )
 def test_handlers_keep_denials_out_of_review_and_repair(
-    mocker,
+    mocker: pytest_mock.MockerFixture,
     flow: str,
     outcome: Literal[
         "restricted_execution_completed",
@@ -141,7 +143,9 @@ def test_handlers_keep_denials_out_of_review_and_repair(
     }[flow]
     result = handler(env, Turn(actor=helpers._actor()), session, context)
     assert result.next not in {PcState.BUILD_REVIEW, PcState.EDIT_REVIEW}
+    assert result.context is not None
     assert not result.context.staged_repair
+    assert result.run is not None
     assert result.run.verification is not None
     assert result.run.verification.execution_evidence is not None
     assert raw.verification is not None
@@ -152,7 +156,7 @@ def test_handlers_keep_denials_out_of_review_and_repair(
 
 
 def test_fix_diagnose_does_not_diagnose_persisted_policy_denial(
-    mocker,
+    mocker: pytest_mock.MockerFixture,
 ) -> None:
 
     from core.dify_builder.models import DifyBuilderContext, Turn
@@ -169,11 +173,12 @@ def test_fix_diagnose_does_not_diagnose_persisted_policy_denial(
     mocker.patch.object(env.agent, "diagnose", side_effect=AssertionError("must not diagnose policy"))
     result = handle_diagnose(env, Turn(actor=_actor()), session, DifyBuilderContext(failed_run_id="denied"))
     assert result.next == PcState.FIX_AWAIT_DECISION
-    env.agent.diagnose.assert_not_called()
+    _installed_spy_1 = installed_mock(env.agent.diagnose)
+    _installed_spy_1.assert_not_called()
 
 
 @pytest.mark.parametrize("flow", ["build", "edit", "fix"])
-def test_generic_verification_exception_never_enters_diagnosis(mocker, flow: str) -> None:
+def test_generic_verification_exception_never_enters_diagnosis(mocker: pytest_mock.MockerFixture, flow: str) -> None:
     import importlib
 
     from core.dify_builder.models import Turn
@@ -198,6 +203,7 @@ def test_generic_verification_exception_never_enters_diagnosis(mocker, flow: str
         "fix": handlers_fix.handle_verify,
     }[flow]
     result = handler(env, Turn(actor=helpers._actor()), session, saved_test_context(repo, session.id))
+    assert result.run is not None
     assert verification.is_execution_policy_blocker(result.run)
     env.agent.diagnose.assert_not_called()
     env.agent.propose_repair.assert_not_called()

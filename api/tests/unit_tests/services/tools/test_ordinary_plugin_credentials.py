@@ -1,14 +1,19 @@
 """Ordinary plugin runtime contracts; synthetic values and no provider I/O."""
 
+from collections.abc import Callable, Generator
+from contextlib import _GeneratorContextManager
 from dataclasses import dataclass
 from types import ModuleType
+from typing import Never, Self
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy import Engine
+import pytest_mock
+import sqlalchemy.orm
+from sqlalchemy import Engine, Update
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.dify_builder.real_call_consent import ConfirmedToolBinding
+from core.dify_builder.real_call_consent import ConfirmedToolBinding, ConfirmedToolGuard
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.helper.provider_encryption import ProviderConfigEncrypter
 from core.plugin.entities.plugin_daemon import CredentialType, PluginOAuthCredentialsResponse
@@ -17,11 +22,14 @@ from core.plugin.impl.tool import PluginToolManager
 from core.tools.entities.tool_entities import ToolEntity, ToolProviderEntityWithPlugin, ToolProviderType
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.plugin_tool.provider import PluginToolProviderController
+from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_manager import ToolManager
 from models.tools import BuiltinToolProvider
 from runtime_contracts.builder.execution import ConfirmedToolExecutionContext, context_digest
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService, ServiceConfirmedToolGuard
+from tests.unit_tests.core.tools.test_tool_manager import _CallableSessionProxy
+from tests.unit_tests.installed_spies import installed_mock
 
 PROVIDER = "langgenius/search/search"
 CREDENTIAL = "00000000-0000-0000-0000-000000000002"
@@ -31,7 +39,7 @@ CANARY = "synthetic-owner-canary"
 @dataclass
 class _CredentialDatabase:
     engine: Engine
-    session: Session
+    session: Session | _CallableSessionProxy
 
 
 @dataclass
@@ -55,7 +63,12 @@ class _RefreshUpdateResult:
 
 
 @pytest.fixture
-def owner(mocker, monkeypatch, sqlite_session, sqlite_engine):
+def owner(
+    mocker: pytest_mock.MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: sqlalchemy.orm.Session,
+    sqlite_engine: sqlalchemy.Engine,
+) -> _CredentialOwner:
     from core.tools import tool_manager as module
 
     try:
@@ -109,7 +122,14 @@ def owner(mocker, monkeypatch, sqlite_session, sqlite_engine):
     session.commit()
     credential_reads = []
 
-    def record_credential_read(_connection, _cursor, statement, _parameters, _context, _executemany):
+    def record_credential_read(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: object,
+    ) -> None:
         if statement.lstrip().upper().startswith("SELECT") and "tool_builtin_providers" in statement:
             credential_reads.append(statement)
 
@@ -140,22 +160,33 @@ def owner(mocker, monkeypatch, sqlite_session, sqlite_engine):
     )
 
 
-def runtime(**kwargs):
-    return ToolManager.get_tool_runtime(
-        provider_type=kwargs.pop("provider_type", ToolProviderType.PLUGIN),
+def runtime(
+    *,
+    provider_type: ToolProviderType = ToolProviderType.PLUGIN,
+    credential_id: str | None = CREDENTIAL,
+    confirmed_guard: ConfirmedToolGuard | None = None,
+    json_provider_validator: Callable[[object, object], None] | None = None,
+) -> PluginTool:
+    tool = ToolManager.get_tool_runtime(
+        provider_type=provider_type,
         provider_id=PROVIDER,
         tool_name="search",
         tenant_id="tenant-1",
         user_id="user-1",
-        credential_id=kwargs.pop("credential_id", CREDENTIAL),
-        **kwargs,
+        credential_id=credential_id,
+        confirmed_guard=confirmed_guard,
+        json_provider_validator=json_provider_validator,
     )
+    assert isinstance(tool, PluginTool)
+    return tool
 
 
 @pytest.mark.parametrize("provider_type", [ToolProviderType.PLUGIN, ToolProviderType.BUILT_IN])
-def test_explicit_reference_reaches_actual_plugin_runtime(owner, provider_type):
+def test_explicit_reference_reaches_actual_plugin_runtime(
+    owner: _CredentialOwner, provider_type: ToolProviderType
+) -> None:
     tool = runtime(provider_type=provider_type)
-    list(tool.invoke(session=None, user_id="user-1", tool_parameters={}))
+    list(tool.invoke(session=owner.session, user_id="user-1", tool_parameters={}))
     assert owner.dispatch.call_args.kwargs["credentials"] == {"api_key": CANARY}
     assert tool.plugin_unique_identifier == owner.controller.plugin_unique_identifier
     assert tool.tool_provider_type() == ToolProviderType.PLUGIN
@@ -176,34 +207,40 @@ def test_explicit_reference_reaches_actual_plugin_runtime(owner, provider_type):
         ("id", "00000000-0000-0000-0000-000000000003"),
     ],
 )
-def test_mismatched_stored_identity_refuses_before_decryption(owner, field, value):
+def test_mismatched_stored_identity_refuses_before_decryption(owner: _CredentialOwner, field: str, value: str) -> None:
     setattr(owner.row, field, value)
     owner.session.commit()
     with pytest.raises(ToolProviderCredentialValidationError):
         runtime()
-    owner.encrypter.decrypt.assert_not_called()
+    _installed_spy_1 = installed_mock(owner.encrypter.decrypt)
+    _installed_spy_1.assert_not_called()
     owner.dispatch.assert_not_called()
 
 
-def test_invalid_explicit_reference_never_selects_default(owner):
+def test_invalid_explicit_reference_never_selects_default(owner: _CredentialOwner) -> None:
     with pytest.raises(ToolProviderCredentialValidationError):
         runtime(credential_id="serialized-secret-is-not-an-id")
-    owner.encrypter.decrypt.assert_not_called()
+    _installed_spy_2 = installed_mock(owner.encrypter.decrypt)
+    _installed_spy_2.assert_not_called()
 
 
-def test_default_reference_resolves_credentials(owner):
+def test_default_reference_resolves_credentials(owner: _CredentialOwner) -> None:
     assert runtime(credential_id=None).runtime.credentials == {"api_key": CANARY}
-    owner.encrypter.decrypt.assert_called_once()
+    _installed_spy_3 = installed_mock(owner.encrypter.decrypt)
+    _installed_spy_3.assert_called_once()
 
 
-def test_no_auth_uses_empty_credentials_without_read(owner):
+def test_no_auth_uses_empty_credentials_without_read(owner: _CredentialOwner) -> None:
     owner.controller.entity.credentials_schema = []
     assert runtime().runtime.credentials == {}
     assert owner.credential_reads == []
-    owner.encrypter.decrypt.assert_not_called()
+    _installed_spy_4 = installed_mock(owner.encrypter.decrypt)
+    _installed_spy_4.assert_not_called()
 
 
-def test_confirmed_plugin_rejected_before_credential_or_provider_work(owner, mocker):
+def test_confirmed_plugin_rejected_before_credential_or_provider_work(
+    owner: _CredentialOwner, mocker: pytest_mock.MockerFixture
+) -> None:
     lookup = mocker.patch.object(ToolManager, "get_plugin_provider", side_effect=AssertionError("provider lookup"))
     context = ConfirmedToolExecutionContext(
         policy_version="builder-confirmed-gmail-read-v1",
@@ -239,21 +276,23 @@ def test_confirmed_plugin_rejected_before_credential_or_provider_work(owner, moc
     with pytest.raises(BuilderExecutionPolicyError):
         runtime(confirmed_guard=guard)
     lookup.assert_not_called()
-    owner.encrypter.decrypt.assert_not_called()
+    _installed_spy_5 = installed_mock(owner.encrypter.decrypt)
+    _installed_spy_5.assert_not_called()
 
 
-def test_native_json_rejection_precedes_credential_work(owner):
-    def validator(_provider, _tool):
+def test_native_json_rejection_precedes_credential_work(owner: _CredentialOwner) -> None:
+    def validator(_provider: object, _tool: object) -> Never:
         raise AssertionError("validator should not be reached")
 
     with pytest.raises(BuilderExecutionPolicyError):
         runtime(json_provider_validator=validator)
     assert owner.credential_reads == []
-    owner.encrypter.decrypt.assert_not_called()
+    _installed_spy_6 = installed_mock(owner.encrypter.decrypt)
+    _installed_spy_6.assert_not_called()
 
 
 @pytest.fixture
-def persisted_credentials(sqlite_engine, owner):
+def persisted_credentials(sqlite_engine: sqlalchemy.Engine, owner: _CredentialOwner) -> Generator[_CredentialDatabase]:
     from sqlalchemy.orm import Session
 
     from models.base import TypeBase
@@ -277,8 +316,13 @@ def persisted_credentials(sqlite_engine, owner):
 @pytest.mark.parametrize("provider_type", [ToolProviderType.PLUGIN, ToolProviderType.BUILT_IN])
 @pytest.mark.parametrize("credential_id", [None, CREDENTIAL])
 def test_refresh_persists_actual_selected_row(
-    owner, persisted_credentials, mocker, monkeypatch, provider_type, credential_id
-):
+    owner: _CredentialOwner,
+    persisted_credentials: _CredentialDatabase,
+    mocker: pytest_mock.MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    provider_type: ToolProviderType,
+    credential_id: str | None,
+) -> None:
     from models.tools import BuiltinToolProvider
 
     monkeypatch.setattr(owner.module, "db", persisted_credentials)
@@ -302,13 +346,18 @@ def test_refresh_persists_actual_selected_row(
         assert stored.expires_at == 9999999999
         assert stored.credentials == {"api_key": "rotated-ciphertext"}
     refresh.assert_called_once()
-    owner.cache.delete.assert_called_once()
+    _installed_spy_7 = installed_mock(owner.cache.delete)
+    _installed_spy_7.assert_called_once()
 
 
 @pytest.mark.parametrize("conflict", ["rotation", "delete", "owner", "expiry"])
 def test_refresh_conflict_refuses_runtime_without_cache_invalidation(
-    owner, persisted_credentials, mocker, monkeypatch, conflict
-):
+    owner: _CredentialOwner,
+    persisted_credentials: _CredentialDatabase,
+    mocker: pytest_mock.MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    conflict: str,
+) -> None:
     from sqlalchemy import delete, update
     from sqlalchemy.orm import Session
 
@@ -320,7 +369,7 @@ def test_refresh_conflict_refuses_runtime_without_cache_invalidation(
         "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client", lambda *_args: {}
     )
 
-    def rotate(**_kwargs):
+    def rotate(**_kwargs: object) -> PluginOAuthCredentialsResponse:
         with Session(persisted_credentials.engine) as session, session.begin():
             if conflict == "delete":
                 session.execute(delete(BuiltinToolProvider).where(BuiltinToolProvider.id == CREDENTIAL))
@@ -339,11 +388,12 @@ def test_refresh_conflict_refuses_runtime_without_cache_invalidation(
     with pytest.raises(ToolProviderCredentialValidationError):
         runtime(credential_id=None)
     refresh.assert_called_once()
-    owner.cache.delete.assert_not_called()
+    _installed_spy_8 = installed_mock(owner.cache.delete)
+    _installed_spy_8.assert_not_called()
     owner.dispatch.assert_not_called()
 
 
-def test_workspace_credential_delegation_does_not_compare_runtime_user_to_creator(owner):
+def test_workspace_credential_delegation_does_not_compare_runtime_user_to_creator(owner: _CredentialOwner) -> None:
     owner.row.user_id = "workspace-credential-creator"
     owner.session.commit()
     tool = runtime()
@@ -351,7 +401,9 @@ def test_workspace_credential_delegation_does_not_compare_runtime_user_to_creato
     assert tool.runtime.credentials == {"api_key": CANARY}
 
 
-def test_policy_refusal_precedes_decrypt_refresh_or_dispatch(owner, mocker):
+def test_policy_refusal_precedes_decrypt_refresh_or_dispatch(
+    owner: _CredentialOwner, mocker: pytest_mock.MockerFixture
+) -> None:
     owner.row.expires_at = 1
     owner.session.commit()
     owner.policy.side_effect = ValueError("policy refused")
@@ -360,12 +412,15 @@ def test_policy_refusal_precedes_decrypt_refresh_or_dispatch(owner, mocker):
     )
     with pytest.raises(ValueError, match="policy refused"):
         runtime()
-    owner.encrypter.decrypt.assert_not_called()
+    _installed_spy_9 = installed_mock(owner.encrypter.decrypt)
+    _installed_spy_9.assert_not_called()
     refresh.assert_not_called()
     owner.dispatch.assert_not_called()
 
 
-def test_ordinary_refresh_failure_refuses_without_cache_invalidation(owner, mocker, monkeypatch):
+def test_ordinary_refresh_failure_refuses_without_cache_invalidation(
+    owner: _CredentialOwner, mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
     owner.row.expires_at = 1
     owner.session.commit()
     monkeypatch.setattr(
@@ -377,13 +432,17 @@ def test_ordinary_refresh_failure_refuses_without_cache_invalidation(owner, mock
     with pytest.raises(ToolProviderCredentialValidationError, match="could not be refreshed"):
         runtime()
     refresh.assert_called_once()
-    owner.cache.delete.assert_not_called()
+    _installed_spy_10 = installed_mock(owner.cache.delete)
+    _installed_spy_10.assert_not_called()
     owner.dispatch.assert_not_called()
 
 
 def test_hardcoded_refresh_retains_original_state_across_session_expiration(
-    owner, persisted_credentials, mocker, monkeypatch
-):
+    owner: _CredentialOwner,
+    persisted_credentials: _CredentialDatabase,
+    mocker: pytest_mock.MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from sqlalchemy import update
     from sqlalchemy.orm import Session
 
@@ -400,7 +459,7 @@ def test_hardcoded_refresh_retains_original_state_across_session_expiration(
         "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client", lambda *_args: {}
     )
 
-    def rotate(**_kwargs):
+    def rotate(**_kwargs: object) -> PluginOAuthCredentialsResponse:
         with Session(persisted_credentials.engine) as session, session.begin():
             session.execute(update(BuiltinToolProvider).values(encrypted_credentials='{"api_key":"concurrent"}'))
         # A collaborator expiring the ordinary scoped session must not replace
@@ -417,36 +476,38 @@ def test_hardcoded_refresh_retains_original_state_across_session_expiration(
             tenant_id="tenant-1",
             user_id="user-1",
         )
-    owner.cache.delete.assert_not_called()
+    _installed_spy_11 = installed_mock(owner.cache.delete)
+    _installed_spy_11.assert_not_called()
 
     refresh.assert_called_once()
 
 
-def test_empty_reference_preserves_default_selection(owner):
+def test_empty_reference_preserves_default_selection(owner: _CredentialOwner) -> None:
     assert runtime(credential_id="").runtime.credentials == {"api_key": CANARY}
-    owner.encrypter.decrypt.assert_called_once()
+    _installed_spy_12 = installed_mock(owner.encrypter.decrypt)
+    _installed_spy_12.assert_called_once()
 
 
 class _RefreshWriteSession:
     """Transaction boundary double; the production writer builds the actual SQL."""
 
-    def __init__(self, rowcount, events, *, commit_fails=False):
+    def __init__(self, rowcount: int | None, events: list[str], *, commit_fails: bool = False) -> None:
         self.rowcount = rowcount
         self.events = events
         self.commit_fails = commit_fails
-        self.statement = None
+        self.statement: Update | None = None
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *_args):
+    def __exit__(self, *_args: object) -> bool:
         return False
 
-    def begin(self):
+    def begin(self) -> _GeneratorContextManager[None]:
         from contextlib import contextmanager
 
         @contextmanager
-        def transaction():
+        def transaction() -> Generator[None]:
             self.events.append("begin")
             try:
                 yield
@@ -460,20 +521,22 @@ class _RefreshWriteSession:
 
         return transaction()
 
-    def scalar(self, statement):
+    def scalar(self, statement: Update) -> str:
         # Characterize the pre-fix RETURNING path without a real database call.
         self.statement = statement
         self.events.append("update")
         return CREDENTIAL
 
-    def execute(self, statement):
+    def execute(self, statement: Update) -> _RefreshUpdateResult:
         self.statement = statement
         self.events.append("update")
         return _RefreshUpdateResult(rowcount=self.rowcount)
 
 
 @pytest.mark.parametrize("backend", ["postgresql", "mysql", "oceanbase", "seekdb"])
-def test_refresh_update_compiles_for_supported_database_configuration(owner, monkeypatch, backend):
+def test_refresh_update_compiles_for_supported_database_configuration(
+    owner: _CredentialOwner, monkeypatch: pytest.MonkeyPatch, backend: str
+) -> None:
     from sqlalchemy.dialects import registry
 
     from configs.middleware import DatabaseConfig
@@ -507,16 +570,18 @@ def test_refresh_update_compiles_for_supported_database_configuration(owner, mon
 
 
 @pytest.mark.parametrize("rowcount", [1, 0, -1, None, 2])
-def test_refresh_requires_exactly_one_affected_row_before_cache_and_dispatch(owner, mocker, monkeypatch, rowcount):
+def test_refresh_requires_exactly_one_affected_row_before_cache_and_dispatch(
+    owner: _CredentialOwner, mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch, rowcount: int | None
+) -> None:
     from contextlib import contextmanager
 
     owner.row.expires_at = 1
     owner.session.commit()
-    events = []
+    events: list[str] = []
     writer = _RefreshWriteSession(rowcount, events)
 
     @contextmanager
-    def read_session():
+    def read_session() -> Generator[Session]:
         yield owner.session
         owner.session.close()
         events.append("read-closed")
@@ -534,31 +599,35 @@ def test_refresh_requires_exactly_one_affected_row_before_cache_and_dispatch(own
             or PluginOAuthCredentialsResponse(credentials={"api_key": "rotated"}, expires_at=9999999999)
         ),
     )
-    owner.cache.delete.side_effect = lambda: events.append("cache-delete")
+    _installed_spy_13 = installed_mock(owner.cache.delete)
+    _installed_spy_13.side_effect = lambda: events.append("cache-delete")
     owner.dispatch.side_effect = lambda **_kwargs: events.append("dispatch") or iter(())
     if rowcount == 1:
         tool = runtime()
-        list(tool.invoke(session=None, user_id="user-1", tool_parameters={}))
+        list(tool.invoke(session=owner.session, user_id="user-1", tool_parameters={}))
         assert events == ["read-closed", "refresh", "begin", "update", "commit", "cache-delete", "dispatch"]
     else:
         with pytest.raises(ToolProviderCredentialValidationError, match="changed during refresh"):
             runtime()
         assert events == ["read-closed", "refresh", "begin", "update", "rollback"]
-        owner.cache.delete.assert_not_called()
+        _installed_spy_15 = installed_mock(owner.cache.delete)
+        _installed_spy_15.assert_not_called()
         owner.dispatch.assert_not_called()
     refresh.assert_called_once()
 
 
-def test_refresh_commit_uncertainty_refuses_cache_invalidation_and_dispatch(owner, mocker, monkeypatch):
+def test_refresh_commit_uncertainty_refuses_cache_invalidation_and_dispatch(
+    owner: _CredentialOwner, mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from contextlib import contextmanager
 
     owner.row.expires_at = 1
     owner.session.commit()
-    events = []
+    events: list[str] = []
     writer = _RefreshWriteSession(1, events, commit_fails=True)
 
     @contextmanager
-    def read_session():
+    def read_session() -> Generator[Session]:
         yield owner.session
         owner.session.close()
         events.append("read-closed")
@@ -580,5 +649,6 @@ def test_refresh_commit_uncertainty_refuses_cache_invalidation_and_dispatch(owne
         runtime()
     assert events == ["read-closed", "refresh", "begin", "update", "rollback"]
     refresh.assert_called_once()
-    owner.cache.delete.assert_not_called()
+    _installed_spy_14 = installed_mock(owner.cache.delete)
+    _installed_spy_14.assert_not_called()
     owner.dispatch.assert_not_called()

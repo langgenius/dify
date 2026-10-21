@@ -1,20 +1,31 @@
 """Allocation boundary checks; real SQL locking/concurrency is CI-owned."""
 
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
+from typing import Never
 
 import pytest
+import sqlalchemy.orm
+from dify_agent.client import Client
+from dify_agent.protocol.execution_binding import CreateExecutionBindingRequest, CreateExecutionBindingResponse
 from sqlalchemy import event
 
+from models.dify_builder_native_tests import NativeTestInvocation, NativeTestScope
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from services.dify_builder.native_testing.agent_operations import AgentOperationService
+from services.dify_builder.native_testing.agent_workspace import AgentTestWorkspaceService
+from services.dify_builder.native_testing.repository import OwnedNativeTest
 from tests.unit_tests.services.dify_builder import native_owner_fixtures
 
 operations_service = native_owner_fixtures.operations_service
 preparation_sql = native_owner_fixtures.preparation_sql
 
 
-def test_resource_metadata_cannot_authorize_an_operation(operations_service, sqlite_session):
+def test_resource_metadata_cannot_authorize_an_operation(
+    operations_service: AgentOperationService, sqlite_session: sqlalchemy.orm.Session
+) -> None:
     from services.dify_builder.native_testing.authorization import EffectAuthorizationService
     from tests.unit_tests.services.dify_builder.native_testing.test_authorization import binding, intent
 
@@ -28,7 +39,7 @@ def test_resource_metadata_cannot_authorize_an_operation(operations_service, sql
         EffectAuthorizationService(operations_service.loader)._binding(sqlite_session, owner, effect)
 
 
-def test_native_allocation_reservation_preserves_effect_entries():
+def test_native_allocation_reservation_preserves_effect_entries() -> None:
     from shellctl.shared.schemas import NativeScopeLimits, NativeScopeSpec
 
     from models.dify_builder_native_tests import NativeTestInvocation
@@ -78,7 +89,19 @@ def test_native_allocation_reservation_preserves_effect_entries():
     assert row.bindings["_agent_workspace_v1"]["binding_id"] == "binding"
 
 
-def service_fixture(monkeypatch, sqlite_session, operations_service, invocation_id="inv"):
+def service_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: sqlalchemy.orm.Session,
+    operations_service: AgentOperationService,
+    invocation_id: str = "inv",
+) -> tuple[
+    AgentTestWorkspaceService,
+    NativeTestContextRef,
+    NativeTestInvocation,
+    sqlalchemy.orm.Session,
+    list[CreateExecutionBindingRequest],
+    Client,
+]:
     from shellctl.shared.schemas import NativeScopeLimits
 
     from services.agent.workspace_service import AgentWorkspaceService
@@ -118,10 +141,11 @@ def service_fixture(monkeypatch, sqlite_session, operations_service, invocation_
         )
     session.add(row)
     session.commit()
-    session.info["workspace_additions"] = []
+    workspace_additions: list[AgentWorkspace | AgentWorkspaceBinding] = []
+    session.info["workspace_additions"] = workspace_additions
     if not session.info.get("observe_workspace_additions"):
 
-        def record_workspace_addition(_session, instance):
+        def record_workspace_addition(_session: object, instance: object) -> None:
             if isinstance(instance, AgentWorkspace | AgentWorkspaceBinding):
                 session.info["workspace_additions"].append(instance)
 
@@ -132,11 +156,11 @@ def service_fixture(monkeypatch, sqlite_session, operations_service, invocation_
     from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import preparation_owner, resolved_context
 
     owned = replace(preparation_owner(), ref=ref, expires_at=datetime.now(UTC) + timedelta(minutes=5))
-    transactions = []
+    transactions: list[bool] = []
     loader = operations_service.loader
 
     @contextmanager
-    def locked(**kwargs):
+    def locked(**kwargs: object) -> Generator[tuple[sqlalchemy.orm.Session, OwnedNativeTest, None]]:
         del kwargs
         transactions.append(True)
         try:
@@ -165,16 +189,19 @@ def service_fixture(monkeypatch, sqlite_session, operations_service, invocation_
         disk_bytes=1 << 20,
     )
     service = AgentTestWorkspaceService(loader, state_store=state, limits=limits)
-    requests = []
+    requests: list[CreateExecutionBindingRequest] = []
     from dify_agent.client import Client
 
     client = Client(base_url="http://agent.invalid")
-    session.info["destroy_requests"] = []
+    from dify_agent.protocol.execution_binding import DestroyExecutionBindingRequest
+
+    destroy_requests: list[DestroyExecutionBindingRequest] = []
+    session.info["destroy_requests"] = destroy_requests
     monkeypatch.setattr(
         client, "destroy_execution_binding_sync", lambda request: session.info["destroy_requests"].append(request)
     )
 
-    def create(request):
+    def create(request: CreateExecutionBindingRequest) -> CreateExecutionBindingResponse:
         from dify_agent.protocol.execution_binding import CreateExecutionBindingResponse
 
         assert not transactions, "physical I/O under SQL owner lock"
@@ -186,7 +213,7 @@ def service_fixture(monkeypatch, sqlite_session, operations_service, invocation_
     monkeypatch.setattr(client, "create_execution_binding_sync", create)
 
     @contextmanager
-    def backend_client():
+    def backend_client() -> Generator[Client]:
         yield client
 
     monkeypatch.setattr(AgentWorkspaceService, "_client", backend_client)
@@ -194,13 +221,14 @@ def service_fixture(monkeypatch, sqlite_session, operations_service, invocation_
 
 
 def test_prepare_pins_home_and_never_allocates_conversation_or_updates_soul(
-    monkeypatch, sqlite_session, operations_service
-):
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: sqlalchemy.orm.Session, operations_service: AgentOperationService
+) -> None:
     from models.agent import AgentWorkspace, AgentWorkspaceBinding, AgentWorkspaceOwnerType
 
     service, ref, row, session, requests, client = service_fixture(monkeypatch, sqlite_session, operations_service)
     result = service.prepare(ref=ref, pinned_snapshot_id="snapshot", input_file_refs=())
     assert requests[0].home_snapshot_ref == "home-published"
+    assert requests[0].native_test_scope is not None
     assert requests[0].native_test_scope.network_targets == ()
     assert row.bindings["a" * 64] == {"protected": True}
     workspace, binding = session.info["workspace_additions"]
@@ -213,11 +241,13 @@ def test_prepare_pins_home_and_never_allocates_conversation_or_updates_soul(
     assert len(requests) == 1
 
 
-def test_ambiguous_allocation_reconciles_exact_ids_without_new_create(monkeypatch, sqlite_session, operations_service):
+def test_ambiguous_allocation_reconciles_exact_ids_without_new_create(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: sqlalchemy.orm.Session, operations_service: AgentOperationService
+) -> None:
     service, ref, row, session, requests, client = service_fixture(monkeypatch, sqlite_session, operations_service)
     create = client.create_execution_binding_sync
 
-    def lost(request):
+    def lost(request: CreateExecutionBindingRequest) -> Never:
         create(request)
         raise TimeoutError("allocation response lost")
 
@@ -234,7 +264,9 @@ def test_ambiguous_allocation_reconciles_exact_ids_without_new_create(monkeypatc
     assert requests[1].native_scope_reconcile is True
 
 
-def test_cross_tenant_or_changed_pin_and_input_import_refuse_before_io(monkeypatch, sqlite_session, operations_service):
+def test_cross_tenant_or_changed_pin_and_input_import_refuse_before_io(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: sqlalchemy.orm.Session, operations_service: AgentOperationService
+) -> None:
     service, ref, row, session, requests, client = service_fixture(monkeypatch, sqlite_session, operations_service)
     with pytest.raises(BuilderExecutionPolicyError, match="native_input_import_requires_capability"):
         service.prepare(ref=ref, pinned_snapshot_id="snapshot", input_file_refs=("file",))
@@ -253,19 +285,21 @@ def test_cross_tenant_or_changed_pin_and_input_import_refuse_before_io(monkeypat
 
 
 def test_cancel_between_physical_allocation_and_finalize_cleans_same_scope(
-    monkeypatch, sqlite_session, operations_service
-):
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: sqlalchemy.orm.Session, operations_service: AgentOperationService
+) -> None:
     service, ref, row, session, requests, client = service_fixture(monkeypatch, sqlite_session, operations_service)
     original = service.loader.locked
     calls = 0
 
     @contextmanager
-    def cancelled(**kwargs):
+    def cancelled(
+        *, ref: NativeTestContextRef, settlement: bool = False
+    ) -> Generator[tuple[sqlalchemy.orm.Session, OwnedNativeTest, NativeTestScope | None]]:
         nonlocal calls
         calls += 1
         if calls == 2:
             raise BuilderExecutionPolicyError("native_cancelled")
-        with original(**kwargs) as value:
+        with original(ref=ref, settlement=settlement) as value:
             yield value
 
     monkeypatch.setattr(service.loader, "locked", cancelled)
@@ -279,8 +313,8 @@ def test_cancel_between_physical_allocation_and_finalize_cleans_same_scope(
 
 
 def test_separate_invocations_reserve_distinct_mutable_home_and_workspace_ids(
-    monkeypatch, sqlite_session, operations_service
-):
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: sqlalchemy.orm.Session, operations_service: AgentOperationService
+) -> None:
     first, ref1, _, _, requests1, _ = service_fixture(monkeypatch, sqlite_session, operations_service)
     home1 = first.prepare(ref=ref1, pinned_snapshot_id="snapshot", input_file_refs=())
     second, ref2, _, _, requests2, _ = service_fixture(
@@ -293,7 +327,9 @@ def test_separate_invocations_reserve_distinct_mutable_home_and_workspace_ids(
     assert requests1[0].home_snapshot_ref == requests2[0].home_snapshot_ref == "home-published"
 
 
-def test_known_native_binding_requires_actual_owned_workspace_rows(monkeypatch, sqlite_session, operations_service):
+def test_known_native_binding_requires_actual_owned_workspace_rows(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: sqlalchemy.orm.Session, operations_service: AgentOperationService
+) -> None:
     service, ref, _, session, requests, _ = service_fixture(monkeypatch, sqlite_session, operations_service)
     result = service.prepare(ref=ref, pinned_snapshot_id="snapshot", input_file_refs=())
     assert service.validate_binding(ref=ref, binding_ref=result.backend_binding_ref) == result

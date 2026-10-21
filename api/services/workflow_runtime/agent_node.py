@@ -599,7 +599,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             workflow_binding_id=session_scope.workflow_agent_binding_id,
         )
         parent = load_confirmed_agent_parent(
-            service=self._agent_preparation, ref=marker.ref, execution_id=self.execution_id
+            state_store=self._agent_preparation.state_store, ref=marker.ref, execution_id=self.execution_id
         )
         response = self._agent_run_recovery.recover_existing(
             scope=scope,

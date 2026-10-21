@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import NoReturn, Unpack, override
 
 import pytest
+import pytest_mock
 
 from core.dify_builder.contract import ProgressEventData, ResourceOption
 from core.dify_builder.models import (
@@ -33,7 +34,7 @@ from core.dify_builder.models import (
 from core.dify_builder.state import PcState
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from services.dify_builder.application.placeholder_agent import PlaceholderAgent
-from services.dify_builder.application.ports import DifyBuilderAgent
+from services.dify_builder.application.ports import DifyBuilderAgent, DifyPort
 from services.dify_builder.application.runner import Runner, StepResult
 from tests.unit_tests.core.dify_builder.fakes import (
     ContextOverrides,
@@ -67,7 +68,7 @@ def _session(**overrides: Unpack[SessionOverrides]) -> Session:
 
 
 def _new_env(
-    dify: FakeDifyPort | FakeBuildDifyPort | None = None,
+    dify: DifyPort | None = None,
     emit_canvas: Callable[[dict[str, object]], None] | None = None,
     agent: DifyBuilderAgent | None = None,
 ) -> tuple[FixtureEnv, InMemoryRepository]:
@@ -129,7 +130,9 @@ def test_capability_check_renders_agent_fields() -> None:
 
 
 @pytest.mark.parametrize("reply_language", ["en", "es-ES", ""])
-def test_capability_check_binds_session_language_in_requirement_prompt(mocker, reply_language: str) -> None:
+def test_capability_check_binds_session_language_in_requirement_prompt(
+    mocker: pytest_mock.MockerFixture, reply_language: str
+) -> None:
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
     from services.dify_builder.application.handlers_build import handle_capability_check
 
@@ -681,6 +684,7 @@ def test_execution_run_test_advances_to_test_and_repair() -> None:
     turn = Turn(action=Action(kind="run_test", base_version=1), actor=_actor())
     res = handle_execution(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.BUILD_TEST_AND_REPAIR
+    assert res.context is not None
     assert res.context.test_input_ref != "ti-1"
     assert repo.get_test_input(res.context.test_input_ref).inputs == {"topic": "hello"}
     assert events == []
@@ -947,7 +951,7 @@ def test_test_and_repair_model_config_failure_surfaces_without_repair() -> None:
 
 
 def test_missing_proof_running_result_stops_at_review(
-    mocker,
+    mocker: pytest_mock.MockerFixture,
 ) -> None:
     """A truncated verify result requires review and never enters diagnosis."""
     from core.dify_builder.models import Run
@@ -1070,12 +1074,12 @@ def test_await_repair_approve_applies_and_waits_for_retest() -> None:
     assert result.context.staged_repair == []  # cleared after apply
 
 
-def test_await_repair_keep_draft_completes_without_second_confirmation(monkeypatch):
+def test_await_repair_keep_draft_completes_without_second_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.application.handlers_build import handle_await_repair
 
     env, _ = _new_env()
 
-    def unexpected_effect(*_args, **_kwargs):
+    def unexpected_effect(*_args: object, **_kwargs: object) -> None:
         pytest.fail("Keeping a failed draft must not mutate, execute or publish it")
 
     for method in ("apply_repair", "run_draft", "publish"):
@@ -1084,7 +1088,9 @@ def test_await_repair_keep_draft_completes_without_second_confirmation(monkeypat
     context = DifyBuilderContext(verify_run_id="failed-run", last_repair_error="model unavailable")
     result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="keep_draft")), s, context)
     assert result.next == PcState.BUILD_COMPLETE
+    assert result.context is not None
     assert result.context.verify_run_id == "failed-run"
+    assert result.context is not None
     assert result.context.last_repair_error == "model unavailable"
 
 
@@ -1593,7 +1599,12 @@ def test_run_test_prefills_the_form_with_mock_values() -> None:
     }
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
     fc = DifyBuilderContext(test_input_ref="")
-    env.agent.generate_mock_inputs = lambda _schema, _prior: {"topic": "A synthetic topic"}
+
+    def generate_mock_inputs(schema: Graph, prior_failed: Graph) -> Inputs:
+        del schema, prior_failed
+        return {"topic": "A synthetic topic"}
+
+    env.agent.generate_mock_inputs = generate_mock_inputs
     result = handle_execution(env, Turn(actor=_actor(), action=Action(kind="run_test")), s, fc)
     assert result.next == PcState.BUILD_AWAIT_TESTDATA
     form = next(i for i in result.items if i.kind == "form")
@@ -3096,7 +3107,7 @@ def test_default_build_test_never_passes_consent_even_with_a_pending_reference()
     assert seen == [(None, None)]
 
 
-def test_changed_test_scope_uses_a_localizable_reason(monkeypatch):
+def test_changed_test_scope_uses_a_localizable_reason(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.application import handlers_build
 
     env, _ = _new_env(dify=FakeBuildDifyPort())
@@ -3115,7 +3126,7 @@ def test_changed_test_scope_uses_a_localizable_reason(monkeypatch):
     assert fc.verify_run_id == ""
 
 
-def test_failed_inventory_is_not_reported_as_no_matching_resources():
+def test_failed_inventory_is_not_reported_as_no_matching_resources() -> None:
     from services.dify_builder.application.handlers_build import handle_initial_plan
 
     env, repo = _new_env(agent=_ResourceAgent([]))
