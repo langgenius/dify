@@ -265,28 +265,28 @@ export default function AccountSetting({
             aria-hidden
             className="pointer-events-none absolute inset-y-0 left-full w-screen bg-components-panel-bg"
           />
-          <ScrollArea className="h-full min-h-0 min-w-0 flex-1 bg-components-panel-bg">
+          <ScrollArea className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-components-panel-bg">
+            {activeMenu !== ACCOUNT_SETTING_TAB.IP_POLICIES && (
+              <div className="mx-4 flex min-h-15 shrink-0 items-end bg-components-panel-bg pt-8 pr-12 pb-2 sm:mx-8">
+                <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
+                  {activeItem?.title ?? activeItem?.name}
+                  {activeItem?.description && (
+                    <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
+                      {activeItem?.description}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <ScrollAreaViewport
               ref={scrollContainerRef}
               style={{ overflowX: 'hidden' }}
-              className="overscroll-contain"
+              className="min-h-0 flex-1 overscroll-contain"
             >
               <ScrollAreaContent
                 style={{ minWidth: 0 }}
                 className="min-h-full w-full max-w-full pb-4"
               >
-                {activeMenu !== ACCOUNT_SETTING_TAB.IP_POLICIES && (
-                  <div className="sticky top-0 z-20 mx-8 flex min-h-15 items-end bg-components-panel-bg pt-8 pb-2">
-                    <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
-                      {activeItem?.title ?? activeItem?.name}
-                      {activeItem?.description && (
-                        <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
-                          {activeItem?.description}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
                 <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
                   {/* First-use translations and queries must not suspend the dialog shell. */}
                   <Suspense fallback={<LoadingPlaceholder className="py-10" />}>
