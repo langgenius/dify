@@ -128,6 +128,27 @@ describe('useWorkflowNodeStarted', () => {
     expect(tracing[1]).toMatchObject({ node_id: 'n1', status: NodeRunningStatus.Running })
   })
 
+  it('updates the first tracing entry when the same execution is replayed', () => {
+    const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          tracing: [createNodeTracing({ node_id: 'n1', status: NodeRunningStatus.Succeeded })],
+        }),
+      },
+    })
+
+    act(() => {
+      result.current.handleWorkflowNodeStarted(
+        createNodeStartedResponse({ data: { id: 'trace-n1', node_id: 'n1' } as never }),
+        containerParams,
+      )
+    })
+
+    const tracing = store.getState().workflowRunningData!.tracing!
+    expect(tracing).toHaveLength(1)
+    expect(tracing[0]).toMatchObject({ node_id: 'n1', status: NodeRunningStatus.Running })
+  })
+
   it.each(['iteration_id', 'loop_id'] as const)(
     'keeps earlier %s rounds when the same node starts with a new execution id',
     (executionGroup) => {
