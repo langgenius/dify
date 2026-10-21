@@ -3306,11 +3306,6 @@
       "count": 1
     }
   },
-  "web/features/agent-v2/agent-detail/configure/components/orchestrate/knowledge/dialog.tsx": {
-    "shadcn/no-restyle": {
-      "count": 7
-    }
-  },
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/skills/use-skill-detail.ts": {
     "no-restricted-properties": {
       "count": 1
@@ -3329,76 +3324,6 @@
   "web/features/app-access-error/document-response.ts": {
     "no-restricted-globals": {
       "count": 1
-    }
-  },
-  "web/features/new-rag/components/knowledge-model-setup-dialog.tsx": {
-    "shadcn/no-restyle": {
-      "count": 6
-    }
-  },
-  "web/features/new-rag/create/page.tsx": {
-    "shadcn/no-restyle": {
-      "count": 2
-    }
-  },
-  "web/features/new-rag/documents/actions-dropdown.tsx": {
-    "shadcn/no-restyle": {
-      "count": 9
-    }
-  },
-  "web/features/new-rag/documents/bulk/toolbar.tsx": {
-    "shadcn/no-restyle": {
-      "count": 4
-    }
-  },
-  "web/features/new-rag/quality/golden-question-dialog.tsx": {
-    "shadcn/no-restyle": {
-      "count": 2
-    }
-  },
-  "web/features/new-rag/quality/golden-question-import-dialog.tsx": {
-    "shadcn/no-restyle": {
-      "count": 6
-    }
-  },
-  "web/features/new-rag/quality/golden-questions-panel.tsx": {
-    "shadcn/no-restyle": {
-      "count": 4
-    }
-  },
-  "web/features/new-rag/quality/quality-evaluation-panel.tsx": {
-    "shadcn/no-restyle": {
-      "count": 18
-    }
-  },
-  "web/features/new-rag/settings/delete-knowledge.tsx": {
-    "shadcn/no-restyle": {
-      "count": 5
-    }
-  },
-  "web/features/new-rag/settings/retrieval-settings.tsx": {
-    "shadcn/no-restyle": {
-      "count": 5
-    }
-  },
-  "web/features/new-rag/sources/source-actions.tsx": {
-    "shadcn/no-restyle": {
-      "count": 4
-    }
-  },
-  "web/features/new-rag/sources/source-edit-dialog.tsx": {
-    "shadcn/no-restyle": {
-      "count": 7
-    }
-  },
-  "web/features/new-rag/space/api-access-dialog.tsx": {
-    "shadcn/no-restyle": {
-      "count": 9
-    }
-  },
-  "web/features/new-rag/upload/local-file-preview.tsx": {
-    "shadcn/no-restyle": {
-      "count": 7
     }
   },
   "web/features/skills/client.ts": {
@@ -3609,7 +3534,7 @@
   },
   "web/service/fetch.spec.ts": {
     "typescript/no-deprecated": {
-      "count": 13
+      "count": 12
     }
   },
   "web/service/fetch.ts": {

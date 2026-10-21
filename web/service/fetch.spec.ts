@@ -160,6 +160,7 @@ describe('base', () => {
       })
     })
 
+    // oxlint-disable-next-line typescript/no-deprecated -- This spec directly tests legacy auth replay.
     const response = await request<Response>(
       callerRequest.url,
       {},

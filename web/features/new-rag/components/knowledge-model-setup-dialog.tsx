@@ -2,7 +2,15 @@
 
 import type { KnowledgeFsSettingsResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 
 function readinessTitle(
@@ -52,18 +60,14 @@ export function KnowledgeModelSetupDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-120 p-0!">
-        <div className="px-6 pt-6">
-          <DialogTitle className="title-xl-semi-bold text-text-primary">
-            {readinessTitle(readiness, t, tCommon)}
-          </DialogTitle>
-          {description && (
-            <DialogDescription className="mt-2 body-sm-regular text-text-tertiary">
-              {description}
-            </DialogDescription>
-          )}
-          {issues.length > 0 && (
-            <ul className="mt-3 space-y-1 body-sm-regular text-text-secondary">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{readinessTitle(readiness, t, tCommon)}</DialogTitle>
+          {description && <DialogDescription>{description}</DialogDescription>}
+        </DialogHeader>
+        {issues.length > 0 && (
+          <DialogBody>
+            <ul className="space-y-1 body-sm-regular text-text-secondary">
               {issues.map((issue) => (
                 <li key={issue.field} className="flex items-start gap-2">
                   <span aria-hidden className="mt-0.5 i-ri-error-warning-line size-4 shrink-0" />
@@ -71,16 +75,16 @@ export function KnowledgeModelSetupDialog({
                 </li>
               ))}
             </ul>
-          )}
-        </div>
-        <div className="mt-6 flex justify-end gap-2 px-6 pb-6">
+          </DialogBody>
+        )}
+        <DialogFooter>
           <Button onClick={() => onOpenChange(false)}>
             {tCommon(($) => $['operation.cancel'])}
           </Button>
           <Button variant="primary" onClick={onConfigure}>
             {tCommon(($) => $['modelProvider.selector.configure'], { ns: 'modelProvider' })}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

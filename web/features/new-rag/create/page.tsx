@@ -422,7 +422,7 @@ function CreateKnowledgeSession() {
               onFormSubmit={() => void handleSubmit()}
             >
               <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
-                <DialogTitle id={dialogTitleId} className="title-2xl-semi-bold text-text-primary">
+                <DialogTitle id={dialogTitleId}>
                   {t(($) => $.createTitle, { ns: 'knowledgeCreate' })}
                 </DialogTitle>
               </header>

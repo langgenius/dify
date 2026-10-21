@@ -2,11 +2,13 @@
 
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -94,16 +96,18 @@ export function DeleteKnowledgeAction() {
         }}
       >
         <AlertDialogContent initialFocus={cancelRef}>
-          <div className="px-6 pt-6">
-            <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['settings.deleteDialogTitle'], { ns: 'knowledgeSettings', name })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2 body-sm-regular text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['settings.deleteDialogDescription'], { ns: 'knowledgeSettings' })}
             </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogBody>
             <label
               htmlFor="knowledge-delete-confirmation"
-              className="mt-5 block system-sm-medium text-text-secondary"
+              className="block system-sm-medium text-text-secondary"
             >
               {t(($) => $['settings.deleteConfirmPrompt'], { ns: 'knowledgeSettings', name })}
             </label>
@@ -116,7 +120,7 @@ export function DeleteKnowledgeAction() {
               className="mt-2 w-full"
               onChange={(event) => setConfirmation(event.target.value)}
             />
-          </div>
+          </AlertDialogBody>
           <AlertDialogFooter>
             <AlertDialogCancelButton ref={cancelRef} disabled={mutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}

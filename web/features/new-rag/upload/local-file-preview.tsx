@@ -1,7 +1,12 @@
 'use client'
 
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FilePreviewContent } from '@/app/components/base/file-uploader/file-preview-content'
@@ -36,27 +41,11 @@ function LocalTextFilePreviewBody({ file }: { file: File }) {
 
   return (
     <>
-      <header className="flex shrink-0 items-start justify-between gap-4 border-b border-divider-subtle px-6 py-4">
-        <div className="min-w-0">
-          <div className="system-2xs-semibold-uppercase text-text-accent">
-            {t(($) => $.preview)}
-          </div>
-          <DialogTitle className="mt-1 truncate title-md-semi-bold text-text-primary">
-            {file.name}
-          </DialogTitle>
-        </div>
-        <DialogClose
-          render={
-            <IconButton
-              size="lg"
-              aria-label={tCommon(($) => $['operation.close'])}
-              className="static shrink-0"
-            >
-              <span aria-hidden className="i-ri-close-line size-5" />
-            </IconButton>
-          }
-        />
-      </header>
+      <DialogHeader>
+        <div className="system-2xs-semibold-uppercase text-text-accent">{t(($) => $.preview)}</div>
+        <DialogTitle>{file.name}</DialogTitle>
+        <DialogHeaderCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+      </DialogHeader>
       <div className="min-h-0 flex-1 bg-background-default-subtle p-4">
         {content === undefined && !readFailed && (
           <div className="flex size-full items-center justify-center">
@@ -109,7 +98,7 @@ export function LocalFilePreview({
             }}
           />
         ) : (
-          <DialogContent className="flex h-[80dvh] max-h-180 w-240 flex-col overflow-hidden p-0">
+          <DialogContent className="h-[80dvh] max-h-180 w-240 overflow-hidden">
             <LocalTextFilePreviewBody file={file} />
           </DialogContent>
         ))}

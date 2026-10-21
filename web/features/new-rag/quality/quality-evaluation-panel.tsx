@@ -9,12 +9,14 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   queryOptions,
   useInfiniteQuery,
@@ -317,7 +319,7 @@ function EvidenceDetailsDialog({
 }) {
   return (
     <Dialog open={Boolean(item)} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160! max-w-[calc(100vw-2rem)]! flex-col overflow-hidden! p-0!">
+      <DialogContent className="w-160 overflow-hidden">
         {item && <EvidenceDetailsContent item={item} runId={runId} />}
       </DialogContent>
     </Dialog>
@@ -354,31 +356,23 @@ function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: stri
 
   return (
     <>
-      <div className="relative px-6 pt-6">
-        <DialogTitle className="system-lg-semibold pr-10 text-text-primary">
+      <DialogHeader>
+        <DialogTitle>
           {t(($) => $['qualityPage.evaluation.evidenceDetailsTitle'], { ns: 'knowledgeQuality' })}
         </DialogTitle>
-        <DialogDescription className="mt-3 pr-10 system-sm-regular text-text-tertiary">
+        <DialogDescription>
           {t(($) => $['qualityPage.evaluation.evidenceDetailsDescription'], {
             ns: 'knowledgeQuality',
           })}
         </DialogDescription>
-        <p className="mt-3 rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-medium text-text-primary">
+        <p className="mt-2 rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-medium text-text-primary">
           {item.question}
         </p>
-        <DialogClose
-          render={
-            <IconButton
-              size="lg"
-              aria-label={t(($) => $['qualityPage.closeDialog'], { ns: 'knowledgeQuality' })}
-              className="absolute inset-e-6 top-6 z-10"
-            >
-              <span aria-hidden className="i-ri-close-line size-5" />
-            </IconButton>
-          }
+        <DialogHeaderCloseButton
+          aria-label={t(($) => $['qualityPage.closeDialog'], { ns: 'knowledgeQuality' })}
         />
-      </div>
-      <div className="min-h-40 flex-1 overflow-y-auto px-6 pt-5 pb-6">
+      </DialogHeader>
+      <DialogBody>
         {evidenceDetailQuery.isLoading ? (
           <div className="flex min-h-40 items-center justify-center" role="status">
             <LoadingPlaceholder />
@@ -428,7 +422,7 @@ function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: stri
             ))}
           </div>
         )}
-      </div>
+      </DialogBody>
     </>
   )
 }
@@ -489,7 +483,7 @@ function RunEvaluationDialog({
 
   return (
     <Dialog open={canEdit && open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-120! max-w-[calc(100vw-2rem)]! overflow-hidden! p-0!">
+      <DialogContent>
         <RunEvaluationForm onClose={() => onOpenChange(false)} onRunStarted={onRunStarted} />
       </DialogContent>
     </Dialog>
@@ -587,16 +581,17 @@ function RunEvaluationForm({
 
   return (
     <form
+      className="flex min-h-0 flex-col"
       onSubmit={(event) => {
         event.preventDefault()
         void startEvaluation()
       }}
     >
-      <div className="relative px-6 pt-6">
-        <DialogTitle className="system-lg-semibold pr-10 text-text-primary">
+      <DialogHeader>
+        <DialogTitle>
           {t(($) => $['qualityPage.evaluation.dialogTitle'], { ns: 'knowledgeQuality' })}
         </DialogTitle>
-        <DialogDescription className="mt-2 pr-8 system-sm-regular text-text-tertiary">
+        <DialogDescription>
           {activeCountQuery.isSuccess
             ? t(($) => $['qualityPage.evaluation.dialogDescription'], {
                 ns: 'knowledgeQuality',
@@ -606,19 +601,11 @@ function RunEvaluationForm({
                 ns: 'knowledgeQuality',
               })}
         </DialogDescription>
-        <DialogClose
-          render={
-            <IconButton
-              size="lg"
-              aria-label={t(($) => $['qualityPage.closeDialog'], { ns: 'knowledgeQuality' })}
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-5" />
-            </IconButton>
-          }
+        <DialogHeaderCloseButton
+          aria-label={t(($) => $['qualityPage.closeDialog'], { ns: 'knowledgeQuality' })}
         />
-      </div>
-      <div className="px-6 py-3">
+      </DialogHeader>
+      <DialogBody>
         <p className="system-xs-medium text-text-secondary">
           {t(($) => $['qualityPage.evaluation.modeLabel'], { ns: 'knowledgeQuality' })}
         </p>
@@ -629,15 +616,15 @@ function RunEvaluationForm({
           value={mode}
           onChange={setMode}
         />
-      </div>
-      <div className="flex justify-end gap-2 px-6 py-4">
+      </DialogBody>
+      <DialogFooter>
         <Button type="button" disabled={createMutation.isPending} onClick={onClose}>
           {t(($) => $['qualityPage.cancel'], { ns: 'knowledgeQuality' })}
         </Button>
         <Button type="submit" variant="primary" loading={createMutation.isPending}>
           {t(($) => $['qualityPage.evaluation.start'], { ns: 'knowledgeQuality' })}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }

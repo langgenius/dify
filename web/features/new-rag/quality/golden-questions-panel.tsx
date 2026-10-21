@@ -9,6 +9,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -524,14 +525,12 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
         }}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {tCommon(($) => $['operation.deleteConfirmTitle'])}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tCommon(($) => $['operation.deleteConfirmTitle'])}</AlertDialogTitle>
+            <AlertDialogDescription>
               {tCommon(($) => $['operation.confirmAction'])}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton variant="secondary" disabled={deleteSubmitting}>
               {tCommon(($) => $['operation.cancel'])}

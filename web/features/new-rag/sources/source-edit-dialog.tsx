@@ -12,7 +12,14 @@ import type {
 import type { SourceEditValues } from './source-list-model'
 import type { CrawlPreviewPage, Source, SourceSyncPolicy } from './source-models'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
@@ -141,13 +148,7 @@ export function SourceEditDialog({
   const connectedDraft = connectedDraftFromSource(source)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className={
-          connectedDraft
-            ? 'max-h-[calc(100vh-2rem)] w-180! max-w-[calc(100vw-2rem)]! overflow-y-auto'
-            : 'w-160! max-w-[calc(100vw-2rem)]!'
-        }
-      >
+      <DialogContent className={connectedDraft ? 'w-180' : 'w-160'}>
         <SourceEditDialogContent
           connectedDraft={connectedDraft}
           controlSpaceId={controlSpaceId}
@@ -307,10 +308,12 @@ function ConnectedSourceEditDialogContent({
 
   return (
     <>
-      <DialogTitle className="title-xl-semi-bold text-text-primary">
-        {tCommon(($) => $['operation.edit'])} {source.name}
-      </DialogTitle>
-      <div className="mt-5">
+      <DialogHeader>
+        <DialogTitle>
+          {tCommon(($) => $['operation.edit'])} {source.name}
+        </DialogTitle>
+      </DialogHeader>
+      <DialogBody>
         {loading ? (
           <div role="status" aria-label={tCommon(($) => $.loading)} className="py-16 text-center">
             <span
@@ -347,13 +350,13 @@ function ConnectedSourceEditDialogContent({
             onSubmit={submitEdit}
           />
         )}
-      </div>
+      </DialogBody>
       {(loading || unavailable) && (
-        <div className="mt-6 flex justify-end gap-2">
+        <DialogFooter>
           <Button disabled={pending} onClick={() => onOpenChange(false)} type="button">
             {tCommon(($) => $['operation.cancel'])}
           </Button>
-        </div>
+        </DialogFooter>
       )}
     </>
   )
@@ -401,15 +404,18 @@ function BasicSourceEditDialogContent({
 
   return (
     <form
+      className="flex min-h-0 flex-col"
       onSubmit={(event) => {
         event.preventDefault()
         void submitEdit()
       }}
     >
-      <DialogTitle className="title-xl-semi-bold text-text-primary">
-        {tCommon(($) => $['operation.edit'])} {initialSource.name}
-      </DialogTitle>
-      <div className="mt-5">
+      <DialogHeader>
+        <DialogTitle>
+          {tCommon(($) => $['operation.edit'])} {initialSource.name}
+        </DialogTitle>
+      </DialogHeader>
+      <DialogBody className="space-y-4">
         <Field name="sourceName" className="gap-1.5">
           <FieldLabel htmlFor={`source-name-${initialSource.id}`}>
             {t(($) => $.sourceName, { ns: 'knowledgeSources' })}
@@ -423,8 +429,6 @@ function BasicSourceEditDialogContent({
             onChange={(event) => setNextName(event.target.value)}
           />
         </Field>
-      </div>
-      <div className="mt-4">
         <SyncPolicyField
           disabled={pending}
           label
@@ -442,8 +446,8 @@ function BasicSourceEditDialogContent({
               setNextCustomIntervalHours(value.customIntervalSeconds / 3600)
           }}
         />
-      </div>
-      <div className="mt-6 flex justify-end gap-2">
+      </DialogBody>
+      <DialogFooter>
         <Button disabled={pending} onClick={() => onOpenChange(false)} type="button">
           {tCommon(($) => $['operation.cancel'])}
         </Button>
@@ -455,7 +459,7 @@ function BasicSourceEditDialogContent({
         >
           {tCommon(($) => $['operation.save'])}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }
@@ -738,125 +742,130 @@ function WebsiteSourceEditDialogContent({
   return (
     <>
       <form
+        className="flex min-h-0 flex-col"
         noValidate={!needsWebsiteSelection}
         onSubmit={(event) => {
           event.preventDefault()
           void submitEdit()
         }}
       >
-        <DialogTitle className="title-xl-semi-bold text-text-primary">
-          {tCommon(($) => $['operation.edit'])} {initialSource.name}
-        </DialogTitle>
-        {initialSource.type === 'web' ? (
-          <div className="mt-5">
-            {providerConfigurationReady ? (
-              <WebsiteDatasourceParameterForm
-                additionalPrimaryField={sourceNameField}
-                disabled={pending}
-                parameters={displayedParameters}
-                schemas={parameterSchemas}
-                onChange={(parameters) => {
-                  setNextParameters(parameters)
-                  resetPreview()
-                }}
-              />
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {sourceNameField}
-                {providerLoading ? (
-                  <div
-                    role="status"
-                    aria-label={tCommon(($) => $.loading)}
-                    className="space-y-2 pt-0.5"
-                  >
-                    <span className="block h-4 w-24 animate-pulse rounded bg-util-colors-gray-gray-200 motion-reduce:animate-none" />
-                    <span className="block h-8 w-full animate-pulse rounded-lg bg-util-colors-gray-gray-200 motion-reduce:animate-none" />
-                  </div>
-                ) : (
-                  <p role="alert" className="pt-7 system-sm-regular text-text-destructive">
-                    {providerLoadFailed
-                      ? t(($) => $.providerLoadFailed)
-                      : t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="mt-5">{sourceNameField}</div>
-        )}
-        {initialSource.connectionId && !connection && isFetchNextPageError && (
-          <div className="mt-4">
-            <p role="alert" className="system-sm-regular text-text-destructive">
-              {t(($) => $.providerLoadFailed)}
-            </p>
-            <Button
-              className="mt-3"
-              disabled={pending}
-              loading={isFetchingNextPage}
-              onClick={() => void fetchNextPage()}
-              type="button"
-            >
-              {tCommon(($) => $['operation.retry'])}
-            </Button>
-          </div>
-        )}
-        {initialSource.type === 'web' && providerConfigurationReady && (
-          <div className="mt-4">
-            {!previewPages.length && (
-              <Button
-                className="w-full"
-                disabled={pending || !parametersValid || !providerOption || !previewBindingReady}
-                loading={previewing}
-                type="button"
-                variant="primary"
-                onClick={() => void startPreview()}
-              >
-                {t(($) => $.preview)}
-              </Button>
-            )}
-            {previewError && (
-              <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
+        <DialogHeader>
+          <DialogTitle>
+            {tCommon(($) => $['operation.edit'])} {initialSource.name}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          {initialSource.type === 'web' ? (
+            <div>
+              {providerConfigurationReady ? (
+                <WebsiteDatasourceParameterForm
+                  additionalPrimaryField={sourceNameField}
+                  disabled={pending}
+                  parameters={displayedParameters}
+                  schemas={parameterSchemas}
+                  onChange={(parameters) => {
+                    setNextParameters(parameters)
+                    resetPreview()
+                  }}
+                />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {sourceNameField}
+                  {providerLoading ? (
+                    <div
+                      role="status"
+                      aria-label={tCommon(($) => $.loading)}
+                      className="space-y-2 pt-0.5"
+                    >
+                      <span className="block h-4 w-24 animate-pulse rounded bg-util-colors-gray-gray-200 motion-reduce:animate-none" />
+                      <span className="block h-8 w-full animate-pulse rounded-lg bg-util-colors-gray-gray-200 motion-reduce:animate-none" />
+                    </div>
+                  ) : (
+                    <p role="alert" className="pt-7 system-sm-regular text-text-destructive">
+                      {providerLoadFailed
+                        ? t(($) => $.providerLoadFailed)
+                        : t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>{sourceNameField}</div>
+          )}
+          {initialSource.connectionId && !connection && isFetchNextPageError && (
+            <div className="mt-4">
+              <p role="alert" className="system-sm-regular text-text-destructive">
                 {t(($) => $.providerLoadFailed)}
               </p>
-            )}
-            {previewPages.length > 0 && (
-              <CrawlPreviewPageSelection
+              <Button
+                className="mt-3"
                 disabled={pending}
-                onRecrawl={() => void startPreview()}
-                onSelectionChange={setSelectedPageIds}
-                pages={previewPages}
-                rootUrl={
-                  typeof displayedParameters.url === 'string'
-                    ? normalizeWebsiteSourceUrl(displayedParameters.url)?.toString()
-                    : undefined
-                }
-                selectedPageIds={selectedPageIds}
-                sourceLabel={providerOption?.label}
-              />
-            )}
+                loading={isFetchingNextPage}
+                onClick={() => void fetchNextPage()}
+                type="button"
+              >
+                {tCommon(($) => $['operation.retry'])}
+              </Button>
+            </div>
+          )}
+          {initialSource.type === 'web' && providerConfigurationReady && (
+            <div className="mt-4">
+              {!previewPages.length && (
+                <Button
+                  className="w-full"
+                  disabled={pending || !parametersValid || !providerOption || !previewBindingReady}
+                  loading={previewing}
+                  type="button"
+                  variant="primary"
+                  onClick={() => void startPreview()}
+                >
+                  {t(($) => $.preview)}
+                </Button>
+              )}
+              {previewError && (
+                <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
+                  {t(($) => $.providerLoadFailed)}
+                </p>
+              )}
+              {previewPages.length > 0 && (
+                <CrawlPreviewPageSelection
+                  disabled={pending}
+                  onRecrawl={() => void startPreview()}
+                  onSelectionChange={setSelectedPageIds}
+                  pages={previewPages}
+                  rootUrl={
+                    typeof displayedParameters.url === 'string'
+                      ? normalizeWebsiteSourceUrl(displayedParameters.url)?.toString()
+                      : undefined
+                  }
+                  selectedPageIds={selectedPageIds}
+                  sourceLabel={providerOption?.label}
+                />
+              )}
+            </div>
+          )}
+          <div className="mt-4">
+            <SyncPolicyField
+              disabled={pending}
+              label
+              triggerClassName="w-full"
+              value={{
+                customIntervalSeconds:
+                  typeof nextCustomIntervalHours === 'number'
+                    ? nextCustomIntervalHours * 3600
+                    : undefined,
+                mode: nextSyncMode,
+              }}
+              onChange={(value) => {
+                setNextSyncMode(value.mode)
+                if (value.customIntervalSeconds)
+                  setNextCustomIntervalHours(value.customIntervalSeconds / 3600)
+              }}
+            />
           </div>
-        )}
-        <div className="mt-4">
-          <SyncPolicyField
-            disabled={pending}
-            label
-            triggerClassName="w-full"
-            value={{
-              customIntervalSeconds:
-                typeof nextCustomIntervalHours === 'number'
-                  ? nextCustomIntervalHours * 3600
-                  : undefined,
-              mode: nextSyncMode,
-            }}
-            onChange={(value) => {
-              setNextSyncMode(value.mode)
-              if (value.customIntervalSeconds)
-                setNextCustomIntervalHours(value.customIntervalSeconds / 3600)
-            }}
-          />
-        </div>
-        <div className="mt-6 flex justify-end gap-2">
+        </DialogBody>
+        <DialogFooter>
           <Button disabled={pending} onClick={() => onOpenChange(false)} type="button">
             {tCommon(($) => $['operation.cancel'])}
           </Button>
@@ -873,7 +882,7 @@ function WebsiteSourceEditDialogContent({
           >
             {tCommon(($) => $['operation.save'])}
           </Button>
-        </div>
+        </DialogFooter>
       </form>
     </>
   )

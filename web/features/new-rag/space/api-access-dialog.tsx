@@ -1,8 +1,15 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
@@ -51,29 +58,14 @@ export function KnowledgeFsApiAccessDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-150! max-w-[calc(100vw-2rem)]! flex-col overflow-hidden! rounded-2xl! p-0!">
-          <header className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
-            <div>
-              <DialogTitle className="title-2xl-semi-bold text-text-primary">
-                {t(($) => $.apiAgentAccess)}
-              </DialogTitle>
-              <DialogDescription className="mt-1 body-xs-regular text-text-tertiary">
-                {tCommon(($) => $['appMenus.apiAccessTip'])}
-              </DialogDescription>
-            </div>
-            <IconButton
-              size="lg"
-              type="button"
-              variant="ghost"
-              aria-label={tCommon(($) => $['operation.close'])}
-              className="shrink-0"
-              onClick={() => onOpenChange(false)}
-            >
-              <span aria-hidden className="i-ri-close-line size-5" />
-            </IconButton>
-          </header>
+        <DialogContent className="w-150 overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>{t(($) => $.apiAgentAccess)}</DialogTitle>
+            <DialogDescription>{tCommon(($) => $['appMenus.apiAccessTip'])}</DialogDescription>
+            <DialogHeaderCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+          </DialogHeader>
 
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-6">
+          <DialogBody className="space-y-4">
             <section>
               <p className="system-xs-semibold-uppercase text-text-tertiary">
                 {t(($) => $['serviceApi.card.endpoint'], { ns: 'dataset' })}
@@ -110,7 +102,7 @@ export function KnowledgeFsApiAccessDialog({
                 </Button>
               </div>
             )}
-          </div>
+          </DialogBody>
         </DialogContent>
       </Dialog>
 

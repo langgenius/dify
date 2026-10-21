@@ -7,7 +7,14 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
@@ -191,7 +198,7 @@ function AgentKnowledgeRetrievalForm({
   return (
     <form
       noValidate
-      className="flex max-h-[80dvh] flex-col"
+      className="flex max-h-[80dvh] min-h-0 flex-col text-text-primary"
       onSubmit={(event) => {
         event.preventDefault()
         setSubmitted(true)
@@ -199,11 +206,9 @@ function AgentKnowledgeRetrievalForm({
         else setAdvancedOpen(true)
       }}
     >
-      <div className="shrink-0 px-6 pt-6 pb-4">
+      <DialogHeader>
         <div className="flex items-center gap-2">
-          <DialogTitle className="title-xl-semi-bold text-text-primary">
-            {t(($) => $['agentDetail.configure.knowledgeFs.title'])}
-          </DialogTitle>
+          <DialogTitle>{t(($) => $['agentDetail.configure.knowledgeFs.title'])}</DialogTitle>
           <Infotip>
             <InfotipTrigger
               aria-label={t(($) => $['agentDetail.configure.knowledgeFs.description'])}
@@ -212,26 +217,19 @@ function AgentKnowledgeRetrievalForm({
               {t(($) => $['agentDetail.configure.knowledgeFs.description'])}
             </InfotipContent>
           </Infotip>
-          <IconButton
-            size="lg"
-            className="-my-0.5 ml-auto shrink-0"
-            aria-label={tc(($) => $['operation.close'])}
-            onClick={onClose}
-          >
-            <span aria-hidden className="i-ri-close-line size-4" />
-          </IconButton>
         </div>
-        <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+        <DialogDescription>
           {t(($) => $['agentDetail.configure.knowledgeFs.select'])}
         </DialogDescription>
-        <div className="mt-4">
-          <SearchInput
-            ref={searchRef}
-            value={filter}
-            onValueChange={setFilter}
-            aria-label={t(($) => $['agentDetail.configure.knowledgeFs.filter'])}
-          />
-        </div>
+        <DialogHeaderCloseButton aria-label={tc(($) => $['operation.close'])} />
+      </DialogHeader>
+      <div className="shrink-0 px-6 pb-4">
+        <SearchInput
+          ref={searchRef}
+          value={filter}
+          onValueChange={setFilter}
+          aria-label={t(($) => $['agentDetail.configure.knowledgeFs.filter'])}
+        />
       </div>
       <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain px-4 pb-4 system-sm-regular">
         {legacy && (
@@ -421,10 +419,7 @@ export function AgentKnowledgeRetrievalDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        initialFocus={searchRef}
-        className="w-144 overflow-hidden p-0 text-text-primary"
-      >
+      <DialogContent initialFocus={searchRef} className="w-144 overflow-hidden">
         <AgentKnowledgeRetrievalForm
           initialBindings={initialBindings}
           searchRef={searchRef}

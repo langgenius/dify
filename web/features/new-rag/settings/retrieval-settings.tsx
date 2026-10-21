@@ -9,6 +9,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -369,14 +370,12 @@ export function RetrievalSettingsSection() {
         }}
       >
         <AlertDialogContent>
-          <div className="px-6 pt-6">
-            <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
-              {tSettings(($) => $['form.embeddingModel'])}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2 body-sm-regular text-text-tertiary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tSettings(($) => $['form.embeddingModel'])}</AlertDialogTitle>
+            <AlertDialogDescription>
               {t(($) => $['settings.embeddingChangeWarning'], { ns: 'knowledgeSettings' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton
               type="button"

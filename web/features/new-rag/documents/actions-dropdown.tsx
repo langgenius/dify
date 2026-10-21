@@ -8,11 +8,20 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -100,29 +109,30 @@ function RenameDocumentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <form
+          className="flex min-h-0 flex-col"
           onSubmit={(event) => {
             event.preventDefault()
             void submit()
           }}
         >
-          <DialogTitle className="title-xl-semi-bold text-text-primary">
-            {tCommon(($) => $['operation.rename'])}
-          </DialogTitle>
-          <DialogDescription className="mt-2 system-sm-regular text-text-tertiary">
-            {document.title}
-          </DialogDescription>
-          <label className="mt-5 block system-sm-medium text-text-secondary" htmlFor={inputId}>
-            {t(($) => $.documentColumn)}
-          </label>
-          <Input
-            id={inputId}
-            autoComplete="off"
-            className="mt-2 w-full"
-            disabled={pending}
-            value={nextTitle}
-            onChange={(event) => setNextTitle(event.target.value)}
-          />
-          <div className="mt-6 flex justify-end gap-2">
+          <DialogHeader>
+            <DialogTitle>{tCommon(($) => $['operation.rename'])}</DialogTitle>
+            <DialogDescription>{document.title}</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            <label className="block system-sm-medium text-text-secondary" htmlFor={inputId}>
+              {t(($) => $.documentColumn)}
+            </label>
+            <Input
+              id={inputId}
+              autoComplete="off"
+              className="mt-2 w-full"
+              disabled={pending}
+              value={nextTitle}
+              onChange={(event) => setNextTitle(event.target.value)}
+            />
+          </DialogBody>
+          <DialogFooter>
             <Button disabled={pending} onClick={() => onOpenChange(false)} type="button">
               {tCommon(($) => $['operation.cancel'])}
             </Button>
@@ -134,7 +144,7 @@ function RenameDocumentDialog({
             >
               {tCommon(($) => $['operation.save'])}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
@@ -280,14 +290,12 @@ function RemoveDocumentDialog({
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
-            {tCommon(($) => $['operation.deleteConfirmTitle'])}
-          </AlertDialogTitle>
-          <AlertDialogDescription className="system-sm-regular text-text-tertiary">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{tCommon(($) => $['operation.deleteConfirmTitle'])}</AlertDialogTitle>
+          <AlertDialogDescription>
             {tCommon(($) => $['operation.confirmAction'])}
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancelButton disabled={pending}>
             {tCommon(($) => $['operation.cancel'])}
