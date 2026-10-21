@@ -30,10 +30,13 @@ class RecordingModel:
     def __init__(self, replies: Sequence[str | Exception]) -> None:
         self.replies = iter(replies)
         self.prompts: list[str] = []
+        self.systems: list[str] = []
 
     def invoke_llm(self, **kwargs: object) -> Reply:
         messages = cast(list[SystemPromptMessage | UserPromptMessage], kwargs["prompt_messages"])
         assert isinstance(messages[1].content, str)
+        assert isinstance(messages[0].content, str)
+        self.systems.append(messages[0].content)
         self.prompts.append(messages[1].content)
         reply = next(self.replies)
         if isinstance(reply, Exception):
@@ -227,3 +230,17 @@ def test_edit_plan_uses_explicit_session_language_even_when_rules_are_english() 
     assert plan is not None
     assert "zh-Hans" in model.prompts[0]
     assert "claude-fable-5-1" in model.prompts[0]
+
+
+def test_edit_plan_correction_keeps_session_language_above_technical_input() -> None:
+    model = RecordingModel([json.dumps({"plan": ["create_node node_template"]}), json.dumps(VALID_PLAN)])
+    rules = {"model": "claude-fable-5-1", "template": "VERIFIED|{{ value }}"}
+    assert edit.propose_edit_plan(model, rules, workflow(), reply_language="zh-Hans") is not None
+    assert len(model.systems) == 2
+    for system in model.systems:
+        assert "BCP-47: zh-Hans" in system
+        assert "same language as the user's input" not in system
+        assert "natural-language" in system
+    assert model.systems[0] == model.systems[1]
+    assert "SCHEMA CORRECTION" in model.prompts[1]
+    assert all("VERIFIED|{{ value }}" in prompt for prompt in model.prompts)
