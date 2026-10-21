@@ -3314,6 +3314,11 @@
       "count": 1
     }
   },
+  "web/features/agent-v2/agent-detail/configure/components/orchestrate/knowledge/dialog.tsx": {
+    "shadcn/no-restyle": {
+      "count": 7
+    }
+  },
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/skills/use-skill-detail.ts": {
     "no-restricted-properties": {
       "count": 1
@@ -3322,11 +3327,6 @@
   "web/features/agent-v2/agent-detail/configure/components/preview/__tests__/chat.spec.tsx": {
     "typescript/no-deprecated": {
       "count": 1
-    }
-  },
-  "web/features/agent-v2/agent-detail/configure/components/orchestrate/knowledge/dialog.tsx": {
-    "shadcn/no-restyle": {
-      "count": 7
     }
   },
   "web/features/agent-v2/agent-detail/configure/components/preview/working-directory-panel.tsx": {
@@ -3626,11 +3626,8 @@
     }
   },
   "web/service/fetch.spec.ts": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    },
     "typescript/no-deprecated": {
-      "count": 12
+      "count": 13
     }
   },
   "web/service/fetch.ts": {
@@ -3856,11 +3853,6 @@
   },
   "web/utils/mcp.ts": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/utils/page-leave-guard.ts": {
-    "typescript/no-deprecated": {
       "count": 1
     }
   },

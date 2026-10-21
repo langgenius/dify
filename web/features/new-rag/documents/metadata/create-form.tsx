@@ -1,6 +1,6 @@
 'use client'
 
-import type { FormEvent } from 'react'
+import type { SubmitEvent } from 'react'
 import type { DocumentMetadataField, DocumentMetadataType } from './editor-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -60,7 +60,7 @@ export function DocumentMetadataCreateForm({
   return (
     <form
       className="px-3 pt-3.5 pb-4"
-      onSubmit={(event: FormEvent<HTMLFormElement>) => {
+      onSubmit={(event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault()
         // The form renders in a portal; keep its submit from reaching an enclosing React form.
         event.stopPropagation()

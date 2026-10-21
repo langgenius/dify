@@ -1,6 +1,6 @@
 'use client'
 
-import type { FormEvent, KeyboardEvent } from 'react'
+import type { KeyboardEvent, SubmitEvent } from 'react'
 import type { GoldenQuestionDraft, GoldenQuestionEvidenceOption } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -132,7 +132,7 @@ function GoldenQuestionDialogSession({
       ? t(($) => $['qualityPage.promote'], { ns: 'knowledgeQuality' })
       : t(($) => $['qualityPage.save'], { ns: 'knowledgeQuality' })
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (pending) return
     const nextQuestionInvalid = !question.trim()

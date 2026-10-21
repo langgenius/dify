@@ -515,7 +515,7 @@ function useActiveGoldenQuestionCount(knowledgeSpaceId: string) {
         let count = 0
         let cursor: string | undefined
         do {
-          const page = await queryClient.fetchQuery(pageOptions(cursor))
+          const page = await queryClient.query(pageOptions(cursor))
           count += page.data.filter((question) => question.status === 'active').length
           cursor = page.next_cursor ?? undefined
         } while (cursor)

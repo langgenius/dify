@@ -16,9 +16,7 @@ from core.tools.errors import ToolSSRFError
 KNOWLEDGE_FS_REMOTE_IMAGE_MAX_BYTES = 10 * 1024 * 1024
 KNOWLEDGE_FS_REMOTE_IMAGE_MAX_URL_CHARS = 8_192
 _REMOTE_IMAGE_ACCEPT = "image/webp,image/png,image/jpeg,image/gif;q=0.9,*/*;q=0.1"
-_PERMANENT_DNS_ERROR_CODES = frozenset(
-    int(code) for name in ("EAI_NONAME", "EAI_NODATA", "EAI_FAIL") if (code := getattr(socket, name, None)) is not None
-)
+_PERMANENT_DNS_ERROR_CODES = frozenset((socket.EAI_NONAME, socket.EAI_NODATA, socket.EAI_FAIL))
 
 
 class KnowledgeFSRemoteImageError(ValueError):

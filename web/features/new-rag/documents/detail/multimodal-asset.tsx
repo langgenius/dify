@@ -27,6 +27,7 @@ function protectedDocumentAssetQueryOptions(sources: string[]) {
         const apiAssetPath = consoleApiAssetPath(rawSource)
         if (!apiAssetPath) return { rawSource }
         try {
+          // oxlint-disable-next-line typescript/no-deprecated -- Server-provided asset URLs need an authenticated raw Response to read the image blob.
           const response = await get<Response>(
             apiAssetPath,
             { signal },

@@ -1,13 +1,23 @@
+from collections.abc import Iterator
 from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from celery.contrib.testing.app import TestApp, setup_default_app
 
 from dify_app import DifyApp
 from extensions.ext_celery import get_celery_broker_transport_options, init_app
 from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK
 from services.knowledge_fs.lifecycle_readiness import KnowledgeFSLifecycleWorkerReadiness
 from tests.unit_tests.config_override import apply_config_overrides
+
+
+@pytest.fixture(autouse=True)
+def restore_celery_app_state() -> Iterator[None]:
+    # init_app replaces Celery's process-wide current/default app; restore both so
+    # later shared tasks still resolve against the app that registered them.
+    with setup_default_app(TestApp()):
+        yield
 
 
 @pytest.mark.parametrize("background_enabled", [False, True])

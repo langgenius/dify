@@ -1,5 +1,5 @@
-import type * as ReactQuery from '@tanstack/react-query'
 import type { OperationKeyOptions, OperationType } from '@orpc/tanstack-query'
+import type * as ReactQuery from '@tanstack/react-query'
 import { generateOperationKey } from '@orpc/tanstack-query'
 
 // Keep the path prefix aligned with createConsoleQuery in service/console/query-policies.ts.

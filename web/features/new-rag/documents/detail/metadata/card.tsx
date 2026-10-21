@@ -1,6 +1,6 @@
 'use client'
 
-import type { ChangeEvent, FormEvent } from 'react'
+import type { ChangeEvent, SubmitEvent } from 'react'
 import type { DocumentMetadataType } from '../../metadata/editor-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
@@ -217,7 +217,7 @@ function DocumentMetadataCardContent() {
     await createFieldMutation.mutateAsync({ name, type })
   }
 
-  const save = (event: FormEvent<HTMLFormElement>) => {
+  const save = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!canEdit || saveMutation.isPending || !editBaseline) return
     const patch: Record<string, unknown> = {}

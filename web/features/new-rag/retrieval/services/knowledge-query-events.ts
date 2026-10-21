@@ -75,6 +75,7 @@ export async function streamCapabilityEvents({
     'X-Trace-ID': capabilityTraceId(token),
   }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
+  // oxlint-disable-next-line no-restricted-globals -- KnowledgeFS capability streams use a scoped bearer token and SSE body, which the console client cannot carry.
   const response = await fetch(url, {
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     credentials: 'omit',
