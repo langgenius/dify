@@ -1,12 +1,16 @@
 'use client'
 
 import type { PersonalAccessTokenResponse } from '@dify/contracts/api/console/account/types.gen'
-import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
 import { parseAsInteger, useQueryState } from 'nuqs'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import CopyToken from './copy-token'
@@ -26,6 +30,7 @@ export default function PersonalAccessTokens() {
   const [deleting, setDeleting] = useState<PersonalAccessTokenResponse | null>(null)
   const deleteTriggerRef = useRef<HTMLButtonElement | null>(null)
   const createButtonRef = useRef<HTMLButtonElement | null>(null)
+  const deleteDialogHandle = useMemo(() => createAlertDialogHandle(), [])
   const page = Math.max(1, requestedPage)
   const query = useQuery(
     consoleQuery.account.personalAccessTokens.get.queryOptions({
@@ -35,7 +40,7 @@ export default function PersonalAccessTokens() {
   )
 
   return (
-    <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+    <>
       <section className="mb-8" aria-labelledby="personal-access-tokens-heading">
         <div className="mb-4 flex items-center justify-between gap-4">
           <div>
@@ -173,6 +178,7 @@ export default function PersonalAccessTokens() {
                               setDeleting(target)
                               deleteTriggerRef.current = trigger
                             }}
+                            deleteDialogHandle={deleteDialogHandle}
                           />
                         </td>
                       </tr>
@@ -194,14 +200,18 @@ export default function PersonalAccessTokens() {
           </>
         )}
       </section>
-      <AlertDialogContent
-        className="w-110"
-        finalFocus={() =>
-          deleteTriggerRef.current?.isConnected ? deleteTriggerRef.current : createButtonRef.current
-        }
-      >
-        {deleting && <DeleteToken token={deleting} onClose={() => setDeleteOpen(false)} />}
-      </AlertDialogContent>
-    </AlertDialog>
+      <AlertDialog handle={deleteDialogHandle} open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent
+          className="w-110"
+          finalFocus={() =>
+            deleteTriggerRef.current?.isConnected
+              ? deleteTriggerRef.current
+              : createButtonRef.current
+          }
+        >
+          {deleting && <DeleteToken token={deleting} onClose={() => setDeleteOpen(false)} />}
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
