@@ -164,6 +164,8 @@ class FeatureModel(FeatureResponseModel):
     api_rate_limit: Quota = Quota(usage=0, limit=5000, reset_date=0)
     # Controls whether email delivery is allowed for HumanInput nodes.
     human_input_email_delivery_enabled: bool = False
+    # Centrally managed bindings are read-only in Console; workspaces may override them.
+    im_binding_centrally_managed: bool = False
     knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
     # Workspace and model-provider credit responses own the public reset-date contract.
     next_credit_reset_date: int = Field(default=0, exclude=True)

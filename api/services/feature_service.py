@@ -7,6 +7,11 @@ from services.entities import feature_entities
 
 
 class FeatureService:
+    @staticmethod
+    def is_im_binding_centrally_managed() -> bool:
+        """Enterprise owns default IM bindings; workspaces may only override them."""
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
+
     @classmethod
     def can_import_premium_site_settings(cls, tenant_id: str) -> bool:
         """Keep Cloud-only Web app customization out of free workspace imports."""
@@ -25,6 +30,7 @@ class FeatureService:
     @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> feature_entities.FeatureModel:
         features = feature_entities.FeatureModel()
+        features.im_binding_centrally_managed = cls.is_im_binding_centrally_managed()
         if exclude_vector_space:
             features.vector_space = None
 

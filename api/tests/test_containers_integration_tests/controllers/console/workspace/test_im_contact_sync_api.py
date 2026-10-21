@@ -194,26 +194,21 @@ def test_manual_binding_http_commands_use_real_guarded_postgresql_writes(
         json={"identity_id": str(_SECONDARY_IDENTITY_ID)},
         headers=headers,
     )
-    assert override.status_code == 200
-    assert override.get_json()["contact"]["im_bindings"][0]["scope"] == "workspace"
-
-    replaced_override = test_client_with_containers.put(
-        override_path,
-        json={"identity_id": str(_PRIMARY_IDENTITY_ID)},
-        headers=headers,
-    )
-    assert replaced_override.status_code == 200
-    assert (
-        replaced_override.get_json()["contact"]["im_bindings"][0]["id"]
-        == override.get_json()["contact"]["im_bindings"][0]["id"]
-    )
+    assert override.status_code == 403
+    assert override.get_json() == {
+        "code": "workspace_im_override_not_allowed",
+        "message": "Workspace IM overrides require centrally managed bindings.",
+        "status": 403,
+    }
 
     reset = test_client_with_containers.delete(override_path, headers=headers)
-    assert reset.status_code == 200
-    assert reset.get_json()["contact"]["im_bindings"] == [organization_binding]
-    idempotent_reset = test_client_with_containers.delete(override_path, headers=headers)
-    assert idempotent_reset.status_code == 200
-    assert idempotent_reset.get_json()["contact"]["im_bindings"] == [organization_binding]
+    assert reset.status_code == 403
+    assert reset.get_json() == override.get_json()
+    db_session_with_containers.expire_all()
+    stored_binding = db_session_with_containers.scalar(select(HumanInputIMBinding))
+    assert stored_binding is not None
+    assert stored_binding.id == organization_binding["id"]
+    assert stored_binding.im_identity_id == str(_PRIMARY_IDENTITY_ID)
 
     missing_binding = test_client_with_containers.delete(
         binding_path,

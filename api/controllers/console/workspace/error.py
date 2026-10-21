@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from libs.exception import BaseHTTPException
 
 
@@ -53,3 +55,15 @@ class InvalidMemberRoleError(BaseHTTPException):
     error_code = "invalid_role"
     description = "Invalid role."
     code = 400
+
+
+class IMBindingReadOnlyError(BaseHTTPException):
+    error_code = "im_binding_read_only"
+    description = "Centrally managed IM bindings cannot be edited from a workspace."
+    code = HTTPStatus.FORBIDDEN
+
+
+class WorkspaceIMOverrideNotAllowedError(BaseHTTPException):
+    error_code = "workspace_im_override_not_allowed"
+    description = "Workspace IM overrides require centrally managed bindings."
+    code = HTTPStatus.FORBIDDEN

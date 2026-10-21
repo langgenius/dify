@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
 from importlib import import_module
@@ -12,6 +13,7 @@ from typing import Never
 
 import pytest
 from flask import Flask
+from flask_restx import Resource
 from pydantic import ValidationError
 from werkzeug.exceptions import NotFound
 
@@ -52,6 +54,7 @@ from core.human_input_v2.im_integration import (
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
+    DeploymentScope,
     IMBindingId,
     IMIdentityId,
     IMSyncResultId,
@@ -60,6 +63,8 @@ from core.human_input_v2.shared import (
     TenantId,
     WorkspaceScope,
 )
+from enums import DeploymentEdition
+from libs.external_api import ExternalApi
 from repositories.human_input_v2.contact import Contact, ContactQuery, ContactType, IMBinding, Page
 from repositories.human_input_v2.im_identity_repository import IMIdentity
 from services.human_input_v2.contact_service import ContactDetails, ContactWithIMBindings, IMBindingDetail
@@ -321,8 +326,14 @@ def test_sync_dispatch_unavailable_has_stable_retryable_http_mapping(
 def test_write_unavailable_has_stable_retryable_http_mapping(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     command: str,
 ) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=(
+            DeploymentEdition.ENTERPRISE if command == "workspace_override" else DeploymentEdition.COMMUNITY
+        )
+    )
     error = IMWriteUnavailableError("IM write is temporarily unavailable")
 
     class SyncService:
@@ -455,6 +466,7 @@ def test_latest_results_map_every_discriminated_bucket(
 def test_binding_and_override_handlers_return_current_contact_projection(
     app: Flask,
     application: SimpleNamespace,
+    config_overrides: Callable[..., None],
 ) -> None:
     assert application.binding_service is not None
     account = SimpleNamespace(id="account-1")
@@ -463,12 +475,14 @@ def test_binding_and_override_handlers_return_current_contact_projection(
         organization = unwrap(WorkspaceContactIMBindingsApi.put)(
             WorkspaceContactIMBindingsApi(), "workspace-1", account, contact_id
         )
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     with app.test_request_context(method="PUT", json={"identity_id": "identity-1"}):
         override = unwrap(WorkspaceContactIMOverrideApi.put)(
             WorkspaceContactIMOverrideApi(), "workspace-1", account, contact_id
         )
     with app.test_request_context(method="DELETE"):
         reset = unwrap(WorkspaceContactIMOverrideApi.delete)(WorkspaceContactIMOverrideApi(), "workspace-1", contact_id)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     with app.test_request_context(
         method="DELETE",
         query_string={"binding_id": "binding-organization"},
@@ -485,6 +499,96 @@ def test_binding_and_override_handlers_return_current_contact_projection(
     ]
     assert reset["contact"]["im_bindings"][0]["scope"] == "organization"
     assert deleted == {}
+
+
+@pytest.mark.parametrize(
+    ("edition", "override", "allowed"),
+    [
+        (DeploymentEdition.COMMUNITY, False, True),
+        (DeploymentEdition.COMMUNITY, True, False),
+        (DeploymentEdition.CLOUD, False, True),
+        (DeploymentEdition.CLOUD, True, False),
+        (DeploymentEdition.ENTERPRISE, False, False),
+        (DeploymentEdition.ENTERPRISE, True, True),
+    ],
+)
+@pytest.mark.parametrize("method", ["PUT", "DELETE"])
+@pytest.mark.usefixtures("application")
+def test_binding_writes_follow_the_deployment_management_mode(
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+    override: bool,
+    allowed: bool,
+    method: str,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+    resource = WorkspaceContactIMOverrideApi() if override else WorkspaceContactIMBindingsApi()
+    contact_id = "00000000-0000-0000-0000-000000000001"
+
+    class BindingResource(Resource):
+        def put(self):
+            return unwrap(resource.put)(resource, "workspace-1", SimpleNamespace(id="account-1"), contact_id)
+
+        def delete(self):
+            return unwrap(resource.delete)(resource, "workspace-1", contact_id)
+
+    transport = Flask(__name__)
+    api = ExternalApi(transport)
+    api.add_resource(BindingResource, "/binding")
+    response = transport.test_client().open(
+        "/binding",
+        method=method,
+        json={"identity_id": "identity-1"},
+        query_string={"binding_id": "binding-organization"},
+    )
+    if allowed:
+        assert response.status_code == 200
+    else:
+        assert response.status_code == 403
+        expected_code = "workspace_im_override_not_allowed" if override else "im_binding_read_only"
+        expected_message = (
+            "Workspace IM overrides require centrally managed bindings."
+            if override
+            else "Centrally managed IM bindings cannot be edited from a workspace."
+        )
+        assert response.get_json() == {"code": expected_code, "message": expected_message, "status": 403}
+
+
+def test_enterprise_override_and_identity_search_use_the_deployment_directory(
+    app: Flask,
+    application: SimpleNamespace,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    scopes = []
+
+    class BindingService(_BindingService):
+        def set_workspace_override(self, **kwargs: object) -> ContactIMBindingView:
+            scopes.append(kwargs["organization_scope"])
+            return super().set_workspace_override(**kwargs)
+
+        def reset_workspace_override(self, **kwargs: object) -> ContactIMBindingView:
+            scopes.append(kwargs["organization_scope"])
+            return super().reset_workspace_override(**kwargs)
+
+    class SyncService(_SyncService):
+        def search_identities(self, organization_scope, **_kwargs):
+            scopes.append(organization_scope)
+            return SynchronizedIMIdentityPage((), page=1, limit=20, total=0)
+
+    application.binding_service = BindingService()
+    application.sync_service = SyncService()
+    contact_id = "00000000-0000-0000-0000-000000000001"
+    with app.test_request_context(method="PUT", json={"identity_id": "identity-1"}):
+        unwrap(WorkspaceContactIMOverrideApi.put)(
+            WorkspaceContactIMOverrideApi(), "workspace-1", SimpleNamespace(id="account-1"), contact_id
+        )
+    with app.test_request_context(method="DELETE"):
+        unwrap(WorkspaceContactIMOverrideApi.delete)(WorkspaceContactIMOverrideApi(), "workspace-1", contact_id)
+    with app.test_request_context(method="GET"):
+        unwrap(WorkspaceIMIdentitiesApi.get)(WorkspaceIMIdentitiesApi(), "workspace-1")
+
+    assert scopes == [DeploymentScope(), DeploymentScope(), DeploymentScope()]
 
 
 @pytest.mark.parametrize(

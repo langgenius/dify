@@ -65,6 +65,7 @@ from controllers.common.schema import (
 )
 from controllers.common.session import with_session
 from controllers.console import console_ns
+from controllers.console.workspace.error import IMBindingReadOnlyError, WorkspaceIMOverrideNotAllowedError
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
@@ -82,7 +83,16 @@ from core.human_input_v2.im_integration import (
     SyncContactSnapshot,
     SyncResultFact,
 )
-from core.human_input_v2.shared import AccountId, ContactId, IMBindingId, IMIdentityId, TenantId, WorkspaceScope
+from core.human_input_v2.shared import (
+    AccountId,
+    ContactId,
+    DeploymentScope,
+    DirectoryScope,
+    IMBindingId,
+    IMIdentityId,
+    TenantId,
+    WorkspaceScope,
+)
 from enums import DeploymentEdition
 from libs.datetime_utils import naive_utc_now
 from libs.helper import build_avatar_url, dump_response
@@ -108,6 +118,7 @@ from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
 )
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from services.enterprise.human_input_contact_composition import build_enterprise_contact_management_service
+from services.feature_service import FeatureService
 from services.human_input_v2.composition import build_human_input_node_data_migration_service
 from services.human_input_v2.contact_service import ContactManagementService, ContactWithIMBindings
 from services.human_input_v2.im_contact_sync.composition import build_im_contact_sync_application
@@ -183,6 +194,12 @@ _IM_BINDING_ERROR_STATUS = {
 
 def _workspace_scope(tenant_id: str) -> WorkspaceScope:
     return WorkspaceScope(id=TenantId(tenant_id))
+
+
+def _im_binding_scope(tenant_id: str) -> DirectoryScope:
+    if FeatureService.is_im_binding_centrally_managed():
+        return DeploymentScope()
+    return _workspace_scope(tenant_id)
 
 
 type _IMApplicationError = (
@@ -756,7 +773,7 @@ class WorkspaceIMIdentitiesApi(Resource):
         query = ListIMIdentitiesQuery.model_validate(request.args.to_dict(flat=True))
         try:
             identity_page = build_im_contact_sync_application().sync_service.search_identities(
-                _workspace_scope(tenant_id),
+                _im_binding_scope(tenant_id),
                 keyword=query.keyword,
                 page=query.page,
                 limit=query.limit,
@@ -784,6 +801,7 @@ class WorkspaceContactIMOverrideApi(Resource):
     )
     @console_ns.expect(console_ns.models[SetContactIMOverrideRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[SetContactIMOverrideResponse.__name__])
+    @console_ns.response(403, "Workspace overrides require centrally managed IM bindings")
     @console_ns.response(
         404,
         "Contact or IM identity not found",
@@ -799,11 +817,13 @@ class WorkspaceContactIMOverrideApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def put(self, tenant_id: str, current_user: Account, contact_id: str):
+        if not FeatureService.is_im_binding_centrally_managed():
+            raise WorkspaceIMOverrideNotAllowedError()
         request_body = SetContactIMOverrideRequest.model_validate(console_ns.payload or {})
         tenant_id = TenantId(tenant_id)
         try:
             contact = build_im_contact_sync_application().binding_service.set_workspace_override(
-                organization_scope=WorkspaceScope(id=tenant_id),
+                organization_scope=_im_binding_scope(tenant_id),
                 tenant_id=tenant_id,
                 contact_id=ContactId(contact_id),
                 identity_id=IMIdentityId(request_body.identity_id),
@@ -820,6 +840,7 @@ class WorkspaceContactIMOverrideApi(Resource):
         ),
     )
     @console_ns.response(200, "Success", console_ns.models[ResetContactIMOverrideResponse.__name__])
+    @console_ns.response(403, "Workspace overrides require centrally managed IM bindings")
     @console_ns.response(404, "Contact not found", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.response(422, "Invalid binding scope", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.response(503, "IM write unavailable", console_ns.models[IMContactSyncErrorResponse.__name__])
@@ -829,10 +850,12 @@ class WorkspaceContactIMOverrideApi(Resource):
     @is_admin_or_owner_required
     @with_current_tenant_id
     def delete(self, tenant_id: str, contact_id: str):
+        if not FeatureService.is_im_binding_centrally_managed():
+            raise WorkspaceIMOverrideNotAllowedError()
         tenant_id = TenantId(tenant_id)
         try:
             contact = build_im_contact_sync_application().binding_service.reset_workspace_override(
-                organization_scope=WorkspaceScope(id=tenant_id),
+                organization_scope=_im_binding_scope(tenant_id),
                 tenant_id=tenant_id,
                 contact_id=ContactId(contact_id),
             )
@@ -852,6 +875,7 @@ class WorkspaceContactIMBindingsApi(Resource):
     )
     @console_ns.expect(console_ns.models[CreateIMBindingRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[CreateIMBindingResponse.__name__])
+    @console_ns.response(403, "Centrally managed IM bindings cannot be edited from a workspace")
     @console_ns.response(
         404,
         "Contact or IM identity not found",
@@ -866,6 +890,8 @@ class WorkspaceContactIMBindingsApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def put(self, tenant_id: str, current_user: Account, contact_id: str):
+        if FeatureService.is_im_binding_centrally_managed():
+            raise IMBindingReadOnlyError()
         request_body = CreateIMBindingRequest.model_validate(console_ns.payload or {})
         tenant_id = TenantId(tenant_id)
         try:
@@ -881,6 +907,7 @@ class WorkspaceContactIMBindingsApi(Resource):
         return dump_response(CreateIMBindingResponse, {"contact": _contact_binding_payload(contact)})
 
     @console_ns.response(200, "Success", console_ns.models[DeleteIMBindingResponse.__name__])
+    @console_ns.response(403, "Centrally managed IM bindings cannot be edited from a workspace")
     @console_ns.response(404, "IM binding not found", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.response(503, "IM write unavailable", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.doc(
@@ -897,6 +924,8 @@ class WorkspaceContactIMBindingsApi(Resource):
     @is_admin_or_owner_required
     @with_current_tenant_id
     def delete(self, tenant_id: str, contact_id: UUID):
+        if FeatureService.is_im_binding_centrally_managed():
+            raise IMBindingReadOnlyError()
         query = query_params_from_request(DeleteIMBindingQuery)
         try:
             build_im_contact_sync_application().binding_service.delete_organization_binding(
