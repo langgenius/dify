@@ -159,7 +159,7 @@ export default function ResourcePicker({
         onValueChange={setSearch}
         placeholder={t(($) => $['personalAccessToken.searchResources'])}
       />
-      <div className="col-span-2 flex flex-wrap items-center gap-1">
+      <div className="col-span-2 mt-2 flex flex-wrap items-center gap-1">
         <div
           role="group"
           aria-label={t(($) => $['resourceAccessToken.resources'])}

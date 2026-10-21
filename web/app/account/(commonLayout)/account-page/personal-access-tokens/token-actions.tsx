@@ -1,4 +1,5 @@
 import type { PersonalAccessTokenResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@langgenius/dify-ui/dialog'
@@ -71,9 +72,11 @@ function SavedTokenForm({
 export default function TokenActions({
   token,
   onDelete,
+  deleteDialogHandle,
 }: {
   token: PersonalAccessTokenResponse
   onDelete: (token: PersonalAccessTokenResponse, trigger: HTMLButtonElement) => void
+  deleteDialogHandle: AlertDialogHandle
 }) {
   const { t } = useTranslation(['common'])
   const [editing, setEditing] = useState(false)
@@ -109,6 +112,7 @@ export default function TokenActions({
         </DialogContent>
       </Dialog>
       <AlertDialogTrigger
+        handle={deleteDialogHandle}
         onClick={(event) => onDelete(token, event.currentTarget)}
         render={
           <IconButton size="sm" tone="destructive" aria-label={t(($) => $['operation.delete'])}>
