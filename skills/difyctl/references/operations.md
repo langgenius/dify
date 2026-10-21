@@ -1,6 +1,6 @@
 # Running operations
 
-`difyctl run console_app workflow --app-id <id> --inputs '{"a":1}'`. Each top-level field of `input` is a flag, dashes for underscores. Scalars take a value; objects, maps and lists of objects take a JSON literal or `@file.json`; lists of scalars repeat the flag. Fields named `input`, `stream`, `only`, `output`, `verbose`, `json` or `help` have no flag; pass them through `--input`.
+`difyctl run console_app workflow --app-id <id> --inputs '{"a":1}'`. Each top-level field of `input` is a flag, dashes for underscores. Scalars take a value; objects, maps and lists of objects take a JSON literal or `@file.json`; lists of scalars repeat the flag. Fields named `input`, `stream`, `only`, `output`, `extract`, `verbose`, `json` or `help` have no flag; pass them through `--input`.
 
 `--input '{"a":1}'`, `--input @file.json` or `--input @-` (stdin) sends the whole body; field flags merge over it. A dotted id is a command with the dots as spaces: `run.console_app.workflow` is `difyctl run console_app workflow`.
 
@@ -8,7 +8,7 @@ Run an app with the op for its mode: `run console_app workflow`, `run console_ap
 
 ## difyctl-only flags
 
-`--stream` prints each event of a streaming op as one JSON line instead of folding them. `--only <event>` filters streamed events (repeatable). `--output <path>` saves a file-kind response; the default is the current directory under the server's filename, or `<op-id>.<ext>`. The default never replaces an existing file: it exits 2, and you pass `--output` to choose the path (an `--output` path is replaced). `--verbose` adds the raw server response to errors. A flag the operation's kind does not support exits 2.
+`--stream` prints each event of a streaming op as one JSON line instead of folding them. `--only <event>` filters streamed events (repeatable). `--output <path>` saves a file-kind response; the default is the current directory under the server's filename, or `<op-id>.<ext>`. The default never replaces an existing file: it exits 2, and you pass `--output` to choose the path (an `--output` path is replaced). `--extract <folder>` unzips a file-kind response into a folder instead, creating it if missing. Files already there are kept; if any path in the zip already exists it exits 2 and writes nothing, so extract each round into a fresh folder. `--output` and `--extract` exit 2 together. `--verbose` adds the raw server response to errors. A flag the operation's kind does not support exits 2.
 
 ## Reading results
 

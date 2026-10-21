@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
 import { commands } from '@/plugins/commands'
+import { assertSupportedFlags } from './execute'
 
 const worlds: TestWorld[] = []
 async function world(argv: string[]) {
@@ -59,6 +60,17 @@ it('refuses --only without --stream, exit 2, before any op request', async () =>
     message: '--only requires --stream',
   })
   expect(w.mock.requestCount).toBe(1) // only the first-run catalog fetch
+})
+
+it('refuses --output with --extract on a file op, either alone is fine', () => {
+  expect(() => assertSupportedFlags('file', { output: 'f', extract: 'd' })).toThrow(
+    expect.objectContaining({
+      code: 'usage_invalid_flag',
+      message: '--output and --extract cannot be used together',
+    }),
+  )
+  expect(() => assertSupportedFlags('file', { output: 'f' })).not.toThrow()
+  expect(() => assertSupportedFlags('file', { extract: 'd' })).not.toThrow()
 })
 
 it('warns once on stderr for a deprecated op and still runs it', async () => {

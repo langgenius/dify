@@ -40,6 +40,7 @@
     "@napi-rs/keyring": "catalog:",
     "ajv": "catalog:",
     "eventsource-parser": "catalog:",
+    "fflate": "catalog:",
     "js-yaml": "catalog:",
     "lockfile": "catalog:",
     "open": "catalog:",

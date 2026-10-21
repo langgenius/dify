@@ -7,7 +7,7 @@ import { ENTRY_KIND, KEY_SEPARATOR, walkTree } from '@/sys/tree'
 
 const JUNK_FILES: ReadonlySet<string> = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini'])
 const JUNK_DIRS: ReadonlySet<string> = new Set(['__MACOSX'])
-const BYTES_PER_MIB = 1024 * 1024
+export const BYTES_PER_MIB = 1024 * 1024
 
 export type FolderLimits = {
   readonly files: number

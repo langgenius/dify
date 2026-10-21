@@ -527,6 +527,9 @@ catalogs:
     fast-deep-equal:
       specifier: 3.1.3
       version: 3.1.3
+    fflate:
+      specifier: 0.8.3
+      version: 0.8.3
     foxact:
       specifier: 0.3.12
       version: 0.3.12
@@ -898,6 +901,9 @@ importers:
       eventsource-parser:
         specifier: 'catalog:'
         version: 4.1.2
+      fflate:
+        specifier: 'catalog:'
+        version: 0.8.3
       js-yaml:
         specifier: 'catalog:'
         version: 5.5.0
@@ -17074,6 +17080,7 @@ time:
   eslint@10.13.0: '2026-10-16T14:24:10.765Z'
   eventsource-parser@4.1.2: '2026-10-12T15:39:11.731Z'
   fast-deep-equal@3.1.3: '2020-06-08T07:27:28.474Z'
+  fflate@0.8.3: '2026-05-16T00:14:03.449Z'
   foxact@0.3.12: '2026-09-18T13:19:15.594Z'
   fuse.js@7.5.0: '2026-07-13T17:23:36.705Z'
   happy-dom@20.14.6: '2026-10-08T23:18:02.688Z'

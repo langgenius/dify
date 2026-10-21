@@ -2,6 +2,7 @@ import type { CallFlags } from '@/call/flags'
 import type { CommandContext } from '@/plugins/base'
 import type { CatalogOp } from '@/plugins/catalog'
 import { readFile } from 'node:fs/promises'
+import { assertExtractTarget } from '@/call/extract'
 import { LOCAL_FILES } from '@/call/files'
 import { unsupportedFlags } from '@/call/flags'
 import { applyPins, loadInput, resolveFileRefs } from '@/call/input'
@@ -30,8 +31,9 @@ export type CallRequest = Readonly<{
 const FILE_ENCODING = 'utf8'
 const DEPRECATED_NOTICE = 'deprecated'
 const ONLY_NEEDS_STREAM = '--only requires --stream'
+const OUTPUT_OR_EXTRACT = '--output and --extract cannot be used together'
 
-function assertSupportedFlags(kind: string, flags: CallFlags): void {
+export function assertSupportedFlags(kind: string, flags: CallFlags): void {
   const [refused] = unsupportedFlags(kind, flags)
   if (refused !== undefined) {
     throw new BaseError({
@@ -39,6 +41,8 @@ function assertSupportedFlags(kind: string, flags: CallFlags): void {
       message: `${flagToken(refused)} is not supported by ${kind} operations`,
     })
   }
+  if (flags.output !== undefined && flags.extract !== undefined)
+    throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: OUTPUT_OR_EXTRACT })
   // --only filters the events --stream emits; on its own it filters nothing.
   if (flags.only !== undefined && flags.stream !== true)
     throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: ONLY_NEEDS_STREAM })
@@ -53,6 +57,8 @@ async function readAll(stream: NodeJS.ReadableStream): Promise<string> {
 
 export async function executeCall(req: CallRequest, ctx: CommandContext): Promise<Outcome> {
   assertSupportedFlags(req.op.kind, req.flags)
+  // Checked before the request too, so a target that can never work costs no server call.
+  if (req.flags.extract !== undefined) await assertExtractTarget(req.flags.extract)
 
   const out = await ctx.get(io)
   const source = {

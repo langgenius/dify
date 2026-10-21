@@ -3,6 +3,7 @@ import { Buffer } from 'node:buffer'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { strToU8, zipSync } from 'fflate'
 import { expect, it } from 'vite-plus/test'
 import { ioService } from '@/plugins/io'
 import { bufferStreams } from '@/sys/io/streams'
@@ -205,6 +206,20 @@ it('file overwrites an existing file when --output names it', async () => {
   })
   await r.code
   expect(readFileSync(out, 'utf8')).toBe('new')
+})
+
+it('file unzips into --extract and prints the folder receipt', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-file-'))
+  const target = join(dir, 'app')
+  const bytes = zipSync({ 'app.yaml': strToU8('kind: app'), 's_000001/SKILL.md': strToU8('# s') })
+  const r = render(
+    'file',
+    new Response(bytes, { headers: { 'content-type': 'application/octet-stream' } }),
+    { extract: target },
+  )
+  expect(await r.code).toBe(0)
+  expect(readFileSync(join(target, 's_000001', 'SKILL.md'), 'utf8')).toBe('# s')
+  expect(JSON.parse(r.buf.outBuf())).toEqual({ path: target, files: 2, size: 12 })
 })
 
 it('file reports other write failures as a failed write, not an existing file', async () => {

@@ -1,17 +1,19 @@
 import type { Renderer } from './index'
 import { writeFile } from 'node:fs/promises'
 import { join, posix } from 'node:path'
+import { extractZip } from '@/call/extract'
+import { FOLDER_LIMITS } from '@/call/files'
 import { CALL_FLAG } from '@/call/flags'
 import { BaseError, unknownError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
+import { runSignal } from '@/plugins/commands/cancel'
+import { CREATE_ONLY, ERRNO, errnoOf } from '@/sys/fs'
 import { renderJson } from './object'
 
 const CONTENT_DISPOSITION_HEADER = 'content-disposition'
 const CONTENT_TYPE_HEADER = 'content-type'
 const UNKNOWN_EXTENSION = 'bin'
-const EEXIST = 'EEXIST'
 // A name the server picked never replaces a file; a path the caller named does.
-const CREATE_ONLY = 'wx'
 const CREATE_OR_REPLACE = 'w'
 
 const EXTENSIONS: Readonly<Record<string, string>> = {
@@ -46,7 +48,7 @@ function extensionOf(contentType: string | null): string {
   return EXTENSIONS[mediaType] ?? UNKNOWN_EXTENSION
 }
 
-export const fileRenderer: Renderer = async (res, io, options, opId) => {
+const saveFile: Renderer = async (res, io, options, opId) => {
   const bytes = new Uint8Array(await res.arrayBuffer())
   const contentType = res.headers.get(CONTENT_TYPE_HEADER)
   const filename =
@@ -58,7 +60,7 @@ export const fileRenderer: Renderer = async (res, io, options, opId) => {
   try {
     await writeFile(path, bytes, { flag })
   } catch (cause) {
-    if ((cause as NodeJS.ErrnoException).code === EEXIST)
+    if (errnoOf(cause) === ERRNO.Exists)
       throw new BaseError({
         code: ErrorCode.UsageMissingArg,
         message: `${path} already exists; not overwriting it`,
@@ -71,5 +73,17 @@ export const fileRenderer: Renderer = async (res, io, options, opId) => {
   // A content type the server never sent is absent, not empty.
   const receipt: Record<string, unknown> = { path, size: bytes.byteLength }
   if (contentType !== null) receipt.content_type = contentType
+  return renderJson(io, receipt)
+}
+
+export const fileRenderer: Renderer = async (res, io, options, opId) => {
+  if (options.extract === undefined) return saveFile(res, io, options, opId)
+  const bytes = new Uint8Array(await res.arrayBuffer())
+  const receipt = await extractZip({
+    bytes,
+    target: options.extract,
+    limits: FOLDER_LIMITS,
+    signal: runSignal(),
+  })
   return renderJson(io, receipt)
 }

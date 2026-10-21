@@ -9,6 +9,7 @@ export const CALL_FLAG = {
   Stream: 'stream',
   Only: 'only',
   Output: 'output',
+  Extract: 'extract',
 } as const
 
 export type CallFlag = (typeof CALL_FLAG)[keyof typeof CALL_FLAG]
@@ -34,6 +35,10 @@ export const CALL_FLAGS = {
   [CALL_FLAG.Output]: flag(z.string().optional().describe('Write the downloaded file here'), [
     KIND.File,
   ]),
+  [CALL_FLAG.Extract]: flag(
+    z.string().optional().describe('Unzip the downloaded file into this new or empty folder'),
+    [KIND.File],
+  ),
 } as const
 
 type SchemasOf<T extends Record<string, FlagSpec<z.ZodType>>> = { [K in keyof T]: T[K]['schema'] }
