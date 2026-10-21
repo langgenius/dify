@@ -17,6 +17,7 @@ from dataclasses import dataclass, replace
 from typing import cast, override
 
 import httpx
+from pydantic import JsonValue
 from pydantic_ai import RunContext, Tool
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.capabilities.abstract import WrapRunHandler
@@ -175,6 +176,9 @@ class _KnowledgeOperations:
         )
         set_by_name = {knowledge_set.name: knowledge_set for knowledge_set in generated_sets}
 
+        def native_target(arguments: dict[str, str]) -> JsonValue:
+            return {"set_id": set_by_name[arguments["set_name"]].id}
+
         async def native_arguments(arguments):
             knowledge_set = set_by_name[arguments["set_name"]]
             return self._native_parameters(knowledge_set, arguments["query"].strip())
@@ -207,7 +211,7 @@ class _KnowledgeOperations:
                 metadata={
                     "native_effect": NativeToolBoundary(
                         boundary="generated_knowledge",
-                        target=lambda arguments: {"set_id": set_by_name[arguments["set_name"]].id},
+                        target=native_target,
                         prepare_arguments=native_arguments,
                     )
                 },
