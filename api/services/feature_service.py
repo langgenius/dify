@@ -124,7 +124,6 @@ class FeatureService:
             dify_config.EDUCATION_ENABLED and dify_config.DEPLOYMENT_EDITION in EDUCATION_EDITIONS
         )
         features.enable_skill = dify_config.ENABLE_SKILL
-        features.agent_tracing_api_collection_enabled = dify_config.OPS_AGENT_TRACE_ENABLED
 
     @classmethod
     def _fulfill_params_from_workspace_info(cls, features: feature_entities.FeatureModel, tenant_id: str):

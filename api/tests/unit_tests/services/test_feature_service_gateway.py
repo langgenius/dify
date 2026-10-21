@@ -8,7 +8,9 @@ from services.system_feature_service import SystemFeatureService
 
 
 def test_public_system_features_delegate_to_existing_service(mocker: MockerFixture) -> None:
-    system_features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
+    system_features = SystemFeatureModel(
+        agent_tracing_api_collection_enabled=False, deployment_edition=DeploymentEdition.COMMUNITY
+    )
     get_system_features = mocker.patch.object(
         SystemFeatureService,
         "get_public_system_features",
