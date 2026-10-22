@@ -344,11 +344,13 @@ class PluginInvokeAppApi(Resource):
     )
     @with_session
     def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
+        app_user_id = payload.user or getattr(user_model, "session_id", user_model.id)
+
         response = PluginAppBackwardsInvocation.invoke_app(
             execution_driver=WorkflowRunAgg.run,
             session=session,
             app_id=payload.app_id,
-            user_id=user_model.id,
+            user_id=app_user_id,
             tenant_id=tenant_model.id,
             conversation_id=payload.conversation_id,
             query=payload.query,
