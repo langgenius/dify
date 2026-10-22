@@ -15,18 +15,21 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from redis import Redis
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.trigger_manager import TriggerManager
+from core.trigger.utils.encryption import delete_cache_for_subscription
 from extensions.ext_redis import RedisClientWrapper
 from models.engine import db
 from models.provider_ids import TriggerProviderID
 from models.tools import BuiltinToolProvider
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
+from repositories.trigger.subscription_repository import RedisTriggerSubscriptionLocks, TriggerSubscriptionRepository
 from services.plugin.plugin_parameter_service import PluginParameterService
-from services.trigger.trigger_provider_service import TriggerProviderService
+from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
+from services.trigger.subscription_service import TriggerSubscriptionService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from tests.unit_tests.core.trigger.conftest import make_controller
 
@@ -49,16 +52,22 @@ def trigger_declaration() -> Iterator[None]:
 
 
 @pytest.fixture
-def builders() -> Iterator[TriggerSubscriptionBuilderService]:
+def builders(sqlite_session_factory: sessionmaker[Session]) -> Iterator[TriggerSubscriptionBuilderService]:
     # Tool-provider paths receive the real dependency but must not query builder Redis.
     with Redis(socket_connect_timeout=0.1) as client:
         redis = RedisClientWrapper()
         redis.initialize(client)
+        subscription_management = TriggerSubscriptionService(
+            subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+            providers=PluginTriggerSubscriptionGateway(),
+            locks=RedisTriggerSubscriptionLocks(redis=redis),
+            invalidate_cache=delete_cache_for_subscription,
+        )
         yield TriggerSubscriptionBuilderService(
             builders=RedisTriggerSubscriptionBuilderRepository(redis=redis),
             get_provider=TriggerManager.get_trigger_provider,
             subscribe=TriggerManager.subscribe_trigger,
-            create_subscription=TriggerProviderService.add_trigger_subscription,
+            create_subscription=subscription_management.create,
         )
 
 

@@ -1077,6 +1077,42 @@ export const zTriggerSubscriptionBuilderUpdatePayload = z.object({
 })
 
 /**
+ * TriggerSubscriptionLimitReachedError
+ *
+ * The maximum number of trigger subscriptions for this provider has been reached.
+ */
+export const zTriggerSubscriptionLimitReachedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_subscription_limit_reached'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TriggerSubscriptionNameConflictError
+ *
+ * A trigger subscription with this name already exists for the provider.
+ */
+export const zTriggerSubscriptionNameConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_subscription_name_conflict'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * TriggerSubscriptionProviderError
+ *
+ * The trigger provider could not complete the subscription operation.
+ */
+export const zTriggerSubscriptionProviderError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_subscription_provider_error'),
+    status: z.literal(502),
+  }),
+)
+
+/**
  * TriggerSubscriptionBuilderCreatePayload
  */
 export const zTriggerSubscriptionBuilderCreatePayload = z.object({
@@ -1122,6 +1158,42 @@ export const zTriggerOauthProviderError = zErrorResponse.and(
 export const zTriggerSubscriptionVerifyPayload = z.object({
   credentials: z.record(z.string(), z.unknown()),
 })
+
+/**
+ * TriggerSubscriptionInvalidError
+ *
+ * The trigger subscription configuration or credentials are invalid.
+ */
+export const zTriggerSubscriptionInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_subscription_invalid'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TriggerSubscriptionNotFoundError
+ *
+ * The trigger subscription does not exist in this workspace and provider.
+ */
+export const zTriggerSubscriptionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_subscription_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * TriggerSubscriptionChangedError
+ *
+ * The trigger subscription changed. Reload it before trying again.
+ */
+export const zTriggerSubscriptionChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_subscription_changed'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * WorkspaceCustomConfigResponse
