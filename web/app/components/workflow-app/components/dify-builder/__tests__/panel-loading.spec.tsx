@@ -461,7 +461,13 @@ describe('DifyBuilderPanel translation loading', () => {
         'lang',
         'zh-Hans',
       )
-      expect(screen.getByRole('button', { name: chineseCommon['operation.submit'] })).toBeVisible()
+      expect(
+        screen.getByRole('button', {
+          name: chineseBuilder[
+            interaction === 'decision' ? 'copy.actions.tryAgain' : 'copy.actions.submitRequirements'
+          ],
+        }),
+      ).toBeVisible()
       const input = screen.getByRole('textbox', { name: 'Goal' })
       await user.clear(input)
       await user.type(input, 'Keep this draft')
@@ -530,19 +536,25 @@ describe('DifyBuilderPanel translation loading', () => {
 
       await act(async () => releases.get('fr-FR')!())
       const intermediateCommon = order === 'latest-first' ? frenchCommon : englishCommon
+      const intermediateBuilder = order === 'latest-first' ? frenchBuilder : englishBuilder
       expect(
         screen.getByRole('button', { name: intermediateCommon['operation.close'] }),
       ).toBeVisible()
       expect(
-        screen.getByRole('button', { name: intermediateCommon['operation.submit'] }),
+        screen.getByRole('button', {
+          name: intermediateBuilder['copy.actions.submitRequirements'],
+        }),
       ).toBeVisible()
       expect(input).toHaveValue('Draft survives out-of-order translations')
       expect(input).toHaveFocus()
 
       await act(async () => releases.get('zh-Hans')!())
       const finalCommon = order === 'latest-first' ? frenchCommon : chineseCommon
+      const finalBuilder = order === 'latest-first' ? frenchBuilder : chineseBuilder
       expect(screen.getByRole('button', { name: finalCommon['operation.close'] })).toBeVisible()
-      expect(screen.getByRole('button', { name: finalCommon['operation.submit'] })).toBeVisible()
+      expect(
+        screen.getByRole('button', { name: finalBuilder['copy.actions.submitRequirements'] }),
+      ).toBeVisible()
       expect(screen.getByRole('complementary', { name: englishBuilder.panelTitle })).toBe(panel)
       expect(screen.getByRole('textbox', { name: 'Goal' })).toBe(input)
       expect(input).toHaveValue('Draft survives out-of-order translations')
@@ -674,7 +686,9 @@ describe('DifyBuilderPanel translation loading', () => {
     await act(async () => resolveTranslations())
 
     expect(screen.getByRole('button', { name: englishCommon['operation.close'] })).toBeVisible()
-    expect(screen.getByRole('button', { name: englishCommon['operation.submit'] })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: englishBuilder['copy.actions.submitRequirements'] }),
+    ).toBeVisible()
     expect(screen.getByRole('textbox', { name: 'Goal' })).toBe(input)
     expect(input).toHaveValue('Translate documents keep this draft')
     expect(input).toHaveFocus()

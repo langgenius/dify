@@ -8,6 +8,7 @@ import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skel
 import DifyBuilderComposer from '../composer'
 import { useBuilderText } from '../copy/use-builder-text'
 import { DifyBuilderInteractionDock } from '../interactions/interaction-dock'
+import { difyBuilderSessionBusyAtom } from '../session/state'
 import {
   difyBuilderActiveInteractionAtom,
   difyBuilderCanvasReadyAtom,
@@ -19,11 +20,13 @@ import {
   difyBuilderInteractionRefAtom,
   difyBuilderInterruptedAtom,
   difyBuilderLocalInteractionResponseAtom,
+  difyBuilderNativeCancelAtom,
   difyBuilderRecheckReadyAtom,
   difyBuilderRetryCanvasRefreshAtom,
   difyBuilderRunActiveAtom,
   difyBuilderSessionIdAtom,
   difyBuilderSubmitActionAtom,
+  difyBuilderTestExecutionAtom,
   difyBuilderViewVersionAtom,
 } from '../store'
 
@@ -78,8 +81,11 @@ export const DifyBuilderPanelFooter = ({
 }: {
   focusTargetRef: RefObject<HTMLElement | null>
 }) => {
-  const { locale } = useBuilderText()
-  const { t } = useTranslation(['common', 'workflow'], { lng: locale })
+  const { locale, renderText } = useBuilderText()
+  const { t } = useTranslation(['common', 'difyBuilder', 'workflow'], { lng: locale })
+  const testExecution = useAtomValue(difyBuilderTestExecutionAtom)
+  const nativeCancel = useAtomValue(difyBuilderNativeCancelAtom)
+  const commandBusy = useAtomValue(difyBuilderSessionBusyAtom)
   const canvasRefreshFailed = useAtomValue(difyBuilderCanvasRefreshFailedAtom)
   const canvasRefreshing = useAtomValue(difyBuilderCanvasRefreshingAtom)
   const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
@@ -122,6 +128,42 @@ export const DifyBuilderPanelFooter = ({
         >
           {error}
         </div>
+      )}
+      {testExecution?.outcome === 'unknown' && (
+        <p role="status" className="mx-4 mb-2 system-xs-regular text-text-warning">
+          {renderText({ type: 'copy', id: 'confirmed.unknown' })}
+        </p>
+      )}
+      {(testExecution?.resume_blocked_reason === 'native_resolution_unavailable' ||
+        (testExecution?.status === 'waiting' && testExecution.wait_reason === 'configuration')) && (
+        <p role="status" className="mx-4 mb-2 system-xs-regular text-text-secondary">
+          {t(($) => $['testResult.configurationRequired'], { ns: 'difyBuilder' })}
+        </p>
+      )}
+      {testExecution?.cancellation?.status === 'cancelling' ? (
+        <p role="status" className="mx-4 mb-2 system-xs-regular text-text-secondary">
+          {t(($) => $['testResult.cancelling'], { ns: 'difyBuilder' })}
+        </p>
+      ) : (
+        nativeCancel && (
+          <div className="mx-4 mb-2 flex justify-end">
+            <Button
+              size="small"
+              disabled={commandBusy}
+              onClick={() => {
+                void submitInteraction('cancel_test', nativeCancel.payload ?? {}, {
+                  renderText,
+                  replyLanguage: locale,
+                  booleanTrue: '',
+                  booleanFalse: '',
+                  noResourcesSelected: '',
+                })
+              }}
+            >
+              {renderText(nativeCancel.label)}
+            </Button>
+          </div>
+        )
       )}
       {canvasRefreshFailed && (
         <div className="mx-4 mb-2 flex justify-end">

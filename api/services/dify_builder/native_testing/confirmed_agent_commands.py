@@ -185,6 +185,22 @@ class ConfirmedAgentCommands:
             raise BuilderExecutionPolicyError("native_agent_checkpoint_mismatch")
         return self.api.store.load_agent_association(ref=ref, parent_node=parent_node, wait=matches[0])
 
+    def peek(self, *, actor, session_id, request_id):
+        """Read public facts without enqueue, ACK recovery, or settlement.
+
+        Physical cleanup alone does not prove that a paused parent logically
+        stopped. Keep that outcome unresolved until its durable stop is saved.
+        """
+        self._request(actor=actor, session_id=session_id, request_id=request_id)
+        receipt = self.api.get(actor=actor, session_id=session_id, request_id=request_id)
+        if (
+            receipt.cancellation is not None
+            and receipt.cancellation.status == "cancelled"
+            and receipt.native_status == "paused"
+        ):
+            return receipt.model_copy(update={"status": "running", "outcome": None})
+        return receipt
+
     def get(self, *, actor, session_id, request_id):
         self._request(actor=actor, session_id=session_id, request_id=request_id)
         receipt = self.api.get(actor=actor, session_id=session_id, request_id=request_id)
@@ -827,7 +843,6 @@ class ConfirmedAgentCommands:
 
     def snapshots(self, *, actor, session_id):
         self.api._actor(actor)
-        self.publish_pending()
         with self.loader.session_factory() as session:
             identities = session.scalars(
                 select(DifyBuilderExecutionRequest.id)
@@ -840,7 +855,7 @@ class ConfirmedAgentCommands:
                 .order_by(DifyBuilderExecutionRequest.created_at.desc())
                 .limit(100)
             ).all()
-        return tuple(self.get(actor=actor, session_id=session_id, request_id=identity) for identity in identities)
+        return tuple(self.peek(actor=actor, session_id=session_id, request_id=identity) for identity in identities)
 
 
 class _ConfirmedParentRecovery:
@@ -1002,6 +1017,11 @@ class ProfiledNativeTestCommands:
     def start(self, **values):
         return self.legacy_factory().start(**values)
 
+    def peek(self, **values):
+        """Observation never recovers ACKs, publishes dispatches, or executes work."""
+        service = self._service(**values)
+        return service.peek(**values) if isinstance(service, ConfirmedAgentCommands) else service.get(**values)
+
     def get(self, **values):
         return self._service(**values).get(**values)
 
@@ -1029,4 +1049,4 @@ class ProfiledNativeTestCommands:
                 .order_by(DifyBuilderExecutionRequest.created_at.desc())
                 .limit(100)
             ).all()
-        return tuple(self.get(actor=actor, session_id=session_id, request_id=identity) for identity in identities)
+        return tuple(self.peek(actor=actor, session_id=session_id, request_id=identity) for identity in identities)

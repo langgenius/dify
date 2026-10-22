@@ -289,7 +289,9 @@ describe.skipIf(!PWSH)('install.ps1 rate limit', () => {
 
   it('Resolve-Release surfaces the rate-limit hint and exits, not "not found"', () => {
     const stub = `function Invoke-RestMethod { throw [Microsoft.PowerShell.Commands.HttpResponseException]::new('rate limited', $script:rlResp) }`
-    const setup = `$script:rlResp = [System.Net.Http.HttpResponseMessage]::new([System.Net.HttpStatusCode]403)
+    // The stub bypasses the real cmdlet that normally loads its exception type.
+    const setup = `Import-Module Microsoft.PowerShell.Utility
+      $script:rlResp = [System.Net.Http.HttpResponseMessage]::new([System.Net.HttpStatusCode]403)
       $script:rlResp.Headers.TryAddWithoutValidation('x-ratelimit-remaining','0') | Out-Null
       $script:rlResp.Headers.TryAddWithoutValidation('x-ratelimit-reset','${futureReset}') | Out-Null`
     const r = runPwsh(`${setup}\n${stub}\nResolve-Release`, { DIFY_VERSION: '1.15.0' })
@@ -351,6 +353,19 @@ describe.skipIf(!PWSH || process.platform === 'win32')('install.ps1 Write-SkillH
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
+  })
+
+  it('does not enter command discovery for a missing binary path', () => {
+    const result = runPwsh(`
+      $script:missingLookups = 0
+      $ExecutionContext.InvokeCommand.PreCommandLookupAction = {
+        param($commandName, $eventArgs)
+        if ($commandName -eq '/nonexistent/difyctl') { $script:missingLookups++ }
+      }
+      Write-SkillHint '/nonexistent/difyctl'
+      Write-Output "lookups=$script:missingLookups"
+    `)
+    expect(result).toMatchObject({ code: 0, stdout: 'lookups=0' })
   })
 
   it('prints nothing when the binary cannot run', () => {

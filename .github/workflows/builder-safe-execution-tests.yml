@@ -482,6 +482,8 @@ jobs:
               'api/tests/unit_tests/services/dify_builder/test_edit_cognition.py',
               'api/tests/unit_tests/services/dify_builder/test_fix_cognition.py',
           ]
+          # PR44527: continuous native observations and commit notifications.
+          FILES += ["api/tests/unit_tests/services/dify_builder/test_native_live_stream.py"]
           SELECTED_GUARDS = [
               "api/tests/unit_tests/controllers/console/app/test_workflow.py::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
           ]
@@ -1431,6 +1433,15 @@ jobs:
                                                                              'test_resource_binding_refusal_retains_safe_code_and_target_without_private_message': 1},
            'tests.unit_tests.services.test_app_generate_service_in_process': {'test_pre_generator_tool_admission_failure_has_qualified_preparation_boundary': 4}}.items():
               a4_expected.setdefault(module, {}).update(functions)
+          # PR44527: exact native observation function and parameter inventory.
+          a4_expected.update({'tests.unit_tests.services.dify_builder.test_native_live_stream': {'test_legacy_stream_ignores_native_change_notifications': 1,
+                                                                              'test_native_change_notification_follows_commit_and_never_rollback': 2,
+                                                                              'test_native_idle_stream_waits_for_bus_change_and_hydrates_terminal_projection': 1,
+                                                                              'test_native_snapshots_never_call_execution_recovery': 1,
+                                                                              'test_native_stream_continues_after_command_finished': 1,
+                                                                              'test_native_stream_does_not_miss_creation_after_initial_snapshot_or_delayed_result': 1,
+                                                                              'test_notification_failure_does_not_fail_or_replay_committed_execution': 1,
+                                                                              'test_read_only_snapshot_keeps_physically_clean_paused_parent_unresolved': 1}})
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:

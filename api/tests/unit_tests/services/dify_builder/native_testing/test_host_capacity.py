@@ -217,6 +217,12 @@ class HostCapacityCase:
 
 @pytest.fixture
 def case(monkeypatch: pytest.MonkeyPatch) -> HostCapacityCase:
+    # This suite owns App/request lock ordering through an explicit SQL double.
+    # Real after-commit/rollback notifications are covered with SQLite in
+    # test_native_live_stream; no SQLAlchemy Session events exist on this double.
+    from services.dify_builder.native_testing import host_capacity
+
+    monkeypatch.setattr(host_capacity, "native_observation_transaction", lambda factory, **_: factory.begin())
     events: list[str] = []
     workflow = Workflow(
         type="workflow",
