@@ -302,10 +302,10 @@ export default function TokenForm({
                   if (value === 'selected' || workspaceMode === 'selected') setExpanded('resources')
                 }}
               >
-                <SegmentedControlItem value="all">
+                <SegmentedControlItem value="all" className="data-checked:text-text-primary">
                   {t(($) => $['resourceAccessToken.tabAll'])}
                 </SegmentedControlItem>
-                <SegmentedControlItem value="selected">
+                <SegmentedControlItem value="selected" className="data-checked:text-text-primary">
                   {t(($) => $['personalAccessToken.selected'])}
                   {resourceMode === 'selected' && resources.length > 0 && (
                     <span
@@ -316,7 +316,7 @@ export default function TokenForm({
                     </span>
                   )}
                 </SegmentedControlItem>
-                <SegmentedControlItem value="none">
+                <SegmentedControlItem value="none" className="data-checked:text-text-primary">
                   {t(($) => $['personalAccessToken.none'])}
                 </SegmentedControlItem>
               </SegmentedControl>
@@ -344,7 +344,7 @@ export default function TokenForm({
                 expanded !== 'resources' && (
                   <Button
                     className="col-span-2 mt-2 justify-self-start"
-                    variant="tertiary"
+                    variant="ghost-accent"
                     onClick={() => setExpanded('resources')}
                   >
                     {t(($) => $['operation.selectCount'], {
@@ -379,10 +379,10 @@ export default function TokenForm({
                   if (value === 'selected' || resourceMode === 'selected') setExpanded('workspaces')
                 }}
               >
-                <SegmentedControlItem value="all">
+                <SegmentedControlItem value="all" className="data-checked:text-text-primary">
                   {t(($) => $['resourceAccessToken.tabAll'])}
                 </SegmentedControlItem>
-                <SegmentedControlItem value="selected">
+                <SegmentedControlItem value="selected" className="data-checked:text-text-primary">
                   {t(($) => $['personalAccessToken.selected'])}
                   {workspaceMode === 'selected' && workspaces.length > 0 && (
                     <span
@@ -393,7 +393,7 @@ export default function TokenForm({
                     </span>
                   )}
                 </SegmentedControlItem>
-                <SegmentedControlItem value="none">
+                <SegmentedControlItem value="none" className="data-checked:text-text-primary">
                   {t(($) => $['personalAccessToken.none'])}
                 </SegmentedControlItem>
               </SegmentedControl>
@@ -413,7 +413,7 @@ export default function TokenForm({
                 expanded !== 'workspaces' && (
                   <Button
                     className="col-span-2 mt-2 justify-self-start"
-                    variant="tertiary"
+                    variant="ghost-accent"
                     onClick={() => setExpanded('workspaces')}
                   >
                     {t(($) => $['operation.selectCount'], {
