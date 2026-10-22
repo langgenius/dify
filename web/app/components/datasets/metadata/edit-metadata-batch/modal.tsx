@@ -105,9 +105,8 @@ const EditMetadataBatchModal: FC<Props> = ({
         return Promise.reject(new Error(errorMsg))
       }
       await createMetaData({ params: { dataset_id: datasetId }, body: payload })
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     },
-    [checkName, createMetaData, datasetId, t],
+    [checkName, createMetaData, datasetId],
   )
   const [addedList, setAddedList] = useState<MetadataItemWithEdit[]>([])
   const handleAddedListChange = useCallback(
