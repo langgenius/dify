@@ -30,6 +30,7 @@ from core.dify_builder.models import (
     Risk,
     Run,
     Session,
+    Snapshot,
     TestInput,
     Turn,
 )
@@ -86,6 +87,7 @@ from services.dify_builder.application.verification import (
     result_card,
 )
 from services.dify_builder.business_acceptance import (
+    business_failure_context,
     clear_task_acceptance,
     confirm_testdata_contract,
     record_run_acceptance,
@@ -872,6 +874,9 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     )
 
     record_run_acceptance(s, fc, run, ti, graph, _hash)
+    business_failure = business_failure_context(
+        run, s, fc, current_revision=_hash, current_graph_revision=env.dify.graph_revision(graph)
+    )
 
     fc.verify_run_id = run.id
 
@@ -934,7 +939,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             run_id_sink=[run.id],
         )
 
-    if status == "succeeded":
+    if status == "succeeded" and business_failure is None:
         test_items = append_card(
             fc,
             result_card(run, reply_language=fc.reply_language),
@@ -1012,7 +1017,10 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         fc.test_input_ref = ""
         test_items = append_card(
             fc,
-            replace(result_card(run, reply_language=fc.reply_language), failure_reason=test_failure_reason(run)),
+            replace(
+                result_card(run, reply_language=fc.reply_language),
+                failure_reason=test_failure_reason(run) if business_failure is None else None,
+            ),
         )
         card, reply = testdata_form(
             env,
@@ -1090,8 +1098,8 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     progress.activate("build-diagnose-failure")
     from services.dify_builder.condition_evidence import diagnose_failure, propose_failure
 
-    diagnosis = diagnose_failure(env, s.app_id, turn.actor, run, graph)
-    _note_repair_error(fc, run)
+    diagnosis = diagnose_failure(env, s.app_id, turn.actor, run, graph, task=(s, fc, _hash))
+    _note_repair_error(fc, run, business_signature=business_failure.signature if business_failure else "")
     if _repair_is_repeating(fc):
         # The same failure has now survived _MAX_REPEATED_REPAIRS repairs, so
         # another round would aim at the same wrong thing. Stop spending runs
@@ -1103,7 +1111,10 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         execution = progress.finish()
         test_items = append_card(
             fc,
-            replace(result_card(run, reply_language=fc.reply_language), failure_reason=test_failure_reason(run)),
+            replace(
+                result_card(run, reply_language=fc.reply_language),
+                failure_reason=test_failure_reason(run) if business_failure is None else None,
+            ),
         )
         stuck_items = append_assistant(
             env,
@@ -1124,13 +1135,18 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             run_id_sink=[run.id],
         )
     progress.activate("build-prepare-repair")
-    intents, risk = propose_failure(env, s.app_id, turn.actor, run, diagnosis, graph)
+    intents, risk = propose_failure(env, s.app_id, turn.actor, run, diagnosis, graph, task=(s, fc, _hash))
     fc.diagnosis = diagnosis
     fc.staged_repair = list(intents)
     fc.risk = risk
+    if intents:
+        fc.checkpoint_seq = fc.next_seq
     test_items = append_card(
         fc,
-        replace(result_card(run, reply_language=fc.reply_language), failure_reason=test_failure_reason(run)),
+        replace(
+            result_card(run, reply_language=fc.reply_language),
+            failure_reason=test_failure_reason(run) if business_failure is None else None,
+        ),
     )
     proposed = [f"{i.op} {i.args.get('node_id', '')}".strip() for i in intents]
     execution = progress.finish()
@@ -1159,6 +1175,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         items=[*test_items, *turn_items],
         run=run,
         run_id_sink=[run.id],
+        checkpoint=Snapshot(session_id=s.id, hash=_hash, graph=graph) if intents else None,
     )
 
 
@@ -1207,7 +1224,21 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
                 list(fc.staged_repair),
                 on_canvas=env.emit_canvas,
                 expected_revision=fc.last_snapshot_hash,
-                failed_run_id=env.repo.get_run(fc.verify_run_id).dify_run_id if fc.verify_run_id else "",
+                failed_run_id=(
+                    env.repo.get_run(fc.verify_run_id).dify_run_id
+                    if fc.verify_run_id
+                    and not (
+                        fc.business_acceptance_contract and env.repo.get_run(fc.verify_run_id).status == "succeeded"
+                    )
+                    else None
+                ),
+                business_failure_run_id=(
+                    fc.verify_run_id
+                    if fc.verify_run_id
+                    and fc.business_acceptance_contract
+                    and env.repo.get_run(fc.verify_run_id).status == "succeeded"
+                    else None
+                ),
                 **dict[str, Any](
                     {"confirmed_resource_ids": list(fc.resource_selection["resource_ids"])}
                     if any(item.startswith("agent:") for item in fc.resource_selection.get("resource_ids", []))

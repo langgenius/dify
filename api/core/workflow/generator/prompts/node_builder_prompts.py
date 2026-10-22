@@ -11,6 +11,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from core.workflow.generator.prompts.builder_prompts import (
+    TOOL_OUTPUT_SEMANTICS_RULES,
     TOOL_PARAMETER_SEMANTICS_RULES,
     VARIABLE_AGGREGATOR_OUTPUT_RULES,
     get_node_config_snippet,
@@ -90,7 +91,13 @@ def get_node_builder_system_prompt(node_type: str) -> str:
     """Build a one-node prompt containing only that node's semantic schema."""
     snippet = _CONTAINER_CONFIG_SNIPPETS.get(node_type) or get_node_config_snippet(node_type)
     parameter_rules = TOOL_PARAMETER_SEMANTICS_RULES if node_type in {"code", "tool"} else ""
-    return _NODE_BUILDER_HEAD + (snippet or f"- {node_type}: emit the minimum valid config fields.") + parameter_rules
+    output_rules = TOOL_OUTPUT_SEMANTICS_RULES if node_type in {"code", "tool"} else ""
+    return (
+        _NODE_BUILDER_HEAD
+        + (snippet or f"- {node_type}: emit the minimum valid config fields.")
+        + parameter_rules
+        + output_rules
+    )
 
 
 def format_parallel_plan(

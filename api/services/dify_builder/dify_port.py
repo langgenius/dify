@@ -55,6 +55,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
+from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -959,6 +960,77 @@ class WorkflowServiceDifyPort:
             )
         return historical, outputs, run_row.error or ""
 
+    def _business_repair_evidence(
+        self,
+        session: Session,
+        *,
+        app_id: str,
+        actor: Actor,
+        builder_run_id: str,
+        workflow: Workflow,
+        graph: Graph,
+        revision: str,
+        lock: bool = False,
+    ) -> dict[str, JsonValue]:
+        """Reconstruct business authority from persisted, fully owned Run facts.
+
+        The final write holds the workflow and Builder session locks, so a
+        changed task, confirmed case or native provenance cannot authorize an
+        already prepared candidate. No execution or effect recovery occurs.
+        """
+        from services.dify_builder.business_acceptance import business_failure_context
+        from services.dify_builder.revision import executable_graph_revision
+
+        owner_query = (
+            select(DifyBuilderSession)
+            .join(DifyBuilderRun, DifyBuilderRun.session_id == DifyBuilderSession.id)
+            .where(
+                DifyBuilderRun.id == builder_run_id,
+                DifyBuilderSession.app_id == app_id,
+                DifyBuilderSession.tenant_id == actor.tenant_id,
+                DifyBuilderSession.owner_account_id == actor.account_id,
+            )
+        )
+        if lock:
+            owner_query = owner_query.with_for_update(of=DifyBuilderSession)
+        owner = session.execute(owner_query).scalar_one_or_none()
+        if owner is None:
+            raise PreflightError("Business repair Run is not owned by this Builder session")
+        repository = SqlDifyBuilderRepository(_session_factory())
+        run = repository.get_run(builder_run_id)
+        builder_session, context = repository.get_session(owner.id)
+        native = session.execute(
+            select(WorkflowRun).where(
+                WorkflowRun.id == run.dify_run_id,
+                WorkflowRun.tenant_id == actor.tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.workflow_id == workflow.id,
+                WorkflowRun.created_by == actor.account_id,
+                WorkflowRun.created_by_role == CreatorUserRole.ACCOUNT,
+                WorkflowRun.status == "succeeded",
+            )
+        ).scalar_one_or_none()
+        graph_revision = executable_graph_revision(graph)
+        if (
+            native is None
+            or run.session_id != owner.id
+            or builder_session.app_id != app_id
+            or builder_session.tenant_id != actor.tenant_id
+            or builder_session.owner_account_id != actor.account_id
+            or executable_graph_revision(dict(native.graph_dict)) != graph_revision
+        ):
+            raise PreflightError("Business repair native Run provenance is unavailable or stale")
+        projection = business_failure_context(
+            run,
+            builder_session,
+            context,
+            current_revision=revision,
+            current_graph_revision=graph_revision,
+        )
+        if projection is None:
+            raise PreflightError("Business repair requires a current confirmed failed business case")
+        return {"business_failure": projection.model_dump(mode="json")}
+
     def apply_repair(
         self,
         app_id: str,
@@ -968,6 +1040,7 @@ class WorkflowServiceDifyPort:
         *,
         expected_revision: str,
         failed_run_id: str | None = None,
+        business_failure_run_id: str | None = None,
         confirmed_resource_ids: Sequence[str] | None = None,
         expected_resource_fingerprints: dict[str, str] | None = None,
         expected_node_resources: dict[str, str] | None = None,
@@ -982,6 +1055,8 @@ class WorkflowServiceDifyPort:
         policy_rejections = proposal_policy_rejections(before_graph, intents)
         if policy_rejections:
             raise PreflightError("Builder node policy: " + "; ".join(policy_rejections))
+        if failed_run_id is not None and business_failure_run_id is not None:
+            raise PreflightError("Choose one persisted repair evidence source")
         graph: Graph = before_graph
 
         # Idempotent re-entry (interrupted-step Retry): a re-applied fix.apply
@@ -1024,6 +1099,25 @@ class WorkflowServiceDifyPort:
                 canvas_events.append(_canvas_payload(intent, changed))
 
         from services.dify_builder.resource_grounding import validate_workspace_resources
+
+        if business_failure_run_id is not None:
+            from services.dify_builder.condition_evidence import repair_evidence_rejections
+
+            with _session_factory()() as session:
+                app = load_app(session, app_id, actor)
+                workflow = _load_draft_workflow_or_raise(app, session=session)
+                evidence = self._business_repair_evidence(
+                    session,
+                    app_id=app_id,
+                    actor=actor,
+                    builder_run_id=business_failure_run_id,
+                    workflow=workflow,
+                    graph=before_graph,
+                    revision=revision,
+                )
+            evidence_problems = repair_evidence_rejections(before_graph, graph, written_nodes, evidence)
+            if evidence_problems:
+                raise PreflightError("; ".join(evidence_problems))
 
         if not changed_nodes:
             validate_workspace_resources(
@@ -1141,6 +1235,22 @@ class WorkflowServiceDifyPort:
             session.refresh(workflow, with_for_update=True)
             if execution_revision(workflow) != revision:
                 raise HashMismatchError(f"workflow execution configuration changed: {app_id}")
+            if business_failure_run_id is not None:
+                from services.dify_builder.condition_evidence import repair_evidence_rejections
+
+                evidence = self._business_repair_evidence(
+                    session,
+                    app_id=app_id,
+                    actor=actor,
+                    builder_run_id=business_failure_run_id,
+                    workflow=workflow,
+                    graph=before_graph,
+                    revision=revision,
+                    lock=True,
+                )
+                evidence_problems = repair_evidence_rejections(before_graph, graph, written_nodes, evidence)
+                if evidence_problems:
+                    raise PreflightError("; ".join(evidence_problems))
             committed_previous_graph = dict(workflow.graph_dict)
             graph = merge_canvas_presentation(before_graph, graph, committed_previous_graph)
             graph, binding_service = _prepare_native_agent_graph(

@@ -16,7 +16,7 @@ from contextlib import suppress
 from itertools import starmap
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, model_validator
 
 from core.dify_builder.errors import BadRequestError, NotFoundError
 from core.dify_builder.models import DifyBuilderContext, Graph, PublicationDecision, Run, Session, TestInput
@@ -500,6 +500,146 @@ def context_publication_decision(
             reason="business_acceptance_failed" if coverage.state == "failed" else "business_acceptance_unverified",
         )
     return decision
+
+
+class BusinessFailureContext(_ContractModel):
+    """Ephemeral diagnostic data, never execution authority or a replacement oracle."""
+
+    builder_run_id: str
+    native_run_id: str
+    execution_revision: str
+    graph_revision: Digest
+    case_id: Identifier
+    contract_digest: Digest
+    signature: str
+    goal_text: str
+    requirements: dict[str, JsonValue]
+    edit_rules: dict[str, JsonValue]
+    checks: tuple[dict[str, JsonValue], ...]
+    reasons: tuple[str, ...]
+    required_node_types: tuple[str, ...]
+    required_tool_ids: tuple[str, ...]
+    forbidden_node_types: tuple[str, ...]
+    forbidden_tool_ids: tuple[str, ...]
+
+
+def business_failure_context(
+    run: Run,
+    session: Session,
+    context: DifyBuilderContext,
+    *,
+    current_revision: str,
+    current_graph_revision: str,
+) -> BusinessFailureContext | None:
+    """Project only a current explicitly failed case from this owned task.
+
+    Reuse the existing coverage/revision rules; no native execution, storage
+    read, inferred expectation or cross-session source lookup occurs here.
+    Callers redact this ephemeral projection with their complete diagnostic
+    provenance before passing it to a model.
+    """
+    evidence = run.verification
+    if not context.business_acceptance_contract or evidence is None or not evidence.business_acceptance:
+        return None
+    if (
+        run.status != "succeeded"
+        or not publication_decision(
+            run, session_id=session.id, current_revision=current_revision, current_graph_revision=current_graph_revision
+        ).allowed
+    ):
+        return None
+    summary = evidence.execution_evidence
+    if summary is None or summary.simulated_node_ids:
+        return None
+    try:
+        contract = BusinessAcceptanceContract.model_validate(context.business_acceptance_contract)
+        finding = CaseAcceptance.model_validate(evidence.business_acceptance)
+        if (
+            finding.state != "failed"
+            or finding.execution_state != "succeeded"
+            or finding.case_id != context.business_acceptance_case_id
+            or context.business_acceptance_run_refs.get(finding.case_id) != run.id
+            or finding.run_id != run.id
+            or finding.native_run_id != run.dify_run_id
+            or finding.test_input_id != run.inputs_ref
+        ):
+            return None
+        coverage = evaluate_coverage(
+            contract,
+            [finding],
+            task_id=current_task_id(session, context),
+            source_digest=current_source_digest(context),
+            current_revision=current_revision,
+            current_graph_revision=current_graph_revision,
+        )
+        if finding.case_id not in coverage.failed_case_ids:
+            return None
+        case = next(case for case in contract.cases if case.id == finding.case_id)
+        checks: list[dict[str, JsonValue]] = []
+        failed_docx_reasons = {
+            "required_docx_missing",
+            "docx_parts_invalid",
+            "docx_relationship_invalid",
+            "docx_content_type_invalid",
+            "docx_document_invalid",
+            "docx_package_invalid",
+        }
+        file_checks = [check for check in case.checks if check.operator == "file"]
+        for check in case.checks:
+            present, actual = _value(evidence.terminal_outputs, check.path)
+            failed = (
+                not present
+                or (check.operator == "equals" and not _equal(actual, check.expected))
+                or (check.operator != "equals" and actual is None)
+            )
+            if check.operator == "file":
+                # File findings identify bounded byte/identity predicates, not
+                # URL contents or a document body that the model may fetch.
+                if failed or (len(file_checks) == 1 and failed_docx_reasons.intersection(finding.reasons)):
+                    checks.append({"path": list(check.path), "operator": "file", "file_type": check.file_type})
+            elif failed:
+                checks.append(
+                    {
+                        "path": list(check.path),
+                        "operator": check.operator,
+                        "expected": check.expected,
+                        "present": present,
+                        "actual": TypeAdapter(JsonValue).validate_python(actual),
+                    }
+                )
+        signature = "business:" + _digest(
+            {
+                "contract": finding.contract_digest,
+                "case_id": case.id,
+                "reasons": sorted(finding.reasons),
+                "checks": sorted(_digest({"path": check["path"], "operator": check["operator"]}) for check in checks),
+            }
+        )
+        result = BusinessFailureContext(
+            builder_run_id=run.id,
+            native_run_id=run.dify_run_id,
+            execution_revision=current_revision,
+            graph_revision=current_graph_revision,
+            case_id=case.id,
+            contract_digest=finding.contract_digest,
+            signature=signature,
+            goal_text=context.goal_text,
+            requirements=context.requirements,
+            edit_rules=context.edit_rules,
+            checks=checks,
+            reasons=finding.reasons,
+            required_node_types=case.required_node_types,
+            required_tool_ids=case.required_tool_ids,
+            forbidden_node_types=case.forbidden_node_types,
+            forbidden_tool_ids=case.forbidden_tool_ids,
+        )
+        payload = result.model_dump(mode="python")
+        _digest(payload)
+        if len(json.dumps(payload, ensure_ascii=True).encode()) > 16_000:
+            return None
+        return result
+    except ValueError:
+        return None
 
 
 def clear_task_acceptance(context: DifyBuilderContext) -> None:

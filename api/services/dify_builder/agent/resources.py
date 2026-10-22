@@ -20,7 +20,7 @@ configuration proves runtime health or a supplier lifecycle state.
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import JsonValue
 from sqlalchemy import select
@@ -73,6 +73,7 @@ class ResourceRef:
     # None means this source supplied no action parameter schema.
     parameter_contract: list[dict[str, JsonValue]] | None = None
     model_contract: dict[str, JsonValue] = field(default_factory=dict)
+    output_schema_state: Literal["unknown", "absent", "declared"] = "unknown"
 
 
 @dataclass(frozen=True)
@@ -165,6 +166,7 @@ def _tool_readiness(entry: ToolCatalogueEntry, authorized: set[str] | None) -> t
 
 def _tool_ref(entry: ToolCatalogueEntry, authorized: set[str] | None) -> ResourceRef:
     readiness, note = _tool_readiness(entry, authorized)
+    output_schema = entry.get("output_schema")
     description = str(entry.get("description") or "")
     # The readiness reason leads so a bounded rendering of a long description
     # (the discovery prompt line) never cuts it off.
@@ -174,6 +176,9 @@ def _tool_ref(entry: ToolCatalogueEntry, authorized: set[str] | None) -> Resourc
         label=str(entry.get("tool_label") or entry["tool_name"]),
         meta=meta,
         readiness=readiness,
+        output_schema_state=(
+            "unknown" if not isinstance(output_schema, dict) else "declared" if output_schema else "absent"
+        ),
         description=description,
         capability=tool_capability_text(entry),
         needs_credentials=entry.get("needs_credentials", False),
