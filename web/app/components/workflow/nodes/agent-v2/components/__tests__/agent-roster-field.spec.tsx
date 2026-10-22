@@ -1,6 +1,7 @@
 import { screen, waitForElementToBeRemoved, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef } from 'react'
+import { AgentPreviewHeader } from '@/features/agent-v2/agent-detail/configure/components/preview/header'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AgentRosterField } from '../agent-roster-field'
 
@@ -35,6 +36,45 @@ function renderDetailRosterField(
 }
 
 describe('AgentRosterField', () => {
+  it('keeps inline mode controls independent from the roster field label and identity', async () => {
+    const user = userEvent.setup()
+    render(
+      <AgentRosterField
+        agent={{ id: 'inline-agent', name: 'Inline Agent' }}
+        isInlineSetup
+        portalContainerRef={{ current: null }}
+        onChange={vi.fn()}
+        panelBody={
+          <AgentPreviewHeader
+            mode="build"
+            previewEnabled
+            onModeChange={vi.fn()}
+            onOpenWorkingDirectory={vi.fn()}
+            onRefresh={vi.fn()}
+          />
+        }
+      />,
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: /^workflowAgent\.nodes\.agent\.roster\.openPanel/,
+      }),
+    )
+    const dialog = within(await screen.findByRole('dialog', { name: 'Inline Agent' }))
+    const modes = within(
+      dialog.getByRole('radiogroup', {
+        name: 'agentV2.agentDetail.configure.rightPanel.modeLabel',
+      }),
+    )
+    const build = modes.getByRole('radio', {
+      name: 'agentV2.agentDetail.configure.rightPanel.build',
+    })
+    const preview = modes.getByRole('radio', {
+      name: 'agentV2.agentDetail.configure.rightPanel.preview',
+    })
+    expect(build.id).not.toBe(preview.id)
+  })
+
   it('keeps the inline dialog close control available before its workspace loads', async () => {
     const user = userEvent.setup()
     function Harness() {

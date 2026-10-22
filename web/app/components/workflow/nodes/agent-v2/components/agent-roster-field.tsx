@@ -25,9 +25,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Suspense, useState } from 'react'
+import { Suspense, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import {
@@ -312,18 +311,20 @@ function AgentRosterInlineConfigureDialog({
         <DialogDescription className="sr-only">
           {t(($) => $[`${i18nPrefix}.roster.inlineSetup.description`], { ns: 'workflowAgent' })}
         </DialogDescription>
-        <Suspense fallback={<InlineAgentLoading />}>
-          {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
-        </Suspense>
-        <div className="absolute top-3 right-5 flex items-center max-sm:right-3">
-          <span aria-hidden className="mx-3 h-3.5 w-px bg-divider-regular max-sm:hidden" />
-          <DialogClose
-            render={
-              <IconButton size="lg" aria-label={t(($) => $['operation.close'], { ns: 'common' })}>
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
+        <div className="contents [--agent-preview-header-end:4.625rem] max-sm:[--agent-preview-header-end:3.5rem]">
+          <Suspense fallback={<InlineAgentLoading />}>
+            {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
+          </Suspense>
+          <div className="absolute top-3 right-5 flex items-center max-sm:right-3">
+            <span aria-hidden className="mx-3 h-3.5 w-px bg-divider-regular max-sm:hidden" />
+            <DialogClose
+              render={
+                <IconButton size="lg" aria-label={t(($) => $['operation.close'], { ns: 'common' })}>
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -374,6 +375,7 @@ export function AgentRosterField({
   onStartFromScratch?: () => void
 }) {
   const { t } = useTranslation(['common', 'workflow', 'workflowAgent', 'agentRoster'])
+  const labelId = useId()
   const [localPanelOpen, setLocalPanelOpen] = useState(false)
   const panelOpen = isPanelOpen ?? localPanelOpen
   const setPanelOpen = onPanelOpenChange ?? setLocalPanelOpen
@@ -425,11 +427,14 @@ export function AgentRosterField({
   )
 
   return (
-    <Field name="agent_binding" className="gap-1 px-4 py-2">
+    <div role="group" aria-labelledby={labelId} className="grid min-w-0 gap-1 px-4 py-2">
       <div className="flex h-6 items-center gap-2">
-        <FieldLabel className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase! text-text-secondary">
+        <span
+          id={labelId}
+          className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase text-text-secondary"
+        >
           {t(($) => $['nodes.agent.roster.label'], { ns: 'workflow' })}
-        </FieldLabel>
+        </span>
         <AgentSelectorMenu>
           <AgentSelectorMenuTrigger
             render={
@@ -527,6 +532,6 @@ export function AgentRosterField({
           </span>
         </div>
       )}
-    </Field>
+    </div>
   )
 }

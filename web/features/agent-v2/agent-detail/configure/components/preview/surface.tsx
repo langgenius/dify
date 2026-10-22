@@ -4,17 +4,13 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 
 type AgentConfigurePreviewSurfaceProps = {
-  background?: ReactNode
-  chat: ReactNode
+  children: ReactNode
   className?: string
-  header: ReactNode
 }
 
 export function AgentConfigurePreviewSurface({
-  background,
-  chat,
+  children,
   className,
-  header,
 }: AgentConfigurePreviewSurfaceProps) {
   return (
     <div
@@ -23,9 +19,11 @@ export function AgentConfigurePreviewSurface({
         className,
       )}
     >
-      {background}
-      {header}
-      <div className="relative z-1 min-h-0 flex-1">{chat}</div>
+      {children}
     </div>
   )
+}
+
+export function AgentConfigurePreviewBody({ children }: { children: ReactNode }) {
+  return <div className="relative z-1 min-h-0 flex-1">{children}</div>
 }

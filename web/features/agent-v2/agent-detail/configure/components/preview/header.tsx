@@ -118,7 +118,6 @@ export function AgentPreviewHeader({
   onRefresh,
   refreshDisabled,
   showWorkingDirectoryAction = false,
-  className,
 }: {
   mode: AgentConfigureRightPanelMode
   previewEnabled: boolean
@@ -129,7 +128,6 @@ export function AgentPreviewHeader({
   onRefresh: () => void
   refreshDisabled?: boolean
   showWorkingDirectoryAction?: boolean
-  className?: string
 }) {
   const { t } = useTranslation(['agentV2'])
   const docLink = useDocLink()
@@ -154,12 +152,7 @@ export function AgentPreviewHeader({
   )
 
   return (
-    <div
-      className={cn(
-        'relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2 max-sm:h-auto max-sm:flex-wrap max-sm:gap-1 max-sm:px-2',
-        className,
-      )}
-    >
+    <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2 pr-(--agent-preview-header-end,1rem) max-sm:h-auto max-sm:flex-wrap max-sm:gap-1 max-sm:px-2 max-sm:pr-(--agent-preview-header-end,0.5rem)">
       <div className="flex min-w-0 flex-1 items-center gap-2 max-sm:w-full max-sm:flex-none">
         <SegmentedControl<AgentConfigureRightPanelMode>
           value={mode}

@@ -41,12 +41,13 @@ import { AgentOrchestratePanel } from '@/features/agent-v2/agent-detail/configur
 import { AgentBuildDraftBar } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-bar'
 import { AgentBuildPanelBackground } from '@/features/agent-v2/agent-detail/configure/components/preview/build-background'
 import { AgentPreviewHeader } from '@/features/agent-v2/agent-detail/configure/components/preview/header'
-import {
-  invalidateAgentWorkingDirectoryFiles,
-  useAgentWorkingDirectoryPanel,
-} from '@/features/agent-v2/agent-detail/configure/components/preview/hook/use-working-directory-panel'
 import { AgentConfigureRightPanelChat } from '@/features/agent-v2/agent-detail/configure/components/preview/right-panel-chat'
-import { AgentConfigurePreviewSurface } from '@/features/agent-v2/agent-detail/configure/components/preview/surface'
+import {
+  AgentConfigurePreviewBody,
+  AgentConfigurePreviewSurface,
+} from '@/features/agent-v2/agent-detail/configure/components/preview/surface'
+import { invalidateAgentWorkingDirectoryFiles } from '@/features/agent-v2/agent-detail/configure/components/preview/working-directory-cache'
+import { AgentWorkingDirectoryPanel } from '@/features/agent-v2/agent-detail/configure/components/preview/working-directory-panel'
 import {
   agentConfigureConversationIdsAtom,
   agentConfigureRightPanelModeAtom,
@@ -287,14 +288,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const [rightPanelMode, setRightPanelMode] = useAtom(agentConfigureRightPanelModeAtom)
   const previewEnabled = systemFeatures?.deployment_edition !== 'COMMUNITY'
-  const workingDirectoryPanel = useAgentWorkingDirectoryPanel({
-    type: 'agent',
-    agentId,
-    caller: {
-      type: 'build_draft',
-      id: buildDraft.id,
-    },
-  })
+  const [showWorkingDirectory, setShowWorkingDirectory] = useState(false)
+
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
   const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
   const rebaseComposerDraft = useSetAtom(rebaseAgentComposerDraftAtom)
@@ -607,6 +602,42 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     setClearPreviewChat(true)
   }
 
+  const handleConversationComplete = (
+    mode: 'build' | 'preview',
+    completedConversationId: string,
+  ) => {
+    if (mode !== 'build' || !isBuildCallbackCurrent(buildCallbackGeneration)) return
+
+    setCompletedBuildConversationId(completedConversationId)
+    invalidateAgentWorkingDirectoryFiles({
+      conversationId: completedConversationId,
+      queryClient,
+    })
+    refreshBuildDraftAfterBuildChat(() => finishBuildAction(buildCallbackGeneration))
+  }
+  const handleConversationIdChange = (mode: 'build' | 'preview', conversationId: string) => {
+    if (mode === 'build' && !isBuildCallbackCurrent(buildCallbackGeneration)) return
+    setConversationId({ mode, conversationId })
+  }
+  const saveDraftBeforeChatRun =
+    rightPanelMode === 'build'
+      ? async () => {
+          const preparedBuildDraft = await runBuildPreparation({
+            generation: buildCallbackGeneration,
+            markBuildChatStarted: true,
+            prepare: prepareInlineBuildDraftBeforeRun,
+          })
+          trackAgentBuildModeRun(agentScope)
+          return preparedBuildDraft
+        }
+      : async () => {
+          await saveDraft()
+          trackAgentPreviewModeRun(agentScope)
+        }
+  const handleSendInterrupted = () => {
+    finishBuildAction(buildCallbackGeneration)
+  }
+
   return (
     <>
       <section className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden rounded-[inherit] bg-background-body p-1">
@@ -645,22 +676,18 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           className="max-w-140 min-w-0 flex-[0_0_min(41.08280255%,560px)]"
           onSelectModel={setConfigureModel}
         />
-        <AgentConfigurePreviewSurface
-          className="min-w-0 flex-1"
-          background={<AgentBuildPanelBackground visible={rightPanelMode === 'build'} />}
-          header={
-            <AgentPreviewHeader
-              className="pr-18.5 max-sm:pr-14"
-              mode={rightPanelMode}
-              previewEnabled={previewEnabled}
-              onModeChange={changeRightPanelMode}
-              onOpenWorkingDirectory={workingDirectoryPanel.openWorkingDirectory}
-              onRefresh={restartCurrentChat}
-              refreshDisabled={isRestartCurrentChatDisabled}
-              showWorkingDirectoryAction={showWorkingDirectoryAction}
-            />
-          }
-          chat={
+        <AgentConfigurePreviewSurface className="min-w-0 flex-1">
+          <AgentBuildPanelBackground visible={rightPanelMode === 'build'} />
+          <AgentPreviewHeader
+            mode={rightPanelMode}
+            previewEnabled={previewEnabled}
+            onModeChange={changeRightPanelMode}
+            onOpenWorkingDirectory={() => setShowWorkingDirectory(true)}
+            onRefresh={restartCurrentChat}
+            refreshDisabled={isRestartCurrentChatDisabled}
+            showWorkingDirectoryAction={showWorkingDirectoryAction}
+          />
+          <AgentConfigurePreviewBody>
             <AgentConfigureRightPanelChat
               agentId={agentId}
               answerActionPosition="below"
@@ -671,44 +698,21 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               conversationIds={conversationIds}
               mode={rightPanelMode}
               onClearChatListChange={setClearPreviewChat}
-              onConversationComplete={(mode, completedConversationId) => {
-                if (mode !== 'build' || !isBuildCallbackCurrent(buildCallbackGeneration)) return
-
-                setCompletedBuildConversationId(completedConversationId)
-                invalidateAgentWorkingDirectoryFiles({
-                  conversationId: completedConversationId,
-                  queryClient,
-                })
-                refreshBuildDraftAfterBuildChat(() => finishBuildAction(buildCallbackGeneration))
-              }}
-              onConversationIdChange={(mode, conversationId) => {
-                if (mode === 'build' && !isBuildCallbackCurrent(buildCallbackGeneration)) return
-                setConversationId({ mode, conversationId })
-              }}
-              onSaveDraftBeforeRun={
-                rightPanelMode === 'build'
-                  ? async () => {
-                      const preparedBuildDraft = await runBuildPreparation({
-                        generation: buildCallbackGeneration,
-                        markBuildChatStarted: true,
-                        prepare: prepareInlineBuildDraftBeforeRun,
-                      })
-                      trackAgentBuildModeRun(agentScope)
-                      return preparedBuildDraft
-                    }
-                  : async () => {
-                      await saveDraft()
-                      trackAgentPreviewModeRun(agentScope)
-                    }
-              }
-              onSendInterrupted={() => {
-                finishBuildAction(buildCallbackGeneration)
-              }}
+              onConversationComplete={handleConversationComplete}
+              onConversationIdChange={handleConversationIdChange}
+              onSaveDraftBeforeRun={saveDraftBeforeChatRun}
+              onSendInterrupted={handleSendInterrupted}
             />
-          }
-        />
+          </AgentConfigurePreviewBody>
+        </AgentConfigurePreviewSurface>
       </section>
-      {workingDirectoryPanel.panel}
+      {buildDraft.id && (
+        <AgentWorkingDirectoryPanel
+          source={{ type: 'agent', agentId, callerType: 'build_draft', callerId: buildDraft.id }}
+          open={showWorkingDirectory}
+          onOpenChange={setShowWorkingDirectory}
+        />
+      )}
       <AgentConfigureClearSessionConfirmDialog
         open={showSwitchToPreviewConfirm}
         title={tAgent(($) => $['agentDetail.configure.switchToPreviewConfirm.title'])}
