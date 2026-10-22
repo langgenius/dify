@@ -48,6 +48,7 @@ export type DifyBuilderStreamEventResponse =
 export type DifyBuilderErrorResponse = {
   code: BuilderErrorCode
   message?: string | null
+  reason_code?: string | null
   recoverable?: boolean | null
 }
 
@@ -69,6 +70,7 @@ export type DifyBuilderSessionViewResponse = {
   reply_language: string
   run_status: RunStatus
   session_id: string
+  test_execution?: NativeTestPublicReceipt | null
   version: number
 }
 
@@ -76,6 +78,7 @@ export type DifyBuilderSubmitActionPayload = {
   action_id: string
   base_app_revision: string
   base_version: number
+  client_action_id?: string | null
   payload?: {
     [key: string]: unknown
   }
@@ -358,6 +361,9 @@ export type DifyBuilderActionResponse = {
   id: string
   kind: ActionKind
   label: string | BuilderCopy | BuilderTextParts
+  payload?: {
+    [key: string]: unknown
+  }
 }
 
 export type DifyBuilderActiveInteractionResponse = {
@@ -412,6 +418,29 @@ export type RunStatus =
   | 'processing'
   | 'waiting_confirmation'
   | 'waiting_input'
+
+export type NativeTestPublicReceipt = {
+  can_resume?: boolean
+  cancellation?: CancellationReceipt | null
+  decision_public_revision?: number
+  evidence_refs: Array<string>
+  generation: number
+  native_run_id: string | null
+  native_status: string | null
+  outcome: 'cancelled' | 'failed' | 'succeeded' | 'unknown' | null
+  pending: Array<PendingActionDisclosure>
+  request_id: string
+  resume_blocked_reason?:
+    | 'approval_required'
+    | 'native_resolution_unavailable'
+    | 'not_waiting'
+    | 'state_unavailable'
+    | null
+  schema_version?: 'builder-native-test-v1'
+  status: 'prepared' | 'running' | 'terminal' | 'waiting'
+  version: number
+  wait_reason: 'approval' | 'configuration' | 'interaction' | null
+}
 
 export type DifyBuilderReceiptSnapshot = {
   answer?: string
@@ -505,29 +534,6 @@ export type NativeTestInputBinding = {
   preferred_start?: 'builder_action'
   test_input_id: string
   workflow_id: string
-}
-
-export type NativeTestPublicReceipt = {
-  can_resume?: boolean
-  cancellation?: CancellationReceipt | null
-  decision_public_revision?: number
-  evidence_refs: Array<string>
-  generation: number
-  native_run_id: string | null
-  native_status: string | null
-  outcome: 'cancelled' | 'failed' | 'succeeded' | 'unknown' | null
-  pending: Array<PendingActionDisclosure>
-  request_id: string
-  resume_blocked_reason?:
-    | 'approval_required'
-    | 'native_resolution_unavailable'
-    | 'not_waiting'
-    | 'state_unavailable'
-    | null
-  schema_version?: 'builder-native-test-v1'
-  status: 'prepared' | 'running' | 'terminal' | 'waiting'
-  version: number
-  wait_reason: 'approval' | 'configuration' | 'interaction' | null
 }
 
 export type DifyBuilderRealCallDisclosureResponse = {
@@ -773,6 +779,7 @@ export type DifyBuilderCommandFinishedEventData = {
   reply_language: string
   run_status: RunStatus
   session_id: string
+  test_execution?: NativeTestPublicReceipt | null
   version: number
 }
 
@@ -821,6 +828,33 @@ export type Action = {
   kind: ActionKind
   label: string | BuilderCopy | BuilderTextParts
   next_state?: string | null
+}
+
+export type CancellationReceipt = {
+  generation: number
+  operation_states: {
+    [key: string]: 'completed' | 'failed' | 'not_dispatched' | 'unknown'
+  }
+  request_id: string
+  status: 'cancelled' | 'cancelling' | 'unknown'
+}
+
+export type PendingActionDisclosure = {
+  account_label: string | null
+  action: string
+  approval_limits: NativeApprovalTerms | null
+  continuation_blocked_reason?: 'native_resolution_unavailable' | null
+  decision?: 'confirm' | 'deny' | null
+  decision_status?: 'awaiting_decision' | 'confirmed' | 'denied' | 'exhausted' | 'expired' | null
+  native_form_ref: string | null
+  parameters_summary: JsonValue
+  pending_operation_id: string
+  required_configuration: Array<string>
+  risk_notice: string | null
+  scope_digest: string | null
+  target: JsonValue
+  version: number
+  wait_reason: 'approval' | 'configuration' | 'interaction'
 }
 
 export type DifyBuilderReceiptFieldSnapshot = {
@@ -964,33 +998,6 @@ export type TestResultCard = {
   terminal_outputs?: {
     [key: string]: unknown
   } | null
-}
-
-export type CancellationReceipt = {
-  generation: number
-  operation_states: {
-    [key: string]: 'completed' | 'failed' | 'not_dispatched' | 'unknown'
-  }
-  request_id: string
-  status: 'cancelled' | 'cancelling' | 'unknown'
-}
-
-export type PendingActionDisclosure = {
-  account_label: string | null
-  action: string
-  approval_limits: NativeApprovalTerms | null
-  continuation_blocked_reason?: 'native_resolution_unavailable' | null
-  decision?: 'confirm' | 'deny' | null
-  decision_status?: 'awaiting_decision' | 'confirmed' | 'denied' | 'exhausted' | 'expired' | null
-  native_form_ref: string | null
-  parameters_summary: JsonValue
-  pending_operation_id: string
-  required_configuration: Array<string>
-  risk_notice: string | null
-  scope_digest: string | null
-  target: JsonValue
-  version: number
-  wait_reason: 'approval' | 'configuration' | 'interaction'
 }
 
 export type WorkflowStreamEventLiteralWorkflowStartedData = {
@@ -1180,7 +1187,9 @@ export type BuilderCopyId =
   | 'actions.approveChanges'
   | 'actions.approveFix'
   | 'actions.approvePlan'
+  | 'actions.cancelTest'
   | 'actions.confirmResources'
+  | 'actions.confirmTestOperation'
   | 'actions.continue'
   | 'actions.continueAdjusting'
   | 'actions.discardThisChangePlan'
@@ -1444,6 +1453,15 @@ export type OptionInput = {
   required?: boolean
 }
 
+export type NativeApprovalTerms = {
+  expires_at: string
+  max_calls: number
+  max_cost_units: number
+  max_dispatches: number
+}
+
+export type JsonValue = unknown
+
 export type InteractionResponseField = {
   display_value: string | BuilderCopy | BuilderTextParts
   key: string
@@ -1495,15 +1513,6 @@ export type ResourceOption = {
   meta: string
   readiness: string
 }
-
-export type NativeApprovalTerms = {
-  expires_at: string
-  max_calls: number
-  max_cost_units: number
-  max_dispatches: number
-}
-
-export type JsonValue = unknown
 
 export type CoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData = {
   created_at: number

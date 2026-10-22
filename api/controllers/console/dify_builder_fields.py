@@ -119,8 +119,16 @@ class DifyBuilderReceiptSnapshot(DifyBuilderPayload):
 
 class DifyBuilderSubmitActionPayload(DifyBuilderPayload):
     action_id: NonEmptyString
+    client_action_id: ClientTurnId | None = None
     receipt_snapshot: DifyBuilderReceiptSnapshot | None = None
-    payload: dict[str, Any] = Field(default_factory=dict)
+    payload: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Existing action payload. Native controls: confirm_test_operation/deny_test_operation take "
+            "request_id,pending_operation_id,pending_version,scope_digest; resume_test takes request_id,"
+            "expected_generation; cancel_test takes request_id. Copy payload from the current server action."
+        ),
+    )
     base_version: StrictInt
     base_app_revision: NonEmptyString
 
@@ -270,6 +278,7 @@ class DifyBuilderActiveInteractionResponse(ResponseModel):
 
 
 class DifyBuilderActionResponse(ResponseModel):
+    payload: dict[str, Any] = Field(default_factory=dict)
     id: str
     label: BuilderText
     kind: ActionKind
@@ -281,6 +290,7 @@ class DifyBuilderAppRevisionResponse(ResponseModel):
 
 
 class DifyBuilderSessionStateResponse(ResponseModel):
+    test_execution: NativeTestPublicReceipt | None = None
     diagnostics: list[dict[str, Any]] = Field(default_factory=list, max_length=33)
     session_id: str
     reply_language: str = Field(
@@ -499,6 +509,7 @@ class DifyBuilderStreamEventResponse(
 
 
 class DifyBuilderErrorResponse(ResponseModel):
+    reason_code: ReasonCode | None = None
     code: BuilderErrorCode
     message: str | None = None
     recoverable: bool | None = None
