@@ -1,11 +1,11 @@
-"""Agent Soul-backed config assets for skills, files, env, and note text.
+"""Agent Soul-backed config assets for skills, files, env, note, and prompt text.
 
 This service is the single API-side control plane for Agent config assets. It
 resolves the requested config version (published snapshot, shared draft, or
 per-user build draft), reads only from ``AgentSoulConfig.config_skills``,
-``config_files``, ``env.variables``, and ``config_note``, and mutates only the
-target Soul JSON. Source file refs are tenant-scoped rather than user-scoped:
-config writes can be owned by a build-draft Account while the uploaded
+``config_files``, ``env.variables``, ``config_note``, and ``prompt.system_prompt``,
+and mutates only the target Soul JSON. Source file refs are tenant-scoped rather
+than user-scoped: config writes can be owned by a build-draft Account while the uploaded
 ``ToolFile`` came from an end-user execution context. It intentionally does not
 manage object-storage lifecycle: removing or replacing a config asset drops the
 Soul reference only.
@@ -875,6 +875,56 @@ class AgentConfigService:
             target.version.config_snapshot = agent_soul
             session.commit()
             return {"note": agent_soul.config_note}
+
+    def get_prompt(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        user_id: str | None = None,
+    ) -> dict[str, str]:
+        """Read the saved system prompt verbatim, including unexpanded mentions."""
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        return {"prompt": target.agent_soul.prompt.system_prompt}
+
+    def update_prompt(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        user_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        prompt: str,
+    ) -> dict[str, str]:
+        """Replace only the caller's build-draft prompt; an empty string clears it.
+
+        Already-built run requests retain their prompt. Subsequent requests
+        built from this draft use the saved text and resolve its mentions.
+        """
+        with self._session_factory() as session:
+            target = self._resolve_target_in_session(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                config_version_id=config_version_id,
+                config_version_kind=config_version_kind,
+                user_id=user_id,
+            )
+            self._require_writable(target, surface=AgentConfigMutationSurface.AGENT_STUB)
+            agent_soul = target.agent_soul.model_copy(deep=True)
+            agent_soul.prompt.system_prompt = prompt
+            target.version.config_snapshot = agent_soul
+            session.commit()
+            return {"prompt": agent_soul.prompt.system_prompt}
 
     def _resolve_target_in_session(
         self,

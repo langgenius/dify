@@ -15,6 +15,8 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConfigEnvUpdateRequest,
     AgentStubConfigManifestResponse,
     AgentStubConfigNoteUpdateRequest,
+    AgentStubConfigPromptResponse,
+    AgentStubConfigPromptUpdateRequest,
     AgentStubConfigPushRequest,
     AgentStubConfigPushResponse,
     AgentStubFileDownloadRequest,
@@ -123,6 +125,25 @@ def create_agent_stub_http_router(
     ) -> dict[str, object]:
         try:
             return await service.update_config_note(note=request.note, authorization=authorization)
+        except AgentStubControlPlaneError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    @router.get("/config/prompt", response_model=AgentStubConfigPromptResponse)
+    async def get_config_prompt(
+        authorization: str | None = Header(default=None, alias="Authorization"),
+    ) -> AgentStubConfigPromptResponse:
+        try:
+            return await service.get_config_prompt(authorization=authorization)
+        except AgentStubControlPlaneError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    @router.put("/config/prompt", response_model=AgentStubConfigPromptResponse)
+    async def update_config_prompt(
+        request: AgentStubConfigPromptUpdateRequest,
+        authorization: str | None = Header(default=None, alias="Authorization"),
+    ) -> AgentStubConfigPromptResponse:
+        try:
+            return await service.update_config_prompt(prompt=request.prompt, authorization=authorization)
         except AgentStubControlPlaneError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
