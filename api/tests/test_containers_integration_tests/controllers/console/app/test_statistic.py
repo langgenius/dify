@@ -1,8 +1,7 @@
 """Controller integration tests for console statistic routes."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
-from unittest.mock import patch
 from uuid import uuid4
 
 from flask.testing import FlaskClient
@@ -303,32 +302,49 @@ def test_invalid_time_range(
     account, tenant = create_console_account_and_tenant(db_session_with_containers)
     app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
 
-    with patch("controllers.console.app.statistic.parse_time_range", side_effect=ValueError("Invalid time")):
-        response = test_client_with_containers.get(
-            f"/console/api/apps/{app.id}/statistics/daily-messages?start=invalid&end=invalid",
-            headers=authenticate_console_client(test_client_with_containers, account),
-        )
+    response = test_client_with_containers.get(
+        f"/console/api/apps/{app.id}/statistics/daily-messages",
+        query_string={"start": "invalid", "end": "invalid"},
+        headers=authenticate_console_client(test_client_with_containers, account),
+    )
 
     assert response.status_code == 400
-    assert response.get_json()["message"] == "Invalid time"
+    assert response.get_json()["code"] == "invalid_param"
+    assert response.get_json()["message"].startswith("Invalid start time format:")
 
 
-def test_time_range_params_passed(
+def test_daily_messages_use_account_timezone_and_exclude_other_apps(
     db_session_with_containers: Session,
     test_client_with_containers: FlaskClient,
 ) -> None:
-    import datetime
-
     account, tenant = create_console_account_and_tenant(db_session_with_containers)
+    account.timezone = "Asia/Shanghai"
+    db_session_with_containers.commit()
     app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    start = datetime.datetime.now()
-    end = datetime.datetime.now()
+    conversation = _create_conversation(db_session_with_containers, app.id, account.id, mode=app.mode)
+    for created_at in (
+        datetime(2026, 9, 30, 15, 59),  # Before the local start date.
+        datetime(2026, 9, 30, 16),  # Local midnight: included.
+        datetime(2026, 10, 1, 15, 59),
+        datetime(2026, 10, 1, 16),  # Local end date: excluded.
+    ):
+        message = _create_message(db_session_with_containers, app.id, conversation.id, from_account_id=account.id)
+        message.created_at = created_at
+        db_session_with_containers.commit()
 
-    with patch("controllers.console.app.statistic.parse_time_range", return_value=(start, end)) as mock_parse:
-        response = test_client_with_containers.get(
-            f"/console/api/apps/{app.id}/statistics/daily-messages?start=something&end=something",
-            headers=authenticate_console_client(test_client_with_containers, account),
-        )
+    other_app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
+    other_conversation = _create_conversation(db_session_with_containers, other_app.id, account.id, mode=other_app.mode)
+    other_message = _create_message(
+        db_session_with_containers, other_app.id, other_conversation.id, from_account_id=account.id
+    )
+    other_message.created_at = datetime(2026, 10, 1, 8)
+    db_session_with_containers.commit()
+
+    response = test_client_with_containers.get(
+        f"/console/api/apps/{app.id}/statistics/daily-messages",
+        query_string={"start": "2026-10-01 00:00", "end": "2026-10-02 00:00"},
+        headers=authenticate_console_client(test_client_with_containers, account),
+    )
 
     assert response.status_code == 200
-    mock_parse.assert_called_once_with("something", "something", "UTC")
+    assert response.get_json() == {"data": [{"date": "2026-10-01", "message_count": 2}]}

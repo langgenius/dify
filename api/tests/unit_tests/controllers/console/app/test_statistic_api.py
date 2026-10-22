@@ -1,203 +1,319 @@
-from __future__ import annotations
+"""Real HTTP and SQLite coverage for Console statistics admission.
 
-from datetime import UTC, datetime
-from decimal import Decimal
-from inspect import unwrap
-from types import SimpleNamespace
-from typing import Any
-from unittest.mock import MagicMock
+Metric aggregation uses PostgreSQL/MySQL functions, so successful query results
+are exercised by the controller integration tests against PostgreSQL. These tests
+exercise the real identity and app queries without substituting query services.
+"""
+
+from collections.abc import Iterator
+from dataclasses import dataclass
+from http import HTTPStatus
+from uuid import uuid4
 
 import pytest
-from flask import Flask
-from pytest_mock import MockerFixture
-from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import BadRequest
+from flask import Blueprint, Flask, Response
+from flask.testing import FlaskClient
+from flask_restx import Resource
+from redis import Redis
+from sqlalchemy import Connection, Engine, event, text
+from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
+from werkzeug.test import TestResponse
 
-from controllers.console.app import statistic as statistic_module
-from machinery.context import RequestContext
-from models.model import App
-from repositories.app_statistic_query_repository import AppStatisticQueryRepository
-from services.app_statistic_query import AppStatisticQuery
-
-
-def _request_context() -> RequestContext:
-    return RequestContext(
-        request_id="request-1",
-        trace_id="trace-1",
-        account_id="account-1",
-        active_workspace_id="tenant-1",
-    )
-
-
-def _app_model() -> App:
-    return App(id="app-1", tenant_id="tenant-1", name="Statistics App")
-
-
-def _install_dependencies(
-    monkeypatch: pytest.MonkeyPatch,
-    statistics: AppStatisticQuery,
-    *,
-    time_range: tuple[datetime | None, datetime | None] = (None, None),
-) -> None:
-    monkeypatch.setattr(
-        statistic_module,
-        "application_services",
-        lambda: SimpleNamespace(app_statistics=statistics),
-    )
-    monkeypatch.setattr(
-        statistic_module,
-        "current_account_with_tenant",
-        lambda: SimpleNamespace(account=SimpleNamespace(timezone="UTC")),
-    )
-    monkeypatch.setattr(statistic_module, "parse_time_range", lambda *_args, **_kwargs: time_range)
+from constants import HEADER_NAME_CSRF_TOKEN
+from controllers.console.app import statistic, workflow_statistic
+from controllers.console.wraps import _is_setup_completed
+from enums import DeploymentEdition
+from extensions.ext_application_services import build_application_services
+from extensions.ext_login import DifyLoginManager, bind_account_loader, load_user_from_request, unauthorized_handler
+from extensions.ext_redis import RedisClientWrapper
+from libs.datetime_utils import naive_utc_now
+from libs.external_api import ExternalApi
+from libs.passport import PassportService
+from libs.token import _real_cookie_name, generate_csrf_token
+from models import Account, DifySetup, Tenant, TenantAccountJoin
+from models.account import AccountStatus, TenantAccountRole
+from models.agent import Agent, AgentScope, AgentSource
+from models.engine import db
+from models.model import App, AppMode
+from tests.unit_tests.config_override import config_overrides_context
 
 
-def _invoke(
-    app: Flask,
-    resource_type: type,
-    *,
-    start: str | None = None,
-    end: str | None = None,
-) -> dict[str, Any]:
-    resource = resource_type()
-    method = unwrap(resource.get)
-    with app.test_request_context("/console/api/apps/app-1/statistics", method="GET"):
-        response = method(
-            resource,
-            statistic_module.StatisticTimeRangeQuery(start=start, end=end),
-            _request_context(),
-            app_model=_app_model(),
+@dataclass(frozen=True)
+class _Endpoint:
+    path: str
+    resource: type[Resource]
+    mode: AppMode
+
+
+_ENDPOINTS = (
+    _Endpoint("statistics/daily-messages", statistic.DailyMessageStatistic, AppMode.CHAT),
+    _Endpoint("statistics/daily-conversations", statistic.DailyConversationStatistic, AppMode.CHAT),
+    _Endpoint("statistics/daily-end-users", statistic.DailyTerminalsStatistic, AppMode.CHAT),
+    _Endpoint("statistics/token-costs", statistic.DailyTokenCostStatistic, AppMode.CHAT),
+    _Endpoint("statistics/average-session-interactions", statistic.AverageSessionInteractionStatistic, AppMode.CHAT),
+    _Endpoint("statistics/user-satisfaction-rate", statistic.UserSatisfactionRateStatistic, AppMode.CHAT),
+    _Endpoint("statistics/average-response-time", statistic.AverageResponseTimeStatistic, AppMode.COMPLETION),
+    _Endpoint("statistics/tokens-per-second", statistic.TokensPerSecondStatistic, AppMode.CHAT),
+    _Endpoint(
+        "workflow/statistics/daily-conversations", workflow_statistic.WorkflowDailyRunsStatistic, AppMode.WORKFLOW
+    ),
+    _Endpoint(
+        "workflow/statistics/daily-terminals", workflow_statistic.WorkflowDailyTerminalsStatistic, AppMode.WORKFLOW
+    ),
+    _Endpoint("workflow/statistics/token-costs", workflow_statistic.WorkflowDailyTokenCostStatistic, AppMode.WORKFLOW),
+    _Endpoint(
+        "workflow/statistics/average-app-interactions",
+        workflow_statistic.WorkflowAverageAppInteractionStatistic,
+        AppMode.WORKFLOW,
+    ),
+)
+
+
+@dataclass(frozen=True)
+class _Harness:
+    client: FlaskClient
+    session_factory: sessionmaker[Session]
+    account_id: str
+    tenant_id: str
+    headers: dict[str, str]
+    sessions: list[Session]
+
+    def create_app(self, mode: AppMode, *, tenant_id: str | None = None) -> str:
+        with self.session_factory.begin() as session:
+            app = App(
+                tenant_id=tenant_id or self.tenant_id,
+                name="Statistics app",
+                mode=mode,
+                created_by=self.account_id,
+                enable_api=True,
+                enable_site=True,
+            )
+            session.add(app)
+            session.flush()
+            return app.id
+
+    def get(self, endpoint: _Endpoint, app_id: str, *, query: dict[str, str] | None = None) -> TestResponse:
+        self.sessions.clear()
+        return self.client.get(f"/console/api/apps/{app_id}/{endpoint.path}", headers=self.headers, query_string=query)
+
+
+@pytest.fixture
+def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]) -> Iterator[_Harness]:
+    with (
+        Redis() as redis_client,
+        config_overrides_context(
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+            RBAC_ENABLED=False,
+            LOGIN_DISABLED=False,
+            INIT_PASSWORD="",
+            SECRET_KEY="statistics-http-test-secret-at-least-32-bytes",
+        ),
+    ):
+        app = Flask(__name__)
+        app.config.update(TESTING=True, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
+        db.init_app(app)
+        redis = RedisClientWrapper()
+        redis.initialize(redis_client)
+        services = build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=redis,
         )
-    return response if isinstance(response, dict) else response.get_json()
+        app.extensions["application_services"] = services
+        bind_account_loader(app, services.accounts.identity.load_user)
+        login_manager = DifyLoginManager()
+        login_manager.request_loader(load_user_from_request)
+        login_manager.unauthorized_handler(unauthorized_handler)
+        login_manager.init_app(app)
+        blueprint = Blueprint("console", __name__, url_prefix="/console/api")
+        api = ExternalApi(blueprint)
+        for endpoint in _ENDPOINTS:
+            api.add_resource(endpoint.resource, f"/apps/<uuid:app_id>/{endpoint.path}")
+        app.register_blueprint(blueprint)
+
+        now = naive_utc_now()
+        with sqlite_session_factory.begin() as session:
+            account = Account(
+                email="statistics@example.com",
+                name="Statistics viewer",
+                status=AccountStatus.ACTIVE,
+                initialized_at=now,
+                timezone="America/New_York",
+            )
+            account.last_active_at = now
+            tenant = Tenant(name="Statistics workspace")
+            session.add_all([account, tenant, DifySetup(version="test")])
+            session.flush()
+            session.add(
+                TenantAccountJoin(
+                    tenant_id=tenant.id,
+                    account_id=account.id,
+                    role=TenantAccountRole.OWNER,
+                    current=True,
+                )
+            )
+            account_id, tenant_id = account.id, tenant.id
+
+        # Complete the one-time setup check before observing request transactions.
+        # The legacy setup cache still owns a Flask-scoped Session independently.
+        with app.app_context():
+            _is_setup_completed.reset_success()
+            assert _is_setup_completed()
+            db.session.remove()
+
+        client = app.test_client()
+        csrf_token = generate_csrf_token(account_id)
+        client.set_cookie(_real_cookie_name("csrf_token"), csrf_token)
+        headers = {
+            "Authorization": f"Bearer {PassportService().issue({'user_id': account_id})}",
+            HEADER_NAME_CSRF_TOKEN: csrf_token,
+        }
+        sessions: list[Session] = []
+
+        def observe_session(session: Session, transaction: SessionTransaction, connection: Connection) -> None:
+            sessions.append(session)
+
+        @app.after_request
+        def assert_request_sessions_closed(response: Response) -> Response:
+            assert all(not session.in_transaction() and not session.identity_map for session in sessions)
+            return response
+
+        event.listen(Session, "after_begin", observe_session)
+        try:
+            yield _Harness(client, sqlite_session_factory, account_id, tenant_id, headers, sessions)
+        finally:
+            event.remove(Session, "after_begin", observe_session)
+            _is_setup_completed.reset_success()
+            with app.app_context():
+                db.session.remove()
+                db.engine.dispose()
+
+
+@pytest.mark.parametrize("endpoint", _ENDPOINTS, ids=lambda endpoint: endpoint.path)
+@pytest.mark.parametrize("visibility", ["missing", "different-workspace", "non-normal", "workflow-only"])
+def test_statistics_reject_inaccessible_apps(harness: _Harness, endpoint: _Endpoint, visibility: str) -> None:
+    app_id = str(uuid4())
+    if visibility != "missing":
+        app_id = harness.create_app(
+            endpoint.mode, tenant_id=str(uuid4()) if visibility == "different-workspace" else None
+        )
+        with harness.session_factory.begin() as session:
+            app = session.get(App, app_id)
+            assert app is not None
+            if visibility == "non-normal":
+                # Persist a historical status not accepted by the current enum.
+                session.execute(
+                    text("UPDATE apps SET status = :status WHERE id = :app_id"),
+                    {"status": "archived", "app_id": app_id},
+                )
+            elif visibility == "workflow-only":
+                app.mode = AppMode.AGENT
+                session.add(
+                    Agent(
+                        tenant_id=harness.tenant_id,
+                        name="Hidden workflow agent",
+                        scope=AgentScope.WORKFLOW_ONLY,
+                        source=AgentSource.WORKFLOW,
+                        app_id=str(uuid4()),
+                        backing_app_id=app_id,
+                    )
+                )
+
+    response = harness.get(endpoint, app_id)
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    body = response.get_json()
+    assert isinstance(body, dict)
+    assert body["code"] == "app_not_found"
+    assert response.content_type == "application/json"
+    assert harness.sessions
+
+
+@pytest.mark.parametrize("endpoint", _ENDPOINTS, ids=lambda endpoint: endpoint.path)
+@pytest.mark.parametrize("field", ["start", "end"])
+def test_statistics_reject_invalid_dates_after_app_admission(
+    harness: _Harness, endpoint: _Endpoint, field: str
+) -> None:
+    app_id = harness.create_app(endpoint.mode)
+
+    response = harness.get(endpoint, app_id, query={field: "not-a-date"})
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    body = response.get_json()
+    assert isinstance(body, dict)
+    assert body["code"] == "invalid_param"
+    assert "not-a-date" in body["message"]
+    assert harness.sessions
 
 
 @pytest.mark.parametrize(
-    ("resource_type", "query_method", "row", "expected"),
+    ("endpoint", "unsupported_mode"),
     [
-        pytest.param(
-            statistic_module.DailyMessageStatistic,
-            "get_daily_messages",
-            {"date": "2024-01-01", "message_count": 3},
-            {"date": "2024-01-01", "message_count": 3},
-            id="daily-messages",
-        ),
-        pytest.param(
-            statistic_module.DailyConversationStatistic,
-            "get_daily_conversations",
-            {"date": "2024-01-02", "conversation_count": 5},
-            {"date": "2024-01-02", "conversation_count": 5},
-            id="daily-conversations",
-        ),
-        pytest.param(
-            statistic_module.DailyTerminalsStatistic,
-            "get_daily_terminals",
-            {"date": "2024-01-03", "terminal_count": 7},
-            {"date": "2024-01-03", "terminal_count": 7},
-            id="daily-terminals",
-        ),
-        pytest.param(
-            statistic_module.DailyTokenCostStatistic,
-            "get_daily_token_costs",
-            {
-                "date": "2024-01-04",
-                "token_count": 10,
-                "total_price": Decimal("0.25"),
-            },
-            {"date": "2024-01-04", "token_count": 10, "total_price": "0.25", "currency": "USD"},
-            id="daily-token-costs",
-        ),
-        pytest.param(
-            statistic_module.AverageSessionInteractionStatistic,
-            "get_average_session_interactions",
-            {"date": "2024-01-05", "interactions": Decimal("2.5")},
-            {"date": "2024-01-05", "interactions": 2.5},
-            id="average-session-interactions",
-        ),
-        pytest.param(
-            statistic_module.UserSatisfactionRateStatistic,
-            "get_user_satisfaction_rates",
-            {"date": "2024-01-06", "feedback_count": 1, "message_count": 10},
-            {"date": "2024-01-06", "rate": 100.0},
-            id="user-satisfaction-rate",
-        ),
-        pytest.param(
-            statistic_module.AverageResponseTimeStatistic,
-            "get_average_response_times",
-            {"date": "2024-01-07", "latency": 1.234},
-            {"date": "2024-01-07", "latency": 1234.0},
-            id="average-response-time",
-        ),
-        pytest.param(
-            statistic_module.TokensPerSecondStatistic,
-            "get_tokens_per_second",
-            {"date": "2024-01-08", "tokens_per_second": 15.5},
-            {"date": "2024-01-08", "tps": 15.5},
-            id="tokens-per-second",
-        ),
+        (_ENDPOINTS[4], AppMode.COMPLETION),
+        (_ENDPOINTS[6], AppMode.CHAT),
+        (_ENDPOINTS[11], AppMode.ADVANCED_CHAT),
     ],
+    ids=["session-interactions", "response-time", "workflow-interactions"],
 )
-def test_statistic_endpoint_delegates_to_statistic_query(
-    app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-    resource_type: type,
-    query_method: str,
-    row: dict[str, object],
-    mocker: MockerFixture,
-    sqlite_session_factory: sessionmaker[Session],
-    expected: dict[str, Any],
+def test_statistics_preserve_app_mode_restrictions(
+    harness: _Harness, endpoint: _Endpoint, unsupported_mode: AppMode
 ) -> None:
-    statistics = AppStatisticQueryRepository(session_factory=sqlite_session_factory)
-    mocker.patch.object(statistics, "_execute", return_value=(row,))
-    query_call = mocker.spy(statistics, query_method)
-    _install_dependencies(monkeypatch, statistics)
+    app_id = harness.create_app(unsupported_mode)
 
-    assert _invoke(app, resource_type) == {"data": [expected]}
-    query_call.assert_called_once_with(
-        app_id="app-1",
-        start_date=None,
-        end_date=None,
-        timezone="UTC",
+    response = harness.get(endpoint, app_id)
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    body = response.get_json()
+    assert isinstance(body, dict)
+    assert body["code"] == "app_not_found"
+    assert "App mode is not in the supported list" in body["message"]
+
+
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
+def test_session_interactions_admits_supported_chat_modes_before_date_validation(
+    harness: _Harness, mode: AppMode
+) -> None:
+    app_id = harness.create_app(mode)
+
+    response = harness.get(_ENDPOINTS[4], app_id, query={"start": "invalid-date"})
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    body = response.get_json()
+    assert isinstance(body, dict)
+    assert body["code"] == "invalid_param"
+
+
+def test_statistics_require_console_authentication(harness: _Harness) -> None:
+    app_id = harness.create_app(AppMode.CHAT)
+
+    response = harness.client.get(f"/console/api/apps/{app_id}/statistics/daily-messages")
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    body = response.get_json()
+    assert isinstance(body, dict)
+    assert body["code"] == "unauthorized"
+
+
+def test_statistics_require_valid_csrf_token(harness: _Harness) -> None:
+    app_id = harness.create_app(AppMode.CHAT)
+
+    response = harness.client.get(
+        f"/console/api/apps/{app_id}/statistics/daily-messages",
+        headers={"Authorization": harness.headers["Authorization"]},
     )
 
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    body = response.get_json()
+    assert isinstance(body, dict)
+    assert body["code"] == "unauthorized"
+    assert body["message"] == "CSRF token is missing or invalid."
 
-def test_statistic_endpoint_passes_time_range(
-    app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-    mocker: MockerFixture,
-    sqlite_session_factory: sessionmaker[Session],
+
+@pytest.mark.parametrize("query_type", [statistic.StatisticTimeRangeQuery, workflow_statistic.WorkflowStatisticQuery])
+def test_statistics_treat_blank_date_bounds_as_absent(
+    query_type: type[statistic.StatisticTimeRangeQuery] | type[workflow_statistic.WorkflowStatisticQuery],
 ) -> None:
-    statistics = AppStatisticQueryRepository(session_factory=sqlite_session_factory)
-    query_call = mocker.spy(statistics, "get_daily_messages")
-    mocker.patch.object(statistics, "_execute", return_value=())
-    start_date = datetime(2024, 1, 1, tzinfo=UTC)
-    end_date = datetime(2024, 1, 2, tzinfo=UTC)
-    _install_dependencies(monkeypatch, statistics, time_range=(start_date, end_date))
-
-    assert _invoke(app, statistic_module.DailyMessageStatistic, start="start", end="end") == {"data": []}
-    query_call.assert_called_once_with(
-        app_id="app-1",
-        start_date=start_date,
-        end_date=end_date,
-        timezone="UTC",
-    )
-
-
-def test_statistic_endpoint_rejects_invalid_time_range(
-    app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-    mocker: MockerFixture,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    statistics = AppStatisticQueryRepository(session_factory=sqlite_session_factory)
-    query_call = mocker.spy(statistics, "get_daily_messages")
-    _install_dependencies(monkeypatch, statistics)
-    monkeypatch.setattr(
-        statistic_module,
-        "parse_time_range",
-        MagicMock(side_effect=ValueError("Invalid time range")),
-    )
-
-    with pytest.raises(BadRequest, match="Invalid time range"):
-        _invoke(app, statistic_module.DailyMessageStatistic)
-
-    query_call.assert_not_called()
+    query = query_type(start="", end="")
+    assert query.start is None
+    assert query.end is None
