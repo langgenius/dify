@@ -359,6 +359,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "请至少选择一种提交方式",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "请至少启用一种提交方式",
   "nodes.humanInput.errorMsg.noUserActions": "请添加至少一个用户操作",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} 是超时分支的保留标识，请使用其他操作 ID。",
   "nodes.humanInput.output.actionId": "用户触发的操作 ID",
   "nodes.humanInput.output.actionValue": "选中的操作值",
   "nodes.humanInput.output.formInput": "表单输入值",

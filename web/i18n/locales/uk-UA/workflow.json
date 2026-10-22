@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Будь ласка, виберіть принаймні один спосіб доставки",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Будь ласка, увімкніть принаймні один спосіб доставки",
   "nodes.humanInput.errorMsg.noUserActions": "Будь ласка, додайте принаймні одну дію користувача",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} зарезервовано для гілки тайм-ауту. Виберіть інший ідентифікатор дії.",
   "nodes.humanInput.timeout.title": "Тайм-аут",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Недійсне значення за замовчуванням",
   "nodes.humanInputMigration.error.graphChanged": "Робочий процес змінився під час міграції. Спробуйте ще раз; поточні зміни збережено.",

@@ -2,6 +2,7 @@ import type { HumanInputSharedNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
 import { NodeSourceHandle } from '../../_base/components/node-handle'
+import { HUMAN_INPUT_TIMEOUT_HANDLE } from './constants'
 
 const HumanInputNodeBranches = <T extends HumanInputSharedNodeType>(props: NodeProps<T>) => {
   const { t } = useTranslation(['workflow'])
@@ -27,7 +28,7 @@ const HumanInputNodeBranches = <T extends HumanInputSharedNodeType>(props: NodeP
         </div>
         <NodeSourceHandle
           {...props}
-          handleId="__timeout"
+          handleId={HUMAN_INPUT_TIMEOUT_HANDLE}
           handleClassName="top-1/2! -right-[9px]! -translate-y-1/2!"
         />
       </div>

@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "ກະລຸນາເລືອກຢ່າງໜ້ອຍໜຶ່ງວິທີການສົ່ງ",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "ກະລຸນາເປີດໃຊ້ຢ່າງໜ້ອຍໜຶ່ງວິທີການສົ່ງ",
   "nodes.humanInput.errorMsg.noUserActions": "ກະລຸນາເພີ່ມຢ່າງໜ້ອຍໜຶ່ງການດຳເນີນການຜູ້ໃຊ້",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} ຖືກສະຫງວນໄວ້ສຳລັບສາຂາໝົດເວລາ. ກະລຸນາເລືອກ ID ການດຳເນີນການອື່ນ.",
   "nodes.humanInput.timeout.title": "Timeout",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "ຄ່າເລີ່ມຕົ້ນບໍ່ຖືກຕ້ອງ",
   "nodes.humanInputMigration.error.graphChanged": "ຂັ້ນຕອນການເຮັດວຽກປ່ຽນແປງໃນລະຫວ່າງການຍ້າຍ. ກະລຸນາລອງໃໝ່; ການແກ້ໄຂປັດຈຸບັນຂອງທ່ານຍັງຖືກເກັບໄວ້.",

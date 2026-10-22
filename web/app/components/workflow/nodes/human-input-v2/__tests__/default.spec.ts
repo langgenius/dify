@@ -78,6 +78,37 @@ describe('Human Input v2 default', () => {
     expect(result).toEqual({ isValid: true, errorMessage: '' })
   })
 
+  it('rejects an imported user action that uses the system timeout handle', () => {
+    const result = humanInputV2Default.checkValid(
+      createPayload({
+        recipients_spec: [{ type: 'initiator' }],
+        message_template: { subject: 'Review request', body: 'Please review {{#url#}}' },
+        user_actions: [
+          { id: '__timeout', title: 'Approve', button_style: UserActionButtonType.Primary },
+        ],
+      }),
+      withSelectorKey((key: string) => key, 'workflow'),
+    )
+
+    expect(result).toEqual({
+      isValid: false,
+      errorMessage: 'nodes.humanInput.errorMsg.reservedActionId',
+    })
+  })
+
+  it.each(['__timeout__', '__timeout_review'])('accepts the distinct user action ID %s', (id) => {
+    const result = humanInputV2Default.checkValid(
+      createPayload({
+        recipients_spec: [{ type: 'initiator' }],
+        message_template: { subject: 'Review request', body: 'Please review {{#url#}}' },
+        user_actions: [{ id, title: 'Approve', button_style: UserActionButtonType.Primary }],
+      }),
+      withSelectorKey((key: string) => key, 'workflow'),
+    )
+
+    expect(result).toEqual({ isValid: true, errorMessage: '' })
+  })
+
   it.each([
     ['Please review this request', 'requestURLRequired'],
     ['{{#start.email#}} {{#url#}} {{#url#}}', 'requestURLDuplicate'],

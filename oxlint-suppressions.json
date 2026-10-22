@@ -3081,11 +3081,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/timeout.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/variable-in-markdown.tsx": {
     "react/only-export-components": {
       "count": 2

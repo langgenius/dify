@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Izberite vsaj en način dostave",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Omogočite vsaj en način dostave",
   "nodes.humanInput.errorMsg.noUserActions": "Dodajte vsaj eno uporabniško dejanje",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} je rezerviran za vejo časovne omejitve. Izberite drug ID dejanja.",
   "nodes.humanInput.timeout.title": "Časovna omejitev",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Neveljavna privzeta vrednost",
   "nodes.humanInputMigration.error.graphChanged": "Delovni tok se je med selitvijo spremenil. Poskusite znova; trenutne spremembe so ohranjene.",

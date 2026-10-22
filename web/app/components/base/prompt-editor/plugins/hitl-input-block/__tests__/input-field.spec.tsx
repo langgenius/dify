@@ -191,6 +191,48 @@ describe('InputField', () => {
   it.each([
     { mode: 'insert', isEdit: false },
     { mode: 'edit', isEdit: true },
+  ])(
+    'should reject surrounding whitespace until the field name is corrected in $mode mode',
+    async ({ isEdit }) => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      render(
+        <InputField
+          nodeId="node-whitespace-name"
+          isEdit={isEdit}
+          payload={isEdit ? createPayload() : undefined}
+          onChange={onChange}
+          onCancel={vi.fn()}
+        />,
+      )
+
+      const nameInput = screen.getByRole('textbox', { name: /saveResponseAs/ })
+      const saveButton = screen.getByRole('button', {
+        name: isEdit ? 'common.operation.save' : /insertInputField\.insert/,
+      })
+      await user.clear(nameInput)
+      await user.type(nameInput, ' ReviewNote ')
+
+      expect(screen.getByText(/insertInputField\.variableNameInvalid/)).toBeInTheDocument()
+      expect(saveButton).toBeDisabled()
+      await user.click(saveButton)
+      await user.keyboard('{Control>}{Enter}{/Control}')
+      expect(onChange).not.toHaveBeenCalled()
+
+      await user.clear(nameInput)
+      await user.type(nameInput, 'ReviewNote')
+      expect(screen.queryByText(/insertInputField\.variableNameInvalid/)).not.toBeInTheDocument()
+      expect(saveButton).toBeEnabled()
+      await user.click(saveButton)
+      expect(onChange).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ output_variable_name: 'ReviewNote' }),
+      )
+    },
+  )
+
+  it.each([
+    { mode: 'insert', isEdit: false },
+    { mode: 'edit', isEdit: true },
   ])('should accept uppercase-start names and preserve case in $mode mode', async ({ isEdit }) => {
     const user = userEvent.setup()
     const onChange = vi.fn()

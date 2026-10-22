@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Silakan pilih setidaknya satu metode pengiriman",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Silakan aktifkan setidaknya satu metode pengiriman",
   "nodes.humanInput.errorMsg.noUserActions": "Silakan tambahkan setidaknya satu tindakan pengguna",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} dicadangkan untuk cabang batas waktu. Pilih ID tindakan lain.",
   "nodes.humanInput.timeout.title": "Batas waktu",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Nilai default tidak valid",
   "nodes.humanInputMigration.error.graphChanged": "Alur kerja berubah selama migrasi. Coba lagi; perubahan Anda saat ini telah dipertahankan.",

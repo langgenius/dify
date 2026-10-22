@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "الرجاء تحديد طريقة تسليم واحدة على الأقل",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "الرجاء تفعيل طريقة تسليم واحدة على الأقل",
   "nodes.humanInput.errorMsg.noUserActions": "الرجاء إضافة إجراء مستخدم واحد على الأقل",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} محجوز لفرع انتهاء المهلة. اختر معرّف إجراء آخر.",
   "nodes.humanInput.timeout.title": "المهلة الزمنية",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "القيمة الافتراضية غير صالحة",
   "nodes.humanInputMigration.error.graphChanged": "تغير سير العمل أثناء الترحيل. حاول مرة أخرى؛ تم الاحتفاظ بتعديلاتك الحالية.",

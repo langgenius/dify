@@ -5501,6 +5501,7 @@ export default interface Resources {
     'nodes.humanInput.errorMsg.noDeliveryMethod': 'Please select at least one delivery method'
     'nodes.humanInput.errorMsg.noDeliveryMethodEnabled': 'Please enable at least one delivery method'
     'nodes.humanInput.errorMsg.noUserActions': 'Please add at least one user action'
+    'nodes.humanInput.errorMsg.reservedActionId': '{{id}} is reserved for the timeout branch. Choose another action ID.'
     'nodes.humanInput.output.actionId': 'Action ID user triggered'
     'nodes.humanInput.output.actionValue': 'Selected action value'
     'nodes.humanInput.output.formInput': 'Form input value'

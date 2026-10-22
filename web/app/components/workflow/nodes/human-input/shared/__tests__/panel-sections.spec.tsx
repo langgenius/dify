@@ -26,8 +26,8 @@ const initialActions: UserAction[] = [
   { id: 'reject', title: 'Reject', button_style: UserActionButtonType.Default },
 ]
 
-const ActionPanel = () => {
-  const [actions, setActions] = useState(initialActions)
+const ActionPanel = ({ actions: startingActions = initialActions }: { actions?: UserAction[] }) => {
+  const [actions, setActions] = useState(startingActions)
   const config: HumanInputSharedPanelConfig<HumanInputSharedNodeType> = {
     inputs: {
       title: 'Human Input',
@@ -70,6 +70,50 @@ const getActionTitles = () =>
   })
 
 describe('HumanInputSharedPanelSections action editing', () => {
+  it('adds an unused action ID after deleting an earlier action', async () => {
+    const user = userEvent.setup()
+    render(<ActionPanel actions={[]} />)
+
+    const addAction = screen.getByRole('button', { name: 'common.operation.add' })
+    await user.click(addAction)
+    await user.click(addAction)
+    await user.click(addAction)
+    await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[1]!)
+    await user.click(addAction)
+
+    expect(getActionIds()).toHaveLength(3)
+    expect(getActionIds()[0]).toHaveValue('action_1')
+    expect(getActionIds()[1]).toHaveValue('action_3')
+    expect(getActionIds()[2]).toHaveValue('action_4')
+  })
+
+  it('uses the current action IDs after a manual rename', async () => {
+    const user = userEvent.setup()
+    render(<ActionPanel />)
+
+    await user.clear(screen.getByDisplayValue('approve'))
+    await user.keyboard('action_4')
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+
+    expect(getActionIds()[0]).toHaveValue('action_4')
+    expect(getActionIds()[3]).toHaveValue('action_5')
+  })
+
+  it('keeps the previous action ID when pasting the system timeout handle', async () => {
+    const user = userEvent.setup()
+    render(<ActionPanel />)
+
+    const input = screen.getByDisplayValue('approve')
+    await user.click(input)
+    await user.keyboard('{Control>}a{/Control}')
+    await user.paste('__timeout')
+
+    expect(input).toHaveValue('approve')
+    expect(getActionIds()[1]).toHaveValue('defer')
+    expect(getActionIds()[2]).toHaveValue('reject')
+    expect(input).toHaveFocus()
+  })
+
   it('keeps focus while typing an action ID across controlled updates', async () => {
     const user = userEvent.setup()
     render(<ActionPanel />)

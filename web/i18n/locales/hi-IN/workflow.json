@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "कृपया कम से कम एक डिलीवरी विधि चुनें",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "कृपया कम से कम एक डिलीवरी विधि सक्षम करें",
   "nodes.humanInput.errorMsg.noUserActions": "कृपया कम से कम एक उपयोगकर्ता कार्रवाई जोड़ें",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} टाइमआउट शाखा के लिए आरक्षित है। कोई अन्य कार्रवाई ID चुनें।",
   "nodes.humanInput.timeout.title": "टाइमआउट",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "अमान्य डिफ़ॉल्ट मान",
   "nodes.humanInputMigration.error.graphChanged": "माइग्रेशन के दौरान वर्कफ़्लो बदल गया। फिर से कोशिश करें; आपके वर्तमान संपादन सुरक्षित हैं।",

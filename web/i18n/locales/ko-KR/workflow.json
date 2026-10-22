@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "최소 하나의 전달 방법을 선택하세요",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "최소 하나의 전달 방법을 활성화하세요",
   "nodes.humanInput.errorMsg.noUserActions": "최소 하나의 사용자 작업을 추가하세요",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}}는 시간 초과 분기용으로 예약되어 있습니다. 다른 작업 ID를 선택하세요.",
   "nodes.humanInput.timeout.title": "시간 초과",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "기본값이 유효하지 않습니다",
   "nodes.humanInputMigration.error.graphChanged": "마이그레이션 중 워크플로가 변경되었습니다. 다시 시도하세요. 현재 편집 내용은 유지됩니다.",

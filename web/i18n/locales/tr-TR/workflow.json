@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Lütfen en az bir teslimat yöntemi seçin",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Lütfen en az bir teslimat yöntemini etkinleştirin",
   "nodes.humanInput.errorMsg.noUserActions": "Lütfen en az bir kullanıcı eylemi ekleyin",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} zaman aşımı dalı için ayrılmıştır. Başka bir eylem kimliği seçin.",
   "nodes.humanInput.timeout.title": "Zaman Aşımı",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Geçersiz varsayılan değer",
   "nodes.humanInputMigration.error.graphChanged": "İş akışı geçiş sırasında değişti. Tekrar deneyin; mevcut düzenlemeleriniz korundu.",

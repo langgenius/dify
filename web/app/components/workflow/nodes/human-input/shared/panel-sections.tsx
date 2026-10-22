@@ -89,7 +89,9 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
   const nodePanelWidth = useStore((state) => state.nodePanelWidth)
 
   const onAddUserAction = useCallback(() => {
-    const index = inputs.user_actions.length + 1
+    const existingIds = new Set(inputs.user_actions.map((action) => action.id))
+    let index = inputs.user_actions.length + 1
+    while (existingIds.has(`action_${index}`)) index += 1
     handleUserActionAdd({
       id: `action_${index}`,
       title: t(($) => $[`${i18nPrefix}.userActions.defaultTitle`], {
@@ -98,7 +100,7 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
       }),
       button_style: UserActionButtonType.Default,
     })
-  }, [handleUserActionAdd, inputs.user_actions.length, t])
+  }, [handleUserActionAdd, inputs.user_actions, t])
 
   return (
     <>

@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Seleccione al menos un método de entrega",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Active al menos un método de entrega",
   "nodes.humanInput.errorMsg.noUserActions": "Agregue al menos una acción del usuario",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} está reservado para la rama de tiempo de espera. Elige otro ID de acción.",
   "nodes.humanInput.timeout.title": "Tiempo de Espera",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Valor predeterminado no válido",
   "nodes.humanInputMigration.error.graphChanged": "El flujo de trabajo cambió durante la migración. Inténtalo de nuevo; se han conservado tus cambios actuales.",

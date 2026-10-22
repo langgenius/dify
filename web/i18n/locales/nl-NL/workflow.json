@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Please select at least one delivery method",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Please enable at least one delivery method",
   "nodes.humanInput.errorMsg.noUserActions": "Please add at least one user action",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} is gereserveerd voor de time-outtak. Kies een andere actie-ID.",
   "nodes.humanInput.timeout.title": "Timeout",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Ongeldige standaardwaarde",
   "nodes.humanInputMigration.error.graphChanged": "De workflow is tijdens de migratie gewijzigd. Probeer het opnieuw; uw huidige wijzigingen zijn behouden.",

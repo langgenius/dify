@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Selecione pelo menos um método de entrega",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Ative pelo menos um método de entrega",
   "nodes.humanInput.errorMsg.noUserActions": "Adicione pelo menos uma ação do usuário",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} está reservado para o ramo de tempo limite. Escolha outro ID de ação.",
   "nodes.humanInput.timeout.title": "Tempo Limite",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Valor padrão inválido",
   "nodes.humanInputMigration.error.graphChanged": "O fluxo de trabalho mudou durante a migração. Tente novamente; suas edições atuais foram mantidas.",

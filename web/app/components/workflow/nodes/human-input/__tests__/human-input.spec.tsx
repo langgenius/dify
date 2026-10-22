@@ -473,6 +473,21 @@ describe('DSL Import with Human Input Node', () => {
       expect(result.isValid).toBe(false)
     })
 
+    it('rejects an imported action ID that conflicts with the timeout branch', () => {
+      const t = withSelectorKey((key: string) => key, 'workflow')
+      const node = createHumanInputNode({
+        delivery_methods: [{ id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true }],
+        user_actions: [
+          { id: '__timeout', title: 'Approve', button_style: UserActionButtonType.Primary },
+        ],
+      })
+
+      expect(humanInputDefault.checkValid(node.data as HumanInputNodeType, t)).toEqual({
+        isValid: false,
+        errorMessage: 'nodes.humanInput.errorMsg.reservedActionId',
+      })
+    })
+
     it('should validate that user action ids and titles are not empty', () => {
       const t = withSelectorKey((key: string) => key, 'workflow')
       const createPayload = (userActions: HumanInputNodeType['user_actions']) =>

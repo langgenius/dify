@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Bitte wählen Sie mindestens eine Zustellmethode aus",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Bitte aktivieren Sie mindestens eine Zustellmethode",
   "nodes.humanInput.errorMsg.noUserActions": "Bitte fügen Sie mindestens eine Benutzeraktion hinzu",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} ist für den Zeitüberschreitungszweig reserviert. Wähle eine andere Aktions-ID.",
   "nodes.humanInput.timeout.title": "Zeitüberschreitung",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Ungültiger Standardwert",
   "nodes.humanInputMigration.error.graphChanged": "Der Workflow wurde während der Migration geändert. Versuchen Sie es erneut. Ihre aktuellen Änderungen wurden beibehalten.",

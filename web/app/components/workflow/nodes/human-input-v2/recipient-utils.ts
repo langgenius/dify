@@ -1,6 +1,6 @@
 import type { HumanInputV2Recipient } from './types'
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
+const EMAIL_PATTERN = /^[^\s@.]+(?:\.[^\s@.]+)*@[^\s@.]+(?:\.[^\s@.]+)+$/
 
 export type RecipientValidationError = 'contact-required' | 'selector-required' | 'email-invalid'
 
