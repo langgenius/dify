@@ -10,12 +10,16 @@ import pytest
 from flask import Flask
 from flask.typing import ResponseReturnValue
 from flask_restx import Api, Resource
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.inner_api.workspace import workspace as controller
 from controllers.inner_api.wraps import InnerApiUnauthorizedError
+from core.plugin.plugin_service import PluginService
+from core.trigger.trigger_manager import TriggerManager
 from extensions.application_services.workspace import WorkspaceServices
 from libs.external_api import register_external_error_handlers
+from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
 from services.account_errors import AccountNotFoundError
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
@@ -23,6 +27,7 @@ from services.errors.workspace import (
     WorkspaceOwnerNotFoundError,
     WorkspacesLimitExceededError,
 )
+from services.trigger.oauth_client_service import TriggerOAuthClientService
 from services.workspace.contracts import CreatedWorkspace, WorkspaceMembership
 from services.workspace.provisioning_service import WorkspaceProvisioningService
 from services.workspace.service import WorkspaceQueryService, WorkspaceService
@@ -34,7 +39,7 @@ class Services:
 
 
 @pytest.fixture
-def provisioning(monkeypatch: pytest.MonkeyPatch) -> Mock:
+def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]) -> Mock:
     provisioning = create_autospec(WorkspaceProvisioningService, instance=True)
     services = WorkspaceServices(
         queries=create_autospec(WorkspaceQueryService, instance=True),
@@ -46,6 +51,11 @@ def provisioning(monkeypatch: pytest.MonkeyPatch) -> Mock:
         invitations=Mock(),
         identity=Mock(),
         resource_cleanup=Mock(),
+        trigger_oauth_clients=TriggerOAuthClientService(
+            clients=TriggerOAuthClientRepository(session_factory=sqlite_session_factory),
+            get_provider=TriggerManager.get_trigger_provider,
+            is_plugin_verified=PluginService.is_plugin_verified,
+        ),
     )
     monkeypatch.setattr(controller, "application_services", lambda: Services(services))
     return provisioning

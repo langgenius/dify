@@ -17,8 +17,6 @@ from controllers.common.errors import NotFoundError
 from controllers.console.workspace.trigger_providers import (
     TriggerOAuthAuthorizeApi,
     TriggerOAuthCallbackApi,
-    TriggerOAuthClientManageApi,
-    TriggerOAuthClientPayload,
     TriggerProviderIconApi,
     TriggerProviderInfoApi,
     TriggerProviderListApi,
@@ -573,79 +571,6 @@ class TestTriggerOAuthApis:
         ):
             with pytest.raises(ValueError, match="Failed to get OAuth credentials from the provider\\."):
                 method(api, "github")
-
-
-class TestTriggerOAuthClientManageApi:
-    def test_get_client(self, app: Flask) -> None:
-        api = TriggerOAuthClientManageApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerProviderService.get_custom_oauth_client_params",
-                return_value={},
-            ),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerProviderService.is_oauth_custom_client_enabled",
-                return_value=False,
-            ),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerProviderService.is_oauth_system_client_exists",
-                return_value=True,
-            ),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerManager.get_trigger_provider",
-                return_value=MagicMock(get_oauth_client_schema=lambda: []),
-            ),
-        ):
-            result = method(api, "t1", "github")
-            assert "configured" in result
-
-    def test_post_client(self, app: Flask) -> None:
-        api = TriggerOAuthClientManageApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={"enabled": True}),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerProviderService.save_custom_oauth_client_params",
-                return_value={"result": "success"},
-            ),
-        ):
-            assert method(
-                api,
-                TriggerOAuthClientPayload(enabled=True),
-                "t1",
-                "github",
-            ) == {"result": "success"}
-
-    def test_delete_client(self, app: Flask) -> None:
-        api = TriggerOAuthClientManageApi()
-        method = unwrap(api.delete)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerProviderService.delete_custom_oauth_client_params",
-                return_value={"result": "success"},
-            ),
-        ):
-            assert method(api, "t1", "github") == {"result": "success"}
-
-    def test_oauth_client_post_value_error(self, app: Flask) -> None:
-        api = TriggerOAuthClientManageApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={"enabled": True}),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerProviderService.save_custom_oauth_client_params",
-                side_effect=ValueError("bad"),
-            ),
-        ):
-            with pytest.raises(BadRequest):
-                method(api, TriggerOAuthClientPayload(enabled=True), "t1", "github")
 
 
 class TestTriggerSubscriptionVerifyApi:

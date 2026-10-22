@@ -1,4 +1,5 @@
 import logging
+from http import HTTPStatus
 from typing import Any
 
 from flask import make_response, redirect, request
@@ -13,6 +14,8 @@ from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.workspace.error import TriggerOAuthClientChangedError, TriggerOAuthClientConfigInvalidError
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -34,14 +37,19 @@ from core.trigger.entities.api_entities import (
 )
 from core.trigger.entities.entities import RequestLog, SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
+from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
+from machinery.context import RequestContext
 from models.account import Account
 from models.provider_ids import TriggerProviderID
 from services.plugin.oauth_service import OAuthProxyService
+from services.trigger.oauth_client_service import TriggerOAuthClientChangedError as TriggerOAuthClientChanged
+from services.trigger.oauth_client_service import TriggerOAuthClientConfigError
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
@@ -75,7 +83,7 @@ class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
 
 
 class TriggerOAuthClientPayload(BaseModel):
-    client_params: dict[str, Any] | None = None
+    client_params: dict[str, object] | None = None
     enabled: bool | None = None
 
 
@@ -112,7 +120,7 @@ class TriggerOAuthClientResponse(ResponseModel):
     oauth_client_schema: list[ProviderConfig]
     custom_enabled: bool
     redirect_uri: str
-    params: dict[str, Any]
+    params: dict[str, object]
 
 
 class TriggerProviderErrorResponse(ResponseModel):
@@ -722,109 +730,77 @@ class TriggerOAuthCallbackApi(Resource):
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/oauth/client")
 class TriggerOAuthClientManageApi(Resource):
+    @error_responses(TriggerOAuthClientConfigInvalidError)
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Trigger OAuth client retrieved successfully",
         console_ns.models[TriggerOAuthClientResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
-    @account_initialization_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str, provider: str):
-        """Get OAuth client configuration for a provider"""
-
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
+    )
+    def get(self, context: RequestContext, provider: str) -> dict[str, object]:
+        """Get the masked OAuth client configuration for a provider."""
         try:
-            provider_id = TriggerProviderID(provider)
-
-            # Get custom OAuth client params if exists
-            custom_params = TriggerProviderService.get_custom_oauth_client_params(
-                tenant_id=tenant_id,
-                provider_id=provider_id,
+            configuration = application_services().workspaces.trigger_oauth_clients.get(
+                tenant_id=context.active_workspace_id,
+                provider_id=TriggerProviderID(provider),
             )
+        except TriggerOAuthClientConfigError as error:
+            raise TriggerOAuthClientConfigInvalidError(str(error)) from error
+        return dump_response(
+            TriggerOAuthClientResponse,
+            {
+                "configured": bool(configuration.params or configuration.system_configured),
+                "system_configured": configuration.system_configured,
+                "custom_configured": bool(configuration.params),
+                "oauth_client_schema": configuration.schema,
+                "custom_enabled": configuration.custom_enabled,
+                "redirect_uri": f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback",
+                "params": dict(configuration.params),
+            },
+        )
 
-            # Check if custom client is enabled
-            is_custom_enabled = TriggerProviderService.is_oauth_custom_client_enabled(
-                tenant_id=tenant_id,
-                provider_id=provider_id,
-            )
-            system_client_exists = TriggerProviderService.is_oauth_system_client_exists(
-                tenant_id=tenant_id,
-                provider_id=provider_id,
-            )
-            provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
-            redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback"
-            return TriggerOAuthClientResponse(
-                configured=bool(custom_params or system_client_exists),
-                system_configured=system_client_exists,
-                custom_configured=bool(custom_params),
-                oauth_client_schema=provider_controller.get_oauth_client_schema(),
-                custom_enabled=is_custom_enabled,
-                redirect_uri=redirect_uri,
-                params=dict(custom_params or {}),
-            ).model_dump(mode="json")
-
-        except Exception as e:
-            logger.exception("Error getting OAuth client", exc_info=e)
-            raise
-
+    @error_responses(TriggerOAuthClientConfigInvalidError, TriggerOAuthClientChangedError)
     @console_ns.expect(console_ns.models[TriggerOAuthClientPayload.__name__])
     @console_ns.response(
-        200, "Trigger OAuth client saved successfully", console_ns.models[SimpleResultResponse.__name__]
+        HTTPStatus.OK, "Trigger OAuth client saved successfully", console_ns.models[SimpleResultResponse.__name__]
     )
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
-    @account_initialization_required
-    @with_current_tenant_id
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
+    )
     @model_validate(TriggerOAuthClientPayload)
-    def post(self, req_data: TriggerOAuthClientPayload, tenant_id: str, provider: str):
-        """Configure custom OAuth client for a provider"""
-
+    def post(self, req_data: TriggerOAuthClientPayload, context: RequestContext, provider: str) -> dict[str, object]:
+        """Configure the workspace's custom OAuth client for a provider."""
         try:
-            provider_id = TriggerProviderID(provider)
-            result = TriggerProviderService.save_custom_oauth_client_params(
-                tenant_id=tenant_id,
-                provider_id=provider_id,
+            application_services().workspaces.trigger_oauth_clients.save(
+                tenant_id=context.active_workspace_id,
+                provider_id=TriggerProviderID(provider),
                 client_params=req_data.client_params,
                 enabled=req_data.enabled,
             )
-            return dump_response(SimpleResultResponse, result)
-
-        except ValueError as e:
-            raise BadRequest(str(e)) from e
-        except Exception as e:
-            logger.exception("Error configuring OAuth client", exc_info=e)
-            raise
+        except TriggerOAuthClientChanged as error:
+            raise TriggerOAuthClientChangedError(str(error)) from error
+        except TriggerOAuthClientConfigError as error:
+            raise TriggerOAuthClientConfigInvalidError(str(error)) from error
+        return dump_response(SimpleResultResponse, {"result": "success"})
 
     @console_ns.response(
-        200, "Trigger OAuth client deleted successfully", console_ns.models[SimpleResultResponse.__name__]
+        HTTPStatus.OK, "Trigger OAuth client deleted successfully", console_ns.models[SimpleResultResponse.__name__]
     )
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
-    @account_initialization_required
-    @with_current_tenant_id
-    def delete(self, tenant_id: str, provider: str):
-        """Remove custom OAuth client configuration"""
-
-        try:
-            provider_id = TriggerProviderID(provider)
-
-            result = TriggerProviderService.delete_custom_oauth_client_params(
-                tenant_id=tenant_id,
-                provider_id=provider_id,
-            )
-            return dump_response(SimpleResultResponse, result)
-        except ValueError as e:
-            raise BadRequest(str(e)) from e
-        except Exception as e:
-            logger.exception("Error removing OAuth client", exc_info=e)
-            raise
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
+    )
+    def delete(self, context: RequestContext, provider: str) -> dict[str, object]:
+        """Remove the workspace's custom OAuth client configuration."""
+        application_services().workspaces.trigger_oauth_clients.delete(
+            tenant_id=context.active_workspace_id,
+            provider_id=TriggerProviderID(provider),
+        )
+        return dump_response(SimpleResultResponse, {"result": "success"})
 
 
 @console_ns.route(
