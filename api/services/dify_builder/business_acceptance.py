@@ -353,9 +353,8 @@ def confirm_testdata_contract(
         if supplied:
             proposal = BusinessAcceptanceProposal.model_validate(raw)
             identities = {"task_id": current_task_id(session, context), "source_digest": current_source_digest(context)}
-            if any(
-                key in proposal.model_fields_set and getattr(proposal, key) != value
-                for key, value in identities.items()
+            if ("task_id" in proposal.model_fields_set and proposal.task_id != identities["task_id"]) or (
+                "source_digest" in proposal.model_fields_set and proposal.source_digest != identities["source_digest"]
             ):
                 raise BadRequestError("Business acceptance contract does not match the current confirmed task")
             # Stamp omitted lineage after normal action version admission. Keep
