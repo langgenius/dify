@@ -16,7 +16,10 @@ import json_repair
 from core.dify_builder.errors import ProposalWouldRunWrongError
 from core.dify_builder.models import MutationIntent
 from core.dify_builder.node_defaults import default_config_or_empty
-from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES
+from core.workflow.generator.prompts.builder_prompts import (
+    CODE_FAILURE_POLICY_RULES,
+    TOOL_PARAMETER_SEMANTICS_RULES,
+)
 from graphon.enums import BUILT_IN_NODE_TYPES
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import copy_text
@@ -312,6 +315,7 @@ def build_edit_intents(
     edit_target_node_ids: Sequence[str] = (),
     last_edit_rejection: str | None = None,
     approved_plan: WorkflowPlan | None = None,
+    tool_context: str = "",
 ) -> list[MutationIntent]:
     """Propose the mutations that apply ``edit_rules`` to an existing graph.
 
@@ -370,11 +374,15 @@ def build_edit_intents(
         "declared outputs; use actual native contracts for tools, never guess a selector. "
         "Preserve existing source/target nodes and their unrelated config.\n"
         + CODE_FAILURE_POLICY_RULES
+        + TOOL_PARAMETER_SEMANTICS_RULES
         + "Allowed node types: "
         + ", ".join(sorted(_ALLOWED_NODE_TYPES))
         + ".\n"
     )
     user = f"EDIT RULES:\n{edit_rules}\n\nGRAPH:\n{_graph_context(graph, edit_target_node_ids)}"
+    user += "\n\n" + graph_prompt.source_value_declarations(graph)
+    if tool_context:
+        user += "\n\n" + tool_context
     if approved_plan is not None:
         user += "\n\nAPPROVED CHANGE PLAN:\n" + json.dumps(
             {

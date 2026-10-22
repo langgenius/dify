@@ -85,6 +85,11 @@ from services.dify_builder.application.verification import (
     is_execution_policy_blocker,
     result_card,
 )
+from services.dify_builder.business_acceptance import (
+    clear_task_acceptance,
+    confirm_testdata_contract,
+    record_run_acceptance,
+)
 from services.dify_builder.execution_messages import change_scope_label
 from services.dify_builder.initial_draft import build_intents_for_draft
 from services.dify_builder.plan import make_plan_card, store_plan
@@ -224,7 +229,10 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     progress.activate("build-review-requirements")
     if turn.action is not None and isinstance(turn.action.payload, dict):
         keys = [f["key"] for f in fc.form_fields if isinstance(f, dict) and f.get("key")]
+        previous_requirements = fc.requirements
         fc.requirements = merge_known_keys(fc.requirements, turn.action.payload, keys)
+        if fc.requirements != previous_requirements:
+            clear_task_acceptance(fc)
 
     progress.activate("build-draft-plan")
     plan = env.agent.propose_plan_v1(fc.requirements, goal_text=fc.goal_text)
@@ -756,6 +764,7 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         validate_runtime_inputs(schema, inputs)
     except ValueError as exc:
         return input_gate_result(env, s, fc, schema, inputs, PcState.BUILD_AWAIT_TESTDATA, str(exc), actor=turn.actor)
+    confirm_testdata_contract(s, fc, turn.action.payload if turn.action else {}, inputs)
     ti = TestInput(
         session_id=s.id,
         source=mode or "upload",
@@ -861,6 +870,8 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
+
+    record_run_acceptance(s, fc, run, ti, graph, _hash)
 
     fc.verify_run_id = run.id
 

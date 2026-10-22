@@ -926,6 +926,8 @@ export type TestResultCard = {
   action_reason_code?: string | null
   action_state?: 'completed' | 'failed' | 'unknown' | null
   blocked_node_ids?: Array<string>
+  business_acceptance_case_id?: string | null
+  business_acceptance_state?: 'failed' | 'passed' | 'unverified' | null
   consent_id?: string | null
   dify_run_id?: string
   executed_node_ids?: Array<string>

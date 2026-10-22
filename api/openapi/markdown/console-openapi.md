@@ -29154,6 +29154,8 @@ Tag type
 | action_reason_code | string |  | No |
 | action_state | string, <br>**Available values:** "completed", "failed", "unknown" |  | No |
 | blocked_node_ids | [ string ] |  | No |
+| business_acceptance_case_id | string |  | No |
+| business_acceptance_state | string, <br>**Available values:** "failed", "passed", "unverified" |  | No |
 | consent_id | string |  | No |
 | dify_run_id | string |  | No |
 | executed_node_ids | [ string ] |  | No |

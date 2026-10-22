@@ -13,6 +13,7 @@ from core.dify_builder.state import PcState, is_terminal
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import copy_text
 from services.dify_builder.application.ports import ContinuationClassifyingAgent
+from services.dify_builder.business_acceptance import clear_task_acceptance
 
 if TYPE_CHECKING:
     from services.dify_builder.application.runner import Env, StepResult
@@ -86,6 +87,7 @@ def prepare_continuation(
     context.effect_confirmation = {}
     context.effect_confirmation_form = {}
     context.code_risk_assessments = {}
+    clear_task_acceptance(context)
     context.staged_repair = []
     context.change_set = None
     context.repair_attempts = 0

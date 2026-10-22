@@ -144,10 +144,11 @@ _DEFAULT_ALLOWED_FILE_TYPES = ("document", "image", "audio", "video")
 _DEFAULT_FILE_UPLOAD_METHODS = ("local_file", "remote_url")
 
 # Token ceiling for the planner call when the caller didn't pin one. The plan
-# is a short JSON node list (a handful of nodes with labels/purposes), so this
-# is generous headroom while still bounding a runaway response. Builder calls
-# keep the caller's budget so complex node configs are not truncated.
-_PLANNER_DEFAULT_MAX_TOKENS = 4096
+# includes model reasoning as well as its JSON answer for some providers.
+# Leave headroom for both while bounding a runaway response. The injected
+# default is limited by the model's public schema; explicit caller budgets
+# and the independent Builder budget are preserved.
+_PLANNER_DEFAULT_MAX_TOKENS = 16384
 _TOOL_ROUTER_MAX_TOKENS = 256
 _MAX_OMITTED_TOOL_PREVIEW = 20
 
@@ -205,8 +206,9 @@ _MODEL_NODE_TYPES = frozenset(
 # a code node's ``outputs`` keys, a parameter-extractor's ``parameters[].name``,
 # a human-input's ``inputs[].output_variable_name``, and an llm's
 # ``structured_output`` schema fields, plus a native Agent caller's declared
-# outputs. Plan names remain advisory; actual Agent identity and output schema
-# are validated independently against the built node config.
+# outputs, and a loop's ``loop_variables[].label``. Plan names remain advisory;
+# actual Agent identity and output schema are validated independently against
+# the built node config.
 _DECLARABLE_OUTPUT_NODE_TYPES = frozenset(
     {
         BuiltinNodeTypes.CODE,
@@ -214,6 +216,7 @@ _DECLARABLE_OUTPUT_NODE_TYPES = frozenset(
         BuiltinNodeTypes.HUMAN_INPUT,
         BuiltinNodeTypes.LLM,
         BuiltinNodeTypes.AGENT,
+        BuiltinNodeTypes.LOOP,
     }
 )
 
@@ -1177,7 +1180,7 @@ class WorkflowGenerator:
             SystemPromptMessage(content=PLANNER_SYSTEM_PROMPT + "\n\n" + native_constant_output_system_rules()),
             UserPromptMessage(content=user_prompt),
         ]
-        clamped_parameters = _clamp_for_planner(model_parameters)
+        clamped_parameters = _clamp_for_planner(model_parameters, model_instance=model_instance)
         parsed = cls._invoke_and_parse_json(
             model_instance=model_instance,
             messages=messages,
@@ -3474,22 +3477,39 @@ class WorkflowGenerator:
         return out
 
 
-def _clamp_for_planner(params: dict[str, Any]) -> dict[str, Any]:
+def _clamp_for_planner(params: dict[str, Any], *, model_instance: Any | None = None) -> dict[str, Any]:
     """
     The planner needs only a tight, deterministic plan — clamp temperature
     and cap max_tokens so we don't burn budget. Returns a copy.
 
     Temperature above 0.5 is pinned back to 0.2 (the planner's output is a
-    small node list; rambling only hurts). ``max_tokens`` gets a tight default
+    small node list; rambling only hurts). ``max_tokens`` gets a bounded default
     ONLY when the caller didn't pin one — an explicit value is always honoured.
-    Bounding it stops a model that ignores the JSON instruction from generating
-    until it hits the provider's (often huge) default ceiling.
+    The public model schema bounds that injected default when available. An
+    unavailable or unusable schema keeps the bounded fallback; it never blocks
+    generation or changes explicit reasoning settings.
     """
     out = dict(params)
     out.setdefault("temperature", 0.2)
     if "temperature" in out and isinstance(out["temperature"], (int, float)) and out["temperature"] > 0.5:
         out["temperature"] = 0.2
-    out.setdefault("max_tokens", _PLANNER_DEFAULT_MAX_TOKENS)
+    if "max_tokens" not in out:
+        budget = _PLANNER_DEFAULT_MAX_TOKENS
+        if model_instance is not None:
+            try:
+                schema = model_instance.get_model_schema()
+                for rule in schema.parameter_rules:
+                    if rule.name != "max_tokens":
+                        continue
+                    maximum = rule.max
+                    if type(maximum) in (int, float) and 1 <= maximum < budget:
+                        budget = int(maximum)
+                    break
+            except Exception:
+                # Schema inspection is advisory; never expose provider details
+                # or turn metadata unavailability into a failed generation.
+                logger.debug("Workflow generator: planner model token limit unavailable; using bounded default")
+        out["max_tokens"] = budget
     return out
 
 

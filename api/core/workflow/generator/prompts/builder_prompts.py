@@ -22,6 +22,63 @@ Code failure policy:
   merely from an output name or value such as 0.
 """
 
+# Shared input semantics for generation and edits/repairs; guidance rather
+# than provider-specific runtime value coercion.
+TOOL_PARAMETER_SEMANTICS_RULES = """
+Tool parameter semantics:
+- Bind each parameter according to the selected action's declared description,
+  type, form and required status. Matching string types alone does not establish
+  matching meaning. A Start text input does not validate or parse its label's
+  advertised format. Preserve the user's accepted input formats.
+- Authorization cannot add undeclared parameters or capabilities. Distinguish
+  missing credentials from unsupported features: never describe an
+  unsupported setting as pending setup or guarantee future support after authentication.
+- When a composite input does not match separate tool parameters, plan a
+  deterministic Code transformation before the installed tool, declare its
+  outputs, and bind each tool parameter to the corresponding parsed output.
+  This is a genuine data transformation, not a replacement for the tool action.
+  Validate the accepted representations and fail on malformed input before the
+  external action; do not duplicate the whole input into multiple parameters.
+  For example, ONLY when the selected GitHub action declares separate owner
+  and repo names, an input accepting owner/repo or a GitHub repository URL
+  needs parsing to those two names; neither parameter receives the whole URL.
+- References are executable bindings: use type "variable" with value
+  ["node_id", "output_name"], or type "mixed" with {{#node_id.output_name#}}.
+  A type "constant" value such as "node1.owner" is literal text, never a
+  reference. Use an existing declared source, not an invented Start field.
+  During repair, fix the binding and any missing upstream transformation;
+  changing the spelling of a reference-like constant does not resolve it.
+"""
+
+# Shared by the planner and the normalized plan sent to every isolated builder.
+# A consumer does not otherwise see the aggregator producer's config snippet.
+VARIABLE_AGGREGATOR_OUTPUT_RULES = """
+Native variable-aggregator outputs:
+- An ungrouped aggregator publishes only output: it selects the first available
+  branch value and does not flatten or rename that value's fields into outputs.
+  For an object field use ["<merge-id>", "output", "<field>"] or
+  {{#<merge-id>.output.<field>#}}, never ["<merge-id>", "<field>"].
+- Aggregation selects mutually exclusive branch alternatives; it does not join
+  different fields from simultaneously available inputs. To return several
+  fields, aggregate a declared object and select its nested fields, use one
+  ungrouped aggregator per field, or extract explicitly declared Code outputs.
+- output_type does not convert, parse, or enrich the selected value. Text,
+  including an llm's text or an error message, remains a string; it cannot
+  satisfy nested object selectors even if output_type is set to object.
+  Nested fields require every selected branch to actually produce a declared
+  object containing those fields with compatible types. Otherwise use separate
+  per-field merges or explicit transformations before the merge.
+- Preserve every requested End output across every reachable branch. Plan real
+  producers and branch values for all fields, including intentional empty or
+  null values only where the requested contract allows them. Do not merge only
+  report/error text and invent nested counts, totals, or attachments beneath it.
+  Keep actual native Tool file values on file outputs; text or a filename is
+  not a file. Do not drop requested fields to hide incompatible branch shapes.
+- Existing explicitly configured groups publish group_name.output, not flat
+  group_name values: ["<merge-id>", "<group_name>", "output"]. Do not invent
+  groups or named top-level outputs merely because consumers want those names.
+"""
+
 # Per-node-type configuration cheatsheet.
 #
 # Each entry mirrors the production ``defaultValue`` from
@@ -154,7 +211,12 @@ _NODE_SNIPPETS: dict[str, str] = {
      "variables": [{"variable": "arg1", "value_selector": ["<src>", "<var>"]}],
      "outputs": {"result": {"type": "string", "children": null}}}
     Return named values from ``main`` and declare each key in ``outputs`` with
-    its actual type. For JSON validation/processing, declare boolean ``valid``
+    its actual native output type: "string", "number", "boolean", "object",
+    "array[string]", "array[number]", "array[boolean]", or "array[object]".
+    Use "number" for both integer and floating-point outputs.
+    Use "array[number]" for numeric arrays.
+    Never use "integer", "int", or "float" as an output type.
+    For JSON validation/processing, declare boolean ``valid``
     and array ``items`` outputs when needed; compare the boolean and pass the
     array to iteration. A Code node can explicitly parse upstream JSON text
     and return those typed fields.""",

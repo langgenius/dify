@@ -562,6 +562,7 @@ class SqlDifyBuilderRepository:
                 output_findings=[OutputFinding(**finding) for finding in evidence["output_findings"]],
                 executed_node_ids=evidence["executed_node_ids"],
                 no_output_dead_branch=evidence["no_output_dead_branch"],
+                business_acceptance=dict(evidence.get("business_acceptance") or {}),
                 execution_evidence=ExecutionEvidenceSummary.model_validate(evidence["execution_evidence"])
                 if evidence.get("execution_evidence") is not None
                 else None,

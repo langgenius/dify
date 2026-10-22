@@ -231,6 +231,8 @@ def test_card_shapes_round_trip() -> None:
         "status": "failed",
         "failure_reason": "One node failed",
         "outcome": None,
+        "business_acceptance_state": None,
+        "business_acceptance_case_id": None,
         "terminal_outputs": None,
         "executed_node_ids": [],
         "review_note": None,

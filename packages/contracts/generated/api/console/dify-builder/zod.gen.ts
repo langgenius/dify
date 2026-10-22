@@ -1055,6 +1055,8 @@ export const zTestResultCard = z.object({
   action_reason_code: z.string().nullish(),
   action_state: z.enum(['completed', 'failed', 'unknown']).nullish(),
   blocked_node_ids: z.array(z.string()).optional(),
+  business_acceptance_case_id: z.string().nullish(),
+  business_acceptance_state: z.enum(['failed', 'passed', 'unverified']).nullish(),
   consent_id: z.string().nullish(),
   dify_run_id: z.string().optional().default(''),
   executed_node_ids: z.array(z.string()).optional(),

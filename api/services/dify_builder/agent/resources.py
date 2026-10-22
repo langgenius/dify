@@ -26,7 +26,12 @@ from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.workflow.generator.tool_catalogue import ToolCatalogueEntry, build_tool_catalogue, tool_capability_text
+from core.workflow.generator.tool_catalogue import (
+    ToolCatalogueEntry,
+    build_tool_catalogue,
+    format_tool_builder_context,
+    tool_capability_text,
+)
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
@@ -366,3 +371,36 @@ def list_tenant_resources(
         model_source_error=source_errors.get("models"),
         tool_source_error=source_errors.get("tools"),
     )
+
+
+def tool_parameter_context(tenant_id: str, graph: dict[str, Any]) -> str:
+    """Public installed action contracts for the graph's exact Tool identities.
+
+    Repair/edit cognition needs parameter meanings as well as parameter names.
+    Native node data stores bindings, not action descriptions. Reuse the public
+    catalogue without credential lookup, decryption, authorization or invocation;
+    this is declaration evidence only, never a readiness or execution claim.
+    """
+    targets = {
+        (
+            str(data.get("provider_id") or data.get("provider_name") or ""),
+            str(data.get("tool_name") or ""),
+            str(data.get("provider_type") or "builtin"),
+        )
+        for node in graph.get("nodes", [])
+        if isinstance(data := node.get("data"), dict) and data.get("type") == "tool"
+    }
+    if not targets:
+        return ""
+    try:
+        entries = _list_tools(tenant_id)
+    except Exception as exc:
+        diagnostics.report("inventory_unavailable", error=exc, fallback_used=True)
+        return "Tool parameter declarations unavailable; do not invent action parameters or meanings."
+    matched = [
+        entry for entry in entries if (entry["provider_name"], entry["tool_name"], entry["provider_type"]) in targets
+    ]
+    sections = [format_tool_builder_context(entry) for entry in matched]
+    if len(matched) < len(targets):
+        sections.append("Some Tool action declarations are unavailable; do not invent their parameters or meanings.")
+    return "\n\n".join(sections)

@@ -74,9 +74,9 @@ from services.dify_builder.application.verification import (
     SUCCESS_REPLY,
     has_output_blocker,
     is_execution_policy_blocker,
-    publication_decision,
     result_card,
 )
+from services.dify_builder.business_acceptance import confirm_testdata_contract, record_run_acceptance
 from services.dify_builder.effect_disclosure import split_confirmations
 from services.dify_builder.effect_presentation import (
     effect_confirmation_fields,
@@ -280,6 +280,11 @@ def confirmed_tool_test(
         immutable=True,
     )
     fc.verify_run_id = run.id
+    if fc.business_acceptance_contract:
+        # Confirmed content is already redacted. Annotation cannot justify any
+        # new graph I/O after the effect or discard the completed native Run.
+        revision = run.verification.execution_revision if run.verification else ""
+        record_run_acceptance(s, fc, run, saved, None, revision)
     card = result_card(run, reply_language=fc.reply_language)
     if card.outcome == "execution_succeeded_needs_review":
         progress.complete(run_step)
@@ -1308,6 +1313,7 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         validate_runtime_inputs(schema, inputs)
     except ValueError as exc:
         return input_gate_result(env, s, fc, schema, inputs, PcState.FIX_AWAIT_TESTDATA, str(exc), actor=turn.actor)
+    confirm_testdata_contract(s, fc, turn.action.payload if turn.action else {}, inputs)
     ti = TestInput(
         session_id=s.id,
         source=_mode_or_default(mode),
@@ -1422,6 +1428,8 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
+
+    record_run_acceptance(s, fc, run, ti, graph, _hash)
 
     fc.verify_run_id = run.id
 
@@ -1550,8 +1558,15 @@ def publication_for_context(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
         with suppress(NotFoundError):
             run = env.repo.get_run(fc.verify_run_id)
     graph, revision = env.dify.read_graph(s.app_id, turn.actor)
-    return publication_decision(
-        run, session_id=s.id, current_revision=revision, current_graph_revision=env.dify.graph_revision(graph)
+    from services.dify_builder.business_acceptance import context_publication_decision
+
+    return context_publication_decision(
+        run,
+        s,
+        fc,
+        current_revision=revision,
+        current_graph_revision=env.dify.graph_revision(graph),
+        load_run=env.repo.get_run,
     )
 
 
