@@ -111,28 +111,24 @@ function PreviewModeItem({
 export function AgentPreviewHeader({
   mode,
   previewEnabled,
-  isChatFeaturesOpen,
+  chatFeatures,
   buildEnabled = true,
   onModeChange,
-  onToggleChatFeatures,
   onOpenWorkingDirectory,
   onRefresh,
   refreshDisabled,
   showWorkingDirectoryAction = false,
-  showChatFeaturesAction = true,
   className,
 }: {
   mode: AgentConfigureRightPanelMode
   previewEnabled: boolean
-  isChatFeaturesOpen: boolean
+  chatFeatures?: { open: boolean; onToggle: () => void }
   buildEnabled?: boolean
   onModeChange: (mode: AgentConfigureRightPanelMode) => void
-  onToggleChatFeatures: () => void
   onOpenWorkingDirectory: () => void
   onRefresh: () => void
   refreshDisabled?: boolean
   showWorkingDirectoryAction?: boolean
-  showChatFeaturesAction?: boolean
   className?: string
 }) {
   const { t } = useTranslation(['agentV2'])
@@ -247,16 +243,16 @@ export function AgentPreviewHeader({
             </button>
           )}
         </div>
-        {showChatFeaturesAction && (
+        {chatFeatures && (
           <>
             <SegmentedControlDivider className="mx-3 max-sm:hidden" />
             <button
               type="button"
-              aria-expanded={isChatFeaturesOpen}
-              onClick={onToggleChatFeatures}
+              aria-expanded={chatFeatures.open}
+              onClick={chatFeatures.onToggle}
               className={cn(
                 'flex h-8 items-center justify-center gap-1 rounded-lg px-2 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-                isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
+                chatFeatures.open && 'bg-state-base-hover text-text-secondary',
               )}
             >
               <span aria-hidden className="i-ri-chat-settings-line size-4" />

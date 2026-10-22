@@ -184,10 +184,7 @@ describe('Configure chat sessions', () => {
     expect(api.checkout).not.toHaveBeenCalled()
     await user.click(restartButton())
     await waitFor(() => expect(screen.queryByText('Preview answer')).not.toBeInTheDocument())
-    expect(api.refresh).toHaveBeenCalledWith({
-      params: { agent_id: 'agent-1' },
-      body: { draft_type: 'draft' },
-    })
+    expect(api.refresh).not.toHaveBeenCalled()
     expect(restartButton()).toBeDisabled()
     await changeMode(user, 'build')
     await waitFor(() => expect(modeButton('build')).toBeChecked())

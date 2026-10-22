@@ -25,9 +25,6 @@ import { usePrepareAgentBuildDraftBeforeRun } from './use-agent-build-draft-run'
 const BUILD_NOTE_FILE_ID = '__agent_config_build_note__'
 const BUILD_NOTE_FILE_NAME = 'build_note.md'
 
-const getAgentSoulConfigFromRefetchResult = (result: unknown) => {
-  return (result as { data?: { agent_soul?: AgentSoulConfig } } | undefined)?.data?.agent_soul
-}
 const flattenFileNodes = (files: AgentFileNode[]): AgentFileNode[] =>
   files.flatMap((file) =>
     file.children?.length ? [file, ...flattenFileNodes(file.children)] : [file],
@@ -158,14 +155,9 @@ export function useAgentConfigureBuildDraftData({
   soulSourceOverride: AgentConfigureSoulSource | null
 }) {
   const { t } = useTranslation(['common'])
-  const buildDraftQueryInput = {
-    params: {
-      agent_id: agentId,
-    },
-  }
   const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
     input: {
-      params: buildDraftQueryInput.params,
+      params: { agent_id: agentId },
     },
     context: {
       silent: true,
@@ -207,7 +199,7 @@ export function useAgentConfigureBuildDraftData({
   const hasActiveBuildDraft = resolvedSoulSource === 'build-draft'
   const soulSource = !isBuildMode && hasActiveBuildDraft ? 'draft' : resolvedSoulSource
   const isBuildDraftActive = soulSource === 'build-draft'
-  const buildDraftAgentSoulConfig = buildDraftData?.agent_soul as AgentSoulConfig | undefined
+  const buildDraftAgentSoulConfig = buildDraftData?.agent_soul
   const visibleAgentSoulConfig = isBuildDraftActive
     ? buildDraftAgentSoulConfig
     : normalAgentSoulConfig
@@ -279,7 +271,7 @@ export function useAgentConfigureBuildDraftActions({
   normalAgentSoulConfig?: AgentSoulConfig
   rebaseComposerDraft: (agentSoulConfig?: AgentSoulConfig) => void
   refetchBuildDraft: () => Promise<{ data?: { agent_soul?: AgentSoulConfig } }>
-  refetchComposer: () => Promise<unknown>
+  refetchComposer: () => Promise<{ data?: { agent_soul?: AgentSoulConfig } }>
   resetBuildChatSession: () => Promise<void>
   saveDraft: () => Promise<void>
   onComposerRebased?: () => void
@@ -308,10 +300,8 @@ export function useAgentConfigureBuildDraftActions({
   const discardBuildDraftMutation = useMutation(
     consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions(),
   )
-  const { mutateAsync: finalizeBuildChatRequest, isPending: isFinalizingBuildChat } =
-    finalizeBuildChatMutation
-  const { mutateAsync: applyBuildDraftRequest, isPending: isApplyingBuildDraftRequest } =
-    applyBuildDraftMutation
+  const { mutateAsync: finalizeBuildChatRequest } = finalizeBuildChatMutation
+  const { mutateAsync: applyBuildDraftRequest } = applyBuildDraftMutation
   const { mutateAsync: discardBuildDraftRequest, isPending: isDiscardingBuildDraft } =
     discardBuildDraftMutation
   const { forceCheckoutBuildDraft, prepareBuildDraftBeforeRun } =
@@ -370,7 +360,7 @@ export function useAgentConfigureBuildDraftActions({
       let nextAgentSoulConfig = normalAgentSoulConfig
       if (shouldRefetchComposer) {
         const result = await refetchComposer()
-        nextAgentSoulConfig = getAgentSoulConfigFromRefetchResult(result) ?? normalAgentSoulConfig
+        nextAgentSoulConfig = result.data?.agent_soul ?? normalAgentSoulConfig
       }
       setSoulSourceOverride('draft')
       queryClient.removeQueries({
@@ -440,8 +430,7 @@ export function useAgentConfigureBuildDraftActions({
     applyBuildDraft,
     cancelBuildDraftRefresh,
     discardBuildDraft,
-    isApplyingBuildDraft:
-      isApplyingBuildDraftWorkflow || isFinalizingBuildChat || isApplyingBuildDraftRequest,
+    isApplyingBuildDraft: isApplyingBuildDraftWorkflow,
     isDiscardingBuildDraft,
     prepareBuildDraftBeforeRun: prepareBuildDraftRun,
     refreshBuildDraftAfterBuildChat,

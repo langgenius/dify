@@ -393,33 +393,10 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     mutateAsync: refreshDebugConversationRequestAsync,
     isPending: isRefreshingBuildConversation,
   } = refreshDebugConversationMutation
-  const { mutate: refreshPreviewConversationRequest, isPending: isRefreshingPreviewConversation } =
-    useMutation(consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions())
-  const refreshDebugConversationInput = useCallback(
-    () => ({
-      params: {
-        agent_id: agentId,
-      },
-    }),
-    [agentId],
+  const refreshDebugConversationAsync = useCallback(
+    () => refreshDebugConversationRequestAsync({ params: { agent_id: agentId } }),
+    [agentId, refreshDebugConversationRequestAsync],
   )
-  const refreshDebugConversationAsync = useCallback(() => {
-    return refreshDebugConversationRequestAsync(refreshDebugConversationInput())
-  }, [refreshDebugConversationInput, refreshDebugConversationRequestAsync])
-  const refreshPreviewConversationInput = useCallback(
-    () => ({
-      params: {
-        agent_id: agentId,
-      },
-      body: {
-        draft_type: 'draft' as const,
-      },
-    }),
-    [agentId],
-  )
-  const refreshPreviewConversation = useCallback(() => {
-    refreshPreviewConversationRequest(refreshPreviewConversationInput())
-  }, [refreshPreviewConversationInput, refreshPreviewConversationRequest])
   const resetBuildChatState = useCallback(async () => {
     await refreshDebugConversationAsync().catch(() => undefined)
     setCompletedBuildConversationId(null)
@@ -609,8 +586,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     buildDraftActionsDisabled ||
     isApplyingInlineBuildDraft ||
     isDiscardingBuildDraft ||
-    isRefreshingBuildConversation ||
-    isRefreshingPreviewConversation
+    isRefreshingBuildConversation
   const buildConversationHasAgentResponse =
     !!conversationIds.build &&
     (conversationIds.build === completedBuildConversationId ||
@@ -627,7 +603,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     }
 
     if (rightPanelMode === 'build') void refreshDebugConversationAsync().catch(() => undefined)
-    else refreshPreviewConversation()
     resetConversation(rightPanelMode)
     setClearPreviewChat(true)
   }
@@ -678,14 +653,11 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               className="pr-18.5 max-sm:pr-14"
               mode={rightPanelMode}
               previewEnabled={previewEnabled}
-              isChatFeaturesOpen={false}
               onModeChange={changeRightPanelMode}
-              onToggleChatFeatures={() => undefined}
               onOpenWorkingDirectory={workingDirectoryPanel.openWorkingDirectory}
               onRefresh={restartCurrentChat}
               refreshDisabled={isRestartCurrentChatDisabled}
               showWorkingDirectoryAction={showWorkingDirectoryAction}
-              showChatFeaturesAction={false}
             />
           }
           chat={

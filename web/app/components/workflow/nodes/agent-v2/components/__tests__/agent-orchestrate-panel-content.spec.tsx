@@ -650,12 +650,7 @@ describe('Inline Agent configure workspace', () => {
     await receive(0, 'preview-conversation', 'Preview answer')
     await complete()
     await user.click(restartButton())
-    await waitFor(() =>
-      expect(api.refreshConversation).toHaveBeenCalledExactlyOnceWith({
-        params: { agent_id: 'agent-1' },
-        body: { draft_type: 'draft' },
-      }),
-    )
+    expect(api.refreshConversation).not.toHaveBeenCalled()
     await waitFor(() => expect(screen.queryByText('Preview answer')).not.toBeInTheDocument())
     expect(api.deleteBuildDraft).not.toHaveBeenCalled()
     await changeMode(user, 'build')

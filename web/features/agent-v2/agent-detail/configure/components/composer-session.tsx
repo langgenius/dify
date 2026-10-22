@@ -179,36 +179,13 @@ function AgentConfigurePageComposerSession({
     mutateAsync: refreshDebugConversationRequestAsync,
     isPending: isRefreshingBuildConversation,
   } = refreshDebugConversationMutation
-  const { mutate: refreshPreviewConversationRequest, isPending: isRefreshingPreviewConversation } =
-    useMutation(consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions())
-  const refreshDebugConversationInput = useCallback(
-    () => ({
-      params: {
-        agent_id: agentId,
-      },
-    }),
-    [agentId],
+  const refreshDebugConversation = () => {
+    refreshDebugConversationRequest({ params: { agent_id: agentId } })
+  }
+  const refreshDebugConversationAsync = useCallback(
+    () => refreshDebugConversationRequestAsync({ params: { agent_id: agentId } }),
+    [agentId, refreshDebugConversationRequestAsync],
   )
-  const refreshDebugConversation = useCallback(() => {
-    refreshDebugConversationRequest(refreshDebugConversationInput())
-  }, [refreshDebugConversationInput, refreshDebugConversationRequest])
-  const refreshDebugConversationAsync = useCallback(() => {
-    return refreshDebugConversationRequestAsync(refreshDebugConversationInput())
-  }, [refreshDebugConversationInput, refreshDebugConversationRequestAsync])
-  const refreshPreviewConversationInput = useCallback(
-    () => ({
-      params: {
-        agent_id: agentId,
-      },
-      body: {
-        draft_type: 'draft' as const,
-      },
-    }),
-    [agentId],
-  )
-  const refreshPreviewConversation = useCallback(() => {
-    refreshPreviewConversationRequest(refreshPreviewConversationInput())
-  }, [refreshPreviewConversationInput, refreshPreviewConversationRequest])
 
   return (
     <ScopeProvider
@@ -231,9 +208,7 @@ function AgentConfigurePageComposerSession({
           agentId={agentId}
           buildDraft={buildDraft}
           configureData={configureData}
-          isRefreshingDebugConversation={
-            isRefreshingBuildConversation || isRefreshingPreviewConversation
-          }
+          isRefreshingDebugConversation={isRefreshingBuildConversation}
           isViewingVersion={isViewingVersion}
           previewEnabled={previewEnabled}
           rightPanelMode={rightPanelMode}
@@ -241,7 +216,6 @@ function AgentConfigurePageComposerSession({
           onComposerRebase={onComposerRebase}
           onRefreshDebugConversation={refreshDebugConversation}
           onRefreshDebugConversationAsync={refreshDebugConversationAsync}
-          onRefreshPreviewConversation={refreshPreviewConversation}
           onSelectVersion={onSelectVersion}
         />
       </AgentComposerProvider>
@@ -261,7 +235,6 @@ function AgentConfigurePageComposerContent({
   onComposerRebase,
   onRefreshDebugConversation,
   onRefreshDebugConversationAsync,
-  onRefreshPreviewConversation,
   onSelectVersion,
 }: {
   agentId: string
@@ -275,7 +248,6 @@ function AgentConfigurePageComposerContent({
   onComposerRebase: () => void
   onRefreshDebugConversation: () => void
   onRefreshDebugConversationAsync: () => Promise<unknown>
-  onRefreshPreviewConversation: () => void
   onSelectVersion: (versionId: string | null) => void
 }) {
   const {
@@ -460,8 +432,6 @@ function AgentConfigurePageComposerContent({
     if (rightPanelChatMode === 'build') {
       resetBuildSessionState()
       onRefreshDebugConversation()
-    } else {
-      onRefreshPreviewConversation()
     }
 
     resetConversation(rightPanelChatMode)
@@ -529,10 +499,15 @@ function AgentConfigurePageComposerContent({
                 mode={rightPanelChatMode}
                 previewEnabled={previewEnabled}
                 buildEnabled={capabilities.canBuild}
-                showChatFeaturesAction={capabilities.canEdit}
-                isChatFeaturesOpen={showChatFeatures}
+                chatFeatures={
+                  capabilities.canEdit
+                    ? {
+                        open: showChatFeatures,
+                        onToggle: () => setShowChatFeatures((open) => !open),
+                      }
+                    : undefined
+                }
                 onModeChange={changeRightPanelMode}
-                onToggleChatFeatures={() => setShowChatFeatures((open) => !open)}
                 onOpenWorkingDirectory={() => {
                   setShowPreviewVersions(false)
                   workingDirectoryPanel.openWorkingDirectory()
