@@ -60,11 +60,11 @@ The Console controller MUST call the Email Management owner and `IMChannelServic
 
 ### Requirement: Owner commands MUST preserve provider-specific configuration types
 
-Email and IM owners MUST receive strict provider-discriminated inputs mapped from the canonical Console v2 DTOs。Channel transport MUST NOT define command services、a second provider-specific credential union or an untyped configuration map。
+Email and IM owners MUST receive strict provider-discriminated inputs mapped from the canonical Console v2 DTOs。Channel transport MUST NOT define command services or an untyped configuration map。Complete credentials、credential edits and safe credential read states MUST have distinct typed transport representations。
 
 #### Scenario: Resend candidate is submitted
 
-- **WHEN** Email create、update or test receives a Resend candidate
+- **WHEN** Email create or unaddressed test receives a Resend candidate
 - **THEN** the candidate MUST contain required `sender_email`、`sender_name` and `api_key`
 - **AND** the Console controller MUST delegate the complete candidate directly to the Email owner
 
@@ -76,13 +76,13 @@ Email and IM owners MUST receive strict provider-discriminated inputs mapped fro
 
 #### Scenario: Required configuration is not newly submitted
 
-- **WHEN** a candidate omits a required field or supplies `null` or a retention marker for a required secret
+- **WHEN** a create、replacement or unaddressed test candidate omits a required field or supplies `null` or a retention marker for a required secret
 - **THEN** validation MUST reject the candidate before provider or persistence work
 - **AND** management MUST NOT read persisted credentials to complete it
 
 #### Scenario: A nullable provider field is omitted
 
-- **WHEN** a complete candidate omits a nullable field or explicitly supplies `null`
+- **WHEN** a create、replacement or unaddressed test candidate omits a nullable field or explicitly supplies `null`
 - **THEN** the final candidate value MUST be `null`
 - **AND** management MUST NOT retain the persisted field value
 
@@ -265,3 +265,7 @@ Console controller MUST delegate IM candidate test、create、ordinary update、
 - **WHEN** controller receives opaque `ConfigVersion` with path `channel_id`
 - **THEN** codec MUST pass decoded numeric version and Channel ID separately to Service
 - **AND** wire format MUST remain unchanged
+
+### Requirement: Editing and testing saved credentials MUST preserve owner boundaries
+
+Update and ID-addressed test MUST use the credential edit contract defined by `human-input-channel-management-console-api`。The application owner MUST read and merge the addressed saved credentials after checking owner、identity and version。Only complete resulting credentials MAY reach provider adapters or credential protection。ID-addressed test MUST NOT persist its candidate。Detail reads MAY decrypt credentials and return `IMProviderCredentials` within the application。The Console controller MUST explicitly construct the Response using the identifier allowlist and secret redaction contract。HTTP responses MUST NOT contain plaintext secrets or encrypted credentials。

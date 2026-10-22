@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 from typing import Never
 
 import pytest
 from flask import Flask
+from flask_login import LoginManager
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
@@ -32,9 +32,11 @@ _EXPECTED_ROUTES = {
     f"{_BASE_PATH}/channels": {"GET"},
     f"{_BASE_PATH}/channels/email": {"POST"},
     f"{_BASE_PATH}/channels/email/test": {"POST"},
+    f"{_BASE_PATH}/channels/email/<uuid:channel_id>/test": {"POST"},
     f"{_BASE_PATH}/channels/email/<uuid:channel_id>": {"DELETE", "GET", "PUT"},
     f"{_BASE_PATH}/channels/im": {"POST"},
     f"{_BASE_PATH}/channels/im/test": {"POST"},
+    f"{_BASE_PATH}/channels/im/<uuid:channel_id>/test": {"POST"},
     f"{_BASE_PATH}/channels/im/<uuid:channel_id>": {"DELETE", "GET", "PUT"},
     f"{_BASE_PATH}/channels/im/<uuid:channel_id>/replacement": {"POST"},
 }
@@ -49,7 +51,7 @@ _SLACK_CREDENTIALS = {
 
 
 @pytest.fixture
-def wire_app(monkeypatch: pytest.MonkeyPatch) -> Iterator[Flask]:
+def wire_app(monkeypatch: pytest.MonkeyPatch) -> Flask:
     account = Account(name="Owner", email="owner@example.com", status=AccountStatus.ACTIVE)
     account.id = "account-1"
     account.role = TenantAccountRole.OWNER
@@ -64,6 +66,7 @@ def wire_app(monkeypatch: pytest.MonkeyPatch) -> Iterator[Flask]:
     )
 
     application = Flask(__name__)
+    LoginManager().init_app(application)
     application.config["TESTING"] = False
     application.config["RESTX_ERROR_404_HELP"] = False
     application.register_blueprint(console_bp)
@@ -72,7 +75,7 @@ def wire_app(monkeypatch: pytest.MonkeyPatch) -> Iterator[Flask]:
 
 def test_console_blueprint_registers_only_the_canonical_channel_routes(wire_app: Flask) -> None:
     registered_routes = {
-        rule.rule: set(rule.methods) - {"HEAD", "OPTIONS"}
+        rule.rule: set(rule.methods or ()) - {"HEAD", "OPTIONS"}
         for rule in wire_app.url_map.iter_rules()
         if rule.rule.startswith(_BASE_PATH)
     }
@@ -120,7 +123,7 @@ def test_im_update_conflicts_have_stable_wire_codes(
     expected_code: str,
 ) -> None:
     class IMOwner:
-        def update(self, *_args):
+        def update(self, *_args: object) -> Never:
             raise error
 
     monkeypatch.setattr(
@@ -156,7 +159,7 @@ def test_kind_mismatch_is_a_detail_free_wire_not_found(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class EmailOwner:
-        def get(self, *_args):
+        def get(self, *_args: object) -> Never:
             raise ChannelNotFoundError("the channel belongs to another kind and scope")
 
     monkeypatch.setattr(
@@ -179,7 +182,7 @@ def test_existing_im_create_is_a_generic_conflict_without_a_third_code(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class IMOwner:
-        def create(self, *_args):
+        def create(self, *_args: object) -> Never:
             raise ChannelAlreadyConfiguredError("persistence-conflict-detail")
 
     monkeypatch.setattr(
@@ -208,7 +211,7 @@ def test_unexpected_candidate_failure_is_a_detail_free_wire_internal_error(
     service_error = RuntimeError("provider-adapter-secret-diagnostic")
 
     class IMOwner:
-        def test(self, *_args):
+        def test(self, *_args: object) -> Never:
             raise service_error
 
     monkeypatch.setattr(
@@ -239,7 +242,7 @@ def test_candidate_provider_failures_are_credential_free_test_outcomes(
     failure_kind: ProviderFailureKind,
 ) -> None:
     class IMOwner:
-        def test(self, *_args):
+        def test(self, *_args: object) -> Never:
             raise ChannelProviderError(failure_kind, f"Safe {failure_kind.value} description.")
 
     monkeypatch.setattr(
@@ -318,3 +321,178 @@ def test_workspace_editions_continue_to_the_existing_authentication_stack(
     response = wire_app.test_client().get(f"{_BASE_PATH}/channel-providers")
 
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize("kind", ["im", "email"])
+def test_saved_connection_test_accepts_retention_without_saving(
+    wire_app: Flask, monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
+    from controllers.console.human_input_v2.config_version import encode_email_config_version
+    from core.human_input_v2.shared import EmailProviderId
+    from repositories.human_input_v2.email_channel import EmailConfigurationSnapshot
+
+    tested: list[object] = []
+
+    class Owner:
+        def test_saved(self, *args: object) -> None:
+            tested.append(args[-1])
+
+    monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", lambda *_args: Owner())
+    monkeypatch.setattr(channel_controller, "build_human_input_email_channel_management_service", Owner)
+    credentials = (
+        {name: value if name == "provider" else {"type": "unchanged"} for name, value in _SLACK_CREDENTIALS.items()}
+        if kind == "im"
+        else {
+            "provider": "resend",
+            "sender_name": {"type": "unchanged"},
+            "sender_email": {"type": "unchanged"},
+            "api_key": {"type": "unchanged"},
+        }
+    )
+    version = (
+        encode_im_config_version(IMChannelId(_CHANNEL_ID), 1)
+        if kind == "im"
+        else encode_email_config_version(EmailConfigurationSnapshot(EmailProviderId(_CHANNEL_ID), 1))
+    )
+
+    response = wire_app.test_client().post(
+        f"{_BASE_PATH}/channels/{kind}/{_CHANNEL_ID}/test",
+        json={"expected_config_version": version, "credentials": credentials},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "connected", "status_description": ""}
+    assert len(tested) == 1
+
+
+@pytest.mark.parametrize("kind", ["im", "email"])
+@pytest.mark.parametrize(
+    ("failure", "expected_status", "expected_code"),
+    [
+        (ChannelNotFoundError("private-owner"), 404, "not_found"),
+        (ProviderConfigurationUpdatedError("private-version"), 409, "provider_configuration_updated"),
+        (ChannelProviderError(ProviderFailureKind.INVALID_CREDENTIALS, "Invalid credentials."), 200, None),
+    ],
+)
+def test_saved_connection_test_translates_failures_safely(
+    wire_app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+    failure: Exception,
+    expected_status: int,
+    expected_code: str | None,
+) -> None:
+    from controllers.console.human_input_v2.config_version import encode_email_config_version
+    from core.human_input_v2.shared import EmailProviderId
+    from repositories.human_input_v2.email_channel import EmailConfigurationSnapshot
+
+    class Owner:
+        def test_saved(self, *_args: object) -> Never:
+            raise failure
+
+    monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", lambda *_args: Owner())
+    monkeypatch.setattr(channel_controller, "build_human_input_email_channel_management_service", Owner)
+    credentials = (
+        _SLACK_CREDENTIALS
+        if kind == "im"
+        else {
+            "provider": "resend",
+            "sender_name": "Sender",
+            "sender_email": "sender@example.com",
+            "api_key": "api-key",
+        }
+    )
+    version = (
+        encode_im_config_version(IMChannelId(_CHANNEL_ID), 1)
+        if kind == "im"
+        else encode_email_config_version(EmailConfigurationSnapshot(EmailProviderId(_CHANNEL_ID), 1))
+    )
+    response = wire_app.test_client().post(
+        f"{_BASE_PATH}/channels/{kind}/{_CHANNEL_ID}/test",
+        json={"expected_config_version": version, "credentials": credentials},
+    )
+
+    assert response.status_code == expected_status
+    if expected_code is not None:
+        assert response.get_json()["code"] == expected_code
+    else:
+        assert response.get_json() == {"status": "invalid_credentials", "status_description": "Invalid credentials."}
+    assert "private-" not in response.get_data(as_text=True)
+
+
+def test_im_detail_returns_identifiers_and_redacted_secret_states(
+    wire_app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from datetime import datetime
+
+    from core.human_input_v2.entities import IMProvider
+    from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials
+    from repositories.human_input_v2.im_channel_repository import IMChannelStatus
+    from services.human_input_v2.im_channel_service import IMChannelDetailView, IMChannelView
+
+    view = IMChannelView(
+        id=IMChannelId(_CHANNEL_ID),
+        created_at=datetime(2026, 10, 15),
+        updated_at=datetime(2026, 10, 15),
+        provider=IMProvider.FEISHU,
+        status=IMChannelStatus.CONNECTED,
+        status_reason=None,
+        app_identifier="app",
+        webhook_url=None,
+        config_version=1,
+    )
+
+    class Owner:
+        def get_detail(self, _channel_id: IMChannelId) -> IMChannelDetailView:
+            return IMChannelDetailView(
+                view,
+                FeishuCredentials(
+                    provider=IMProvider.FEISHU,
+                    app_id="feishu-app-id",
+                    app_secret="stored-app-secret",
+                    verification_token=None,
+                    encrypt_key="stored-encrypt-key",
+                ),
+            )
+
+    monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", lambda *_args: Owner())
+    response = wire_app.test_client().get(f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}")
+
+    assert response.status_code == 200
+    assert response.get_json()["credentials"] == {
+        "provider": "feishu",
+        "app_id": "feishu-app-id",
+        "app_secret": {"type": "redacted"},
+        "verification_token": None,
+        "encrypt_key": {"type": "redacted"},
+    }
+    assert "stored-app-secret" not in response.get_data(as_text=True)
+    assert "stored-encrypt-key" not in response.get_data(as_text=True)
+
+
+def test_saved_im_test_rejects_provider_mismatch_as_bad_request(
+    wire_app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class Owner:
+        def test_saved(self, *_args: object) -> Never:
+            raise ReplacementRequiredError("private-provider-mismatch")
+
+    monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", lambda *_args: Owner())
+    response = wire_app.test_client().post(
+        f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}/test",
+        json={
+            "expected_config_version": encode_im_config_version(IMChannelId(_CHANNEL_ID), 1),
+            "credentials": {
+                "provider": "feishu",
+                "app_id": {"type": "unchanged"},
+                "app_secret": {"type": "unchanged"},
+                "verification_token": {"type": "unchanged"},
+                "encrypt_key": {"type": "unchanged"},
+            },
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "bad_request"
+    assert "private-provider-mismatch" not in response.get_data(as_text=True)

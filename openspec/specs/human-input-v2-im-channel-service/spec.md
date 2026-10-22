@@ -4,7 +4,7 @@
 TBD - created by archiving change implement-human-input-im-channel-service. Update Purpose after archive.
 ## Requirements
 ### Requirement: IMChannelService MUST expose owner-bound management operations
-`IMChannelService` MUST expose available-Provider read、current read、ID-addressed read、candidate test、create、ordinary update、explicit replacement and delete。`WorkspaceIMChannelService` MUST bind trusted Tenant、Account、Session factory and credential codec at construction，then initialize the separate owner-bound Reader and Writer internally。Operation methods MUST NOT receive owner、scope、edition、actor、raw `owner_key` or SQLAlchemy `Session`。
+`IMChannelService` MUST expose available-Provider read、current read、ID-addressed summary and detail reads、candidate and saved-configuration tests、create、ordinary update、explicit replacement and delete。`WorkspaceIMChannelService` MUST bind trusted Tenant、Account、Session factory and credential codec at construction，then initialize the separate owner-bound Reader and Writer internally。Operation methods MUST NOT receive owner、scope、edition、actor、raw `owner_key` or SQLAlchemy `Session`。
 
 #### Scenario: Workspace Service is called
 - **WHEN** Workspace composition invokes a Service operation
@@ -101,7 +101,7 @@ Read operations MUST use short read Sessions。Write operations MUST open `sessi
 - **THEN** no write Session/transaction MUST remain open during that I/O
 
 ### Requirement: Service MUST return credential-free Channel views
-Current read、ID-addressed read、create、update and replacement MUST return `IMChannelView` rather than Repository `IMChannel`。The view MUST exclude encrypted credentials、raw `owner_key`、configuring actor、Provider raw payload and ORM record。It MUST contain the safe facts required by existing `ChannelSummary` and opaque `ConfigVersion` projection。
+Current read、ID-addressed summary read、create、update and replacement MUST return `IMChannelView` rather than Repository `IMChannel`。The view MUST exclude encrypted credentials、raw `owner_key`、configuring actor、Provider raw payload and ORM record。It MUST contain the safe facts required by existing `ChannelSummary` and opaque `ConfigVersion` projection。
 
 `IMProvider.supports_webhook()` MUST be the sole Provider-level capability source。It MUST return `True` for Slack、Feishu、Lark and Microsoft Teams，and `False` for DingTalk and WeCom，matching the current adapter implementations。The method MUST NOT read credentials、construct an adapter or decide whether one concrete credential set can create a handler。
 
@@ -121,7 +121,7 @@ Private `im_channel_service._generate_im_provider_webhook_url(webhook_id)` MUST 
 - **THEN** `webhook_url` MUST be `null`
 
 #### Scenario: Current Channel is read
-- **WHEN** Service loads a persisted Channel
+- **WHEN** Service loads a persisted Channel for summary projection
 - **THEN** it MUST project safe metadata without decrypting credentials or calling Provider
 
 #### Scenario: Mutation succeeds
@@ -150,3 +150,21 @@ Private `im_channel_service._generate_im_provider_webhook_url(webhook_id)` MUST 
 #### Scenario: Channel is deleted
 - **WHEN** Service invokes Repository delete
 - **THEN** it MUST not wait for another domain's cleanup
+
+### Requirement: Credential edits MUST resolve before provider preparation
+
+Ordinary update and saved-configuration test MUST validate the addressed Channel and expected version before decrypting its credentials。The Service MUST merge typed edit instructions with the complete stored credential value。Ordinary update MUST pass that complete result through the existing Provider preparation and whole-document credential encryption before CAS。Provider and Provider tenant identity constraints MUST remain unchanged。
+
+#### Scenario: Saved configuration is tested
+
+- **WHEN** a saved-configuration test receives retained fields and temporary replacements
+- **THEN** the Service MUST test the complete merged credentials
+- **AND** it MUST NOT encrypt、write or advance configuration state
+
+#### Scenario: Credential details are read
+
+- **WHEN** an ID-addressed detail read succeeds
+- **THEN** the Service MUST return `IMChannelDetailView` containing the summary and complete `IMProviderCredentials` for internal application use
+- **AND** the Console controller MUST explicitly convert those credentials into the provider-specific Response defined by `human-input-channel-management-console-api`
+- **AND** the HTTP response MUST NOT expose plaintext secret values or encrypted credentials
+- **AND** it MUST NOT call a provider

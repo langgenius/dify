@@ -109,7 +109,7 @@ Plaintext API keys MUST exist only for the minimum duration required to handle a
 #### Scenario: Configuration is read
 
 - **WHEN** a caller reads a configured Email channel
-- **THEN** the caller MUST receive only an `api_key_configured` state for the credential
+- **THEN** the caller MUST receive only `api_key: {"type":"redacted"}` for the credential
 
 ### Requirement: Updates MUST not overwrite concurrent configuration changes
 
@@ -184,24 +184,24 @@ Persistence operations MUST distinguish not-configured, created, updated, delete
 - **THEN** persistence MUST return a domain aggregate or immutable snapshot
 - **AND** it MUST NOT expose a live ORM record outside the repository boundary
 
-### Requirement: Resend create, update and test MUST require the same complete candidate
+### Requirement: Resend edits and saved tests MUST resolve a complete candidate
 
-Resend create、update and connection test MUST require the same complete candidate containing `sender_email`、`sender_name` and a newly submitted non-blank `api_key`。Management MUST NOT reveal or reuse the persisted API key to complete an update or connection test candidate。
+Create and unaddressed candidate test MUST require complete `sender_email`、`sender_name` and non-blank `api_key`。Update and ID-addressed test MUST accept the explicit credential edit contract defined by `human-input-channel-management-console-api`。The Email owner MUST load the addressed snapshot、check its version and merge edits into one complete `ResendCandidate`。
 
-#### Scenario: Resend configuration is updated
+#### Scenario: Saved API key is retained
 
-- **WHEN** an administrator updates an existing Resend configuration
-- **THEN** the command MUST contain required `sender_email`、required `sender_name` and a newly submitted API key
-- **AND** management MUST protect that complete candidate before persistence
+- **WHEN** an edit supplies `{"type":"unchanged"}` for `api_key`
+- **THEN** the owner MUST decrypt the addressed Workspace's saved API key to construct the candidate
+- **AND** save MUST encrypt the complete resulting API key before the existing CAS write
 
-#### Scenario: Resend update omits the API key
+#### Scenario: Saved configuration is tested
 
-- **WHEN** an update omits the API key, submits `null`, submits a blank value or submits a retention marker
-- **THEN** management MUST reject the request before credential protection or persistence
+- **WHEN** an administrator submits edits to the ID-addressed connection test
+- **THEN** the owner MUST test the merged candidate through the existing test Email behavior
+- **AND** submitted overrides MUST NOT be persisted
+
+#### Scenario: Required edit instructions are invalid
+
+- **WHEN** an update or saved test omits an edit field or supplies a null or blank API key
+- **THEN** request validation MUST reject it
 - **AND** the current configuration MUST remain unchanged
-
-#### Scenario: Resend connection test is requested
-
-- **WHEN** an administrator tests a Resend candidate
-- **THEN** the command MUST contain the same required sender email、sender name and newly submitted API key required for create and update
-- **AND** management MUST NOT read or reuse the persisted API key

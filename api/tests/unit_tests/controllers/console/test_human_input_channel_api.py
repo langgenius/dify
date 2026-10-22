@@ -36,9 +36,11 @@ _CANONICAL_ROUTES = {
     "/workspace/current/human-input/v2/channels": {"GET"},
     "/workspace/current/human-input/v2/channels/email": {"POST"},
     "/workspace/current/human-input/v2/channels/email/test": {"POST"},
+    "/workspace/current/human-input/v2/channels/email/<uuid:channel_id>/test": {"POST"},
     "/workspace/current/human-input/v2/channels/email/<uuid:channel_id>": {"GET", "PUT", "DELETE"},
     "/workspace/current/human-input/v2/channels/im": {"POST"},
     "/workspace/current/human-input/v2/channels/im/test": {"POST"},
+    "/workspace/current/human-input/v2/channels/im/<uuid:channel_id>/test": {"POST"},
     "/workspace/current/human-input/v2/channels/im/<uuid:channel_id>": {"GET", "PUT", "DELETE"},
     "/workspace/current/human-input/v2/channels/im/<uuid:channel_id>/replacement": {"POST"},
 }

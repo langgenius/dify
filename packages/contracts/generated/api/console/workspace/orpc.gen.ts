@@ -16,6 +16,9 @@ import {
   zGetWorkspaceCurrentHumanInputV2ChannelsImByChannelIdResponse,
   zGetWorkspaceCurrentHumanInputV2ChannelsResponse,
   zPostWorkspaceCurrentHumanInputV2ChannelsEmailBody,
+  zPostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestBody,
+  zPostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestPath,
+  zPostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestResponse,
   zPostWorkspaceCurrentHumanInputV2ChannelsEmailResponse,
   zPostWorkspaceCurrentHumanInputV2ChannelsEmailTestBody,
   zPostWorkspaceCurrentHumanInputV2ChannelsEmailTestResponse,
@@ -23,6 +26,9 @@ import {
   zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdReplacementBody,
   zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdReplacementPath,
   zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdReplacementResponse,
+  zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestBody,
+  zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestPath,
+  zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestResponse,
   zPostWorkspaceCurrentHumanInputV2ChannelsImResponse,
   zPostWorkspaceCurrentHumanInputV2ChannelsImTestBody,
   zPostWorkspaceCurrentHumanInputV2ChannelsImTestResponse,
@@ -61,6 +67,26 @@ export const post = oc
 
 export const test = {
   post,
+}
+
+export const post2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTest',
+    path: '/workspace/current/human-input/v2/channels/email/{channel_id}/test',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestBody,
+      params: zPostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestPath,
+    }),
+  )
+  .output(zPostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestResponse)
+
+export const test2 = {
+  post: post2,
 }
 
 export const delete_ = oc
@@ -110,9 +136,10 @@ export const byChannelId = {
   delete: delete_,
   get: get2,
   put,
+  test: test2,
 }
 
-export const post2 = oc
+export const post3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -124,12 +151,12 @@ export const post2 = oc
   .output(zPostWorkspaceCurrentHumanInputV2ChannelsEmailResponse)
 
 export const email = {
-  post: post2,
+  post: post3,
   test,
   byChannelId,
 }
 
-export const post3 = oc
+export const post4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -140,11 +167,11 @@ export const post3 = oc
   .input(z.object({ body: zPostWorkspaceCurrentHumanInputV2ChannelsImTestBody }))
   .output(zPostWorkspaceCurrentHumanInputV2ChannelsImTestResponse)
 
-export const test2 = {
-  post: post3,
+export const test3 = {
+  post: post4,
 }
 
-export const post4 = oc
+export const post5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -161,7 +188,27 @@ export const post4 = oc
   .output(zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdReplacementResponse)
 
 export const replacement = {
-  post: post4,
+  post: post5,
+}
+
+export const post6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTest',
+    path: '/workspace/current/human-input/v2/channels/im/{channel_id}/test',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestBody,
+      params: zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestPath,
+    }),
+  )
+  .output(zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestResponse)
+
+export const test4 = {
+  post: post6,
 }
 
 export const delete2 = oc
@@ -212,9 +259,10 @@ export const byChannelId2 = {
   get: get3,
   put: put2,
   replacement,
+  test: test4,
 }
 
-export const post5 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -226,8 +274,8 @@ export const post5 = oc
   .output(zPostWorkspaceCurrentHumanInputV2ChannelsImResponse)
 
 export const im = {
-  post: post5,
-  test: test2,
+  post: post7,
+  test: test3,
   byChannelId: byChannelId2,
 }
 
