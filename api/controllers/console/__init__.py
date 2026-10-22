@@ -153,6 +153,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     )
     from .agent import composer as agent_composer
     from .agent import roster as agent_roster
+    from .agent import tracing as agent_tracing
+    from .agent import tracing_runs as agent_tracing_runs
 
     # Import app controllers
     from .app import (
@@ -270,6 +272,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         workflow_run_archive,
         agent_composer,
         agent_roster,
+        agent_tracing,
+        agent_tracing_runs,
         advanced_prompt_template,
         agent,
         agent_app_access,
@@ -365,6 +369,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     workflow_run_archive,
     agent_composer,
     agent_roster,
+    agent_tracing,
+    agent_tracing_runs,
     advanced_prompt_template,
     agent,
     agent_app_access,
@@ -458,6 +464,8 @@ __all__ = [
     "agent_config_inspector",
     "agent_providers",
     "agent_roster",
+    "agent_tracing",
+    "agent_tracing_runs",
     "annotation",
     "api",
     "apikey",

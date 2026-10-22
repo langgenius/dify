@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { createDeferred } from '@/test/deferred'
 import ImagePreview from '../image-preview'
 
@@ -32,7 +32,7 @@ const setup = (props: Partial<ComponentProps<typeof ImagePreview>> = {}) => {
         onCancel={onCancel}
         {...props}
       />
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
     </>,
   )
   return { user, clipboardWrite, windowOpen, download, onCancel }

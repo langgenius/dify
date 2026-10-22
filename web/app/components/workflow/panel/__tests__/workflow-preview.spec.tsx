@@ -12,7 +12,9 @@ import {
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { BlockEnum, InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { submitHumanInputForm } from '@/service/workflow'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowEditor } from '@/test/workflow-editor'
 import WorkflowPreview from '../workflow-preview'
 
@@ -332,4 +334,35 @@ it('loads nested tool traces using the editor app identity and preview run ID', 
       node_execution_id: 'preview-tool',
     },
   })
+})
+
+it('shows the test run destination from its execution identity', async () => {
+  const { queryClient } = createConsoleQueryWrapper()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.traceRuns.bySourceKind.bySourceId.get.queryKey({
+      input: { params: { app_id: 'app-1', source_kind: 'workflow', source_id: 'preview-run' } },
+    }),
+    {
+      status: 'accepted',
+      source_kind: 'workflow',
+      source_id: 'preview-run',
+      provider: 'langfuse',
+      trace_url: 'https://traces.example.com/preview-run',
+    },
+  )
+  renderPreview({
+    queryClient,
+    initialStoreState: {
+      workflowRunningData: createPreviewRunningData({
+        result: createWorkflowResult({
+          id: 'preview-run',
+          status: WorkflowRunningStatus.Succeeded,
+        }),
+      }),
+    },
+  })
+  expect(await screen.findByRole('link', { name: 'app.tracing.run.viewTrace' })).toHaveAttribute(
+    'href',
+    'https://traces.example.com/preview-run',
+  )
 })

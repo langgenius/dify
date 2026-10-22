@@ -97,7 +97,9 @@ class DifyApiLLMClient:
         if missing:
             raise UserError(f"Agent LLM Gateway requires execution context fields: {', '.join(missing)}")
 
-        caller = context.model_dump(mode="json")
+        # Application tracing policy belongs to the collector, not the strict
+        # metering-gateway caller DTO. Keep it out even when its value is None.
+        caller = context.model_dump(mode="json", exclude={"tracing"})
         caller.update(
             {
                 "invocation_id": invocation_id,

@@ -308,6 +308,7 @@ class MessageDict(TypedDict):
     id: str
     app_id: str
     conversation_id: str
+    model_provider: NotRequired[str | None]
     model_id: str | None
     inputs: dict[str, Any]
     query: str
@@ -1786,6 +1787,7 @@ class Message(Base):
             "id": self.id,
             "app_id": self.app_id,
             "conversation_id": self.conversation_id,
+            "model_provider": self.model_provider,
             "model_id": self.model_id,
             "inputs": self.inputs_with_session(session=session),
             "query": self.query,
@@ -1810,6 +1812,7 @@ class Message(Base):
             id=data["id"],
             app_id=data["app_id"],
             conversation_id=data["conversation_id"],
+            model_provider=data.get("model_provider"),
             model_id=data["model_id"],
             inputs=data["inputs"],
             total_price=data["total_price"],

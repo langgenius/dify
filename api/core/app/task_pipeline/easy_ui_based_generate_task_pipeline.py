@@ -318,18 +318,28 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                             answer=output_moderation_answer
                         )
 
+                    stopped_agent_message: Message | None = None
                     with session_factory.create_session() as session:
                         # A stopped Agent run may persist provider-reported usage after
                         # cancellation completes. Do not replace it with local token estimates.
                         if isinstance(event, QueueStopEvent):
-                            self._save_message(
+                            saved_message = self._save_message(
                                 session=session,
                                 trace_manager=trace_manager,
                                 preserve_existing_usage=True,
                             )
+                            if self._app_config.app_mode == AppMode.AGENT:
+                                stopped_agent_message = saved_message
                         else:
                             self._save_message(session=session, trace_manager=trace_manager)
                         session.commit()
+                    if stopped_agent_message is not None:
+                        # Provider/billing subscribers may perform external I/O.
+                        # Release the stop-save row lock before notifying them.
+                        message_was_created.send(
+                            stopped_agent_message,
+                            application_generate_entity=self._application_generate_entity,
+                        )
                     message_end_resp = self._message_end_to_stream_response()
                     yield message_end_resp
                 case QueueRetrieverResourcesEvent():
@@ -428,7 +438,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         session: Session,
         trace_manager: TraceQueueManager | None = None,
         preserve_existing_usage: bool = False,
-    ):
+    ) -> Message:
         """
         Save message.
         :return:
@@ -436,7 +446,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         llm_result = self._task_state.llm_result
         usage = llm_result.usage
 
+        agent_stop_requested = preserve_existing_usage and self._app_config.app_mode == AppMode.AGENT
         message_stmt = select(Message).where(Message.id == self._message_id)
+        if agent_stop_requested:
+            message_stmt = message_stmt.with_for_update().execution_options(populate_existing=True)
         message = session.scalar(message_stmt)
         if not message:
             raise ValueError(f"message {self._message_id} not found")
@@ -481,9 +494,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         metadata = self._task_state.metadata.model_dump(mode="json")
         if has_persisted_usage and "usage" in existing_metadata:
             metadata["usage"] = existing_metadata["usage"]
+        if agent_stop_requested:
+            # Closing the consumer records a request, not a runtime outcome.
+            # The Agent worker owns the terminal after cancellation/cleanup.
+            metadata["agent_stop_requested"] = True
         message.message_metadata = json.dumps(metadata, ensure_ascii=False)
 
-        if trace_manager:
+        if trace_manager and not agent_stop_requested:
             trace_manager.add_trace_task(
                 TraceTask(
                     TraceTaskName.MESSAGE_TRACE,
@@ -493,10 +510,12 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 )
             )
 
-        message_was_created.send(
-            message,
-            application_generate_entity=self._application_generate_entity,
-        )
+        if not agent_stop_requested:
+            message_was_created.send(
+                message,
+                application_generate_entity=self._application_generate_entity,
+            )
+        return message
 
     def _handle_stop(self, event: QueueStopEvent):
         """

@@ -14,6 +14,7 @@ from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.user_prompt import DifyUserPromptLayerConfig
 from dify_agent.protocol.snapshot import SessionSnapshot
+from flask import Flask
 
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
@@ -30,11 +31,19 @@ from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeRequestBuildError,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.workflow.file_reference import build_file_reference
+from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.agent_config_entities import AgentSoulConfig
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from tests.unit_tests.config_override import apply_config_overrides
+
+
+@pytest.fixture(autouse=True)
+def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
 
 
 @pytest.fixture(autouse=True)
@@ -110,6 +119,43 @@ class TestBuildForAgentApp:
             )
         )
         assert [layer.name for layer in request.composition.layers][0] == "agent_app_user_prompt"
+
+
+def test_builder_carries_application_trace_context_but_redacts_it_from_request_logs(monkeypatch: pytest.MonkeyPatch):
+    from uuid import uuid4
+
+    from dify_agent.layers.execution_context import ApplicationTracingContext
+
+    tracing = ApplicationTracingContext(
+        run_id=uuid4(),
+        invocation_id=uuid4(),
+        trace_id="1" * 32,
+        parent_span_id="2" * 16,
+        session_id="private-session",
+        capture_content=False,
+    )
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+    context = _ctx(_soul_with_model())
+    calls: list[AgentAppRuntimeBuildContext] = []
+
+    def prepare(value: AgentAppRuntimeBuildContext) -> ApplicationTracingContext:
+        calls.append(value)
+        return tracing
+
+    monkeypatch.setattr(RuntimeApplicationTracingHooks, "prepare_agent_app", staticmethod(prepare))
+    hooks = RuntimeApplicationTracingHooks()
+    app = Flask(__name__)
+    bind_application_tracing_hooks(app, hooks)
+
+    with app.app_context():
+        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=WorkflowAgentDifyToolsBuilder()).build(context)
+    layer = next(item for item in result.request.composition.layers if item.name == "execution_context")
+    assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == tracing
+    redacted = next(
+        item for item in result.redacted_request["composition"]["layers"] if item["name"] == "execution_context"
+    )
+    assert redacted["config"]["tracing"] == "[REDACTED]"
+    assert calls == [context]
 
 
 class _NoToolsBuilder:
