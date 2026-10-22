@@ -110,6 +110,7 @@ export default function WorkflowLogArchivesPage() {
   const summary = archiveData?.summary
   const isLoading =
     (deploymentEdition === 'CLOUD' && plan === undefined) || archiveListQuery.isLoading
+  const isEmpty = !isLoading && !archiveListQuery.isError && archiveMonths.length === 0
   const hasMoreArchives = visibleArchiveMonths.length < archiveMonths.length
 
   useEffect(() => {
@@ -278,8 +279,8 @@ export default function WorkflowLogArchivesPage() {
             </tbody>
           </table>
         </div>
-        <div role="status" aria-atomic="true">
-          {!isLoading && !archiveListQuery.isError && archiveMonths.length === 0 && (
+        <div role="status" aria-atomic="true" className={isEmpty ? 'p-px' : undefined}>
+          {isEmpty && (
             <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 py-4 text-center">
               <span className="i-ri-archive-line size-6 text-text-tertiary" aria-hidden="true" />
               <div className="system-sm-semibold text-text-secondary">
