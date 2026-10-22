@@ -292,6 +292,7 @@ describe.skipIf(!PWSH)('install.ps1 rate limit', () => {
   it('Resolve-Release surfaces the rate-limit hint and exits, not "not found"', () => {
     const stub = `function Invoke-RestMethod { throw [Microsoft.PowerShell.Commands.HttpResponseException]::new('rate limited', $script:rlResp) }`
     // The stub bypasses Invoke-RestMethod's module autoload, which provides HttpResponseException.
+    // The stub bypasses the real cmdlet that normally loads its exception type.
     const setup = `Import-Module Microsoft.PowerShell.Utility
       $script:rlResp = [System.Net.Http.HttpResponseMessage]::new([System.Net.HttpStatusCode]403)
       $script:rlResp.Headers.TryAddWithoutValidation('x-ratelimit-remaining','0') | Out-Null
