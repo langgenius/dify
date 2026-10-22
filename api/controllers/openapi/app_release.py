@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import StrEnum
 from http import HTTPStatus
 
 from flask_restx import Resource
@@ -35,15 +36,46 @@ def _snapshot(workflow: Workflow) -> WorkflowSnapshot:
     )
 
 
-def passed_on_draft(run: WorkflowRun | None, draft: Workflow) -> bool:
-    """The run passed on this draft. A run keeps only its graph, so a draft saved after the run started
-    (environment variables, conversation variables, features) counts as untested."""
-    return (
-        run is not None
-        and run.status == WorkflowExecutionStatus.SUCCEEDED
-        and same_graph(run.graph_dict, draft.graph_dict)
-        and draft.updated_at <= run.created_at
+class DraftTestOutcome(StrEnum):
+    """What the last draft test says about the current draft. `status` is the run status that produces the outcome."""
+
+    status: WorkflowExecutionStatus | None
+    passed: bool
+    detail: str
+
+    PASSED = (
+        "passed",
+        WorkflowExecutionStatus.SUCCEEDED,
+        True,
+        "The last draft test passed on this draft",
     )
+    PASSED_WITH_HANDLED_ERRORS = (
+        "passed_with_handled_errors",
+        WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+        True,
+        "The last draft test passed on this draft; some node errors were handled by their error strategy",
+    )
+    UNTESTED = ("untested", None, False, "No passing draft test on the current draft")
+
+    def __new__(cls, value: str, status: WorkflowExecutionStatus | None, passed: bool, detail: str) -> DraftTestOutcome:
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member.status = status
+        member.passed = passed
+        member.detail = detail
+        return member
+
+
+def draft_test_outcome(run: WorkflowRun | None, draft: Workflow) -> DraftTestOutcome:
+    """The run counts only if it finished on this draft. A run keeps only its graph, so a draft saved after
+    the run started (environment variables, conversation variables, features) counts as untested."""
+    if run is None:
+        return DraftTestOutcome.UNTESTED
+    if not same_graph(run.graph_dict, draft.graph_dict):
+        return DraftTestOutcome.UNTESTED
+    if draft.updated_at > run.created_at:
+        return DraftTestOutcome.UNTESTED
+    return next((o for o in DraftTestOutcome if o.status == run.status), DraftTestOutcome.UNTESTED)
 
 
 @openapi_ns.route("/apps/<string:app_id>/release:check")
@@ -76,7 +108,7 @@ class ReleaseCheckApi(Resource):
             )
             .data
         )
-        tested = passed_on_draft(runs[0] if runs else None, draft)
+        outcome = draft_test_outcome(runs[0] if runs else None, draft)
         published = service.get_published_workflow(ctx.app, session=ctx.session)
         diff = diff_workflows(_snapshot(published) if published else None, _snapshot(draft))
         checks = [
@@ -87,10 +119,8 @@ class ReleaseCheckApi(Resource):
             ),
             ReleaseCheckRow(
                 name=ReleaseCheckName.TESTED,
-                passed=tested,
-                detail="The last draft test passed on this draft"
-                if tested
-                else "No passing draft test on the current draft",
+                passed=outcome.passed,
+                detail=outcome.detail,
             ),
         ]
         hints = []
@@ -102,7 +132,7 @@ class ReleaseCheckApi(Resource):
                     input={"app_id": ctx.app.id},
                 )
             )
-        if not tested:
+        if not outcome.passed:
             hints.append(draft_test_hint(mode, app_id=ctx.app.id, summary="Run the draft on the acceptance cases"))
         return ReleaseCheckResponse(
             ready=all(c.passed for c in checks),
