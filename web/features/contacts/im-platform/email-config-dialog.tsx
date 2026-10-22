@@ -118,7 +118,10 @@ export function ContactEmailConfigDialog({
         if (!nextOpen) closeDialog()
       }}
     >
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!">
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!"
+      >
         <DialogClose
           render={
             <IconButton

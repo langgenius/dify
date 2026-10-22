@@ -214,6 +214,7 @@ export function ContactImBindingDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal={isPending}>
       <DialogContent
+        backdropProps={{ forceRender: true }}
         className={cn(
           'flex max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] flex-col overflow-hidden! p-0!',
           hasCallbackSetup ? 'w-120' : 'w-104',

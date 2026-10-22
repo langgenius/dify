@@ -372,7 +372,7 @@ export function ContactsImPlatformManagementSurface() {
           if (!open) setReplacementProvider(null)
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="space-y-2 p-6">
             <AlertDialogTitle className="title-md-semi-bold text-text-primary">
               {t(($) => $['imPlatform.replacement.title'], {
@@ -408,7 +408,7 @@ export function ContactsImPlatformManagementSurface() {
       </AlertDialog>
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={handleDeleteDialogOpenChange}>
-        <AlertDialogContent>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="space-y-2 p-6">
             <AlertDialogTitle className="title-md-semi-bold text-text-primary">
               {t(($) => $['imPlatform.delete.title'], {
