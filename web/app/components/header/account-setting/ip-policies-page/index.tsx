@@ -4,6 +4,13 @@ import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/wor
 import type { IpPolicySource } from '@/features/network-access/analytics'
 import type { IpPolicyFormSession } from '@/features/network-access/policy-editor/policy-form-analytics'
 import { Button } from '@langgenius/dify-ui/button'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import Image from 'next/image'
@@ -218,42 +225,55 @@ export default function IpPoliciesPage() {
       )}
 
       {!isPending && groups.length > 0 && (
-        <div role="table" aria-labelledby={titleId} className="min-w-0">
-          <div
-            role="row"
-            className={`${policyRowClassName} border-b border-divider-subtle py-2 system-xs-medium-uppercase text-text-tertiary`}
+        <ScrollArea className="min-w-0">
+          <ScrollAreaViewport
+            role="region"
+            aria-labelledby={titleId}
+            style={{ overflowY: 'hidden' }}
           >
-            <div role="columnheader" className={policyNameColClassName}>
-              {t(($) => $['settings.ipPolicyColumnName'], { ns: 'common' })}
-            </div>
-            <div role="columnheader" className={policyIpEntriesColClassName}>
-              {t(($) => $['settings.ipPolicyColumnIpEntries'], { ns: 'common' })}
-            </div>
-            <div role="columnheader" className={policyUsedByColClassName}>
-              {t(($) => $['settings.ipPolicyColumnUsedBy'], { ns: 'common' })}
-            </div>
-            <div role="columnheader" className={policyUpdatedColClassName}>
-              {t(($) => $['settings.ipPolicyColumnUpdatedAt'], { ns: 'common' })}
-            </div>
-            <div role="columnheader" className={policyActionsColClassName}>
-              <span className="sr-only">
-                {t(($) => $['operation.moreActions'], { ns: 'common' })}
-              </span>
-            </div>
-          </div>
-          {groups.map((group) => (
-            <PolicyItem
-              key={group.id}
-              group={group}
-              canMutate={canMutate}
-              onView={(group) => openDialog({ mode: canMutate ? 'edit' : 'view', group })}
-              onEdit={(group) => {
-                if (!canMutate) return
-                openDialog({ mode: 'edit', group }, 'list_row_menu')
-              }}
-            />
-          ))}
-        </div>
+            <ScrollAreaContent style={{ minWidth: 0 }}>
+              <div role="table" aria-labelledby={titleId} className="w-full min-w-160">
+                <div
+                  role="row"
+                  className={`${policyRowClassName} border-b border-divider-subtle py-2 system-xs-medium-uppercase text-text-tertiary`}
+                >
+                  <div role="columnheader" className={policyNameColClassName}>
+                    {t(($) => $['settings.ipPolicyColumnName'], { ns: 'common' })}
+                  </div>
+                  <div role="columnheader" className={policyIpEntriesColClassName}>
+                    {t(($) => $['settings.ipPolicyColumnIpEntries'], { ns: 'common' })}
+                  </div>
+                  <div role="columnheader" className={policyUsedByColClassName}>
+                    {t(($) => $['settings.ipPolicyColumnUsedBy'], { ns: 'common' })}
+                  </div>
+                  <div role="columnheader" className={policyUpdatedColClassName}>
+                    {t(($) => $['settings.ipPolicyColumnUpdatedAt'], { ns: 'common' })}
+                  </div>
+                  <div role="columnheader" className={policyActionsColClassName}>
+                    <span className="sr-only">
+                      {t(($) => $['operation.moreActions'], { ns: 'common' })}
+                    </span>
+                  </div>
+                </div>
+                {groups.map((group) => (
+                  <PolicyItem
+                    key={group.id}
+                    group={group}
+                    canMutate={canMutate}
+                    onView={(group) => openDialog({ mode: canMutate ? 'edit' : 'view', group })}
+                    onEdit={(group) => {
+                      if (!canMutate) return
+                      openDialog({ mode: 'edit', group }, 'list_row_menu')
+                    }}
+                  />
+                ))}
+              </div>
+            </ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar orientation="horizontal" className="bottom-0">
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
+        </ScrollArea>
       )}
 
       {dialogState && (dialogState.mode !== 'create' || canMutate) && (
