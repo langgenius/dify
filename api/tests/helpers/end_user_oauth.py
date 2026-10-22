@@ -3,11 +3,11 @@
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from threading import Event, Lock
 from typing import Any, override
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
-from redis.exceptions import LockError
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import Request
 
@@ -26,7 +26,7 @@ from services.end_user_connection_adapters import PublishedConnectionTargetResol
 from services.end_user_connection_oauth_adapters import (
     PluginConnectionOAuthGateway,
     RedisConnectionOAuthAttempts,
-    RedisOAuthRefreshLocks,
+    RedisOAuthRefreshSingleFlight,
 )
 from services.end_user_connections.contracts import ConnectionOAuthStart, ConnectionSummary, StartConnectionOAuthInput
 from services.end_user_connections.management import ConnectionService
@@ -105,25 +105,6 @@ class ScriptedOAuthHandler(OAuthHandler):
         return self.refresh_result
 
 
-class LocalRefreshLock:
-    def __init__(self) -> None:
-        self.held = False
-
-    def acquire(self) -> bool:
-        if self.held:
-            return False
-        self.held = True
-        return True
-
-    def owned(self) -> bool:
-        return self.held
-
-    def release(self) -> None:
-        if not self.held:
-            raise LockError("Lease lost")
-        self.held = False
-
-
 @dataclass
 class OAuthHarness:
     base: ConnectionHarness
@@ -134,7 +115,7 @@ class OAuthHarness:
     redis_values: dict[str, str]
     client_id: str
     app_code: str
-    locks: dict[str, LocalRefreshLock]
+    flight_joined: Event
 
     def command(self) -> StartConnectionOAuthInput:
         return StartConnectionOAuthInput(
@@ -202,14 +183,36 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
     monkeypatch.setattr(redis_client, "setex", setex)
     monkeypatch.setattr(redis_client, "get", lambda key: values.get(key))
     monkeypatch.setattr(redis_client, "delete", lambda key: int(values.pop(key, None) is not None))
-    locks: dict[str, LocalRefreshLock] = {}
+    mutex = Lock()
+    flight_joined = Event()
 
-    def lock(name: str, timeout: int, blocking: bool) -> LocalRefreshLock:
-        assert timeout == 60
-        assert not blocking
-        return locks.setdefault(name, LocalRefreshLock())
+    def evaluate(script: str, key_count: int, *args: object) -> object:
+        with mutex:
+            key = str(args[0])
+            if script == RedisOAuthRefreshSingleFlight._JOIN:
+                assert key_count == 1
+                assert args[2] == 60
+                if key in values:
+                    flight_joined.set()
+                    return [0, values[key]]
+                token = str(args[1])
+                values[key] = token
+                return [1, token]
+            assert script == RedisOAuthRefreshSingleFlight._PUBLISH
+            assert key_count == 2
+            assert args[4] == 60
+            if values.get(key) != args[2]:
+                return 0
+            values[str(args[1])] = str(args[3])
+            del values[key]
+            return 1
 
-    monkeypatch.setattr(redis_client, "lock", lock)
+    def get(key: str) -> str | None:
+        with mutex:
+            return values.get(key)
+
+    monkeypatch.setattr(redis_client, "get", get)
+    monkeypatch.setattr(redis_client, "eval", evaluate)
     providers = TestProviders(base.auth, controller)
     handler = ScriptedOAuthHandler()
     gateway = PluginConnectionOAuthGateway(
@@ -232,7 +235,7 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
             store=base.repository,
             gateway=gateway,
             cipher=base.cipher,
-            refresh_locks=RedisOAuthRefreshLocks(redis=redis_client),
+            refreshes=RedisOAuthRefreshSingleFlight(redis=redis_client),
         ),
     )
-    return OAuthHarness(base, service, gateway, handler, attempts, values, client_id, app_code, locks)
+    return OAuthHarness(base, service, gateway, handler, attempts, values, client_id, app_code, flight_joined)

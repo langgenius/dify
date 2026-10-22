@@ -2,16 +2,16 @@
 
 import json
 import time
-from collections.abc import Generator, Mapping
-from contextlib import closing, contextmanager, suppress
+from collections.abc import Callable, Mapping
+from contextlib import closing
 from datetime import UTC, datetime
 from hashlib import sha256
 from typing import Any, Protocol
+from uuid import uuid4
 
 import httpx
 from pydantic import TypeAdapter, ValidationError
-from redis.exceptions import LockError, RedisError
-from redis.lock import Lock
+from redis.exceptions import RedisError
 from werkzeug import Request
 from werkzeug.test import EnvironBuilder
 
@@ -32,10 +32,14 @@ from extensions.ext_redis import RedisClientWrapper, redis_client
 from models.provider_ids import ToolProviderID
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
 from services.end_user_connection_labels import mask_account_label
-from services.end_user_connections.entities import ConnectionOAuthClient, WebConnectionContext
+from services.end_user_connections.entities import ConnectionMutationGuard, ConnectionOAuthClient, WebConnectionContext
 from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
+    ConnectionConflictError,
+    ConnectionError,
+    ConnectionIdentityError,
+    ConnectionNotFoundError,
     ConnectionOAuthError,
     ConnectionReauthorizationRequiredError,
     ConnectionSecretUnavailableError,
@@ -47,7 +51,7 @@ from services.end_user_connections.oauth import (
     ResolvedOAuthClient,
     StoredOAuthClientConfiguration,
 )
-from services.end_user_connections.oauth_lifecycle import OAuthRefreshLease
+from services.end_user_connections.oauth_lifecycle import OAuthRefreshLease, OAuthRefreshResult
 from services.plugin.oauth_service import OAuthProxyService
 
 
@@ -323,33 +327,104 @@ class PluginConnectionOAuthGateway:
 
 
 class RedisOAuthRefreshLease:
-    def __init__(self, lock: Lock) -> None:
-        self._lock = lock
+    def __init__(self, redis: RedisClientWrapper, key: str, token: str) -> None:
+        self._redis = redis
+        self._key = key
+        self._token = token
 
     def ensure_owned(self) -> None:
         try:
-            if self._lock.owned():
+            value = self._redis.get(self._key)
+            if value == self._token or value == self._token.encode():
                 return
         except RedisError:
             pass
         raise ConnectionCheckUnavailableError()
 
 
-class RedisOAuthRefreshLocks:
+class RedisOAuthRefreshSingleFlight:
+    # Atomically join the active flight or become its leader. Capturing the token
+    # in the same operation avoids losing a completion between lock contention
+    # and subscribing to its result. Finished flights are not reused by new calls.
+    _JOIN = """
+local token = redis.call('GET', KEYS[1])
+if token then return {0, token} end
+redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2])
+return {1, ARGV[1]}
+"""
+    _PUBLISH = """
+if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
+redis.call('SET', KEYS[2], ARGV[2], 'EX', ARGV[3])
+redis.call('DEL', KEYS[1])
+return 1
+"""
+    _TIMEOUT = 30
+    _TTL = 60
+    _adapter = TypeAdapter(OAuthRefreshResult)
+    _errors: dict[str, type[ConnectionError]] = {
+        error.__name__: error
+        for error in (
+            ConnectionCheckUnavailableError,
+            ConnectionConflictError,
+            ConnectionIdentityError,
+            ConnectionNotFoundError,
+            ConnectionConfigurationError,
+            ConnectionReauthorizationRequiredError,
+            ConnectionSecretUnavailableError,
+        )
+    }
+
     def __init__(self, *, redis: RedisClientWrapper) -> None:
         self._redis = redis
 
-    @contextmanager
-    def acquire(self, tenant_id: str, connection_id: str) -> Generator[OAuthRefreshLease]:
-        lock = self._redis.lock(f"end_user_connection_refresh:{tenant_id}:{connection_id}", timeout=60, blocking=False)
+    def run(
+        self, guard: ConnectionMutationGuard, operation: Callable[[OAuthRefreshLease], OAuthRefreshResult]
+    ) -> OAuthRefreshResult:
+        owner = f"{guard.owner.account_id or ''}:{guard.owner.end_user_id or ''}"
+        scope = f"{guard.tenant_id}:{owner}:{guard.connection_id}:{guard.revision}"
+        key = f"end_user_connection_refresh:{{{scope}}}"
         try:
-            acquired = lock.acquire()
+            leader, raw_token = self._redis.eval(self._JOIN, 1, key, uuid4().hex, self._TTL)
+            token = raw_token.decode() if isinstance(raw_token, bytes) else raw_token
+            result_key = f"{key}:result:{token}"
+            if not leader:
+                return self._wait(key, result_key, token)
+            lease = RedisOAuthRefreshLease(self._redis, key, token)
+            try:
+                result = operation(lease)
+            except Exception as error:
+                name = type(error).__name__
+                if name not in self._errors:
+                    name = ConnectionCheckUnavailableError.__name__
+                self._publish(key, result_key, token, json.dumps({"error": name}))
+                raise
+            self._publish(
+                key, result_key, token, json.dumps({"result": self._adapter.dump_python(result, mode="json")})
+            )
+            return result
         except RedisError:
             raise ConnectionCheckUnavailableError() from None
-        if not acquired:
+
+    def _publish(self, key: str, result_key: str, token: str, payload: str) -> None:
+        if not self._redis.eval(self._PUBLISH, 2, key, result_key, token, payload, self._TTL):
             raise ConnectionCheckUnavailableError()
-        try:
-            yield RedisOAuthRefreshLease(lock)
-        finally:
-            with suppress(LockError, RedisError):
-                lock.release()
+
+    def _wait(self, key: str, result_key: str, token: str) -> OAuthRefreshResult:
+        deadline = time.monotonic() + self._TIMEOUT
+        while time.monotonic() < deadline:
+            payload = self._redis.get(result_key)
+            if payload is None:
+                active = self._redis.get(key)
+                if active not in (token, token.encode()):
+                    # Publication and removal are atomic; re-read after observing
+                    # removal to cover completion just after the first result read.
+                    payload = self._redis.get(result_key)
+                    if payload is None:
+                        raise ConnectionCheckUnavailableError()
+            if payload is not None:
+                data = json.loads(payload)
+                if "error" in data:
+                    raise self._errors.get(data["error"], ConnectionCheckUnavailableError)()
+                return self._adapter.validate_python(data["result"])
+            time.sleep(0.05)
+        raise ConnectionCheckUnavailableError()

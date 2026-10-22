@@ -1,5 +1,8 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from datetime import datetime
+from threading import Event
 from uuid import uuid4
 
 import httpx
@@ -23,6 +26,7 @@ from services.end_user_connections.errors import (
     ConnectionNotFoundError,
     ConnectionReauthorizationRequiredError,
 )
+from services.end_user_connections.oauth_lifecycle import OAuthRefreshResult
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
 
@@ -234,21 +238,46 @@ def test_refresh_cannot_overwrite_identity_or_connection_changes(harness: OAuthH
         )
 
 
-def test_overlapping_checks_cannot_rotate_refresh_token_twice(harness: OAuthHarness) -> None:
+@pytest.mark.parametrize("failure", [False, True])
+def test_concurrent_checks_share_one_refresh_result(harness: OAuthHarness, failure: bool) -> None:
     connection_id = create(harness, expired=True)
+    entered, release = Event(), Event()
 
-    def overlapping() -> None:
-        with pytest.raises(ConnectionCheckUnavailableError):
-            harness.base.service.check_connection(harness.base.context, connection_id)
+    def refresh() -> None:
+        entered.set()
+        assert release.wait(5)
 
-    harness.handler.on_refresh = overlapping
-    assert harness.base.service.check_connection(harness.base.context, connection_id).check.status == "valid"
+    harness.handler.on_refresh = refresh
+    if failure:
+        harness.handler.refresh_error = ValueError("private-provider-message")
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        assert entered.wait(5)
+        second = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        try:
+            assert harness.flight_joined.wait(5)
+        finally:
+            release.set()
+        first_result, second_result = first.result(timeout=5), second.result(timeout=5)
+    assert first_result == second_result
+    assert first_result.check.status == ("temporarily_unavailable" if failure else "valid")
     assert len(harness.handler.refreshes) == 1
+    assert all(
+        "access-secret" not in value and "refresh-secret" not in value for value in harness.redis_values.values()
+    )
+    if failure:
+        harness.base.service.check_connection(harness.base.context, connection_id)
+        assert len(harness.handler.refreshes) == 2
 
 
 def test_lost_refresh_lease_cannot_persist_remote_result(harness: OAuthHarness) -> None:
     connection_id = create(harness, expired=True)
-    harness.handler.on_refresh = lambda: next(iter(harness.locks.values())).release()
+
+    def lose_lease() -> None:
+        key = next(key for key in harness.redis_values if key.startswith("end_user_connection_refresh:"))
+        del harness.redis_values[key]
+
+    harness.handler.on_refresh = lose_lease
     with pytest.raises(ConnectionCheckUnavailableError):
         harness.base.service.check_connection(harness.base.context, connection_id)
     record = harness.base.repository.find(harness.base.context, connection_id)
@@ -370,3 +399,103 @@ def test_revocation_never_resolves_another_tenants_client(harness: OAuthHarness)
     harness.base.service.delete_connection(harness.base.context, connection_id)
     assert harness.base.repository.find(harness.base.context, connection_id) is None
     assert harness.base.auth.revocations == []
+
+
+def test_concurrent_checks_share_refresh_failure(harness: OAuthHarness) -> None:
+    connection_id = create(harness, expired=True)
+    entered, release = Event(), Event()
+
+    def refresh() -> None:
+        entered.set()
+        assert release.wait(5)
+        with harness.base.sessions.begin() as session:
+            session.execute(sa.delete(ToolOAuthTenantClient).where(ToolOAuthTenantClient.id == harness.client_id))
+
+    harness.handler.on_refresh = refresh
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        assert entered.wait(5)
+        second = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        try:
+            assert harness.flight_joined.wait(5)
+        finally:
+            release.set()
+        for future in (first, second):
+            with pytest.raises(ConnectionReauthorizationRequiredError):
+                future.result(timeout=5)
+    assert len(harness.handler.refreshes) == 1
+
+
+@pytest.mark.parametrize("change", ["owner", "revision", "client"])
+def test_waiter_revalidates_after_shared_refresh(
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    from services.end_user_connection_oauth_adapters import RedisOAuthRefreshSingleFlight
+
+    connection_id = create(harness, expired=True)
+    entered, release = Event(), Event()
+    original_wait = RedisOAuthRefreshSingleFlight._wait
+
+    def wait(self: RedisOAuthRefreshSingleFlight, key: str, result_key: str, token: str) -> OAuthRefreshResult:
+        result = original_wait(self, key, result_key, token)
+        with harness.base.sessions.begin() as session:
+            if change == "owner":
+                session.execute(
+                    sa.update(EndUserConnection)
+                    .where(EndUserConnection.id == connection_id)
+                    .values(account_id=str(uuid4()))
+                )
+            elif change == "revision":
+                session.execute(
+                    sa.update(EndUserConnection).where(EndUserConnection.id == connection_id).values(revision=3)
+                )
+            else:
+                session.execute(sa.delete(ToolOAuthTenantClient).where(ToolOAuthTenantClient.id == harness.client_id))
+        return result
+
+    monkeypatch.setattr(RedisOAuthRefreshSingleFlight, "_wait", wait)
+
+    def refresh() -> None:
+        entered.set()
+        assert release.wait(5)
+
+    harness.handler.on_refresh = refresh
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        assert entered.wait(5)
+        second = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        try:
+            assert harness.flight_joined.wait(5)
+        finally:
+            release.set()
+        # The owner mutation may happen before either caller finishes validation.
+        for future in (first, second):
+            with suppress(ConnectionConflictError, ConnectionReauthorizationRequiredError):
+                future.result(timeout=5)
+        with pytest.raises(ConnectionReauthorizationRequiredError if change == "client" else ConnectionConflictError):
+            second.result(timeout=5)
+    assert len(harness.handler.refreshes) == 1
+
+
+def test_waiter_timeout_does_not_start_another_refresh(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> None:
+    from services.end_user_connection_oauth_adapters import RedisOAuthRefreshSingleFlight
+
+    connection_id = create(harness, expired=True)
+    entered, release = Event(), Event()
+
+    def refresh() -> None:
+        entered.set()
+        assert release.wait(5)
+
+    harness.handler.on_refresh = refresh
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        assert entered.wait(5)
+        monkeypatch.setattr(RedisOAuthRefreshSingleFlight, "_TIMEOUT", 0)
+        try:
+            with pytest.raises(ConnectionCheckUnavailableError):
+                harness.base.service.check_connection(harness.base.context, connection_id)
+        finally:
+            release.set()
+        assert first.result(timeout=5).check.status == "valid"
+    assert len(harness.handler.refreshes) == 1

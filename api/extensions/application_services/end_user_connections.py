@@ -14,7 +14,7 @@ from services.end_user_connection_adapters import (
 from services.end_user_connection_oauth_adapters import (
     PluginConnectionOAuthGateway,
     RedisConnectionOAuthAttempts,
-    RedisOAuthRefreshLocks,
+    RedisOAuthRefreshSingleFlight,
 )
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
@@ -33,7 +33,7 @@ def build_end_user_connections(*, database_client: sessionmaker[Session]) -> Con
         oauth=OAuthConnectionLifecycleService(
             store=repository,
             cipher=cipher,
-            refresh_locks=RedisOAuthRefreshLocks(redis=redis_client),
+            refreshes=RedisOAuthRefreshSingleFlight(redis=redis_client),
             gateway=PluginConnectionOAuthGateway(
                 clients=repository,
                 providers=providers,
