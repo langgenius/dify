@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "ยกเว้น {{items}} เนื่องจากไม่สามารถเข้าถึงได้อีกต่อไป",
   "personalAccessToken.expiration": "ระยะเวลาที่ใช้ได้",
   "personalAccessToken.expired": "หมดอายุแล้ว",
+  "personalAccessToken.expiredDate": "หมดอายุแล้ว · {{date}}",
   "personalAccessToken.expires": "หมดอายุ",
   "personalAccessToken.howToUseIt": "วิธีใช้งาน",
   "personalAccessToken.lastUsed": "ใช้ล่าสุด",

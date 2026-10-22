@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "{{items}} dikecualikan karena akses tidak lagi tersedia.",
   "personalAccessToken.expiration": "Masa berlaku",
   "personalAccessToken.expired": "Kedaluwarsa",
+  "personalAccessToken.expiredDate": "Kedaluwarsa · {{date}}",
   "personalAccessToken.expires": "Kedaluwarsa",
   "personalAccessToken.howToUseIt": "Cara menggunakan",
   "personalAccessToken.lastUsed": "Terakhir digunakan",

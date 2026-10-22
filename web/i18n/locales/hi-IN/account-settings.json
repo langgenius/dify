@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "एक्सेस उपलब्ध न होने के कारण {{items}} को शामिल नहीं किया गया।",
   "personalAccessToken.expiration": "वैधता अवधि",
   "personalAccessToken.expired": "समाप्त",
+  "personalAccessToken.expiredDate": "समाप्त · {{date}}",
   "personalAccessToken.expires": "समाप्ति",
   "personalAccessToken.howToUseIt": "इसका उपयोग कैसे करें",
   "personalAccessToken.lastUsed": "अंतिम उपयोग",

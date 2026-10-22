@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "{{items}} je izključenih, ker dostop ni več na voljo.",
   "personalAccessToken.expiration": "Veljavnost",
   "personalAccessToken.expired": "Potekel",
+  "personalAccessToken.expiredDate": "Potekel · {{date}}",
   "personalAccessToken.expires": "Poteče",
   "personalAccessToken.howToUseIt": "Kako ga uporabljati",
   "personalAccessToken.lastUsed": "Zadnja uporaba",

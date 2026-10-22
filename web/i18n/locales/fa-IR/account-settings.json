@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "{{items}} به‌دلیل در دسترس نبودن دسترسی حذف شدند.",
   "personalAccessToken.expiration": "مدت اعتبار",
   "personalAccessToken.expired": "منقضی‌شده",
+  "personalAccessToken.expiredDate": "منقضی‌شده · {{date}}",
   "personalAccessToken.expires": "انقضا",
   "personalAccessToken.howToUseIt": "نحوه استفاده",
   "personalAccessToken.lastUsed": "آخرین استفاده",

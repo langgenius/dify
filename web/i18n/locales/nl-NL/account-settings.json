@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "{{items}} uitgesloten omdat de toegang niet meer beschikbaar is.",
   "personalAccessToken.expiration": "Geldigheidsduur",
   "personalAccessToken.expired": "Verlopen",
+  "personalAccessToken.expiredDate": "Verlopen · {{date}}",
   "personalAccessToken.expires": "Verloopt",
   "personalAccessToken.howToUseIt": "Zo gebruik je het",
   "personalAccessToken.lastUsed": "Laatst gebruikt",

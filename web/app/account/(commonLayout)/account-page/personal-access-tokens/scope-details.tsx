@@ -75,7 +75,7 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
             </div>
             <p className="mt-1 text-text-destructive">
               {expiration
-                ? `${t(($) => $['personalAccessToken.expired'])} on ${expiration}`
+                ? t(($) => $['personalAccessToken.expiredDate'], { date: expiration })
                 : t(($) => $['personalAccessToken.never'])}
             </p>
             {unavailableCount > 0 && (

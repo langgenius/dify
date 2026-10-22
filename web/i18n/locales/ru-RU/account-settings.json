@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "{{items}} исключено, так как доступ больше недоступен.",
   "personalAccessToken.expiration": "Срок действия",
   "personalAccessToken.expired": "Истёк",
+  "personalAccessToken.expiredDate": "Истёк · {{date}}",
   "personalAccessToken.expires": "Истекает",
   "personalAccessToken.howToUseIt": "Как использовать",
   "personalAccessToken.lastUsed": "Последнее использование",

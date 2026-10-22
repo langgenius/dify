@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "Erişim artık kullanılamadığı için {{items}} hariç tutuldu.",
   "personalAccessToken.expiration": "Geçerlilik süresi",
   "personalAccessToken.expired": "Süresi doldu",
+  "personalAccessToken.expiredDate": "Süresi doldu · {{date}}",
   "personalAccessToken.expires": "Bitiş tarihi",
   "personalAccessToken.howToUseIt": "Nasıl kullanılır",
   "personalAccessToken.lastUsed": "Son kullanım",

@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "{{items}} مستبعدة لعدم توفر الوصول إليها.",
   "personalAccessToken.expiration": "مدة الصلاحية",
   "personalAccessToken.expired": "منتهي الصلاحية",
+  "personalAccessToken.expiredDate": "منتهي الصلاحية · {{date}}",
   "personalAccessToken.expires": "انتهاء الصلاحية",
   "personalAccessToken.howToUseIt": "كيفية الاستخدام",
   "personalAccessToken.lastUsed": "آخر استخدام",

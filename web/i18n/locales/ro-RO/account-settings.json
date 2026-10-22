@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "{{items}} excluse deoarece accesul nu mai este disponibil.",
   "personalAccessToken.expiration": "Valabilitate",
   "personalAccessToken.expired": "Expirat",
+  "personalAccessToken.expiredDate": "Expirat · {{date}}",
   "personalAccessToken.expires": "Expiră",
   "personalAccessToken.howToUseIt": "Cum se utilizează",
   "personalAccessToken.lastUsed": "Ultima utilizare",

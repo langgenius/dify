@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "ໄດ້ຍົກເວັ້ນ {{items}} ເນື່ອງຈາກບໍ່ສາມາດເຂົ້າເຖິງໄດ້ແລ້ວ.",
   "personalAccessToken.expiration": "ໄລຍະເວລາໃຊ້ງານ",
   "personalAccessToken.expired": "ໝົດອາຍຸແລ້ວ",
+  "personalAccessToken.expiredDate": "ໝົດອາຍຸແລ້ວ · {{date}}",
   "personalAccessToken.expires": "ໝົດອາຍຸ",
   "personalAccessToken.howToUseIt": "ວິທີໃຊ້",
   "personalAccessToken.lastUsed": "ໃຊ້ຄັ້ງຫຼ້າສຸດ",

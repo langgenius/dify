@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "由於存取權限已無法使用，已排除{{items}}。",
   "personalAccessToken.expiration": "有效期限",
   "personalAccessToken.expired": "已過期",
+  "personalAccessToken.expiredDate": "過期時間 {{date}}",
   "personalAccessToken.expires": "到期時間",
   "personalAccessToken.howToUseIt": "如何使用",
   "personalAccessToken.lastUsed": "最近使用",

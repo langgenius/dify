@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "더 이상 액세스할 수 없어 {{items}}개를 제외했습니다.",
   "personalAccessToken.expiration": "유효 기간",
   "personalAccessToken.expired": "만료됨",
+  "personalAccessToken.expiredDate": "만료됨 · {{date}}",
   "personalAccessToken.expires": "만료일",
   "personalAccessToken.howToUseIt": "사용 방법",
   "personalAccessToken.lastUsed": "최근 사용",
