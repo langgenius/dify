@@ -103,7 +103,6 @@ function activityLabel(
   const detail = [
     activity.details.reasonCode,
     activity.details.statusCode,
-    activity.details.documentType,
     activity.details.providerId,
     activity.details.mode,
   ].find((value): value is string => typeof value === 'string' && Boolean(value.trim()))

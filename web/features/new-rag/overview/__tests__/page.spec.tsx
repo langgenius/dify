@@ -714,6 +714,42 @@ describe('KnowledgeOverviewPage', () => {
     },
   )
 
+  it.each([
+    ['document.failed', 'failure', 'text/plain', 'knowledgeOverview.overview.activityFailed'],
+    [
+      'document.published',
+      'success',
+      'application/pdf',
+      'knowledgeOverview.overview.activityCompleted',
+    ],
+  ])(
+    'omits the file MIME type from %s in recent and all activity',
+    async (action, result, documentType, label) => {
+      const user = userEvent.setup()
+      queryData.activity.data[0]!.action = action
+      queryData.activity.data[0]!.details = { documentType }
+      queryData.activity.data[0]!.result = result
+
+      await renderOverview()
+
+      const recentActivity = screen.getByRole('table', {
+        name: 'knowledgeOverview.overview.recentActivity',
+      })
+      expect(within(recentActivity).getByText(label, { exact: false })).toBeInTheDocument()
+      expect(recentActivity).not.toHaveTextContent(documentType)
+
+      await user.click(
+        screen.getByRole('button', { name: 'knowledgeOverview.overview.allActivity' }),
+      )
+
+      const dialog = screen.getByRole('dialog', {
+        name: 'knowledgeOverview.overview.allActivity',
+      })
+      expect(within(dialog).getByText(label, { exact: false })).toBeInTheDocument()
+      expect(dialog).not.toHaveTextContent(documentType)
+    },
+  )
+
   it('shows safe activity details and relative times for today in the drawer', async () => {
     // At midnight, "two hours ago" is yesterday and deliberately uses an absolute date.
     vi.useFakeTimers({ toFake: ['Date'] })
