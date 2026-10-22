@@ -176,9 +176,9 @@ export default function PreferencePage() {
           <ComboboxTrigger
             tabIndex={updateProfile.isPending ? -1 : 0}
             focusableWhenDisabled
-            className="group/timezone-trigger flex h-8 w-full min-w-0 items-center gap-0.5 rounded-lg border-0 bg-components-input-bg-normal py-2 pr-2 pl-3 text-start system-sm-regular text-components-input-text-filled hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled data-placeholder:text-components-input-text-placeholder data-disabled:data-placeholder:text-components-input-text-disabled data-popup-open:bg-state-base-hover-alt"
+            className="group/timezone-trigger flex min-h-8 w-full min-w-0 items-center gap-0.5 rounded-lg border-0 bg-components-input-bg-normal py-2 pr-2 pl-3 text-start system-sm-regular text-components-input-text-filled hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled data-placeholder:text-components-input-text-placeholder data-disabled:data-placeholder:text-components-input-text-disabled data-popup-open:bg-state-base-hover-alt"
           >
-            <span className="min-w-0 grow truncate">
+            <span className="min-w-0 grow wrap-anywhere whitespace-normal">
               <ComboboxValue<TimezoneValue>
                 placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
               />
@@ -211,7 +211,9 @@ export default function PreferencePage() {
                 <ComboboxList<TimezoneOption>>
                   {(item) => (
                     <ComboboxItem<TimezoneValue> key={item.value} value={item.value}>
-                      <ComboboxItemText>{item.name}</ComboboxItemText>
+                      <ComboboxItemText className="wrap-anywhere text-clip whitespace-normal">
+                        {item.name}
+                      </ComboboxItemText>
                       <ComboboxItemIndicator />
                     </ComboboxItem>
                   )}

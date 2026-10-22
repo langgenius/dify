@@ -8,6 +8,7 @@ import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
+import { timezones } from '@/utils/timezone'
 import { ACCOUNT_SETTING_TAB } from '../../constants'
 import AccountSetting from '../../index'
 
@@ -146,3 +147,51 @@ it.each(['Time Zone', 'Display Language'])(
     }
   },
 )
+
+function expectReadableText(text: Element, control: Element) {
+  const bounds = control.getBoundingClientRect()
+  const range = document.createRange()
+  range.selectNodeContents(text)
+  const fragments = range.getClientRects()
+  expect(fragments.length).toBeGreaterThan(0)
+  for (const fragment of fragments) {
+    expect(fragment.left).toBeGreaterThanOrEqual(bounds.left - 1)
+    expect(fragment.right).toBeLessThanOrEqual(bounds.right + 1)
+    expect(fragment.top).toBeGreaterThanOrEqual(bounds.top - 1)
+    expect(fragment.bottom).toBeLessThanOrEqual(bounds.bottom + 1)
+  }
+}
+
+it('keeps full timezone city names readable at 320px without changing the saved selection', async () => {
+  // The real Settings sidebar and portal constrain both surfaces. DOM text alone missed clipping.
+  const timezone = timezones.find((item) => item.value === 'America/Santo_Domingo')!
+  const { screen, queryClient } = await renderPreferencesSettings({
+    width: 320,
+    timezone: timezone.value,
+  })
+  try {
+    const trigger = screen.getByRole('combobox', { name: 'Time Zone', exact: true })
+    const savedValue = trigger.getByText(timezone.name, { exact: true })
+    await expect.element(savedValue).toBeVisible()
+    expectReadableText(savedValue.element(), trigger.element())
+
+    await trigger.click()
+    const search = screen.getByRole('combobox', { name: 'Search cities or time zones...' })
+    await search.fill('Central European')
+    const matches = timezones.filter((item) => item.name.includes('Central European'))
+    await expect.element(screen.getByRole('option', { name: matches[0]!.name })).toBeVisible()
+    for (const item of matches) {
+      const option = screen.getByRole('option', { name: item.name, exact: true })
+      expectReadableText(option.getByText(item.name, { exact: true }).element(), option.element())
+    }
+
+    await userEvent.keyboard('{Escape}')
+    await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')
+    await expect.element(trigger).toHaveFocus()
+    await expect.element(savedValue).toBeVisible()
+    expect(profileRequests.update).not.toHaveBeenCalled()
+  } finally {
+    await screen.unmount()
+    queryClient.clear()
+  }
+})
