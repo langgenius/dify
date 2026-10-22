@@ -19,7 +19,7 @@ from models.model import UploadFile
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from services.errors.base import NoPermissionError
 from services.knowledge.dataset_service import DocumentService
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 
 FIXED_UPLOAD_CREATED_AT = datetime.datetime(2024, 1, 1, 0, 0, 0)
 

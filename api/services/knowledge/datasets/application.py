@@ -9,7 +9,7 @@ from machinery.context import RequestContext
 from services.knowledge.dataset_access import DatasetAccess
 from services.knowledge.datasets.retrieval import retrieval_methods
 from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 
 
 @dataclass(frozen=True)

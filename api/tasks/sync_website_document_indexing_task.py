@@ -15,8 +15,8 @@ from models.dataset import Dataset, DocumentSegment
 from models.enums import IndexingStatus
 from repositories.knowledge.document_repository import _get_document
 from services.feature_service import FeatureService
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
-from services.knowledge.resource_scope import DatasetRef
 
 logger = logging.getLogger(__name__)
 

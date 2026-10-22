@@ -26,11 +26,11 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, DatasetProcessRule
 from repositories.knowledge.dataset_repository import _get_dataset
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.estimate import (
     IndexingEstimateExecutionError,
     IndexingEstimateProviderUnavailableError,
 )
-from services.knowledge.resource_scope import DatasetRef
 
 logger = logging.getLogger(__name__)
 

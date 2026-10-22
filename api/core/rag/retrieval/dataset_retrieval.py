@@ -10,7 +10,7 @@ from typing import Any, cast
 
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
-from sqlalchemy import and_, func, literal, or_, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt, wait_exponential
@@ -95,10 +95,10 @@ from models.dataset import Document as DatasetDocument
 from models.dataset import Document as DocumentModel
 from models.enums import CreatorUserRole, DatasetQuerySource
 from repositories.knowledge.dataset_read_repository import get_dataset_available_document_count
+from repositories.knowledge.metadata_filter import process_metadata_filter_func
 from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
 from repositories.knowledge.segment_read_adapter import sign_segment_content
 from services.feature_service import FeatureService
-from services.knowledge.external.service import ExternalDatasetService
 from services.knowledge.retrieval.attachments import authorize_retrieved_segment
 
 default_retrieval_model: DefaultRetrievalModelDict = {
@@ -695,27 +695,32 @@ class DatasetRetrieval:
         timer = None
         if dataset_id:
             allowed_dataset = next((dataset for dataset in available_datasets if dataset.id == dataset_id), None)
-            selected_dataset = (
-                session.scalar(select(Dataset).where(Dataset.id == allowed_dataset.id, Dataset.tenant_id == tenant_id))
-                if allowed_dataset
-                else None
-            )
+            with Session(bind=session.get_bind(), expire_on_commit=False) as read_session:
+                selected_dataset = (
+                    read_session.scalar(
+                        select(Dataset).where(Dataset.id == allowed_dataset.id, Dataset.tenant_id == tenant_id)
+                    )
+                    if allowed_dataset
+                    else None
+                )
             if selected_dataset:
                 results = []
                 if selected_dataset.provider == "external":
-                    external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-                        session=session,
+                    external_documents = RetrievalService.external_retrieve(
+                        session,
+                        selected_dataset.id,
+                        query,
                         tenant_id=selected_dataset.tenant_id,
-                        dataset_id=selected_dataset.id,
-                        query=query,
-                        external_retrieval_parameters=selected_dataset.retrieval_model,
+                        external_retrieval_model=selected_dataset.retrieval_model,
                         metadata_condition=metadata_condition,
                     )
                     for external_document in external_documents:
-                        document = Document(
-                            page_content=external_document.get("content"),
-                            metadata=external_document.get("metadata"),
-                            provider="external",
+                        document = Document.model_validate(
+                            {
+                                "page_content": external_document.get("content"),
+                                "metadata": external_document.get("metadata"),
+                                "provider": "external",
+                            }
                         )
                         if document.metadata is not None:
                             document.metadata["score"] = external_document.get("score")
@@ -1159,26 +1164,27 @@ class DatasetRetrieval:
         attachment_ids: list[str] | None = None,
     ):
         with flask_app.app_context():
-            dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
-            dataset = session.scalar(dataset_stmt)
-
-            if not dataset:
-                return []
+            with Session(bind=session.get_bind(), expire_on_commit=False) as read_session:
+                dataset = read_session.scalar(select(Dataset).where(Dataset.id == dataset_id))
+                if dataset is None:
+                    return []
 
             if dataset.provider == "external" and query:
-                external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-                    session=session,
+                external_documents = RetrievalService.external_retrieve(
+                    session,
+                    dataset_id,
+                    query,
                     tenant_id=dataset.tenant_id,
-                    dataset_id=dataset_id,
-                    query=query,
-                    external_retrieval_parameters=dataset.retrieval_model,
+                    external_retrieval_model=dataset.retrieval_model,
                     metadata_condition=metadata_condition,
                 )
                 for external_document in external_documents:
-                    document = Document(
-                        page_content=external_document.get("content"),
-                        metadata=external_document.get("metadata"),
-                        provider="external",
+                    document = Document.model_validate(
+                        {
+                            "page_content": external_document.get("content"),
+                            "metadata": external_document.get("metadata"),
+                            "provider": "external",
+                        }
                     )
                     if document.metadata is not None:
                         document.metadata["score"] = external_document.get("score")
@@ -1519,6 +1525,7 @@ class DatasetRetrieval:
         inputs: dict[str, Any],
     ) -> tuple[dict[str, list[str]] | None, MetadataFilteringCondition | None]:
         document_query = select(DatasetDocument).where(
+            DatasetDocument.tenant_id == tenant_id,
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
             DatasetDocument.enabled.is_(True),
@@ -1589,12 +1596,16 @@ class DatasetRetrieval:
                 document_query = document_query.where(and_(*filters))
             else:
                 document_query = document_query.where(or_(*filters))
-        documents = session.scalars(document_query).all()
+        # Materialize metadata before retrieval without starting a caller-owned read transaction.
+        with Session(bind=session.get_bind()) as read_session:
+            documents = read_session.execute(
+                document_query.with_only_columns(DatasetDocument.dataset_id, DatasetDocument.id)
+            ).all()
         # group by dataset_id
-        metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
-        for document in documents:
-            metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore
-        return metadata_filter_document_ids, metadata_condition
+        metadata_filter_document_ids: dict[str, list[str]] = defaultdict(list)
+        for dataset_id, document_id in documents:
+            metadata_filter_document_ids[dataset_id].append(document_id)
+        return metadata_filter_document_ids or None, metadata_condition
 
     def _replace_metadata_filter_value(self, text: str, inputs: dict[str, Any]) -> str:
         if not inputs:
@@ -1620,9 +1631,14 @@ class DatasetRetrieval:
         metadata_model_config: ModelConfig,
     ) -> list[dict[str, Any]] | None:
         # get all metadata field
-        metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
-        metadata_fields = session.scalars(metadata_stmt).all()
-        all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
+        with Session(bind=session.get_bind()) as read_session:
+            all_metadata_fields = list(
+                read_session.scalars(
+                    select(DatasetMetadata.name).where(
+                        DatasetMetadata.tenant_id == tenant_id, DatasetMetadata.dataset_id.in_(dataset_ids)
+                    )
+                )
+            )
         # get metadata model config
         if metadata_model_config is None:
             raise ValueError("metadata_model_config is required")
@@ -1672,84 +1688,7 @@ class DatasetRetrieval:
             return None
         return automatic_metadata_filters
 
-    @classmethod
-    def process_metadata_filter_func(
-        cls, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
-    ):
-        if value is None and condition not in ("empty", "not empty"):
-            return filters
-
-        json_field = DatasetDocument.doc_metadata[metadata_name].as_string()
-
-        from libs.helper import escape_like_pattern
-
-        match condition:
-            case "contains":
-                escaped_value = escape_like_pattern(str(value))
-                filters.append(json_field.like(f"%{escaped_value}%", escape="\\"))
-
-            case "not contains":
-                escaped_value = escape_like_pattern(str(value))
-                filters.append(json_field.notlike(f"%{escaped_value}%", escape="\\"))
-
-            case "start with":
-                escaped_value = escape_like_pattern(str(value))
-                filters.append(json_field.like(f"{escaped_value}%", escape="\\"))
-
-            case "end with":
-                escaped_value = escape_like_pattern(str(value))
-                filters.append(json_field.like(f"%{escaped_value}", escape="\\"))
-
-            case "is" | "=":
-                match value:
-                    case str():
-                        filters.append(json_field == value)
-                    case int() | float():
-                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
-
-            case "is not" | "≠":
-                match value:
-                    case str():
-                        filters.append(json_field != value)
-                    case int() | float():
-                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
-
-            case "empty":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
-
-            case "not empty":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].isnot(None))
-
-            case "before" | "<":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() < value)
-
-            case "after" | ">":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() > value)
-
-            case "≤" | "<=":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() <= value)
-
-            case "≥" | ">=":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() >= value)
-            case "in" | "not in":
-                match value:
-                    case str():
-                        value_list = [v.strip() for v in value.split(",") if v.strip()]
-                    case list() | tuple():
-                        value_list = [str(v) for v in value if v is not None]
-                    case _:
-                        value_list = [str(value)] if value is not None else []
-
-                if not value_list:
-                    # `field in []` is False, `field not in []` is True
-                    filters.append(literal(condition == "not in"))
-                else:
-                    op = json_field.in_ if condition == "in" else json_field.notin_
-                    filters.append(op(value_list))
-            case _:
-                pass
-
-        return filters
+    process_metadata_filter_func = staticmethod(process_metadata_filter_func)
 
     def _fetch_model_config(
         self, tenant_id: str, model: ModelConfig, user_id: str | None = None

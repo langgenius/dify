@@ -557,6 +557,11 @@ export type ConversationVariablesQuery = {
 
 export type CustomConfigurationStatus = 'active' | 'no-configure'
 
+export type DatasetAccessDeniedError = ErrorResponse & {
+  code: 'dataset_access_denied'
+  status: 403
+}
+
 export type DatasetBoundTagListResponse = {
   data: Array<DatasetBoundTagResponse>
   total: number
@@ -759,6 +764,11 @@ export type DatasetMetadataResponse = {
 export type DatasetNameDuplicateError = ErrorResponse & {
   code: 'dataset_name_duplicate'
   status: 409
+}
+
+export type DatasetNotInitializedError = ErrorResponse & {
+  code: 'dataset_not_initialized'
+  status: 400
 }
 
 export type DatasetRerankingModelResponse = {
@@ -4237,12 +4247,13 @@ export type PostDatasetsByDatasetIdHitTestingData = {
 export type PostDatasetsByDatasetIdHitTestingErrors = {
   400:
     | CompletionRequestError
+    | DatasetNotInitializedError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403: DatasetAccessDeniedError | ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
@@ -4516,12 +4527,13 @@ export type PostDatasetsByDatasetIdRetrieveData = {
 export type PostDatasetsByDatasetIdRetrieveErrors = {
   400:
     | CompletionRequestError
+    | DatasetNotInitializedError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403: DatasetAccessDeniedError | ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse

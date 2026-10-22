@@ -6,6 +6,7 @@ they never create, commit, or close a session and perform no external I/O.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -37,6 +38,22 @@ from models.dataset import (
 )
 from models.model import App, Tag, TagBinding, UploadFile
 from models.tools import ToolFile
+
+# Match persisted file references, including the old query string that presentation replaces.
+_FILE_ID = r"[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}"
+SEGMENT_FILE_LINK = re.compile(
+    rf"/files/(?:(?P<upload>{_FILE_ID})/(?P<preview>image-preview|file-preview)"
+    rf"|tools/(?P<tool>{_FILE_ID})\.(?P<extension>[a-zA-Z0-9]+))"
+    r"(?:\?[^\s)\"'<>]*)?"
+)
+
+
+def segment_content_file_ids(content: str) -> tuple[set[str], set[str]]:
+    matches = list(SEGMENT_FILE_LINK.finditer(content))
+    return (
+        {match["upload"].lower() for match in matches if match["upload"]},
+        {match["tool"].lower() for match in matches if match["tool"]},
+    )
 
 
 @dataclass(frozen=True)
@@ -132,14 +149,15 @@ def load_document_read_batch(documents: Sequence[Document], *, session: Session)
     )
 
 
-def get_segment_content_file_ids(
-    segment: DocumentSegment, *, upload_ids: set[str], tool_ids: set[str], session: Session
+def get_content_file_ids(
+    tenant_id: str, *, upload_ids: set[str], tool_ids: set[str], session: Session
 ) -> tuple[set[str], set[str]]:
+    """Validate a batch of content references against the tenant and execution scope."""
     access = DatabaseFileAccessController()
     uploads = (
         session.scalars(
             access.apply_upload_file_filters(
-                select(UploadFile).where(UploadFile.id.in_(upload_ids), UploadFile.tenant_id == segment.tenant_id)
+                select(UploadFile).where(UploadFile.id.in_(upload_ids), UploadFile.tenant_id == tenant_id)
             )
         ).all()
         if upload_ids
@@ -148,7 +166,7 @@ def get_segment_content_file_ids(
     tools = (
         session.scalars(
             access.apply_tool_file_filters(
-                select(ToolFile).where(ToolFile.id.in_(tool_ids), ToolFile.tenant_id == segment.tenant_id)
+                select(ToolFile).where(ToolFile.id.in_(tool_ids), ToolFile.tenant_id == tenant_id)
             )
         ).all()
         if tool_ids
@@ -171,6 +189,25 @@ def get_segment_attachment_files(segment: DocumentSegment, *, session: Session) 
     ).all()
 
 
+def retrieved_segment_statement(*, tenant_id: str, dataset_ids: Sequence[str]):
+    """Shared complete owner-chain query for retrieval readers."""
+    return (
+        select(DocumentSegment)
+        .join(Document, Document.id == DocumentSegment.document_id)
+        .join(Dataset, Dataset.id == Document.dataset_id)
+        .where(
+            Dataset.tenant_id == tenant_id,
+            Dataset.id.in_(dataset_ids),
+            Document.tenant_id == tenant_id,
+            Document.dataset_id == DocumentSegment.dataset_id,
+            Document.enabled.is_(True),
+            Document.archived.is_(False),
+            DocumentSegment.tenant_id == tenant_id,
+            DocumentSegment.enabled.is_(True),
+        )
+    )
+
+
 def is_retrieved_segment_owned(
     segment: DocumentSegment, *, tenant_id: str, dataset_ids: Sequence[str], session: Session
 ) -> bool:
@@ -179,21 +216,10 @@ def is_retrieved_segment_owned(
         return False
     return (
         session.scalar(
-            select(DocumentSegment.id)
-            .join(Document, Document.id == DocumentSegment.document_id)
-            .join(Dataset, Dataset.id == Document.dataset_id)
+            retrieved_segment_statement(tenant_id=tenant_id, dataset_ids=dataset_ids)
+            .with_only_columns(DocumentSegment.id)
             .where(
-                Dataset.tenant_id == tenant_id,
-                Dataset.id == segment.dataset_id,
-                Document.tenant_id == tenant_id,
-                Document.dataset_id == segment.dataset_id,
-                Document.id == segment.document_id,
-                Document.enabled.is_(True),
-                Document.archived.is_(False),
-                DocumentSegment.tenant_id == tenant_id,
-                DocumentSegment.dataset_id == segment.dataset_id,
-                DocumentSegment.id == segment.id,
-                DocumentSegment.enabled.is_(True),
+                DocumentSegment.id == segment.id, Document.id == segment.document_id, Dataset.id == segment.dataset_id
             )
         )
         is not None

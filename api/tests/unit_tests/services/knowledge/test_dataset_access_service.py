@@ -3,13 +3,8 @@ from dataclasses import dataclass
 import pytest
 
 from machinery.context import RequestContext
-from services.knowledge.dataset_access import (
-    DatasetAccessDeniedError,
-    DatasetAccessRecord,
-    DatasetAccessService,
-    DatasetAccessSnapshot,
-    DatasetNotFoundError,
-)
+from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.dataset_access import DatasetAccessRecord, DatasetAccessService, DatasetAccessSnapshot
 
 
 def _context(*, actor_id: str = "actor-1", workspace_id: str = "workspace-1") -> RequestContext:

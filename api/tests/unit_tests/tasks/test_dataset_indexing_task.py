@@ -19,8 +19,8 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
+from services.knowledge.entities.resource_scope import DocumentRef
 from services.knowledge.indexing.errors import DocumentIsPausedError
-from services.knowledge.resource_scope import DocumentRef
 from tasks.document_indexing_task import (
     _document_indexing,
     _document_indexing_with_tenant_queue,

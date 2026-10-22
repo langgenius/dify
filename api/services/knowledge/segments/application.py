@@ -12,14 +12,16 @@ from uuid import uuid4
 
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
-from services.knowledge.dataset_access import DatasetAccess, DatasetAccessDeniedError, DatasetAccessSnapshot
+from services.errors.dataset import DatasetAccessDeniedError
+from services.knowledge.dataset_access import DatasetAccess, DatasetAccessSnapshot
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef, SegmentRef
 from services.knowledge.entities.segments import (
     ChildChunkRecord,
     ChildChunkUpdateArgs,
+    SegmentReadSnapshot,
     SegmentRecord,
     SegmentUpdateArgs,
 )
-from services.knowledge.resource_scope import DatasetRef, DocumentRef, SegmentRef
 
 _HIGH_QUALITY = "high_quality"
 logger = logging.getLogger(__name__)
@@ -71,8 +73,8 @@ class ChildChunkListFilter:
 
 
 @dataclass(frozen=True, slots=True)
-class SegmentPage:
-    items: tuple[SegmentRecord, ...]
+class SegmentPage[T = SegmentRecord]:
+    items: tuple[T, ...]
     total: int
     total_pages: int
     page: int
@@ -80,8 +82,8 @@ class SegmentPage:
 
 
 @dataclass(frozen=True, slots=True)
-class SegmentDetail:
-    data: SegmentRecord
+class SegmentDetail[T = SegmentRecord]:
+    data: T
     doc_form: str
 
 
@@ -138,9 +140,11 @@ class SegmentUpdateState:
 class SegmentStore(Protocol):
     """Owner-scoped persistence; each operation owns a short session."""
 
-    def list_segments(self, document_ref: DocumentRef, query: SegmentListFilter) -> SegmentPage: ...
+    def list_segments(
+        self, document_ref: DocumentRef, query: SegmentListFilter
+    ) -> SegmentPage[SegmentReadSnapshot]: ...
     def get_segments(self, document_ref: DocumentRef, segment_ids: Sequence[str]) -> tuple[SegmentIndexTarget, ...]: ...
-    def get_segment(self, segment_ref: SegmentRef) -> SegmentDetail | None: ...
+    def get_segment(self, segment_ref: SegmentRef) -> SegmentDetail[SegmentReadSnapshot] | None: ...
     def get_segment_update_state(self, segment_ref: SegmentRef) -> SegmentUpdateState | None: ...
     def save_segment(self, segment_ref: SegmentRef, values: Mapping[str, object], *, create: bool = False) -> None: ...
     def delete_segments(self, document_ref: DocumentRef, segment_ids: Sequence[str]) -> None: ...
@@ -303,6 +307,10 @@ class ChildChunkDeleteIndexApplicationError(SegmentApplicationError):
     pass
 
 
+class SegmentPresenter(Protocol):
+    def present(self, snapshots: Sequence[SegmentReadSnapshot]) -> tuple[SegmentRecord, ...]: ...
+
+
 class DatasetSegmentApplicationService:
     def __init__(
         self,
@@ -310,6 +318,7 @@ class DatasetSegmentApplicationService:
         dataset_access: DatasetAccess,
         scopes: SegmentScopeReader,
         store: SegmentStore,
+        presenter: SegmentPresenter,
         index: SegmentIndex,
         limits: SegmentLimits,
         text_hash: Callable[[str], str],
@@ -322,6 +331,7 @@ class DatasetSegmentApplicationService:
         self._dataset_access = dataset_access
         self._scopes = scopes
         self._store = store
+        self._presenter = presenter
         self._index = index
         self._limits = limits
         self._uploads = uploads
@@ -342,7 +352,14 @@ class DatasetSegmentApplicationService:
         query: SegmentListFilter,
     ) -> SegmentPage:
         scope = self._require_scope(context, dataset_id=dataset_id, document_id=document_id)
-        return self._store.list_segments(scope.document.ref, query)
+        page = self._store.list_segments(scope.document.ref, query)
+        return SegmentPage(
+            items=self._presenter.present(page.items),
+            total=page.total,
+            total_pages=page.total_pages,
+            page=page.page,
+            limit=page.limit,
+        )
 
     def delete_segments(
         self,
@@ -429,7 +446,10 @@ class DatasetSegmentApplicationService:
         result = self._store.get_segment(segment_ref)
         if result is None:
             raise SegmentNotFoundError("Segment not found")
-        return result
+        return SegmentDetail(
+            data=self._presenter.present((result.data,))[0],
+            doc_form=result.doc_form,
+        )
 
     def delete_segment(
         self,

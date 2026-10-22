@@ -10,8 +10,8 @@ from enums import CloudPlan, DeploymentEdition
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from services.knowledge.entities.resource_scope import DocumentRef
 from services.knowledge.indexing.errors import DocumentIsPausedError
-from services.knowledge.resource_scope import DocumentRef
 from tasks.duplicate_document_indexing_task import (
     _duplicate_document_indexing_task,  # Core function
     _duplicate_document_indexing_task_with_tenant_queue,  # Tenant queue wrapper function

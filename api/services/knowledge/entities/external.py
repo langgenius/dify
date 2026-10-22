@@ -1,22 +1,9 @@
-from typing import Any, Literal
+"""Shared external knowledge contracts, independent of service implementations."""
+
+from dataclasses import dataclass
+from typing import Any
 
 from pydantic import BaseModel, Field
-
-
-class AuthorizationConfig(BaseModel):
-    type: Literal[None, "basic", "bearer", "custom"]
-    api_key: None | str = None
-    header: None | str = None
-
-
-class Authorization(BaseModel):
-    type: Literal["no-auth", "api-key"]
-    config: AuthorizationConfig | None = None
-
-
-class ProcessStatusSetting(BaseModel):
-    request_method: str
-    url: str
 
 
 class ExternalKnowledgeApiSetting(BaseModel):
@@ -24,6 +11,18 @@ class ExternalKnowledgeApiSetting(BaseModel):
     request_method: str
     headers: dict[str, Any] | None = None
     params: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalKnowledgeRetrievalRequest:
+    """Owned provider configuration and retrieval input, independent of HTTP."""
+
+    endpoint: str
+    api_key: str | None
+    knowledge_id: str
+    query: str
+    retrieval_model: dict[str, Any]
+    metadata_filters: dict[str, Any] | None
 
 
 class ExternalDatasetCreatePayload(BaseModel):

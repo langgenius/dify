@@ -13,7 +13,7 @@ from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 
 

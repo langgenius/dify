@@ -10,13 +10,15 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting, UploadFile
 from machinery.context import RequestContext
 from services.data_source.credential_gateway import DatasourceCredentialNotFoundError
 from services.data_source.entities.notion_import import NotionPageType
-from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess, DatasetAccessDeniedError
+from services.errors.dataset import DatasetAccessDeniedError
+from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess
 from services.knowledge.entities.indexing_estimate import (
     NewSourcesEstimateCommand,
     NotionEstimateSource,
     UploadFileEstimateSource,
     WebsiteEstimateSource,
 )
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.errors import IndexingInputSourceError, UnsupportedStoredSourceError
 from services.knowledge.indexing.estimate import (
     DatasetEstimateRecord,
@@ -38,7 +40,6 @@ from services.knowledge.indexing.estimate import (
     UploadEstimateSourceResolver,
     WebsiteEstimateSourceResolver,
 )
-from services.knowledge.resource_scope import DatasetRef
 
 
 def _context() -> RequestContext:

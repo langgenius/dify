@@ -17,10 +17,10 @@ from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from models.account import Account, TenantAccountRole
 from services.errors.base import NoPermissionError
+from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 from services.errors.metadata import MetadataResourceNotFoundError
-from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.metadata.application import MetadataService
-from services.knowledge.resource_scope import DatasetRef
 from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 

@@ -85,7 +85,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 )
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService

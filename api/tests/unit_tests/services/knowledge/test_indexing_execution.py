@@ -3,10 +3,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.rag.models.document import Document
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
 from services.knowledge.indexing.estimate import StoredSource
 from services.knowledge.indexing.execution import DocumentIndexingService, IndexingDocument
-from services.knowledge.resource_scope import DatasetRef
 
 ExecutionFixture = tuple[DocumentIndexingService, MagicMock, IndexingDocument, list[Document]]
 

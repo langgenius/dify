@@ -1,4 +1,4 @@
-"""Service errors for the inner knowledge retrieval API."""
+"""Shared errors for internal and external knowledge retrieval."""
 
 from services.errors.base import BaseServiceError
 
@@ -39,6 +39,21 @@ class InnerKnowledgeRetrieveDatasetTenantMismatchError(InnerKnowledgeRetrievalSe
     default_description = "Dataset does not belong to caller tenant."
 
 
+class InnerKnowledgeRetrieveRateLimitError(InnerKnowledgeRetrievalServiceError):
+    error_code = "knowledge_rate_limited"
+    status_code = 429
+
+
+class InnerKnowledgeRetrieveExternalError(InnerKnowledgeRetrievalServiceError):
+    error_code = "external_knowledge_failed"
+    status_code = 502
+
+
+class InnerKnowledgeRetrieveConfigError(InnerKnowledgeRetrievalServiceError):
+    error_code = "retrieval_config_invalid"
+    status_code = 422
+
+
 class ExternalKnowledgeRetrievalError(ValueError):
     """Raised when an external dataset retrieval dependency fails.
 
@@ -47,3 +62,19 @@ class ExternalKnowledgeRetrievalError(ValueError):
     while still giving inner API controllers a dedicated error type to map to
     ``502 external_knowledge_failed``.
     """
+
+
+class ExternalTemplateNotFoundError(ValueError):
+    pass
+
+
+class ExternalHitTestingError(Exception):
+    pass
+
+
+class HitTestingFailedError(Exception):
+    pass
+
+
+class HitTestingInvocationError(Exception):
+    pass

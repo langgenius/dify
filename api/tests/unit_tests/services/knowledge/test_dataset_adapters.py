@@ -23,14 +23,15 @@ from models.dataset import (
 )
 from models.enums import CreatorUserRole, DatasetQuerySource, IndexingStatus, SegmentStatus
 from repositories.app.console_repository import ConsoleAppRepository
+from repositories.knowledge.external_repository import SQLAlchemyExternalKnowledgeRepository
 from services.enterprise import rbac_service
-from services.knowledge.dataset_access import DatasetNotFoundError
+from services.errors.dataset import DatasetNotFoundError
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
 from services.knowledge.entities.document_creation import DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.rbac import contracts as rbac_contracts
 from services.tag_application_service import CreateTagInput, TagApplicationService, TagBindingInput
 from tests.unit_tests.config_override import apply_config_overrides
@@ -100,6 +101,7 @@ def operations(
         tags=application_tags,
         app_queries=ConsoleAppRepository(session_factory=sqlite_session_factory),
         members=rbac_domain.rbac.members,
+        external_templates=SQLAlchemyExternalKnowledgeRepository(session_factory=sqlite_session_factory),
     )
 
 

@@ -15,7 +15,6 @@ from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import Datas
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from repositories.knowledge.segment_read_adapter import sign_segment_content
-from services.knowledge.external.service import ExternalDatasetService
 
 default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -59,41 +58,47 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
 
     @override
     def _run(self, session: Session, query: str) -> str:
-        dataset_stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id)
-        dataset = session.scalar(dataset_stmt)
+        with Session(bind=session.get_bind(), expire_on_commit=False) as read_session:
+            dataset_stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id)
+            dataset = read_session.scalar(dataset_stmt)
 
-        if not dataset:
-            return ""
-        for hit_callback in self.hit_callbacks:
-            hit_callback.on_query(query, dataset.id, session)
-        dataset_retrieval = DatasetRetrieval()
-        metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
-            session,
-            [dataset.id],
-            query,
-            self.tenant_id,
-            self.user_id or "unknown",
-            cast(str, self.retrieve_config.metadata_filtering_mode),
-            cast(ModelConfig, self.retrieve_config.metadata_model_config),
-            self.retrieve_config.metadata_filtering_conditions,
-            self.inputs,
-        )
-        document_ids_filter = metadata_filter_document_ids.get(dataset.id, []) if metadata_filter_document_ids else None
+            if not dataset:
+                return ""
+            for hit_callback in self.hit_callbacks:
+                hit_callback.on_query(query, dataset.id, session)
+            dataset_retrieval = DatasetRetrieval()
+            metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
+                read_session,
+                [dataset.id],
+                query,
+                self.tenant_id,
+                self.user_id or "unknown",
+                cast(str, self.retrieve_config.metadata_filtering_mode),
+                cast(ModelConfig, self.retrieve_config.metadata_model_config),
+                self.retrieve_config.metadata_filtering_conditions,
+                self.inputs,
+            )
+            if metadata_filter_document_ids:
+                document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
+            else:
+                document_ids_filter = None
         if dataset.provider == "external":
             results: list[RetrievalDocument] = []
-            external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-                session=session,
+            external_documents = RetrievalService.external_retrieve(
+                session,
+                dataset.id,
+                query,
                 tenant_id=dataset.tenant_id,
-                dataset_id=dataset.id,
-                query=query,
-                external_retrieval_parameters=dataset.retrieval_model,
+                external_retrieval_model=dataset.retrieval_model,
                 metadata_condition=metadata_condition,
             )
             for external_document in external_documents:
-                document = RetrievalDocument(
-                    page_content=external_document.get("content"),
-                    metadata=external_document.get("metadata"),
-                    provider="external",
+                document = RetrievalDocument.model_validate(
+                    {
+                        "page_content": external_document.get("content"),
+                        "metadata": external_document.get("metadata"),
+                        "provider": "external",
+                    }
                 )
                 if document.metadata is not None:
                     document.metadata["score"] = external_document.get("score")

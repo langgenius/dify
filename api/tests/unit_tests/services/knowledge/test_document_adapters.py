@@ -12,7 +12,7 @@ from models.dataset import Dataset, DatasetProcessRule, Document, DocumentPipeli
 from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
 from services.knowledge.documents.application import DocumentListFilter, DocumentNotFoundError
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 
 REF = DatasetRef("tenant-1", "dataset-1")
 

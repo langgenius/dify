@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any, Protocol
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from graphon.model_runtime.entities.model_entities import ModelType
+from repositories.knowledge.segment_read_adapter import (
+    format_segment_attachments,
+    sign_segment_text,
+)
+from services.knowledge.entities.segments import SegmentReadSnapshot, SegmentRecord
 from services.knowledge.segments.application import (
     SegmentDatasetRecord,
     SegmentModelProviderError,
@@ -20,6 +25,28 @@ class RedisSegmentClient(Protocol):
     def setnx(self, name: str | bytes, value: Any) -> Any: ...
     def setex(self, name: str, time: int, value: Any) -> Any: ...
     def lock(self, name: str, timeout: int) -> Any: ...
+
+
+class SegmentPresentationAdapter:
+    def present(self, snapshots: Sequence[SegmentReadSnapshot]) -> tuple[SegmentRecord, ...]:
+        records = []
+        for snapshot in snapshots:
+            records.append(
+                SegmentRecord.model_validate(
+                    {
+                        **snapshot.values,
+                        "sign_content": sign_segment_text(
+                            str(snapshot.values["content"]),
+                            allowed_uploads=snapshot.file_access.uploads,
+                            allowed_tools=snapshot.file_access.tools,
+                        ),
+                        "child_chunks": snapshot.child_chunks,
+                        "attachments": format_segment_attachments(snapshot.attachments),
+                        "summary": snapshot.summary,
+                    }
+                )
+            )
+        return tuple(records)
 
 
 class ModelManagerSegmentGuard:

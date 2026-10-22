@@ -11,9 +11,9 @@ from models.dataset import ChildChunk, DatasetProcessRule, Document, DocumentSeg
 from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError
 from services.knowledge.indexing.execution import IndexingDocument
-from services.knowledge.resource_scope import DatasetRef
 from tests.unit_tests.repositories.knowledge.test_document_repository import _dataset, _document
 
 IndexingRows = tuple[SQLAlchemySegmentRepository, IndexingDocument, list[IndexDocument]]

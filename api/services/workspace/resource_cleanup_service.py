@@ -17,7 +17,7 @@ from repositories.workspace.resource_cleanup_repository import WorkspaceResource
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.workspace_service import AgentWorkspaceService
 from services.app_service import AppService
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 from tasks.clean_dataset_task import clean_dataset_task
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task

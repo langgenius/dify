@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Protocol, cast, overload
+from typing import Concatenate, Protocol, cast, overload
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -24,11 +24,13 @@ from controllers.service_api.schema import (
     USER_QUERY_PARAM,
     USER_REQUIRED_ATTR,
 )
+from core.logging.context import get_request_id, get_trace_id
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.login import current_user
+from libs.login import current_account_with_tenant, current_user
+from machinery.context import RequestContext
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken
@@ -416,6 +418,26 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
         return view(tenant_id, *args, **kwargs)
 
     return decorated
+
+
+def dataset_retrieval_admission[T, **P, R](
+    view: Callable[Concatenate[T, RequestContext, P], R],
+) -> Callable[Concatenate[T, P], R]:
+    """Validate dataset token scope, apply knowledge limits, and capture the admitted owner."""
+
+    @wraps(view)
+    def inject_request_context(self: T, tenant_id: str, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        identity = current_account_with_tenant()
+        context = RequestContext(
+            account_id=identity.account.id,
+            active_workspace_id=tenant_id,
+            request_id=get_request_id(),
+            trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
+        )
+        return view(self, context, *args, **kwargs)
+
+    limited = cloud_edition_billing_rate_limit_check("knowledge", "dataset")(inject_request_context)
+    return validate_dataset_token(limited)
 
 
 def validate_and_get_api_token(scope: str | None = None):

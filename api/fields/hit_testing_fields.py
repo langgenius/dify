@@ -1,10 +1,30 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
+from services.knowledge.entities.knowledge_entities import ExternalRetrievalModel, RetrievalModel
+
+
+class HitTestingPayload(BaseModel):
+    query: str = Field(description="Search query text.", max_length=250)
+    retrieval_model: RetrievalModel | None = Field(
+        default=None,
+        description=(
+            "Retrieval model configuration. Controls how chunks are searched and ranked when querying this "
+            "knowledge base."
+        ),
+    )
+    external_retrieval_model: ExternalRetrievalModel = Field(
+        default=None,
+        description="Retrieval settings for external knowledge bases.",
+    )
+    attachment_ids: list[str] | None = Field(
+        default=None,
+        description="List of attachment IDs to include in the retrieval context.",
+    )
 
 
 class HitTestingQuery(ResponseModel):
@@ -49,6 +69,16 @@ class HitTestingSegment(ResponseModel):
     stopped_at: int | None
     document: HitTestingDocument = Field(description="Parent document information for the matched chunk.")
 
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_collections(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            value = dict(value)
+            value.setdefault("sign_content", None)
+            if value.get("keywords") is None:
+                value["keywords"] = []
+        return value
+
     @field_validator("disabled_at", "created_at", "indexing_at", "completed_at", "stopped_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
@@ -83,6 +113,18 @@ class HitTestingRecord(ResponseModel):
     tsne_position: Any | None
     files: list[HitTestingFile]
     summary: str | None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_collections(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            value = dict(value)
+            for name in ("child_chunks", "files"):
+                if value.get(name) is None:
+                    value[name] = []
+            value.setdefault("tsne_position", None)
+            value.setdefault("summary", None)
+        return value
 
 
 class HitTestingResponse(ResponseModel):

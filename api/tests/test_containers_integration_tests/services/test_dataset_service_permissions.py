@@ -23,7 +23,7 @@ from models.dataset import (
 from models.enums import DataSourceType
 from services.errors.base import NoPermissionError
 from services.knowledge.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 from tests.unit_tests.config_override import config_overrides_context
 
 

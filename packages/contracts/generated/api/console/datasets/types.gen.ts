@@ -632,6 +632,11 @@ export type CompletionRequestError = ErrorResponse & {
   status: 400
 }
 
+export type DatasetNotInitializedError = ErrorResponse & {
+  code: 'dataset_not_initialized'
+  status: 400
+}
+
 export type DatasetMetadataListResponse = {
   built_in_field_enabled: boolean
   doc_metadata: Array<DatasetMetadataListItemResponse>
@@ -2878,10 +2883,12 @@ export type PostDatasetsByDatasetIdHitTestingData = {
 export type PostDatasetsByDatasetIdHitTestingErrors = {
   400:
     | CompletionRequestError
+    | DatasetNotInitializedError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
+  403: DatasetAccessDeniedError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }

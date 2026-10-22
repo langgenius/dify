@@ -27,7 +27,7 @@ from models.dataset import Document as DatasetDocument
 from models.enums import SummaryStatus
 from repositories.knowledge.dataset_read_repository import get_segment_document
 from repositories.knowledge.summary_repository import SQLAlchemySummaryRepository
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.summaries.application import SummaryIndexService, SummaryVectorInput, SummaryVectorResult
 
 logger = logging.getLogger(__name__)

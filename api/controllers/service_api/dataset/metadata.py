@@ -27,7 +27,7 @@ from services.knowledge.entities.knowledge_entities import (
     MetadataDetail,
     MetadataOperationData,
 )
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 
 BUILT_IN_METADATA_ACTION_PARAM = {
     "description": "`enable` to activate built-in metadata fields, `disable` to deactivate them.",

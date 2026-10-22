@@ -42,6 +42,7 @@ from services.knowledge.entities.indexing_estimate import (
     NewSourcesEstimateCommand,
     NotionEstimateSource,
 )
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 from services.knowledge.indexing.estimate import (
     DatasetEstimateRecord,
     EstimateDocumentRecord,
@@ -50,7 +51,6 @@ from services.knowledge.indexing.estimate import (
     IndexingEstimateExecutionError,
     IndexingEstimateProviderUnavailableError,
 )
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
 from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 if TYPE_CHECKING:

@@ -1,14 +1,15 @@
 """DTOs for the inner knowledge retrieval API.
 
-These models define the stable HTTP contract for trusted internal callers and
-the response shape returned by the workflow knowledge retrieval stack.
+These models carry validated caller claims, retrieval options, and detached
+result data between the inner API and the knowledge retrieval ports.
 
 Key cross-field invariants live here because callers cannot infer them from
 scalar field types alone: ``dataset_ids`` must be non-empty, either ``query``
 or ``attachment_ids`` is required, ``single`` retrieval requires both ``query``
 and ``retrieval.model``, ``automatic`` metadata filtering requires
 ``model_config``, and ``manual`` metadata filtering requires conditions. The
-response reuses workflow ``Source`` items plus serialized ``llm_usage``.
+result contains ordinary JSON values plus accumulated model usage. The HTTP
+adapter owns the workflow ``Source`` response schema.
 """
 
 from __future__ import annotations
@@ -16,11 +17,10 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import JsonValue as RetrievalJsonValue
 
-from core.rag.data_post_processor.data_post_processor import WeightsDict
 from core.rag.entities.metadata_entities import SupportedComparisonOperator
-from core.workflow.nodes.knowledge_retrieval.retrieval import Source
-from fields.base import ResponseModel
+from core.rag.entities.retrieval_settings import KeywordSetting, VectorSetting
 
 type JsonScalar = str | int | float | bool | None
 type CompletionParamValue = JsonScalar | list[JsonScalar] | dict[str, JsonScalar]
@@ -59,6 +59,23 @@ class InnerKnowledgeRetrieveRerankingModelConfig(BaseModel):
     model: str = Field(min_length=1)
 
 
+class InnerKnowledgeRetrieveVectorSetting(VectorSetting):
+    model_config = ConfigDict(extra="forbid")
+
+
+class InnerKnowledgeRetrieveKeywordSetting(KeywordSetting):
+    model_config = ConfigDict(extra="forbid")
+
+
+class InnerKnowledgeRetrieveWeights(BaseModel):
+    # The inner API rejects unknown keys at every nesting level. Workflow
+    # weights use the same fields with a less restrictive parsing policy.
+    model_config = ConfigDict(extra="forbid")
+
+    vector_setting: InnerKnowledgeRetrieveVectorSetting
+    keyword_setting: InnerKnowledgeRetrieveKeywordSetting
+
+
 class InnerKnowledgeRetrieveRetrievalConfig(BaseModel):
     """Retrieval strategy and its mode-specific configuration."""
 
@@ -70,7 +87,7 @@ class InnerKnowledgeRetrieveRetrievalConfig(BaseModel):
     reranking_mode: str = "reranking_model"
     reranking_enable: bool = True
     reranking_model: InnerKnowledgeRetrieveRerankingModelConfig | None = None
-    weights: WeightsDict | None = None
+    weights: InnerKnowledgeRetrieveWeights | None = None
     model: InnerKnowledgeRetrieveModelConfig | None = None
 
     @model_validator(mode="after")
@@ -170,7 +187,7 @@ class InnerKnowledgeRetrieveRequest(BaseModel):
         return self
 
 
-class InnerKnowledgeRetrieveUsage(ResponseModel):
+class InnerKnowledgeRetrieveUsage(BaseModel):
     """Serialized LLM usage payload returned by dataset retrieval."""
 
     prompt_tokens: int
@@ -187,7 +204,7 @@ class InnerKnowledgeRetrieveUsage(ResponseModel):
     latency: float | int
 
 
-class InnerKnowledgeRetrieveResponse(ResponseModel):
+class InnerKnowledgeRetrieveResult(BaseModel):
     """Workflow-style retrieval results plus accumulated usage."""
 
     model_config = ConfigDict(
@@ -198,5 +215,5 @@ class InnerKnowledgeRetrieveResponse(ResponseModel):
         protected_namespaces=(),
     )
 
-    results: list[Source]
+    results: list[dict[str, RetrievalJsonValue]]
     usage: InnerKnowledgeRetrieveUsage

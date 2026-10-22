@@ -16,9 +16,9 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
 from services.feature_service import FeatureService
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.indexing.errors import DocumentIsPausedError
-from services.knowledge.resource_scope import DatasetRef
 
 logger = logging.getLogger(__name__)
 

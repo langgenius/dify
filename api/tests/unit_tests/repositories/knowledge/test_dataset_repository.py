@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.dataset import Dataset, DatasetPermission
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 
 
 def _dataset(

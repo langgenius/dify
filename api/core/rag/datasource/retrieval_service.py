@@ -26,6 +26,7 @@ from core.tools.signature import sign_upload_file_preview_url
 from extensions.ext_database import db
 from extensions.otel import propagate_context, trace_span
 from graphon.model_runtime.entities.model_entities import ModelType
+from libs.helper import escape_query_for_search
 from models.dataset import (
     ChildChunk,
     Dataset,
@@ -35,7 +36,8 @@ from models.dataset import (
 )
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
-from services.knowledge.external.service import ExternalDatasetService
+from repositories.knowledge.external_repository import load_external_knowledge_retrieval_request
+from services.knowledge.external.adapters import ExternalKnowledgeGateway
 
 
 class SegmentAttachmentResult(TypedDict):
@@ -178,27 +180,28 @@ class RetrievalService:
         session: Session,
         dataset_id: str,
         query: str,
-        external_retrieval_model: dict[str, Any] | None = None,
-        metadata_filtering_conditions: dict[str, Any] | None = None,
-    ):
-        stmt = select(Dataset).where(Dataset.id == dataset_id)
-        dataset = session.scalar(stmt)
-        if not dataset:
-            return []
-        metadata_condition = (
-            MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
-            if metadata_filtering_conditions
-            else None
+        *,
+        tenant_id: str,
+        external_retrieval_model: dict[str, Any],
+        metadata_condition: MetadataFilteringCondition | None,
+    ) -> list[dict[str, Any]]:
+        """Materialize external configuration in a separate read transaction before HTTP.
+
+        The caller's transaction is never committed, rolled back, or closed here.
+        Dataset selection must also finish its owned reads before entering this method.
+        """
+        with Session(bind=session.get_bind()) as read_session:
+            request = load_external_knowledge_retrieval_request(
+                tenant_id,
+                dataset_id,
+                query,
+                external_retrieval_model,
+                metadata_condition,
+                session=read_session,
+            )
+        return ExternalKnowledgeGateway.execute_external_knowledge_retrieval(
+            ExternalKnowledgeGateway.build_external_knowledge_retrieval_request(request)
         )
-        all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            tenant_id=dataset.tenant_id,
-            dataset_id=dataset_id,
-            query=query,
-            external_retrieval_parameters=external_retrieval_model or {},
-            metadata_condition=metadata_condition,
-            session=session,
-        )
-        return all_documents
 
     @classmethod
     def _filter_documents_by_vector_score_threshold(
@@ -464,9 +467,7 @@ class RetrievalService:
                 logger.error(e, exc_info=True)
                 exceptions.append(str(e))
 
-    @staticmethod
-    def escape_query_for_search(query: str) -> str:
-        return query.replace('"', '\\"')
+    escape_query_for_search = staticmethod(escape_query_for_search)
 
     @classmethod
     def format_retrieval_documents(cls, session: Session, documents: list[Document]) -> list[RetrievalSegments]:

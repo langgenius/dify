@@ -5,6 +5,7 @@ container-backed integration tests. The tests exercise real ORM persistence and
 only patch non-DB collaborators when needed.
 """
 
+import json
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
@@ -14,17 +15,41 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from graphon.model_runtime.entities.model_entities import ModelType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.dataset import Dataset, DatasetPermissionEnum, Document, ExternalKnowledgeBindings, Pipeline
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.dataset import (
+    Dataset,
+    DatasetPermissionEnum,
+    Document,
+    ExternalKnowledgeApis,
+    ExternalKnowledgeBindings,
+    Pipeline,
+)
 from models.enums import DatasetRuntimeMode, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.errors.dataset import DatasetNameDuplicateError
-from services.knowledge.dataset_service import DatasetService
+from services.errors.knowledge_retrieval import ExternalTemplateNotFoundError
+from services.knowledge.dataset_service import DatasetService, ExternalKnowledgeTemplateLookup
 from services.knowledge.entities.knowledge_entities import RerankingModel, RetrievalModel
 
 
 class DatasetServiceIntegrationDataFactory:
     """Factory for creating real database entities used by integration tests."""
+
+    @staticmethod
+    def create_external_knowledge_api(
+        db_session_with_containers: Session, tenant_id: str, created_by: str
+    ) -> ExternalKnowledgeApis:
+        template = ExternalKnowledgeApis(
+            tenant_id=tenant_id,
+            created_by=created_by,
+            updated_by=created_by,
+            name="External Knowledge API",
+            description="",
+            settings=json.dumps({"endpoint": "https://example.com", "api_key": "secret"}),
+        )
+        db_session_with_containers.add(template)
+        db_session_with_containers.flush()
+        return template
 
     @staticmethod
     def create_account_with_tenant(
@@ -35,9 +60,9 @@ class DatasetServiceIntegrationDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
-        tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
+        tenant = Tenant(name=f"tenant-{uuid4()}", status=TenantStatus.NORMAL)
         db_session_with_containers.add_all([account, tenant])
         db_session_with_containers.flush()
 
@@ -125,7 +150,9 @@ class DatasetServiceIntegrationDataFactory:
 class TestDatasetServiceCreateDataset:
     """Integration coverage for DatasetService.create_empty_dataset."""
 
-    def test_create_internal_dataset_basic_success(self, db_session_with_containers: Session):
+    def test_create_internal_dataset_basic_success(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Create a basic internal dataset with minimal configuration."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -138,6 +165,7 @@ class TestDatasetServiceCreateDataset:
             indexing_technique=None,
             account=account,
             session=db_session_with_containers,
+            external_templates=external_templates,
         )
 
         # Assert
@@ -148,7 +176,9 @@ class TestDatasetServiceCreateDataset:
         assert created_dataset.embedding_model_provider is None
         assert created_dataset.embedding_model is None
 
-    def test_create_internal_dataset_with_economy_indexing(self, db_session_with_containers: Session):
+    def test_create_internal_dataset_with_economy_indexing(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Create an internal dataset with economy indexing and no embedding model."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -161,6 +191,7 @@ class TestDatasetServiceCreateDataset:
             indexing_technique=IndexTechniqueType.ECONOMY,
             account=account,
             session=db_session_with_containers,
+            external_templates=external_templates,
         )
 
         # Assert
@@ -169,7 +200,9 @@ class TestDatasetServiceCreateDataset:
         assert result.embedding_model_provider is None
         assert result.embedding_model is None
 
-    def test_create_internal_dataset_with_high_quality_indexing(self, db_session_with_containers: Session):
+    def test_create_internal_dataset_with_high_quality_indexing(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Create a high-quality dataset and persist embedding model settings."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -186,6 +219,7 @@ class TestDatasetServiceCreateDataset:
                 indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                 account=account,
                 session=db_session_with_containers,
+                external_templates=external_templates,
             )
 
         # Assert
@@ -198,7 +232,9 @@ class TestDatasetServiceCreateDataset:
             model_type=ModelType.TEXT_EMBEDDING,
         )
 
-    def test_create_dataset_duplicate_name_error(self, db_session_with_containers: Session):
+    def test_create_dataset_duplicate_name_error(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Raise duplicate-name error when the same tenant already has the name."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -219,40 +255,44 @@ class TestDatasetServiceCreateDataset:
                 indexing_technique=None,
                 account=account,
                 session=db_session_with_containers,
+                external_templates=external_templates,
             )
 
-    def test_create_external_dataset_success(self, db_session_with_containers: Session):
+    def test_create_external_dataset_success(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Create an external dataset and persist external knowledge binding."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
-        external_knowledge_api_id = str(uuid4())
+        template = DatasetServiceIntegrationDataFactory.create_external_knowledge_api(
+            db_session_with_containers, tenant.id, account.id
+        )
         external_knowledge_id = "knowledge-123"
 
         # Act
-        with patch(
-            "services.knowledge.dataset_service.ExternalDatasetService.get_external_knowledge_api"
-        ) as mock_get_api:
-            mock_get_api.return_value = Mock(id=external_knowledge_api_id)
-            result = DatasetService.create_empty_dataset(
-                tenant_id=tenant.id,
-                name="External Dataset",
-                description=None,
-                indexing_technique=None,
-                account=account,
-                provider="external",
-                external_knowledge_api_id=external_knowledge_api_id,
-                external_knowledge_id=external_knowledge_id,
-                session=db_session_with_containers,
-            )
+        result = DatasetService.create_empty_dataset(
+            tenant_id=tenant.id,
+            name="External Dataset",
+            description=None,
+            indexing_technique=None,
+            account=account,
+            provider="external",
+            external_knowledge_api_id=template.id,
+            external_knowledge_id=external_knowledge_id,
+            session=db_session_with_containers,
+            external_templates=external_templates,
+        )
 
         # Assert
         binding = db_session_with_containers.query(ExternalKnowledgeBindings).filter_by(dataset_id=result.id).first()
         assert result.provider == "external"
         assert binding is not None
         assert binding.external_knowledge_id == external_knowledge_id
-        assert binding.external_knowledge_api_id == external_knowledge_api_id
+        assert binding.external_knowledge_api_id == template.id
 
-    def test_create_dataset_with_retrieval_model_and_reranking(self, db_session_with_containers: Session):
+    def test_create_dataset_with_retrieval_model_and_reranking(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Create a high-quality dataset with retrieval/reranking settings."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -286,6 +326,7 @@ class TestDatasetServiceCreateDataset:
                 account=account,
                 retrieval_model=retrieval_model,
                 session=db_session_with_containers,
+                external_templates=external_templates,
             )
 
         # Assert
@@ -294,7 +335,7 @@ class TestDatasetServiceCreateDataset:
         mock_check_reranking.assert_called_once_with(tenant.id, "cohere", "rerank-english-v2.0")
 
     def test_create_internal_dataset_with_high_quality_indexing_custom_embedding(
-        self, db_session_with_containers: Session
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
     ):
         """Create high-quality dataset with explicitly configured embedding model."""
         # Arrange
@@ -323,6 +364,7 @@ class TestDatasetServiceCreateDataset:
                 embedding_model_provider=embedding_provider,
                 embedding_model_name=embedding_model_name,
                 session=db_session_with_containers,
+                external_templates=external_templates,
             )
 
         # Assert
@@ -338,7 +380,9 @@ class TestDatasetServiceCreateDataset:
             model=embedding_model_name,
         )
 
-    def test_create_internal_dataset_with_retrieval_model(self, db_session_with_containers: Session):
+    def test_create_internal_dataset_with_retrieval_model(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Persist retrieval model settings when creating an internal dataset."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -359,13 +403,16 @@ class TestDatasetServiceCreateDataset:
             account=account,
             retrieval_model=retrieval_model,
             session=db_session_with_containers,
+            external_templates=external_templates,
         )
 
         # Assert
         db_session_with_containers.refresh(result)
         assert result.retrieval_model == retrieval_model.model_dump()
 
-    def test_create_internal_dataset_with_custom_permission(self, db_session_with_containers: Session):
+    def test_create_internal_dataset_with_custom_permission(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Persist canonical custom permission when creating an internal dataset."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -379,59 +426,60 @@ class TestDatasetServiceCreateDataset:
             account=account,
             permission=DatasetPermissionEnum.ALL_TEAM,
             session=db_session_with_containers,
+            external_templates=external_templates,
         )
 
         # Assert
         db_session_with_containers.refresh(result)
         assert result.permission == DatasetPermissionEnum.ALL_TEAM
 
-    def test_create_external_dataset_missing_api_id_error(self, db_session_with_containers: Session):
+    def test_create_external_dataset_missing_api_id_error(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Raise error when external API template does not exist."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         external_knowledge_api_id = str(uuid4())
 
         # Act / Assert
-        with patch(
-            "services.knowledge.dataset_service.ExternalDatasetService.get_external_knowledge_api"
-        ) as mock_get_api:
-            mock_get_api.return_value = None
-            with pytest.raises(ValueError, match=r"External API template not found\.?"):
-                DatasetService.create_empty_dataset(
-                    tenant_id=tenant.id,
-                    name="External Missing API Dataset",
-                    description=None,
-                    indexing_technique=None,
-                    account=account,
-                    provider="external",
-                    external_knowledge_api_id=external_knowledge_api_id,
-                    external_knowledge_id="knowledge-123",
-                    session=db_session_with_containers,
-                )
+        with pytest.raises(ExternalTemplateNotFoundError, match="api template not found"):
+            DatasetService.create_empty_dataset(
+                tenant_id=tenant.id,
+                name="External Missing API Dataset",
+                description=None,
+                indexing_technique=None,
+                account=account,
+                provider="external",
+                external_knowledge_api_id=external_knowledge_api_id,
+                external_knowledge_id="knowledge-123",
+                session=db_session_with_containers,
+                external_templates=external_templates,
+            )
 
-    def test_create_external_dataset_missing_knowledge_id_error(self, db_session_with_containers: Session):
+    def test_create_external_dataset_missing_knowledge_id_error(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Raise error when external knowledge id is missing for external dataset creation."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
-        external_knowledge_api_id = str(uuid4())
+        template = DatasetServiceIntegrationDataFactory.create_external_knowledge_api(
+            db_session_with_containers, tenant.id, account.id
+        )
 
         # Act / Assert
-        with patch(
-            "services.knowledge.dataset_service.ExternalDatasetService.get_external_knowledge_api"
-        ) as mock_get_api:
-            mock_get_api.return_value = Mock(id=external_knowledge_api_id)
-            with pytest.raises(ValueError, match="external_knowledge_id is required"):
-                DatasetService.create_empty_dataset(
-                    tenant_id=tenant.id,
-                    name="External Missing Knowledge Dataset",
-                    description=None,
-                    indexing_technique=None,
-                    account=account,
-                    provider="external",
-                    external_knowledge_api_id=external_knowledge_api_id,
-                    external_knowledge_id=None,
-                    session=db_session_with_containers,
-                )
+        with pytest.raises(ValueError, match="external_knowledge_id is required"):
+            DatasetService.create_empty_dataset(
+                tenant_id=tenant.id,
+                name="External Missing Knowledge Dataset",
+                description=None,
+                indexing_technique=None,
+                account=account,
+                provider="external",
+                external_knowledge_api_id=template.id,
+                external_knowledge_id=None,
+                session=db_session_with_containers,
+                external_templates=external_templates,
+            )
 
 
 class TestDatasetServiceCreateRagPipelineDataset:
@@ -592,7 +640,9 @@ class TestDatasetServiceCreateRagPipelineDataset:
 class TestDatasetServiceUpdateAndDeleteDataset:
     """Integration coverage for SQL-backed update and delete behavior."""
 
-    def test_update_dataset_duplicate_name_error(self, db_session_with_containers: Session):
+    def test_update_dataset_duplicate_name_error(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Reject update when target name already exists within the same tenant."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -612,7 +662,11 @@ class TestDatasetServiceUpdateAndDeleteDataset:
         # Act / Assert
         with pytest.raises(ValueError, match="Dataset name already exists"):
             DatasetService.update_dataset(
-                source_dataset.id, {"name": "Existing Dataset"}, account, session=db_session_with_containers
+                source_dataset.id,
+                {"name": "Existing Dataset"},
+                account,
+                session=db_session_with_containers,
+                external_templates=external_templates,
             )
 
     def test_delete_dataset_with_documents_success(self, db_session_with_containers: Session):
@@ -711,7 +765,9 @@ class TestDatasetServiceRetrievalConfiguration:
         assert result.retrieval_model["search_method"] == "semantic_search"
         assert result.retrieval_model["top_k"] == 5
 
-    def test_update_dataset_retrieval_configuration(self, db_session_with_containers: Session):
+    def test_update_dataset_retrieval_configuration(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Persist retrieval configuration updates through DatasetService.update_dataset."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -735,7 +791,9 @@ class TestDatasetServiceRetrievalConfiguration:
         }
 
         # Act
-        result = DatasetService.update_dataset(dataset.id, update_data, account, session=db_session_with_containers)
+        result = DatasetService.update_dataset(
+            dataset.id, update_data, account, session=db_session_with_containers, external_templates=external_templates
+        )
 
         # Assert
         db_session_with_containers.refresh(dataset)

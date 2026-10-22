@@ -1053,6 +1053,18 @@ export const zCompletionRequestError = zErrorResponse.and(
 )
 
 /**
+ * DatasetAccessDeniedError
+ *
+ * Dataset access denied.
+ */
+export const zDatasetAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_access_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * DatasetNameDuplicateError
  *
  * The dataset name already exists. Please modify your dataset name.
@@ -1061,6 +1073,18 @@ export const zDatasetNameDuplicateError = zErrorResponse.and(
   z.object({
     code: z.literal('dataset_name_duplicate'),
     status: z.literal(409),
+  }),
+)
+
+/**
+ * DatasetNotInitializedError
+ *
+ * The dataset is still being initialized or indexing. Please wait a moment.
+ */
+export const zDatasetNotInitializedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_not_initialized'),
+    status: z.literal(400),
   }),
 )
 

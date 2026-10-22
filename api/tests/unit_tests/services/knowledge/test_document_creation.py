@@ -23,7 +23,7 @@ from services.document_indexing_proxy.duplicate_document_indexing_task_proxy imp
 from services.entities.feature_entities import FeatureModel
 from services.errors.file import FileNotExistsError
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 from tests.unit_tests.model_factories import make_upload_file
 
 CONTEXT = RequestContext("request", None, "actor", "tenant")

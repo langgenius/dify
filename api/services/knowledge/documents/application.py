@@ -8,7 +8,7 @@ from typing import Any, Literal, Protocol
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from services.knowledge.dataset_access import DatasetAccess
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 
 
 @dataclass(frozen=True)

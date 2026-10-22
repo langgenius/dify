@@ -18,8 +18,8 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.feature_service import FeatureService
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
-from services.knowledge.resource_scope import DatasetRef
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_run_agg import WorkflowRunAgg
 

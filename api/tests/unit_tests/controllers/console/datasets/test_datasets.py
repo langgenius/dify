@@ -39,7 +39,7 @@ from controllers.console.datasets.error import (
 )
 from machinery.context import RequestContext
 from services.data_source.entities.notion_import import NotionPageType
-from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetApplicationService, DatasetListFilter
 from services.knowledge.entities.indexing_estimate import (
     NotionEstimateSource,
