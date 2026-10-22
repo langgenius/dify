@@ -39,6 +39,6 @@
     "vitest": "catalog:"
   },
   "engines": {
-    "node": "^24.20.0"
+    "node": "^24.22.1"
   }
 }
