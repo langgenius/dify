@@ -8167,6 +8167,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to OAuth callback page |  |
+| 400 | Bad Request | **application/json**: [ConnectionOauthFailedError](#connectionoauthfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/trigger/callback
@@ -19456,6 +19457,14 @@ Enum class for configurate method of provider model.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ConfigurateMethod | string | Enum class for configurate method of provider model. |  |
+
+#### ConnectionOauthFailedError
+
+OAuth authorization could not be completed. Start authorization again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionOauthFailedError |  | OAuth authorization could not be completed. Start authorization again. |  |
 
 #### ConsoleDatasetListQuery
 

@@ -172,6 +172,16 @@ export type ConnectionNotFoundError = ErrorResponse & {
   status: 404
 }
 
+export type ConnectionOauthFailedError = ErrorResponse & {
+  code: 'connection_oauth_failed'
+  status: 400
+}
+
+export type ConnectionReauthorizationRequiredError = ErrorResponse & {
+  code: 'connection_reauthorization_required'
+  status: 409
+}
+
 export type ConversationInfiniteScrollPagination = {
   data: Array<SimpleConversation>
   has_more: boolean
@@ -272,6 +282,16 @@ export type EndUserConnectionListResponse = {
   data: Array<EndUserConnectionResponse>
   has_more: boolean
   next_cursor: string | null
+}
+
+export type EndUserConnectionOAuthPayload = {
+  name: string
+  node_id: string
+  workflow_id: string
+}
+
+export type EndUserConnectionOAuthResponse = {
+  authorization_url: string
 }
 
 export type EndUserConnectionResponse = {
@@ -1592,6 +1612,31 @@ export type PostConnectionsResponses = {
 
 export type PostConnectionsResponse = PostConnectionsResponses[keyof PostConnectionsResponses]
 
+export type PostConnectionsOauthAuthorizationUrlData = {
+  body: EndUserConnectionOAuthPayload
+  path?: never
+  query?: never
+  url: '/connections/oauth/authorization-url'
+}
+
+export type PostConnectionsOauthAuthorizationUrlErrors = {
+  400: ConnectionConfigurationInvalidError | ConnectionOauthFailedError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  409: ConnectionReauthorizationRequiredError | WorkflowChangedError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsOauthAuthorizationUrlError =
+  PostConnectionsOauthAuthorizationUrlErrors[keyof PostConnectionsOauthAuthorizationUrlErrors]
+
+export type PostConnectionsOauthAuthorizationUrlResponses = {
+  200: EndUserConnectionOAuthResponse
+}
+
+export type PostConnectionsOauthAuthorizationUrlResponse =
+  PostConnectionsOauthAuthorizationUrlResponses[keyof PostConnectionsOauthAuthorizationUrlResponses]
+
 export type DeleteConnectionsByConnectionIdData = {
   body?: never
   path: {
@@ -1700,6 +1745,34 @@ export type PostConnectionsByConnectionIdCheckResponses = {
 
 export type PostConnectionsByConnectionIdCheckResponse =
   PostConnectionsByConnectionIdCheckResponses[keyof PostConnectionsByConnectionIdCheckResponses]
+
+export type PostConnectionsByConnectionIdReauthorizeData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}/reauthorize'
+}
+
+export type PostConnectionsByConnectionIdReauthorizeErrors = {
+  400: ConnectionConfigurationInvalidError | ConnectionOauthFailedError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionReauthorizationRequiredError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsByConnectionIdReauthorizeError =
+  PostConnectionsByConnectionIdReauthorizeErrors[keyof PostConnectionsByConnectionIdReauthorizeErrors]
+
+export type PostConnectionsByConnectionIdReauthorizeResponses = {
+  200: EndUserConnectionOAuthResponse
+}
+
+export type PostConnectionsByConnectionIdReauthorizeResponse =
+  PostConnectionsByConnectionIdReauthorizeResponses[keyof PostConnectionsByConnectionIdReauthorizeResponses]
 
 export type GetConversationsData = {
   body?: never

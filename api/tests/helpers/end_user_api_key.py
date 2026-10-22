@@ -25,7 +25,7 @@ from models.enums import AppStatus, EndUserType
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.end_user_connection_repository import EndUserConnectionRepository
-from services.end_user_connection_adapters import ApiKeyConnectionTargetResolver, PluginApiKeyCredentialGateway
+from services.end_user_connection_adapters import PluginApiKeyCredentialGateway, PublishedConnectionTargetResolver
 from services.end_user_connections.api_key import ApiKeyConnectionService
 from services.end_user_connections.contracts import CreateApiKeyConnectionInput
 from services.end_user_connections.entities import WebConnectionContext
@@ -194,7 +194,7 @@ def make_harness(sessions: sessionmaker[Session]) -> ConnectionHarness:
     gateway = TestProviders(auth, plugin_provider(tenant_id))
     service = ApiKeyConnectionService(
         store=repository,
-        targets=ApiKeyConnectionTargetResolver(workflows=repository, providers=gateway),
+        targets=PublishedConnectionTargetResolver(workflows=repository, providers=gateway),
         credentials=gateway,
         cipher=cipher,
     )

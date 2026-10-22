@@ -1,18 +1,21 @@
 """Owner-scoped Connection storage; external I/O never runs in these transactions."""
 
 from collections.abc import Mapping
+from datetime import datetime
 from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, load_only, sessionmaker
 
-from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType
+from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, OAuthClientSource
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus
 from models.end_user_connection import EndUserConnection
 from models.enums import AppStatus, EndUserType
 from models.model import App, AppMode, EndUser
+from models.provider_ids import ToolProviderID
+from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
 from services.end_user_connections.api_key import ConnectionChanges, StoredConnection
 from services.end_user_connections.contracts import ConnectionPage, ConnectionSummary, ListConnectionsInput
@@ -27,8 +30,10 @@ from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionConflictError,
     ConnectionIdentityError,
+    ConnectionReauthorizationRequiredError,
     ConnectionWorkflowChangedError,
 )
+from services.end_user_connections.oauth import ConnectionOAuthAttempt, StoredOAuthClientConfiguration
 
 
 class EndUserConnectionRepository:
@@ -222,6 +227,141 @@ class EndUserConnectionRepository:
             )
             if result.rowcount != 1:
                 raise ConnectionConflictError()
+
+    def oauth_client_configuration(self, tenant_id: str, provider: str) -> StoredOAuthClientConfiguration:
+        with self._sessions() as session:
+            return self._oauth_client_configuration(session, tenant_id, provider, lock=False)
+
+    def validate_oauth_context(self, attempt: ConnectionOAuthAttempt) -> None:
+        with self._sessions() as session:
+            self._require_context(session, attempt.context, lock=False)
+
+    @staticmethod
+    def _oauth_client_configuration(
+        session: Session, tenant_id: str, provider: str, *, lock: bool
+    ) -> StoredOAuthClientConfiguration:
+        identity = ToolProviderID(provider)
+        tenant_stmt = sa.select(ToolOAuthTenantClient).where(
+            ToolOAuthTenantClient.tenant_id == tenant_id,
+            ToolOAuthTenantClient.plugin_id == identity.plugin_id,
+            ToolOAuthTenantClient.provider == identity.provider_name,
+            ToolOAuthTenantClient.enabled.is_(True),
+        )
+        if lock:
+            tenant_stmt = tenant_stmt.with_for_update()
+        tenant_client = session.scalar(tenant_stmt)
+        if tenant_client is not None:
+            return StoredOAuthClientConfiguration(
+                source=OAuthClientSource.WORKSPACE,
+                configuration_id=tenant_client.id,
+                encrypted_parameters=tenant_client.encrypted_oauth_params,
+            )
+        system_stmt = sa.select(ToolOAuthSystemClient).where(
+            ToolOAuthSystemClient.plugin_id == identity.plugin_id,
+            ToolOAuthSystemClient.provider == identity.provider_name,
+        )
+        if lock:
+            system_stmt = system_stmt.with_for_update()
+        system_client = session.scalar(system_stmt)
+        if system_client is None:
+            raise ConnectionReauthorizationRequiredError()
+        return StoredOAuthClientConfiguration(
+            source=OAuthClientSource.PLATFORM,
+            configuration_id=system_client.id,
+            encrypted_parameters=system_client.encrypted_oauth_params,
+        )
+
+    def save_oauth(
+        self,
+        attempt: ConnectionOAuthAttempt,
+        *,
+        encrypted_credentials: str,
+        expires_at: datetime | None,
+        account_label: str | None,
+    ) -> ConnectionSummary:
+        context = attempt.context
+        with self._sessions.begin() as session:
+            app = self._require_context(session, context, lock=True)
+            current = self._oauth_client_configuration(session, context.tenant_id, attempt.provider, lock=True)
+            client = attempt.client.reference
+            if (
+                current.source != client.source
+                or current.configuration_id != client.configuration_id
+                or current.fingerprint != attempt.client.fingerprint
+            ):
+                raise ConnectionReauthorizationRequiredError()
+            if attempt.guard is None:
+                if attempt.target is None or attempt.name is None:
+                    raise ConnectionConfigurationError()
+                workflow_id = str(attempt.target.workflow_id)
+                if (
+                    app.workflow_id != workflow_id
+                    or session.scalar(
+                        sa.select(Workflow.id).where(
+                            Workflow.id == workflow_id,
+                            Workflow.tenant_id == context.tenant_id,
+                            Workflow.app_id == context.app_id,
+                            Workflow.version != "draft",
+                        )
+                    )
+                    is None
+                ):
+                    raise ConnectionWorkflowChangedError()
+                row = EndUserConnection(
+                    tenant_id=context.tenant_id,
+                    account_id=context.owner.account_id,
+                    end_user_id=context.owner.end_user_id,
+                    provider=attempt.provider,
+                    credential_type=ConnectionCredentialType.OAUTH2,
+                    name=attempt.name,
+                    encrypted_credentials=encrypted_credentials,
+                    status=ConnectionCredentialStatus.CONNECTED,
+                    oauth_client_source=client.source,
+                    oauth_client_configuration_id=client.configuration_id,
+                    oauth_client_id=client.client_id,
+                    expires_at=expires_at,
+                    account_label=account_label,
+                )
+                session.add(row)
+                session.flush()
+            else:
+                result = cast(
+                    CursorResult,
+                    session.execute(
+                        sa.update(EndUserConnection)
+                        .where(
+                            *self._guard(context, attempt.guard),
+                            EndUserConnection.provider == attempt.provider,
+                            EndUserConnection.credential_type == ConnectionCredentialType.OAUTH2,
+                        )
+                        .values(
+                            {
+                                "encrypted_credentials": encrypted_credentials,
+                                "status": ConnectionCredentialStatus.CONNECTED,
+                                "oauth_client_source": client.source,
+                                "oauth_client_configuration_id": client.configuration_id,
+                                "oauth_client_id": client.client_id,
+                                "expires_at": expires_at,
+                                "account_label": account_label,
+                                "revision": EndUserConnection.revision + 1,
+                                "updated_at": naive_utc_now(),
+                                "last_active_at": naive_utc_now(),
+                            }
+                        )
+                    ),
+                )
+                if result.rowcount != 1:
+                    raise ConnectionConflictError()
+                row = session.scalar(
+                    sa.select(EndUserConnection).where(
+                        EndUserConnection.id == attempt.guard.connection_id,
+                        EndUserConnection.tenant_id == context.tenant_id,
+                        *self._owner(context.owner),
+                    )
+                )
+                if row is None:
+                    raise ConnectionConflictError()
+            return self._summary(row)
 
     def _guard(
         self, context: WebConnectionContext, guard: ConnectionMutationGuard
