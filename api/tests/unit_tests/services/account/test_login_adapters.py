@@ -37,6 +37,8 @@ from services.entities.account_activation_entities import InvitationToken
 from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import (
     EmailCodeChallengeStatus,
+    EmailCodeLoginCommand,
+    LoginMode,
     PasswordLoginCommand,
     RefreshAccountStatus,
 )
@@ -636,3 +638,52 @@ def test_reset_password_gateway_releases_reservation_after_failure(
 
     assert commands.call_args_list[0].args[0] == "EVALSHA"
     assert commands.call_args_list[-1].args[:2] == ("ZREM", "reset:user@example.com")
+
+
+@pytest.mark.parametrize("status", [AccountStatus.UNINITIALIZED, AccountStatus.ACTIVE, AccountStatus.BANNED])
+def test_end_user_refresh_does_not_require_or_create_workspace(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    status: AccountStatus,
+) -> None:
+    account = _persist_account(sqlite_session)
+    account.status = status
+    sqlite_session.commit()
+    gateway = adapters.SQLAlchemyAccountRefreshPreparationGateway(
+        accounts=SQLAlchemyAccountRepository(sqlite_session_factory)
+    )
+    expected = RefreshAccountStatus.BANNED if status == AccountStatus.BANNED else RefreshAccountStatus.READY
+    assert gateway.prepare(account.id, mode=LoginMode.END_USER) == expected
+    assert sqlite_session.scalar(select(TenantAccountJoin)) is None
+
+
+def test_end_user_email_login_creates_account_without_builder_resources(
+    account_domain: AccountDomain,
+    sqlite_session: Session,
+) -> None:
+    dependencies = Dependencies()
+    dependencies.accounts = account_domain.repository  # type: ignore[assignment]
+    dependencies.workspaces = account_domain.workspaces  # type: ignore[assignment]
+    dependencies.accounts_provisioning = account_domain.accounts  # type: ignore[assignment]
+    dependencies.policies.workspace_creation_allowed = False
+    account_domain.policy.is_workspace_creation_allowed.return_value = False
+    tokens = dependencies.service().login_with_email_code(
+        EmailCodeLoginCommand(
+            email="visitor@example.com",
+            code="123456",
+            token="verified-challenge",
+            turnstile_token=None,
+            language="en-US",
+            timezone="UTC",
+            ip_address="127.0.0.1",
+            mode=LoginMode.END_USER,
+        )
+    )
+    assert tokens.access_token == "access"
+    account = sqlite_session.scalar(select(Account).where(Account.email == "visitor@example.com"))
+    assert account is not None
+    assert account.status == AccountStatus.UNINITIALIZED
+    assert account.initialized_at is None
+    assert sqlite_session.scalar(select(TenantAccountJoin)) is None
+    assert sqlite_session.scalar(select(Tenant)) is None
+    account_domain.policy.try_join_default_workspace.assert_not_called()

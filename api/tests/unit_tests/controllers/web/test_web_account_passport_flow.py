@@ -8,10 +8,11 @@ from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Unauthorized
 
-from constants import COOKIE_NAME_ACCESS_TOKEN, HEADER_NAME_PASSPORT
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, HEADER_NAME_PASSPORT
 from controllers.web import passport, wraps
 from enums import DeploymentEdition, WebAppAccessMode
 from libs.passport import PassportService
+from libs.token import generate_csrf_token
 from models.enums import CustomizeTokenStrategy
 from models.model import App, AppMode, EndUser, Site
 from repositories.web_passport_repository import WebPassportRepository
@@ -214,3 +215,47 @@ def test_internal_account_issuance_does_not_bind_existing_guest(
     with app.test_request_context("/conversations", headers={"X-App-Code": "app-a", HEADER_NAME_PASSPORT: guest}):
         _, user = wraps.decode_jwt_token()
         assert user.id == guest_id
+
+
+def test_explicit_http_exchange_selects_account_without_changing_guest(
+    app: Flask,
+    identity_flow: tuple[PassportService, WebAccounts],
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    signer, _ = identity_flow
+    apply_config_overrides(
+        monkeypatch,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
+        CONSOLE_WEB_URL="http://localhost",
+        CONSOLE_API_URL="http://localhost",
+    )
+    with app.test_request_context("/passport?user_id=guest-session", headers={"X-App-Code": "app-a"}):
+        guest_token = passport.PassportResource().get()["access_token"]
+    guest_id = signer.verify(guest_token)["end_user_id"]
+    login = signer.issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000})
+    csrf = generate_csrf_token(ACCOUNT_ID)
+    with app.test_request_context(
+        "/passport/account?user_id=guest-session",
+        method="POST",
+        headers={
+            "X-App-Code": "app-a",
+            "X-CSRF-Token": csrf,
+            "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}={login}; {COOKIE_NAME_CSRF_TOKEN}={csrf}",
+        },
+    ):
+        response = passport.AccountPassportResource().post()
+    account_token = response.json["access_token"]
+    claims = signer.verify(account_token)
+    assert claims["end_user_id"] != guest_id
+    assert claims["token_source"] == "webapp_account"
+    assert ACCOUNT_ID not in claims.values()
+    with app.test_request_context(
+        "/conversations", headers={"X-App-Code": "app-a", HEADER_NAME_PASSPORT: account_token}
+    ):
+        _, end_user = wraps.decode_jwt_token()
+    assert end_user.account_id == ACCOUNT_ID
+    guest = sqlite_session.get(EndUser, guest_id)
+    assert guest is not None
+    assert guest.account_id is None
+    assert guest.session_id == "guest-session"

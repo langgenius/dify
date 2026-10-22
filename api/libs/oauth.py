@@ -4,11 +4,13 @@ import json
 import logging
 import urllib.parse
 from dataclasses import dataclass
-from typing import NotRequired, TypedDict, override
+from typing import Literal, NotRequired, TypedDict, override
 
 import httpx
-from pydantic import TypeAdapter, ValidationError
+from itsdangerous import BadData, URLSafeTimedSerializer
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
+from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 
 logger = logging.getLogger(__name__)
@@ -35,6 +37,35 @@ class OAuthState(TypedDict, total=False):
     timezone: str
     language: str
     redirect_url: str
+
+
+END_USER_OAUTH_STATE_PREFIX = "end_user."
+END_USER_OAUTH_STATE_MAX_AGE = 600
+
+
+class EndUserOAuthState(BaseModel):
+    mode: Literal["end_user"] = "end_user"
+    provider: str
+    nonce: str
+    context: OAuthState
+
+
+def encode_end_user_oauth_state(state: EndUserOAuthState) -> str:
+    serializer = URLSafeTimedSerializer(dify_config.SECRET_KEY, salt="end-user-oauth-login")
+    return END_USER_OAUTH_STATE_PREFIX + serializer.dumps(state.model_dump())
+
+
+def decode_end_user_oauth_state(state: str) -> EndUserOAuthState:
+    if not state.startswith(END_USER_OAUTH_STATE_PREFIX):
+        raise ValueError("Invalid End User OAuth state.")
+    serializer = URLSafeTimedSerializer(dify_config.SECRET_KEY, salt="end-user-oauth-login")
+    try:
+        payload = serializer.loads(
+            state.removeprefix(END_USER_OAUTH_STATE_PREFIX), max_age=END_USER_OAUTH_STATE_MAX_AGE
+        )
+        return EndUserOAuthState.model_validate(payload)
+    except (BadData, ValidationError) as exc:
+        raise ValueError("Invalid or expired End User OAuth state.") from exc
 
 
 class GitHubEmailRecord(TypedDict, total=False):
@@ -127,6 +158,7 @@ class OAuth:
         timezone: str | None = None,
         language: str | None = None,
         redirect_url: str | None = None,
+        state: str | None = None,
     ) -> str:
         raise NotImplementedError()
 
@@ -157,13 +189,14 @@ class GitHubOAuth(OAuth):
         timezone: str | None = None,
         language: str | None = None,
         redirect_url: str | None = None,
+        state: str | None = None,
     ) -> str:
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
             "scope": "user:email",  # Request only basic user information
         }
-        state = encode_oauth_state(
+        state = state or encode_oauth_state(
             invite_token=invite_token,
             timezone=timezone,
             language=language,
@@ -260,6 +293,7 @@ class GoogleOAuth(OAuth):
         timezone: str | None = None,
         language: str | None = None,
         redirect_url: str | None = None,
+        state: str | None = None,
     ) -> str:
         params = {
             "client_id": self.client_id,
@@ -267,7 +301,7 @@ class GoogleOAuth(OAuth):
             "redirect_uri": self.redirect_uri,
             "scope": "openid email",
         }
-        state = encode_oauth_state(
+        state = state or encode_oauth_state(
             invite_token=invite_token,
             timezone=timezone,
             language=language,

@@ -1,7 +1,9 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from http.cookies import SimpleCookie
 from types import SimpleNamespace
 from typing import NoReturn
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from flask import Flask
@@ -11,7 +13,7 @@ from controllers.console import wraps as console_wraps
 from controllers.console.auth import oauth as oauth_controller
 from controllers.console.auth.oauth import OAuthCallback, OAuthLogin
 from enums import DeploymentEdition
-from libs.oauth import encode_oauth_state
+from libs.oauth import EndUserOAuthState, decode_end_user_oauth_state, encode_end_user_oauth_state, encode_oauth_state
 from services.account_errors import (
     InvalidOAuthProviderError,
     OAuthIdentityLockUnavailableError,
@@ -20,6 +22,7 @@ from services.account_errors import (
     OAuthRegistrationError,
 )
 from services.entities.account_entities import AccountSessionTokens
+from services.entities.account_login_entities import LoginMode
 from services.entities.account_oauth_entities import (
     OAuthAuthorizationRequest,
     OAuthCallbackCommand,
@@ -301,3 +304,110 @@ def test_oauth_admission_rejects_disabled_social_login(
         OAuthLogin().get("github")
 
     assert service.authorization_calls == []
+
+
+def _end_user_state(target: str) -> str:
+    return encode_end_user_oauth_state(
+        EndUserOAuthState(provider="github", nonce="browser-nonce", context={"redirect_url": target})
+    )
+
+
+def test_end_user_oauth_round_trip_preserves_mode_and_exact_return_target(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=True, APP_WEB_URL="https://apps.example.com/share")
+    service = FakeOAuthService()
+    _install_service(monkeypatch, service)
+    target = "https://apps.example.com/share/workflow/app-code?input=a%26b#result"
+    with app.test_request_context("/oauth/login/github", query_string={"mode": "end_user", "redirect_url": target}):
+        response = OAuthLogin().get("github")
+    authorization = service.authorization_calls[0][1]
+    assert authorization.mode == LoginMode.END_USER
+    assert authorization.state is not None
+    decoded = decode_end_user_oauth_state(authorization.state)
+    assert decoded.context["redirect_url"] == target
+    cookies = SimpleCookie()
+    cookies.load(response.headers["Set-Cookie"])
+    cookie = cookies["end_user_oauth_github"]
+    assert cookie["httponly"]
+    assert cookie["samesite"] == "Lax"
+    with app.test_request_context(
+        "/oauth/authorize/github",
+        query_string={"code": "code-1", "state": authorization.state},
+        headers={"Cookie": f"end_user_oauth_github={cookie.value}"},
+    ):
+        response = OAuthCallback().get("github")
+    assert response.headers["Location"] == target
+    assert service.callback_calls[0].mode == LoginMode.END_USER
+    assert any("end_user_oauth_github=;" in value for value in response.headers.getlist("Set-Cookie"))
+
+
+@pytest.mark.parametrize("failure", ["tampered", "missing_cookie", "missing_state", "wrong_cookie", "wrong_provider"])
+def test_end_user_oauth_rejects_unbound_or_modified_state(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], failure: str
+) -> None:
+    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=True, APP_WEB_URL="https://apps.example.com")
+    service = FakeOAuthService()
+    _install_service(monkeypatch, service)
+    state = _end_user_state("https://apps.example.com/chatbot/app-code")
+    headers: dict[str, str] = {"Cookie": "end_user_oauth_github=browser-nonce"}
+    if failure == "tampered":
+        state += "invalid"
+    elif failure == "missing_cookie":
+        headers = {}
+    elif failure == "wrong_cookie":
+        headers = {"Cookie": "end_user_oauth_github=other-browser"}
+    elif failure == "missing_state":
+        state = ""
+    provider = "google" if failure == "wrong_provider" else "github"
+    with app.test_request_context(
+        f"/oauth/authorize/{provider}", query_string={"code": "code-1", "state": state}, headers=headers
+    ):
+        with pytest.raises(ValueError, match="[Ss]tate"):
+            OAuthCallback().get(provider)
+    assert service.callback_calls == []
+
+
+def test_end_user_oauth_rechecks_feature_flag_at_callback(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=False, APP_WEB_URL="https://apps.example.com")
+    service = FakeOAuthService()
+    _install_service(monkeypatch, service)
+    with (
+        app.test_request_context("/oauth/login/github?mode=end_user&redirect_url=/chatbot/app-code"),
+        pytest.raises(Forbidden),
+    ):
+        OAuthLogin().get("github")
+    state = _end_user_state("https://apps.example.com/chatbot/app-code")
+    with (
+        app.test_request_context(
+            "/oauth/authorize/github",
+            query_string={"code": "code-1", "state": state},
+            headers={"Cookie": "end_user_oauth_github=browser-nonce"},
+        ),
+        pytest.raises(Forbidden),
+    ):
+        OAuthCallback().get("github")
+    assert service.authorization_calls == []
+    assert service.callback_calls == []
+
+
+def test_callback_retry_keeps_end_user_mode_and_web_app_return_target(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=True, APP_WEB_URL="https://apps.example.com")
+    service = FakeOAuthService(callback_error=OAuthRegistrationError("Try again"))
+    _install_service(monkeypatch, service)
+    target = "https://apps.example.com/chatbot/app-code?input=a%26b#message"
+    state = _end_user_state(target)
+    with app.test_request_context(
+        "/oauth/authorize/github",
+        query_string={"code": "code-1", "state": state},
+        headers={"Cookie": "end_user_oauth_github=browser-nonce"},
+    ):
+        response = OAuthCallback().get("github")
+    destination = urlsplit(response.headers["Location"])
+    assert destination.netloc == "console.example.com"
+    assert destination.path == "/signin"
+    assert parse_qs(destination.query) == {"message": ["Try again"], "mode": ["end_user"], "redirect_url": [target]}

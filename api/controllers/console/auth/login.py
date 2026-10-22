@@ -28,6 +28,7 @@ from controllers.console.auth.error import (
     TurnstileServiceUnavailableError,
     TurnstileVerificationFailedError,
 )
+from controllers.console.auth.login_mode import require_login_mode
 from controllers.console.error import (
     AccountBannedError,
     AccountInFreezeError,
@@ -62,11 +63,20 @@ from libs.token import (
 )
 from services import account_errors
 from services.entities.account_entities import AccountSessionTokens
-from services.entities.account_login_entities import EmailCodeLoginCommand, EmailCodeSendCommand, PasswordLoginCommand
+from services.entities.account_login_entities import (
+    EmailCodeLoginCommand,
+    EmailCodeSendCommand,
+    LoginMode,
+    PasswordLoginCommand,
+)
 from services.entities.auth_entities import LoginPayloadBase
 
 
 class LoginPayload(LoginPayloadBase):
+    mode: LoginMode = Field(
+        default=LoginMode.CONSOLE,
+        description="End User mode authenticates an Account without workspace admission or provisioning.",
+    )
     remember_me: bool = Field(default=False, description="Remember me flag")
     invite_token: str | None = Field(default=None, description="Invitation token")
 
@@ -77,6 +87,10 @@ class EmailPayload(BaseModel):
 
 
 class EmailCodeSendPayload(EmailPayload):
+    mode: LoginMode = Field(
+        default=LoginMode.CONSOLE,
+        description="End User mode authenticates an Account without workspace admission or provisioning.",
+    )
     turnstile_token: str | None = Field(
         default=None,
         max_length=2048,
@@ -85,6 +99,10 @@ class EmailCodeSendPayload(EmailPayload):
 
 
 class EmailCodeLoginPayload(BaseModel):
+    mode: LoginMode = Field(
+        default=LoginMode.CONSOLE,
+        description="End User mode authenticates an Account without workspace admission or provisioning.",
+    )
     email: EmailStr = Field(...)
     code: str
     token: UUID
@@ -104,7 +122,15 @@ class EmailCodeLoginPayload(BaseModel):
         return validate_timezone_string(value)
 
 
-register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeSendPayload, EmailCodeLoginPayload)
+class RefreshTokenPayload(BaseModel):
+    mode: LoginMode = Field(
+        default=LoginMode.CONSOLE, description="End User mode refreshes the Account session without workspace admission"
+    )
+
+
+register_schema_models(
+    console_ns, LoginPayload, EmailPayload, EmailCodeSendPayload, EmailCodeLoginPayload, RefreshTokenPayload
+)
 register_response_schema_models(
     console_ns,
     SimpleResultDataResponse,
@@ -137,9 +163,11 @@ class LoginApi(Resource):
     @model_validate(LoginPayload)
     def post(self, req_data: LoginPayload):
         """Authenticate user and login."""
+        require_login_mode(req_data.mode, invite_token=req_data.invite_token)
         try:
             result = application_services().accounts.authentication.login_with_password(
                 PasswordLoginCommand(
+                    mode=req_data.mode,
                     email=req_data.email,
                     password=req_data.password,
                     invite_token=req_data.invite_token,
@@ -149,7 +177,7 @@ class LoginApi(Resource):
         except account_errors.AccountApplicationError as error:
             _raise_password_login_error(error)
 
-        if not result.workspace_found or result.tokens is None:
+        if result.tokens is None:
             return dump_response(
                 SimpleResultOptionalDataResponse,
                 {
@@ -216,9 +244,11 @@ class EmailCodeLoginSendEmailApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @model_validate(EmailCodeSendPayload)
     def post(self, req_data: EmailCodeSendPayload):
+        require_login_mode(req_data.mode)
         try:
             token = application_services().accounts.authentication.send_email_code(
                 EmailCodeSendCommand(
+                    mode=req_data.mode,
                     email=req_data.email,
                     language=req_data.language,
                     turnstile_token=req_data.turnstile_token,
@@ -254,9 +284,11 @@ class EmailCodeLoginApi(Resource):
     @decrypt_code_field
     @model_validate(EmailCodeLoginPayload)
     def post(self, req_data: EmailCodeLoginPayload):
+        require_login_mode(req_data.mode)
         try:
             tokens = application_services().accounts.authentication.login_with_email_code(
                 EmailCodeLoginCommand(
+                    mode=req_data.mode,
                     email=req_data.email,
                     code=req_data.code,
                     token=str(req_data.token),
@@ -273,9 +305,14 @@ class EmailCodeLoginApi(Resource):
 
 @console_ns.route("/refresh-token")
 class RefreshTokenApi(Resource):
+    # Existing callers refresh without a request body.
+    @console_ns.doc(params={"payload": {"required": False}})
+    @console_ns.expect(console_ns.models[RefreshTokenPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(401, "Unauthorized", console_ns.models[SimpleResultMessageResponse.__name__])
     def post(self):
+        payload = RefreshTokenPayload.model_validate(request.get_json(silent=True) or {})
+        require_login_mode(payload.mode)
         refresh_token = extract_refresh_token(request)
         if not refresh_token:
             return dump_response(
@@ -284,7 +321,7 @@ class RefreshTokenApi(Resource):
             ), HTTPStatus.UNAUTHORIZED
 
         try:
-            tokens = application_services().accounts.authentication.refresh(refresh_token)
+            tokens = application_services().accounts.authentication.refresh(refresh_token, mode=payload.mode)
         except account_errors.InvalidRefreshTokenError as error:
             return dump_response(
                 SimpleResultMessageResponse,

@@ -8095,7 +8095,8 @@ Initiate OAuth login process
 | provider | path | OAuth provider name (github/google) | Yes | string |
 | invite_token | query | Optional invitation token | No | string |
 | language | query | Preferred interface language | No | string |
-| redirect_url | query | Relative page to resume after login | No | string |
+| mode | query | End User mode skips workspace admission and provisioning | No | string, <br>**Available values:** "console", "end_user", <br>**Default:** console |
+| redirect_url | query | Page to resume after login; End User mode requires a configured Web App URL | No | string |
 | timezone | query | Preferred timezone | No | string |
 
 #### Responses
@@ -9230,6 +9231,12 @@ Update account-level Step-by-step Tour state
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /refresh-token
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  No | **application/json**: [RefreshTokenPayload](#refreshtokenpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -21226,6 +21233,7 @@ Too many incorrect password attempts. Please try again later.
 | code | string |  | Yes |
 | email | string |  | Yes |
 | language | string |  | No |
+| mode | [LoginMode](#loginmode) | End User mode authenticates an Account without workspace admission or provisioning. | No |
 | timezone | string |  | No |
 | token | string (uuid) |  | Yes |
 | turnstile_token | string | Cloudflare Turnstile token for email-code verification. | No |
@@ -21252,6 +21260,7 @@ Email code verification is temporarily unavailable. Please try again later.
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | language | string |  | No |
+| mode | [LoginMode](#loginmode) | End User mode authenticates an Account without workspace admission or provisioning. | No |
 | turnstile_token | string | Cloudflare Turnstile token. Required at runtime for Dify Cloud. | No |
 
 #### EmailDomainSuspendedError
@@ -22749,12 +22758,19 @@ Unable to create account because the licensed seats limit was exceeded
 | configs | [ object ] |  | No |
 | enabled | boolean |  | No |
 
+#### LoginMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LoginMode | string |  |  |
+
 #### LoginPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | invite_token | string | Invitation token | No |
+| mode | [LoginMode](#loginmode) | End User mode authenticates an Account without workspace admission or provisioning. | No |
 | password | string |  | Yes |
 | remember_me | boolean | Remember me flag | No |
 
@@ -23707,7 +23723,8 @@ Only support workflow app.
 | ---- | ---- | ----------- | -------- |
 | invite_token | string | Optional invitation token | No |
 | language | string | Preferred interface language | No |
-| redirect_url | string | Relative page to resume after login | No |
+| mode | [LoginMode](#loginmode) | End User mode skips workspace admission and provisioning | No |
+| redirect_url | string | Page to resume after login; End User mode requires a configured Web App URL | No |
 | timezone | string | Preferred timezone | No |
 
 #### OAuthProviderAccountResponse
@@ -25521,6 +25538,12 @@ Recommended app not found.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | redirect_url | string |  | Yes |
+
+#### RefreshTokenPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mode | [LoginMode](#loginmode) | End User mode refreshes the Account session without workspace admission | No |
 
 #### RelatedAppListResponse
 

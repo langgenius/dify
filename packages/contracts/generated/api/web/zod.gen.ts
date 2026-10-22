@@ -1647,6 +1647,8 @@ export const zWebAppCustomConfigResponse = z.object({
  * WebAppParametersResponse
  */
 export const zWebAppParametersResponse = z.object({
+  account_login_enabled: z.boolean(),
+  allow_anonymous_end_user_auth: z.boolean(),
   annotation_reply: z.object({
     enabled: z.boolean().optional(),
   }),
@@ -2530,6 +2532,16 @@ export const zGetPassportQuery = z.object({
  * Passport retrieved successfully
  */
 export const zGetPassportResponse = zPassportAccessTokenResponse
+
+export const zPostPassportAccountHeaders = z.object({
+  'X-App-Code': z.string(),
+  'X-CSRF-Token': z.string(),
+})
+
+/**
+ * Account Web App Passport
+ */
+export const zPostPassportAccountResponse = zPassportAccessTokenResponse
 
 export const zPostRemoteFilesUploadBody = zRemoteFileUploadPayload
 

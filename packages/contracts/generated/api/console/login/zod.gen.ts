@@ -3,16 +3,6 @@
 import * as z from 'zod'
 
 /**
- * LoginPayload
- */
-export const zLoginPayload = z.object({
-  email: z.string(),
-  invite_token: z.string().nullish(),
-  password: z.string(),
-  remember_me: z.boolean().optional().default(false),
-})
-
-/**
  * SimpleResultOptionalDataResponse
  */
 export const zSimpleResultOptionalDataResponse = z.object({
@@ -143,6 +133,22 @@ export const zEmailCodeLoginLimitError = zErrorResponse.and(
     status: z.literal(429),
   }),
 )
+
+/**
+ * LoginMode
+ */
+export const zLoginMode = z.enum(['console', 'end_user'])
+
+/**
+ * LoginPayload
+ */
+export const zLoginPayload = z.object({
+  email: z.string(),
+  invite_token: z.string().nullish(),
+  mode: zLoginMode.optional().default('console'),
+  password: z.string(),
+  remember_me: z.boolean().optional().default(false),
+})
 
 export const zPostLoginBody = zLoginPayload
 

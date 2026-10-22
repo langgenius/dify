@@ -10,6 +10,7 @@ from typing import Never
 
 import pytest
 from flask import Flask
+from werkzeug.exceptions import Forbidden
 
 from controllers.console import wraps
 from controllers.console.auth import login
@@ -43,6 +44,7 @@ from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import (
     EmailCodeLoginCommand,
     EmailCodeSendCommand,
+    LoginMode,
     PasswordLoginCommand,
     PasswordLoginResult,
 )
@@ -60,6 +62,7 @@ class FakeAuthenticationService:
     reset_arguments: list[tuple[str, str | None, str]] = field(default_factory=list)
     logout_account_ids: list[str] = field(default_factory=list)
     refresh_tokens: list[str] = field(default_factory=list)
+    refresh_modes: list[LoginMode] = field(default_factory=list)
     workspace_found: bool = True
 
     def _raise_if_needed(self) -> None:
@@ -92,7 +95,8 @@ class FakeAuthenticationService:
         self._raise_if_needed()
         return TOKENS
 
-    def refresh(self, refresh_token: str) -> AccountSessionTokens:
+    def refresh(self, refresh_token: str, *, mode: LoginMode = LoginMode.CONSOLE) -> AccountSessionTokens:
+        self.refresh_modes.append(mode)
         self.refresh_tokens.append(refresh_token)
         self._raise_if_needed()
         return TOKENS
@@ -444,3 +448,79 @@ def test_flow_translators_only_map_what_their_flow_raises() -> None:
     with pytest.raises(account_errors.ResetPasswordEmailRateLimitError) as raised:
         login._raise_password_login_error(error)
     assert raised.value is error
+
+
+@pytest.mark.parametrize("endpoint", ["password", "send_code", "verify_code", "refresh"])
+@pytest.mark.parametrize("enabled", [False, True])
+def test_end_user_login_mode_admission_and_propagation(
+    app: Flask,
+    service: FakeAuthenticationService,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    endpoint: str,
+    enabled: bool,
+) -> None:
+    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled)
+    monkeypatch.setattr(login, "extract_refresh_token", lambda _request: "refresh-token")
+    payload: dict[str, str]
+    if endpoint == "password":
+        path, view, payload = (
+            "/login",
+            login.LoginApi().post,
+            {"email": "user@example.com", "password": _encode("Password123")},
+        )
+    elif endpoint == "send_code":
+        path, view, payload = (
+            "/email-code-login",
+            login.EmailCodeLoginSendEmailApi().post,
+            {"email": "user@example.com"},
+        )
+    elif endpoint == "verify_code":
+        path, view, payload = (
+            "/email-code-login/validity",
+            login.EmailCodeLoginApi().post,
+            {"email": "user@example.com", "code": _encode("123456"), "token": TEST_TOKEN},
+        )
+    else:
+        path, view = "/refresh-token", login.RefreshTokenApi().post
+        payload = {}
+    with app.test_request_context(path, method="POST", json={**payload, "mode": "end_user"}):
+        if enabled:
+            view()
+        else:
+            with pytest.raises(Forbidden, match="not enabled"):
+                view()
+    commands = [*service.password_commands, *service.email_code_send_commands, *service.email_code_login_commands]
+    if enabled:
+        if endpoint == "refresh":
+            assert service.refresh_modes == [LoginMode.END_USER]
+        else:
+            assert len(commands) == 1
+            assert commands[0].mode == LoginMode.END_USER
+    else:
+        assert commands == []
+        assert service.refresh_modes == []
+
+
+def test_login_mode_contract_preserves_optional_refresh_body(config_overrides: Callable[..., None]) -> None:
+    from controllers.console import bp as console_bp
+
+    config_overrides(SWAGGER_UI_ENABLED=True)
+    app = Flask(__name__)
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
+    response = app.test_client().get("/console/api/openapi.json")
+    assert response.status_code == 200
+    payload = response.get_json()
+    refresh = payload["paths"]["/refresh-token"]["post"]
+    assert refresh["requestBody"]["required"] is False
+    schemas = payload["components"]["schemas"]
+    assert schemas["LoginMode"]["enum"] == ["console", "end_user"]
+    for schema in (
+        "LoginPayload",
+        "EmailCodeSendPayload",
+        "EmailCodeLoginPayload",
+        "RefreshTokenPayload",
+        "OAuthLoginQuery",
+    ):
+        assert schemas[schema]["properties"]["mode"]["default"] == "console"

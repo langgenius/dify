@@ -37,7 +37,12 @@ from services.billing_service import BillingService
 from services.email_code_login_challenge import EmailCodeLoginChallengeStore, EmailCodeLoginChallengeUnavailableError
 from services.entities.account_activation_entities import InvitationLookup
 from services.entities.account_entities import AccountSessionTokens
-from services.entities.account_login_entities import EmailCodeChallengeStatus, LoginInvitation, RefreshAccountStatus
+from services.entities.account_login_entities import (
+    EmailCodeChallengeStatus,
+    LoginInvitation,
+    LoginMode,
+    RefreshAccountStatus,
+)
 from services.entities.auth_audit_entities import LoginFailureReason
 from services.system_feature_service import SystemFeatureService
 from services.turnstile_service import (
@@ -235,9 +240,13 @@ class SQLAlchemyAccountRefreshPreparationGateway(AccountRefreshPreparationGatewa
         self._accounts = accounts
 
     @override
-    def prepare(self, account_id: str) -> RefreshAccountStatus:
+    def prepare(self, account_id: str, *, mode: LoginMode = LoginMode.CONSOLE) -> RefreshAccountStatus:
         now = naive_utc_now()
-        account = self._accounts.load_identity(account_id, now=now)
+        account = (
+            self._accounts.get(account_id)
+            if mode == LoginMode.END_USER
+            else self._accounts.load_identity(account_id, now=now)
+        )
         if account is None:
             return RefreshAccountStatus.NOT_FOUND
         if account.status == AccountStatus.BANNED:

@@ -971,6 +971,8 @@ export type WebAppCustomConfigResponse = {
 }
 
 export type WebAppParametersResponse = {
+  account_login_enabled: boolean
+  allow_anonymous_end_user_auth: boolean
   annotation_reply: {
     enabled?: boolean
   }
@@ -2521,6 +2523,31 @@ export type GetPassportResponses = {
 }
 
 export type GetPassportResponse = GetPassportResponses[keyof GetPassportResponses]
+
+export type PostPassportAccountData = {
+  body?: never
+  headers: {
+    'X-App-Code': string
+    'X-CSRF-Token': string
+  }
+  path?: never
+  query?: never
+  url: '/passport/account'
+}
+
+export type PostPassportAccountErrors = {
+  401: EndUserLoginRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostPassportAccountError = PostPassportAccountErrors[keyof PostPassportAccountErrors]
+
+export type PostPassportAccountResponses = {
+  200: PassportAccessTokenResponse
+}
+
+export type PostPassportAccountResponse =
+  PostPassportAccountResponses[keyof PostPassportAccountResponses]
 
 export type PostRemoteFilesUploadData = {
   body: RemoteFileUploadPayload

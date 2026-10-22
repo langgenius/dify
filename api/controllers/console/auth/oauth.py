@@ -1,3 +1,4 @@
+import secrets
 import urllib.parse
 
 from flask import redirect, request
@@ -10,14 +11,23 @@ from constants.languages import languages
 from controllers.common.fields import RedirectResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.auth.login_mode import require_login_mode
 from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
 from controllers.console.wraps import model_validate, setup_required, social_oauth_login_enabled
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
-from libs.oauth import decode_oauth_state
+from libs.oauth import (
+    END_USER_OAUTH_STATE_MAX_AGE,
+    END_USER_OAUTH_STATE_PREFIX,
+    EndUserOAuthState,
+    decode_end_user_oauth_state,
+    decode_oauth_state,
+    encode_end_user_oauth_state,
+)
 from libs.token import (
+    is_secure,
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
@@ -38,19 +48,26 @@ from services.account_errors import (
     OAuthWorkspaceCreationNotAllowedError,
 )
 from services.entities.account_entities import AccountSessionTokens
+from services.entities.account_login_entities import LoginMode
 from services.entities.account_oauth_entities import (
     OAuthAuthorizationRequest,
     OAuthCallbackCommand,
     OAuthCallbackResult,
     OAuthInvitationResult,
 )
+from services.web_login_redirect import resolve_web_login_redirect
 
 
 class OAuthLoginQuery(BaseModel):
+    mode: LoginMode = Field(
+        default=LoginMode.CONSOLE, description="End User mode skips workspace admission and provisioning"
+    )
     invite_token: str | None = Field(default=None, description="Optional invitation token")
     timezone: str | None = Field(default=None, description="Preferred timezone")
     language: str | None = Field(default=None, description="Preferred interface language")
-    redirect_url: str | None = Field(default=None, description="Relative page to resume after login")
+    redirect_url: str | None = Field(
+        default=None, description="Page to resume after login; End User mode requires a configured Web App URL"
+    )
 
 
 class OAuthCallbackQuery(BaseModel):
@@ -97,21 +114,46 @@ def _redirect_with_console_session(tokens: AccountSessionTokens, target_url: str
     return response
 
 
-def _oauth_callback_target(result: OAuthCallbackResult, requested_redirect: str | None) -> str:
+def _oauth_callback_target(result: OAuthCallbackResult, requested_redirect: str | None, mode: LoginMode) -> str:
+    if mode == LoginMode.END_USER:
+        return _end_user_return_target(requested_redirect)
     if isinstance(result, OAuthInvitationResult):
         query = urllib.parse.urlencode({"invite_token": result.invite_token})
         return f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?{query}"
 
     target_url = _safe_console_redirect_target(requested_redirect)
-    query_char = "&" if "?" in target_url else "?"
-    return f"{target_url}{query_char}oauth_new_user={str(result.oauth_new_user).lower()}"
+    parsed = urllib.parse.urlsplit(target_url)
+    query = f"{parsed.query}&" if parsed.query else ""
+    query += f"oauth_new_user={str(result.oauth_new_user).lower()}"
+    return urllib.parse.urlunsplit(parsed._replace(query=query))
+
+
+def _end_user_return_target(redirect_url: str | None) -> str:
+    target = resolve_web_login_redirect(
+        redirect_url or "", app_web_url=dify_config.APP_WEB_URL, console_web_url=dify_config.CONSOLE_WEB_URL
+    )
+    if target is None:
+        raise ValueError("Invalid Web App return URL.")
+    return target
+
+
+def _end_user_state_cookie(provider: str) -> str:
+    return f"end_user_oauth_{provider}"
 
 
 def _safe_console_redirect_target(redirect_url: str | None) -> str:
     if not redirect_url:
         return dify_config.CONSOLE_WEB_URL
 
-    parsed_url = urllib.parse.urlsplit(redirect_url)
+    if "\\" in redirect_url or any(ord(char) <= 32 or ord(char) == 127 for char in redirect_url):
+        return dify_config.CONSOLE_WEB_URL
+
+    try:
+        parsed_url = urllib.parse.urlsplit(redirect_url)
+    except ValueError:
+        return dify_config.CONSOLE_WEB_URL
+    if parsed_url.username is not None or parsed_url.password is not None:
+        return dify_config.CONSOLE_WEB_URL
     normalized_path = redirect_url.lstrip().replace("\\", "/")
     if not parsed_url.scheme and not parsed_url.netloc and not normalized_path.startswith("//"):
         return redirect_url
@@ -152,6 +194,19 @@ class OAuthLogin(Resource):
     @social_oauth_login_enabled
     @model_validate(OAuthLoginQuery)
     def get(self, req_data: OAuthLoginQuery, provider: str):
+        require_login_mode(req_data.mode, invite_token=req_data.invite_token)
+        state = None
+        nonce = None
+        redirect_url = req_data.redirect_url or None
+        if req_data.mode == LoginMode.END_USER:
+            redirect_url = _end_user_return_target(redirect_url)
+            nonce = secrets.token_urlsafe(32)
+            context = {"redirect_url": redirect_url}
+            if timezone := _validated_timezone(req_data.timezone):
+                context["timezone"] = timezone
+            if language := _validated_language(req_data.language):
+                context["language"] = language
+            state = encode_end_user_oauth_state(EndUserOAuthState(provider=provider, nonce=nonce, context=context))
         try:
             auth_url = application_services().accounts.oauth.start_authorization(
                 provider,
@@ -159,12 +214,27 @@ class OAuthLogin(Resource):
                     invite_token=req_data.invite_token or None,
                     timezone=_validated_timezone(req_data.timezone),
                     language=_validated_language(req_data.language),
-                    redirect_url=req_data.redirect_url or None,
+                    redirect_url=redirect_url,
+                    mode=req_data.mode,
+                    state=state,
                 ),
             )
         except InvalidOAuthProviderError:
             return dump_response(OAuthErrorResponse, {"error": "Invalid provider"}), 400
-        return redirect(auth_url)
+        response = redirect(auth_url)
+        response.headers["Cache-Control"] = "no-store"
+        if nonce is not None:
+            response.set_cookie(
+                _end_user_state_cookie(provider),
+                nonce,
+                httponly=True,
+                secure=is_secure(),
+                samesite="Lax",
+                max_age=END_USER_OAUTH_STATE_MAX_AGE,
+            )
+        else:
+            response.delete_cookie(_end_user_state_cookie(provider))
+        return response
 
 
 @console_ns.route("/oauth/authorize/<provider>")
@@ -179,12 +249,36 @@ class OAuthCallback(Resource):
     @social_oauth_login_enabled
     @model_validate(OAuthCallbackQuery)
     def get(self, req_data: OAuthCallbackQuery, provider: str):
-        oauth_state = decode_oauth_state(req_data.state)
+        mode = LoginMode.CONSOLE
+        nonce = request.cookies.get(_end_user_state_cookie(provider))
+        if nonce is not None or (req_data.state or "").startswith(END_USER_OAUTH_STATE_PREFIX):
+            state = decode_end_user_oauth_state(req_data.state or "")
+            if state.provider != provider or not nonce or not secrets.compare_digest(state.nonce, nonce):
+                raise ValueError("End User OAuth state does not match this browser.")
+            mode = LoginMode.END_USER
+            oauth_state = state.context
+        else:
+            oauth_state = decode_oauth_state(req_data.state)
+        require_login_mode(mode, invite_token=oauth_state.get("invite_token"))
+        requested_redirect = oauth_state.get("redirect_url")
+        return_params = {}
+        if mode == LoginMode.END_USER:
+            return_params = {"mode": mode.value, "redirect_url": _end_user_return_target(requested_redirect)}
+        elif requested_redirect:
+            return_params = {"redirect_url": _safe_console_redirect_target(requested_redirect)}
+
+        def signin_redirect(message: str, **params: str) -> Response:
+            response = _signin_redirect(message, **return_params, **params)
+            if mode == LoginMode.END_USER:
+                response.delete_cookie(_end_user_state_cookie(provider))
+            return response
+
         try:
             result = application_services().accounts.oauth.complete_authorization(
                 OAuthCallbackCommand(
                     provider=provider,
                     code=req_data.code,
+                    mode=mode,
                     invite_token=oauth_state.get("invite_token"),
                     timezone=_validated_timezone(oauth_state.get("timezone")),
                     language=_validated_language(oauth_state.get("language")),
@@ -197,30 +291,33 @@ class OAuthCallback(Resource):
         except (OAuthProviderRequestError, OAuthIdentityLockUnavailableError):
             return dump_response(OAuthErrorResponse, {"error": "OAuth process failed"}), 400
         except OAuthProviderAuthorizationError as exc:
-            return _signin_redirect(exc.description)
+            return signin_redirect(exc.description)
         except InvalidOAuthInvitationError:
-            return _signin_redirect("Invalid invitation token.")
+            return signin_redirect("Invalid invitation token.")
         except OAuthInvitationAccountMismatchError as exc:
-            return _signin_redirect(
+            return signin_redirect(
                 "This invitation was sent to another account. Please sign in with the invited account.",
                 invite_token=exc.invite_token,
             )
         except OAuthAccountBannedError:
-            return _signin_redirect("Account is banned.")
+            return signin_redirect("Account is banned.")
         except OAuthAccountNotFoundError:
-            return _signin_redirect("Account not found.")
+            return signin_redirect("Account not found.")
         except OAuthWorkspaceCreationNotAllowedError:
-            return _signin_redirect(
+            return signin_redirect(
                 "Workspace not found, please contact system admin to invite you to join in a workspace."
             )
         except OAuthSeatsLimitExceededError:
-            return _signin_redirect("Licensed seats limit exceeded.")
+            return signin_redirect("Licensed seats limit exceeded.")
         except AccountEmailDomainSuspendedError:
-            return _signin_redirect(EmailDomainSuspendedError.description or "")
+            return signin_redirect(EmailDomainSuspendedError.description or "")
         except AccountEmailFrozenError:
-            return _signin_redirect(AccountInFreezeError.description or "")
+            return signin_redirect(AccountInFreezeError.description or "")
         except OAuthRegistrationError as exc:
-            return _signin_redirect(exc.description)
+            return signin_redirect(exc.description)
 
-        target_url = _oauth_callback_target(result, oauth_state.get("redirect_url"))
-        return _redirect_with_console_session(result.tokens, target_url)
+        target_url = _oauth_callback_target(result, requested_redirect, mode)
+        response = _redirect_with_console_session(result.tokens, target_url)
+        if mode == LoginMode.END_USER:
+            response.delete_cookie(_end_user_state_cookie(provider))
+        return response

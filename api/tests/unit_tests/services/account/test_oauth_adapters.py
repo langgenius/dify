@@ -22,6 +22,7 @@ from services.account_errors import (
     OAuthProviderRequestError,
     OAuthWorkspaceCreationNotAllowedError,
 )
+from services.entities.account_login_entities import LoginMode
 from services.entities.account_oauth_entities import OAuthAccountRegistration, OAuthAuthorizationRequest, OAuthIdentity
 from tests.unit_tests.account_domain import AccountDomain
 
@@ -30,6 +31,7 @@ class StubOAuthClient(OAuth):
     def __init__(self) -> None:
         super().__init__("client-id", "client-secret", "https://api.example/callback")
         self.authorization_args: tuple[str | None, str | None, str | None, str | None] | None = None
+        self.authorization_state: str | None = None
         self.access_codes: list[str] = []
         self.user_tokens: list[str] = []
         self.failure: Exception | None = None
@@ -41,8 +43,10 @@ class StubOAuthClient(OAuth):
         timezone: str | None = None,
         language: str | None = None,
         redirect_url: str | None = None,
+        state: str | None = None,
     ) -> str:
         self.authorization_args = (invite_token, timezone, language, redirect_url)
+        self.authorization_state = state
         return "https://provider.example/authorize"
 
     @override
@@ -236,10 +240,14 @@ def test_provider_gateway_translates_provider_rejection() -> None:
     assert raised.value.__cause__ is client.failure
 
 
-def test_registration_gateway_creates_only_the_account(account_domain: AccountDomain, sqlite_session: Session) -> None:
+@pytest.mark.parametrize("mode", list(LoginMode))
+def test_registration_gateway_creates_only_the_account(
+    account_domain: AccountDomain, sqlite_session: Session, mode: LoginMode
+) -> None:
     gateway = AccountLifecycleOAuthRegistrationGateway(accounts=account_domain.accounts)
     account_id = gateway.register(
         OAuthAccountRegistration(
+            mode=mode,
             email="user@example.com",
             name="User",
             language="en-US",
@@ -249,8 +257,8 @@ def test_registration_gateway_creates_only_the_account(account_domain: AccountDo
     )
     account = sqlite_session.get(Account, account_id)
     assert account is not None
-    assert account.status == AccountStatus.ACTIVE
-    assert account.initialized_at is not None
+    assert account.status == (AccountStatus.UNINITIALIZED if mode == LoginMode.END_USER else AccountStatus.ACTIVE)
+    assert (account.initialized_at is None) is (mode == LoginMode.END_USER)
     assert account.timezone == "Asia/Singapore"
     assert account.last_login_ip == "203.0.113.10"
     assert sqlite_session.scalar(select(func.count()).select_from(Tenant)) == 0

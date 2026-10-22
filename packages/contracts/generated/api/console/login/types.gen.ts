@@ -7,6 +7,7 @@ export type ClientOptions = {
 export type LoginPayload = {
   email: string
   invite_token?: string | null
+  mode?: LoginMode
   password: string
   remember_me?: boolean
 }
@@ -70,6 +71,8 @@ export type EmailCodeLoginLimitError = ErrorResponse & {
   code: 'email_code_login_limit'
   status: 429
 }
+
+export type LoginMode = 'console' | 'end_user'
 
 export type PostLoginData = {
   body: LoginPayload

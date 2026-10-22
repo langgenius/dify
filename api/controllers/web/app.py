@@ -6,6 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import Unauthorized
 
+from configs import dify_config
 from constants import HEADER_NAME_APP_CODE
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import AccessModeResponse, BooleanResultResponse, Parameters
@@ -59,6 +60,8 @@ class AppMetaResponse(BaseModel):
 
 
 class WebAppParametersResponse(Parameters, ResponseModel):
+    allow_anonymous_end_user_auth: bool = Field(description="Deployment policy for anonymous EndUser authentication.")
+    account_login_enabled: bool = Field(description="Whether explicit Account login and Passport exchange are enabled.")
     workflow_id: str | None = Field(
         description=(
             "Connection contract revision represented by the published workflow/chatflow ID; "
@@ -106,7 +109,14 @@ class AppParameterApi(WebApiResource):
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
 
-        return dump_response(WebAppParametersResponse, parameters)
+        return dump_response(
+            WebAppParametersResponse,
+            {
+                **parameters,
+                "allow_anonymous_end_user_auth": dify_config.END_USER_AUTH_ALLOW_ANONYMOUS,
+                "account_login_enabled": dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
+            },
+        )
 
 
 @web_ns.route("/meta")

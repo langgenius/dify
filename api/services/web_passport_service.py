@@ -125,11 +125,11 @@ class WebPassportService:
         return WebPassportResult(access_token=token)
 
     def issue_for_account(self, *, app_code: str, access_token: str) -> WebPassportResult:
-        """Internal Account issuance for the future identity-binding flow.
+        """Explicit Account issuance for the Web login flow.
 
-        The legacy HTTP Passport endpoint does not call this method. Account and
-        App identities remain independent until a binding flow explicitly chooses
-        the Account identity; no Guest record or history is modified here.
+        The legacy HTTP Passport endpoint does not call this method. The separate
+        Account exchange explicitly chooses the Account identity; no Guest record
+        or history is modified here.
         """
         if not self._account_passports_enabled:
             raise WebPassportAccountExchangeDisabledError("Account Passport exchange is not enabled.")

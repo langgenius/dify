@@ -835,6 +835,24 @@ Get authentication passport for web application access
 | 404 | Application or user not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /passport/account
+Exchange the Console login cookie for an app-scoped Account Passport after Account login. Requires the session CSRF cookie/header pair and WEBAPP_ACCOUNT_PASSPORT_ENABLED. Does not claim Guest connections or conversations. Use the returned access_token as X-App-Passport.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| X-App-Code | header | Web app code | Yes | string |
+| X-CSRF-Token | header | Console session CSRF token | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account Web App Passport | **application/json**: [PassportAccessTokenResponse](#passportaccesstokenresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /remote-files/upload
 **Upload a file from a remote URL**
 
@@ -2473,6 +2491,8 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_login_enabled | boolean | Whether explicit Account login and Passport exchange are enabled. | Yes |
+| allow_anonymous_end_user_auth | boolean | Deployment policy for anonymous EndUser authentication. | Yes |
 | annotation_reply | { **"enabled"**: boolean } |  | Yes |
 | file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
 | more_like_this | { **"enabled"**: boolean } |  | Yes |

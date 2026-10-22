@@ -7,7 +7,7 @@ import pytest
 
 from services import account_errors
 from services.account.login_service import ConsoleAuthenticationService
-from services.entities.account_entities import AccountPasswordDigest, AccountSessionTokens
+from services.entities.account_entities import AccountPasswordDigest, AccountSessionTokens, AccountSnapshot
 from services.entities.account_login_entities import (
     AccountSessionPreparation,
     EmailCodeChallengeStatus,
@@ -15,6 +15,7 @@ from services.entities.account_login_entities import (
     EmailCodeSendCommand,
     LoginAccountSnapshot,
     LoginInvitation,
+    LoginMode,
     PasswordLoginCommand,
     PasswordLoginCompletion,
     RefreshAccountStatus,
@@ -177,7 +178,8 @@ class FakeRefreshPreparation:
     status: RefreshAccountStatus = RefreshAccountStatus.READY
     account_ids: list[str] = field(default_factory=list)
 
-    def prepare(self, account_id: str) -> RefreshAccountStatus:
+    def prepare(self, account_id: str, *, mode: LoginMode = LoginMode.CONSOLE) -> RefreshAccountStatus:
+        del mode
         self.account_ids.append(account_id)
         return self.status
 
@@ -185,6 +187,37 @@ class FakeRefreshPreparation:
 @dataclass
 class FakeAccountProvisioning:
     calls: list[dict[str, str]] = field(default_factory=list)
+    account_only_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def create_account(
+        self,
+        *,
+        email: str,
+        name: str,
+        interface_language: str,
+        timezone: str,
+        ip_address: str,
+        check_normalized_email: bool,
+        status: str,
+        initialized: bool,
+    ) -> AccountSnapshot:
+        assert check_normalized_email
+        self.account_only_calls.append({"email": email, "status": status, "initialized": initialized})
+        return AccountSnapshot(
+            id="end-user-account",
+            name=name,
+            email=email,
+            avatar=None,
+            is_password_set=False,
+            interface_language=interface_language,
+            interface_theme="light",
+            timezone=timezone,
+            last_login_at=None,
+            last_login_ip=ip_address,
+            status=status,
+            initialized_at=None,
+            created_at=LOGIN_TIME,
+        )
 
     def create_with_owner_workspace(
         self,
@@ -295,6 +328,7 @@ class Dependencies:
             sessions=self.sessions,
             refresh_preparation=self.refresh_preparation,
             account_provisioning=self.accounts_provisioning,
+            account_registration=self.accounts_provisioning,
             workspace_provisioning=self.workspaces_provisioning,
             email_codes=self.email_codes,
             reset_password_emails=self.reset_emails,
@@ -943,3 +977,48 @@ def test_refresh_rejects_invalid_account_state(
         dependencies.service().refresh("old-refresh")
 
     assert dependencies.sessions.rotations == []
+
+
+def test_end_user_password_login_needs_no_workspace() -> None:
+    deps = Dependencies()
+    deps.accounts.candidates = [_account(status="uninitialized")]
+    deps.policies.workspace_capacity = False
+    deps.policies.workspace_creation_allowed = False
+    result = deps.service().login_with_password(_password_command(mode=LoginMode.END_USER))
+    assert result.tokens == TOKENS
+    assert result.workspace_found is None
+    assert deps.workspaces.checks == []
+    assert deps.invitations.ensured == []
+    assert deps.accounts.completions[0].activate_pending_account is False
+
+
+@pytest.mark.parametrize("existing", [True, False])
+def test_end_user_email_login_does_not_provision_workspace(existing: bool) -> None:
+    deps = Dependencies()
+    if existing:
+        deps.accounts.candidates = [_account(status="uninitialized")]
+    deps.policies.workspace_capacity = False
+    deps.policies.workspace_creation_allowed = False
+    result = deps.service().login_with_email_code(_email_code_command(mode=LoginMode.END_USER))
+    assert result == TOKENS
+    assert deps.workspaces.checks == []
+    assert deps.workspaces_provisioning.account_ids == []
+    assert deps.accounts_provisioning.calls == []
+    assert deps.accounts_provisioning.account_only_calls == (
+        [] if existing else [{"email": "user@example.com", "status": "uninitialized", "initialized": False}]
+    )
+
+
+def test_end_user_mode_rejects_invitation_before_authentication() -> None:
+    deps = Dependencies()
+    with pytest.raises(ValueError, match="workspace invitation"):
+        deps.service().login_with_password(_password_command(mode=LoginMode.END_USER, invite_token="invitation"))
+    assert deps.accounts.completions == []
+
+
+def test_end_user_registration_still_respects_registration_policy() -> None:
+    deps = Dependencies()
+    deps.policies.registration_allowed = False
+    with pytest.raises(account_errors.AccountNotFoundError):
+        deps.service().login_with_email_code(_email_code_command(mode=LoginMode.END_USER))
+    assert deps.accounts_provisioning.account_only_calls == []
