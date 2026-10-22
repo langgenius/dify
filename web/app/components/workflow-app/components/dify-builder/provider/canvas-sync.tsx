@@ -1,3 +1,4 @@
+import type { WorkflowDraftRefreshResult } from '../../../hooks/use-workflow-refresh-draft'
 import { useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
@@ -38,7 +39,7 @@ export const DifyBuilderCanvasRefreshSync = ({
   onRefreshCanvas,
   onCanvasRefreshed,
 }: {
-  onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
+  onRefreshCanvas: (shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>
   onCanvasRefreshed: () => void
 }) => {
   const workflowStore = useWorkflowStore()
@@ -113,11 +114,17 @@ export const DifyBuilderCanvasRefreshSync = ({
       sessionStore.get(difyBuilderSessionIdAtom) === sessionId &&
       sessionStore.get(difyBuilderViewVersionAtom) === version &&
       !sessionStore.get(difyBuilderSessionBusyAtom)
-    const refreshPromise = onRefreshCanvas(shouldApply)
-    void refreshPromise
-      .then((refreshed) => {
+    const refresh = async (): Promise<WorkflowDraftRefreshResult> => {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const result = await onRefreshCanvas(shouldApply)
+        if (!shouldApply() || result !== 'superseded') return result
+      }
+      return 'failed'
+    }
+    void refresh()
+      .then((result) => {
         if (!shouldApply()) return
-        if (!refreshed) {
+        if (result === 'failed') {
           setCanvasRefreshFailed(true)
           setLocalError('Workflow canvas refresh failed.')
           return

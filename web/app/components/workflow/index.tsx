@@ -411,7 +411,10 @@ export const Workflow: FC<WorkflowProps> = memo(
           setTimeout(() => handleRefreshWorkflowDraft(true), 500)
         } else {
           // Background graph updates must keep the user's current view.
-          setTimeout(() => handleRefreshWorkflowDraft(false, { preserveViewport: true }), 500)
+          setTimeout(
+            () => handleRefreshWorkflowDraft(false, { background: true, preserveViewport: true }),
+            500,
+          )
         }
       }
     }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { WorkflowDraftRefreshResult } from '../../../hooks/use-workflow-refresh-draft'
 import type { Node } from '@/app/components/workflow/types'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
@@ -11,6 +12,7 @@ import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { createConsoleQueryClient } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { DifyBuilderCanvasRefreshSync } from '../provider/canvas-sync'
 import { useDifyBuilderRunEvents } from '../provider/use-run-events'
 import {
@@ -22,7 +24,11 @@ import {
 } from '../session/__tests__/fixtures'
 import { difyBuilderActiveSessionIdAtom, difyBuilderSessionViewAtom } from '../session/state'
 import { useDifyBuilderSessionController } from '../session/use-session-controller'
-import { difyBuilderCanvasReadyAtom } from '../store'
+import {
+  difyBuilderCanvasReadyAtom,
+  difyBuilderCanvasRefreshFailedAtom,
+  difyBuilderRetryCanvasRefreshAtom,
+} from '../store'
 import {
   nodeFinished,
   nodeStarted,
@@ -50,7 +56,11 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const Harness = ({ repairRefresh }: { repairRefresh: Promise<boolean> }) => {
+const Harness = ({
+  repairRefresh,
+}: {
+  repairRefresh: () => Promise<WorkflowDraftRefreshResult>
+}) => {
   const store = useStore()
   const canvas = useStoreApi()
   const events = useDifyBuilderRunEvents('app-1')
@@ -59,8 +69,11 @@ const Harness = ({ repairRefresh }: { repairRefresh: Promise<boolean> }) => {
   const refresh = useCallback(
     async (shouldApply: () => boolean) => {
       const version = store.get(difyBuilderSessionViewAtom)!.version
-      if (version === 2 && !(await repairRefresh)) return false
-      if (!shouldApply()) return false
+      if (version === 2) {
+        const refreshed = await repairRefresh()
+        if (refreshed !== 'refreshed') return refreshed
+      }
+      if (!shouldApply()) return 'superseded' as const
       const nodes: Node[] = (version === 1 ? ['start'] : ['start', 'answer']).map((id) => ({
         id,
         position: { x: 0, y: 0 },
@@ -70,7 +83,7 @@ const Harness = ({ repairRefresh }: { repairRefresh: Promise<boolean> }) => {
       }))
       canvas.getState().setNodes(nodes)
       if (version === 2) mocks.graphApplied()
-      return true
+      return 'refreshed' as const
     },
     [canvas, repairRefresh, store],
   )
@@ -82,6 +95,12 @@ const Harness = ({ repairRefresh }: { repairRefresh: Promise<boolean> }) => {
         onClick={() => void session.runAction('approve_plan')}
       >
         Apply repair
+      </button>
+      <button type="button" onClick={() => store.set(difyBuilderRetryCanvasRefreshAtom)}>
+        Resync canvas
+      </button>
+      <button type="button" onClick={session.onCanvasRefreshed}>
+        Canvas refreshed
       </button>
       <DifyBuilderCanvasRefreshSync
         onRefreshCanvas={refresh}
@@ -154,9 +173,9 @@ describe('Builder repair graph and test run', () => {
     expect(mocks.action).not.toHaveBeenCalled()
   })
 
-  it.each([true, false])(
-    'waits for the repaired graph refresh (success: %s) before executing its new node',
-    async (refreshed) => {
+  it.each(['refreshed', 'failed', 'superseded', 'manual retry'] as const)(
+    'executes the repaired graph once after canvas refresh outcome: %s',
+    async (outcome) => {
       const store = createStore()
       const workflow = createWorkflowStore({})
       const queryClient = createConsoleQueryClient()
@@ -173,10 +192,11 @@ describe('Builder repair graph and test run', () => {
       })
       store.set(difyBuilderSessionViewAtom, before)
       store.set(difyBuilderActiveSessionIdAtom, before.session_id)
-      let finishRefresh!: (value: boolean) => void
-      const repairRefresh = new Promise<boolean>((resolve) => {
-        finishRefresh = resolve
-      })
+      const pendingRefresh = createDeferred<WorkflowDraftRefreshResult>()
+      const repairRefresh = vi
+        .fn<() => Promise<WorkflowDraftRefreshResult>>()
+        .mockReturnValueOnce(pendingRefresh.promise)
+        .mockResolvedValue('refreshed')
       mocks.action.mockResolvedValueOnce(
         streamOf(
           commandStartedEvent(before),
@@ -213,9 +233,16 @@ describe('Builder repair graph and test run', () => {
       expect(mocks.action).toHaveBeenCalledOnce()
       expect(mocks.graphApplied).not.toHaveBeenCalled()
 
-      await act(async () => finishRefresh(refreshed))
+      await act(async () => pendingRefresh.resolve(outcome === 'manual retry' ? 'failed' : outcome))
 
-      if (refreshed) {
+      if (outcome === 'manual retry') {
+        await waitFor(() => expect(store.get(difyBuilderCanvasRefreshFailedAtom)).toBe(true))
+        expect(mocks.action).toHaveBeenCalledOnce()
+        expect(mocks.graphApplied).not.toHaveBeenCalled()
+        await user.dblClick(screen.getByRole('button', { name: 'Resync canvas' }))
+      }
+
+      if (outcome !== 'failed') {
         await waitFor(() =>
           expect(workflow.getState().workflowRunningData?.result.status).toBe('succeeded'),
         )
@@ -226,6 +253,9 @@ describe('Builder repair graph and test run', () => {
           base_version: 2,
           base_app_revision: 'repaired',
         })
+        await user.dblClick(screen.getByRole('button', { name: 'Canvas refreshed' }))
+        expect(mocks.action).toHaveBeenCalledTimes(2)
+        expect(repairRefresh).toHaveBeenCalledTimes(outcome === 'refreshed' ? 1 : 2)
       } else {
         expect(mocks.action).toHaveBeenCalledOnce()
         expect(workflow.getState().workflowRunningData).toBeUndefined()

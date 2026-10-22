@@ -83,7 +83,7 @@ const setup = (appId = 'app-1') => {
         appId={appId}
         canEdit
         getCanvasSnapshot={() => ({ nodes: [], edges: [], isChatflow: false })}
-        onRefreshCanvas={async () => true}
+        onRefreshCanvas={async () => 'refreshed'}
         onSyncDraft={async () => undefined}
       >
         <div>Builder</div>

@@ -1,3 +1,4 @@
+import type { WorkflowDraftRefreshResult } from '../../../hooks/use-workflow-refresh-draft'
 import type { SessionRunEvents } from '../session/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -28,7 +29,9 @@ import { builderModel, createBuilderQueryClient } from './model-fixtures'
 const mocks = vi.hoisted(() => ({
   controllerHook:
     vi.fn<(prepare: (saveDraft: boolean) => Promise<void>, events: SessionRunEvents) => void>(),
-  refreshCanvas: vi.fn<(shouldApply: () => boolean) => Promise<boolean>>(async () => true),
+  refreshCanvas: vi.fn<(shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>>(
+    async () => 'refreshed',
+  ),
   reset: vi.fn(),
   restore: vi.fn(async () => true),
   runAction: vi.fn(async () => true),
@@ -282,7 +285,7 @@ const CreationNavigation = ({
 describe('DifyBuilderProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.refreshCanvas.mockReset().mockResolvedValue(true)
+    mocks.refreshCanvas.mockReset().mockResolvedValue('refreshed')
     mocks.restore.mockReset().mockResolvedValue(true)
     mocks.startBuild.mockReset().mockResolvedValue(true)
     mocks.syncDraft.mockReset().mockResolvedValue(undefined)
@@ -529,7 +532,7 @@ describe('DifyBuilderProvider', () => {
   })
 
   it('prevents an in-flight canvas refresh from applying after session reset', async () => {
-    let resolveResponse!: (value: boolean) => void
+    let resolveResponse!: (value: WorkflowDraftRefreshResult) => void
     mocks.refreshCanvas.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveResponse = resolve
@@ -542,12 +545,12 @@ describe('DifyBuilderProvider', () => {
     expect(shouldApply()).toBe(true)
     await user.click(screen.getByRole('button', { name: 'Reset view' }))
     expect(shouldApply()).toBe(false)
-    await act(async () => resolveResponse(true))
+    await act(async () => resolveResponse('refreshed'))
     expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
   })
 
   it('retries an interrupted refresh even when the command returns the same session version', async () => {
-    let resolveRefresh!: (value: boolean) => void
+    let resolveRefresh!: (value: WorkflowDraftRefreshResult) => void
     mocks.refreshCanvas.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveRefresh = resolve
@@ -557,17 +560,17 @@ describe('DifyBuilderProvider', () => {
     renderProvider()
     await user.click(screen.getByRole('button', { name: 'Refresh update' }))
     await user.click(screen.getByRole('button', { name: 'Start command' }))
-    await act(async () => resolveRefresh(false))
+    await act(async () => resolveRefresh('superseded'))
     await user.click(screen.getByRole('button', { name: 'Finish command' }))
     await waitFor(() => expect(mocks.refreshCanvas).toHaveBeenCalledTimes(2))
     expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
   })
 
   it('keeps recheck blocked until a refreshed canvas is evaluated', async () => {
-    let resolveRefresh: (refreshed: boolean) => void = () => undefined
+    let resolveRefresh: (refreshed: WorkflowDraftRefreshResult) => void = () => undefined
     mocks.refreshCanvas.mockImplementationOnce(
       () =>
-        new Promise<boolean>((resolve) => {
+        new Promise<WorkflowDraftRefreshResult>((resolve) => {
           resolveRefresh = resolve
         }),
     )
@@ -580,7 +583,7 @@ describe('DifyBuilderProvider', () => {
     expect(screen.getByRole('status', { name: 'Canvas refreshing' })).toHaveTextContent('true')
     expect(screen.getByRole('status', { name: 'Recheck ready' })).toHaveTextContent('false')
 
-    await act(async () => resolveRefresh(true))
+    await act(async () => resolveRefresh('refreshed'))
 
     await waitFor(() =>
       expect(screen.getByRole('status', { name: 'Refresh generation' })).toHaveTextContent('1'),
@@ -593,11 +596,11 @@ describe('DifyBuilderProvider', () => {
     expect(screen.getByRole('status', { name: 'Recheck ready' })).toHaveTextContent('true')
   })
 
-  it('treats a false refresh as failure and advances generation only after retry succeeds', async () => {
-    let resolveRetry: (refreshed: boolean) => void = () => undefined
-    mocks.refreshCanvas.mockResolvedValueOnce(false).mockImplementationOnce(
+  it('reports a failed refresh and advances generation only after retry succeeds', async () => {
+    let resolveRetry: (refreshed: WorkflowDraftRefreshResult) => void = () => undefined
+    mocks.refreshCanvas.mockResolvedValueOnce('failed').mockImplementationOnce(
       () =>
-        new Promise<boolean>((resolve) => {
+        new Promise<WorkflowDraftRefreshResult>((resolve) => {
           resolveRetry = resolve
         }),
     )
@@ -623,7 +626,7 @@ describe('DifyBuilderProvider', () => {
     expect(screen.getByRole('status', { name: 'Canvas refreshing' })).toHaveTextContent('true')
     expect(screen.getByRole('status', { name: 'Recheck ready' })).toHaveTextContent('false')
 
-    await act(async () => resolveRetry(true))
+    await act(async () => resolveRetry('refreshed'))
 
     await waitFor(() =>
       expect(screen.getByRole('status', { name: 'Refresh generation' })).toHaveTextContent('1'),
