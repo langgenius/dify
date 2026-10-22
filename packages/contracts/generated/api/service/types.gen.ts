@@ -830,6 +830,22 @@ export type DatasourceCredentialInfoResponse = {
   type?: string | null
 }
 
+export type DatasourceCredentialListResponse = {
+  data: Array<DatasourceCredentialMetadataResponse>
+}
+
+export type DatasourceCredentialMetadataResponse = {
+  id: string
+  is_default: boolean
+  name: string
+  type: string
+}
+
+export type DatasourceCredentialsQuery = {
+  plugin_id: string
+  provider: string
+}
+
 export type DatasourceNodeRunPayload = {
   credential_id?: string | null
   datasource_type: 'local_file' | 'online_document' | 'online_drive' | 'website_crawl'
@@ -6415,6 +6431,32 @@ export type GetDatasetsByDatasetIdTagsResponses = {
 
 export type GetDatasetsByDatasetIdTagsResponse =
   GetDatasetsByDatasetIdTagsResponses[keyof GetDatasetsByDatasetIdTagsResponses]
+
+export type GetDatasourceCredentialsData = {
+  body?: never
+  path?: never
+  query: {
+    plugin_id: string
+    provider: string
+  }
+  url: '/datasource-credentials'
+}
+
+export type GetDatasourceCredentialsErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetDatasourceCredentialsError =
+  GetDatasourceCredentialsErrors[keyof GetDatasourceCredentialsErrors]
+
+export type GetDatasourceCredentialsResponses = {
+  200: DatasourceCredentialListResponse
+}
+
+export type GetDatasourceCredentialsResponse =
+  GetDatasourceCredentialsResponses[keyof GetDatasourceCredentialsResponses]
 
 export type GetEndUsersByEndUserIdData = {
   body?: never

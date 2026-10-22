@@ -712,6 +712,31 @@ export const zDatasourceCredentialInfoResponse = z.object({
 })
 
 /**
+ * DatasourceCredentialMetadataResponse
+ */
+export const zDatasourceCredentialMetadataResponse = z.object({
+  id: z.string(),
+  is_default: z.boolean(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DatasourceCredentialListResponse
+ */
+export const zDatasourceCredentialListResponse = z.object({
+  data: z.array(zDatasourceCredentialMetadataResponse),
+})
+
+/**
+ * DatasourceCredentialsQuery
+ */
+export const zDatasourceCredentialsQuery = z.object({
+  plugin_id: z.string().min(1).max(512),
+  provider: z.string().min(1).max(256),
+})
+
+/**
  * DatasourceNodeRunPayload
  */
 export const zDatasourceNodeRunPayload = z.object({
@@ -6711,6 +6736,16 @@ export const zGetDatasetsByDatasetIdTagsPath = z.object({
  * Tags bound to the knowledge base.
  */
 export const zGetDatasetsByDatasetIdTagsResponse = zDatasetBoundTagListResponse
+
+export const zGetDatasourceCredentialsQuery = z.object({
+  plugin_id: z.string().min(1).max(512),
+  provider: z.string().min(1).max(256),
+})
+
+/**
+ * Datasource credential metadata retrieved successfully.
+ */
+export const zGetDatasourceCredentialsResponse = zDatasourceCredentialListResponse
 
 export const zGetEndUsersByEndUserIdPath = z.object({
   end_user_id: z.uuid(),

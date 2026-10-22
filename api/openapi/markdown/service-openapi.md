@@ -3674,6 +3674,30 @@ Update the content of an existing child chunk.
 ---
 ## default
 
+### [GET] /datasource-credentials
+**List Datasource Credentials**
+
+List datasource credential metadata for the current workspace. Credential values are never returned; use `id` as `credentialId` when creating a source connection.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| plugin_id | query | Datasource plugin id. | Yes | string |
+| provider | query | Datasource provider name. | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Datasource credential metadata retrieved successfully. | **application/json**: [DatasourceCredentialListResponse](#datasourcecredentiallistresponse)<br> |
+| 401 | Unauthorized - invalid API token. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | The API key is scoped to specific knowledge bases. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+---
+## default
+
 ### [GET] /end-users/{end_user_id}
 **Get End User Info**
 
@@ -4849,6 +4873,28 @@ The dataset name already exists. Please modify your dataset name.
 | is_default | boolean |  | No |
 | name | string |  | No |
 | type | string |  | No |
+
+#### DatasourceCredentialListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DatasourceCredentialMetadataResponse](#datasourcecredentialmetadataresponse) ] |  | Yes |
+
+#### DatasourceCredentialMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| is_default | boolean |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### DatasourceCredentialsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugin_id | string | Datasource plugin id. | Yes |
+| provider | string | Datasource provider name. | Yes |
 
 #### DatasourceNodeRunPayload
 
