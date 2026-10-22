@@ -1,7 +1,7 @@
 """add independent KnowledgeFS control-plane tables
 
 Revision ID: a4e7c2f91b30
-Revises: 3c9f8e2a1d7b
+Revises: d6b9e2f1a407
 Create Date: 2026-07-21 12:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import models
 
 # revision identifiers, used by Alembic.
 revision = "a4e7c2f91b30"
-down_revision = "3c9f8e2a1d7b"
+down_revision = "d6b9e2f1a407"
 branch_labels = None
 depends_on = None
 

@@ -1,7 +1,7 @@
 """add KnowledgeFS icon background
 
 Revision ID: 4f8b2c7d9e10
-Revises: 9d4e6f8a1b2c, 56124e050600
+Revises: 9d4e6f8a1b2c
 Create Date: 2026-08-17 12:00:00.000000
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "4f8b2c7d9e10"
-down_revision = ("9d4e6f8a1b2c", "56124e050600")
+down_revision = "9d4e6f8a1b2c"
 branch_labels = None
 depends_on = None
 

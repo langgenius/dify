@@ -33,7 +33,7 @@ def _run(module: ModuleType, engine: sa.Engine, step: str) -> None:
             {"upgrade": module.upgrade, "downgrade": module.downgrade}[step]()
 
 
-def test_icon_background_migration_matches_model_and_merges_heads() -> None:
+def test_icon_background_migration_matches_model() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
     with engine.begin() as connection:
         connection.exec_driver_sql("CREATE TABLE knowledge_fs_control_spaces (id VARCHAR(36) PRIMARY KEY)")
@@ -53,7 +53,7 @@ def test_icon_background_migration_matches_model_and_merges_heads() -> None:
     assert default is not None
     assert "F0F9FF" in default
     assert migration.revision == "4f8b2c7d9e10"
-    assert migration.down_revision == ("9d4e6f8a1b2c", "56124e050600")
+    assert migration.down_revision == "9d4e6f8a1b2c"
 
     _run(migration, engine, "downgrade")
 

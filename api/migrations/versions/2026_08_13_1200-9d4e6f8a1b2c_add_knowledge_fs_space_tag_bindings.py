@@ -1,7 +1,7 @@
 """add KnowledgeFS space tag bindings
 
 Revision ID: 9d4e6f8a1b2c
-Revises: 7c1e9a4b2d60, a1c7f4e9b3d2
+Revises: 7c1e9a4b2d60
 Create Date: 2026-08-13 12:00:00.000000
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 import models
 
 revision = "9d4e6f8a1b2c"
-down_revision = ("7c1e9a4b2d60", "a1c7f4e9b3d2")
+down_revision = "7c1e9a4b2d60"
 branch_labels = None
 depends_on = None
 

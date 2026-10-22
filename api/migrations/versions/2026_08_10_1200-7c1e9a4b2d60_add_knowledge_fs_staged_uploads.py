@@ -1,7 +1,7 @@
 """add KnowledgeFS workspace staged uploads
 
 Revision ID: 7c1e9a4b2d60
-Revises: e5a7c9b2d416, e4708db55c1d
+Revises: e5a7c9b2d416
 Create Date: 2026-08-10 12:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import models
 
 # revision identifiers, used by Alembic.
 revision = "7c1e9a4b2d60"
-down_revision = ("e5a7c9b2d416", "e4708db55c1d")
+down_revision = "e5a7c9b2d416"
 branch_labels = None
 depends_on = None
 

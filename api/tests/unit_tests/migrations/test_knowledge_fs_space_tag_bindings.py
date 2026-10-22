@@ -33,7 +33,7 @@ def _run(module: ModuleType, engine: sa.Engine, step: str) -> None:
             {"upgrade": module.upgrade, "downgrade": module.downgrade}[step]()
 
 
-def test_space_tag_binding_migration_matches_model_and_merges_heads() -> None:
+def test_space_tag_binding_migration_matches_model() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
     with engine.begin() as connection:
         connection.exec_driver_sql("CREATE TABLE tags (id VARCHAR(36) PRIMARY KEY)")
@@ -53,7 +53,7 @@ def test_space_tag_binding_migration_matches_model_and_merges_heads() -> None:
     )
     assert {index["name"] for index in inspector.get_indexes(table_name)} == {"kfs_space_tag_binding_tag_idx"}
     assert migration.revision == "9d4e6f8a1b2c"
-    assert migration.down_revision == ("7c1e9a4b2d60", "a1c7f4e9b3d2")
+    assert migration.down_revision == "7c1e9a4b2d60"
 
     _run(migration, engine, "downgrade")
 

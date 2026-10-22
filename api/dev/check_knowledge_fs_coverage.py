@@ -34,9 +34,6 @@ NON_CORE_COVERAGE_ALLOWLIST = frozenset(
         "api/migrations/versions/2026_08_17_1200-4f8b2c7d9e10_add_knowledge_fs_icon_background.py",
         "api/migrations/versions/2026_08_17_1200-f3a8c1d7e920_add_knowledge_fs_upgrade_jobs.py",
         "api/migrations/versions/2026_08_18_1200-e6b4a2c9d731_limit_active_knowledge_fs_upgrades.py",
-        "api/migrations/versions/2026_08_20_1200-c4d8e2f7a1b6_merge_agent_drive_and_knowledge_fs_heads.py",
-        "api/migrations/versions/2026_10_19_1200-36036059b930_merge_workflow_pause_and_knowledge_fs_heads.py",
-        "api/migrations/versions/2026_10_21_1200-d7b9e1f3a5c2_merge_workflow_tool_caller_and_knowledge_fs_heads.py",
         "api/migrations/versions/2026_10_21_1300-3edd6cd27f54_limit_active_knowledge_fs_upgrades_on_mysql.py",
     }
 )

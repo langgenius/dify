@@ -33,7 +33,7 @@ def _run(module: ModuleType, engine: sa.Engine, step: str) -> None:
             {"upgrade": module.upgrade, "downgrade": module.downgrade}[step]()
 
 
-def test_staged_upload_migration_matches_model_and_merges_heads() -> None:
+def test_staged_upload_migration_matches_model() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
     with engine.begin() as connection:
         connection.exec_driver_sql("CREATE TABLE tenants (id VARCHAR(36) PRIMARY KEY)")
@@ -64,7 +64,7 @@ def test_staged_upload_migration_matches_model_and_merges_heads() -> None:
         "kfs_staged_upload_version_ck",
     }
     assert migration.revision == "7c1e9a4b2d60"
-    assert migration.down_revision == ("e5a7c9b2d416", "e4708db55c1d")
+    assert migration.down_revision == "e5a7c9b2d416"
 
     _run(migration, engine, "downgrade")
 

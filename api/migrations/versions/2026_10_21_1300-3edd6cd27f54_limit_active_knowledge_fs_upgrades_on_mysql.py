@@ -1,7 +1,7 @@
 """limit active KnowledgeFS legacy Dataset upgrades on MySQL
 
 Revision ID: 3edd6cd27f54
-Revises: d7b9e1f3a5c2
+Revises: b6e2c4d8f1a0
 Create Date: 2026-10-21 13:00:00.000000
 
 MySQL has no partial indexes, so e6b4a2c9d731 created an unconditional unique index there and
@@ -16,7 +16,7 @@ from alembic import op
 import models.types
 
 revision = "3edd6cd27f54"
-down_revision = "d7b9e1f3a5c2"
+down_revision = "b6e2c4d8f1a0"
 branch_labels = None
 depends_on = None
 
