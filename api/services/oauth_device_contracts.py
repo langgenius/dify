@@ -5,6 +5,8 @@ from datetime import datetime
 from enum import StrEnum
 from typing import NotRequired, Protocol, TypedDict
 
+from constants.oauth_bearer import SubjectType
+
 DEVICE_FLOW_TTL_SECONDS = 15 * 60
 DEFAULT_POLL_INTERVAL_SECONDS = 5
 
@@ -51,6 +53,16 @@ class PollPayload(TypedDict):
     token_id: str
     subject_email: NotRequired[str]
     subject_issuer: NotRequired[str]
+
+
+class DeviceApprovalRecord(TypedDict):
+    """Who approved a device code; the token is minted from it on the first successful poll."""
+
+    subject_type: SubjectType
+    account_id: str | None
+    workspace_id: str | None
+    subject_email: str
+    subject_issuer: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,13 +190,18 @@ class DeviceApprovalContext:
 
 
 class DeviceFlowStateView(Protocol):
+    user_code: str
     client_id: str
     device_label: str
     installation_id: str
     status: DeviceFlowStatus
     token_id: str | None
     created_ip: str
+    approval: DeviceApprovalRecord | None
+    # Read only from approved states written before approval records existed.
     poll_payload: PollPayload | None
+
+    def to_json(self) -> str: ...
 
 
 class OAuthDeviceError(Exception):

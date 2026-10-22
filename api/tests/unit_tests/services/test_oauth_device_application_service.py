@@ -1,21 +1,24 @@
+import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
 
+from constants.oauth_bearer import SubjectType
 from machinery.context import RequestContext
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_application_service import OAuthDeviceApplicationService
 from services.oauth_device_contracts import (
     AccessDeniedError,
     AlreadyResolvedError,
-    ApprovalInProgressError,
     ApprovalOutcomeUnknownError,
     ApprovalSessionConsumedError,
     ApprovalTransitionConfirmation,
     AuthorizationPendingError,
+    DeviceApprovalRecord,
+    DeviceFlowStateView,
     DeviceFlowStatus,
     DeviceMutation,
     DeviceRequestContext,
@@ -29,7 +32,6 @@ from services.oauth_device_contracts import (
     ExternalIdentityConflictError,
     ExternalSubjectAssertion,
     ExternalUserCodeMismatchError,
-    ExternalUserCodeNotFoundError,
     InvalidApprovalSessionError,
     InvalidSSOAssertionError,
     InvalidTransitionError,
@@ -51,69 +53,63 @@ from services.oauth_device_contracts import (
 
 @dataclass
 class FakeState:
+    user_code: str = "ABCD-EFGH"
     client_id: str = "difyctl"
     device_label: str = "CLI"
     installation_id: str = ""
     status: DeviceFlowStatus = DeviceFlowStatus.PENDING
     token_id: str | None = None
-    transition_id: str | None = None
     created_ip: str = "127.0.0.1"
+    approval: DeviceApprovalRecord | None = None
     poll_payload: PollPayload | None = None
+
+    def to_json(self) -> str:
+        return json.dumps(asdict(self))
 
 
 @dataclass
 class FakeStore:
-    states: dict[str, tuple[str, FakeState]] = field(default_factory=dict)
+    states: dict[str, tuple[str, DeviceFlowStateView]] = field(default_factory=dict)
     poll_decision: SlowDownDecision = SlowDownDecision.OK
     approval_acquired: bool = True
-    approved_payload: PollPayload | None = None
+    approval: DeviceApprovalRecord | None = None
     approve_error: Exception | None = None
     confirmation: ApprovalTransitionConfirmation | None = None
     confirm_error: Exception | None = None
+    restore_error: Exception | None = None
+    remaining: int = 900
     acquired: list[tuple[str, str, int]] = field(default_factory=list)
     released: list[tuple[str, str]] = field(default_factory=list)
     started: list[tuple[str, str, str, str]] = field(default_factory=list)
+    restored: list[str] = field(default_factory=list)
 
     def start(self, client_id: str, device_label: str, installation_id: str, created_ip: str) -> tuple[str, str, int]:
         self.started.append((client_id, device_label, installation_id, created_ip))
         return "device-1", "ABCD-EFGH", 900
 
-    def load_by_user_code(self, user_code: str) -> tuple[str, FakeState] | None:
+    def load_by_user_code(self, user_code: str) -> tuple[str, DeviceFlowStateView] | None:
         return self.states.get(user_code)
 
-    def load_by_device_code(self, device_code: str) -> FakeState | None:
-        found = next((state for code, state in self.states.values() if code == device_code), None)
-        return found
+    def load_by_device_code(self, device_code: str) -> DeviceFlowStateView | None:
+        return next((state for code, state in self.states.values() if code == device_code), None)
 
-    def approve(
-        self,
-        device_code: str,
-        transition_id: str,
-        token_id: str,
-        poll_payload: PollPayload,
-    ) -> None:
+    def approve(self, device_code: str, transition_id: str, approval: DeviceApprovalRecord) -> None:
         if self.approve_error is not None:
             raise self.approve_error
-        self.approved_payload = poll_payload
+        self.approval = approval
         state = self.load_by_device_code(device_code)
         if state is not None:
             state.status = DeviceFlowStatus.APPROVED
-            state.transition_id = transition_id
-            state.token_id = token_id
-            state.poll_payload = poll_payload
+            state.token_id = f"transition:{transition_id}"
+            state.approval = approval
 
     def deny(self, device_code: str, transition_id: str) -> None:
         state = self.load_by_device_code(device_code)
         if state is not None:
             state.status = DeviceFlowStatus.DENIED
-            state.transition_id = transition_id
+            state.token_id = f"transition:{transition_id}"
 
-    def confirm_approval(
-        self,
-        device_code: str,
-        transition_id: str,
-        token_id: str,
-    ) -> ApprovalTransitionConfirmation:
+    def confirm_approval(self, device_code: str, transition_id: str) -> ApprovalTransitionConfirmation:
         if self.confirm_error is not None:
             raise self.confirm_error
         if self.confirmation is not None:
@@ -121,20 +117,30 @@ class FakeStore:
         state = self.load_by_device_code(device_code)
         if state is None:
             return ApprovalTransitionConfirmation.UNKNOWN
-        if (
-            state.status is DeviceFlowStatus.APPROVED
-            and state.transition_id == transition_id
-            and state.token_id == token_id
-        ):
+        if state.status is DeviceFlowStatus.APPROVED and state.token_id == f"transition:{transition_id}":
             return ApprovalTransitionConfirmation.PUBLISHED
         return ApprovalTransitionConfirmation.NOT_PUBLISHED
 
-    def consume_on_poll(self, device_code: str) -> FakeState | None:
+    def consume_on_poll(self, device_code: str) -> tuple[DeviceFlowStateView, int] | None:
         for user_code, (code, state) in self.states.items():
             if code == device_code:
                 del self.states[user_code]
-                return state
+                return state, self.remaining
         return None
+
+    def restore(self, device_code: str, state: DeviceFlowStateView, ttl_seconds: int) -> bool:
+        _ = ttl_seconds
+        if self.restore_error is not None:
+            raise self.restore_error
+        if self.load_by_device_code(device_code) is not None:
+            return False
+        self.states[state.user_code] = (device_code, state)
+        self.restored.append(device_code)
+        return True
+
+    def remaining_seconds(self, device_code: str) -> int:
+        _ = device_code
+        return self.remaining
 
     def record_poll(self, device_code: str, interval_seconds: int) -> SlowDownDecision:
         _ = (device_code, interval_seconds)
@@ -178,6 +184,7 @@ class FakeTokens:
     external_token: IssuedOAuthToken
     external_issues: int = 0
     account_issues: int = 0
+    issue_error: Exception | None = None
     rollbacks: list[str] = field(default_factory=list)
     device_keys: list[str] = field(default_factory=list)
     sessions: tuple[OAuthDeviceSession, ...] = ()
@@ -193,6 +200,8 @@ class FakeTokens:
         device_key: str,
     ) -> IssuedOAuthToken:
         _ = (account, workspace_id, client_id, device_label)
+        if self.issue_error is not None:
+            raise self.issue_error
         self.device_keys.append(device_key)
         self.account_issues += 1
         return self.account_token
@@ -207,6 +216,8 @@ class FakeTokens:
         device_key: str,
     ) -> IssuedOAuthToken:
         _ = (subject_email, subject_issuer, client_id, device_label)
+        if self.issue_error is not None:
+            raise self.issue_error
         self.device_keys.append(device_key)
         self.external_issues += 1
         return self.external_token
@@ -372,6 +383,31 @@ def _harness(*, settings: FakeSettings | None = None) -> Harness:
     )
 
 
+def _approve(harness: Harness, *, external: bool) -> DeviceMutation:
+    if external:
+        return harness.service.approve_external(
+            DeviceRequestContext("request-1", None),
+            approval_grant="grant",
+            csrf_token="csrf-token",
+            user_code="ABCD-EFGH",
+        )
+    return harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
+
+
+def _approved_harness(*, external: bool = False) -> Harness:
+    harness = _harness()
+    _approve(harness, external=external)
+    return harness
+
+
+def _poll(harness: Harness, *, poll_ip: str = "127.0.0.1") -> PollPayload:
+    return harness.service.poll(device_code="device-1", poll_ip=poll_ip)
+
+
+def _issues(harness: Harness) -> int:
+    return harness.tokens.account_issues + harness.tokens.external_issues
+
+
 def test_start_rejects_unknown_client_before_writing_state() -> None:
     harness = _harness()
 
@@ -442,88 +478,6 @@ def test_revoke_account_session_hides_missing_or_foreign_token() -> None:
         harness.service.revoke_account_session(account_id="account-1", token_id="foreign-token")
 
 
-def test_approve_mints_and_publishes_account_payload() -> None:
-    harness = _harness()
-
-    result = harness.service.approve(
-        RequestContext("request-1", None, "account-1", "workspace-1"),
-        user_code="abcd-efgh",
-    )
-
-    assert result.status == "approved"
-    assert harness.store.approved_payload is not None
-    assert harness.store.approved_payload["default_workspace_id"] == "workspace-1"
-    assert harness.store.released == [harness.store.acquired[0][:2]]
-
-
-def test_approve_does_not_release_guard_owned_by_another_request() -> None:
-    harness = _harness()
-    harness.store.approval_acquired = False
-
-    with pytest.raises(ApprovalInProgressError):
-        harness.service.approve(
-            RequestContext("request-1", None, "account-1", "workspace-1"),
-            user_code="ABCD-EFGH",
-        )
-
-    assert harness.store.released == []
-
-
-def test_account_approve_rolls_back_rotation_when_state_publish_fails() -> None:
-    harness = _harness()
-    harness.store.approve_error = StateNotFoundError("device-1")
-
-    with pytest.raises(DeviceStateLostError):
-        harness.service.approve(
-            RequestContext("request-1", None, "account-1", "workspace-1"),
-            user_code="ABCD-EFGH",
-        )
-
-    assert harness.tokens.rollbacks == ["token-1"]
-    assert harness.store.released == [harness.store.acquired[0][:2]]
-
-
-def test_account_approve_keeps_token_when_ambiguous_publish_is_confirmed() -> None:
-    harness = _harness()
-    harness.store.approve_error = ConnectionError("response lost")
-    harness.store.confirmation = ApprovalTransitionConfirmation.PUBLISHED
-
-    result = harness.service.approve(
-        RequestContext("request-1", None, "account-1", "workspace-1"),
-        user_code="ABCD-EFGH",
-    )
-
-    assert result.status == "approved"
-    assert harness.tokens.rollbacks == []
-
-
-def test_account_approve_does_not_compensate_unknown_publish_outcome() -> None:
-    harness = _harness()
-    harness.store.approve_error = ConnectionError("response lost")
-    harness.store.confirmation = ApprovalTransitionConfirmation.UNKNOWN
-
-    with pytest.raises(ApprovalOutcomeUnknownError):
-        harness.service.approve(
-            RequestContext("request-1", None, "account-1", "workspace-1"),
-            user_code="ABCD-EFGH",
-        )
-
-    assert harness.tokens.rollbacks == []
-
-
-def test_account_approve_completes_workspace_query_before_rotating_token() -> None:
-    harness = _harness()
-    harness.workspaces.error = RuntimeError("workspace unavailable")
-
-    with pytest.raises(RuntimeError, match="workspace unavailable"):
-        harness.service.approve(
-            RequestContext("request-1", None, "account-1", "workspace-1"),
-            user_code="ABCD-EFGH",
-        )
-
-    assert harness.tokens.account_issues == 0
-
-
 def test_sso_initiation_uses_configured_api_origin() -> None:
     harness = _harness()
 
@@ -568,75 +522,6 @@ def test_external_approval_rejects_bad_csrf_before_minting(csrf_token: str) -> N
     assert harness.store.acquired == []
 
 
-def test_external_approval_publishes_external_payload() -> None:
-    harness = _harness()
-
-    result = harness.service.approve_external(
-        DeviceRequestContext("request-1", None),
-        approval_grant="grant",
-        csrf_token="csrf-token",
-        user_code="abcd-efgh",
-    )
-
-    assert result.status == "approved"
-    assert harness.store.approved_payload is not None
-    assert harness.store.approved_payload["subject_type"] == "external_sso"
-    assert harness.store.approved_payload["account"] is None
-    assert harness.tokens.external_issues == 1
-    assert len(harness.sso.reserved_nonces) == 1
-    assert harness.sso.released_nonces == []
-
-
-def test_external_approval_releases_nonce_and_rolls_back_when_publish_fails() -> None:
-    harness = _harness()
-    harness.store.approve_error = StateNotFoundError("device-1")
-
-    with pytest.raises(DeviceStateLostError):
-        harness.service.approve_external(
-            DeviceRequestContext("request-1", None),
-            approval_grant="grant",
-            csrf_token="csrf-token",
-            user_code="ABCD-EFGH",
-        )
-
-    assert harness.tokens.rollbacks == ["token-1"]
-    assert len(harness.sso.reserved_nonces) == 1
-    assert harness.sso.released_nonces == harness.sso.reserved_nonces
-    assert harness.store.released == [harness.store.acquired[0][:2]]
-
-
-def test_external_approval_keeps_recoverable_nonce_when_publish_outcome_is_unknown() -> None:
-    harness = _harness()
-    harness.store.approve_error = ConnectionError("response lost")
-    harness.store.confirmation = ApprovalTransitionConfirmation.UNKNOWN
-
-    with pytest.raises(ApprovalOutcomeUnknownError):
-        harness.service.approve_external(
-            DeviceRequestContext("request-1", None),
-            approval_grant="grant",
-            csrf_token="csrf-token",
-            user_code="ABCD-EFGH",
-        )
-
-    assert harness.tokens.rollbacks == []
-    assert len(harness.sso.reserved_nonces) == 1
-    assert harness.sso.released_nonces == []
-
-
-def test_rotation_guard_is_shared_across_device_codes_for_the_same_token_identity() -> None:
-    harness = _harness()
-    context = RequestContext("request-1", None, "account-1", "workspace-1")
-    harness.service.approve(context, user_code="ABCD-EFGH")
-    harness.store.states["ABCD-EFGH"] = ("device-2", FakeState())
-
-    harness.service.approve(context, user_code="ABCD-EFGH")
-
-    assert len(harness.store.acquired) == 2
-    assert harness.store.acquired[0][0] == harness.store.acquired[1][0]
-    assert harness.store.acquired[0][1] != harness.store.acquired[1][1]
-    assert all(ttl == 60 for _, _, ttl in harness.store.acquired)
-
-
 @pytest.mark.parametrize("base_url", [None, "https://console.example/"])
 def test_start_returns_device_codes_with_configured_or_request_origin(base_url: str | None) -> None:
     harness = _harness(settings=FakeSettings(verification_base_url=base_url))
@@ -679,24 +564,14 @@ def test_poll_rejects_unavailable_tokens(state: FakeState | None, expected_error
     assert harness.tokens.account_issues == harness.tokens.external_issues == 0
 
 
-def test_poll_does_not_return_a_token_consumed_by_another_request() -> None:
-    harness = _harness()
-    harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
+def test_poll_does_not_mint_an_approval_consumed_by_another_request() -> None:
+    harness = _approved_harness()
 
     with patch.object(harness.store, "consume_on_poll", return_value=None), pytest.raises(ExpiredTokenError):
-        harness.service.poll(device_code="device-1", poll_ip="127.0.0.1")
+        _poll(harness)
 
-
-def test_approved_token_is_only_returned_once() -> None:
-    harness = _harness()
-    harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
-
-    result = harness.service.poll(device_code="device-1", poll_ip="127.0.0.1")
-
-    assert result["token"] == "secret-token"
-    assert result["account"] == {"id": "account-1", "email": "ada@example.com", "name": "Ada"}
-    with pytest.raises(ExpiredTokenError):
-        harness.service.poll(device_code="device-1", poll_ip="127.0.0.1")
+    assert harness.tokens.account_issues == 0
+    assert harness.store.released == [harness.store.acquired[0][:2]]
 
 
 @pytest.mark.parametrize("status", [None, *DeviceFlowStatus])
@@ -764,15 +639,194 @@ def test_account_approval_requires_existing_account() -> None:
     assert harness.store.acquired == []
 
 
-def _approve(harness: Harness, *, external: bool) -> DeviceMutation:
+@pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
+def test_approval_records_the_subject_without_minting(external: bool) -> None:
+    harness = _harness()
+
+    result = _approve(harness, external=external)
+
+    assert result.status == "approved"
+    expected: DeviceApprovalRecord = (
+        {
+            "subject_type": SubjectType.EXTERNAL_SSO,
+            "account_id": None,
+            "workspace_id": None,
+            "subject_email": "external@example.com",
+            "subject_issuer": "https://idp.example",
+        }
+        if external
+        else {
+            "subject_type": SubjectType.ACCOUNT,
+            "account_id": "account-1",
+            "workspace_id": "workspace-1",
+            "subject_email": "ada@example.com",
+            "subject_issuer": "dify:account",
+        }
+    )
+    assert harness.store.approval == expected
+    assert _issues(harness) == 0
+    assert harness.store.acquired == []
+    assert len(harness.sso.reserved_nonces) == (1 if external else 0)
+    assert harness.sso.released_nonces == []
+
+
+@pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
+def test_first_poll_mints_once_and_returns_payload(external: bool) -> None:
+    harness = _approved_harness(external=external)
+
+    payload = _poll(harness)
+
+    assert payload["token"] == "secret-token"
+    assert payload["token_id"] == "token-1"
+    assert _issues(harness) == 1
     if external:
-        return harness.service.approve_external(
-            DeviceRequestContext("request-1", None),
-            approval_grant="grant",
-            csrf_token="csrf-token",
-            user_code="ABCD-EFGH",
-        )
-    return harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
+        assert payload["subject_type"] == "external_sso"
+        assert payload["subject_email"] == "external@example.com"
+        assert payload["subject_issuer"] == "https://idp.example"
+        assert payload["account"] is None
+        assert payload["workspaces"] == []
+    else:
+        assert payload["subject_type"] == "account"
+        assert payload["account"] == {"id": "account-1", "email": "ada@example.com", "name": "Ada"}
+        assert payload["workspaces"] == [{"id": "workspace-1", "name": "Primary", "role": "owner"}]
+        assert payload["default_workspace_id"] == "workspace-1"
+    assert harness.store.released == [harness.store.acquired[0][:2]]
+    with pytest.raises(ExpiredTokenError):
+        _poll(harness)
+    assert _issues(harness) == 1
+
+
+def test_poll_waits_while_another_poll_holds_the_rotation_guard() -> None:
+    harness = _approved_harness()
+    harness.store.approval_acquired = False
+
+    with pytest.raises(AuthorizationPendingError):
+        _poll(harness)
+
+    assert harness.tokens.account_issues == 0
+    assert harness.store.load_by_device_code("device-1") is not None
+    assert harness.store.released == []
+
+
+@pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
+def test_mint_failure_restores_the_approval_for_a_retry(external: bool) -> None:
+    harness = _approved_harness(external=external)
+    harness.tokens.issue_error = RuntimeError("db down")
+
+    with pytest.raises(RuntimeError, match="db down"):
+        _poll(harness)
+
+    assert harness.store.restored == ["device-1"]
+    assert harness.store.released == [harness.store.acquired[0][:2]]
+    harness.tokens.issue_error = None
+    assert _poll(harness)["token"] == "secret-token"
+    assert _issues(harness) == 1
+
+
+def test_poll_lists_workspaces_before_minting() -> None:
+    harness = _approved_harness()
+    harness.workspaces.error = RuntimeError("workspace unavailable")
+
+    with pytest.raises(RuntimeError, match="workspace unavailable"):
+        _poll(harness)
+
+    assert harness.tokens.account_issues == 0
+    assert harness.store.restored == ["device-1"]
+
+
+def test_restore_failure_does_not_hide_the_mint_error() -> None:
+    harness = _approved_harness()
+    harness.tokens.issue_error = RuntimeError("db down")
+    harness.store.restore_error = ConnectionError("redis down")
+
+    with pytest.raises(RuntimeError, match="db down"):
+        _poll(harness)
+
+    assert harness.store.released == [harness.store.acquired[0][:2]]
+
+
+def test_poll_denies_when_the_approving_account_is_gone() -> None:
+    harness = _approved_harness()
+    harness.accounts.account = replace(harness.accounts.account, id="account-2")
+
+    with pytest.raises(AccessDeniedError):
+        _poll(harness)
+
+    assert harness.tokens.account_issues == 0
+    assert harness.store.restored == []
+    with pytest.raises(ExpiredTokenError):
+        _poll(harness)
+
+
+def test_external_poll_rejects_email_that_became_a_dify_account() -> None:
+    harness = _approved_harness(external=True)
+    harness.accounts.active_external_emails.add("external@example.com")
+
+    with pytest.raises(AccessDeniedError):
+        _poll(harness)
+
+    assert harness.tokens.external_issues == 0
+    assert harness.store.restored == []
+
+
+def test_legacy_approved_state_returns_its_stored_payload() -> None:
+    harness = _harness()
+    legacy_payload: PollPayload = {
+        "token": "dfoa_minted-by-an-old-worker",
+        "expires_at": "2030-01-01T00:00:00+00:00",
+        "subject_type": "account",
+        "account": {"id": "account-1"},
+        "workspaces": [],
+        "default_workspace_id": None,
+        "token_id": "token-0",
+    }
+    harness.store.states["ABCD-EFGH"] = (
+        "device-1",
+        FakeState(status=DeviceFlowStatus.APPROVED, token_id="transition:a:token-0", poll_payload=legacy_payload),
+    )
+
+    assert _poll(harness) == legacy_payload
+
+    assert _issues(harness) == 0
+    assert harness.store.acquired == []
+    with pytest.raises(ExpiredTokenError):
+        _poll(harness)
+
+
+def test_poll_refuses_a_subject_type_it_cannot_mint(caplog: pytest.LogCaptureFixture) -> None:
+    harness = _approved_harness()
+    approval = harness.store.approval
+    assert approval is not None
+    approval["subject_type"] = SubjectType.RESOURCE_ACCESS
+
+    with caplog.at_level(logging.ERROR), pytest.raises(ExpiredTokenError):
+        _poll(harness)
+
+    assert "resource_access" in caplog.text
+    assert _issues(harness) == 0
+    assert harness.store.acquired == []
+
+
+@pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
+def test_audits_name_the_token_only_once_it_is_issued(external: bool, caplog: pytest.LogCaptureFixture) -> None:
+    harness = _harness()
+
+    with caplog.at_level(logging.WARNING):
+        _approve(harness, external=external)
+        _poll(harness, poll_ip="192.0.2.10")
+
+    events = {record.__dict__.get("event"): record.__dict__ for record in caplog.records}
+    approved = events["oauth.device_flow_approved"]
+    issued = events["oauth.device_token_issued"]
+    assert "token_id" not in approved
+    assert approved["subject_type"] == ("external_sso" if external else "account")
+    assert issued["token_id"] == "token-1"
+    assert issued["expires_at"] == "2030-01-01T00:00:00+00:00"
+    assert issued["account_id"] == (None if external else "account-1")
+    assert issued["tenant_id"] == (None if external else "workspace-1")
+    assert issued["scopes"] == sorted(SubjectType.EXTERNAL_SSO.scopes if external else SubjectType.ACCOUNT.scopes)
+    cross_ip = next(record for record in caplog.records if "cross_ip_poll" in record.getMessage())
+    assert cross_ip.__dict__["token_id"] == "token-1"
 
 
 @pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
@@ -781,13 +835,14 @@ def _approve(harness: Harness, *, external: bool) -> DeviceMutation:
     [("abcd1234", "install:abcd1234"), ("", "CLI")],
     ids=["install", "legacy"],
 )
-def test_approval_mints_on_the_device_key_from_the_code_request(
+def test_poll_mints_on_the_device_key_from_the_code_request(
     external: bool, installation_id: str, expected_key: str
 ) -> None:
     harness = _harness()
     harness.store.states["ABCD-EFGH"] = ("device-1", FakeState(installation_id=installation_id))
-
     _approve(harness, external=external)
+
+    _poll(harness)
 
     assert harness.tokens.device_keys == [expected_key]
 
@@ -803,101 +858,75 @@ def test_rotation_guard_follows_the_device_key_not_the_label(external: bool) -> 
     for attempt in attempts:
         harness.store.states["ABCD-EFGH"] = ("device-1", attempt)
         _approve(harness, external=external)
+        _poll(harness)
 
     first, renamed, other_install = (guard_id for guard_id, _owner, _ttl in harness.store.acquired)
     assert first == renamed
     assert first != other_install
 
 
-@pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
-@pytest.mark.parametrize("change", ["expired", "replaced", "approved", "denied"])
-def test_approval_revalidates_state_after_acquiring_guard(external: bool, change: str) -> None:
+def test_rotation_guard_is_shared_across_device_codes_for_the_same_token_identity() -> None:
     harness = _harness()
-    initial = harness.store.states["ABCD-EFGH"]
-    current: tuple[str, FakeState] | None
-    if change == "expired":
-        current = None
-        expected_error = ExternalUserCodeNotFoundError if external else DeviceStateLostError
-    elif change == "replaced":
-        current = ("another-device", FakeState())
-        expected_error = DeviceStateLostError
-    else:
-        current = ("device-1", FakeState(status=DeviceFlowStatus(change)))
-        expected_error = AlreadyResolvedError
+    for device_code in ("device-1", "device-2"):
+        harness.store.states["ABCD-EFGH"] = (device_code, FakeState())
+        _approve(harness, external=False)
+        harness.service.poll(device_code=device_code, poll_ip="127.0.0.1")
 
-    with (
-        patch.object(harness.store, "load_by_user_code", side_effect=[initial, current]),
-        pytest.raises(expected_error),
-    ):
+    assert len(harness.store.acquired) == 2
+    assert harness.store.acquired[0][0] == harness.store.acquired[1][0]
+    assert harness.store.acquired[0][1] != harness.store.acquired[1][1]
+    assert all(ttl == 60 for _, _, ttl in harness.store.acquired)
+
+
+@pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
+@pytest.mark.parametrize("error", [StateNotFoundError("expired"), InvalidTransitionError("already approved")])
+def test_approval_reports_state_lost_when_the_transition_races(external: bool, error: Exception) -> None:
+    harness = _harness()
+    harness.store.approve_error = error
+
+    with pytest.raises(DeviceStateLostError):
         _approve(harness, external=external)
 
-    assert harness.tokens.account_issues == harness.tokens.external_issues == 0
-    assert harness.sso.reserved_nonces == []
-    assert harness.store.released == [harness.store.acquired[0][:2]]
+    assert len(harness.sso.reserved_nonces) == (1 if external else 0)
+    assert harness.sso.released_nonces == harness.sso.reserved_nonces
+    assert _issues(harness) == 0
 
 
 @pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
-def test_unpublished_approval_rolls_back_token_and_allows_retry(external: bool) -> None:
-    harness = _harness()
-    harness.store.approve_error = ConnectionError("publish failed")
-    harness.store.confirmation = ApprovalTransitionConfirmation.NOT_PUBLISHED
-
-    with pytest.raises(ConnectionError, match="publish failed"):
-        _approve(harness, external=external)
-
-    assert harness.tokens.rollbacks == ["token-1"]
-    assert harness.store.released == [harness.store.acquired[0][:2]]
-    if external:
-        assert len(harness.sso.released_nonces) == 1
-        assert harness.sso.released_nonces == harness.sso.reserved_nonces
-
-
-@pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
-def test_confirmation_failure_preserves_potentially_published_token(external: bool) -> None:
+@pytest.mark.parametrize(
+    ("confirmation", "confirm_error", "expected_error", "nonce_released"),
+    [
+        (ApprovalTransitionConfirmation.PUBLISHED, None, None, False),
+        (ApprovalTransitionConfirmation.NOT_PUBLISHED, None, ConnectionError, True),
+        (ApprovalTransitionConfirmation.UNKNOWN, None, ApprovalOutcomeUnknownError, False),
+        (None, ConnectionError("confirmation unavailable"), ApprovalOutcomeUnknownError, False),
+    ],
+    ids=["published", "not-published", "unknown", "confirm-failed"],
+)
+def test_ambiguous_publish_follows_the_confirmed_outcome(
+    external: bool,
+    confirmation: ApprovalTransitionConfirmation | None,
+    confirm_error: Exception | None,
+    expected_error: type[Exception] | None,
+    nonce_released: bool,
+) -> None:
     harness = _harness()
     harness.store.approve_error = ConnectionError("response lost")
-    harness.store.confirm_error = ConnectionError("confirmation unavailable")
+    harness.store.confirmation = confirmation
+    harness.store.confirm_error = confirm_error
 
-    with pytest.raises(ApprovalOutcomeUnknownError):
-        _approve(harness, external=external)
+    if expected_error is None:
+        assert _approve(harness, external=external).status == "approved"
+    else:
+        with pytest.raises(expected_error):
+            _approve(harness, external=external)
 
-    assert harness.tokens.rollbacks == []
-    assert harness.sso.released_nonces == []
-    assert harness.store.released == [harness.store.acquired[0][:2]]
-
-
-def test_external_token_issuance_failure_releases_reserved_nonce() -> None:
-    harness = _harness()
-
-    with (
-        patch.object(harness.tokens, "issue_external_token", side_effect=RuntimeError("issuer unavailable")),
-        pytest.raises(RuntimeError, match="issuer unavailable"),
-    ):
-        _approve(harness, external=True)
-
-    assert harness.tokens.rollbacks == []
-    assert len(harness.sso.released_nonces) == 1
-    assert harness.sso.released_nonces == harness.sso.reserved_nonces
-    assert harness.store.released == [harness.store.acquired[0][:2]]
-
-
-def test_failed_token_compensation_does_not_prevent_nonce_and_guard_cleanup() -> None:
-    harness = _harness()
-    harness.store.approve_error = StateNotFoundError("expired")
-
-    with (
-        patch.object(harness.tokens, "rollback_token", side_effect=ConnectionError("database unavailable")),
-        pytest.raises(DeviceStateLostError),
-    ):
-        _approve(harness, external=True)
-
-    assert len(harness.sso.released_nonces) == 1
-    assert harness.sso.released_nonces == harness.sso.reserved_nonces
-    assert harness.store.released == [harness.store.acquired[0][:2]]
+    assert harness.sso.released_nonces == (harness.sso.reserved_nonces if external and nonce_released else [])
+    assert _issues(harness) == 0
 
 
 @pytest.mark.parametrize(
-    "rejection", ["missing-grant", "invalid-grant", "rate-limit", "user-code", "identity", "replay", "busy"]
+    "rejection", ["missing-grant", "invalid-grant", "rate-limit", "user-code", "identity", "replay"]
 )
 def test_external_approval_rejections_do_not_issue_tokens(rejection: str) -> None:
     harness = _harness()
@@ -908,11 +937,9 @@ def test_external_approval_rejections_do_not_issue_tokens(rejection: str) -> Non
         "user-code": ExternalUserCodeMismatchError,
         "identity": ExternalIdentityConflictError,
         "replay": ApprovalSessionConsumedError,
-        "busy": ApprovalInProgressError,
     }
     harness.limiter.limited = rejection == "rate-limit"
     harness.sso.approval_nonce_available = rejection != "replay"
-    harness.store.approval_acquired = rejection != "busy"
     if rejection == "identity":
         harness.accounts.active_external_emails.add(harness.sso.grant.subject_email)
 
@@ -933,13 +960,10 @@ def test_external_approval_rejections_do_not_issue_tokens(rejection: str) -> Non
         )
 
     assert harness.tokens.external_issues == 0
-    assert harness.store.approved_payload is None
+    assert harness.store.approval is None
+    assert harness.store.acquired == []
+    assert len(harness.sso.reserved_nonces) == (1 if rejection == "replay" else 0)
     assert harness.sso.released_nonces == []
-    if rejection in {"identity", "replay"}:
-        assert harness.store.released == [harness.store.acquired[0][:2]]
-    else:
-        assert harness.store.released == []
-        assert harness.sso.reserved_nonces == []
     if rejection == "rate-limit":
         assert harness.limiter.recorded == []
 
