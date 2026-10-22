@@ -11,7 +11,11 @@ default values) belongs in the builders. The planner commits to the minimum
 topology and node types so every builder gets a tight scaffold.
 """
 
-from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES
+from core.workflow.generator.prompts.builder_prompts import (
+    CODE_FAILURE_POLICY_RULES,
+    TOOL_PARAMETER_SEMANTICS_RULES,
+    VARIABLE_AGGREGATOR_OUTPUT_RULES,
+)
 
 PLANNER_SYSTEM_PROMPT = """You are a Dify workflow planner.
 
@@ -137,8 +141,8 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
     in isolation: consumers may reference ONLY the names declared here.
     Add entries for types choosing their output names: "code" (``outputs``
     keys), "parameter-extractor" (parameter names), "human-input" (input
-    variable names), "llm" structured output (schema fields), and native
-    New Agent caller custom ``agent_declared_outputs`` names.
+    variable names), "loop" (``loop_variables[].label``), "llm" structured output
+    (schema fields), and native New Agent caller custom ``agent_declared_outputs`` names.
     Agent custom outputs are top-level variables; do not invent published
     Agent output schemas or legacy Agent strategy outputs. System ``text``
     and route-dependent ``switch`` are not custom declarations.
@@ -171,7 +175,7 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
 """
 
 
-PLANNER_SYSTEM_PROMPT += CODE_FAILURE_POLICY_RULES
+PLANNER_SYSTEM_PROMPT += CODE_FAILURE_POLICY_RULES + TOOL_PARAMETER_SEMANTICS_RULES + VARIABLE_AGGREGATOR_OUTPUT_RULES
 
 
 PLANNER_USER_PROMPT = """# Mode

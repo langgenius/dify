@@ -38021,6 +38021,9 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | blocked_node_ids | [ string ] |  | No |
+| business_acceptance_case_id | string |  | No |
+| business_acceptance_state | string, <br>**Available values:** "failed", "passed", "unverified" |  | No |
+| consent_id | string |  | No |
 | dify_run_id | string |  | No |
 | executed_node_ids | [ string ] |  | No |
 | execution_mode | string, <br>**Available values:** "confirmed_run", "confirmed_tool", "mock", "restricted" |  | No |

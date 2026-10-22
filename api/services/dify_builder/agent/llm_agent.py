@@ -17,7 +17,7 @@ streaming; the other cognition methods resolve the model through
 
 import logging
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TypedDict
 
 from core.model_manager import ModelInstance
 from services.dify_builder import trace_diagnostics as diagnostics
@@ -26,6 +26,10 @@ from services.dify_builder.agent.model_resolver import resolve_model_instance
 from services.dify_builder.plan import WorkflowPlan
 
 logger = logging.getLogger(__name__)
+
+
+class _ToolParameterPromptKwargs(TypedDict, total=False):
+    tool_context: str
 
 
 class LlmBuilderAgent:
@@ -112,6 +116,7 @@ class LlmBuilderAgent:
             self._reasoning_for("propose-repair"),
             prompt_graph=prompt_graph,
             redact_text=redact_text,
+            **self._tool_parameter_prompt_kwargs(prompt_graph),
         )
 
     @diagnostics.cognition
@@ -123,6 +128,10 @@ class LlmBuilderAgent:
             self._reasoning_for("diagnose-checklist"),
         )
 
+    def _tool_parameter_prompt_kwargs(self, graph: dict[str, Any]) -> _ToolParameterPromptKwargs:
+        context = resources.tool_parameter_context(self._tenant_id, graph)
+        return {"tool_context": context} if context else {}
+
     @diagnostics.cognition
     def propose_repair(self, diagnosis, graph):
         return fix.propose_repair(
@@ -130,6 +139,7 @@ class LlmBuilderAgent:
             diagnosis,
             graph,
             self._reasoning_for("propose-repair"),
+            **self._tool_parameter_prompt_kwargs(graph),
         )
 
     @diagnostics.cognition
@@ -287,6 +297,7 @@ class LlmBuilderAgent:
             edit_target_node_ids=edit_target_node_ids,
             last_edit_rejection=last_edit_rejection,
             approved_plan=approved_plan,
+            **self._tool_parameter_prompt_kwargs(graph),
         )
 
     @diagnostics.cognition

@@ -138,11 +138,27 @@ def _confirmed_result_card(run: Run) -> TestResultCard:
     return card
 
 
+def _project_acceptance(run: Run, card: TestResultCard) -> TestResultCard:
+    """Project typed business state independently of execution and localized prose."""
+    finding = run.verification.business_acceptance if run.verification else {}
+    if finding:
+        from services.dify_builder.business_acceptance import CaseAcceptance
+
+        try:
+            result = CaseAcceptance.model_validate(finding)
+        except ValueError:
+            card.business_acceptance_state = "unverified"
+        else:
+            card.business_acceptance_state = result.state
+            card.business_acceptance_case_id = result.case_id
+    return card
+
+
 def result_card(run: Run, *, reply_language: str = "en-US") -> TestResultCard:
     evidence = run.verification
     summary = evidence.execution_evidence if evidence else None
     if summary is not None and summary.mode == "confirmed_tool":
-        return _confirmed_result_card(run)
+        return _project_acceptance(run, _confirmed_result_card(run))
     card = TestResultCard(
         status="succeeded" if run.status == "succeeded" else "failed",
         dify_run_id=run.dify_run_id,
@@ -150,6 +166,7 @@ def result_card(run: Run, *, reply_language: str = "en-US") -> TestResultCard:
         terminal_outputs=evidence.terminal_outputs if evidence else None,
         executed_node_ids=evidence.executed_node_ids if evidence else [],
     )
+    _project_acceptance(run, card)
     summary = evidence.execution_evidence if evidence else None
     if summary:
         card.execution_mode = summary.mode
