@@ -8,6 +8,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
 import { parseAsInteger, useQueryState } from 'nuqs'
 import { useMemo, useRef, useState } from 'react'
@@ -112,9 +113,16 @@ export default function PersonalAccessTokens() {
                         <td className="px-3">
                           <div className="flex flex-col items-start">
                             <Dialog>
-                              <DialogTrigger className="max-w-full truncate font-medium underline underline-offset-2">
-                                {token.name}
-                              </DialogTrigger>
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <DialogTrigger className="max-w-full truncate font-medium underline underline-offset-2" />
+                                  }
+                                >
+                                  {token.name}
+                                </TooltipTrigger>
+                                <TooltipContent>{token.name}</TooltipContent>
+                              </Tooltip>
                               <DialogContent className="w-150 has-[[data-pat-created]]:w-130">
                                 <ScopeDetails tokenId={token.id} />
                               </DialogContent>
