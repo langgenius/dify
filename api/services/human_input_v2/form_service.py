@@ -115,7 +115,7 @@ class FormExecutionContext:
 
 
 class HumanInputFormService:
-    """Run-bound transaction boundary for form initialization and expiration.
+    """Run-bound transaction boundary for form initialization.
 
     Construct the required repositories inside each method using its Session.
     Initialization writes share one transaction. Return only after committing
@@ -218,61 +218,6 @@ class HumanInputFormService:
             raise ValueError("Resolved message body must retain exactly one Request URL")
         return ResolvedMessageTemplate(subject, body)
 
-    def handle_timeouts(self) -> None:
-        """Choose one expiration path for this run and publish at most one resume.
-
-        Lock the run to serialize with submission, then reload its waiting
-        forms and evaluate deadlines using the current database time.
-        Lock individual forms only when applying their state transitions.
-        """
-        resume = False
-        with self._session_factory() as session, session.begin():
-            workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
-            # Keep the run-before-form lock order shared with submission.
-            run = workflow_run_repository.get_workflow_run_by_id_for_update(
-                session,
-                tenant_id=self._context.tenant_id,
-                app_id=self._context.app_id,
-                run_id=self._context.workflow_run_id,
-            )
-            if run is None:
-                raise ValueError("Workflow run was not found in the bound owner scope")
-            repository = SQLAlchemyFormRepository(session, self._context.tenant_id, self._context.app_id)
-            batch = repository.list_waiting_forms_for_run(run.id)
-            globally_expired = tuple(form for form in batch.forms if form.global_timeout_deadline <= batch.now)
-            if globally_expired:
-                self._handle_global_expiration(session, workflow_run_repository, repository, run, globally_expired)
-            else:
-                node_timeouts = tuple(form for form in batch.forms if form.expiration_time <= batch.now)
-                resume = self._handle_node_timeouts(repository, run, node_timeouts)
-        if resume:
-            _enqueue_resume(self._context.workflow_run_id)
-
-    @staticmethod
-    def _handle_global_expiration(
-        session: Session,
-        workflow_run_repository: APIWorkflowRunRepository,
-        repository: SQLAlchemyFormRepository,
-        run: WorkflowRun,
-        forms: Sequence[Form],
-    ) -> None:
-        for form in forms:
-            repository.expire_form(form.id)
-        if run.status in (WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED):
-            workflow_run_repository.stop_workflow_run(
-                session, run=run, error="Human input global timeout", finished_at=naive_utc_now()
-            )
-
-    @staticmethod
-    def _handle_node_timeouts(repository: SQLAlchemyFormRepository, run: WorkflowRun, forms: Sequence[Form]) -> bool:
-        timed_out = False
-        for form in forms:
-            settled = repository.timeout_form(form.id)
-            assert settled is not None
-            if settled.status == HumanInputFormStatus.TIMEOUT:
-                timed_out = True
-        return timed_out and run.status in (WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED)
-
     def _resolve_recipients(
         self,
         *,
@@ -371,6 +316,71 @@ class HumanInputFormService:
             self._context.workflow_run_id,
             reason,
         )
+
+
+def handle_form_timeouts(
+    *,
+    session_factory: sessionmaker[Session],
+    tenant_id: TenantId,
+    app_id: str,
+    workflow_run_id: str,
+) -> None:
+    """Choose one expiration path for this run and publish at most one resume.
+
+    Lock the run to serialize with submission, then reload its waiting
+    forms and evaluate deadlines using the current database time.
+    Lock individual forms only when applying their state transitions.
+    """
+    resume = False
+    with session_factory() as session, session.begin():
+        workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
+        # Keep the run-before-form lock order shared with submission.
+        run = workflow_run_repository.get_workflow_run_by_id_for_update(
+            session, tenant_id=tenant_id, app_id=app_id, run_id=workflow_run_id
+        )
+        if run is None:
+            logger.info(
+                "Timeout candidate run no longer exists in scope: tenant_id=%s app_id=%s workflow_run_id=%s",
+                tenant_id,
+                app_id,
+                workflow_run_id,
+            )
+            return
+        repository = SQLAlchemyFormRepository(session, tenant_id, app_id)
+        batch = repository.list_waiting_forms_for_run(run.id)
+        globally_expired = tuple(form for form in batch.forms if form.global_timeout_deadline <= batch.now)
+        if globally_expired:
+            _handle_global_expiration(session, workflow_run_repository, repository, run, globally_expired)
+        else:
+            node_timeouts = tuple(form for form in batch.forms if form.expiration_time <= batch.now)
+            resume = _handle_node_timeouts(repository, run, node_timeouts)
+    if resume:
+        _enqueue_resume(workflow_run_id)
+
+
+def _handle_global_expiration(
+    session: Session,
+    workflow_run_repository: APIWorkflowRunRepository,
+    repository: SQLAlchemyFormRepository,
+    run: WorkflowRun,
+    forms: Sequence[Form],
+) -> None:
+    for form in forms:
+        repository.expire_form(form.id)
+    if run.status in (WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED):
+        workflow_run_repository.stop_workflow_run(
+            session, run=run, error="Human input global timeout", finished_at=naive_utc_now()
+        )
+
+
+def _handle_node_timeouts(repository: SQLAlchemyFormRepository, run: WorkflowRun, forms: Sequence[Form]) -> bool:
+    timed_out = False
+    for form in forms:
+        settled = repository.timeout_form(form.id)
+        assert settled is not None
+        if settled.status == HumanInputFormStatus.TIMEOUT:
+            timed_out = True
+    return timed_out and run.status in (WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED)
 
 
 def _enqueue_resume(workflow_run_id: str) -> None:
