@@ -663,6 +663,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   return (
     <AgentConfigureWorkspace
       className="rounded-[inherit]"
+      stackOnSmallScreen={false}
       leftPanel={
         <AgentOrchestratePanel
           agentId={agentId}
@@ -697,13 +698,14 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               <WorkflowInlineAgentConfigureMoreAction onSaveInlineToRoster={onSaveInlineToRoster} />
             ) : undefined
           }
-          className="min-w-90"
+          className="min-w-0"
           onSelectModel={setConfigureModel}
           onOpenVersions={() => undefined}
         />
       }
       rightPanel={
         <AgentConfigurePreviewSurface
+          stackOnSmallScreen={false}
           background={<AgentBuildPanelBackground visible={rightPanelMode === 'build'} />}
           header={
             <AgentPreviewHeader
