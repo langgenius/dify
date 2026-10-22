@@ -10,7 +10,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
-import Sort from '@/app/components/base/sort'
+import { Sort } from '@/app/components/base/sort'
 import { consoleQuery } from '@/service/console'
 import {
   CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
@@ -124,8 +124,10 @@ const Filter: FC<IFilterProps> = ({
         <>
           <div className="h-3.5 w-px bg-divider-regular"></div>
           <Sort
-            order={queryParams.sort_by?.startsWith('-') ? '-' : ''}
-            value={queryParams.sort_by?.replace('-', '') || 'created_at'}
+            value={{
+              field: queryParams.sort_by?.endsWith('updated_at') ? 'updated_at' : 'created_at',
+              order: queryParams.sort_by?.startsWith('-') ? 'desc' : 'asc',
+            }}
             items={[
               { value: 'created_at', name: t(($) => $['table.header.time'], { ns: 'appLog' }) },
               {
@@ -133,8 +135,8 @@ const Filter: FC<IFilterProps> = ({
                 name: t(($) => $['table.header.updatedTime'], { ns: 'appLog' }),
               },
             ]}
-            onSelect={(value) => {
-              setQueryParams({ ...queryParams, sort_by: value as QueryParam['sort_by'] })
+            onValueChange={({ field, order }) => {
+              setQueryParams({ ...queryParams, sort_by: order === 'desc' ? `-${field}` : field })
             }}
           />
         </>

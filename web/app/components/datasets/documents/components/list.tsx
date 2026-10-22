@@ -1,6 +1,7 @@
 'use client'
 
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { SortType } from '@/service/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { Pagination } from '@langgenius/dify-ui/pagination'
@@ -43,7 +44,7 @@ type DocumentListProps = {
   onUpdate: () => void
   onManageMetadata: () => void
   remoteSortValue: string
-  onSortChange: (value: string) => void
+  onSortChange: (value: SortType) => void
 }
 
 /**
