@@ -81,7 +81,7 @@ def test_wrong_provider_cannot_route_or_consume_attempt(harness: OAuthHarness) -
 
 
 @pytest.mark.parametrize("phase", ["before_exchange", "during_exchange"])
-@pytest.mark.parametrize("change", ["client", "workflow", "owner", "account", "site"])
+@pytest.mark.parametrize("change", ["client", "workflow", "owner", "account"])
 def test_callback_revalidates_context_after_redirect_and_external_io(
     harness: OAuthHarness, phase: str, change: str
 ) -> None:
@@ -105,14 +105,12 @@ def test_callback_revalidates_context_after_redirect_and_external_io(
                     .where(EndUser.id == harness.base.context.end_user_id)
                     .values(account_id=str(uuid4()))
                 )
-            elif change == "account":
+            else:
                 session.execute(
                     sa.update(Account)
                     .where(Account.id == harness.base.context.account_id)
                     .values(status=AccountStatus.BANNED)
                 )
-            else:
-                session.execute(sa.delete(Site).where(Site.app_id == harness.base.context.app_id))
 
     if phase == "before_exchange":
         mutate()
@@ -125,6 +123,46 @@ def test_callback_revalidates_context_after_redirect_and_external_io(
         harness.finish(started)
     with harness.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnection)) == 0
+
+
+@pytest.mark.parametrize("operation", ["create", "reauthorize"])
+@pytest.mark.parametrize("phase", ["before_exchange", "during_exchange"])
+@pytest.mark.parametrize("change", ["code", "deleted"])
+def test_oauth_does_not_depend_on_site_after_authenticated_start(
+    harness: OAuthHarness, operation: str, phase: str, change: str
+) -> None:
+    original = harness.finish(harness.start()) if operation == "reauthorize" else None
+    started = (
+        harness.service.reauthorize_oauth(
+            harness.base.context, original.id, callback_url="http://web-api.example/api/connections/oauth"
+        )
+        if original is not None
+        else harness.start()
+    )
+    assert all('"app_code"' not in value for value in harness.redis_values.values())
+
+    def mutate() -> None:
+        with harness.base.sessions.begin() as session:
+            query = sa.update(Site).where(Site.app_id == harness.base.context.app_id)
+            if change == "code":
+                session.execute(query.values(code="rotated-code"))
+            else:
+                session.execute(sa.delete(Site).where(Site.app_id == harness.base.context.app_id))
+
+    if phase == "before_exchange":
+        mutate()
+    else:
+        harness.handler.on_exchange = mutate
+
+    connection = harness.finish(started)
+    assert connection.credential_status == ConnectionCredentialStatus.CONNECTED
+    stored = harness.base.repository.find(harness.base.context, connection.id)
+    assert stored is not None
+    assert stored.access.tenant_id == harness.base.context.tenant_id
+    assert stored.access.owner == harness.base.context.owner
+    if original is not None:
+        assert connection.id == original.id
+        assert stored.access.revision == 2
 
 
 def test_reauthorization_preserves_id_and_name_and_replaces_grant(harness: OAuthHarness) -> None:
@@ -143,7 +181,6 @@ def test_reauthorization_preserves_id_and_name_and_replaces_grant(harness: OAuth
     started = harness.service.reauthorize_oauth(
         harness.base.context,
         connection.id,
-        app_code=harness.app_code,
         callback_url="http://web-api.example/api/connections/oauth",
     )
     harness.handler.result = harness.handler.result.model_copy(
@@ -169,7 +206,6 @@ def test_reauthorization_never_overwrites_concurrent_changes(harness: OAuthHarne
     started = harness.service.reauthorize_oauth(
         harness.base.context,
         connection.id,
-        app_code=harness.app_code,
         callback_url="http://web-api.example/api/connections/oauth",
     )
 
@@ -199,7 +235,6 @@ def test_failed_reauthorization_keeps_working_credentials(harness: OAuthHarness)
     started = harness.service.reauthorize_oauth(
         harness.base.context,
         connection.id,
-        app_code=harness.app_code,
         callback_url="http://web-api.example/api/connections/oauth",
     )
     harness.handler.result = harness.handler.result.model_copy(update={"credentials": {}})
@@ -241,7 +276,6 @@ def test_foreign_owner_cannot_reauthorize(harness: OAuthHarness) -> None:
         harness.service.reauthorize_oauth(
             foreign,
             connection.id,
-            app_code=harness.app_code,
             callback_url="http://web-api.example/api/connections/oauth",
         )
 

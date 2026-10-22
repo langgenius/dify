@@ -92,7 +92,6 @@ class OAuthHarness:
         return self.service.start_oauth(
             self.base.context,
             self.command(),
-            app_code=self.app_code,
             callback_url="http://web-api.example/api/connections/oauth",
         )
 

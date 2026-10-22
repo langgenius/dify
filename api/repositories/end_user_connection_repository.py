@@ -13,7 +13,7 @@ from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus
 from models.end_user_connection import EndUserConnection
 from models.enums import AppStatus, EndUserType
-from models.model import App, AppMode, EndUser, Site
+from models.model import App, AppMode, EndUser
 from models.provider_ids import ToolProviderID
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
@@ -235,19 +235,6 @@ class EndUserConnectionRepository:
     def validate_oauth_context(self, attempt: ConnectionOAuthAttempt) -> None:
         with self._sessions() as session:
             self._require_context(session, attempt.context, lock=False)
-            self._require_oauth_site(session, attempt, lock=False)
-
-    @staticmethod
-    def _require_oauth_site(session: Session, attempt: ConnectionOAuthAttempt, *, lock: bool) -> None:
-        statement = sa.select(Site.id).where(
-            Site.app_id == attempt.context.app_id,
-            Site.code == attempt.app_code,
-            Site.status == AppStatus.NORMAL,
-        )
-        if lock:
-            statement = statement.with_for_update()
-        if session.scalar(statement) is None:
-            raise ConnectionIdentityError()
 
     @staticmethod
     def _oauth_client_configuration(
@@ -295,7 +282,6 @@ class EndUserConnectionRepository:
         context = attempt.context
         with self._sessions.begin() as session:
             app = self._require_context(session, context, lock=True)
-            self._require_oauth_site(session, attempt, lock=True)
             current = self._oauth_client_configuration(session, context.tenant_id, attempt.provider, lock=True)
             client = attempt.client.reference
             if (

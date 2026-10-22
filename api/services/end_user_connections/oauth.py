@@ -57,8 +57,9 @@ class ResolvedOAuthClient:
 
 @dataclass(frozen=True)
 class ConnectionOAuthAttempt:
+    """Continue the authenticated owner context without binding to a Site code."""
+
     context: WebConnectionContext
-    app_code: str
     callback_url: str
     provider: str
     client: OAuthClientSnapshot
@@ -129,7 +130,7 @@ class OAuthConnectionService:
         self._cipher = cipher
 
     def start_oauth(
-        self, context: WebConnectionContext, command: StartConnectionOAuthInput, *, app_code: str, callback_url: str
+        self, context: WebConnectionContext, command: StartConnectionOAuthInput, *, callback_url: str
     ) -> ConnectionOAuthStart:
         target = self._targets.resolve(context, command)
         client = self._gateway.resolve_client(context.tenant_id, target.provider)
@@ -142,7 +143,6 @@ class OAuthConnectionService:
         )
         return self._start(
             context,
-            app_code,
             target.provider,
             client,
             callback_url=callback_url,
@@ -152,13 +152,12 @@ class OAuthConnectionService:
         )
 
     def reauthorize_oauth(
-        self, context: WebConnectionContext, connection_id: str, *, app_code: str, callback_url: str
+        self, context: WebConnectionContext, connection_id: str, *, callback_url: str
     ) -> ConnectionOAuthStart:
         record = self._load(context, connection_id)
         client = self._gateway.resolve_client(context.tenant_id, record.access.provider)
         return self._start(
             context,
-            app_code,
             record.access.provider,
             client,
             callback_url=callback_url,
@@ -170,7 +169,6 @@ class OAuthConnectionService:
     def _start(
         self,
         context: WebConnectionContext,
-        app_code: str,
         provider: str,
         client: ResolvedOAuthClient,
         *,
@@ -186,7 +184,6 @@ class OAuthConnectionService:
             raise ConnectionOAuthError()
         attempt = ConnectionOAuthAttempt(
             context=context,
-            app_code=app_code,
             callback_url=f"{callback_url}/{provider}/callback",
             provider=provider,
             client=client.snapshot,

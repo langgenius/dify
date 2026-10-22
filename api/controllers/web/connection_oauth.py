@@ -6,7 +6,6 @@ from flask import Response, make_response, request
 from flask_restx import Resource
 from pydantic import ValidationError
 
-from constants import HEADER_NAME_APP_CODE
 from controllers.common.end_user_connection_oauth import complete_end_user_connection_oauth
 from controllers.common.end_user_connections import (
     ConnectionCheckUnavailableHTTPError,
@@ -80,7 +79,6 @@ class EndUserConnectionOAuthApi(WebApiResource):
             result = application_services().end_user_connection_oauth.start_oauth(
                 context,
                 payload,
-                app_code=request.headers[HEADER_NAME_APP_CODE],
                 callback_url=request.url_root.rstrip("/") + "/api/connections/oauth",
             )
         except ValidationError:
@@ -108,7 +106,6 @@ class EndUserConnectionReauthorizeApi(WebApiResource):
             result = application_services().end_user_connection_oauth.reauthorize_oauth(
                 _context(app_model, end_user),
                 str(connection_id),
-                app_code=request.headers[HEADER_NAME_APP_CODE],
                 callback_url=request.url_root.rstrip("/") + "/api/connections/oauth",
             )
         except ConnectionError as error:
