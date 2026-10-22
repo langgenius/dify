@@ -1,6 +1,8 @@
 import { useAtomValue, useStore } from 'jotai'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { difyBuilderPendingCreationAtom } from '../creation'
+import { requestErrorMessage } from '../session/errors'
 import {
   difyBuilderDeriveAppNameAtom,
   difyBuilderDraftAtom,
@@ -21,6 +23,7 @@ export const DifyBuilderCreationStart = ({
   canStartCreation: boolean
   enabled: boolean
 }) => {
+  const { t } = useTranslation(['difyBuilder'])
   const pendingCreation = useAtomValue(difyBuilderPendingCreationAtom)
   const store = useStore()
   const { model, isLoading } = useDifyBuilderModel({
@@ -52,11 +55,12 @@ export const DifyBuilderCreationStart = ({
       .then((started) => {
         if (!started) restorePrompt()
       })
-      .catch((error: unknown) => {
+      .catch(async (error: unknown) => {
         restorePrompt()
-        store.set(difyBuilderLocalErrorAtom, String(error))
+        const reason = await requestErrorMessage(error, '')
+        store.set(difyBuilderLocalErrorAtom, t(($) => $.creationStartFailed, { reason }).trim())
       })
-  }, [appId, canEdit, canStartCreation, enabled, isLoading, model, pendingCreation, store])
+  }, [appId, canEdit, canStartCreation, enabled, isLoading, model, pendingCreation, store, t])
 
   return null
 }

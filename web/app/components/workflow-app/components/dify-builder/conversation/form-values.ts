@@ -216,3 +216,18 @@ export const prepareFormValues = (fields: FormField[], values: Record<string, un
 
   return { errors, preparedValues, valid }
 }
+
+export const getFormActionPayload = (
+  actionId: string,
+  fields: FormField[],
+  preparedValues: Record<string, unknown>,
+) => {
+  const payload = { ...preparedValues }
+  if (actionId === 'provide_testdata') return { mode: 'provide', inputs: payload }
+
+  // Requirements and edit rules merge into existing values; null clears a field.
+  fields.forEach(({ key }) => {
+    if (!(key in payload)) payload[key] = null
+  })
+  return payload
+}

@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "Không thể làm mới vùng làm việc của quy trình. {{reason}}",
   "cardCategory.checks": "Kiểm tra",
   "cardCategory.form": "Biểu mẫu",
   "cardCategory.plan": "Kế hoạch",
@@ -270,6 +271,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "Không",
   "copy.values.yes": "Có",
+  "creationStartFailed": "Không thể khởi động App Builder. {{reason}}",
   "emptyBuildTitle": "Chưa có gì ở đây",
   "emptyDescription": "Hãy cho tôi biết bạn muốn xây dựng gì — tôi sẽ trình bày kế hoạch trước. Chỉ bắt đầu xây dựng khi bạn phê duyệt.",
   "exportDebugLog": "Xuất nhật ký gỡ lỗi",

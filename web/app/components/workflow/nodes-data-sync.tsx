@@ -17,7 +17,10 @@ const WorkflowNodesDataSync = memo(() => {
         nodes.length !== previousNodes.length ||
         nodes.some((node, index) => {
           const previousNode = previousNodes[index]!
-          return node.id !== previousNode.id || !isEqual(node.data, previousNode.data)
+          return (
+            node.id !== previousNode.id ||
+            (node.data !== previousNode.data && !isEqual(node.data, previousNode.data))
+          )
         })
 
       if (changed) setNodes(nodes)

@@ -15,7 +15,7 @@ import {
 } from '../session/state'
 
 const mocks = vi.hoisted(() => ({
-  fileUploader: vi.fn(),
+  fileUploader: vi.fn<(config: FileUpload, onChange: (files: FileEntity[]) => void) => void>(),
   markdown: vi.fn(),
 }))
 
@@ -45,7 +45,7 @@ vi.mock('@/app/components/base/file-uploader', () => ({
     isDisabled?: boolean
     onChange: (files: FileEntity[]) => void
   }) => {
-    mocks.fileUploader(fileConfig)
+    mocks.fileUploader(fileConfig, onChange)
     const pendingFile: FileEntity = {
       id: 'pending-file',
       name: 'pending.pdf',
@@ -218,9 +218,7 @@ describe('DifyBuilderConversation test data form', () => {
     expect(query).toHaveAttribute('maxlength', '5')
     expect(query).toHaveAttribute('placeholder', 'Ask')
     expect(locale).toHaveTextContent('en')
-    await waitFor(() => {
-      expect(onActionValidityChange).toHaveBeenLastCalledWith('provide_testdata', false)
-    })
+    expect(query).toHaveValue('')
 
     await user.click(locale)
     await user.click(screen.getByRole('option', { name: 'zh' }))
@@ -364,6 +362,54 @@ describe('DifyBuilderConversation test data form', () => {
     expect(onActionValidityChange).toHaveBeenLastCalledWith('provide_testdata', true)
   })
 
+  it('merges concurrent upload completions with the latest text input', async () => {
+    const user = userEvent.setup()
+    const { onActionPayloadChange } = renderForm([
+      { key: 'topic', label: 'Topic', type: 'text' },
+      { key: 'first', label: 'First document', type: 'file' },
+      { key: 'second', label: 'Second document', type: 'file' },
+    ])
+    const completeFirst = mocks.fileUploader.mock.calls[0]![1]
+    const completeSecond = mocks.fileUploader.mock.calls[1]![1]
+    const uploadedFile: FileEntity = {
+      id: 'upload-first',
+      name: 'first.pdf',
+      size: 512,
+      type: 'application/pdf',
+      progress: 100,
+      transferMethod: 'local_file',
+      supportFileType: 'document',
+      uploadedId: 'upload-first',
+    }
+    await user.type(screen.getByRole('textbox', { name: 'Topic' }), 'Keep this input')
+
+    // Two independent network completions can arrive in the same React batch.
+    act(() => {
+      completeFirst([uploadedFile])
+      completeSecond([{ ...uploadedFile, id: 'upload-second', uploadedId: 'upload-second' }])
+    })
+
+    expect(onActionPayloadChange).toHaveBeenLastCalledWith('provide_testdata', {
+      mode: 'provide',
+      inputs: {
+        topic: 'Keep this input',
+        first: {
+          type: 'document',
+          transfer_method: 'local_file',
+          url: '',
+          upload_file_id: 'upload-first',
+        },
+        second: {
+          type: 'document',
+          transfer_method: 'local_file',
+          url: '',
+          upload_file_id: 'upload-second',
+        },
+      },
+    })
+    expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveValue('Keep this input')
+  })
+
   it('preserves form input while the isolated assistant tail streams', async () => {
     const user = userEvent.setup()
     const store = createStore()
@@ -481,7 +527,7 @@ describe('DifyBuilderConversation test data form', () => {
     await user.click(within(thinking).getByText(/thinking/i))
     expect(screen.getByText('Inspecting the workflow.')).toBeInTheDocument()
     expect(mocks.markdown).toHaveBeenCalledWith(
-      expect.objectContaining({ content: 'Inspecting the workflow.' }),
+      expect.objectContaining({ content: 'Inspecting the workflow.', mode: 'streaming' }),
     )
     expect(onStreamingContentChange).toHaveBeenCalledTimes(2)
 
@@ -522,7 +568,9 @@ describe('DifyBuilderConversation test data form', () => {
     )
 
     expect(mocks.markdown).toHaveBeenCalledTimes(1)
-    expect(mocks.markdown).toHaveBeenCalledWith(expect.objectContaining({ content: replyText }))
+    expect(mocks.markdown).toHaveBeenCalledWith(
+      expect.objectContaining({ content: replyText, mode: 'static' }),
+    )
   })
 
   it('renders user and assistant text without message actions', () => {
@@ -643,6 +691,9 @@ describe('DifyBuilderConversation test data form', () => {
     expect(within(log).getByRole('heading', { name: 'difyBuilder.panelTitle' })).toBeInTheDocument()
     expect(log).toContainElement(screen.getByText('The plan is ready.'))
     expect(log).not.toContainElement(screen.getByText('Streaming reply'))
+    expect(mocks.markdown).toHaveBeenCalledWith(
+      expect.objectContaining({ content: 'Streaming reply', mode: 'streaming' }),
+    )
   })
 
   it('keeps a stable status while an assistant reply streams without execution steps', () => {
@@ -1104,6 +1155,12 @@ describe('DifyBuilderConversation test data form', () => {
       screen.getByText('The workflow needs one input and one answer node.'),
     ).toBeInTheDocument()
     expect(screen.getByText('The plan is ready.')).toBeInTheDocument()
+    expect(mocks.markdown).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: 'The workflow needs one input and one answer node.',
+        mode: 'static',
+      }),
+    )
   })
 
   it('renders change summaries as ordinary assistant text', () => {
@@ -1300,6 +1357,33 @@ describe('DifyBuilderConversation test data form', () => {
     expect(card).toHaveTextContent('difyBuilder.plan.stepCount:{"count":2}')
     expect(card).toHaveTextContent('difyBuilder.plan.ready')
     expect(within(card).getAllByRole('listitem')).toHaveLength(2)
+  })
+
+  it('keeps repeated plan steps and removes them when the plan is replaced', () => {
+    const plan = (items: string[]): ConversationItem => ({
+      seq: 0,
+      at_version: 2,
+      kind: 'plan',
+      payload: { title: 'Plan', input_summary: 'Input', output_summary: 'Output', items },
+    })
+    const { rerender } = render(
+      <DifyBuilderConversation
+        busy={false}
+        interrupted={false}
+        items={[plan(['Inspect', 'Inspect', 'Finish'])]}
+      />,
+    )
+    const card = screen.getByRole('article', { name: 'difyBuilder.cardCategory.plan' })
+    expect(within(card).getAllByRole('listitem')).toHaveLength(3)
+    expect(within(card).getAllByText('Inspect')).toHaveLength(2)
+    expect(card).toHaveTextContent('difyBuilder.plan.stepCount:{"count":3}')
+
+    rerender(
+      <DifyBuilderConversation busy={false} interrupted={false} items={[plan(['Finish'])]} />,
+    )
+    expect(within(card).getAllByRole('listitem')).toHaveLength(1)
+    expect(within(card).queryByText('Inspect')).not.toBeInTheDocument()
+    expect(card).toHaveTextContent('difyBuilder.plan.stepCount:{"count":1}')
   })
 
   it('renders failed test result content in the card framework', () => {

@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "İş akışı tuvali yenilenemedi. {{reason}}",
   "cardCategory.checks": "Kontroller",
   "cardCategory.form": "Form",
   "cardCategory.plan": "Plan",
@@ -270,6 +271,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "Hayır",
   "copy.values.yes": "Evet",
+  "creationStartFailed": "App Builder başlatılamadı. {{reason}}",
   "emptyBuildTitle": "Burada henüz bir şey yok",
   "emptyDescription": "Ne oluşturmak istediğinizi söyleyin — önce size bir plan göstereceğim. Siz onaylayana kadar hiçbir şey oluşturulmaz.",
   "exportDebugLog": "Hata ayıklama günlüğünü dışa aktar",

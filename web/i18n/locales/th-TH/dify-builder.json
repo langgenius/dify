@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "ไม่สามารถรีเฟรชพื้นที่เวิร์กโฟลว์ได้ {{reason}}",
   "cardCategory.checks": "การตรวจสอบ",
   "cardCategory.form": "แบบฟอร์ม",
   "cardCategory.plan": "แผน",
@@ -270,6 +271,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "ไม่ใช่",
   "copy.values.yes": "ใช่",
+  "creationStartFailed": "ไม่สามารถเริ่ม App Builder ได้ {{reason}}",
   "emptyBuildTitle": "ยังไม่มีอะไรที่นี่",
   "emptyDescription": "บอกฉันว่าคุณต้องการสร้างอะไร — ฉันจะแสดงแผนให้คุณดูก่อน จะยังไม่มีการสร้างอะไรจนกว่าคุณจะอนุมัติ",
   "exportDebugLog": "ส่งออกบันทึกการดีบัก",
