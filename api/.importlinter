@@ -1210,3 +1210,17 @@ forbidden_modules =
     services.account.adapters
     sqlalchemy
     werkzeug
+
+[importlinter:contract:trigger-oauth-client-service-boundary]
+name = Trigger OAuth client orchestration does not directly depend on persistence or HTTP
+type = forbidden
+source_modules =
+    services.trigger.oauth_client_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    repositories
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
