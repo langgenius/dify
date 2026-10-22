@@ -2701,6 +2701,7 @@ export type PostAppsAnnotationReplyByActionData = {
 }
 
 export type PostAppsAnnotationReplyByActionErrors = {
+  400: InvalidActionError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   default: ErrorResponse

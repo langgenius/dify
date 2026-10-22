@@ -348,6 +348,7 @@ export const post = oc
     }),
   )
   .output(zPostAppsAnnotationReplyByActionResponse)
+  .errors({ invalid_action: { status: 400, data: zInvalidActionError } })
 
 export const byAction = {
   post,
