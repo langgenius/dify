@@ -1022,6 +1022,10 @@ def test_build_application_services_wires_credential_query(
         services.workspaces.trigger_builders._create_subscription
         == services.workspaces.trigger_subscription_management.create
     )
+    assert (
+        services.workspaces.trigger_endpoints._subscriptions
+        is services.workspaces.trigger_subscription_management._subscriptions
+    )
 
 
 def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(

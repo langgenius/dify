@@ -19,6 +19,8 @@ from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
 from services.credentials.query import CredentialQuery
 from services.file_service import FileService
+from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
+from services.trigger.endpoint_service import TriggerEndpointService
 from services.trigger.oauth_client_service import TriggerOAuthClientService
 from services.trigger.oauth_gateway import (
     OAuthProxyContextGateway,
@@ -31,6 +33,7 @@ from services.trigger.provider_query import TriggerProviderQuery
 from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
 from services.trigger.subscription_service import TriggerSubscriptionService
+from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.workspace.gateways import (
     DeploymentWorkspaceCreationPolicy,
@@ -71,6 +74,7 @@ class WorkspaceServices:
     trigger_subscriptions: TriggerSubscriptionQueryService
     trigger_subscription_management: TriggerSubscriptionService
     trigger_builders: TriggerSubscriptionBuilderService
+    trigger_endpoints: TriggerEndpointService
     trigger_oauth_clients: TriggerOAuthClientService
     trigger_oauth: TriggerOAuthService
 
@@ -111,8 +115,9 @@ def build_workspace_services(
     credentials: CredentialQuery,
 ) -> WorkspaceServices:
     trigger_providers = PluginTriggerProviderQuery()
+    subscriptions = TriggerSubscriptionRepository(session_factory=database_client)
     trigger_subscription_management = TriggerSubscriptionService(
-        subscriptions=TriggerSubscriptionRepository(session_factory=database_client),
+        subscriptions=subscriptions,
         providers=PluginTriggerSubscriptionGateway(),
         locks=RedisTriggerSubscriptionLocks(redis=redis),
         invalidate_cache=delete_cache_for_subscription,
@@ -164,6 +169,12 @@ def build_workspace_services(
         trigger_subscriptions=TriggerSubscriptionQueryService(credentials=credentials, schemas=trigger_providers),
         trigger_subscription_management=trigger_subscription_management,
         trigger_builders=trigger_builders,
+        trigger_endpoints=TriggerEndpointService(
+            subscriptions=subscriptions,
+            provider=PluginTriggerEndpointGateway(),
+            requests=TriggerHttpRequestCachingService,
+            publish=enqueue_triggered_workflows,
+        ),
         trigger_oauth_clients=trigger_oauth_clients,
         trigger_oauth=TriggerOAuthService(
             clients=trigger_oauth_clients,
