@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "Đã loại trừ {{items}} vì quyền truy cập không còn khả dụng.",
   "personalAccessToken.expiration": "Thời hạn",
   "personalAccessToken.expired": "Đã hết hạn",
+  "personalAccessToken.expiredDate": "Đã hết hạn · {{date}}",
   "personalAccessToken.expires": "Hết hạn",
   "personalAccessToken.howToUseIt": "Cách sử dụng",
   "personalAccessToken.lastUsed": "Lần dùng gần nhất",

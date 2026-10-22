@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "Giriş artıq əlçatan olmadığı üçün {{items}} istisna edildi.",
   "personalAccessToken.expiration": "Etibarlılıq müddəti",
   "personalAccessToken.expired": "Vaxtı bitib",
+  "personalAccessToken.expiredDate": "Vaxtı bitib · {{date}}",
   "personalAccessToken.expires": "Bitmə vaxtı",
   "personalAccessToken.howToUseIt": "Necə istifadə etməli",
   "personalAccessToken.lastUsed": "Son istifadə",

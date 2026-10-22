@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "{{items}} excluídos porque o acesso não está mais disponível.",
   "personalAccessToken.expiration": "Validade",
   "personalAccessToken.expired": "Expirado",
+  "personalAccessToken.expiredDate": "Expirado · {{date}}",
   "personalAccessToken.expires": "Expira em",
   "personalAccessToken.howToUseIt": "Como usar",
   "personalAccessToken.lastUsed": "Último uso",
