@@ -79,7 +79,7 @@ export const DifyBuilderPanelFooter = ({
   focusTargetRef: RefObject<HTMLElement | null>
 }) => {
   const { locale } = useBuilderText()
-  const { t } = useTranslation(['common'], { lng: locale })
+  const { t } = useTranslation(['common', 'workflow'], { lng: locale })
   const canvasRefreshFailed = useAtomValue(difyBuilderCanvasRefreshFailedAtom)
   const canvasRefreshing = useAtomValue(difyBuilderCanvasRefreshingAtom)
   const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
@@ -132,7 +132,7 @@ export const DifyBuilderPanelFooter = ({
             disabled={interactionBusy && !canvasRefreshing}
             onClick={() => retryCanvasRefresh()}
           >
-            {t(($) => $['operation.retry'], { ns: 'common' })}
+            {t(($) => $['common.retryCanvasSync'], { ns: 'workflow' })}
           </Button>
         </div>
       )}
