@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "워크플로 캔버스를 새로 고치지 못했습니다. {{reason}}",
   "cardCategory.checks": "검사",
   "cardCategory.form": "양식",
   "cardCategory.plan": "계획",
@@ -270,6 +271,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "아니요",
   "copy.values.yes": "예",
+  "creationStartFailed": "App Builder를 시작하지 못했습니다. {{reason}}",
   "emptyBuildTitle": "아직 아무것도 없어요",
   "emptyDescription": "무엇을 만들고 싶은지 알려주세요. 먼저 계획을 보여드릴게요. 승인하기 전에는 아무것도 만들지 않아요.",
   "exportDebugLog": "디버그 로그 내보내기",

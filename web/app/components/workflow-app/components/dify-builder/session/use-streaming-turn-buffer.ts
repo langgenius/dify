@@ -2,6 +2,7 @@
 
 import type { DifyBuilderAgentMessageEventData } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { DifyBuilderStreamingTurn } from '../types'
+import type { ScheduledFrame } from './streaming-text'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
@@ -10,46 +11,14 @@ import {
   difyBuilderSessionViewAtom,
   difyBuilderStreamingTurnAtom,
 } from './state'
-
-type ScheduledFrame = {
-  animationFrameId: number | null
-  timeoutId: ReturnType<typeof globalThis.setTimeout>
-}
-
-const FRAME_FALLBACK_MS = 100
-
-const scheduleFrame = (callback: () => void): ScheduledFrame => {
-  if (
-    typeof globalThis.requestAnimationFrame === 'function' &&
-    (typeof document === 'undefined' || document.visibilityState !== 'hidden')
-  ) {
-    let animationFrameId = 0
-    const timeoutId = globalThis.setTimeout(() => {
-      if (typeof globalThis.cancelAnimationFrame === 'function')
-        globalThis.cancelAnimationFrame(animationFrameId)
-      callback()
-    }, FRAME_FALLBACK_MS)
-    animationFrameId = globalThis.requestAnimationFrame(() => {
-      globalThis.clearTimeout(timeoutId)
-      callback()
-    })
-    return {
-      animationFrameId,
-      timeoutId,
-    }
-  }
-
-  return {
-    animationFrameId: null,
-    timeoutId: globalThis.setTimeout(callback, 16),
-  }
-}
-
-const cancelFrame = (frame: ScheduledFrame) => {
-  globalThis.clearTimeout(frame.timeoutId)
-  if (frame.animationFrameId !== null && typeof globalThis.cancelAnimationFrame === 'function')
-    globalThis.cancelAnimationFrame(frame.animationFrameId)
-}
+import {
+  cancelFrame,
+  scheduleFrame,
+  STREAM_CHARACTERS_PER_UPDATE,
+  STREAM_FIRST_FRAME_CHARACTERS,
+  STREAM_MAX_PENDING_CHARACTERS,
+  STREAM_UPDATE_INTERVAL_MS,
+} from './streaming-text'
 
 const toStreamingTurn = (message: DifyBuilderAgentMessageEventData): DifyBuilderStreamingTurn => ({
   sessionId: message.session_id,
@@ -72,10 +41,6 @@ const isSameTurn = (left: DifyBuilderStreamingTurn, right: DifyBuilderStreamingT
   left.atVersion === right.atVersion
 
 const utf8ByteLength = (text: string) => new TextEncoder().encode(text).byteLength
-const STREAM_FIRST_FRAME_CHARACTERS = 24
-const STREAM_CHARACTERS_PER_UPDATE = 120
-const STREAM_UPDATE_INTERVAL_MS = 80
-const STREAM_MAX_PENDING_CHARACTERS = 2048
 
 type FinishWaiter = {
   turn: DifyBuilderStreamingTurn

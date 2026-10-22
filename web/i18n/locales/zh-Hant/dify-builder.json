@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "重新整理工作流程畫布失敗。{{reason}}",
   "cardCategory.checks": "檢查",
   "cardCategory.form": "表單",
   "cardCategory.plan": "計畫",
@@ -270,6 +271,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "否",
   "copy.values.yes": "是",
+  "creationStartFailed": "啟動 App Builder 失敗。{{reason}}",
   "emptyBuildTitle": "這裡還沒有內容",
   "emptyDescription": "告訴我你想建立什麼，我會先展示計畫。確認後才會開始建立。",
   "exportDebugLog": "匯出偵錯日誌",
