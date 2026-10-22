@@ -125,6 +125,14 @@ const findSettings = async () => {
 const expectMembers = () =>
   screen.findByRole('columnheader', { name: 'workspaceMembers.members.name' })
 
+it('exposes the Members content title as a heading', async () => {
+  renderSettings()
+  const dialog = await findSettings()
+  expect(
+    within(dialog).getByRole('heading', { name: 'navigation.settings.members', level: 3 }),
+  ).toBeVisible()
+})
+
 beforeEach(() => {
   featureFlags.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN = true
 })
