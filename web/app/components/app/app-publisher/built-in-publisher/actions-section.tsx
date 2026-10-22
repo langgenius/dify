@@ -79,7 +79,7 @@ export function PublisherActionsSection({
   const isEvaluationWorkflow = workflowKind === 'evaluation'
   const evaluationTargetKind: WorkflowKind = isEvaluationWorkflow ? 'standard' : 'evaluation'
   const showEvaluationWorkflowAction =
-    appMode === AppModeEnum.WORKFLOW &&
+    appMode === 'workflow' &&
     (hasPublishedVersion ? Boolean(onConvertWorkflowKind) : Boolean(onPublishEvaluation))
   const evaluationWorkflowActionLabel = !hasPublishedVersion
     ? t(($) => $['common.publishAsEvaluationWorkflow'], { ns: 'workflow' })

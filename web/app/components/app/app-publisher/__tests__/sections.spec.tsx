@@ -600,7 +600,7 @@ describe('app-publisher sections', () => {
       render(
         <PublisherActionsSection
           appId="workflow-app"
-          appMode={AppModeEnum.WORKFLOW}
+          appMode="workflow"
           appURL="https://example.com/app"
           canViewAccessPoint={false}
           disabledFunctionButton={false}
