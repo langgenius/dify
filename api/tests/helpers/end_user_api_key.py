@@ -8,9 +8,10 @@ from typing import Any, override
 from sqlalchemy.orm import Session, sessionmaker
 
 from clients.plugin.auth import PluginCredentialAuthClient
-from clients.plugin.auth_entities import CredentialCheckResult
+from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ToolEntity,
@@ -19,6 +20,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderIdentity,
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
+from extensions.ext_redis import redis_client
 from libs.uuid_utils import uuidv7
 from models.account import Account, AccountStatus
 from models.enums import AppStatus, EndUserType
@@ -26,10 +28,12 @@ from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway, PublishedConnectionTargetResolver
-from services.end_user_connections.api_key import ApiKeyConnectionService
+from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway, RedisOAuthRefreshLocks
 from services.end_user_connections.contracts import CreateApiKeyConnectionInput
 from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionConfigurationError
+from services.end_user_connections.management import ConnectionService
+from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
 
 PROVIDER = "vendor/calendar/calendar"
 
@@ -39,6 +43,11 @@ class ScriptedAuth(PluginCredentialAuthClient):
         self.result = CredentialCheckResult(status="valid", reason_code=None, retryable=False, checked_at=1792540800)
         self.on_check: Callable[[], None] | None = None
         self.calls: list[tuple[str, str, str, dict[str, Any]]] = []
+        self.credential_types: list[CredentialType] = []
+        self.check_error: Exception | None = None
+        self.revoke_result = OAuthRevokeResult(status="revoked", reason_code=None, retryable=False)
+        self.on_revoke: Callable[[], None] | None = None
+        self.revocations: list[tuple[str, str, str, dict[str, Any], dict[str, Any]]] = []
 
     @override
     def check_provider_credentials(
@@ -50,12 +59,30 @@ class ScriptedAuth(PluginCredentialAuthClient):
         credentials: Mapping[str, Any],
         credential_type: CredentialType,
     ) -> CredentialCheckResult:
-        assert credential_type == CredentialType.API_KEY
+        self.credential_types.append(credential_type)
         self.calls.append((tenant_id, user_id, provider, dict(credentials)))
         if callback := self.on_check:
             self.on_check = None
             callback()
+        if self.check_error is not None:
+            raise self.check_error
         return self.result
+
+    @override
+    def revoke_credentials(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        provider: str,
+        system_credentials: Mapping[str, Any],
+        credentials: Mapping[str, Any],
+    ) -> OAuthRevokeResult:
+        self.revocations.append((tenant_id, user_id, provider, dict(system_credentials), dict(credentials)))
+        if callback := self.on_revoke:
+            self.on_revoke = None
+            callback()
+        return self.revoke_result
 
 
 def plugin_provider(tenant_id: str) -> PluginToolProviderController:
@@ -112,7 +139,7 @@ class ConnectionHarness:
     context: WebConnectionContext
     workflow_id: str
     repository: EndUserConnectionRepository
-    service: ApiKeyConnectionService
+    service: ConnectionService
     auth: ScriptedAuth
     cipher: TestCipher
     sessions: sessionmaker[Session]
@@ -192,10 +219,18 @@ def make_harness(sessions: sessionmaker[Session]) -> ConnectionHarness:
     auth = ScriptedAuth()
     cipher = TestCipher()
     gateway = TestProviders(auth, plugin_provider(tenant_id))
-    service = ApiKeyConnectionService(
+    service = ConnectionService(
         store=repository,
         targets=PublishedConnectionTargetResolver(workflows=repository, providers=gateway),
         credentials=gateway,
         cipher=cipher,
+        oauth=OAuthConnectionLifecycleService(
+            store=repository,
+            cipher=cipher,
+            refresh_locks=RedisOAuthRefreshLocks(redis=redis_client),
+            gateway=PluginConnectionOAuthGateway(
+                clients=repository, providers=gateway, handler=OAuthHandler(), auth=auth
+            ),
+        ),
     )
     return ConnectionHarness(context, workflow_id, repository, service, auth, cipher, sessions)

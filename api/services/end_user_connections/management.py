@@ -1,4 +1,4 @@
-"""API-key Connection management with owner-scoped persistence and bounded writes."""
+"""Personal Connection management with owner-scoped persistence and bounded writes."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -80,7 +80,15 @@ class ApiKeyCredentialGateway(Protocol):
     ) -> CredentialCheckResult: ...
 
 
-class ApiKeyConnectionService:
+class OAuthConnectionLifecycle(Protocol):
+    def check(self, context: WebConnectionContext, record: StoredConnection) -> ConnectionCheckView: ...
+
+    def revoke_deleted(self, context: WebConnectionContext, record: StoredConnection) -> None:
+        """Best effort after a successful conditional delete; never restore the record."""
+        ...
+
+
+class ConnectionService:
     def __init__(
         self,
         *,
@@ -88,11 +96,13 @@ class ApiKeyConnectionService:
         targets: ConnectionTargetResolver,
         credentials: ApiKeyCredentialGateway,
         cipher: ConnectionCipher,
+        oauth: OAuthConnectionLifecycle,
     ) -> None:
         self._store = store
         self._targets = targets
         self._credentials = credentials
         self._cipher = cipher
+        self._oauth = oauth
 
     def list_connections(self, context: WebConnectionContext, query: ListConnectionsInput) -> ConnectionPage:
         try:
@@ -152,12 +162,14 @@ class ApiKeyConnectionService:
 
     def delete_connection(self, context: WebConnectionContext, connection_id: str) -> None:
         record = self._load(context, connection_id)
-        self._require_api_key(record)
         self._store.delete(context, connection_mutation_guard(context, record.access))
+        if record.access.credential_type == ConnectionCredentialType.OAUTH2:
+            self._oauth.revoke_deleted(context, record)
 
     def check_connection(self, context: WebConnectionContext, connection_id: str) -> ConnectionCheckView:
         record = self._load(context, connection_id)
-        self._require_api_key(record)
+        if record.access.credential_type == ConnectionCredentialType.OAUTH2:
+            return self._oauth.check(context, record)
         guard = connection_mutation_guard(context, record.access)
         credentials = self._cipher.decrypt(context.tenant_id, record.encrypted_credentials)
         result = self._credentials.check(context, record.access.provider, credentials)
@@ -184,7 +196,7 @@ class ApiKeyConnectionService:
 
     @staticmethod
     def _require_api_key(record: StoredConnection) -> None:
-        # OAuth deletion/checking must go through its refresh/revocation lifecycle.
+        # OAuth secrets can only change through authorization or refresh.
         if record.access.credential_type != ConnectionCredentialType.API_KEY:
             raise ConnectionConfigurationError()
 

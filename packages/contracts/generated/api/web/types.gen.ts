@@ -1731,7 +1731,7 @@ export type PostConnectionsByConnectionIdCheckErrors = {
   400: ConnectionConfigurationInvalidError | ErrorResponse
   401: EndUserLoginRequiredError | ErrorResponse
   404: ConnectionNotFoundError | ErrorResponse
-  409: ConnectionConflictError | ErrorResponse
+  409: ConnectionConflictError | ConnectionReauthorizationRequiredError | ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }

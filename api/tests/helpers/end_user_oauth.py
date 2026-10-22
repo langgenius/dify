@@ -7,6 +7,7 @@ from typing import Any, override
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
+from redis.exceptions import LockError
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import Request
 
@@ -22,9 +23,15 @@ from models.model import Site
 from models.tools import ToolOAuthTenantClient
 from models.workflow import Workflow
 from services.end_user_connection_adapters import PublishedConnectionTargetResolver
-from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway, RedisConnectionOAuthAttempts
+from services.end_user_connection_oauth_adapters import (
+    PluginConnectionOAuthGateway,
+    RedisConnectionOAuthAttempts,
+    RedisOAuthRefreshLocks,
+)
 from services.end_user_connections.contracts import ConnectionOAuthStart, ConnectionSummary, StartConnectionOAuthInput
+from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
+from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
 from tests.helpers.end_user_api_key import PROVIDER, ConnectionHarness, TestProviders, make_harness, plugin_provider
 
 
@@ -38,6 +45,13 @@ class ScriptedOAuthHandler(OAuthHandler):
         self.on_exchange: Callable[[], None] | None = None
         self.callback_headers: dict[str, str] = {}
         self.exchanges = 0
+        self.refreshes: list[dict[str, Any]] = []
+        self.on_refresh: Callable[[], None] | None = None
+        self.refresh_error: Exception | None = None
+        self.refresh_result = PluginOAuthCredentialsResponse(
+            credentials={"access_token": "new-access-secret"},
+            expires_at=2000000000,
+        )
 
     @override
     def get_authorization_url(
@@ -71,6 +85,44 @@ class ScriptedOAuthHandler(OAuthHandler):
             callback()
         return self.result
 
+    @override
+    def refresh_credentials(
+        self,
+        tenant_id: str,
+        user_id: str,
+        plugin_id: str,
+        provider: str,
+        redirect_uri: str,
+        system_credentials: Mapping[str, Any],
+        credentials: Mapping[str, Any],
+    ) -> PluginOAuthCredentialsResponse:
+        self.refreshes.append(dict(credentials))
+        if callback := self.on_refresh:
+            self.on_refresh = None
+            callback()
+        if self.refresh_error is not None:
+            raise self.refresh_error
+        return self.refresh_result
+
+
+class LocalRefreshLock:
+    def __init__(self) -> None:
+        self.held = False
+
+    def acquire(self) -> bool:
+        if self.held:
+            return False
+        self.held = True
+        return True
+
+    def owned(self) -> bool:
+        return self.held
+
+    def release(self) -> None:
+        if not self.held:
+            raise LockError("Lease lost")
+        self.held = False
+
 
 @dataclass
 class OAuthHarness:
@@ -82,6 +134,7 @@ class OAuthHarness:
     redis_values: dict[str, str]
     client_id: str
     app_code: str
+    locks: dict[str, LocalRefreshLock]
 
     def command(self) -> StartConnectionOAuthInput:
         return StartConnectionOAuthInput(
@@ -149,9 +202,19 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
     monkeypatch.setattr(redis_client, "setex", setex)
     monkeypatch.setattr(redis_client, "get", lambda key: values.get(key))
     monkeypatch.setattr(redis_client, "delete", lambda key: int(values.pop(key, None) is not None))
+    locks: dict[str, LocalRefreshLock] = {}
+
+    def lock(name: str, timeout: int, blocking: bool) -> LocalRefreshLock:
+        assert timeout == 60
+        assert not blocking
+        return locks.setdefault(name, LocalRefreshLock())
+
+    monkeypatch.setattr(redis_client, "lock", lock)
     providers = TestProviders(base.auth, controller)
     handler = ScriptedOAuthHandler()
-    gateway = PluginConnectionOAuthGateway(clients=base.repository, providers=providers, handler=handler)
+    gateway = PluginConnectionOAuthGateway(
+        clients=base.repository, providers=providers, handler=handler, auth=base.auth
+    )
     attempts = RedisConnectionOAuthAttempts()
     service = OAuthConnectionService(
         store=base.repository,
@@ -160,4 +223,16 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
         attempts=attempts,
         cipher=base.cipher,
     )
-    return OAuthHarness(base, service, gateway, handler, attempts, values, client_id, app_code)
+    base.service = ConnectionService(
+        store=base.repository,
+        targets=PublishedConnectionTargetResolver(workflows=base.repository, providers=providers),
+        credentials=providers,
+        cipher=base.cipher,
+        oauth=OAuthConnectionLifecycleService(
+            store=base.repository,
+            gateway=gateway,
+            cipher=base.cipher,
+            refresh_locks=RedisOAuthRefreshLocks(redis=redis_client),
+        ),
+    )
+    return OAuthHarness(base, service, gateway, handler, attempts, values, client_id, app_code, locks)

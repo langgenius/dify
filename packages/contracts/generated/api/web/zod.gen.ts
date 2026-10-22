@@ -2207,7 +2207,7 @@ export const zDeleteConnectionsByConnectionIdPath = z.object({
 })
 
 /**
- * API-key connection deleted
+ * Connection deleted
  */
 export const zDeleteConnectionsByConnectionIdResponse = z.void()
 

@@ -17,7 +17,6 @@ from models.model import App, AppMode, EndUser
 from models.provider_ids import ToolProviderID
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
-from services.end_user_connections.api_key import ConnectionChanges, StoredConnection
 from services.end_user_connections.contracts import ConnectionPage, ConnectionSummary, ListConnectionsInput
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
@@ -33,7 +32,13 @@ from services.end_user_connections.errors import (
     ConnectionReauthorizationRequiredError,
     ConnectionWorkflowChangedError,
 )
-from services.end_user_connections.oauth import ConnectionOAuthAttempt, StoredOAuthClientConfiguration
+from services.end_user_connections.management import ConnectionChanges, StoredConnection
+from services.end_user_connections.oauth import (
+    ConnectionOAuthAttempt,
+    ConnectionOAuthGrant,
+    OAuthClientSnapshot,
+    StoredOAuthClientConfiguration,
+)
 
 
 class EndUserConnectionRepository:
@@ -231,6 +236,80 @@ class EndUserConnectionRepository:
     def oauth_client_configuration(self, tenant_id: str, provider: str) -> StoredOAuthClientConfiguration:
         with self._sessions() as session:
             return self._oauth_client_configuration(session, tenant_id, provider, lock=False)
+
+    def oauth_grant_client_configuration(
+        self, tenant_id: str, provider: str, reference: ConnectionOAuthClient
+    ) -> StoredOAuthClientConfiguration:
+        identity = ToolProviderID(provider)
+        with self._sessions() as session:
+            if reference.source == OAuthClientSource.WORKSPACE:
+                row = session.scalar(
+                    sa.select(ToolOAuthTenantClient).where(
+                        ToolOAuthTenantClient.id == reference.configuration_id,
+                        ToolOAuthTenantClient.tenant_id == tenant_id,
+                        ToolOAuthTenantClient.plugin_id == identity.plugin_id,
+                        ToolOAuthTenantClient.provider == identity.provider_name,
+                    )
+                )
+            else:
+                row = session.scalar(
+                    sa.select(ToolOAuthSystemClient).where(
+                        ToolOAuthSystemClient.id == reference.configuration_id,
+                        ToolOAuthSystemClient.plugin_id == identity.plugin_id,
+                        ToolOAuthSystemClient.provider == identity.provider_name,
+                    )
+                )
+            if row is None:
+                raise ConnectionReauthorizationRequiredError()
+            return StoredOAuthClientConfiguration(
+                source=reference.source,
+                configuration_id=row.id,
+                encrypted_parameters=row.encrypted_oauth_params,
+            )
+
+    def update_oauth_check(
+        self,
+        context: WebConnectionContext,
+        guard: ConnectionMutationGuard,
+        *,
+        client: OAuthClientSnapshot,
+        status: ConnectionCredentialStatus,
+        refreshed: ConnectionOAuthGrant | None,
+        ciphertext: str | None,
+    ) -> StoredConnection:
+        with self._sessions.begin() as session:
+            self._require_context(session, context, lock=True)
+            row = session.scalar(
+                sa.select(EndUserConnection)
+                .where(
+                    *self._guard(context, guard),
+                    EndUserConnection.credential_type == ConnectionCredentialType.OAUTH2,
+                )
+                .with_for_update()
+            )
+            if row is None:
+                raise ConnectionConflictError()
+            current_client = self._oauth_client_configuration(session, context.tenant_id, row.provider, lock=True)
+            if (
+                current_client.source != client.reference.source
+                or current_client.configuration_id != client.reference.configuration_id
+                or current_client.fingerprint != client.fingerprint
+            ):
+                raise ConnectionReauthorizationRequiredError()
+            changed = row.status != status or refreshed is not None
+            row.status = status
+            if refreshed is not None:
+                if ciphertext is None:
+                    raise ConnectionConfigurationError()
+                row.encrypted_credentials = ciphertext
+                row.expires_at = refreshed.expires_at
+                if refreshed.account_label is not None:
+                    row.account_label = refreshed.account_label
+            if changed:
+                row.revision += 1
+                row.updated_at = naive_utc_now()
+            session.flush()
+            return self._stored(row)
 
     def validate_oauth_context(self, attempt: ConnectionOAuthAttempt) -> None:
         with self._sessions() as session:

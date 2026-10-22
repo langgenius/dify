@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from datetime import datetime
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlsplit
 
@@ -9,13 +10,15 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import TestResponse
 
+from clients.plugin.auth_entities import OAuthRevokeResult
 from configs import dify_config
 from controllers.common import end_user_connection_oauth
 from controllers.console import bp as console_bp
-from controllers.web import bp, connection_oauth, wraps
+from controllers.web import bp, connection_oauth, connections, wraps
 from enums import DeploymentEdition
 from models.end_user_connection import EndUserConnection
 from models.model import App, EndUser
+from models.tools import ToolOAuthTenantClient
 from tests.helpers.end_user_api_key import PROVIDER
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
@@ -36,9 +39,10 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
             return app, user
 
     monkeypatch.setattr(wraps, "decode_jwt_token", identity)
-    services = SimpleNamespace(end_user_connection_oauth=harness.service)
+    services = SimpleNamespace(end_user_connection_oauth=harness.service, end_user_connections=harness.base.service)
     monkeypatch.setattr(connection_oauth, "application_services", lambda: services)
     monkeypatch.setattr(end_user_connection_oauth, "application_services", lambda: services)
+    monkeypatch.setattr(connections, "application_services", lambda: services)
     monkeypatch.setattr(dify_config, "CONSOLE_API_URL", "https://console-api.example")
     monkeypatch.setattr(dify_config, "APP_WEB_URL", "https://web.example")
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
@@ -139,3 +143,64 @@ def test_guest_cannot_start_authorization(client: FlaskClient, harness: OAuthHar
     response = start(client, harness)
     assert response.status_code == 401
     assert response.get_json()["code"] == "end_user_login_required"
+
+
+def test_oauth_check_and_delete_use_existing_management_routes(client: FlaskClient, harness: OAuthHarness) -> None:
+    connection = harness.finish(harness.start())
+    with harness.base.sessions.begin() as session:
+        session.execute(
+            sa.update(EndUserConnection)
+            .where(EndUserConnection.id == connection.id)
+            .values(expires_at=datetime(2000, 1, 1))
+        )
+    response = client.post(f"/api/connections/{connection.id}/check")
+    assert response.status_code == 200
+    assert response.get_json()["check"]["status"] == "valid"
+    assert response.get_json()["credential_status"] == "connected"
+    assert "secret" not in response.get_data(as_text=True)
+    assert len(harness.handler.refreshes) == 1
+    harness.base.auth.revoke_result = OAuthRevokeResult(
+        status="temporarily_unavailable", reason_code="provider_unavailable", retryable=True
+    )
+    deleted = client.delete(f"/api/connections/{connection.id}")
+    assert deleted.status_code == 204
+    assert deleted.data == b""
+    assert client.get(f"/api/connections/{connection.id}").status_code == 404
+
+
+@pytest.mark.parametrize("change", ["changed", "deleted"])
+def test_oauth_client_change_is_a_documented_check_error(
+    client: FlaskClient, harness: OAuthHarness, change: str
+) -> None:
+    connection = harness.finish(harness.start())
+    with harness.base.sessions.begin() as session:
+        if change == "deleted":
+            session.execute(sa.delete(ToolOAuthTenantClient).where(ToolOAuthTenantClient.id == harness.client_id))
+        else:
+            session.execute(
+                sa.update(ToolOAuthTenantClient)
+                .where(ToolOAuthTenantClient.id == harness.client_id)
+                .values(encrypted_oauth_params='{"client_id":"changed"}')
+            )
+    response = client.post(f"/api/connections/{connection.id}/check")
+    assert response.status_code == 409
+    assert response.get_json()["code"] == "connection_reauthorization_required"
+    assert client.delete(f"/api/connections/{connection.id}").status_code == 204
+
+
+def test_refresh_timeout_is_a_check_result_without_invalidating_connection(
+    client: FlaskClient, harness: OAuthHarness
+) -> None:
+    connection = harness.finish(harness.start())
+    with harness.base.sessions.begin() as session:
+        session.execute(
+            sa.update(EndUserConnection)
+            .where(EndUserConnection.id == connection.id)
+            .values(expires_at=datetime(2000, 1, 1))
+        )
+    harness.handler.refresh_error = ValueError("private-provider-response")
+    response = client.post(f"/api/connections/{connection.id}/check")
+    assert response.status_code == 200
+    assert response.get_json()["check"]["status"] == "temporarily_unavailable"
+    assert response.get_json()["credential_status"] == "connected"
+    assert "private-provider-response" not in response.get_data(as_text=True)
