@@ -76,6 +76,33 @@ describe('Human Input v2 recipient utilities', () => {
     ])
   })
 
+  it.each([
+    'john..doe@example.com',
+    '.john@example.com',
+    'john.@example.com',
+    'john@example..com',
+    'john@.example.com',
+    'john@example.com.',
+  ])('rejects malformed email dot segments consistently: %s', (email) => {
+    const recipient: HumanInputV2Recipient = { type: 'onetime_email', email }
+    const existing: HumanInputV2Recipient[] = [{ type: 'initiator' }]
+
+    expect(getRecipientValidationError(recipient)).toBe('email-invalid')
+    expect(getRecipientCanonicalKey(recipient)).toBeUndefined()
+    expect(addRecipient(existing, recipient)).toBe(existing)
+    expect(deriveRecipientSummary([recipient]).state).toBe('invalid')
+  })
+
+  it.each([
+    ' First.Last+qa@Example.com ',
+    'owner@review.example.com',
+    "o'connor@example.com",
+    'owner@xn--bcher-kva.de',
+    '用户@例子.公司',
+  ])('preserves supported email addresses: %s', (email) => {
+    expect(getRecipientValidationError({ type: 'onetime_email', email })).toBeUndefined()
+  })
+
   it('detects imported duplicates without normalizing or deleting them', () => {
     const imported: HumanInputV2Recipient[] = [
       { type: 'initiator' },

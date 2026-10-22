@@ -374,6 +374,7 @@ describe('Human Input v2 Recipients', () => {
 
   it.each([
     'first@example.com, invalid',
+    'first@example.com, john..doe@example.com',
     'first@example.com, FIRST@example.com',
     'first@example.com, OWNER@example.com',
   ])(
@@ -401,6 +402,67 @@ describe('Human Input v2 Recipients', () => {
       expect(observe).not.toHaveBeenCalled()
     },
   )
+
+  it.each(['Enter', 'add button'])(
+    'rejects a malformed one-time email through %s without changing recipients',
+    async (entry) => {
+      const user = userEvent.setup()
+      const observe = vi.fn()
+      render(<Harness initial={[{ type: 'initiator' }]} observe={observe} />)
+      const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
+      const email = 'qa..1022@example.com'
+
+      await user.type(input, email)
+      if (entry === 'Enter') await user.keyboard('{Enter}')
+      else
+        await user.click(
+          screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addEmail' }),
+        )
+
+      expect(input).toHaveValue(email)
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'workflow.nodes.humanInputV2.recipients.emailInvalidOrDuplicate',
+      )
+      expect(observe).not.toHaveBeenCalled()
+    },
+  )
+
+  it('keeps an invalid email edit local until corrected and confirmed', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    render(
+      <Harness
+        initial={[{ type: 'initiator' }, { type: 'onetime_email', email: 'before@example.com' }]}
+        observe={observe}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /recipients\.edit:.*before@example.com/ }))
+    const input = screen.getByRole('textbox', {
+      name: 'workflow.nodes.humanInputV2.recipients.emailLabel',
+    })
+    await user.clear(input)
+    await user.type(input, 'qa..1022@example.com')
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.confirm' }),
+    )
+
+    expect(input).toHaveValue('qa..1022@example.com')
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'workflow.nodes.humanInputV2.error.recipientInvalid',
+    )
+    expect(observe).not.toHaveBeenCalled()
+
+    await user.clear(input)
+    await user.type(input, 'qa+1022@example.com{Enter}')
+
+    expect(observe).toHaveBeenCalledExactlyOnceWith([
+      { type: 'initiator' },
+      { type: 'onetime_email', email: 'qa+1022@example.com' },
+    ])
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
 
   it('opens variable insertion with slash only from an empty non-composing recipient input', async () => {
     const user = userEvent.setup()
