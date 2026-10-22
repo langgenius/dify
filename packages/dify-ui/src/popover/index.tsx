@@ -96,10 +96,7 @@ function PopoverPopup({ className, ...props }: PopoverPopupProps) {
 }
 
 type PopoverContentProps = Omit<PopoverPopupProps, 'children'> &
-  Pick<
-    PopoverPositionerProps,
-    'alignOffset' | 'collisionAvoidance' | 'placement' | 'sideOffset'
-  > & {
+  Pick<PopoverPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
     children: React.ReactNode
   }
 
@@ -108,18 +105,12 @@ function PopoverContent({
   placement = 'bottom',
   sideOffset = 8,
   alignOffset = 0,
-  collisionAvoidance,
   className,
   ...props
 }: PopoverContentProps) {
   return (
     <PopoverPortal>
-      <PopoverPositioner
-        placement={placement}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        collisionAvoidance={collisionAvoidance}
-      >
+      <PopoverPositioner placement={placement} sideOffset={sideOffset} alignOffset={alignOffset}>
         <PopoverPopup
           className={(state) =>
             cn(

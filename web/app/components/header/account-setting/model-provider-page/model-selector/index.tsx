@@ -6,7 +6,13 @@ import type {
   ModelSelectorValue,
 } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverContent, PopoverTitle } from '@langgenius/dify-ui/popover'
+import {
+  Popover,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
+  PopoverTitle,
+} from '@langgenius/dify-ui/popover'
 import { useQueryState } from 'nuqs'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -184,36 +190,41 @@ function ModelSelectorRoot({
             : undefined
         }
       />
-      <PopoverContent
-        placement="bottom-start"
-        collisionAvoidance={MODEL_SELECTOR_COLLISION_AVOIDANCE}
-        className={cn(
-          'flex max-h-[min(624px,var(--available-height,624px))] w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-          popupClassName,
-        )}
-      >
-        <PopoverTitle className="sr-only">
-          {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
-        </PopoverTitle>
-        <Popup
-          defaultModel={value}
-          inputValue={inputValue}
-          modelList={models}
-          scopeFeatures={scopeFeatures}
-          modelPredicate={modelPredicate}
-          modelSuggestionPredicate={modelSuggestionPredicate}
-          onOpenProviderSettings={
-            !hideProviderSettingsFooter && settingsDestination !== 'provider'
-              ? handleOpenSettings
-              : undefined
-          }
-          onConfigureEmptyState={handleConfigureEmptyState}
-          onOpenMarketplace={onOpenMarketplace}
-          onInputValueChange={setInputValue}
-          onSelect={handleSelect}
-          onHide={handleHide}
-        />
-      </PopoverContent>
+      <PopoverPortal>
+        <PopoverPositioner
+          placement="bottom-start"
+          collisionAvoidance={MODEL_SELECTOR_COLLISION_AVOIDANCE}
+        >
+          <PopoverPopup
+            className={cn(
+              'flex max-h-[min(624px,var(--available-height,624px))] w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+              popupClassName,
+            )}
+          >
+            <PopoverTitle className="sr-only">
+              {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
+            </PopoverTitle>
+            <Popup
+              defaultModel={value}
+              inputValue={inputValue}
+              modelList={models}
+              scopeFeatures={scopeFeatures}
+              modelPredicate={modelPredicate}
+              modelSuggestionPredicate={modelSuggestionPredicate}
+              onOpenProviderSettings={
+                !hideProviderSettingsFooter && settingsDestination !== 'provider'
+                  ? handleOpenSettings
+                  : undefined
+              }
+              onConfigureEmptyState={handleConfigureEmptyState}
+              onOpenMarketplace={onOpenMarketplace}
+              onInputValueChange={setInputValue}
+              onSelect={handleSelect}
+              onHide={handleHide}
+            />
+          </PopoverPopup>
+        </PopoverPositioner>
+      </PopoverPortal>
     </Popover>
   )
 }
