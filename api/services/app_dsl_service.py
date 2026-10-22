@@ -3,7 +3,7 @@ import hashlib
 import json
 import logging
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, cast
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -23,8 +23,11 @@ from core.app.app_config.features.suggested_questions_after_answer.manager impor
 )
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
 from core.file import remote_fetcher
-from core.plugin.entities.plugin import PluginDependency
+from core.helper import marketplace
+from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
+from core.plugin.impl.plugin import PluginInstaller
 from core.rbac import RBACPermission, RBACResourceScope
+from core.tools.tool_manager import ToolManager
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
@@ -68,6 +71,7 @@ from services.entities.dsl_entities import (
     AppDslExportData,
     AppImportPackage,
     CheckDependenciesResult,
+    DraftDependencyCheck,
     DslImportWarning,
     Import,
     ImportMode,
@@ -566,6 +570,35 @@ class AppDslService:
         )
         return CheckDependenciesResult(
             leaked_dependencies=leaked_dependencies,
+        )
+
+    @staticmethod
+    def find_missing_dependencies(*, tenant_id: str, plugin_ids: Sequence[str]) -> DraftDependencyCheck:
+        ids = sorted(set(plugin_ids))
+        if not ids:
+            return DraftDependencyCheck()
+
+        installed = {p.plugin_id for p in PluginInstaller().fetch_plugin_installation_by_ids(tenant_id, ids)}
+        hardcoded = {f"langgenius/{p.entity.identity.name}" for p in ToolManager.list_hardcoded_providers()}
+        missing = [i for i in ids if i not in installed and i not in hardcoded]
+
+        manifests = {}
+        if missing and dify_config.MARKETPLACE_ENABLED:
+            manifests = {m.plugin_id: m for m in marketplace.batch_fetch_plugin_manifests(missing)}
+
+        return DraftDependencyCheck(
+            leaked_dependencies=[
+                PluginDependency(
+                    type=PluginDependencyType.Marketplace,
+                    value=PluginDependency.Marketplace(
+                        marketplace_plugin_unique_identifier=manifests[i].latest_package_identifier,
+                        version=manifests[i].latest_version,
+                    ),
+                )
+                for i in missing
+                if i in manifests
+            ],
+            unresolved_plugin_ids=[i for i in missing if i not in manifests],
         )
 
     @staticmethod

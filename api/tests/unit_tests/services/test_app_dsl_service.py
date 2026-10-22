@@ -1,4 +1,5 @@
-from collections.abc import Callable
+import datetime
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from io import BytesIO
 from types import SimpleNamespace
@@ -12,8 +13,20 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
-from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
+from core.plugin.entities.marketplace import MarketplacePluginDeclaration
+from core.plugin.entities.plugin import (
+    PluginCategory,
+    PluginDeclaration,
+    PluginDependency,
+    PluginDependencyType,
+    PluginInstallation,
+    PluginInstallationSource,
+    PluginResourceRequirements,
+)
+from core.plugin.impl.plugin import PluginInstaller
 from core.rbac import RBACPermission, RBACResourceScope
+from core.tools.entities.common_entities import I18nObject
+from core.tools.tool_manager import ToolManager
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
 from models import Account, App, AppMode
@@ -24,7 +37,7 @@ from services.agent.dsl_entities import AgentPackage
 from services.agent.roster_package_entities import PackageIcon
 from services.app_dsl_service import AppDslService, PendingData
 from services.app_package_service import PreparedAppPackage
-from services.entities.dsl_entities import ImportStatus
+from services.entities.dsl_entities import DraftDependencyCheck, ImportStatus
 from services.entities.feature_entities import FeatureModel, LimitationModel
 from services.entities.site_dsl import SiteDsl
 from services.errors.app import DraftChangedError, WorkflowNotFoundError
@@ -1482,3 +1495,157 @@ def test_pending_import_does_not_report_creation_or_cache_marker(
     assert result.status == ImportStatus.PENDING
     assert not result.app_created
     assert "app_created" not in cache.call_args.args[2]
+
+
+def _installation(plugin_id: str) -> PluginInstallation:
+    now = datetime.datetime.now()
+    label = I18nObject(en_US=plugin_id)
+    return PluginInstallation(
+        id=f"install-{plugin_id}",
+        created_at=now,
+        updated_at=now,
+        tenant_id=_TENANT_ID,
+        endpoints_setups=0,
+        endpoints_active=0,
+        runtime_type="remote",
+        source=PluginInstallationSource.Marketplace,
+        meta={},
+        plugin_id=plugin_id,
+        plugin_unique_identifier=f"{plugin_id}:1.0.0@hash",
+        version="1.0.0",
+        checksum="abc",
+        declaration=PluginDeclaration(
+            version="1.0.0",
+            author="author",
+            name=plugin_id.split("/")[-1],
+            description=label,
+            icon="icon.png",
+            label=label,
+            category=PluginCategory.Tool,
+            created_at=now,
+            resource=PluginResourceRequirements(memory=512, permission=None),
+            plugins=PluginDeclaration.Plugins(),
+            meta=PluginDeclaration.Meta(version="1.0.0"),
+        ),
+    )
+
+
+def _manifest(plugin_id: str, version: str) -> MarketplacePluginDeclaration:
+    label = I18nObject(en_US=plugin_id)
+    return MarketplacePluginDeclaration(
+        name=plugin_id.split("/")[-1],
+        org=plugin_id.split("/")[0],
+        plugin_id=plugin_id,
+        icon="icon.png",
+        label=label,
+        brief=label,
+        resource=PluginResourceRequirements(memory=512, permission=None),
+        latest_version=version,
+        latest_package_identifier=f"{plugin_id}:{version}@abc",
+        status="active",
+        deprecated_reason="",
+        alternative_plugin_id="",
+    )
+
+
+@dataclass
+class _Identity:
+    name: str
+
+
+@dataclass
+class _ProviderEntity:
+    identity: _Identity
+
+
+@dataclass
+class _HardcodedProvider:
+    entity: _ProviderEntity
+
+
+def _patch_plugin_world(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    installed: Sequence[str] = (),
+    marketplace_ids: Sequence[str] = (),
+    marketplace_enabled: bool = True,
+    hardcoded: Sequence[str] = (),
+) -> None:
+    monkeypatch.setattr(
+        PluginInstaller,
+        "fetch_plugin_installation_by_ids",
+        lambda _self, _tenant_id, ids: [_installation(i) for i in ids if i in installed],
+    )
+    monkeypatch.setattr(
+        "services.app_dsl_service.marketplace.batch_fetch_plugin_manifests",
+        lambda ids: [_manifest(i, "1.2.0") for i in ids if i in marketplace_ids],
+    )
+    monkeypatch.setattr(
+        ToolManager,
+        "list_hardcoded_providers",
+        classmethod(lambda _cls: iter(_HardcodedProvider(_ProviderEntity(_Identity(n))) for n in hardcoded)),
+    )
+    apply_config_overrides(monkeypatch, MARKETPLACE_ENABLED=marketplace_enabled)
+
+
+def test_only_uninstalled_plugins_are_reported(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_plugin_world(monkeypatch, installed=["langgenius/openai"], marketplace_ids=["acme/search"])
+    result = AppDslService.find_missing_dependencies(
+        tenant_id=_TENANT_ID, plugin_ids=["langgenius/openai", "acme/search"]
+    )
+    assert [d.value.plugin_unique_identifier for d in result.leaked_dependencies] == ["acme/search:1.2.0@abc"]
+    assert result.leaked_dependencies[0].type == PluginDependencyType.Marketplace
+    assert isinstance(result.leaked_dependencies[0].value, PluginDependency.Marketplace)
+    assert result.leaked_dependencies[0].value.version == "1.2.0"
+    assert result.unresolved_plugin_ids == []
+
+
+def test_missing_plugins_without_a_marketplace_match_are_unresolved(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_plugin_world(monkeypatch, marketplace_ids=["acme/a"])
+    result = AppDslService.find_missing_dependencies(tenant_id=_TENANT_ID, plugin_ids=["acme/a", "corp/private"])
+    assert [d.value.plugin_unique_identifier for d in result.leaked_dependencies] == ["acme/a:1.2.0@abc"]
+    assert result.unresolved_plugin_ids == ["corp/private"]
+
+
+def test_marketplace_disabled_reports_every_missing_plugin_unresolved(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_plugin_world(monkeypatch, marketplace_enabled=False)
+
+    def _fail(_ids: object) -> None:
+        pytest.fail("marketplace must not be queried when disabled")
+
+    monkeypatch.setattr("services.app_dsl_service.marketplace.batch_fetch_plugin_manifests", _fail)
+    result = AppDslService.find_missing_dependencies(tenant_id=_TENANT_ID, plugin_ids=["acme/a", "corp/private"])
+    assert result.leaked_dependencies == []
+    assert result.unresolved_plugin_ids == ["acme/a", "corp/private"]
+
+
+def test_hardcoded_builtin_tools_are_never_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_plugin_world(monkeypatch, hardcoded=["time", "code"])
+    result = AppDslService.find_missing_dependencies(
+        tenant_id=_TENANT_ID, plugin_ids=["langgenius/time", "langgenius/code"]
+    )
+    assert result.leaked_dependencies == []
+    assert result.unresolved_plugin_ids == []
+
+
+def test_duplicates_collapse_and_order_is_sorted(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_plugin_world(monkeypatch)
+    result = AppDslService.find_missing_dependencies(tenant_id=_TENANT_ID, plugin_ids=["b/x", "a/y", "b/x"])
+    assert result.unresolved_plugin_ids == ["a/y", "b/x"]
+
+
+def test_no_plugin_ids_makes_no_daemon_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _fail(_self: PluginInstaller, _tenant_id: str, _ids: Sequence[str]) -> None:
+        pytest.fail("daemon must not be called")
+
+    monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", _fail)
+    assert AppDslService.find_missing_dependencies(tenant_id=_TENANT_ID, plugin_ids=[]) == DraftDependencyCheck()
+
+
+def test_daemon_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _boom(_self: PluginInstaller, _tenant_id: str, _ids: Sequence[str]) -> None:
+        raise RuntimeError("daemon down")
+
+    monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", _boom)
+    with pytest.raises(RuntimeError, match="daemon down"):
+        AppDslService.find_missing_dependencies(tenant_id=_TENANT_ID, plugin_ids=["acme/a"])
