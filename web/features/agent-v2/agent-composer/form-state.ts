@@ -61,7 +61,7 @@ export type AgentFileNode = {
 
 export type AgentKnowledgeRetrievalItem = {
   id: string
-  /** Present for KnowledgeFS bindings; absent only for historical dataset configs. */
+  /** Present for KnowledgeFS bindings; absent for Classic Knowledge Base bindings. */
   controlSpaceId?: string
   isMissing?: boolean
   name?: string

@@ -220,7 +220,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         )
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
         try:
-            knowledge_config = build_knowledge_fs_layer_config(agent_soul, run_context=context.dify_context)
+            knowledge_fs_config = build_knowledge_fs_layer_config(agent_soul, run_context=context.dify_context)
         except KnowledgeFsError as exc:
             raise WorkflowAgentRuntimeRequestBuildError(exc.code, exc.message) from exc
         context_window_tokens = resolve_model_context_window(
@@ -282,7 +282,8 @@ class WorkflowAgentRuntimeRequestBuilder:
                 ),
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
-                knowledge_fs=knowledge_config,
+                knowledge=build_knowledge_layer_config(agent_soul),
+                knowledge_fs=knowledge_fs_config,
                 config_layer_config=config_layer_config,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),

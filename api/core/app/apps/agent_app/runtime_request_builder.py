@@ -50,6 +50,7 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     append_runtime_warnings,
     build_config_aware_soul_mention_resolver,
     build_config_layer_config,
+    build_knowledge_layer_config,
     build_shell_layer_config,
     load_runtime_agent_skill_configs,
 )
@@ -152,7 +153,7 @@ class AgentAppRuntimeRequestBuilder:
             runtime_config_skills=runtime_config_skills,
         )
         try:
-            knowledge_config = build_knowledge_fs_layer_config(agent_soul, run_context=context.dify_context)
+            knowledge_fs_config = build_knowledge_fs_layer_config(agent_soul, run_context=context.dify_context)
         except KnowledgeFsError as exc:
             raise AgentAppRuntimeRequestBuildError(exc.code, exc.message) from exc
         context_window_tokens = resolve_model_context_window(
@@ -170,7 +171,7 @@ class AgentAppRuntimeRequestBuilder:
             provider_name=agent_soul.model.model_provider,
             model_name=agent_soul.model.model,
             image_detail_config=context.image_detail_config,
-            include_image_references=knowledge_config is not None,
+            include_image_references=knowledge_fs_config is not None,
         )
 
         tracing_hooks = application_tracing_hooks()
@@ -208,7 +209,8 @@ class AgentAppRuntimeRequestBuilder:
                 user_files=user_files,
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
-                knowledge_fs=knowledge_config,
+                knowledge=build_knowledge_layer_config(agent_soul),
+                knowledge_fs=knowledge_fs_config,
                 config_layer_config=config_layer_config,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),

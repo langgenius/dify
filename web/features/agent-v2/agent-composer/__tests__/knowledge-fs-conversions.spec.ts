@@ -30,6 +30,21 @@ describe('KnowledgeFS configuration round trip', () => {
     expect(agentSoulConfigToFormState(config).knowledgeRetrievals).toEqual([binding])
     expect(validateKnowledgeRetrievals([binding]).isValid).toBe(true)
   })
+  it('round trips Classic and Agent Knowledge Base bindings together', () => {
+    const classic = {
+      id: 'classic',
+      name: 'Classic Docs',
+      datasetRefs: [{ id: 'dataset-1', name: 'Docs' }],
+    }
+    const config = formStateToAgentSoulConfig({
+      formState: { ...defaultAgentSoulConfigFormState, knowledgeRetrievals: [classic, binding] },
+    })
+
+    expect(config.knowledge?.sets?.[0]).toMatchObject({ id: 'classic', datasets: classic.datasetRefs })
+    expect(config.knowledge?.spaces?.[0]).toMatchObject({ id: 'docs', control_space_id: binding.controlSpaceId })
+    expect(agentSoulConfigToFormState(config).knowledgeRetrievals).toMatchObject([binding, classic])
+    expect(validateKnowledgeRetrievals([classic, binding]).isValid).toBe(true)
+  })
   it('retains imported unresolved bindings and rejects duplicate spaces or aliases', () => {
     const unresolved = { ...binding, isMissing: true }
     const config = formStateToAgentSoulConfig({

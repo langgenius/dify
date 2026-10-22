@@ -67,8 +67,28 @@ def test_empty_historical_knowledge_is_still_readable() -> None:
     assert AgentSoulKnowledgeConfig.model_validate({"sets": []}).spaces == []
 
 
-def test_mixed_legacy_and_knowledge_fs_config_fails_explicitly() -> None:
-    with pytest.raises(ValidationError, match="cannot be mixed"):
+def test_mixed_legacy_and_knowledge_fs_config_round_trips() -> None:
+    config = AgentSoulKnowledgeConfig.model_validate(
+        {
+            "spaces": [binding()],
+            "sets": [
+                {
+                    "id": "old",
+                    "name": "Old",
+                    "datasets": [{"id": "old-dataset"}],
+                    "query": {"mode": "generated_query"},
+                    "retrieval": {"mode": "multiple", "top_k": 5},
+                }
+            ],
+        }
+    )
+
+    assert AgentSoulKnowledgeConfig.model_validate_json(config.model_dump_json()) == config
+
+
+@pytest.mark.parametrize("overrides", [{"id": "PRODUCT"}, {"name": "产品文档"}])
+def test_mixed_bindings_cannot_share_identity(overrides: dict[str, str]) -> None:
+    with pytest.raises(ValidationError, match="unique across Agent and Classic"):
         AgentSoulKnowledgeConfig.model_validate(
             {
                 "spaces": [binding()],
@@ -79,6 +99,7 @@ def test_mixed_legacy_and_knowledge_fs_config_fails_explicitly() -> None:
                         "datasets": [{"id": "old-dataset"}],
                         "query": {"mode": "generated_query"},
                         "retrieval": {"mode": "multiple", "top_k": 5},
+                        **overrides,
                     }
                 ],
             }

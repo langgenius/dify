@@ -72,7 +72,7 @@ class AgentKnowledgeGateway:
             for space in soul.knowledge.spaces
             if not space.is_missing
         ]
-        if soul.knowledge.sets or expected != request.bindings or not expected:
+        if expected != request.bindings or not expected:
             raise KnowledgeFsError(
                 "KNOWLEDGE_CONFIG_CHANGED", "Knowledge bindings changed; start a new Agent turn.", 409
             )

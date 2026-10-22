@@ -40,8 +40,13 @@ vi.mock('@/context/i18n', () => ({
 
 const SPACE = '00000000-0000-4000-8000-000000000001'
 const binding = { id: 'docs', controlSpaceId: SPACE, name: 'Product manual' }
+const classicBinding = {
+  id: 'classic',
+  name: 'Classic Docs',
+  datasetRefs: [{ id: 'dataset-1', name: 'Docs' }],
+}
 
-function setup({ enabled = true, workflow = false, readOnly = false, configured = false } = {}) {
+function setup({ enabled = true, workflow = false, readOnly = false, configured = false, classic = false } = {}) {
   const queryClient = createConsoleQueryClient()
   const options = consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
     input: (pageParam) => ({ query: { limit: 50, page: pageParam } }),
@@ -88,7 +93,7 @@ function setup({ enabled = true, workflow = false, readOnly = false, configured 
     <AgentComposerProvider
       initialDraft={{
         ...defaultAgentSoulConfigFormState,
-        knowledgeRetrievals: configured ? [binding] : [],
+        knowledgeRetrievals: classic ? [classicBinding] : configured ? [binding] : [],
       }}
     >
       <AgentOrchestratePanel
@@ -176,6 +181,16 @@ describe('KnowledgeFS entry points in the real Agent configuration panel', () =>
       await screen.findByRole('button', { name: /knowledgeRetrieval.label/ }),
     ).toBeInTheDocument()
     expect(screen.getByText('Product manual')).toBeInTheDocument()
+  })
+
+  it('keeps Classic Knowledge Base references available when KnowledgeFS is disabled', async () => {
+    const user = userEvent.setup()
+    setup({ enabled: false, classic: true })
+
+    await user.click(screen.getByRole('button', { name: /prompt.insert.label/ }))
+    await user.click(screen.getByRole('button', { name: /knowledgeRetrieval.label/ }))
+    expect(screen.getByRole('button', { name: 'Classic Docs' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /knowledgeRetrieval.add/ })).not.toBeInTheDocument()
   })
 
   it('shows a bound knowledge space without editing controls in a read-only Workflow panel', async () => {

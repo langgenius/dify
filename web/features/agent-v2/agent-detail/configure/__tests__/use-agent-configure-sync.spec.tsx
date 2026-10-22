@@ -1403,7 +1403,7 @@ describe('useAgentConfigureSync', () => {
     )
   })
 
-  it('requires legacy knowledge migration before validating its old retrieval settings', async () => {
+  it('validates Classic retrieval settings before publishing', async () => {
     const { result, store } = renderUseAgentConfigureSync({
       currentModel: configuredModel,
     })
@@ -1428,7 +1428,42 @@ describe('useAgentConfigureSync', () => {
 
     expect(composerPutMutationFn).not.toHaveBeenCalled()
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
-    expect(toastMock.error).toHaveBeenCalledWith('agentV2.agentDetail.configure.knowledgeFs.legacy')
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'agentV2.agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired',
+    )
+  })
+
+  it('publishes a valid Classic Knowledge Base binding', async () => {
+    const { result, store } = renderUseAgentConfigureSync({ currentModel: configuredModel })
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...store.get(agentComposerDraftAtom),
+        knowledgeRetrievals: [
+          {
+            id: 'classic',
+            name: 'Classic Docs',
+            datasetRefs: [{ id: 'dataset-1', name: 'Docs' }],
+          },
+        ],
+      })
+    })
+
+    await act(async () => {
+      await expect(result.current.publishDraft()).resolves.toMatchObject({ kind: 'update' })
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            knowledge: expect.objectContaining({
+              sets: [expect.objectContaining({ id: 'classic' })],
+            }),
+          }),
+        }),
+      }),
+    )
+    expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
   })
 
   it('should pause autosave during publish and resume it for edits made in flight', async () => {

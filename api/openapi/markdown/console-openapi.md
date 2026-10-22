@@ -20109,12 +20109,11 @@ old Agent tool payloads can be read while new payloads stay explicit.
 
 #### AgentSoulKnowledgeConfig
 
-Agent Knowledge Base authoring, with lossless Classic Knowledge Base configuration decoding.
+Agent Knowledge Base and Classic Knowledge Base bindings for an Agent.
 
-New configuration uses ``spaces``. ``sets`` is retained solely so existing
-snapshots/DSL remain readable; new publish/run validation rejects Classic
-Knowledge Base bindings with an explicit rebind error. Empty knowledge adds no runtime
-capability. The two formats must never coexist or shadow one another.
+``spaces`` use the KnowledgeFS layer and ``sets`` use the Classic Knowledge
+Base layer. Both may be configured together; empty knowledge adds no runtime
+capability.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |

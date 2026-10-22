@@ -714,7 +714,8 @@ class TestAgentAppRuntimeRequestBuilder:
         assert DifyPluginLLMLayerConfig.model_validate(llm.config).plugin_id == "langgenius/openai"
         assert DifyPluginLLMLayerConfig.model_validate(llm.config).model_provider == "openai"
 
-    def test_build_rejects_legacy_knowledge_without_silently_running_it(self):
+    def test_build_runs_legacy_knowledge_without_shell(self, monkeypatch: pytest.MonkeyPatch):
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=False)
         soul = AgentSoulConfig.model_validate(
             {
                 "model": {
@@ -743,9 +744,46 @@ class TestAgentAppRuntimeRequestBuilder:
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
-        with pytest.raises(AgentAppRuntimeRequestBuildError) as exc:
-            builder.build(_ctx(soul))
-        assert exc.value.error_code == "KNOWLEDGE_REBIND_REQUIRED"
+        result = builder.build(_ctx(soul))
+        layers = {layer.name: layer for layer in result.request.composition.layers}
+        assert "knowledge" in layers
+        assert "knowledge_fs" not in layers
+        assert layers["knowledge"].config["sets"][0]["id"] == "support"
+
+    def test_build_runs_classic_and_agent_knowledge_together(self, monkeypatch: pytest.MonkeyPatch):
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
+        monkeypatch.setattr(
+            "services.agent.knowledge_runtime_config.DifyModelFactory",
+            RecordingModelFactory(schema=llm_schema(features=[])),
+        )
+        soul = _soul_with_model()
+        soul.knowledge = AgentSoulConfig.model_validate(
+            {
+                "knowledge": {
+                    "sets": [
+                        {
+                            "id": "classic",
+                            "name": "Classic Docs",
+                            "datasets": [{"id": "dataset-1"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {"mode": "multiple", "top_k": 3},
+                        }
+                    ],
+                    "spaces": [
+                        {
+                            "id": "new",
+                            "name": "New Docs",
+                            "control_space_id": "00000000-0000-4000-8000-000000000001",
+                        }
+                    ],
+                }
+            }
+        ).knowledge
+
+        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder()).build(_ctx(soul))  # type: ignore[arg-type]
+        layers = {layer.name: layer for layer in result.request.composition.layers}
+        assert layers["knowledge"].config["sets"][0]["id"] == "classic"
+        assert layers["knowledge_fs"].config["spaces"][0]["id"] == "new"
 
     def test_build_raises_when_model_missing(self):
         builder = AgentAppRuntimeRequestBuilder(

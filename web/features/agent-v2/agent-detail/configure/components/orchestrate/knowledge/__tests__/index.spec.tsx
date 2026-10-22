@@ -152,9 +152,9 @@ describe('KnowledgeFS composer interaction', () => {
     expect(snapshot().knowledge.spaces).toEqual([])
   })
 
-  it('keeps the selection limit across filtering and allows deselection at the limit', async () => {
+  it('limits Agent Knowledge Bases to 10 while retaining a Classic binding', async () => {
     const user = userEvent.setup()
-    setup([], {
+    setup([{ id: 'classic', name: 'Classic Docs', datasetRefs: [{ id: 'dataset-1' }] }], {
       spaces: Array.from({ length: 11 }, (_, index) =>
         space(
           `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
@@ -177,6 +177,7 @@ describe('KnowledgeFS composer interaction', () => {
     await user.click(within(dialog).getByRole('checkbox', { name: 'Space 11' }))
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(snapshot().knowledge.spaces).toHaveLength(10)
+    expect(snapshot().knowledge.sets).toHaveLength(1)
     expect(
       snapshot().knowledge.spaces.some((item: { name: string }) => item.name === 'Space 11'),
     ).toBe(true)
@@ -357,16 +358,15 @@ describe('KnowledgeFS composer interaction', () => {
     })
   })
 
-  it('shows a migration warning without silently discarding historical config', async () => {
+  it('keeps Classic bindings when adding an Agent Knowledge Base', async () => {
     const user = userEvent.setup()
     setup([{ id: 'legacy', name: 'Old documents', datasetRefs: [{ id: 'dataset' }] }])
     const dialog = await open(user)
-    expect(within(dialog).getByText(/knowledgeFs.legacy/)).toBeInTheDocument()
+    expect(within(dialog).queryByText(/knowledgeFs.legacy/)).not.toBeInTheDocument()
     expect(snapshot().knowledge.sets).toHaveLength(1)
-    await user.click(within(dialog).getByRole('button', { name: /knowledgeFs.removeLegacy/ }))
     await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
-    expect(snapshot().knowledge.sets).toEqual([])
+    expect(snapshot().knowledge.sets[0]).toMatchObject({ id: 'legacy', datasets: [{ id: 'dataset' }] })
     expect(snapshot().knowledge.spaces).toHaveLength(1)
   })
 

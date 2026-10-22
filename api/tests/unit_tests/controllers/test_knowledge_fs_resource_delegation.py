@@ -41,6 +41,7 @@ from controllers.service_api.knowledge_fs.error import (
     KnowledgeFSServiceResourceNotFoundHTTPError,
     KnowledgeFSServiceUpstreamUnavailableHTTPError,
 )
+from enums import DeploymentEdition
 from libs.exception import BaseHTTPException
 from machinery.context import RequestContext
 from models import Account
@@ -1779,7 +1780,7 @@ def test_console_resource_helpers_validate_feature_payload_headers_and_query_pai
     runtime = FakeRuntime()
     session_maker = object()
     get_runtime = Recorder(runtime)
-    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=True)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, KNOWLEDGE_FS_ENABLED=True)
     monkeypatch.setattr(console_resources.session_factory, "get_session_maker", lambda: session_maker)
     monkeypatch.setattr(console_resources, "get_knowledge_fs_runtime", get_runtime)
     monkeypatch.setattr(
@@ -1808,6 +1809,13 @@ def test_console_resource_helpers_validate_feature_payload_headers_and_query_pai
         assert console_resources._payload(KnowledgeFSQueryCreatePayload).query == "question"
         assert console_resources._idempotency_key() == "request-key"
 
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    with pytest.raises(NotFound):
+        console_resources._console_services()
+
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=True)
+    assert console_resources._console_services() is runtime
+
     apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=False)
     with pytest.raises(NotFound):
         console_resources._console_services()
@@ -1819,7 +1827,7 @@ def test_service_resource_helpers_validate_feature_bearer_headers_and_boolean_qu
     runtime = FakeRuntime()
     session_maker = object()
     get_runtime = Recorder(runtime)
-    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=True)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, KNOWLEDGE_FS_ENABLED=True)
     monkeypatch.setattr(service_resources.session_factory, "get_session_maker", lambda: session_maker)
     monkeypatch.setattr(service_resources, "get_knowledge_fs_runtime", get_runtime)
     app = Flask(__name__)
@@ -1846,6 +1854,13 @@ def test_service_resource_helpers_validate_feature_bearer_headers_and_boolean_qu
     ):
         assert service_resources._payload(KnowledgeFSQueryCreatePayload).query == "question"
         assert service_resources._idempotency_key() == "request-key"
+
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    with pytest.raises(NotFound):
+        service_resources._runtime()
+
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=True)
+    assert service_resources._runtime() is runtime
 
     apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=False)
     with pytest.raises(NotFound):

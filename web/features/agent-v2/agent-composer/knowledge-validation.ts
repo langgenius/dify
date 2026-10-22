@@ -13,7 +13,6 @@ export type KnowledgeValidationIssueCode =
   | 'metadata_conditions_required'
   | 'space_unavailable'
   | 'binding_invalid'
-  | 'legacy_rebind_required'
 
 type KnowledgeValidationField = 'name' | 'datasets' | 'query' | 'retrieval' | 'metadata'
 
@@ -47,8 +46,6 @@ export const useKnowledgeValidationMessage = () => {
         return t(($) => $['agentDetail.configure.knowledgeFs.unavailable'])
       case 'binding_invalid':
         return t(($) => $['agentDetail.configure.knowledgeFs.invalid'])
-      case 'legacy_rebind_required':
-        return t(($) => $['agentDetail.configure.knowledgeFs.legacy'])
       case 'name_required':
         return tCommon(($) => $['errorMsg.fieldRequired'], {
           field: t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.nameLabel']),
@@ -101,6 +98,7 @@ export const validateKnowledgeRetrievals = (
   const byId: KnowledgeValidationResult['byId'] = {}
   const issues: KnowledgeValidationIssue[] = []
   const nameCounts = new Map<string, number>()
+  const spaceCount = retrievals.filter((item) => item.controlSpaceId).length
 
   retrievals.forEach((item) => {
     const normalizedName = getNormalizedKnowledgeName(item)
@@ -138,7 +136,7 @@ export const validateKnowledgeRetrievals = (
       if (item.isMissing)
         pushIssue({ itemId: item.id, code: 'space_unavailable', field: 'datasets' })
       if (
-        retrievals.length > 10 ||
+        spaceCount > 10 ||
         setName.length > 120 ||
         /[\u0000-\u001F\u007F]/u.test(setName) ||
         (item.description?.length ?? 0) > 2000 ||
@@ -161,8 +159,6 @@ export const validateKnowledgeRetrievals = (
         field: 'datasets',
       })
     }
-
-    pushIssue({ itemId: item.id, code: 'legacy_rebind_required', field: 'datasets' })
 
     if (item.queryMode === 'custom' && !item.customQuery?.trim()) {
       pushIssue({

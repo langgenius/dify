@@ -28,8 +28,9 @@ Run Dify with Docker Compose. Configuration templates live in `.env.example` and
 
 ## KnowledgeFS Integration Service
 
-The default deployment starts an internal KnowledgeFS API service. It publishes no host port and
-has no nginx route. Model, datasource, and object-storage calls go through Dify's inner API.
+The optional `knowledge-fs` Compose profile starts the internal KnowledgeFS API service and the
+dedicated Dataset upgrade worker. The API service publishes no host port and has no nginx route.
+Model, datasource, and object-storage calls go through Dify's inner API.
 Dify resolves active Workspace/plugin configuration and remains the only owner of physical
 storage credentials. `KNOWLEDGE_FS_ENABLED` remains `false`, so starting the container does not
 enable product traffic.
@@ -41,9 +42,9 @@ or immutable SHA tag. If the image repository is private, authenticate the deplo
 
 ```bash
 cp envs/core-services/knowledge-fs.env.example envs/core-services/knowledge-fs.env
-docker compose --profile knowledge-fs-unstructured config
-docker compose --profile knowledge-fs-unstructured pull knowledge_fs knowledge_fs_unstructured
-docker compose --profile knowledge-fs-unstructured up -d
+docker compose --profile knowledge-fs --profile knowledge-fs-unstructured config
+docker compose --profile knowledge-fs --profile knowledge-fs-unstructured pull knowledge_fs knowledge_fs_unstructured
+docker compose --profile knowledge-fs --profile knowledge-fs-unstructured up -d
 ```
 
 The service env file intentionally contains only operator-owned inputs: the dedicated database,
@@ -105,8 +106,9 @@ source imports, and staged-upload cleanup. Deployments overriding `CELERY_QUEUES
 `CELERY_WORKER_QUEUES` must include this queue in a worker pool. Enable the lifecycle rollout gates
 on the API, workers, and Beat before creating spaces.
 
-Classic Dataset upgrades use the separate `worker_knowledge_fs_upgrade` service. This worker must
-use `CELERY_WORKER_POOL=prefork`; local development uses
+Classic Dataset upgrades use the separate `worker_knowledge_fs_upgrade` service. It starts with
+the `knowledge-fs` Compose profile, so enable that profile before submitting an upgrade. This
+worker must use `CELERY_WORKER_POOL=prefork`; local development uses
 `./dev/start-worker --queues knowledge_fs_upgrade --pool prefork`. Each checkpoint has a 570-second
 soft limit and a 600-second hard limit. Do not override these task limits: recovery relies on the
 child having stopped before reclaiming its execution window. Beat checks for abandoned running

@@ -76,6 +76,7 @@ from services.knowledge_fs.download_service import (
     KnowledgeFSDownloadTooLargeError,
     KnowledgeFSDownloadUnavailableError,
 )
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_fs.initial_source_preview import KnowledgeFSInitialSourcePreviewService
 from services.knowledge_fs.initial_source_preview_job import (
     KnowledgeFSInitialSourcePreviewJobAlreadyRunningError,
@@ -447,7 +448,7 @@ register_response_schema_models(
 
 
 def _console_services() -> KnowledgeFSRuntime:
-    if not dify_config.KNOWLEDGE_FS_ENABLED:
+    if not get_knowledge_fs_features().enabled:
         raise NotFound()
     session_maker = session_factory.get_session_maker()
     return get_knowledge_fs_runtime(session_maker)

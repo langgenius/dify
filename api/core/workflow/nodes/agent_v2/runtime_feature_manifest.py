@@ -47,13 +47,14 @@ def build_runtime_feature_manifest(agent_soul: AgentSoulConfig) -> dict[str, Any
             )
 
     reserved_status = dict.fromkeys(sorted(RESERVED_AGENT_BACKEND_FEATURES), "reserved_not_executed")
-    reserved_status["knowledge"] = (
-        "legacy_rebind_required"
-        if agent_soul.knowledge.sets
-        else "supported_by_knowledge_fs_cli"
-        if agent_soul.knowledge.spaces
-        else "not_configured"
-    )
+    if agent_soul.knowledge.sets and agent_soul.knowledge.spaces:
+        reserved_status["knowledge"] = "supported_by_legacy_retrieval_and_knowledge_fs_cli"
+    elif agent_soul.knowledge.sets:
+        reserved_status["knowledge"] = "supported_by_legacy_retrieval"
+    elif agent_soul.knowledge.spaces:
+        reserved_status["knowledge"] = "supported_by_knowledge_fs_cli"
+    else:
+        reserved_status["knowledge"] = "not_configured"
     reserved_status["tools.dify_tools"] = "supported_when_config_valid"
     reserved_status["tools.cli_tools"] = "supported_by_shell_bootstrap"
     reserved_status["env"] = "supported_by_shell_bootstrap"

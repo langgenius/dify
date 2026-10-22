@@ -36,6 +36,7 @@ from controllers.service_api.wraps import check_knowledge_rate_limit, validate_a
 from core.db.session_factory import session_factory
 from libs.external_api import error_responses
 from libs.helper import dump_response
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAdmittedQueryRequest,
     KnowledgeFSAnswerTraceResponse,
@@ -233,7 +234,7 @@ register_response_schema_models(
 
 
 def _runtime() -> KnowledgeFSRuntime:
-    if not dify_config.KNOWLEDGE_FS_ENABLED:
+    if not get_knowledge_fs_features().enabled:
         raise NotFound()
     return get_knowledge_fs_runtime(session_factory.get_session_maker())
 

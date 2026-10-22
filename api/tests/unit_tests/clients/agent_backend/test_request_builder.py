@@ -1,6 +1,8 @@
 import json
 from typing import Any, cast
+from unittest.mock import Mock
 
+import httpx
 import pytest
 from dify_agent.adapters.llm.model import _get_stop_sequences, _map_model_settings_to_parameters
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
@@ -17,6 +19,8 @@ from dify_agent.protocol import (
     DIFY_AGENT_OUTPUT_LAYER_ID,
     CreateRunRequest,
 )
+from dify_agent.runtime.context import Services
+from dify_agent.runtime.modules import create_modules, load_modules
 from pydantic import JsonValue, ValidationError
 
 from clients.agent_backend import (
@@ -557,7 +561,7 @@ def test_agent_app_request_builder_adds_knowledge_layer_when_configured() -> Non
 
 
 @pytest.mark.parametrize("mode", ["agent_app", "workflow"])
-def test_knowledge_fs_uses_only_the_shared_cli_layer_and_requires_shell(mode: str) -> None:
+def test_knowledge_fs_requires_shell_and_can_coexist_with_classic_knowledge(mode: str) -> None:
     config = DifyKnowledgeFsLayerConfig.model_validate(
         {"spaces": [{"id": "docs", "name": "Docs", "control_space_id": "00000000-0000-4000-8000-000000000001"}]}
     )
@@ -593,5 +597,19 @@ def test_knowledge_fs_uses_only_the_shared_cli_layer_and_requires_shell(mode: st
             ]
         }
     )
-    with pytest.raises(ValueError, match="cannot be combined"):
-        build()
+    mixed_layers = {layer.name: layer for layer in build().composition.layers}
+    assert DIFY_KNOWLEDGE_BASE_LAYER_ID in mixed_layers
+    assert "knowledge_fs" in mixed_layers
+    assert mixed_layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config["sets"][0]["id"] == "legacy"
+    assert mixed_layers["knowledge_fs"].config["spaces"][0]["id"] == "docs"
+    run_input.execution_context.app_id = "app-1"
+    client = cast(httpx.AsyncClient, Mock(spec=httpx.AsyncClient))
+    services = Services(
+        plugin_daemon_http_client=client,
+        dify_api_http_client=client,
+        runtime_backend_profile=cast(Any, object()),
+        knowledge_session_store=cast(Any, object()),
+    )
+    modules = create_modules(load_modules(build(), services, "mixed-knowledge-run"))
+    assert DIFY_KNOWLEDGE_BASE_LAYER_ID in modules
+    assert "knowledge_fs" in modules

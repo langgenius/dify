@@ -395,6 +395,8 @@ services:
   worker_knowledge_fs_upgrade:
     <<: *shared-worker-config
     image: langgenius/dify-api:1.17.1
+    profiles:
+      - knowledge-fs
     environment:
       MODE: worker
       CELERY_WORKER_QUEUES: knowledge_fs_upgrade

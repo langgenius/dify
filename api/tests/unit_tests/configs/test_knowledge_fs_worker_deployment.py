@@ -36,7 +36,9 @@ def test_compose_worker_consumes_provisioning_import_and_cleanup_queue(edition: 
 @pytest.mark.parametrize("filename", ["docker-compose-template.yaml", "docker-compose.yaml"])
 def test_upgrade_worker_enforces_prefork_for_checkpoint_recovery(filename: str) -> None:
     compose = yaml.safe_load((_ROOT / "docker" / filename).read_text())
-    environment = compose["services"]["worker_knowledge_fs_upgrade"]["environment"]
+    worker = compose["services"]["worker_knowledge_fs_upgrade"]
+    assert worker["profiles"] == ["knowledge-fs"]
+    environment = worker["environment"]
     selected = _worker_configuration({key: str(value) for key, value in environment.items()})
     assert selected.returncode == 0, selected.stderr
     assert selected.stdout.splitlines()[-1] == "knowledge_fs_upgrade"

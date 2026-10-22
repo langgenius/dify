@@ -251,6 +251,35 @@ def test_space_subset_changed_config_and_receipt_scope_fail_closed(
     assert runtime.app_capabilities.issue_calls == []
 
 
+def test_classic_bindings_do_not_block_knowledge_fs_authorization(
+    monkeypatch: pytest.MonkeyPatch,
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, FakeRuntime],
+) -> None:
+    soul = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "spaces": [BINDING.model_dump()],
+                "sets": [
+                    {
+                        "id": "classic",
+                        "name": "Classic Docs",
+                        "datasets": [{"id": "dataset-1"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 3},
+                    }
+                ],
+            }
+        }
+    )
+    monkeypatch.setattr(gateway.AgentKnowledgeGateway, "_authorize_context", staticmethod(lambda _: soul))
+    service, runtime = authorized_gateway
+
+    result = service.prepare(request("search", query="hello"))
+
+    assert result.operation == "retrieveEvidence"
+    assert len(runtime.app_capabilities.issue_calls) == 1
+
+
 def test_preview_never_issues_app_grants_and_revocation_is_rechecked(
     authorized_gateway: tuple[gateway.AgentKnowledgeGateway, FakeRuntime],
 ) -> None:

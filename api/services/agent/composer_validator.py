@@ -284,11 +284,6 @@ class ComposerConfigValidator:
                 metadata_filtering.conditions is None or not metadata_filtering.conditions.conditions
             ):
                 raise InvalidComposerConfigError("metadata_filtering.conditions is required for manual mode")
-        if agent_soul.knowledge.sets:
-            raise InvalidComposerConfigError(
-                "knowledge_fs_rebind_required: replace Classic Knowledge Base bindings "
-                "with Agent Knowledge Base bindings before publishing or running"
-            )
 
     @classmethod
     def validate_node_job(cls, node_job: WorkflowNodeJobConfig) -> None:

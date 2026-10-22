@@ -232,7 +232,7 @@ export function AgentPromptSlashMenu({
             onClick={() => handleAddFromFooter('upload')}
           />
         </div>
-      ) : (
+      ) : (view !== 'knowledge' || onAddKnowledge !== undefined) && (
         <div className="border-t border-divider-subtle p-1">
           <button
             type="button"

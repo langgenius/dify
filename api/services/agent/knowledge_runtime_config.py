@@ -13,11 +13,6 @@ from models.agent_config_entities import AgentSoulConfig
 def build_knowledge_fs_layer_config(
     agent_soul: AgentSoulConfig, *, run_context: DifyRunContext
 ) -> DifyKnowledgeFsLayerConfig | None:
-    if agent_soul.knowledge.sets:
-        raise KnowledgeFsError(
-            "KNOWLEDGE_REBIND_REQUIRED",
-            "Replace Classic Knowledge Base bindings with Agent Knowledge Base bindings before running.",
-        )
     if not agent_soul.knowledge.spaces:
         return None
     if any(space.is_missing for space in agent_soul.knowledge.spaces):

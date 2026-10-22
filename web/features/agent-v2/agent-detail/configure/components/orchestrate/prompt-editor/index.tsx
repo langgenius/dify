@@ -1017,7 +1017,7 @@ export function AgentPromptEditor() {
       label: t(($) => $['agentDetail.configure.tools.label']),
       icon: 'i-ri-box-3-line',
     },
-    ...(knowledgeEnabled
+    ...(knowledgeEnabled || retrievals.some((item) => !item.controlSpaceId)
       ? [
           {
             key: 'knowledge' as const,
@@ -1064,7 +1064,7 @@ export function AgentPromptEditor() {
           onAddProviderTools={addProviderTools}
           onAddCliTool={addActions.cli}
           onAddFile={addActions.files}
-          onAddKnowledge={addActions.knowledge}
+          onAddKnowledge={knowledgeEnabled ? addActions.knowledge : undefined}
           onAddSkill={addActions.skills}
           canAddWorkspaceSkill={enableSkill === true}
           knowledgeRetrievals={retrievals}

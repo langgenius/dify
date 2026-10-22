@@ -755,12 +755,11 @@ class AgentKnowledgeSpaceConfig(BaseModel):
 
 
 class AgentSoulKnowledgeConfig(BaseModel):
-    """Agent Knowledge Base authoring, with lossless Classic Knowledge Base configuration decoding.
+    """Agent Knowledge Base and Classic Knowledge Base bindings for an Agent.
 
-    New configuration uses ``spaces``. ``sets`` is retained solely so existing
-    snapshots/DSL remain readable; new publish/run validation rejects Classic
-    Knowledge Base bindings with an explicit rebind error. Empty knowledge adds no runtime
-    capability. The two formats must never coexist or shadow one another.
+    ``spaces`` use the KnowledgeFS layer and ``sets`` use the Classic Knowledge
+    Base layer. Both may be configured together; empty knowledge adds no runtime
+    capability.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -769,9 +768,7 @@ class AgentSoulKnowledgeConfig(BaseModel):
     sets: list[AgentKnowledgeSetConfig] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_unique_sets(self) -> Self:
-        if self.spaces and self.sets:
-            raise ValueError("Agent Knowledge Base bindings cannot be mixed with Classic Knowledge Base bindings")
+    def validate_unique_bindings(self) -> Self:
         for attribute, values in (
             ("id", [space.id.casefold() for space in self.spaces]),
             ("control_space_id", [space.control_space_id.casefold() for space in self.spaces]),
@@ -790,6 +787,11 @@ class AgentSoulKnowledgeConfig(BaseModel):
         set_names = [item.name.strip().lower() for item in self.sets]
         if len(set_names) != len(set(set_names)):
             raise ValueError("knowledge set names must be unique")
+        if self.spaces and self.sets:
+            if {space.id.casefold() for space in self.spaces} & {item.id.strip().casefold() for item in self.sets}:
+                raise ValueError("knowledge binding ids must be unique across Agent and Classic Knowledge Bases")
+            if {space.name.casefold() for space in self.spaces} & set(set_names):
+                raise ValueError("knowledge binding names must be unique across Agent and Classic Knowledge Bases")
         return self
 
 

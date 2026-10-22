@@ -166,7 +166,7 @@ function AgentKnowledgeRetrievalForm({
       .map((item) => item.id),
   )
   const validation = validateKnowledgeRetrievals(draft)
-  const legacy = draft.some((item) => !item.controlSpaceId)
+  const spaceCount = draft.filter((item) => item.controlSpaceId).length
   const update = (id: string, patch: Partial<AgentKnowledgeRetrievalItem>) =>
     setDraft((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)))
   const toggle = (space: KnowledgeFsSpaceListItemResponse, checked: boolean) => {
@@ -176,7 +176,7 @@ function AgentKnowledgeRetrievalForm({
       if (!canBindSpace(space)) return current
       if (existing)
         return current.map((item) => (item === existing ? { ...item, isMissing: false } : item))
-      if (current.length >= 10) return current
+      if (current.filter((item) => item.controlSpaceId).length >= 10) return current
       const title =
         space.technical_summary?.name || t(($) => $['agentDetail.configure.knowledgeFs.title'])
       const name = current.some((item) => item.name?.toLowerCase() === title.toLowerCase())
@@ -232,19 +232,6 @@ function AgentKnowledgeRetrievalForm({
         />
       </div>
       <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain px-4 pb-4 system-sm-regular">
-        {legacy && (
-          <div
-            role="alert"
-            className="space-y-2 rounded-lg bg-background-section p-3 system-xs-regular text-text-warning"
-          >
-            <p>{t(($) => $['agentDetail.configure.knowledgeFs.legacy'])}</p>
-            <Button
-              onClick={() => setDraft((current) => current.filter((item) => item.controlSpaceId))}
-            >
-              {t(($) => $['agentDetail.configure.knowledgeFs.removeLegacy'])}
-            </Button>
-          </div>
-        )}
         {draft.some((item) => item.isMissing) && (
           <p role="alert" className="px-2 system-xs-regular text-text-warning">
             {t(($) => $['agentDetail.configure.knowledgeFs.rebind'])}
@@ -297,7 +284,7 @@ function AgentKnowledgeRetrievalForm({
                 key={space.control_space_id}
                 space={space}
                 checked={checked}
-                disabled={!checked && !binding && draft.length >= 10}
+                disabled={!checked && !binding && spaceCount >= 10}
                 onCheckedChange={(next) => toggle(space, next)}
               />
             )
@@ -397,7 +384,7 @@ function AgentKnowledgeRetrievalForm({
       </div>
       <div className="flex shrink-0 items-center justify-end gap-2 border-t border-divider-subtle px-6 py-4">
         <span role="status" className="mr-auto system-xs-medium text-text-tertiary tabular-nums">
-          {draft.length} / 10
+          {spaceCount} / 10
         </span>
         <Button onClick={onClose}>{tc(($) => $['operation.cancel'])}</Button>
         <Button type="submit" variant="primary">

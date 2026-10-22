@@ -60,8 +60,8 @@ type AgentConfigVersionKind = Literal["snapshot", "draft", "build_draft"]
 
 
 def _knowledge_fs_spec(run_input: AgentBackendWorkflowNodeRunInput | AgentBackendAgentAppRunInput) -> RunLayerSpec:
-    if not run_input.include_shell or run_input.knowledge is not None or run_input.knowledge_fs is None:
-        raise ValueError("KnowledgeFS requires shell and cannot be combined with legacy knowledge retrieval")
+    if not run_input.include_shell or run_input.knowledge_fs is None:
+        raise ValueError("KnowledgeFS requires shell and a KnowledgeFS binding")
     return RunLayerSpec(
         name=DIFY_KNOWLEDGE_FS_LAYER_ID,
         config=run_input.knowledge_fs.model_dump(mode="json"),
