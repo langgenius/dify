@@ -92,7 +92,7 @@ it('moves focus before making a submitted interaction inert and preserves its an
       </Provider>
     </QueryClientProvider>,
   )
-  const submit = screen.getByRole('button', { name: 'Submit' })
+  const submit = screen.getByRole('button', { name: 'Approve plan' })
   await expect.element(submit).toBeVisible()
   const submitElement = submit.element()
 

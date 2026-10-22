@@ -25,6 +25,7 @@ from models.model import App
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+from services.dify_builder.native_testing.repository import native_observation_transaction
 from services.dify_builder.native_testing.state_store import invocation_state, owner_query
 
 
@@ -229,7 +230,9 @@ def locked_native_capacity(lifecycle, *, ref: NativeTestContextRef, settlement: 
     with lifecycle.loader.session_factory() as session:
         owned, _ = lifecycle.loader._load(session, ref=ref, lock=False, settlement=settlement)
         app_id, tenant_id = owned.app_id, owned.tenant_id
-    with lifecycle.loader.session_factory.begin() as session:
+    with native_observation_transaction(
+        lifecycle.loader.session_factory, session_id=lambda: owned.session_id
+    ) as session:
         app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).with_for_update())
         if app is None:
             raise BuilderExecutionPolicyError("native_owner_mismatch")

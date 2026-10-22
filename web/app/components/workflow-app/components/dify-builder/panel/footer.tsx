@@ -134,7 +134,8 @@ export const DifyBuilderPanelFooter = ({
           {renderText({ type: 'copy', id: 'confirmed.unknown' })}
         </p>
       )}
-      {testExecution?.resume_blocked_reason === 'native_resolution_unavailable' && (
+      {(testExecution?.resume_blocked_reason === 'native_resolution_unavailable' ||
+        (testExecution?.status === 'waiting' && testExecution.wait_reason === 'configuration')) && (
         <p role="status" className="mx-4 mb-2 system-xs-regular text-text-secondary">
           {t(($) => $['testResult.configurationRequired'], { ns: 'difyBuilder' })}
         </p>
