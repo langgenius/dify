@@ -57,11 +57,15 @@ class ModelConfigConverter:
             raise QuotaExceededError(f"Model provider {provider_name} quota exceeded.")
 
         # model config
+        # `stop` is already extracted out of `completion_params` by
+        # `ModelConfigManager.convert` and lives on `ModelConfigEntity.stop`. Read
+        # the canonical entity field rather than re-extracting from the dict, so
+        # non-workflow apps actually forward the configured stop sequences to the
+        # model runtime. The defensive `list(...)` copy prevents downstream
+        # consumers (e.g. `CoTAgentRunner` appending "Observation") from leaking
+        # state back into the per-request `ModelConfigEntity`.
         completion_params = model_config.parameters
-        stop = []
-        if "stop" in completion_params:
-            stop = completion_params["stop"]
-            del completion_params["stop"]
+        stop = list(model_config.stop)
 
         model_schema = model_type_instance.get_model_schema(model_config.model, model_credentials)
 
