@@ -4,12 +4,24 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from constants.end_user_connections import ConnectionCredentialType
+from constants.end_user_connections import NodeConnectionStatus
 from context.connection_execution import ConnectionExecutionContext, ExecutionConnectionSelection
 from services.end_user_connections.entities import WebConnectionContext
-from services.end_user_connections.errors import ConnectionConfigurationError, ConnectionWorkflowChangedError
-from services.end_user_connections.policy import require_applicable_connection
-from services.end_user_connections.preflight import ConnectionId, NodeId, PreflightConnections, PreflightRequirements
+from services.end_user_connections.errors import (
+    ConnectionCheckUnavailableError,
+    ConnectionConfigurationError,
+    ConnectionInvalidCredentialsError,
+    ConnectionNotFoundError,
+    ConnectionReauthorizationRequiredError,
+    ConnectionRequiredError,
+    ConnectionWorkflowChangedError,
+)
+from services.end_user_connections.preflight import (
+    ConnectionId,
+    ConnectionPreflightInput,
+    ConnectionPreflightService,
+    NodeId,
+)
 
 
 class ConnectionRunInput(BaseModel):
@@ -31,9 +43,8 @@ class ConnectionRunInput(BaseModel):
 
 
 class ConnectionExecutionService:
-    def __init__(self, *, requirements: PreflightRequirements, connections: PreflightConnections) -> None:
-        self._requirements = requirements
-        self._connections = connections
+    def __init__(self, *, preflight: ConnectionPreflightService) -> None:
+        self._preflight = preflight
 
     def prepare(
         self,
@@ -47,44 +58,37 @@ class ConnectionExecutionService:
             raise ConnectionConfigurationError()
         if str(command.workflow_id) != workflow_id:
             raise ConnectionWorkflowChangedError()
-        self._connections.validate_preflight_context(identity, workflow_id, conversation_id)
-        choices = {key: str(value) if value is not None else None for key, value in (command.connections or {}).items()}
-        ids = frozenset(value for value in choices.values() if value is not None)
-        records = self._connections.access_records(identity, ids)
-        requirements = self._requirements.resolve(
+        result = self._preflight.check(
             identity,
-            workflow_id,
-            conversation_id,
-            oauth_providers=frozenset(
-                record.provider
-                for record in records.values()
-                if record.credential_type == ConnectionCredentialType.OAUTH2
+            ConnectionPreflightInput(
+                workflow_id=command.workflow_id,
+                conversation_id=UUID(conversation_id) if conversation_id is not None else None,
+                connections=command.connections or {},
             ),
         )
-        if requirements and command.connections is None:
-            raise ConnectionConfigurationError()
-        if choices.keys() - {requirement.target.node_id for requirement in requirements}:
-            raise ConnectionConfigurationError()
         selections: list[ExecutionConnectionSelection] = []
-        for requirement in requirements:
-            target = requirement.target
-            connection_id = choices.get(target.node_id)
-            if connection_id is not None:
-                require_applicable_connection(
-                    identity,
-                    records.get(connection_id),
-                    workflow_id=workflow_id,
-                    node_id=target.node_id,
-                    target=target,
-                )
-            selections.append(
-                ExecutionConnectionSelection(
-                    node_id=target.node_id,
-                    provider=target.provider,
-                    connection_id=connection_id,
-                )
-            )
-        self._connections.validate_preflight_context(identity, workflow_id, conversation_id)
+        for requirement in result.requirements:
+            match requirement.status:
+                case NodeConnectionStatus.DISCONNECTED:
+                    if (command.connections or {}).get(requirement.node_id) is not None:
+                        raise ConnectionNotFoundError()
+                    raise ConnectionRequiredError()
+                case NodeConnectionStatus.RECONNECT_REQUIRED:
+                    raise ConnectionReauthorizationRequiredError()
+                case NodeConnectionStatus.INVALID:
+                    raise ConnectionInvalidCredentialsError()
+                case None:
+                    raise ConnectionCheckUnavailableError()
+                case NodeConnectionStatus.CONNECTED:
+                    selections.append(
+                        ExecutionConnectionSelection(
+                            node_id=requirement.node_id,
+                            provider=requirement.provider,
+                            connection_id=requirement.connection_id,
+                        )
+                    )
+        # The snapshot comes from this completed check, never a second resolution
+        # that could observe different requirements or mutable default choices.
         return ConnectionExecutionContext(
             tenant_id=identity.tenant_id,
             app_id=identity.app_id,

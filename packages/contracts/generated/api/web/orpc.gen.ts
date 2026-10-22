@@ -18,6 +18,7 @@ import {
   zConnectionNotFoundError,
   zConnectionOauthFailedError,
   zConnectionReauthorizationRequiredError,
+  zConnectionRequiredError,
   zCredentialCheckUnavailableError,
   zEmailCodeError,
   zEmailPasswordResetLimitError,
@@ -247,6 +248,8 @@ export const post3 = oc
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
     connection_credentials_unavailable: {
       status: 503,
       data: zConnectionCredentialsUnavailableError,
@@ -256,6 +259,7 @@ export const post3 = oc
       status: 409,
       data: zConnectionReauthorizationRequiredError,
     },
+    connection_required: { status: 400, data: zConnectionRequiredError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
@@ -1582,6 +1586,8 @@ export const post27 = oc
   .errors({
     completion_request_error: { status: 400, data: zCompletionRequestError },
     connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
     connection_credentials_unavailable: {
       status: 503,
       data: zConnectionCredentialsUnavailableError,
@@ -1591,6 +1597,7 @@ export const post27 = oc
       status: 409,
       data: zConnectionReauthorizationRequiredError,
     },
+    connection_required: { status: 400, data: zConnectionRequiredError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_workflow_app: { status: 400, data: zNotWorkflowAppError },

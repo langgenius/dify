@@ -198,6 +198,11 @@ export type ConnectionReauthorizationRequiredError = ErrorResponse & {
   status: 409
 }
 
+export type ConnectionRequiredError = ErrorResponse & {
+  code: 'connection_required'
+  status: 400
+}
+
 export type ConversationInfiniteScrollPagination = {
   data: Array<SimpleConversation>
   has_more: boolean
@@ -1502,6 +1507,8 @@ export type PostChatMessagesErrors = {
     | AppUnavailableError
     | CompletionRequestError
     | ConnectionConfigurationInvalidError
+    | ConnectionCredentialsInvalidError
+    | ConnectionRequiredError
     | ModelCurrentlyNotSupportError
     | NotChatAppError
     | ProviderNotInitializeError
@@ -1509,7 +1516,11 @@ export type PostChatMessagesErrors = {
     | ErrorResponse
   401: ErrorResponse
   404: ConnectionNotFoundError | ErrorResponse
-  409: ConnectionReauthorizationRequiredError | WorkflowChangedError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | WorkflowChangedError
+    | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
@@ -2814,6 +2825,8 @@ export type PostWorkflowsRunErrors = {
   400:
     | CompletionRequestError
     | ConnectionConfigurationInvalidError
+    | ConnectionCredentialsInvalidError
+    | ConnectionRequiredError
     | ModelCurrentlyNotSupportError
     | NotWorkflowAppError
     | ProviderNotInitializeError
@@ -2822,7 +2835,11 @@ export type PostWorkflowsRunErrors = {
   401: ErrorResponse
   403: TriggerWorkflowServiceModeUnavailableError | ErrorResponse
   404: ConnectionNotFoundError | ErrorResponse
-  409: ConnectionReauthorizationRequiredError | WorkflowChangedError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | WorkflowChangedError
+    | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse

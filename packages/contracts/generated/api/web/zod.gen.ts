@@ -492,6 +492,18 @@ export const zConnectionReauthorizationRequiredError = zErrorResponse.and(
 )
 
 /**
+ * ConnectionRequiredError
+ *
+ * Select a connection for every required tool before running.
+ */
+export const zConnectionRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_required'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * CredentialCheckUnavailableError
  *
  * Credential validation is temporarily unavailable.

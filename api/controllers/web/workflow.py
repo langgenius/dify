@@ -7,8 +7,11 @@ from controllers.common.controller_schemas import WorkflowRunPayload as BaseWork
 from controllers.common.end_user_connections import (
     ConnectionCheckUnavailableHTTPError,
     ConnectionConfigurationHTTPError,
+    ConnectionConflictHTTPError,
+    ConnectionCredentialsHTTPError,
     ConnectionNotFoundHTTPError,
     ConnectionReauthorizationHTTPError,
+    ConnectionRequiredHTTPError,
     ConnectionSecretUnavailableHTTPError,
     ConnectionWorkflowChangedHTTPError,
     raise_connection_error,
@@ -64,8 +67,11 @@ class WorkflowRunApi(WebApiResource):
     @error_responses(
         ConnectionCheckUnavailableHTTPError,
         ConnectionConfigurationHTTPError,
+        ConnectionConflictHTTPError,
+        ConnectionCredentialsHTTPError,
         ConnectionNotFoundHTTPError,
         ConnectionReauthorizationHTTPError,
+        ConnectionRequiredHTTPError,
         ConnectionSecretUnavailableHTTPError,
         ConnectionWorkflowChangedHTTPError,
         CompletionRequestError,

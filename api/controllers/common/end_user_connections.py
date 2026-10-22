@@ -15,6 +15,7 @@ from services.end_user_connections.errors import (
     ConnectionNotFoundError,
     ConnectionOAuthError,
     ConnectionReauthorizationRequiredError,
+    ConnectionRequiredError,
     ConnectionSecretUnavailableError,
     ConnectionWorkflowChangedError,
 )
@@ -30,6 +31,12 @@ class ConnectionNotFoundHTTPError(BaseHTTPException):
     code = 404
     error_code = "connection_not_found"
     description = "Connection not found."
+
+
+class ConnectionRequiredHTTPError(BaseHTTPException):
+    code = 400
+    error_code = "connection_required"
+    description = "Select a connection for every required tool before running."
 
 
 class ConnectionConfigurationHTTPError(BaseHTTPException):
@@ -88,6 +95,7 @@ def raise_connection_error(error: ConnectionError) -> NoReturn:
         ConnectionReauthorizationRequiredError: ConnectionReauthorizationHTTPError,
         ConnectionNotFoundError: ConnectionNotFoundHTTPError,
         ConnectionConfigurationError: ConnectionConfigurationHTTPError,
+        ConnectionRequiredError: ConnectionRequiredHTTPError,
         ConnectionConflictError: ConnectionConflictHTTPError,
         ConnectionWorkflowChangedError: ConnectionWorkflowChangedHTTPError,
         ConnectionInvalidCredentialsError: ConnectionCredentialsHTTPError,
