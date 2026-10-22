@@ -24,6 +24,7 @@ from controllers.openapi._models import (
     DslIssueRow,
     Hint,
 )
+from controllers.openapi._plugin_errors import plugin_errors
 from controllers.openapi.auth.requirements import EDITOR_ROLES, account_app_guards, workspace_write_guards
 from controllers.openapi.plugins import PluginInstallApi
 from core.plugin.entities.plugin import PluginDependencyType
@@ -298,7 +299,8 @@ class AppDslCheckDependenciesApi(Resource):
     )
     def get(self, ctx: RequestContext, app_id: str):
         try:
-            result = application_services().apps.imports.check_dependencies(ctx, str(UUID(app_id)))
+            with plugin_errors():
+                result = application_services().apps.imports.check_dependencies(ctx, str(UUID(app_id)))
         except ConsoleAppNotFoundError as exc:
             raise NotFound(str(exc)) from exc
         except WorkflowNotFoundError as exc:
