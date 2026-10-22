@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
-from io import StringIO
-from pathlib import Path
-from types import ModuleType
 from typing import override
 
 import pytest
@@ -13,10 +9,15 @@ from alembic.operations import Operations
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
-_MIGRATION_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "migrations/versions/2026_10_22_1200-1a3726b753f6_add_oauth_access_token_device_key.py"
+from tests.unit_tests.migrations.offline_migration import (
+    VERSIONS_DIR,
+    load_migration_module,
+    offline_migration,
+    single_statement,
+    split_statements,
 )
+
+_MIGRATION_PATH = VERSIONS_DIR / "2026_10_22_1200-1a3726b753f6_add_oauth_access_token_device_key.py"
 _TABLE = "oauth_access_tokens"
 _KEY_INDEX = "uq_oauth_active_per_device_key"
 _LABEL_INDEX = "uq_oauth_active_guard_per_device"
@@ -25,57 +26,35 @@ _OWNER_COLUMNS = ("subject_email", "subject_issuer", "client_id")
 _OWNER = {"subject_email": "ada@example.com", "subject_issuer": "dify:account", "client_id": "difyctl"}
 
 
-def _load_migration_module(path: Path) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(path.stem, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("failed to load migration module")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def _offline_migration(dialect_name: str) -> tuple[ModuleType, StringIO]:
-    migration = _load_migration_module(_MIGRATION_PATH)
-    output = StringIO()
-    context = MigrationContext.configure(
-        dialect_name=dialect_name,
-        opts={"as_sql": True, "output_buffer": output},
-    )
-    migration.__dict__["op"] = Operations(context)
-    return migration, output
-
-
-def _statements(output: StringIO) -> list[str]:
-    return [statement.strip() for statement in output.getvalue().split(";") if statement.strip()]
-
-
-def _one(statements: list[str], fragment: str) -> str:
-    matches = [statement for statement in statements if fragment in statement]
-    assert len(matches) == 1, statements
-    return matches[0]
-
-
 def _index_columns(dialect_name: str, device_column: str) -> str:
     if dialect_name == "postgresql":
         return f"({', '.join(_OWNER_COLUMNS)}, {device_column}, active_guard)"
     return f"(subject_email(191), subject_issuer(191), client_id, {device_column}(191), active_guard)"
 
 
-@pytest.mark.parametrize("dialect_name", ["postgresql", "mysql"])
-def test_upgrade_backfills_the_key_and_builds_its_index_before_dropping_the_label_index(dialect_name: str) -> None:
-    migration, output = _offline_migration(dialect_name)
+@pytest.mark.parametrize(
+    ("dialect_name", "not_null_phrase"),
+    [
+        ("postgresql", "ALTER COLUMN device_key SET NOT NULL"),
+        ("mysql", "MODIFY device_key VARCHAR(255) NOT NULL"),
+    ],
+)
+def test_upgrade_backfills_the_key_and_builds_its_index_before_dropping_the_label_index(
+    dialect_name: str, not_null_phrase: str
+) -> None:
+    migration, output = offline_migration(_MIGRATION_PATH, dialect_name)
     migration.upgrade()
-    statements = _statements(output)
+    statements = split_statements(output)
 
-    add_column = _one(statements, "ADD COLUMN device_key")
+    add_column = single_statement(statements, "ADD COLUMN device_key")
     assert "NOT NULL" not in add_column
-    backfill = _one(statements, "UPDATE oauth_access_tokens SET device_key")
+    backfill = single_statement(statements, "UPDATE oauth_access_tokens SET device_key")
     assert "device_label" in backfill
-    not_null = _one(statements, "NOT NULL")
-    create = _one(statements, f"CREATE UNIQUE INDEX {_KEY_INDEX}")
+    not_null = single_statement(statements, not_null_phrase)
+    create = single_statement(statements, f"CREATE UNIQUE INDEX {_KEY_INDEX}")
     assert create.endswith(f"ON {_TABLE} {_index_columns(dialect_name, 'device_key')}")
     assert "WHERE" not in create
-    drop = _one(statements, f"DROP INDEX {_LABEL_INDEX}")
+    drop = single_statement(statements, f"DROP INDEX {_LABEL_INDEX}")
 
     order = [statements.index(statement) for statement in (add_column, backfill, not_null, create, drop)]
     assert order == sorted(order)
@@ -83,15 +62,15 @@ def test_upgrade_backfills_the_key_and_builds_its_index_before_dropping_the_labe
 
 @pytest.mark.parametrize("dialect_name", ["postgresql", "mysql"])
 def test_downgrade_restores_the_label_index_before_dropping_the_key(dialect_name: str) -> None:
-    migration, output = _offline_migration(dialect_name)
+    migration, output = offline_migration(_MIGRATION_PATH, dialect_name)
     migration.downgrade()
-    statements = _statements(output)
+    statements = split_statements(output)
 
-    create = _one(statements, f"CREATE UNIQUE INDEX {_LABEL_INDEX}")
+    create = single_statement(statements, f"CREATE UNIQUE INDEX {_LABEL_INDEX}")
     assert create.endswith(f"ON {_TABLE} {_index_columns(dialect_name, 'device_label')}")
     assert "WHERE" not in create
-    drop_index = _one(statements, f"DROP INDEX {_KEY_INDEX}")
-    drop_column = _one(statements, "DROP COLUMN device_key")
+    drop_index = single_statement(statements, f"DROP INDEX {_KEY_INDEX}")
+    drop_column = single_statement(statements, "DROP COLUMN device_key")
 
     assert statements.index(create) < statements.index(drop_index) < statements.index(drop_column)
 
@@ -164,7 +143,7 @@ def test_sqlite_upgrade_is_retryable_and_rotates_on_the_key(
     if has_key_index:
         _add_index(tokens, _KEY_INDEX, "device_key")
     metadata.create_all(engine)
-    migration = _load_migration_module(_MIGRATION_PATH)
+    migration = load_migration_module(_MIGRATION_PATH)
 
     with engine.begin() as connection:
         _insert(connection, id="revoked", device_label="Laptop", revoked_at=sa.func.current_timestamp())
@@ -203,7 +182,7 @@ def test_sqlite_downgrade_is_retryable_and_restores_label_rotation(
     if has_key_index:
         _add_index(tokens, _KEY_INDEX, "device_key")
     metadata.create_all(engine)
-    migration = _load_migration_module(_MIGRATION_PATH)
+    migration = load_migration_module(_MIGRATION_PATH)
     device_key = {"device_key": "install:aaaa1111"} if has_column else {}
 
     with engine.begin() as connection:
