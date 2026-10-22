@@ -174,16 +174,26 @@ def authorized_gateway(monkeypatch: pytest.MonkeyPatch) -> tuple[gateway.AgentKn
     [CONTEXT, CONTEXT.model_copy(update={"agent_config_version_kind": "draft", "invoke_from": "debugger"})],
     ids=("published", "preview"),
 )
+@pytest.mark.parametrize("command", ["search", "spaces"])
 def test_disabled_feature_blocks_agent_commands_before_capability_issuance(
     authorized_gateway: tuple[gateway.AgentKnowledgeGateway, FakeRuntime],
     monkeypatch: pytest.MonkeyPatch,
     context: DifyExecutionContextLayerConfig,
+    command: KnowledgeFsCommandName,
 ) -> None:
     service, runtime = authorized_gateway
     apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=False)
+    monkeypatch.setattr(
+        gateway.AgentKnowledgeGateway,
+        "_authorize_context",
+        staticmethod(lambda _: pytest.fail("disabled KnowledgeFS must not read Agent configuration")),
+    )
+    prepared_request = (
+        request("search", context=context, query="hello") if command == "search" else request("spaces", context=context)
+    )
 
     with pytest.raises(KnowledgeFsError) as error:
-        service.prepare(request("search", context=context, query="hello"))
+        service.prepare(prepared_request)
 
     assert error.value.code == "KNOWLEDGE_UNAVAILABLE"
     assert error.value.status_code == 503

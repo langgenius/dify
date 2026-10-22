@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import uuid
+from collections.abc import Callable
 from typing import Protocol, runtime_checkable
 
 import pytest
@@ -14,6 +15,7 @@ from werkzeug.routing.rules import Rule
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
+from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, TokenType
 from services.knowledge_fs.feature_service import KnowledgeFSFeatures
 from services.knowledge_fs.product_dto import KnowledgeFSListQuery
@@ -33,8 +35,25 @@ class ResourceView(Protocol):
     view_class: type
 
 
+@pytest.fixture(autouse=True)
+def _enabled_knowledge_fs(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, KNOWLEDGE_FS_ENABLED=True)
+
+
 def _route(app: Flask, path: str) -> Rule:
     return next(rule for rule in app.url_map.iter_rules() if rule.rule == path)
+
+
+def test_disabled_knowledge_fs_hides_openapi_route_before_facade_access(config_overrides: Callable[..., None]) -> None:
+    from controllers.openapi.knowledge_fs import KnowledgeFsEntryListApi
+
+    config_overrides(KNOWLEDGE_FS_ENABLED=False)
+    handler = inspect.unwrap(
+        KnowledgeFsEntryListApi.get,
+        stop=lambda view: "_knowledge_fs_errors.<locals>.decorated" in view.__code__.co_qualname,
+    )
+    with pytest.raises(NotFound):
+        handler(KnowledgeFsEntryListApi(), "workspace-1", "space-1")
 
 
 def test_each_knowledge_fs_command_has_its_own_command_oriented_openapi_route() -> None:

@@ -457,6 +457,8 @@ def _console_services() -> KnowledgeFSRuntime:
 def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        if not get_knowledge_fs_features().enabled:
+            raise NotFound()
         try:
             return view(*args, **kwargs)
         except KnowledgeFSProductNotFoundError as exc:
@@ -4228,7 +4230,7 @@ class KnowledgeFSJWKSApi(Resource):
         console_ns.models[KnowledgeFSJWKSResponse.__name__],
     )
     def get(self) -> Response:
-        if not dify_config.KNOWLEDGE_FS_CAPABILITY_V2_ENABLED:
+        if not get_knowledge_fs_features().enabled or not dify_config.KNOWLEDGE_FS_CAPABILITY_V2_ENABLED:
             raise NotFound()
         session_maker = session_factory.get_session_maker()
         try:

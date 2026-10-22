@@ -9,7 +9,7 @@ import pytest
 from flask import Flask
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.inner_api.wraps import (
     enterprise_inner_api_only,
@@ -18,6 +18,7 @@ from controllers.inner_api.wraps import (
     knowledge_fs_inner_api_only,
     plugin_inner_api_only,
 )
+from enums import DeploymentEdition
 from models.enums import EndUserType
 from models.model import EndUser
 
@@ -316,9 +317,26 @@ class TestKnowledgeFSInnerApiOnly:
         def protected_view() -> str:
             return "success"
 
-        config_overrides(PLUGIN_DAEMON_KEY="plugin_key", INNER_API_KEY_FOR_PLUGIN="valid_plugin_key")
+        config_overrides(
+            PLUGIN_DAEMON_KEY="plugin_key",
+            INNER_API_KEY_FOR_PLUGIN="valid_plugin_key",
+            DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+            KNOWLEDGE_FS_ENABLED=True,
+        )
         with app.test_request_context(headers={"X-Inner-Api-Key": "valid_plugin_key"}):
             assert protected_view() == "success"
+
+    def test_should_hide_endpoint_when_knowledge_fs_is_disabled(
+        self, app: Flask, config_overrides: Callable[..., None]
+    ) -> None:
+        @knowledge_fs_inner_api_only
+        def protected_view() -> str:
+            pytest.fail("disabled KnowledgeFS must not enter the handler")
+
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, KNOWLEDGE_FS_ENABLED=False)
+        with app.test_request_context(headers={"X-Inner-Api-Key": "valid_plugin_key"}):
+            with pytest.raises(NotFound):
+                protected_view()
 
     def test_should_hide_endpoint_for_invalid_key(self, app: Flask, config_overrides: Callable[..., None]) -> None:
         @knowledge_fs_inner_api_only

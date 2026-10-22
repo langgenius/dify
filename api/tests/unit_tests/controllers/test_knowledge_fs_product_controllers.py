@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 import inspect
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -27,6 +27,7 @@ from controllers.console.knowledge_fs.error import (
 from controllers.console.wraps import RBACPermission
 from controllers.service_api import service_api_ns
 from controllers.service_api.knowledge_fs import resources as service_resources
+from enums import DeploymentEdition
 from models import Account
 from models.enums import ApiTokenType
 from models.model import ApiToken
@@ -70,6 +71,60 @@ from tests.unit_tests.controllers.knowledge_fs_controller_fakes import (
 )
 
 _API_ROOT = Path(__file__).resolve().parents[3]
+
+
+@pytest.fixture(autouse=True)
+def _enabled_knowledge_fs(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        KNOWLEDGE_FS_ENABLED=True,
+        KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=True,
+    )
+
+
+def test_disabled_knowledge_fs_rejects_console_work_before_preview_upload_or_query_admission(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(KNOWLEDGE_FS_ENABLED=False)
+    routes = (
+        (console_resources.KnowledgeFSInitialSourcePreviewApi, "post", ()),
+        (console_resources.KnowledgeFSInitialSourcePreviewJobsApi, "post", ()),
+        (console_resources.KnowledgeFSStagedUploadsApi, "post", ()),
+        (console_resources.KnowledgeFSSpaceQueryAdmissionApi, "post", ("space-1",)),
+    )
+    for resource_type, method, args in routes:
+        handler = inspect.unwrap(
+            getattr(resource_type, method),
+            stop=lambda view: "_knowledge_fs_errors.<locals>.decorated" in view.__code__.co_qualname,
+        )
+        with pytest.raises(NotFound):
+            handler(resource_type(), *args)
+
+
+def test_disabled_knowledge_fs_hides_jwks_even_when_capability_v2_is_configured(
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_overrides(KNOWLEDGE_FS_ENABLED=False, KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=True)
+    monkeypatch.setattr(
+        console_resources.session_factory,
+        "get_session_maker",
+        lambda: pytest.fail("disabled JWKS must not access the database"),
+    )
+    with pytest.raises(NotFound):
+        console_resources.KnowledgeFSJWKSApi().get()
+
+
+def test_disabled_knowledge_fs_rejects_service_api_before_token_validation(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(KNOWLEDGE_FS_ENABLED=False)
+    handler = inspect.unwrap(
+        service_resources.KnowledgeFSServiceSourceProvidersApi.get,
+        stop=lambda view: "_service_api_errors.<locals>.decorated" in view.__code__.co_qualname,
+    )
+    with pytest.raises(NotFound):
+        handler(service_resources.KnowledgeFSServiceSourceProvidersApi(), "space-1")
 
 
 @dataclass(frozen=True)

@@ -242,6 +242,8 @@ def _runtime() -> KnowledgeFSRuntime:
 def _service_api_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        if not get_knowledge_fs_features().enabled:
+            raise NotFound()
         try:
             return view(*args, **kwargs)
         except KnowledgeFSServiceApiScopeError as exc:

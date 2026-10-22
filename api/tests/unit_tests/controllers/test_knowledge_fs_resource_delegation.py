@@ -76,6 +76,11 @@ from tests.unit_tests.controllers.knowledge_fs_controller_fakes import (
 _RAW_RESULT = object()
 
 
+@pytest.fixture(autouse=True)
+def _enabled_knowledge_fs(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, KNOWLEDGE_FS_ENABLED=True)
+
+
 def source_response(**overrides: object) -> KnowledgeFSSourceResponse:
     return KnowledgeFSSourceResponse.model_validate(
         {

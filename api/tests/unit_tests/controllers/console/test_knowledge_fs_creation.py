@@ -43,7 +43,12 @@ def test_create_space_enforces_admission_before_provisioning(
     rbac_allowed: bool,
     allowed: bool,
 ) -> None:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, RBAC_ENABLED=rbac_enabled, LOGIN_DISABLED=False)
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        KNOWLEDGE_FS_ENABLED=True,
+        RBAC_ENABLED=rbac_enabled,
+        LOGIN_DISABLED=False,
+    )
     account = make_account(role=role)
     identity = AccountWithTenant(account, "workspace")
     monkeypatch.setattr(login, "_resolve_current_user", lambda: account)

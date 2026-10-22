@@ -14,6 +14,7 @@ from controllers.service_api.knowledge_fs.error import (
     KnowledgeFSServiceInvalidRequestHTTPError,
     KnowledgeFSServiceUpstreamUnavailableHTTPError,
 )
+from enums import DeploymentEdition
 from libs.exception import BaseHTTPException
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAdmittedQueryRequest,
@@ -45,6 +46,15 @@ _FAILURE = {
     "message": "untrusted provider message",
     "retryPolicy": "manual",
 }
+
+
+@pytest.fixture(autouse=True)
+def _enabled_knowledge_fs(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        KNOWLEDGE_FS_ENABLED=True,
+        KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=True,
+    )
 
 
 class _ReadResource(Protocol):

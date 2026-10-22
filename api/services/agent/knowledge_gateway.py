@@ -121,6 +121,8 @@ class AgentKnowledgeGateway:
         )
 
     def prepare(self, request: KnowledgeFsPrepareRequest) -> KnowledgeFsPreparedRequest:
+        if not get_knowledge_fs_features().enabled:
+            raise KnowledgeFsError("KNOWLEDGE_UNAVAILABLE", "Agent Knowledge Base is disabled.", 503)
         expected = self._authorized_bindings(request)
         runtime = self._runtime or get_knowledge_fs_runtime(session_factory.get_session_maker())
         command = request.command
