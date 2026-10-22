@@ -454,7 +454,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       })
       if (!isCurrent()) return
 
-      if (refreshed) {
+      if (refreshed === 'refreshed') {
         collaborationManager.replaceGraphFromReactFlow(request)
         return
       }
@@ -632,7 +632,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     >
       <div className="flex size-full min-w-0 overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col">
-          {hasWorkflowDraftConflict && <WorkflowDraftConflict />}
+          <WorkflowDraftConflict />
           <div ref={containerRef} className="relative min-w-0 flex-1 overflow-hidden">
             <HooksStoreContextProvider {...(hooksStore as unknown as Partial<HooksStoreShape>)}>
               <HumanInputMigrationProvider canEdit={appACLCapabilities.canEdit}>
