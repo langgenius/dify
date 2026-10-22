@@ -1183,10 +1183,11 @@ forbidden_modules =
     werkzeug
 
 [importlinter:contract:trigger-oauth-client-service-boundary]
-name = Trigger OAuth client orchestration does not directly depend on persistence or HTTP
+name = Trigger OAuth orchestration does not directly depend on persistence or HTTP
 type = forbidden
 source_modules =
     services.trigger.oauth_client_service
+    services.trigger.oauth_service
 forbidden_modules =
     controllers
     extensions

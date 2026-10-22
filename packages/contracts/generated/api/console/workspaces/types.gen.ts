@@ -1394,6 +1394,11 @@ export type TriggerOAuthAuthorizeResponse = {
   subscription_builder_id: string
 }
 
+export type TriggerOauthProviderError = ErrorResponse & {
+  code: 'trigger_oauth_provider_error'
+  status: 502
+}
+
 export type TriggerSubscriptionVerifyPayload = {
   credentials: {
     [key: string]: unknown
@@ -8710,6 +8715,8 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAutho
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeErrors = {
+  500: TriggerOauthClientConfigInvalidError | ErrorResponse
+  502: TriggerOauthProviderError | ErrorResponse
   default: ErrorResponse
 }
 

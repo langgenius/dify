@@ -601,6 +601,9 @@ class TriggerProviderService:
         :param tenant_id: Tenant ID
         :param provider_id: Provider identifier
         :return: OAuth client configuration or None
+
+        TODO: Remove this legacy resolver when subscription token refresh uses
+        the injected TriggerOAuthClientService already shared by the OAuth APIs.
         """
         if provider_controller is None:
             provider_controller = TriggerManager.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)

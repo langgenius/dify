@@ -6,16 +6,22 @@ from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, RootModel, model_validator
 from sqlalchemy.orm import sessionmaker
-from werkzeug.exceptions import BadRequest, Forbidden
+from werkzeug import Response
+from werkzeug.exceptions import BadRequest
 
 from configs import dify_config
-from controllers.common.errors import NotFoundError
+from controllers.common.errors import ForbiddenError, NotFoundError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.workspace.error import TriggerOAuthClientChangedError, TriggerOAuthClientConfigInvalidError
+from controllers.console.workspace.error import (
+    TriggerOAuthClientChangedError,
+    TriggerOAuthClientConfigInvalidError,
+    TriggerOAuthContextInvalidError,
+    TriggerOAuthProviderRequestError,
+)
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -29,7 +35,6 @@ from controllers.console.wraps import (
 )
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.entities.api_entities import (
     SubscriptionBuilderApiEntity,
     TriggerProviderApiEntity,
@@ -47,9 +52,14 @@ from libs.login import login_required
 from machinery.context import RequestContext
 from models.account import Account
 from models.provider_ids import TriggerProviderID
-from services.plugin.oauth_service import OAuthProxyService
 from services.trigger.oauth_client_service import TriggerOAuthClientChangedError as TriggerOAuthClientChanged
 from services.trigger.oauth_client_service import TriggerOAuthClientConfigError
+from services.trigger.oauth_service import (
+    TriggerOAuthCallbackRequest,
+    TriggerOAuthClientNotConfiguredError,
+    TriggerOAuthContextError,
+    TriggerOAuthProviderError,
+)
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
@@ -564,168 +574,83 @@ class TriggerSubscriptionDeleteApi(Resource):
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/subscriptions/oauth/authorize")
 class TriggerOAuthAuthorizeApi(Resource):
     # response-contract:ignore cookie-bearing Flask response
+    @error_responses(NotFoundError, TriggerOAuthClientConfigInvalidError, TriggerOAuthProviderRequestError)
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Trigger OAuth authorization URL generated successfully",
         console_ns.models[TriggerOAuthAuthorizeResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    def get(self, tenant_id: str, user: Account, provider: str):
-        """Initiate OAuth authorization flow for a trigger provider"""
-
+    @console_account_admission()
+    def get(self, context: RequestContext, provider: str) -> Response:
+        """Initiate OAuth authorization flow for a trigger provider."""
         try:
-            provider_id = TriggerProviderID(provider)
-            plugin_id = provider_id.plugin_id
-            provider_name = provider_id.provider_name
-            tenant_id = tenant_id
-
-            # Get OAuth client configuration
-            oauth_client_params = TriggerProviderService.get_oauth_client(
-                tenant_id=tenant_id,
-                provider_id=provider_id,
+            result = application_services().workspaces.trigger_oauth.authorize(
+                tenant_id=context.active_workspace_id,
+                user_id=context.account_id,
+                provider_id=TriggerProviderID(provider),
+                redirect_uri=f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback",
             )
+        except TriggerOAuthClientNotConfiguredError as error:
+            raise NotFoundError(str(error)) from error
+        except TriggerOAuthClientConfigError as error:
+            raise TriggerOAuthClientConfigInvalidError(str(error)) from error
+        except TriggerOAuthProviderError as error:
+            raise TriggerOAuthProviderRequestError(str(error)) from error
 
-            if oauth_client_params is None:
-                raise NotFoundError("No OAuth client configuration found for this trigger provider")
-
-            # Create subscription builder
-            subscription_builder = TriggerSubscriptionBuilderService.create_trigger_subscription_builder(
-                tenant_id=tenant_id,
-                user_id=user.id,
-                provider_id=provider_id,
-                credential_type=CredentialType.OAUTH2,
-            )
-
-            # Create OAuth handler and proxy context
-            oauth_handler = OAuthHandler()
-            context_id = OAuthProxyService.create_proxy_context(
-                user_id=user.id,
-                tenant_id=tenant_id,
-                plugin_id=plugin_id,
-                provider=provider_name,
-                extra_data={
-                    "subscription_builder_id": subscription_builder.id,
-                    "plugin_unique_identifier": oauth_client_params.plugin_unique_identifier,
+        response = make_response(
+            dump_response(
+                TriggerOAuthAuthorizeResponse,
+                {
+                    "authorization_url": result.authorization_url,
+                    "subscription_builder_id": result.subscription_builder.id,
+                    "subscription_builder": result.subscription_builder,
                 },
             )
-
-            # Build redirect URI for callback
-            redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback"
-
-            # Get authorization URL
-            authorization_url_response = oauth_handler.get_authorization_url(
-                tenant_id=tenant_id,
-                user_id=user.id,
-                plugin_id=plugin_id,
-                provider=provider_name,
-                redirect_uri=redirect_uri,
-                system_credentials=dict(oauth_client_params.credentials),
-                plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
-            )
-
-            response = make_response(
-                TriggerOAuthAuthorizeResponse(
-                    authorization_url=authorization_url_response.authorization_url,
-                    subscription_builder_id=subscription_builder.id,
-                    subscription_builder=subscription_builder,
-                ).model_dump(mode="json")
-            )
-            response.set_cookie(
-                "context_id",
-                context_id,
-                httponly=True,
-                samesite="Lax",
-                max_age=OAuthProxyService.__MAX_AGE__,
-            )
-
-            return response
-
-        except Exception as e:
-            logger.exception("Error initiating OAuth flow", exc_info=e)
-            raise
+        )
+        response.set_cookie(
+            "context_id",
+            result.context_id,
+            httponly=True,
+            samesite="Lax",
+            max_age=result.context_max_age,
+        )
+        return response
 
 
 @console_ns.route("/oauth/plugin/<path:provider>/trigger/callback")
 class TriggerOAuthCallbackApi(Resource):
     # response-contract:ignore redirect response
-    @console_ns.response(302, "Redirect to OAuth callback page")
+    @error_responses(
+        ForbiddenError,
+        TriggerOAuthContextInvalidError,
+        TriggerOAuthClientConfigInvalidError,
+        TriggerOAuthProviderRequestError,
+    )
+    @console_ns.response(HTTPStatus.FOUND, "Redirect to OAuth callback page")
     @setup_required
-    def get(self, provider: str):
-        """Handle OAuth callback for trigger provider"""
-        context_id = request.cookies.get("context_id")
-        if not context_id:
-            raise Forbidden("context_id not found")
-
-        # Use and validate proxy context
-        context = OAuthProxyService.use_proxy_context(context_id)
-        if context is None:
-            raise Forbidden("Invalid context_id")
-
-        # Parse provider ID
-        provider_id = TriggerProviderID(provider)
-        plugin_id = provider_id.plugin_id
-        provider_name = provider_id.provider_name
-        user_id: str = context["user_id"]
-        tenant_id: str = context["tenant_id"]
-        subscription_builder_id: str = context["subscription_builder_id"]
-
-        # Get OAuth client configuration
-        oauth_client_params = TriggerProviderService.get_oauth_client(
-            tenant_id=tenant_id,
-            provider_id=provider_id,
-        )
-
-        if oauth_client_params is None:
-            raise Forbidden("No OAuth client configuration found for this trigger provider")
-
+    def get(self, provider: str) -> Response:
+        """Complete the cookie-bound flow without requiring a Console login."""
         try:
-            OAuthProxyService.validate_plugin_context(
-                context,
-                plugin_id=plugin_id,
-                provider=provider_name,
-                plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
+            application_services().workspaces.trigger_oauth.callback(
+                provider_id=TriggerProviderID(provider),
+                context_id=request.cookies.get("context_id"),
+                redirect_uri=f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback",
+                callback=TriggerOAuthCallbackRequest(
+                    method=request.method,
+                    full_path=request.full_path,
+                    headers=tuple(request.headers.items()),
+                    body=request.get_data(as_text=False),
+                ),
             )
-        except ValueError as error:
-            raise Forbidden(str(error)) from error
-
-        # Get OAuth credentials from callback
-        oauth_handler = OAuthHandler()
-        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback"
-
-        credentials_response = oauth_handler.get_credentials(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            plugin_id=plugin_id,
-            provider=provider_name,
-            redirect_uri=redirect_uri,
-            system_credentials=dict(oauth_client_params.credentials),
-            plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
-            request=request,
-        )
-
-        credentials = credentials_response.credentials
-        expires_at = credentials_response.expires_at
-
-        if not credentials:
-            raise ValueError("Failed to get OAuth credentials from the provider.")
-
-        # Update subscription builder
-        TriggerSubscriptionBuilderService.update_trigger_subscription_builder(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            provider_id=provider_id,
-            subscription_builder_id=subscription_builder_id,
-            subscription_builder_updater=SubscriptionBuilderUpdater(
-                credentials=credentials,
-                credential_expires_at=expires_at,
-            ),
-        )
-        # Redirect to OAuth callback page
-        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
+        except TriggerOAuthContextError as error:
+            raise TriggerOAuthContextInvalidError(str(error)) from error
+        except TriggerOAuthClientNotConfiguredError as error:
+            raise ForbiddenError(str(error)) from error
+        except TriggerOAuthClientConfigError as error:
+            raise TriggerOAuthClientConfigInvalidError(str(error)) from error
+        except TriggerOAuthProviderError as error:
+            raise TriggerOAuthProviderRequestError(str(error)) from error
+        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback", code=HTTPStatus.FOUND)
 
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/oauth/client")

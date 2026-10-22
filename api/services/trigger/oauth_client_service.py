@@ -1,7 +1,7 @@
 """Trigger OAuth client configuration and credential masking."""
 
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol, cast
 
@@ -9,12 +9,13 @@ from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.entities.provider_entities import ProviderConfig
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.helper.provider_encryption import create_provider_encrypter
-from core.trigger.provider import PluginTriggerProviderController
+from core.tools.utils.system_encryption import EncryptionError, decrypt_system_params
 from models.provider_ids import TriggerProviderID
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 
 
 class TriggerOAuthClientConfigError(Exception):
-    """The stored tenant OAuth client configuration cannot be read."""
+    """The stored tenant or system OAuth client configuration cannot be read."""
 
 
 class TriggerOAuthClientChangedError(Exception):
@@ -31,7 +32,26 @@ class TriggerOAuthTenantClientRecord:
 @dataclass(frozen=True, slots=True)
 class TriggerOAuthClientSnapshot:
     custom: TriggerOAuthTenantClientRecord | None
-    system_configured: bool
+    # None means no system client exists; an empty ciphertext is corrupt config.
+    encrypted_system_oauth_params: str | None
+
+    @property
+    def system_configured(self) -> bool:
+        return self.encrypted_system_oauth_params is not None
+
+
+@dataclass(frozen=True, slots=True)
+class TriggerOAuthProviderMetadata:
+    schema: list[ProviderConfig]
+    plugin_unique_identifier: str
+
+
+class TriggerOAuthProviderMetadataGateway(Protocol):
+    """Read only the plugin metadata needed to configure and resolve OAuth clients."""
+
+    def get_metadata(self, *, tenant_id: str, provider_id: TriggerProviderID) -> TriggerOAuthProviderMetadata: ...
+
+    def is_verified(self, *, tenant_id: str, plugin_unique_identifier: str) -> bool: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,19 +96,15 @@ class TriggerOAuthClientService:
         self,
         *,
         clients: TriggerOAuthClientStore,
-        # TODO: When migrating OAuth authorize/callback, consolidate these callbacks
-        # into a shared provider gateway returning metadata instead of a controller.
-        get_provider: Callable[[str, TriggerProviderID], PluginTriggerProviderController],
-        is_plugin_verified: Callable[[str, str], bool],
+        providers: TriggerOAuthProviderMetadataGateway,
     ) -> None:
         self._clients = clients
-        self._get_provider = get_provider
-        self._is_plugin_verified = is_plugin_verified
+        self._providers = providers
 
     def get(self, *, tenant_id: str, provider_id: TriggerProviderID) -> TriggerOAuthClientConfiguration:
         snapshot = self._clients.get(tenant_id=tenant_id, provider_id=provider_id)
-        provider = self._get_provider(tenant_id, provider_id)
-        schema = provider.get_oauth_client_schema()
+        provider = self._providers.get_metadata(tenant_id=tenant_id, provider_id=provider_id)
+        schema = provider.schema
         params: Mapping[str, object] = {}
         if snapshot.custom is not None:
             encrypter, _ = create_provider_encrypter(
@@ -104,9 +120,45 @@ class TriggerOAuthClientService:
             schema=schema,
             params=params,
             system_configured=snapshot.system_configured
-            and self._is_plugin_verified(tenant_id, provider.plugin_unique_identifier),
+            and self._providers.is_verified(
+                tenant_id=tenant_id, plugin_unique_identifier=provider.plugin_unique_identifier
+            ),
             custom_enabled=snapshot.custom is not None and snapshot.custom.enabled,
         )
+
+    def resolve(self, *, tenant_id: str, provider_id: TriggerProviderID) -> PluginOAuthClientConfig | None:
+        """Return credentials bound to their plugin package, or None if no permitted client exists.
+
+        An enabled tenant client takes priority, including an empty configuration.
+        Otherwise only a verified plugin may use its system client.
+        """
+        snapshot = self._clients.get(tenant_id=tenant_id, provider_id=provider_id)
+        provider = self._providers.get_metadata(tenant_id=tenant_id, provider_id=provider_id)
+        if snapshot.custom is not None and snapshot.custom.enabled:
+            encrypter, _ = create_provider_encrypter(
+                tenant_id=tenant_id,
+                config=[field.to_basic_provider_config() for field in provider.schema],
+                cache=NoOpProviderCredentialCache(),
+            )
+            return PluginOAuthClientConfig(
+                plugin_unique_identifier=provider.plugin_unique_identifier,
+                credentials=encrypter.decrypt(self._parse_params(snapshot.custom, provider_id)),
+            )
+
+        encrypted_system_params = snapshot.encrypted_system_oauth_params
+        if encrypted_system_params is None or not self._providers.is_verified(
+            tenant_id=tenant_id, plugin_unique_identifier=provider.plugin_unique_identifier
+        ):
+            return None
+        try:
+            return PluginOAuthClientConfig(
+                plugin_unique_identifier=provider.plugin_unique_identifier,
+                credentials=decrypt_system_params(encrypted_system_params),
+            )
+        except (EncryptionError, ValueError) as error:
+            raise TriggerOAuthClientConfigError(
+                f"Stored system OAuth client configuration for trigger provider {provider_id} is invalid."
+            ) from error
 
     def save(
         self,
@@ -125,12 +177,12 @@ class TriggerOAuthClientService:
             return
 
         snapshot = self._clients.get(tenant_id=tenant_id, provider_id=provider_id)
-        provider = self._get_provider(tenant_id, provider_id)
+        provider = self._providers.get_metadata(tenant_id=tenant_id, provider_id=provider_id)
         encrypted_params = "{}"
         if client_params is not None:
             encrypter, cache = create_provider_encrypter(
                 tenant_id=tenant_id,
-                config=[field.to_basic_provider_config() for field in provider.get_oauth_client_schema()],
+                config=[field.to_basic_provider_config() for field in provider.schema],
                 cache=NoOpProviderCredentialCache(),
             )
             original_params = encrypter.decrypt(
