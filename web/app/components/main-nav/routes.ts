@@ -3,7 +3,6 @@ import { buildIntegrationPath } from '@/app/components/integrations/routes'
 type MainNavRouteVisibility = (options: MainNavRouteVisibilityOptions) => boolean
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
-const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
 
 export type MainNavRouteConfig = {
   key: string
@@ -127,16 +126,13 @@ function isAppDetailPathname(pathname: string) {
 }
 
 function isDatasetDetailPathname(pathname: string) {
-  const [section, datasetId, subSection, action] = pathname.split('/').filter(Boolean)
+  const [section, datasetId, subSection] = pathname.split('/').filter(Boolean)
 
   if (section !== 'datasets' || !datasetId) return false
 
   if (DATASET_COLLECTION_ROUTES.has(datasetId)) return false
 
   if (datasetId === 'new' && subSection === 'create') return false
-
-  if (subSection === 'documents' && action && DATASET_DOCUMENT_CREATION_ROUTES.has(action))
-    return false
 
   return true
 }
