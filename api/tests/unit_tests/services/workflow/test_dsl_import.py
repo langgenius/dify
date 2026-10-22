@@ -178,6 +178,7 @@ def test_prepare_hands_an_oversized_dsl_to_the_import_unchanged() -> None:
 @pytest.mark.parametrize(
     ("url", "download_url"),
     [
+        ("https://example.com/download", "https://example.com/download"),
         (
             "https://github.com/org/repo/blob/main/templates/blob/flow.yaml?source=/blob/file",
             "https://raw.githubusercontent.com/org/repo/main/templates/blob/flow.yaml?source=/blob/file",

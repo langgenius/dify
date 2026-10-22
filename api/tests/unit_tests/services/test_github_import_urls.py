@@ -14,6 +14,7 @@ from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 @pytest.mark.parametrize(
     ("url", "download_url"),
     [
+        ("https://example.com/download", "https://example.com/download"),
         (
             "https://github.com/org/repo/blob/main/templates/blob/flow.yaml?source=/blob/file",
             "https://raw.githubusercontent.com/org/repo/main/templates/blob/flow.yaml?source=/blob/file",
