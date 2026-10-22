@@ -123,7 +123,7 @@ function CreationFlow() {
           userId="user-1"
           getCanvasSnapshot={() => ({ nodes: [], edges: [], isChatflow: false })}
           onSyncDraft={mocks.syncDraft}
-          onRefreshCanvas={async () => true}
+          onRefreshCanvas={async () => 'refreshed'}
         >
           <h1>New app editor</h1>
           <DifyBuilderComposer />

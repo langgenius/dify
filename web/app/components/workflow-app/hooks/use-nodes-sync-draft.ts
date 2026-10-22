@@ -25,11 +25,9 @@ import {
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
-import { API_PREFIX } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { postWithKeepalive } from '@/service/fetch'
 
 const shouldSkipDraftSync = (
   appId: string | undefined,
@@ -176,22 +174,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     }
   }, [appId, store, featuresStore, workflowStore, isCollaborationEnabled, appMode])
 
-  const syncWorkflowDraftWhenPageClose = useCallback(() => {
-    if (getNodesReadOnly() || workflowStore.getState().workflowDraftSyncPhase !== 'idle') return
-
-    const canPersistOnPageClose =
-      !isCollaborationEnabled ||
-      collaborationManager.canFlushGraphOnPageClose() ||
-      collaborationManager.canUseLocalDraftFallback()
-    if (!canPersistOnPageClose) return
-
-    const postParams = getPostParams()
-
-    // Page-close saves cannot wait for the user's consent to clear the canvas.
-    if (postParams && !isEmptyGraph(postParams.params.graph))
-      postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
-  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled, workflowStore])
-
   const performLocalSync = useCallback(
     async (
       baseParams: NonNullable<ReturnType<typeof getPostParams>>,
@@ -200,7 +182,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       {
         preparingBuilder = false,
         force = false,
-      }: { preparingBuilder?: boolean; force?: boolean } = {},
+        keepalive = false,
+      }: { preparingBuilder?: boolean; force?: boolean; keepalive?: boolean } = {},
     ): Promise<SyncDraftResult | null> => {
       if (
         !preparingBuilder &&
@@ -227,7 +210,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return null
       }
 
-      if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) {
+      const canPersist =
+        !isCollaborationEnabled ||
+        (keepalive
+          ? collaborationManager.canFlushGraphOnPageClose() ||
+            collaborationManager.canUseLocalDraftFallback()
+          : collaborationManager.canPersistLocalGraph())
+      if (!canPersist) {
         callback?.onSettled?.()
         return null
       }
@@ -276,7 +265,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         const [error, res, isDefined] = await safe(
           consoleClient.apps.byAppId.workflows.draft.post(
             { params: { app_id: baseParams.appId }, body },
-            { context: { silent: true } },
+            { context: { silent: true, ...(keepalive ? { keepalive: true } : {}) } },
           ),
         )
         if (!isCurrent()) return null
@@ -317,6 +306,28 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       }),
     [performLocalSync, workflowStore],
   )
+
+  const syncWorkflowDraftWhenPageClose = useCallback(() => {
+    if (getNodesReadOnly() || workflowStore.getState().workflowDraftSyncPhase !== 'idle') return
+
+    const canPersist =
+      !isCollaborationEnabled ||
+      collaborationManager.canFlushGraphOnPageClose() ||
+      collaborationManager.canUseLocalDraftFallback()
+    if (!canPersist) return
+
+    const snapshot = getPostParams()
+    // Keep unload requests in the same queue so a returning tab and Builder
+    // observe their acknowledged hash. Empty-canvas saves still need consent.
+    if (snapshot && !isEmptyGraph(snapshot.params.graph))
+      void doSyncWorkflowDraftLocally(snapshot, undefined, undefined, { keepalive: true })
+  }, [
+    doSyncWorkflowDraftLocally,
+    getNodesReadOnly,
+    getPostParams,
+    isCollaborationEnabled,
+    workflowStore,
+  ])
   const doSyncWorkflowDraft = useCallback(
     async (
       _notRefreshWhenSyncError?: boolean,

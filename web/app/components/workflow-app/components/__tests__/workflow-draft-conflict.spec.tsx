@@ -1,5 +1,5 @@
 import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
@@ -8,7 +8,6 @@ import {
 } from '@/app/components/workflow/__tests__/reactflow-mock-state'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-workflow'
-import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
@@ -59,13 +58,12 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 const DraftEditor = () => {
-  const hasConflict = useStore((s) => s.hasWorkflowDraftConflict)
   const { nodesReadOnly } = useNodesReadOnlyByCanEdit(true)
   const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(true)
 
   return (
     <>
-      {hasConflict && <WorkflowDraftConflict />}
+      <WorkflowDraftConflict />
       <button type="button" disabled={nodesReadOnly} onClick={() => void doSyncWorkflowDraft()}>
         Save draft
       </button>
@@ -136,12 +134,13 @@ describe('workflow draft conflict recovery', () => {
   it('keeps the local draft until reload succeeds, then saves the new graph with its hash', async () => {
     const user = userEvent.setup()
     const { store } = renderDraftEditor()
-    await user.click(screen.getByRole('button', { name: 'Save draft' }))
+    const save = screen.getByRole('button', { name: 'Save draft' })
+    await user.click(save)
     expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('workflow.draftConflict.message')
-    expect(screen.getByRole('alert')).toHaveTextContent('workflow.draftConflict.description')
-    expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled()
+    const dialog = await screen.findByRole('alertdialog', { name: 'workflow.draftConflict.title' })
+    expect(dialog).toHaveTextContent('workflow.draftConflict.description')
+    expect(save).toBeDisabled()
     expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
     expect(rfState.nodes[0]?.id).toBe('local-start')
 
@@ -151,21 +150,23 @@ describe('workflow draft conflict recovery', () => {
         resolveReload = resolve
       }),
     )
-    const reload = screen.getByRole('button', { name: 'workflow.draftConflict.reload' })
+    const reload = screen.getByRole('button', { name: 'workflow.draftConflict.confirmReload' })
     await user.click(reload)
     expect(reload).toHaveAttribute('aria-disabled', 'true')
     await user.click(reload)
     expect(mockFetchWorkflowDraft).toHaveBeenCalledOnce()
-    expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled()
+    expect(save).toBeDisabled()
     expect(rfState.nodes[0]?.id).toBe('local-start')
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
 
     await act(async () => resolveReload(latestDraft))
-    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     expect(rfState.nodes[0]?.id).toBe('latest-start')
     expect(screen.getByRole('button', { name: 'Save draft' })).toBeEnabled()
     expect(store.getState().draftUpdatedAt).toBe(1_234_000)
 
-    await user.click(screen.getByRole('button', { name: 'Save draft' }))
+    await user.click(save)
     await waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2))
     expect(mockSyncWorkflowDraft).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -182,20 +183,53 @@ describe('workflow draft conflict recovery', () => {
   it('keeps editing paused after a failed reload and allows the user to retry', async () => {
     const user = userEvent.setup()
     const { store } = renderDraftEditor()
-    await user.click(screen.getByRole('button', { name: 'Save draft' }))
-    await screen.findByRole('alert')
+    const save = screen.getByRole('button', { name: 'Save draft' })
+    await user.click(save)
+    await screen.findByRole('alertdialog')
     mockFetchWorkflowDraft.mockRejectedValueOnce(new Error('Network unavailable'))
 
-    await user.click(screen.getByRole('button', { name: 'workflow.draftConflict.reload' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.draftConflict.confirmReload' }))
     expect(await screen.findByText('workflow.draftConflict.reloadFailed')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled()
+    expect(save).toBeDisabled()
     expect(store.getState().syncWorkflowDraftHash).toBe('local-hash')
     expect(rfState.nodes[0]?.id).toBe('local-start')
     expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
 
-    await user.click(screen.getByRole('button', { name: 'workflow.draftConflict.reload' }))
-    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'workflow.draftConflict.confirmReload' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Save draft' })).toBeEnabled()
     expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(2)
+  })
+  it('keeps the local draft and banner after deferring, and reopens only on request', async () => {
+    const user = userEvent.setup()
+    const { store } = renderDraftEditor()
+    const save = screen.getByRole('button', { name: 'Save draft' })
+    await user.click(save)
+    const dialog = await screen.findByRole('alertdialog', { name: 'workflow.draftConflict.title' })
+    const defer = within(dialog).getByRole('button', { name: 'workflow.draftConflict.cancel' })
+    await waitFor(() => expect(defer).toHaveFocus())
+    await user.click(defer)
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('alert')).toHaveTextContent('workflow.draftConflict.message')
+    expect(save).toBeDisabled()
+    expect(rfState.nodes[0]?.id).toBe('local-start')
+    expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+    act(() => store.getState().invalidateWorkflowDraftSync())
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'workflow.draftConflict.resolve' }))
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('opens a new confirmation when a later conflict is detected', async () => {
+    const user = userEvent.setup()
+    const { store } = renderDraftEditor()
+    await user.click(screen.getByRole('button', { name: 'Save draft' }))
+    await user.click(await screen.findByRole('button', { name: 'workflow.draftConflict.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    act(() => store.getState().setWorkflowDraftConflict(false))
+    act(() => store.getState().setWorkflowDraftConflict(true))
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
   })
 })

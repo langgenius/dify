@@ -1,3 +1,4 @@
+import type { WorkflowDraftRefreshResult } from '../../../hooks/use-workflow-refresh-draft'
 import type { CanvasEventData } from '../types'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -30,7 +31,7 @@ const Harness = ({
   refreshed,
 }: {
   events: CanvasEventData[]
-  refresh: (shouldApply: () => boolean) => Promise<boolean>
+  refresh: (shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>
   refreshed: () => void
 }) => {
   const canvas = useDifyBuilderCanvasEvents()
@@ -65,7 +66,9 @@ const Harness = ({
 
 const setup = (
   events: CanvasEventData[],
-  refresh = vi.fn<(shouldApply: () => boolean) => Promise<boolean>>().mockResolvedValue(true),
+  refresh = vi
+    .fn<(shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>>()
+    .mockResolvedValue('refreshed'),
 ) => {
   const store = createStore()
   store.set(
@@ -136,9 +139,9 @@ describe('Builder canvas commands', () => {
 
   it('retains deferred node focus through later events and a failed refresh until retry succeeds', async () => {
     const refresh = vi
-      .fn<(shouldApply: () => boolean) => Promise<boolean>>()
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true)
+      .fn<(shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>>()
+      .mockResolvedValueOnce('failed')
+      .mockResolvedValueOnce('refreshed')
     const { user, store, refreshed } = setup(
       [canvasEvent('add_llm_node', 'answer'), canvasEvent('apply_edit_plan')],
       refresh,
@@ -165,19 +168,21 @@ describe('Builder canvas commands', () => {
   })
 
   it('discards pending focus and refresh completion when the session resets', async () => {
-    let resolveRefresh!: (value: boolean) => void
-    const refresh = vi.fn<(shouldApply: () => boolean) => Promise<boolean>>().mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveRefresh = resolve
-      }),
-    )
+    let resolveRefresh!: (value: WorkflowDraftRefreshResult) => void
+    const refresh = vi
+      .fn<(shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>>()
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRefresh = resolve
+        }),
+      )
     const { user, store, refreshed } = setup([canvasEvent('add_llm_node', 'answer')], refresh)
     await user.click(screen.getByRole('button', { name: 'Apply changes' }))
     await user.click(screen.getByRole('button', { name: 'Finish command' }))
     expect(refresh).toHaveBeenCalledOnce()
 
     await user.click(screen.getByRole('button', { name: 'Reset session' }))
-    await act(async () => resolveRefresh(true))
+    await act(async () => resolveRefresh('refreshed'))
 
     expect(refresh.mock.calls[0]![0]()).toBe(false)
     expect(selection).not.toHaveBeenCalled()
@@ -220,5 +225,29 @@ describe('Builder canvas commands', () => {
         detail: expect.objectContaining({ nodeId: 'start', focus: false }),
       }),
     )
+  })
+  it('automatically replaces a superseded refresh without exposing a manual retry', async () => {
+    const refresh = vi
+      .fn<(shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>>()
+      .mockResolvedValueOnce('superseded')
+      .mockResolvedValueOnce('refreshed')
+    const { user, store, refreshed } = setup([], refresh)
+    await user.click(screen.getByRole('button', { name: 'Finish command' }))
+    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce())
+    expect(store.get(difyBuilderCanvasRefreshFailedAtom)).toBe(false)
+    expect(store.get(difyBuilderCanvasReadyAtom)).toBe(true)
+    expect(refresh).toHaveBeenCalledTimes(2)
+  })
+
+  it('bounds automatic retries when every refresh is superseded', async () => {
+    const refresh = vi
+      .fn<(shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>>()
+      .mockResolvedValue('superseded')
+    const { user, store, refreshed } = setup([], refresh)
+    await user.click(screen.getByRole('button', { name: 'Finish command' }))
+    await waitFor(() => expect(store.get(difyBuilderCanvasRefreshFailedAtom)).toBe(true))
+    expect(refresh).toHaveBeenCalledTimes(3)
+    expect(refreshed).not.toHaveBeenCalled()
+    expect(store.get(difyBuilderCanvasReadyAtom)).toBe(false)
   })
 })
