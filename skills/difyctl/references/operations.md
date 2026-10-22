@@ -16,7 +16,10 @@ Streaming ops fold to `{status, text, outputs?, total_tokens?, message_id?, conv
 
 After `submit.run.form`, run its `get.run.event` hint to follow the run; repeat if it suspends again.
 
-To stop a run that is running or waiting on a form: `difyctl stop run --app-id <app_id> --run-id <run_id>`. `run_id` is in the folded result. Chat and completion replies stop with `stop task --task-id <task_id>` from the stream's events.
+To stop a run that is running or waiting on a form, use its `run_id` from the folded result.
+
+Workflow and advanced-chat runs stop with `difyctl stop run --app-id <app_id> --run-id <run_id>`.
+Chat, agent-chat and completion replies stop with `difyctl stop task --app-id <app_id> --task-id <task_id>`, with `task_id` from the stream's events.
 
 ## Errors and exit codes
 

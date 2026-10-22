@@ -20,6 +20,8 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
+from controllers.openapi._errors import RunNotFound
+from controllers.openapi.app_workflow import require_uuid
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -93,7 +95,7 @@ class OpenApiWorkflowEventsApi(Resource):
         repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         workflow_run = repo.get_workflow_run_by_id_and_tenant_id(
             tenant_id=app_model.tenant_id,
-            run_id=run_id,
+            run_id=require_uuid(run_id, not_found=RunNotFound),
         )
 
         if workflow_run is None:

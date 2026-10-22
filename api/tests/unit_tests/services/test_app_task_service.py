@@ -9,15 +9,19 @@ from typing import override
 import pytest
 from _pytest.mark.structures import ParameterSet
 from redis.exceptions import ConnectionError as RedisConnectionError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import core.app.apps.base_app_queue_manager as queue_module
 import core.app.apps.execution_coordinator as coordinator_module
 import services.app_task_service as task_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.nodes.human_input.entities import FormDefinition
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_redis import RedisClientWrapper
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowPause, WorkflowRun
 from services.app_task_service import AppTaskControlService, AppTaskService, WorkflowStopOutcome
@@ -208,11 +212,38 @@ class _StopTarget:
     run_id: str
 
 
+_FORM_ID = "form-1"
+
+
 def _pause(target: _StopTarget) -> None:
     target.run.status = WorkflowExecutionStatus.PAUSED
     target.session.add(
         WorkflowPause(workflow_id=target.run.workflow_id, workflow_run_id=target.run.id, state_object_key="state")
     )
+    target.session.add(
+        HumanInputForm(
+            id=_FORM_ID,
+            tenant_id=target.run.tenant_id,
+            app_id=target.run.app_id,
+            form_kind=HumanInputFormKind.RUNTIME,
+            expiration_time=datetime(2030, 1, 1),
+            workflow_run_id=target.run.id,
+            node_id="review",
+            form_definition=FormDefinition(
+                form_content="", rendered_content="", expiration_time=datetime(2030, 1, 1)
+            ).model_dump_json(),
+            rendered_content="",
+            status=HumanInputFormStatus.WAITING,
+        )
+    )
+
+
+def _on_paused_run(setup: Callable[[_StopTarget], None]) -> Callable[[_StopTarget], None]:
+    def paused_then(target: _StopTarget) -> None:
+        _pause(target)
+        setup(target)
+
+    return paused_then
 
 
 def _redirect(**address: str) -> Callable[[_StopTarget], None]:
@@ -242,6 +273,8 @@ class _StopRunCase:
     outcome: WorkflowStopOutcome
     operations: list[str]
     persisted_status: WorkflowExecutionStatus | None = None
+    form_status: HumanInputFormStatus | None = None
+    stays_paused: bool = False
 
 
 def _stop_run_cases() -> list[ParameterSet]:
@@ -252,7 +285,14 @@ def _stop_run_cases() -> list[ParameterSet]:
     end_user = CreatorUserRole.END_USER
     cases = {
         "running": _StopRunCase(_no_change, account, stopped, _GRAPH_STOP_OPERATIONS),
-        "paused": _StopRunCase(_pause, account, stopped, [], persisted_status=WorkflowExecutionStatus.STOPPED),
+        "paused": _StopRunCase(
+            _pause,
+            account,
+            stopped,
+            [],
+            persisted_status=WorkflowExecutionStatus.STOPPED,
+            form_status=HumanInputFormStatus.EXPIRED,
+        ),
         "already-stopped": _StopRunCase(
             _edit_run(status=WorkflowExecutionStatus.STOPPED, stop_requested_at=datetime(2026, 10, 20)),
             account,
@@ -267,6 +307,46 @@ def _stop_run_cases() -> list[ParameterSet]:
         "other-end-user": _StopRunCase(_edit_run(created_by="other-user"), end_user, not_found, []),
         "owner-role": _StopRunCase(_edit_run(created_by_role=CreatorUserRole.ACCOUNT), end_user, not_found, []),
         "own-end-user": _StopRunCase(_no_change, end_user, stopped, _GRAPH_STOP_OPERATIONS),
+        "paused-missing": _StopRunCase(
+            _on_paused_run(_redirect(run_id="22222222-2222-2222-2222-222222222222")),
+            account,
+            not_found,
+            [],
+            form_status=HumanInputFormStatus.WAITING,
+            stays_paused=True,
+        ),
+        "paused-other-app": _StopRunCase(
+            _on_paused_run(_redirect(app_id="other-app")),
+            account,
+            not_found,
+            [],
+            form_status=HumanInputFormStatus.WAITING,
+            stays_paused=True,
+        ),
+        "paused-other-tenant": _StopRunCase(
+            _on_paused_run(_redirect(tenant_id="other-tenant")),
+            account,
+            not_found,
+            [],
+            form_status=HumanInputFormStatus.WAITING,
+            stays_paused=True,
+        ),
+        "paused-other-end-user": _StopRunCase(
+            _on_paused_run(_edit_run(created_by="other-user")),
+            end_user,
+            not_found,
+            [],
+            form_status=HumanInputFormStatus.WAITING,
+            stays_paused=True,
+        ),
+        "paused-owner-role": _StopRunCase(
+            _on_paused_run(_edit_run(created_by_role=CreatorUserRole.ACCOUNT)),
+            end_user,
+            not_found,
+            [],
+            form_status=HumanInputFormStatus.WAITING,
+            stays_paused=True,
+        ),
         "draft-run": _StopRunCase(
             _edit_run(triggered_from=WorkflowRunTriggeredFrom.DEBUGGING), account, stopped, _GRAPH_STOP_OPERATIONS
         ),
@@ -298,6 +378,41 @@ def test_stop_workflow_run_outcomes(
     if case.persisted_status is not None:
         sqlite_session.refresh(run)
         assert run.status == case.persisted_status
+    if case.form_status is not None:
+        sqlite_session.expire_all()
+        assert sqlite_session.get(HumanInputForm, _FORM_ID).status == case.form_status
+    if case.stays_paused:
+        sqlite_session.expire_all()
+        assert sqlite_session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run.id)) is not None
+        assert run.status == WorkflowExecutionStatus.PAUSED
+        assert run.stop_requested_at is None
+        assert run.finished_at is None
+
+
+def test_stop_workflow_run_skips_legacy_recovery_for_a_finished_run(
+    sqlite_session: Session, app_task_workflow_run: WorkflowRun, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run = app_task_workflow_run
+    run.status = WorkflowExecutionStatus.SUCCEEDED
+    sqlite_session.commit()
+    recovery_attempts: list[object] = []
+    monkeypatch.setattr(
+        AppTaskService,
+        "_recover_legacy_workflow_task_id",
+        staticmethod(lambda **kwargs: recovery_attempts.append(kwargs)),
+    )
+
+    result = AppTaskControlService(redis_client=_StopRedis()).stop_workflow_run(
+        tenant_id=run.tenant_id,
+        app_id=run.app_id,
+        run_id=run.id,
+        app_mode=AppMode.WORKFLOW,
+        caller_role=CreatorUserRole.ACCOUNT,
+        caller_id=_USER_ID,
+    )
+
+    assert result is WorkflowStopOutcome.NOT_STOPPABLE
+    assert recovery_attempts == []
 
 
 @pytest.mark.parametrize(

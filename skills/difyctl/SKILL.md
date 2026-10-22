@@ -9,7 +9,7 @@ difyctl talks to a Dify server. Business commands are not built in: the server p
 
 Always pass `--json`. Help and errors are text on a terminal and JSON in a pipe; `--json` (or `DIFY_OUTPUT=json`) forces JSON. Results and streams are always JSON.
 
-Commands whose effect is destructive can't be undone and have no confirmation prompt. Check effect in help and confirm with the human first.
+Commands whose effect is destructive can't be undone and have no confirmation prompt. Check effect in help and confirm with the human first. Also confirm a server operation that shows no effect.
 
 ## Finding what the CLI can do
 

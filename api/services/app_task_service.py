@@ -219,7 +219,13 @@ class AppTaskService:
         if run.task_id is None:
             return WorkflowStopOutcome.NOT_STOPPABLE
         stopped = AppTaskService.stop_workflow_task(
-            tenant_id=tenant_id, app_id=app_id, task_id=run.task_id, app_mode=app_mode, owner=owner, redis=redis
+            tenant_id=tenant_id,
+            app_id=app_id,
+            task_id=run.task_id,
+            app_mode=app_mode,
+            owner=owner,
+            redis=redis,
+            recover_legacy=False,
         )
         if not stopped:
             return WorkflowStopOutcome.NOT_STOPPABLE
@@ -234,12 +240,15 @@ class AppTaskService:
         app_mode: AppMode,
         owner: tuple[CreatorUserRole, str] | None,
         redis: RedisClientWrapper | None = None,
+        recover_legacy: bool = True,
     ) -> bool:
         """Stop a persisted pause, or signal its currently executing attempt.
 
         A paused task has no engine consuming Redis commands. Its durable
         transition and form invalidation must complete before acknowledging stop.
         Omitted Redis uses the compatibility transport; injected callers supply theirs.
+        ``recover_legacy=False`` skips the legacy pause scan, for callers whose run
+        already carries its task ID.
         """
         try:
             task_id = str(UUID(task_id))
@@ -248,7 +257,7 @@ class AppTaskService:
         repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker(bind=db.engine))
         try:
             run = repository.stop_paused_workflow_task(tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner)
-            if run is None:
+            if run is None and recover_legacy:
                 AppTaskService._recover_legacy_workflow_task_id(
                     tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner, repository=repository
                 )
