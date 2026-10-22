@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import time
+from functools import partial
 from pathlib import Path
 from unittest.mock import Mock
 from urllib.parse import urlencode
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from configs.deploy import IMEventTransportMode
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.shared import AccountId, ContactId, IMIdentityId, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from dify_app import DifyApp
@@ -42,9 +44,11 @@ from repositories.human_input_v2.delivery_repository import (
     IMUserTargetSnapshot,
     SubmissionAuthType,
 )
+from repositories.human_input_v2.im_binding_repository import IMBindingAssignment, IMBindingKind
 from repositories.human_input_v2.im_channel_repository import IMChannel, IMChannelId, IMChannelStatus, WebhookId
 from repositories.human_input_v2.recipient_repository import ContactRecipientSubject
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
+from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelWriter
 from services.human_input_v2.form_service import AccountInitiator, CreatedForm
 from services.human_input_v2.im_credential_codec import IMCredentialCodec
@@ -381,6 +385,7 @@ def test_worker_rechecks_current_channel_ownership(context, approval, callback_a
         ("default", "account_disabled"),
         ("default", "binding_removed"),
         ("default", "binding_replaced"),
+        ("default", "binding_round_trip"),
         ("default", "binding_recreated"),
         ("default", "identity_removed"),
         ("default", "identity_channel_changed"),
@@ -388,6 +393,7 @@ def test_worker_rechecks_current_channel_ownership(context, approval, callback_a
         ("default", "override_added"),
         ("default", "override_added_same_identity"),
         ("workspace_override", "override_replaced"),
+        ("workspace_override", "override_round_trip"),
         ("workspace_override", "override_reset"),
         ("workspace_override_same_identity", "override_reset"),
     ],
@@ -433,8 +439,22 @@ def test_worker_rejects_revoked_im_authorization(
                 session.get_one(Account, initiator.account_id).status = AccountStatus.BANNED
             case "binding_removed":
                 session.delete(binding)
-            case "binding_replaced":
-                binding.im_identity_id = replacement_id
+            case "binding_replaced" | "binding_round_trip" | "override_replaced" | "override_round_trip":
+                repository = SQLAlchemyIMBindingRepository(session, channel_id)
+                assign = (
+                    repository.replace
+                    if mutation in ("binding_replaced", "binding_round_trip")
+                    else partial(repository.set_workspace_override, TenantId(context.execution.tenant_id))
+                )
+                assign(
+                    IMBindingAssignment(ContactId(contact_id), IMIdentityId(replacement_id), naive_utc_now()),
+                    bound_by_account_id=None,
+                )
+                if mutation in ("binding_round_trip", "override_round_trip"):
+                    assign(
+                        IMBindingAssignment(ContactId(contact_id), IMIdentityId(identity_id), naive_utc_now()),
+                        bound_by_account_id=None,
+                    )
             case "binding_recreated":
                 session.delete(binding)
                 session.flush()
@@ -456,9 +476,6 @@ def test_worker_rejects_revoked_im_authorization(
                         im_identity_id=identity_id if mutation == "override_added_same_identity" else replacement_id,
                     )
                 )
-            case "override_replaced":
-                override = session.scalars(sa.select(HumanInputIMBindingWorkspaceOverride)).one()
-                override.im_identity_id = replacement_id
             case "override_reset":
                 session.delete(session.scalars(sa.select(HumanInputIMBindingWorkspaceOverride)).one())
 
@@ -480,12 +497,14 @@ def test_worker_rejects_revoked_im_authorization(
 
 
 @pytest.mark.parametrize("binding_scope", ["default", "workspace_override", "other_workspace_override"])
+@pytest.mark.parametrize("retry_assignment", [False, True])
 def test_worker_accepts_current_binding_matching_frozen_target(
     context: Context,
     approval: tuple[str, IMChannelId],
     callback_app: tuple[DifyApp, list[str]],
     monkeypatch: pytest.MonkeyPatch,
     binding_scope: str,
+    retry_assignment: bool,
 ) -> None:
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
@@ -496,10 +515,26 @@ def test_worker_accepts_current_binding_matching_frozen_target(
         if binding_scope == "workspace_override":
             replacement = _add_identity(session, channel_id, "replacement-user")
             binding.im_identity_id = replacement.id
+        contact_id = ContactId(binding.contact_id)
     resumed = Mock()
     monkeypatch.setattr(resume_app_execution, "apply_async", resumed)
     body = _request_body()
     assert app.test_client().post(_PATH, data=body, headers=_headers(body)).status_code == 200
+    if retry_assignment:
+        with context.sessions.begin() as session:
+            repository = SQLAlchemyIMBindingRepository(session, channel_id)
+            tenant_id = TenantId(context.execution.tenant_id)
+            effective = repository.get_effective(tenant_id, contact_id)
+            assert effective is not None
+            assign = (
+                repository.replace
+                if effective.kind is IMBindingKind.DEFAULT
+                else partial(repository.set_workspace_override, tenant_id)
+            )
+            assign(
+                IMBindingAssignment(effective.contact_id, effective.identity_id, naive_utc_now()),
+                bound_by_account_id=AccountId(str(uuid4())),
+            )
     with app.app_context():
         process_im_message_inbox_record.run(published[0])
     with context.sessions() as session:

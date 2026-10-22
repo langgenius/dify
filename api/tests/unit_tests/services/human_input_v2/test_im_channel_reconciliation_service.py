@@ -554,8 +554,19 @@ def test_credential_failure_persists_a_safe_terminal_result(
 @pytest.mark.parametrize("replacement_count", [1, 301])
 def test_sync_applies_creates_replacements_deletions_and_preserves_unchanged_bindings(
     reconciliation_context: _ReconciliationContext,
+    sqlite_engine: Engine,
     replacement_count: int,
 ) -> None:
+    # A database guard also catches UPDATEs issued by ORM autoflush or bulk writes.
+    with sqlite_engine.begin() as connection:
+        connection.execute(
+            sa.text("""
+            CREATE TRIGGER reject_binding_update BEFORE UPDATE ON human_input_im_bindings
+            BEGIN
+                SELECT RAISE(ABORT, 'IM Bindings are immutable');
+            END
+        """)
+        )
     contacts = tuple(
         Contact(
             id=ContactId(str(UUID(int=index + 501))),

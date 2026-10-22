@@ -21,7 +21,7 @@ class IMBindingKind(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class IMBinding:
-    """Current owner-free Contact-to-IM-identity Binding."""
+    """Current owner-free Contact-to-IM-identity Binding, immutable for its ID."""
 
     id: IMBindingId
     kind: IMBindingKind
@@ -101,7 +101,11 @@ class IMBindingRepository(Protocol):
         *,
         bound_by_account_id: AccountId | None,
     ) -> IMBinding:
-        """Create or update one target workspace override."""
+        """Create or replace one target workspace override with a new Binding ID.
+
+        Preserve identical assignments, including timestamps and actor metadata.
+        The caller owns the transaction covering deletion and creation.
+        """
         ...
 
     def reset_workspace_override(

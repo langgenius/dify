@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
+from functools import partial
 from importlib import import_module
 from inspect import unwrap
 from types import SimpleNamespace
@@ -368,7 +369,7 @@ def test_workspace_override_reuses_one_service_across_mutations_and_reset_falls_
         identity_id=_OTHER_IDENTITY_ID,
         bound_by_account_id=_ACCOUNT_ID,
     )
-    replaced_view = binding_context.service.set_workspace_override(
+    retried_view = binding_context.service.set_workspace_override(
         organization_scope=_OWNER_SCOPE,
         tenant_id=_TENANT_ID,
         contact_id=_CONTACT_ID,
@@ -379,10 +380,10 @@ def test_workspace_override_reuses_one_service_across_mutations_and_reset_falls_
     override_binding = override_view.im_bindings[0]
     assert override_binding.scope is IMBindingScope.WORKSPACE
     assert override_binding.identity_id == _OTHER_IDENTITY_ID
-    assert replaced_view.im_bindings[0].id == override_binding.id
+    assert retried_view.im_bindings[0].id == override_binding.id
     with binding_context.sessions() as session:
         override_record = session.get_one(HumanInputIMBindingWorkspaceOverride, str(override_binding.id))
-        assert override_record.bound_by_account_id == str(_OTHER_ACCOUNT_ID)
+        assert override_record.bound_by_account_id == str(_ACCOUNT_ID)
 
     reset_view = binding_context.service.reset_workspace_override(
         organization_scope=_OWNER_SCOPE,
@@ -458,10 +459,16 @@ def test_put_replaces_default_binding_and_retries_are_idempotent(
 
 
 @pytest.mark.parametrize("occupied", [False, True])
-def test_failed_default_replacement_preserves_original_binding(
-    binding_context: _BindingContext, occupied: bool
+@pytest.mark.parametrize("workspace_override", [False, True])
+def test_failed_replacement_preserves_original_binding(
+    binding_context: _BindingContext, occupied: bool, workspace_override: bool
 ) -> None:
-    original = binding_context.service.set_organization_binding(
+    assign = (
+        binding_context.service.set_workspace_override
+        if workspace_override
+        else binding_context.service.set_organization_binding
+    )
+    original = assign(
         organization_scope=_OWNER_SCOPE,
         tenant_id=_TENANT_ID,
         contact_id=_CONTACT_ID,
@@ -472,7 +479,9 @@ def test_failed_default_replacement_preserves_original_binding(
     expected_error = IMBindingCommandErrorCode.IDENTITY_NOT_FOUND
     if occupied:
         with binding_context.sessions.begin() as session:
-            SQLAlchemyIMBindingRepository(session, _CHANNEL_ID).create(
+            repository = SQLAlchemyIMBindingRepository(session, _CHANNEL_ID)
+            create = partial(repository.set_workspace_override, _TENANT_ID) if workspace_override else repository.create
+            create(
                 IMBindingAssignment(_OTHER_CONTACT_ID, _OTHER_IDENTITY_ID, _NOW),
                 bound_by_account_id=None,
             )
@@ -480,7 +489,7 @@ def test_failed_default_replacement_preserves_original_binding(
         expected_error = IMBindingCommandErrorCode.BINDING_CONFLICT
 
     with pytest.raises(IMBindingCommandError) as error_info:
-        binding_context.service.set_organization_binding(
+        assign(
             organization_scope=_OWNER_SCOPE,
             tenant_id=_TENANT_ID,
             contact_id=_CONTACT_ID,
@@ -489,13 +498,23 @@ def test_failed_default_replacement_preserves_original_binding(
         )
     assert error_info.value.code is expected_error
     with binding_context.sessions() as session:
-        record = session.get_one(HumanInputIMBinding, str(original.id))
+        model = HumanInputIMBindingWorkspaceOverride if workspace_override else HumanInputIMBinding
+        record = session.get_one(model, str(original.id))
         assert record.im_identity_id == str(_IDENTITY_ID)
         assert record.bound_by_account_id == str(_ACCOUNT_ID)
 
 
-def test_replacement_insert_failure_rolls_back_deleted_binding(binding_context: _BindingContext) -> None:
-    original = binding_context.service.set_organization_binding(
+@pytest.mark.parametrize("workspace_override", [False, True])
+def test_replacement_insert_failure_rolls_back_deleted_binding(
+    binding_context: _BindingContext, workspace_override: bool
+) -> None:
+    assign = (
+        binding_context.service.set_workspace_override
+        if workspace_override
+        else binding_context.service.set_organization_binding
+    )
+    model = HumanInputIMBindingWorkspaceOverride if workspace_override else HumanInputIMBinding
+    original = assign(
         organization_scope=_OWNER_SCOPE,
         tenant_id=_TENANT_ID,
         contact_id=_CONTACT_ID,
@@ -504,8 +523,8 @@ def test_replacement_insert_failure_rolls_back_deleted_binding(binding_context: 
     ).im_bindings[0]
     with binding_context.sessions.begin() as session:
         session.execute(
-            sa.text("""
-            CREATE TRIGGER reject_binding_insert BEFORE INSERT ON human_input_im_bindings
+            sa.text(f"""
+            CREATE TRIGGER reject_binding_insert BEFORE INSERT ON {model.__tablename__}
             BEGIN
                 SELECT RAISE(ABORT, 'binding insert unavailable');
             END
@@ -513,7 +532,7 @@ def test_replacement_insert_failure_rolls_back_deleted_binding(binding_context: 
         )
 
     with pytest.raises(IntegrityError, match="binding insert unavailable"):
-        binding_context.service.set_organization_binding(
+        assign(
             organization_scope=_OWNER_SCOPE,
             tenant_id=_TENANT_ID,
             contact_id=_CONTACT_ID,
@@ -522,7 +541,7 @@ def test_replacement_insert_failure_rolls_back_deleted_binding(binding_context: 
         )
 
     with binding_context.sessions() as session:
-        record = session.scalars(sa.select(HumanInputIMBinding)).one()
+        record = session.scalars(sa.select(model)).one()
         assert record.id == str(original.id)
         assert record.im_identity_id == str(_IDENTITY_ID)
         assert record.bound_by_account_id == str(_ACCOUNT_ID)

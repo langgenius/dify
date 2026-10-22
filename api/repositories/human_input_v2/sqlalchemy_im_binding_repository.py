@@ -200,27 +200,40 @@ class SQLAlchemyIMBindingRepository(IMBindingRepository):
     ) -> IMBinding:
         self._require_identity(assignment.identity_id)
         record = self._get_workspace_override_for_contact(tenant_id, assignment.contact_id)
-        occupying_record = self._get_workspace_override_for_identity(tenant_id, assignment.identity_id)
-        if occupying_record is not None and (record is None or occupying_record.id != record.id):
+        if record is not None and record.im_identity_id == str(assignment.identity_id):
+            return _override_binding_from_record(record)
+        if self._get_workspace_override_for_identity(tenant_id, assignment.identity_id) is not None:
             raise IMBindingConflictError("IM Identity already overrides a different Contact in this workspace")
 
-        if record is None:
-            record = HumanInputIMBindingWorkspaceOverride(
-                channel_id=str(self._channel_id),
-                tenant_id=str(tenant_id),
-                contact_id=str(assignment.contact_id),
-                im_identity_id=str(assignment.identity_id),
-                bound_by_account_id=(str(bound_by_account_id) if bound_by_account_id is not None else None),
+        if record is not None:
+            # A new Binding ID invalidates cards frozen before this replacement.
+            # Delete only the observed override within the caller's transaction.
+            deleted_id = self._session.scalar(
+                sa.delete(HumanInputIMBindingWorkspaceOverride)
+                .where(
+                    HumanInputIMBindingWorkspaceOverride.channel_id == str(self._channel_id),
+                    HumanInputIMBindingWorkspaceOverride.tenant_id == str(tenant_id),
+                    HumanInputIMBindingWorkspaceOverride.id == record.id,
+                    HumanInputIMBindingWorkspaceOverride.im_identity_id == record.im_identity_id,
+                )
+                .returning(HumanInputIMBindingWorkspaceOverride.id)
+                .execution_options(autoflush=False)
             )
-            record.id = str(uuidv7())
-            record.created_at = assignment.assigned_at
-            self._session.add(record)
-        else:
-            # TODO(QuantumGhost): this should be a replace instead of an update.
-            record.im_identity_id = str(assignment.identity_id)
-            record.bound_by_account_id = str(bound_by_account_id) if bound_by_account_id is not None else None
+            if deleted_id is None:
+                raise IMBindingConflictError("Workspace IM Binding changed concurrently")
+
+        record = HumanInputIMBindingWorkspaceOverride(
+            channel_id=str(self._channel_id),
+            tenant_id=str(tenant_id),
+            contact_id=str(assignment.contact_id),
+            im_identity_id=str(assignment.identity_id),
+            bound_by_account_id=(str(bound_by_account_id) if bound_by_account_id is not None else None),
+        )
+        record.id = str(uuidv7())
+        record.created_at = assignment.assigned_at
         record.updated_at = assignment.assigned_at
         try:
+            self._session.add(record)
             self._session.flush([record])
         except IntegrityError as error:
             if _is_endpoint_conflict(error, workspace_override=True):

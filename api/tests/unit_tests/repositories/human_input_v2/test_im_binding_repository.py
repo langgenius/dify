@@ -8,8 +8,10 @@ from functools import partial
 
 import pytest
 import sqlalchemy as sa
-from sqlalchemy.engine import Engine
+from sqlalchemy import event
+from sqlalchemy.engine import Engine, ExecutionContext
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.dml import Delete, Insert, Update
 
 from core.human_input_v2.shared import AccountId, ContactId, IMBindingId, IMIdentityId, IMSyncRunId, TenantId
 from models.human_input_v2 import HumanInputIMBinding, HumanInputIMBindingWorkspaceOverride
@@ -202,10 +204,11 @@ def test_replace_creates_reassigns_and_preserves_identical_bindings_within_its_c
         assert repository.get(replaced.id) is None
 
 
-def test_workspace_overrides_preserve_identity_and_timestamp_and_support_one_repository_across_tenants(
+def test_workspace_override_replacement_is_isolated_by_channel_and_tenant(
     sqlite_engine: Engine,
 ) -> None:
-    _seed_identities(sqlite_engine, _CHANNEL_ONE, _IDENTITY_ONE, _IDENTITY_TWO, _IDENTITY_THREE)
+    _seed_identities(sqlite_engine, _CHANNEL_ONE, _IDENTITY_ONE, _IDENTITY_TWO)
+    _seed_identities(sqlite_engine, _CHANNEL_TWO, _IDENTITY_THREE)
     with Session(sqlite_engine, expire_on_commit=False) as session:
         repository = SQLAlchemyIMBindingRepository(session, _CHANNEL_ONE)
         default = repository.create(_assignment(_CONTACT_ONE, _IDENTITY_ONE), bound_by_account_id=None)
@@ -216,8 +219,14 @@ def test_workspace_overrides_preserve_identity_and_timestamp_and_support_one_rep
         )
         other_workspace = repository.set_workspace_override(
             _TENANT_TWO,
-            _assignment(_CONTACT_THREE, _IDENTITY_ONE),
+            _assignment(_CONTACT_TWO, _IDENTITY_ONE),
             bound_by_account_id=_ACCOUNT_TWO,
+        )
+        other_channel_repository = SQLAlchemyIMBindingRepository(session, _CHANNEL_TWO)
+        other_channel = other_channel_repository.set_workspace_override(
+            _TENANT_ONE,
+            _assignment(_CONTACT_TWO, _IDENTITY_THREE),
+            bound_by_account_id=_ACCOUNT_ONE,
         )
         replaced_override = repository.set_workspace_override(
             _TENANT_ONE,
@@ -228,12 +237,84 @@ def test_workspace_overrides_preserve_identity_and_timestamp_and_support_one_rep
         assert default.identity_id == first_override.identity_id == other_workspace.identity_id
         assert first_override.kind is IMBindingKind.WORKSPACE_OVERRIDE
         assert other_workspace.kind is IMBindingKind.WORKSPACE_OVERRIDE
-        assert replaced_override.id == first_override.id
-        assert replaced_override.created_at == first_override.created_at == _NOW
-        assert replaced_override.updated_at == _LATER
+        assert replaced_override.id != first_override.id
+        assert replaced_override.created_at == replaced_override.updated_at == _LATER
         assert replaced_override.identity_id == _IDENTITY_TWO
-        stored = session.get_one(HumanInputIMBindingWorkspaceOverride, str(first_override.id))
+        assert session.get(HumanInputIMBindingWorkspaceOverride, str(first_override.id)) is None
+        stored = session.get_one(HumanInputIMBindingWorkspaceOverride, str(replaced_override.id))
         assert stored.bound_by_account_id == str(_ACCOUNT_TWO)
+        assert repository.get_effective(_TENANT_TWO, _CONTACT_TWO) == other_workspace
+        assert other_channel_repository.get_effective(_TENANT_ONE, _CONTACT_TWO) == other_channel
+        assert repository.get(default.id) == default
+
+        repository.reset_workspace_override(_TENANT_ONE, _CONTACT_TWO)
+        assert repository.get_effective(_TENANT_ONE, _CONTACT_TWO) is None
+        assert repository.get_effective(_TENANT_TWO, _CONTACT_TWO) == other_workspace
+        assert other_channel_repository.get_effective(_TENANT_ONE, _CONTACT_TWO) == other_channel
+
+
+@pytest.mark.parametrize("kind", list(IMBindingKind))
+def test_bindings_are_immutable_and_round_trip_assignments_never_reuse_ids(
+    sqlite_engine: Engine, kind: IMBindingKind
+) -> None:
+    _seed_identities(sqlite_engine, _CHANNEL_ONE, _IDENTITY_ONE, _IDENTITY_TWO)
+    binding_tables = {HumanInputIMBinding.__tablename__, HumanInputIMBindingWorkspaceOverride.__tablename__}
+    writes: list[Insert | Delete | Update] = []
+
+    def capture_binding_write(
+        _connection: object,
+        _cursor: object,
+        _statement: str,
+        _parameters: object,
+        context: ExecutionContext,
+        _executemany: bool,
+    ) -> None:
+        if context.compiled is None:
+            return
+        statement = context.compiled.statement
+        if (
+            isinstance(statement, Insert | Delete | Update)
+            and isinstance(statement.table, sa.Table)
+            and statement.table.name in binding_tables
+        ):
+            writes.append(statement)
+
+    event.listen(sqlite_engine, "before_cursor_execute", capture_binding_write)
+    try:
+        with Session(sqlite_engine) as session, session.begin():
+            repository = SQLAlchemyIMBindingRepository(session, _CHANNEL_ONE)
+            if kind is IMBindingKind.DEFAULT:
+                assign = repository.replace
+                model = HumanInputIMBinding
+            else:
+                assign = partial(repository.set_workspace_override, _TENANT_ONE)
+                model = HumanInputIMBindingWorkspaceOverride
+
+            original = assign(_assignment(_CONTACT_ONE, _IDENTITY_ONE), bound_by_account_id=_ACCOUNT_ONE)
+            writes.clear()
+            retried = assign(_assignment(_CONTACT_ONE, _IDENTITY_ONE, _LATER), bound_by_account_id=_ACCOUNT_TWO)
+            session.flush()
+            assert retried == original
+            assert session.get_one(model, str(original.id)).bound_by_account_id == str(_ACCOUNT_ONE)
+            assert writes == []
+
+            replacement = assign(_assignment(_CONTACT_ONE, _IDENTITY_TWO, _LATER), bound_by_account_id=_ACCOUNT_TWO)
+            restored = assign(_assignment(_CONTACT_ONE, _IDENTITY_ONE, _LATER), bound_by_account_id=None)
+            assert len({original.id, replacement.id, restored.id}) == 3
+            assert session.get(model, str(original.id)) is None
+            assert session.get(model, str(replacement.id)) is None
+            assert session.get_one(model, str(restored.id)).bound_by_account_id is None
+
+            if kind is IMBindingKind.DEFAULT:
+                repository.delete(restored.id, expected_identity_id=_IDENTITY_ONE)
+            else:
+                repository.reset_workspace_override(_TENANT_ONE, _CONTACT_ONE)
+            assert repository.get_effective(_TENANT_ONE, _CONTACT_ONE) is None
+        assert any(isinstance(statement, Insert) for statement in writes)
+        assert any(isinstance(statement, Delete) for statement in writes)
+        assert not any(isinstance(statement, Update) for statement in writes)
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", capture_binding_write)
 
 
 def test_workspace_override_conflicts_only_within_the_target_workspace(sqlite_engine: Engine) -> None:
