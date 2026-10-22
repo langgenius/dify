@@ -175,6 +175,28 @@ describe('Dify Builder store', () => {
     expect(runAction).toHaveBeenCalledWith('cancel_test', { request_id: 'request-1' })
   })
 
+  it('keeps native configuration waits immutable instead of offering a new conversation action', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        run_status: 'waiting_confirmation',
+        canvas_read_only: false,
+        test_execution: createNativeReceipt({ status: 'waiting', wait_reason: 'configuration' }),
+      }),
+    )
+    store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 1 })
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+    expect(store.get(difyBuilderModelReadonlyAtom)).toBe(true)
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+    expect(
+      await store.set(difyBuilderStartPromptAtom, { text: 'Try again', model: builderModel }),
+    ).toBe(false)
+    expect(runtime.session.sendMessage).not.toHaveBeenCalled()
+  })
+
   it.each(['provide_testdata', 'start_test', 'publish'])(
     'blocks %s until the current canvas version has been applied',
     async (actionId) => {

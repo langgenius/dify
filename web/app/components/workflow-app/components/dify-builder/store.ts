@@ -5,6 +5,7 @@ import type {
   DifyBuilderLocalInteractionResponse,
   DifyBuilderSessionController,
   SessionModel,
+  SessionView,
 } from './types'
 import type { DifyBuilderCanvasSnapshot } from './utils'
 import { atom } from 'jotai'
@@ -37,6 +38,14 @@ export type DifyBuilderRuntime = {
 const isActiveStatus = (status?: string) => status === 'processing'
 const canContinueConversation = (status?: string) =>
   status === 'complete' || status === 'waiting_input' || status === 'waiting_confirmation'
+
+const hasUnresolvedNativeTest = (view: SessionView | null) =>
+  Boolean(
+    view?.test_execution &&
+    (view.test_execution.status !== 'terminal' ||
+      view.test_execution.outcome === 'unknown' ||
+      view.test_execution.cancellation?.status === 'cancelling'),
+  )
 
 export const difyBuilderRuntimeAtom = atom<DifyBuilderRuntime | null>(null)
 export const difyBuilderAppIdAtom = atom((get) => get(difyBuilderRuntimeAtom)?.appId)
@@ -181,11 +190,7 @@ export const difyBuilderCanComposeAtom = atom((get) => {
   const view = get(difyBuilderSessionViewAtom)
   if (view?.decision || view?.active_interaction) return false
   if (view?.recovery || view?.app_revision?.conflicted) return false
-  if (
-    view?.test_execution?.outcome === 'unknown' ||
-    view?.test_execution?.cancellation?.status === 'cancelling'
-  )
-    return false
+  if (hasUnresolvedNativeTest(view)) return false
   return !view || canContinueConversation(view.run_status)
 })
 export const difyBuilderCanSendDraftAtom = atom(
@@ -198,6 +203,7 @@ export const difyBuilderModelReadonlyAtom = atom((get) => {
     !get(difyBuilderCanvasReadyAtom) ||
     isActiveStatus(view?.run_status) ||
     view?.run_status === 'paused' ||
+    hasUnresolvedNativeTest(view) ||
     !!view?.recovery ||
     !!view?.app_revision?.conflicted
   )
@@ -231,7 +237,8 @@ export const difyBuilderCanStartFixAtom = atom((get) => {
     runtime?.canEdit &&
     !get(difyBuilderInteractionBusyAtom) &&
     get(difyBuilderCanvasReadyAtom) &&
-    !isActiveStatus(view?.run_status)
+    !isActiveStatus(view?.run_status) &&
+    !hasUnresolvedNativeTest(view)
   )
 })
 
@@ -266,6 +273,7 @@ const startDifyBuilderPromptAtom = atom(
 
     runtime.setShowPanel(true)
     if (view) {
+      if (hasUnresolvedNativeTest(view)) return false
       if (!canContinueConversation(view.run_status)) return false
       if (!set(prepareDifyBuilderSessionAtom)) return false
       return runtime.session.sendMessage(prompt)
@@ -368,6 +376,7 @@ export const difyBuilderSelectModelAtom = atom(null, async (get, set, model: Ses
     !get(difyBuilderCanvasReadyAtom) ||
     isActiveStatus(view?.run_status) ||
     view?.run_status === 'paused' ||
+    hasUnresolvedNativeTest(view) ||
     !!view?.recovery ||
     !!view?.app_revision?.conflicted
   )
