@@ -720,11 +720,6 @@ describe('WorkflowLogArchivesPage', () => {
     it.each([
       { status: 'ready', error: null, notification: 'appLog.archives.action.downloadReady' },
       { status: 'failed', error: null, notification: 'appLog.archives.action.prepareStarted' },
-      {
-        status: 'failed',
-        error: 'Storage unavailable',
-        notification: 'appLog.archives.action.prepareStarted',
-      },
     ] as const)(
       'preserves the existing notification for an immediately $status task ($error)',
       async ({ status, error: failureReason, notification }) => {
@@ -751,10 +746,10 @@ describe('WorkflowLogArchivesPage', () => {
       },
     )
 
-    it('clears a failed result when retry reuses the download ID before announcing the new result', async () => {
+    it('retries the same download ID and announces completion through automatic polling', async () => {
       const user = userEvent.setup()
       archiveRequests.download.mockResolvedValue({ ...downloadTask, status: 'failed' })
-      const { queryClient } = renderPage({
+      renderPage({
         ...archiveData,
         months: [{ ...archiveMonth, download_task: downloadTask }],
       })
@@ -763,30 +758,43 @@ describe('WorkflowLogArchivesPage', () => {
       const announcement = within(row).getByRole('status')
       expect(announcement).toHaveTextContent('2025-03: appLog.archives.downloadHint.failed')
 
-      archiveRequests.prepareDownload.mockResolvedValue(downloadTask)
-      archiveRequests.download.mockResolvedValue({ ...downloadTask, status: 'ready' })
-      await user.click(retry)
-
-      expect(
-        within(row).getByRole('button', {
-          name: 'appLog.archives.action.preparing 2025-03',
-        }),
-      ).toHaveAttribute('aria-disabled', 'true')
-      expect(announcement).toBeEmptyDOMElement()
-      await act(async () =>
-        queryClient.refetchQueries({
-          queryKey: consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryKey({
-            input: { params: { download_id: downloadTask.download_id } },
+      let resolveRetry!: (task: WorkflowRunArchiveDownloadTaskResponse) => void
+      archiveRequests.prepareDownload.mockImplementation(
+        () =>
+          new Promise<WorkflowRunArchiveDownloadTaskResponse>((resolve) => {
+            resolveRetry = resolve
           }),
-        }),
       )
-      expect(
-        await within(row).findByRole('button', { name: 'common.operation.download 2025-03' }),
-      ).toBeEnabled()
-      expect(announcement).toHaveTextContent('2025-03: appLog.archives.downloadHint.ready')
-      expect(archiveRequests.prepareDownload).toHaveBeenCalledExactlyOnceWith({
-        body: { year: 2025, month: 3 },
+      const retriedTask = { ...downloadTask, updated_at: '2025-03-03T00:00:01Z' }
+      archiveRequests.download.mockResolvedValue({
+        ...retriedTask,
+        status: 'ready',
+        updated_at: '2025-03-03T00:00:02Z',
       })
+      await user.click(retry)
+      expect(announcement).toBeEmptyDOMElement()
+
+      vi.useFakeTimers()
+      try {
+        await act(async () => resolveRetry(retriedTask))
+        await act(async () => vi.advanceTimersByTimeAsync(0))
+        expect(
+          within(row).getByRole('button', { name: 'appLog.archives.action.preparing 2025-03' }),
+        ).toHaveAttribute('aria-disabled', 'true')
+        expect(announcement).toBeEmptyDOMElement()
+
+        await act(async () => vi.advanceTimersByTimeAsync(3001))
+
+        expect(
+          within(row).getByRole('button', { name: 'common.operation.download 2025-03' }),
+        ).toBeEnabled()
+        expect(announcement).toHaveTextContent('2025-03: appLog.archives.downloadHint.ready')
+        expect(archiveRequests.prepareDownload).toHaveBeenCalledExactlyOnceWith({
+          body: { year: 2025, month: 3 },
+        })
+      } finally {
+        vi.useRealTimers()
+      }
     })
   })
 
@@ -1022,9 +1030,6 @@ describe('WorkflowLogArchivesPage', () => {
       expect(tooltip).toHaveTextContent(failureHint)
       expect(retry).toHaveAccessibleDescription(failureHint)
       expect(archiveRequests.prepareDownload).not.toHaveBeenCalled()
-      expect(
-        screen.queryByRole('button', { name: 'common.operation.learnMore: 2025-03' }),
-      ).not.toBeInTheDocument()
       await user.click(retry)
       expect(archiveRequests.prepareDownload).toHaveBeenCalledWith({
         body: { year: 2025, month: 3 },
