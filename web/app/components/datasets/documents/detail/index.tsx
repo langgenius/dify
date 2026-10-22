@@ -6,6 +6,13 @@ import type { FileItem } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -276,6 +283,16 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     }
   }, [documentDetail, documentMetadata])
 
+  const metadataPanel = docDetail && (
+    <Metadata
+      className={cn(isMobile && 'mt-3 mr-2')}
+      datasetId={datasetId}
+      documentId={documentId}
+      docDetail={docDetail}
+      canEdit={canEditDocument}
+    />
+  )
+
   const backButtonLabel = t(($) => $['operation.back'], { ns: 'common' })
   const metadataToggleLabel = `${
     showMetadata
@@ -405,15 +422,20 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             isMobile={isMobile}
             panelClassName="justify-start!"
           >
-            {docDetail && (
-              <Metadata
-                className="mt-3 mr-2"
-                datasetId={datasetId}
-                documentId={documentId}
-                docDetail={docDetail}
-                canEdit={canEditDocument}
-              />
-            )}
+            {metadataPanel &&
+              (isMobile ? (
+                metadataPanel
+              ) : (
+                <ScrollArea className="relative mt-3 min-h-0 shrink-0 overflow-hidden">
+                  <ScrollAreaViewport className="overscroll-contain">
+                    {/* pr-3 reserves a gutter for the 12px overlay scrollbar so it never covers the panel's controls */}
+                    <ScrollAreaContent className="pr-3 pb-3">{metadataPanel}</ScrollAreaContent>
+                  </ScrollAreaViewport>
+                  <ScrollAreaScrollbar orientation="vertical">
+                    <ScrollAreaThumb />
+                  </ScrollAreaScrollbar>
+                </ScrollArea>
+              ))}
           </FloatRightContainer>
         </div>
         <BatchModal
