@@ -10,7 +10,11 @@ from models.model import Account, App, EndUser
 from models.workflow import Workflow
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connection_identity import connection_context_from_web_passport
-from services.end_user_connections.errors import ConnectionIdentityError, ConnectionWorkflowChangedError
+from services.end_user_connections.errors import (
+    ConnectionConfigurationError,
+    ConnectionIdentityError,
+    ConnectionWorkflowChangedError,
+)
 from services.end_user_connections.execution import ConnectionRunInput
 from services.workflow.tool_credentials import requires_end_user_connections
 
@@ -21,13 +25,15 @@ def prepare_web_connection_execution(
     required = requires_end_user_connections(workflow.graph_dict)
     try:
         command = ConnectionRunInput.model_validate(
-            {"workflow_id": args.get("workflow_id"), "connections": args.get("connections") if required else None}
+            {"workflow_id": args.get("workflow_id"), "connections": args.get("connections")}
         )
     except ValidationError:
         raise ValueError("Invalid connection execution payload.") from None
     if command.workflow_id is not None and str(command.workflow_id) != workflow.id:
         raise ConnectionWorkflowChangedError()
     if not required:
+        if command.connections:
+            raise ConnectionConfigurationError()
         return None
     if not isinstance(user, EndUser):
         raise ConnectionIdentityError()

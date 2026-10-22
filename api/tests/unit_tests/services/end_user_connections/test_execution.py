@@ -309,8 +309,9 @@ def test_entry_ignores_client_authority_fields(
 
 
 @pytest.mark.parametrize("pin", ["matching", "missing", "stale"])
-def test_workspace_only_entry_only_checks_explicit_protocol_pin(
-    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, pin: str
+@pytest.mark.parametrize("selection", ["omitted", "empty", "unused", "unused-null"])
+def test_workspace_only_entry_checks_protocol_and_rejects_unused_selections(
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, pin: str, selection: str
 ) -> None:
     from extensions import ext_application_services
 
@@ -326,11 +327,19 @@ def test_workspace_only_entry_only_checks_explicit_protocol_pin(
         assert user is not None
         assert workflow is not None
         workflow.graph = json.dumps({"nodes": [], "edges": []})
-    args: dict[str, object] = {"connections": {"removed-node": str(uuid4())}}
+    args: dict[str, object] = {}
+    if selection != "omitted":
+        choices: dict[str, str | None] = {}
+        if selection != "empty":
+            choices["removed-node"] = None if selection == "unused-null" else str(uuid4())
+        args["connections"] = choices
     if pin != "missing":
         args["workflow_id"] = workflow.id if pin == "matching" else str(uuid4())
     if pin == "stale":
         with pytest.raises(ConnectionWorkflowChangedError):
+            prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args)
+    elif selection in {"unused", "unused-null"}:
+        with pytest.raises(ConnectionConfigurationError):
             prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args)
     else:
         assert prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args) is None
