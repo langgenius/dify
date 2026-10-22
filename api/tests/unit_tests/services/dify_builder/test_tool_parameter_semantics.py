@@ -7,7 +7,7 @@ request, credentials, native graph execution, or sandbox service is involved.
 
 import json
 import re
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from copy import deepcopy
 from typing import cast
 
@@ -19,7 +19,7 @@ from core.workflow.generator.prompts.node_builder_prompts import get_node_builde
 from core.workflow.generator.prompts.planner_prompts import PLANNER_SYSTEM_PROMPT
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool.tool_node import ToolNode
 from graphon.nodes.tool_runtime_entities import ToolRuntimeParameter
@@ -146,7 +146,7 @@ def _generate(monkeypatch: pytest.MonkeyPatch) -> tuple[Graph, dict[str, str]]:
     model = _model(monkeypatch)
     prompts: dict[str, str] = {}
 
-    def invoke_llm(*, prompt_messages, **_kwargs):
+    def invoke_llm(*, prompt_messages: Sequence[PromptMessage], **_kwargs: object) -> LLMResult:
         prompt = "\n".join(str(message.content) for message in prompt_messages)
         if "workflow planner" in str(prompt_messages[0].content):
             prompts["planner"] = prompt
@@ -243,7 +243,7 @@ def test_repair_reference_literals_uses_real_selector_shape(monkeypatch: pytest.
     seen: list[str] = []
     users: list[str] = []
 
-    def invoke(_model, *, system, user, **_kwargs):
+    def invoke(_model: ModelInstance, *, system: str, user: str, **_kwargs: object) -> dict[str, object]:
         seen.append(system)
         users.append(user)
         return {
@@ -305,7 +305,7 @@ def test_missing_parser_repair_receives_installed_contract_and_start_schema(
     monkeypatch.setattr(resources, "_list_tools", lookup)
     seen: list[str] = []
 
-    def invoke(_model, *, user, **_kwargs):
+    def invoke(_model: ModelInstance, *, user: str, **_kwargs: object) -> dict[str, object]:
         seen.append(user)
         return {
             "intents": [

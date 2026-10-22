@@ -2,6 +2,7 @@
 
 import json
 from copy import deepcopy
+from typing import TypedDict, cast
 
 import pytest
 
@@ -10,6 +11,7 @@ from core.workflow.generator.prompts.node_builder_prompts import (
     get_node_builder_system_prompt,
 )
 from core.workflow.generator.prompts.planner_prompts import PLANNER_SYSTEM_PROMPT
+from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.node_events.node import StreamCompletedEvent, VariableUpdatedEvent
 from graphon.nodes.loop.entities import LoopNodeData
 from graphon.nodes.loop.loop_node import LoopNode
@@ -19,13 +21,35 @@ from graphon.runtime import InitParams, RuntimeState, VariablePool
 from services.workflow_generation.runner import WorkflowGenerator, _parse_node_outputs
 
 
-def _prompt_loop_config() -> dict:
+class _LoopVariable(TypedDict):
+    label: str
+    var_type: str
+    value_type: str
+    value: int | list[str]
+
+
+class _BreakCondition(TypedDict):
+    id: str
+    varType: str
+    variable_selector: list[str]
+    comparison_operator: str
+    value: str
+
+
+class _LoopConfig(TypedDict):
+    loop_variables: list[_LoopVariable]
+    break_conditions: list[_BreakCondition]
+    loop_count: int
+    logical_operator: str
+
+
+def _prompt_loop_config() -> _LoopConfig:
     prompt = get_node_builder_system_prompt("loop")
     config, _ = json.JSONDecoder().raw_decode(prompt.split("- loop:", 1)[1].lstrip())
-    return config
+    return cast(_LoopConfig, config)
 
 
-def test_loop_prompt_declares_native_state_instead_of_just_exit_conditions():
+def test_loop_prompt_declares_native_state_instead_of_just_exit_conditions() -> None:
     config = _prompt_loop_config()
     assert config["loop_variables"] == [
         {"label": "counter", "var_type": "number", "value_type": "constant", "value": 0}
@@ -36,22 +60,24 @@ def test_loop_prompt_declares_native_state_instead_of_just_exit_conditions():
     assert "loop_variables[].label" in get_node_builder_system_prompt("loop")
 
 
-def test_loop_plan_names_reach_producer_and_consumers_without_granting_output_authority():
-    nodes = [{"id": "loop", "node_type": "loop"}, {"id": "end", "node_type": "end"}]
+def test_loop_plan_names_reach_producer_and_consumers_without_granting_output_authority() -> None:
+    nodes: list[dict[str, object]] = [{"id": "loop", "node_type": "loop"}, {"id": "end", "node_type": "end"}]
     parsed = _parse_node_outputs({"loop": ["counter"]}, nodes)
     assert parsed == {"loop": ["counter"]}
     assert '"loop" (``loop_variables[].label``)' in PLANNER_SYSTEM_PROMPT
     own = format_node_outputs_section(parsed, "loop", {"loop": "loop"})
     assert "loop_variables[].label" in own
     assert "loop: 'counter'" in format_node_outputs_section(parsed, "end", {"loop": "loop"})
-    actual = {"id": "loop", "data": {"type": "loop", **_prompt_loop_config()}}
+    data: dict[str, object] = {"type": "loop", **_prompt_loop_config()}
+    actual: dict[str, object] = {"id": "loop", "data": data}
     assert WorkflowGenerator._declares_variable(actual, "counter")
-    actual["data"]["loop_variables"] = []
+    empty_variables: list[_LoopVariable] = []
+    data["loop_variables"] = empty_variables
     assert not WorkflowGenerator._declares_variable(actual, "counter")
 
 
 @pytest.mark.parametrize("initialization", ["constant", "variable"])
-def test_prompt_state_initializes_native_pool_and_assigner_increments_same_selector(initialization):
+def test_prompt_state_initializes_native_pool_and_assigner_increments_same_selector(initialization: str) -> None:
     config = _prompt_loop_config()
     variable = config["loop_variables"][0]
     variable["value_type"] = initialization
@@ -66,7 +92,7 @@ def test_prompt_state_initializes_native_pool_and_assigner_increments_same_selec
         init_params=init,
         runtime_state=runtime,
     )
-    inputs = {}
+    inputs: dict[str, object] = {}
     assert loop._initialize_loop_variables(inputs=inputs) == {"counter": ("loop", "counter")}
     assert inputs == {"counter": 0}
     assigner = VariableAssignerNode(
@@ -96,10 +122,13 @@ def test_prompt_state_initializes_native_pool_and_assigner_increments_same_selec
     assert events[-1].node_run_result.status == "succeeded"
 
 
-def test_loop_declarations_survive_real_planner_and_parallel_builder_boundaries(monkeypatch):
-    configs = {
+def test_loop_declarations_survive_real_planner_and_parallel_builder_boundaries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    loop_config = _prompt_loop_config()
+    configs: dict[str, dict[str, object]] = {
         "start": {"variables": [{"variable": "limit", "label": "limit", "type": "number", "required": True}]},
-        "loop": _prompt_loop_config(),
+        "loop": dict(loop_config),
         "increment": {
             "version": "2",
             "items": [
@@ -113,7 +142,7 @@ def test_loop_declarations_survive_real_planner_and_parallel_builder_boundaries(
         },
         "end": {"outputs": [{"variable": "final_counter", "value_selector": ["loop", "counter"]}]},
     }
-    configs["loop"]["break_conditions"][0].update(
+    loop_config["break_conditions"][0].update(
         variable_selector=["loop", "counter"],
         value="{{#start.limit#}}",
     )
@@ -128,13 +157,15 @@ def test_loop_declarations_survive_real_planner_and_parallel_builder_boundaries(
         "start_inputs": configs["start"]["variables"],
         "node_outputs": {"loop": ["counter"]},
     }
-    prompts = {}
+    prompts: dict[str, str] = {}
 
-    def model_boundary(*, stage, messages, **_kwargs):
+    def model_boundary(*, stage: str, messages: list[PromptMessage], **_kwargs: object) -> dict[str, object]:
         if stage == "Planner":
             return deepcopy(plan)
         node_id = stage.removeprefix("Builder ")
-        prompts[node_id] = messages[-1].content
+        content = messages[-1].content
+        assert isinstance(content, str)
+        prompts[node_id] = content
         return {"config": deepcopy(configs[node_id])}
 
     monkeypatch.setattr(WorkflowGenerator, "_invoke_and_parse_json", staticmethod(model_boundary))
@@ -153,4 +184,4 @@ def test_loop_declarations_survive_real_planner_and_parallel_builder_boundaries(
     assert "loop: 'counter'" in prompts["end"]
     loop = next(node for node in result["graph"]["nodes"] if node["id"] == "loop")
     LoopNodeData.model_validate(loop["data"])
-    assert WorkflowGenerator._declares_variable(loop, "counter")
+    assert WorkflowGenerator._declares_variable(dict(loop), "counter")
