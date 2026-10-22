@@ -11,6 +11,8 @@
   "changeScope.structure": "структура",
   "checklistIssues": "Проблемы контрольного списка",
   "configureModel": "Настройте модель",
+  "copy.actions.cancelTest": "Отменить тест",
+  "copy.actions.confirmTestOperation": "Подтвердить операцию",
   "copy.actions.applyTheFix": "Применить исправление",
   "copy.actions.approveChanges": "Одобрить изменения",
   "copy.actions.approveFix": "Одобрить исправление",

@@ -11,6 +11,8 @@
   "changeScope.structure": "構造",
   "checklistIssues": "チェックリストの問題",
   "configureModel": "モデルを設定してください",
+  "copy.actions.cancelTest": "テストをキャンセル",
+  "copy.actions.confirmTestOperation": "この操作を確認",
   "copy.actions.applyTheFix": "修正を適用",
   "copy.actions.approveChanges": "変更を承認",
   "copy.actions.approveFix": "修正を承認",
