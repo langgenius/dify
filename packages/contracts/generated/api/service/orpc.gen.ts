@@ -8,6 +8,7 @@ import {
   zArchivedDocumentImmutableError,
   zAudioTooLargeError,
   zCompletionRequestError,
+  zDatasetIndexingInProgressError,
   zDatasetNameDuplicateError,
   zEndUserNotFoundError,
   zFileAccessDeniedError,
@@ -2047,6 +2048,7 @@ export const delete8 = oc
   })
   .input(z.object({ params: zDeleteDatasetsByDatasetIdPath }))
   .output(zDeleteDatasetsByDatasetIdResponse)
+  .errors({ dataset_indexing_in_progress: { status: 409, data: zDatasetIndexingInProgressError } })
 
 /**
  * Get Knowledge Base

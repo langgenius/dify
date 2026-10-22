@@ -17,7 +17,6 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.pagination import paginate_query
@@ -39,6 +38,7 @@ from services.errors.base import NoPermissionError
 from services.errors.document import DocumentIndexingError
 from services.file_service import FileService
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.dataset_operation_lock import dataset_operation_lock, lock_dataset_row
 from services.knowledge.dataset_read_service import (
     get_document_metadata_details,
     get_document_source_detail,
@@ -363,8 +363,10 @@ class SQLAlchemyDocumentOperations:
                 dataset = (
                     DocumentService.build_dataset_for_documents(ref, config, account, session)
                     if initialize
-                    else _require_dataset(session, ref)
+                    else lock_dataset_row(session, str(ref.dataset_id))
                 )
+                if dataset is None:
+                    dataset = _require_dataset(session, ref)
                 documents, batch, jobs = DocumentService.save_prepared_documents(
                     dataset, config, account, session=session
                 )
@@ -388,11 +390,7 @@ class SQLAlchemyDocumentOperations:
     def _run_creation(
         self, context: RequestContext, ref: DatasetRef, config: KnowledgeConfig, *, initialize: bool
     ) -> dict[str, Any]:
-        lock = (
-            nullcontext()
-            if config.original_document_id
-            else redis_client.lock(f"add_document_lock_dataset_id_{ref.dataset_id}", timeout=600)
-        )
+        lock = nullcontext() if config.original_document_id else dataset_operation_lock(str(ref.dataset_id))
         result = None
         try:
             with lock:

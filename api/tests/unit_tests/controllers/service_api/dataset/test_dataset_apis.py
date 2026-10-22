@@ -17,7 +17,12 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 import services.errors.base
-from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
+from controllers.service_api.dataset.error import (
+    DatasetIndexingInProgressError,
+    DatasetInUseError,
+    DatasetNameDuplicateError,
+    InvalidActionError,
+)
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetMetadata, Document
 from models.enums import PermissionEnum
@@ -779,6 +784,23 @@ class TestDatasetApiDelete:
         ):
             api = DatasetApi()
             with pytest.raises(DatasetInUseError):
+                unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
+
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_delete_dataset_while_indexing_returns_conflict(
+        self,
+        mock_dataset_svc: MagicMock,
+        app: Flask,
+        dataset: Dataset,
+        controller_session: Session,
+    ) -> None:
+        from controllers.service_api.dataset.dataset import DatasetApi
+
+        mock_dataset_svc.delete_dataset.side_effect = services.errors.dataset.DatasetIndexingInProgressError()
+
+        with app.test_request_context(f"/datasets/{dataset.id}", method="DELETE"):
+            api = DatasetApi()
+            with pytest.raises(DatasetIndexingInProgressError):
                 unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
 
 

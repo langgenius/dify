@@ -66,6 +66,43 @@ def test_rejects_document_outside_dataset_before_side_effects(sqlite_session: Se
     processor_factory.assert_not_called()
 
 
+def test_skips_website_sync_when_dataset_is_deleted_before_lock(sqlite_session: Session) -> None:
+    dataset = _dataset(str(uuid.uuid4()))
+    document = _document(dataset)
+    sqlite_session.add_all([dataset, document])
+    sqlite_session.commit()
+
+    with (
+        patch("tasks.sync_website_document_indexing_task.lock_dataset_row", return_value=None),
+        patch("tasks.sync_website_document_indexing_task.build_document_indexing_service") as indexing_runner,
+        patch("tasks.sync_website_document_indexing_task.IndexProcessorFactory") as processor_factory,
+    ):
+        sync_website_document_indexing_task(dataset.id, document.id)
+
+    indexing_runner.assert_not_called()
+    processor_factory.assert_not_called()
+
+
+def test_skips_website_sync_when_document_is_deleted_before_lock(sqlite_session: Session) -> None:
+    dataset = _dataset(str(uuid.uuid4()))
+    document = _document(dataset)
+    sqlite_session.add_all([dataset, document])
+    sqlite_session.commit()
+
+    with (
+        patch(
+            "tasks.sync_website_document_indexing_task._get_document",
+            side_effect=[document, None],
+        ),
+        patch("tasks.sync_website_document_indexing_task.build_document_indexing_service") as indexing_runner,
+        patch("tasks.sync_website_document_indexing_task.IndexProcessorFactory") as processor_factory,
+    ):
+        sync_website_document_indexing_task(dataset.id, document.id)
+
+    indexing_runner.assert_not_called()
+    processor_factory.assert_not_called()
+
+
 @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 def test_cleanup_is_owner_scoped_and_skips_empty_vector_ids(sqlite_session: Session) -> None:
     tenant_id = str(uuid.uuid4())

@@ -353,7 +353,7 @@ class TestDocumentIndexingSyncTask:
         )
 
     def test_dataset_not_found_during_cleaning(self, db_session_with_containers: Session, mock_external_dependencies):
-        """Test that task still updates document and reindexes if dataset vanishes before clean."""
+        """Do not reindex a document after its dataset is deleted during sync."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers)
 
@@ -375,9 +375,9 @@ class TestDocumentIndexingSyncTask:
             select(Document).where(Document.id == context["document"].id).limit(1)
         )
         assert updated_document is not None
-        assert updated_document.indexing_status == IndexingStatus.PARSING
+        assert updated_document.indexing_status == IndexingStatus.COMPLETED
         mock_external_dependencies["index_processor"].clean.assert_not_called()
-        mock_external_dependencies["indexing_runner"].run.assert_called_once()
+        mock_external_dependencies["indexing_runner"].run.assert_not_called()
 
     def test_cleaning_error_continues_to_indexing(
         self, db_session_with_containers: Session, mock_external_dependencies

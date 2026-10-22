@@ -17,6 +17,7 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document
 from models.enums import IndexingStatus
 from services.feature_service import FeatureService
+from services.knowledge.dataset_operation_lock import dataset_operation_lock, lock_dataset_row
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.resource_scope import DatasetRef
@@ -94,17 +95,23 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                 return
 
     # Phase 1: Persist parsing status before slow extraction and vector operations.
-    with session_factory.create_session() as session, session.begin():
-        documents: list[Document] = list(
-            session.scalars(
-                select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
-            ).all()
-        )
+    with dataset_operation_lock(str(dataset_id)):
+        with session_factory.create_session() as session, session.begin():
+            dataset = lock_dataset_row(session, str(dataset_id))
+            if not dataset:
+                logger.info(click.style(f"Dataset is not found: {dataset_id}", fg="yellow"))
+                return
 
-        for document in documents:
-            document.indexing_status = IndexingStatus.PARSING
-            document.processing_started_at = naive_utc_now()
-            session.add(document)
+            documents: list[Document] = list(
+                session.scalars(
+                    select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                ).all()
+            )
+
+            for document in documents:
+                document.indexing_status = IndexingStatus.PARSING
+                document.processing_started_at = naive_utc_now()
+                session.add(document)
 
     # Phase 2: Execute indexing without holding locks from the parsing-status update.
     has_error = False

@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
 
@@ -15,9 +16,12 @@ from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tests.unit_tests.config_override import config_overrides_context
 
 
-@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-@pytest.mark.parametrize("runtime_mode", [DatasetRuntimeMode.GENERAL, DatasetRuntimeMode.RAG_PIPELINE])
-def test_retry_uses_dataset_runtime(sqlite_session: Session, runtime_mode: DatasetRuntimeMode) -> None:
+def _retry_entities(
+    sqlite_session: Session,
+    *,
+    with_document: bool,
+    runtime_mode: DatasetRuntimeMode = DatasetRuntimeMode.GENERAL,
+) -> tuple[Tenant, Account, Dataset, Document | None]:
     tenant = Tenant(name="Retry tenant")
     user = Account(name="Retry user", email=f"retry-{uuid4()}@example.com")
     membership = TenantAccountJoin(
@@ -36,24 +40,38 @@ def test_retry_uses_dataset_runtime(sqlite_session: Session, runtime_mode: Datas
         chunk_structure=IndexStructureType.PARAGRAPH_INDEX,
         runtime_mode=runtime_mode,
     )
-    document = Document(
-        id=str(uuid4()),
-        tenant_id=tenant.id,
-        dataset_id=dataset.id,
-        position=1,
-        data_source_type=DataSourceType.UPLOAD_FILE,
-        data_source_info="{}",
-        batch="retry-batch",
-        name="Retry document",
-        created_from=DocumentCreatedFrom.WEB,
-        created_by=user.id,
-        indexing_status=IndexingStatus.COMPLETED,
-        enabled=True,
-        archived=False,
-        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+    document = (
+        Document(
+            id=str(uuid4()),
+            tenant_id=tenant.id,
+            dataset_id=dataset.id,
+            position=1,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_info="{}",
+            batch="retry-batch",
+            name="Retry document",
+            created_from=DocumentCreatedFrom.WEB,
+            created_by=user.id,
+            indexing_status=IndexingStatus.COMPLETED,
+            enabled=True,
+            archived=False,
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+        )
+        if with_document
+        else None
     )
-    sqlite_session.add_all([tenant, user, membership, dataset, document])
+    sqlite_session.add_all([tenant, user, membership, dataset])
+    if document:
+        sqlite_session.add(document)
     sqlite_session.commit()
+    return tenant, user, dataset, document
+
+
+@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+@pytest.mark.parametrize("runtime_mode", [DatasetRuntimeMode.GENERAL, DatasetRuntimeMode.RAG_PIPELINE])
+def test_retry_uses_dataset_runtime(sqlite_session: Session, runtime_mode: DatasetRuntimeMode) -> None:
+    _tenant, user, dataset, document = _retry_entities(sqlite_session, with_document=True, runtime_mode=runtime_mode)
+    assert document is not None
     features = MagicMock()
 
     with (
@@ -78,3 +96,39 @@ def test_retry_uses_dataset_runtime(sqlite_session: Session, runtime_mode: Datas
         retry_dataset, retry_document, retry_user = retry.call_args.args
         assert (retry_dataset.id, retry_document.id, retry_user.id) == (dataset.id, document.id, user.id)
         assert isinstance(retry.call_args.kwargs["generator"], PipelineGenerator)
+
+
+@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+def test_retry_skips_when_dataset_disappears_before_locked_lookup(sqlite_session: Session) -> None:
+    _tenant, user, dataset, document = _retry_entities(sqlite_session, with_document=True)
+    assert document is not None
+
+    with (
+        patch("tasks.retry_document_indexing_task.dataset_operation_lock", return_value=nullcontext()),
+        patch("tasks.retry_document_indexing_task.lock_dataset_row", return_value=None),
+        patch("tasks.retry_document_indexing_task.IndexProcessorFactory") as processor_factory,
+        patch("tasks.retry_document_indexing_task.build_document_indexing_service") as indexing_service,
+        patch("tasks.retry_document_indexing_task.redis_client"),
+    ):
+        retry_document_indexing_task.run(dataset.id, [document.id], user.id)
+
+    processor_factory.assert_not_called()
+    indexing_service.assert_not_called()
+    sqlite_session.expire_all()
+    assert sqlite_session.get(Document, document.id).indexing_status == IndexingStatus.COMPLETED  # type: ignore[union-attr]
+
+
+@config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+def test_retry_skips_when_document_is_missing_at_locked_lookup(sqlite_session: Session) -> None:
+    _tenant, user, dataset, _document = _retry_entities(sqlite_session, with_document=False)
+
+    with (
+        patch("tasks.retry_document_indexing_task.dataset_operation_lock", return_value=nullcontext()),
+        patch("tasks.retry_document_indexing_task.IndexProcessorFactory") as processor_factory,
+        patch("tasks.retry_document_indexing_task.build_document_indexing_service") as indexing_service,
+        patch("tasks.retry_document_indexing_task.redis_client"),
+    ):
+        retry_document_indexing_task.run(dataset.id, [str(uuid4())], user.id)
+
+    processor_factory.assert_not_called()
+    indexing_service.assert_not_called()

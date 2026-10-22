@@ -22,6 +22,7 @@ from services.document_indexing_proxy.document_indexing_task_proxy import Docume
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.entities.feature_entities import FeatureModel
 from services.errors.file import FileNotExistsError
+from services.knowledge.dataset_access import DatasetNotFoundError
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
 from services.knowledge.resource_scope import DatasetRef
 from tests.unit_tests.model_factories import make_upload_file
@@ -125,7 +126,7 @@ def external_calls(
         dispatched("duplicate", proxy._dataset_id, tuple(proxy._document_ids))
 
     monkeypatch.setattr("services.knowledge.dataset_service.FeatureService.get_features", features)
-    monkeypatch.setattr("services.knowledge.documents.adapters.redis_client.lock", lock)
+    monkeypatch.setattr("services.knowledge.dataset_operation_lock.redis_client.lock", lock)
     monkeypatch.setattr(DocumentIndexingTaskProxy, "delay", create)
     monkeypatch.setattr(DuplicateDocumentIndexingTaskProxy, "delay", duplicate)
     monkeypatch.setattr(
@@ -265,6 +266,35 @@ def test_foreign_upload_is_rejected_without_dispatch(
     assert external_calls == []
 
 
+def test_upload_aborts_when_dataset_disappears_before_locked_persistence(
+    operations: SQLAlchemyDocumentOperations,
+    external_calls: list[tuple[str, tuple[str, ...]]],
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.knowledge.documents import adapters as adapters_module
+
+    original_lock_dataset_row = adapters_module.lock_dataset_row
+
+    def delete_before_lock(session: Session, dataset_id: str) -> Dataset | None:
+        dataset = session.get(Dataset, dataset_id)
+        if dataset is not None:
+            session.delete(dataset)
+            session.flush()
+            return None
+        return original_lock_dataset_row(session, dataset_id)
+
+    monkeypatch.setattr(adapters_module, "lock_dataset_row", delete_before_lock)
+
+    with pytest.raises(DatasetNotFoundError):
+        operations.create_documents(CONTEXT, REF, settings())
+
+    assert external_calls == []
+    with sqlite_session_factory() as session:
+        assert session.get(Dataset, REF.dataset_id) is not None
+        assert session.scalar(select(Document.id)) is None
+
+
 def test_notion_removal_is_dispatched_after_new_documents_commit(
     operations: SQLAlchemyDocumentOperations, external_calls: list[tuple[str, tuple[str, ...]]]
 ) -> None:
@@ -329,7 +359,7 @@ def test_lost_creation_lock_keeps_empty_batch_response(
         raise LockNotOwnedError("lock lost")
         yield  # pragma: no cover
 
-    monkeypatch.setattr("services.knowledge.documents.adapters.redis_client.lock", lock)
+    monkeypatch.setattr("services.knowledge.dataset_operation_lock.redis_client.lock", lock)
     result = operations.create_documents(CONTEXT, REF, settings())
     assert result["documents"] == []
     assert result["batch"]

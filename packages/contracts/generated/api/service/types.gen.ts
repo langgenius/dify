@@ -705,6 +705,11 @@ export type DatasetIconInfoResponse = {
   icon_url?: string | null
 }
 
+export type DatasetIndexingInProgressError = ErrorResponse & {
+  code: 'dataset_indexing_in_progress'
+  status: 409
+}
+
 export type DatasetKeywordSettingResponse = {
   keyword_weight?: number | null
 }
@@ -3367,6 +3372,7 @@ export type DeleteDatasetsByDatasetIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  409: DatasetIndexingInProgressError | ErrorResponse
   default: ErrorResponse
 }
 

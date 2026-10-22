@@ -309,6 +309,11 @@ export type RetrievalSettingResponse = {
   retrieval_method: Array<string>
 }
 
+export type DatasetIndexingInProgressError = ErrorResponse & {
+  code: 'dataset_indexing_in_progress'
+  status: 409
+}
+
 export type DatasetUpdatePayload = {
   description?: string | null
   embedding_model?: string | null
@@ -1784,6 +1789,7 @@ export type DeleteDatasetsByDatasetIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdErrors = {
+  409: DatasetIndexingInProgressError | ErrorResponse
   default: ErrorResponse
 }
 

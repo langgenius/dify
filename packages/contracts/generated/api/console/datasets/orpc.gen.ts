@@ -8,6 +8,7 @@ import {
   zChildChunkIndexingError,
   zCompletionRequestError,
   zDatasetAccessDeniedError,
+  zDatasetIndexingInProgressError,
   zDatasetNameDuplicateError,
   zDocumentAlreadyFinishedError,
   zDocumentIndexingError,
@@ -1717,6 +1718,7 @@ export const delete9 = oc
   })
   .input(z.object({ params: zDeleteDatasetsByDatasetIdPath }))
   .output(zDeleteDatasetsByDatasetIdResponse)
+  .errors({ dataset_indexing_in_progress: { status: 409, data: zDatasetIndexingInProgressError } })
 
 /**
  * Get dataset details

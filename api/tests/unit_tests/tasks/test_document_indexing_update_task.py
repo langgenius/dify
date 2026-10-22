@@ -221,12 +221,24 @@ def test_skips_summary_when_indexing_fails_or_is_paused(
     delay.assert_not_called()
 
 
+@pytest.mark.parametrize("dataset_exists", [False, True])
 def test_returns_without_opening_external_boundaries_when_document_is_missing(
+    sqlite_session: Session,
     task_harness: tuple[MagicMock, MagicMock],
+    dataset_exists: bool,
 ) -> None:
     runner, processor = task_harness
+    if dataset_exists:
+        dataset, document = _persist_rows(sqlite_session)
+        sqlite_session.delete(document)
+        sqlite_session.commit()
+        dataset_id = dataset.id
+        document_id = document.id
+    else:
+        dataset_id = str(uuid.uuid4())
+        document_id = str(uuid.uuid4())
 
-    document_indexing_update_task(str(uuid.uuid4()), str(uuid.uuid4()))
+    document_indexing_update_task(dataset_id, document_id)
 
     runner.run.assert_not_called()
     processor.clean.assert_not_called()

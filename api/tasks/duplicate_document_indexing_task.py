@@ -16,6 +16,7 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
 from services.feature_service import FeatureService
+from services.knowledge.dataset_operation_lock import dataset_operation_lock, lock_dataset_row
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.resource_scope import DatasetRef
@@ -123,11 +124,21 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                     session.commit()
                     return
 
-            documents = list(
-                session.scalars(
-                    select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
-                ).all()
-            )
+            with dataset_operation_lock(str(dataset_id)):
+                dataset = lock_dataset_row(session, str(dataset_id))
+                if dataset is None:
+                    logger.info(click.style(f"Dataset not found: {dataset_id}", fg="yellow"))
+                    return
+                documents = list(
+                    session.scalars(
+                        select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                    ).all()
+                )
+                for document in documents:
+                    document.indexing_status = IndexingStatus.PARSING
+                    document.processing_started_at = naive_utc_now()
+                    session.add(document)
+                session.commit()
 
             for document in documents:
                 logger.info(click.style(f"Start process document: {document.id}", fg="green"))
@@ -157,9 +168,6 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                         session.execute(segment_delete_stmt)
                     session.commit()
 
-                document.indexing_status = IndexingStatus.PARSING
-                document.processing_started_at = naive_utc_now()
-                session.add(document)
             indexing_service = build_document_indexing_service(session_factory=session_factory.get_session_maker())
             document_refs = [DatasetRef(doc.tenant_id, doc.dataset_id).document(doc.id) for doc in documents]
             # Do not keep segment deletions or parsing status changes open during extraction.

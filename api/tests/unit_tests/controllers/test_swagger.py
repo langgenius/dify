@@ -597,13 +597,18 @@ def test_service_dataset_response_schemas_omit_console_permission_metadata():
     assert "permission_keys" in console_schema["properties"]
 
 
-def test_service_delete_schemas_omit_unenforced_state_constraints(openapi_json: OpenAPIJSONLoader):
+def test_dataset_delete_schemas_document_indexing_conflict(openapi_json: OpenAPIJSONLoader):
+    from controllers.console import bp as console_bp
     from controllers.service_api import bp as service_api_bp
+
+    console_paths = json.loads(openapi_json(console_bp, "/console/api/openapi.json", False))["paths"]
+    console_delete = console_paths["/datasets/{dataset_id}"]["delete"]
+    assert "DatasetIndexingInProgressError" in json.dumps(console_delete["responses"]["409"])
 
     paths = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", False))["paths"]
 
     delete_dataset = paths["/datasets/{dataset_id}"]["delete"]
-    assert "409" not in delete_dataset["responses"]
+    assert "DatasetIndexingInProgressError" in json.dumps(delete_dataset["responses"]["409"])
     assert "must not be in use" not in delete_dataset["description"]
 
     delete_document = paths["/datasets/{dataset_id}/documents/{document_id}"]["delete"]
