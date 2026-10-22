@@ -392,10 +392,14 @@ class OAuthDeviceApplicationService:
         if found is None:
             return DeviceLookup(valid=False, expires_in_remaining=0, client_id=None)
 
-        _device_code, state = found
+        device_code, state = found
         if state.status is not DeviceFlowStatus.PENDING:
             return DeviceLookup(valid=False, expires_in_remaining=0, client_id=state.client_id)
-        return DeviceLookup(valid=True, expires_in_remaining=DEVICE_FLOW_TTL_SECONDS, client_id=state.client_id)
+        return DeviceLookup(
+            valid=True,
+            expires_in_remaining=self._store.remaining_seconds(device_code),
+            client_id=state.client_id,
+        )
 
     def approve(self, context: RequestContext, *, user_code: str) -> DeviceMutation:
         device_code, state = self._pending_state(user_code)

@@ -572,13 +572,22 @@ def test_poll_does_not_mint_an_approval_consumed_by_another_request() -> None:
 @pytest.mark.parametrize("status", [None, *DeviceFlowStatus])
 def test_lookup_only_accepts_pending_codes(status: DeviceFlowStatus | None) -> None:
     harness = _harness()
+    harness.store.remaining = 312
     harness.store.states = {} if status is None else {"ABCD-EFGH": ("device-1", FakeState(status=status))}
 
     result = harness.service.lookup(user_code=" abcd-efgh ")
 
     assert result.valid is (status is DeviceFlowStatus.PENDING)
-    assert result.expires_in_remaining == (900 if result.valid else 0)
+    assert result.expires_in_remaining == (312 if result.valid else 0)
     assert result.client_id == (None if status is None else "difyctl")
+
+
+def test_lookup_reports_the_real_remaining_lifetime() -> None:
+    harness = _harness()
+    harness.store.remaining = 312
+    harness.store.states = {"ABCD-EFGH": ("device-1", FakeState(status=DeviceFlowStatus.PENDING))}
+
+    assert harness.service.lookup(user_code="ABCD-EFGH").expires_in_remaining == 312
 
 
 @pytest.mark.parametrize("operation", ["approve", "deny"])
