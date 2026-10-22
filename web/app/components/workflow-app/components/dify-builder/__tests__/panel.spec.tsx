@@ -521,7 +521,7 @@ describe('DifyBuilderPanel', () => {
     }
   })
 
-  it('allows a terminal session to start a new flow from the composer', async () => {
+  it('continues the completed conversation from the composer', async () => {
     const user = userEvent.setup()
     renderPanel({
       ...sessionView,
@@ -536,8 +536,8 @@ describe('DifyBuilderPanel', () => {
     await user.type(composer, 'Build a smaller workflow')
     await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
 
-    expect(mocks.startBuild).toHaveBeenCalledWith('app-1', 'Build a smaller workflow', mocks.model)
-    expect(mocks.sendMessage).not.toHaveBeenCalled()
+    expect(mocks.sendMessage).toHaveBeenCalledWith('Build a smaller workflow')
+    expect(mocks.startBuild).not.toHaveBeenCalled()
   })
 
   it('submits a selected action through the single Submit button', async () => {

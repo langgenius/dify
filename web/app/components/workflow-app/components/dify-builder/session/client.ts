@@ -106,12 +106,14 @@ export const runSessionAction = (
   baseAppRevision: string,
   signal: AbortSignal,
   receiptSnapshot?: DifyBuilderReceiptSnapshot,
+  clientActionId?: string,
 ) =>
   consoleClient.difyBuilder.sessions.bySessionId.actions.post(
     {
       params: { session_id: sessionId },
       body: {
         action_id: actionId,
+        ...(clientActionId ? { client_action_id: clientActionId } : {}),
         payload,
         base_version: baseVersion,
         base_app_revision: baseAppRevision,

@@ -5,6 +5,8 @@ from enum import StrEnum
 
 class BuilderCopyId(StrEnum):
     TEST_RUNTIME_SERVICE_FAILED = "test.runtimeServiceFailed"
+    ACTIONS_CANCEL_TEST = "actions.cancelTest"
+    ACTIONS_CONFIRM_TEST_OPERATION = "actions.confirmTestOperation"
     ACTIONS_APPLY_THE_FIX = "actions.applyTheFix"
     ACTIONS_APPROVE_CHANGES = "actions.approveChanges"
     ACTIONS_APPROVE_FIX = "actions.approveFix"
