@@ -5,6 +5,7 @@ from typing import Any, cast
 
 from celery import current_app, group, shared_task
 from celery.app import backends
+from celery.backends.asynchronous import geventDrainer
 from celery.backends.redis import RedisBackend
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -136,7 +137,7 @@ def _dispatch_result_backend() -> Generator[None]:
         yield
         return
 
-    previous_backend = getattr(app._local, "backend", None)
+    previous_backend = app._backend
     backend = app._get_backend()
     app._local.backend = backend
     try:
@@ -146,12 +147,13 @@ def _dispatch_result_backend() -> Generator[None]:
         try:
             try:
                 # 未启动的 gevent drainer 不能调用 stop，否则会一直等待退出事件。
-                drainer_greenlet = getattr(consumer.drainer, "_g", None)
-                if drainer_greenlet is not None:
+                drainer = consumer.drainer
+                if isinstance(drainer, geventDrainer) and drainer._g is not None:
                     from gevent import with_timeout
 
+                    drainer_greenlet = drainer._g
                     try:
-                        with_timeout(2, consumer.drainer.stop, timeout_value=None)
+                        with_timeout(2, drainer.stop, timeout_value=None)
                     finally:
                         if not drainer_greenlet.dead:
                             drainer_greenlet.kill(block=True, timeout=1)
