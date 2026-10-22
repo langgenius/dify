@@ -87,14 +87,26 @@ def test_disabled_knowledge_fs_rejects_console_work_before_preview_upload_or_que
 ) -> None:
     config_overrides(KNOWLEDGE_FS_ENABLED=False)
     routes = (
-        (console_resources.KnowledgeFSInitialSourcePreviewApi, "post", ()),
-        (console_resources.KnowledgeFSInitialSourcePreviewJobsApi, "post", ()),
-        (console_resources.KnowledgeFSStagedUploadsApi, "post", ()),
-        (console_resources.KnowledgeFSSpaceQueryAdmissionApi, "post", ("space-1",)),
+        (
+            console_resources.KnowledgeFSInitialSourcePreviewApi,
+            console_resources.KnowledgeFSInitialSourcePreviewApi.post,
+            (),
+        ),
+        (
+            console_resources.KnowledgeFSInitialSourcePreviewJobsApi,
+            console_resources.KnowledgeFSInitialSourcePreviewJobsApi.post,
+            (),
+        ),
+        (console_resources.KnowledgeFSStagedUploadsApi, console_resources.KnowledgeFSStagedUploadsApi.post, ()),
+        (
+            console_resources.KnowledgeFSSpaceQueryAdmissionApi,
+            console_resources.KnowledgeFSSpaceQueryAdmissionApi.post,
+            ("space-1",),
+        ),
     )
-    for resource_type, method, args in routes:
+    for resource_type, post, args in routes:
         handler = inspect.unwrap(
-            getattr(resource_type, method),
+            post,
             stop=lambda view: "_knowledge_fs_errors.<locals>.decorated" in view.__code__.co_qualname,
         )
         with pytest.raises(NotFound):
