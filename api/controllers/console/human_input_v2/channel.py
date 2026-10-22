@@ -67,6 +67,13 @@ from .errors import (
     ChannelProviderConfigurationUpdatedHttpError,
     ChannelReplacementRequiredHttpError,
 )
+from .provider_updates import EmailProviderCredentialsUpdateInput, IMProviderCredentialsUpdateInput
+from .provider_views import (
+    IMProviderCredentialsResponse,
+    Redacted,
+    ResendCredentialsResponse,
+    im_credentials_response,
+)
 from .providers import EmailProviderCredentials, IMProviderCredentialsInput
 
 type ChannelId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -159,10 +166,11 @@ class EmailChannelDetailResponse(ResponseModel):
     summary: ChannelSummary
     sender_name: str
     sender_email: str
+    credentials: ResendCredentialsResponse
 
 
 class EmailChannelUpdatePayload(StrictModel):
-    credentials: EmailProviderCredentials
+    credentials: EmailProviderCredentialsUpdateInput
     expected_config_version: ConfigVersion
 
 
@@ -184,10 +192,11 @@ class IMChannelMutationResponse(ResponseModel):
 
 class IMChannelDetailResponse(ResponseModel):
     summary: ChannelSummary
+    credentials: IMProviderCredentialsResponse
 
 
 class IMChannelUpdatePayload(StrictModel):
-    credentials: IMProviderCredentialsInput
+    credentials: IMProviderCredentialsUpdateInput
     expected_config_version: ConfigVersion
 
 
@@ -356,6 +365,35 @@ class EmailChannelTestApi(WorkspaceChannelResource):
         ).model_dump(mode="json")
 
 
+@console_ns.route("/workspace/current/human-input/v2/channels/email/<uuid:channel_id>/test")
+class EmailChannelSavedTestApi(WorkspaceChannelResource):
+    @console_ns.expect(console_ns.models[EmailChannelUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
+    @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
+    @require_admin_or_owner
+    @with_current_tenant_id
+    def post(self, tenant_id: str, channel_id: UUID) -> ResponseReturnValue:
+        request_body = EmailChannelUpdatePayload.model_validate(console_ns.payload or {})
+        addressed_id = EmailProviderId(str(channel_id))
+        try:
+            build_human_input_email_channel_management_service().test_saved(
+                _workspace_scope(tenant_id),
+                addressed_id,
+                _email_revision(request_body.expected_config_version, addressed_id),
+                request_body.credentials.to_owner_update(),
+            )
+        except ChannelNotFoundError as error:
+            raise ChannelNotFoundHttpError() from error
+        except ProviderConfigurationUpdatedError as error:
+            raise ChannelProviderConfigurationUpdatedHttpError() from error
+        except ChannelProviderError as error:
+            return ChannelTestResponse(
+                status=ChannelStatus(error.kind.value),
+                status_description=error.status_description,
+            ).model_dump(mode="json")
+        return ChannelTestResponse(status=ChannelStatus.CONNECTED, status_description="").model_dump(mode="json")
+
+
 @console_ns.route("/workspace/current/human-input/v2/channels/email")
 class EmailChannelCreateApi(WorkspaceChannelResource):
     @console_ns.expect(console_ns.models[EmailChannelCreatePayload.__name__])
@@ -395,6 +433,7 @@ class EmailChannelApi(WorkspaceChannelResource):
             summary=_email_channel_summary_response(snapshot),
             sender_name=snapshot.sender_name,
             sender_email=snapshot.sender_email,
+            credentials=ResendCredentialsResponse(provider=EmailProviderType.RESEND, api_key=Redacted()),
         ).model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[EmailChannelUpdatePayload.__name__])
@@ -412,7 +451,7 @@ class EmailChannelApi(WorkspaceChannelResource):
                 addressed_id,
                 _email_revision(request_body.expected_config_version, addressed_id),
                 _actor_id(current_user),
-                request_body.credentials.to_owner_candidate(),
+                request_body.credentials.to_owner_update(),
             )
         except ChannelNotFoundError as error:
             raise ChannelNotFoundHttpError() from error
@@ -465,6 +504,38 @@ class IMChannelTestApi(WorkspaceChannelResource):
         ).model_dump(mode="json")
 
 
+@console_ns.route("/workspace/current/human-input/v2/channels/im/<uuid:channel_id>/test")
+class IMChannelSavedTestApi(WorkspaceChannelResource):
+    @console_ns.expect(console_ns.models[IMChannelUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
+    @console_ns.response(400, "The test provider must match the saved IM Channel.")
+    @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
+    @require_admin_or_owner
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account, channel_id: UUID) -> ResponseReturnValue:
+        request_body = IMChannelUpdatePayload.model_validate(console_ns.payload or {})
+        addressed_id = IMChannelId(str(channel_id))
+        try:
+            _workspace_im_channel_service(tenant_id, current_user).test_saved(
+                addressed_id,
+                _im_config_version(request_body.expected_config_version, addressed_id),
+                request_body.credentials.to_owner_update(),
+            )
+        except ChannelNotFoundError as error:
+            raise ChannelNotFoundHttpError() from error
+        except ProviderConfigurationUpdatedError as error:
+            raise ChannelProviderConfigurationUpdatedHttpError() from error
+        except ReplacementRequiredError as error:
+            raise ChannelProviderBadRequestHttpError("The test provider must match the saved IM Channel.") from error
+        except ChannelProviderError as error:
+            return ChannelTestResponse(
+                status=ChannelStatus(error.kind.value),
+                status_description=error.status_description,
+            ).model_dump(mode="json")
+        return ChannelTestResponse(status=ChannelStatus.CONNECTED, status_description="").model_dump(mode="json")
+
+
 @console_ns.route("/workspace/current/human-input/v2/channels/im")
 class IMChannelCreateApi(WorkspaceChannelResource):
     @console_ns.expect(console_ns.models[IMChannelCreatePayload.__name__])
@@ -493,10 +564,13 @@ class IMChannelApi(WorkspaceChannelResource):
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, channel_id: UUID) -> ResponseReturnValue:
         try:
-            snapshot = _workspace_im_channel_service(tenant_id, current_user).get(IMChannelId(str(channel_id)))
+            detail = _workspace_im_channel_service(tenant_id, current_user).get_detail(IMChannelId(str(channel_id)))
         except ChannelNotFoundError as error:
             raise ChannelNotFoundHttpError() from error
-        return IMChannelDetailResponse(summary=_im_channel_summary_response(snapshot)).model_dump(mode="json")
+        return IMChannelDetailResponse(
+            summary=_im_channel_summary_response(detail.summary),
+            credentials=im_credentials_response(detail.credentials),
+        ).model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[IMChannelUpdatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[IMChannelMutationResponse.__name__])
@@ -511,7 +585,7 @@ class IMChannelApi(WorkspaceChannelResource):
             snapshot = _workspace_im_channel_service(tenant_id, current_user).update(
                 addressed_id,
                 _im_config_version(request_body.expected_config_version, addressed_id),
-                request_body.credentials.to_owner_credentials(),
+                request_body.credentials.to_owner_update(),
             )
         except ChannelNotFoundError as error:
             raise ChannelNotFoundHttpError() from error

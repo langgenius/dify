@@ -25,6 +25,7 @@ from repositories.human_input_v2.email_channel import (
     ResendCandidate,
     UpdateEmailConfigurationStatus,
 )
+from services.human_input_v2.credential_update import ResendCredentialsUpdate, Unchanged, updated_value
 from services.human_input_v2.errors import (
     ChannelAlreadyConfiguredError,
     ChannelNotFoundError,
@@ -81,6 +82,19 @@ class HumanInputEmailChannelManagementService:
         del scope
         self._send_test(candidate)
 
+    def test_saved(
+        self,
+        scope: WorkspaceScope,
+        channel_id: EmailProviderId,
+        expected_revision: EmailConfigurationSnapshot,
+        credentials: ResendCredentialsUpdate,
+    ) -> None:
+        """Test the merged saved snapshot without persisting submitted edits."""
+
+        current = self._load_addressed(scope, channel_id)
+        self._ensure_current_revision(current, expected_revision)
+        self._send_test(self._merge_candidate(current, credentials))
+
     def create(
         self,
         scope: WorkspaceScope,
@@ -113,10 +127,12 @@ class HumanInputEmailChannelManagementService:
         channel_id: EmailProviderId,
         expected_revision: EmailConfigurationSnapshot,
         actor_account_id: AccountId | None,
-        candidate: ResendCandidate,
+        candidate: ResendCandidate | ResendCredentialsUpdate,
     ) -> EmailChannelView:
         current = self._load_addressed(scope, channel_id)
         self._ensure_current_revision(current, expected_revision)
+        if isinstance(candidate, ResendCredentialsUpdate):
+            candidate = self._merge_candidate(current, candidate)
         replacement = replace(
             current,
             sender_email=candidate.sender_email,
@@ -132,6 +148,23 @@ class HumanInputEmailChannelManagementService:
         if update_result.status is UpdateEmailConfigurationStatus.STALE or update_result.configuration is None:
             raise ProviderConfigurationUpdatedError("email configuration was updated")
         return self._view(update_result.configuration)
+
+    @staticmethod
+    def _merge_candidate(
+        current: EmailChannelConfiguration,
+        credentials: ResendCredentialsUpdate,
+    ) -> ResendCandidate:
+        api_key = credentials.api_key
+        if isinstance(api_key, Unchanged):
+            try:
+                api_key = encrypter.decrypt_token(str(current.tenant_id), current.protected_api_key)
+            except (ValueError, OSError):
+                raise UnexpectedChannelProviderError() from None
+        return ResendCandidate(
+            sender_email=updated_value(credentials.sender_email, current.sender_email),
+            sender_name=updated_value(credentials.sender_name, current.sender_name),
+            api_key=api_key,
+        )
 
     def delete(
         self,

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import json
+from base64 import b64decode
 from typing import Never
 
 import pytest
 import sqlalchemy as sa
+from cryptography.fernet import Fernet
 from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
@@ -49,18 +52,25 @@ class _StaticAdapter:
 
 
 @pytest.fixture(autouse=True)
-def static_provider_and_cipher(monkeypatch: pytest.MonkeyPatch) -> None:
+def static_provider_and_cipher(monkeypatch: pytest.MonkeyPatch) -> Fernet:
+    cipher = Fernet(Fernet.generate_key())
     monkeypatch.setattr(service_module, "build_im_provider_adapter", _StaticAdapter)
     monkeypatch.setattr(
         TenantBoundCredentialCipher,
         "encrypt",
-        lambda _self, _plaintext: b"opaque-slack-ciphertext",
+        lambda _self, plaintext: cipher.encrypt(plaintext.encode()),
+    )
+    monkeypatch.setattr(
+        TenantBoundCredentialCipher,
+        "decrypt",
+        lambda _self, ciphertext: cipher.decrypt(ciphertext).decode(),
     )
     monkeypatch.setattr(
         dify_config,
         "HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE",
         IMEventTransportMode.STREAM,
     )
+    return cipher
 
 
 def test_im_update_wires_opaque_version_through_real_service_and_postgresql_cas(
@@ -152,3 +162,61 @@ def test_service_transaction_rolls_back_a_flushed_create_on_unclassified_failure
         )
     )
     assert persisted_count == 0
+
+
+def test_partial_edit_and_saved_test_preserve_one_encrypted_document(
+    db_session_with_containers: Session,
+    test_client_with_containers: FlaskClient,
+    static_provider_and_cipher: Fernet,
+) -> None:
+    account, _tenant = create_console_account_and_tenant(db_session_with_containers)
+    headers = authenticate_console_client(test_client_with_containers, account)
+    client = test_client_with_containers
+    created = client.post(_BASE_PATH, json={"credentials": _SLACK_CREDENTIALS}, headers=headers)
+    assert created.status_code == 200
+    summary = created.get_json()["summary"]
+    channel_id = summary["id"]
+    record = db_session_with_containers.get(HumanInputIMChannel, channel_id)
+    assert record is not None
+    original_envelope = record.encrypted_credentials
+    edit = {
+        "provider": "slack",
+        "client_id": {"type": "unchanged"},
+        "client_secret": "rotated-client-secret",
+        "signing_secret": {"type": "unchanged"},
+        "bot_token": {"type": "unchanged"},
+        "app_token": None,
+    }
+    payload = {"credentials": edit, "expected_config_version": summary["config_version"]}
+
+    tested = client.post(f"{_BASE_PATH}/{channel_id}/test", json=payload, headers=headers)
+    assert tested.status_code == 200
+    db_session_with_containers.refresh(record)
+    assert record.config_version == 1
+    assert record.encrypted_credentials == original_envelope
+
+    updated = client.put(f"{_BASE_PATH}/{channel_id}", json=payload, headers=headers)
+    assert updated.status_code == 200
+    db_session_with_containers.refresh(record)
+    assert record.config_version == 2
+    assert record.encrypted_credentials != original_envelope
+    decrypted = json.loads(static_provider_and_cipher.decrypt(b64decode(record.encrypted_credentials.ciphertext)))
+    assert decrypted == {
+        "provider": "slack",
+        "client_id": "slack-client-1",
+        "client_secret": "rotated-client-secret",
+        "signing_secret": "signing-secret",
+        "bot_token": "xoxb-bot-token",
+        "app_token": None,
+    }
+    assert "rotated-client-secret" not in record.encrypted_credentials.ciphertext
+    detail = client.get(f"{_BASE_PATH}/{channel_id}", headers=headers)
+    assert detail.status_code == 200
+    assert detail.get_json()["credentials"] == {
+        "provider": "slack",
+        "client_id": "slack-client-1",
+        "client_secret": {"type": "redacted"},
+        "signing_secret": {"type": "redacted"},
+        "bot_token": {"type": "redacted"},
+        "app_token": None,
+    }

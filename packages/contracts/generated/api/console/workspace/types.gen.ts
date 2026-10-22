@@ -41,13 +41,14 @@ export type ChannelConflictResponse = {
 }
 
 export type EmailChannelDetailResponse = {
+  credentials: ResendCredentialsResponse
   sender_email: string
   sender_name: string
   summary: ChannelSummary
 }
 
 export type EmailChannelUpdatePayload = {
-  credentials: EmailProviderCredentials
+  credentials: EmailProviderCredentialsUpdateInput
   expected_config_version: ConfigVersion
 }
 
@@ -64,11 +65,12 @@ export type ImChannelTestPayload = {
 }
 
 export type ImChannelDetailResponse = {
+  credentials: ImProviderCredentialsResponse
   summary: ChannelSummary
 }
 
 export type ImChannelUpdatePayload = {
-  credentials: ImProviderCredentialsInput
+  credentials: ImProviderCredentialsUpdateInput
   expected_config_version: ConfigVersion
 }
 
@@ -107,6 +109,15 @@ export type ChannelStatus =
 
 export type ChannelId = string
 
+export type ResendCredentialsResponse = {
+  api_key: Redacted
+  provider: 'resend'
+}
+
+export type EmailProviderCredentialsUpdateInput = {
+  provider: 'resend'
+} & ResendCredentialsUpdateInput
+
 export type ConfigVersion = string
 
 export type ImProviderCredentialsInput =
@@ -129,6 +140,43 @@ export type ImProviderCredentialsInput =
       provider: 'we_com'
     } & WeComCredentialsInput)
 
+export type ImProviderCredentialsResponse =
+  | ({
+      provider: 'feishu' | 'lark'
+    } & FeishuLarkCredentialsResponse)
+  | ({
+      provider: 'slack'
+    } & SlackCredentialsResponse)
+  | ({
+      provider: 'ding_talk'
+    } & DingTalkCredentialsResponse)
+  | ({
+      provider: 'ms_teams'
+    } & MsTeamsCredentialsResponse)
+  | ({
+      provider: 'we_com'
+    } & WeComCredentialsResponse)
+
+export type ImProviderCredentialsUpdateInput =
+  | ({
+      provider: 'feishu'
+    } & FeishuCredentialsUpdateInput)
+  | ({
+      provider: 'lark'
+    } & LarkCredentialsUpdateInput)
+  | ({
+      provider: 'slack'
+    } & SlackCredentialsUpdateInput)
+  | ({
+      provider: 'ding_talk'
+    } & DingTalkCredentialsUpdateInput)
+  | ({
+      provider: 'ms_teams'
+    } & MsTeamsCredentialsUpdateInput)
+  | ({
+      provider: 'we_com'
+    } & WeComCredentialsUpdateInput)
+
 export type EmailProviderType = 'resend'
 
 export type ImProvider = 'ding_talk' | 'feishu' | 'lark' | 'ms_teams' | 'slack' | 'we_com'
@@ -137,6 +185,17 @@ export type ResendCredentials = {
   provider?: 'resend'
   sender_email: string
   sender_name: string
+}
+
+export type Redacted = {
+  type?: 'redacted'
+}
+
+export type ResendCredentialsUpdateInput = {
+  api_key: UnchangedInput
+  provider: 'resend'
+  sender_email: string | UnchangedInput
+  sender_name: string | UnchangedInput
 }
 
 export type FeishuCredentialsInput = {
@@ -172,9 +231,101 @@ export type WeComCredentialsInput = {
   provider: 'we_com'
 }
 
+export type FeishuLarkCredentialsResponse = {
+  app_id: string
+  app_secret: Redacted
+  encrypt_key: Redacted | null
+  provider: 'feishu' | 'lark'
+  verification_token: Redacted | null
+}
+
+export type SlackCredentialsResponse = {
+  app_token: Redacted | null
+  bot_token: Redacted
+  client_id: string
+  client_secret: Redacted
+  provider: 'slack'
+  signing_secret: Redacted
+}
+
+export type DingTalkCredentialsResponse = {
+  client_id: string
+  client_secret: Redacted
+  corp_id: string
+  provider: 'ding_talk'
+}
+
+export type MsTeamsCredentialsResponse = {
+  client_id: string
+  client_secret: Redacted
+  provider: 'ms_teams'
+  tenant_id: string
+}
+
+export type WeComCredentialsResponse = {
+  agent_id: string
+  corp_id: string
+  provider: 'we_com'
+  secret: Redacted
+}
+
+export type FeishuCredentialsUpdateInput = {
+  app_id: Identifier | UnchangedInput
+  app_secret: UnchangedInput
+  encrypt_key: UnchangedInput
+  provider: 'feishu'
+  verification_token: UnchangedInput
+}
+
+export type LarkCredentialsUpdateInput = {
+  app_id: Identifier | UnchangedInput
+  app_secret: UnchangedInput
+  encrypt_key: UnchangedInput
+  provider: 'lark'
+  verification_token: UnchangedInput
+}
+
+export type SlackCredentialsUpdateInput = {
+  app_token: UnchangedInput
+  bot_token: UnchangedInput
+  client_id: Identifier | UnchangedInput
+  client_secret: UnchangedInput
+  provider: 'slack'
+  signing_secret: UnchangedInput
+}
+
+export type DingTalkCredentialsUpdateInput = {
+  client_id: Identifier | UnchangedInput
+  client_secret: UnchangedInput
+  corp_id: Identifier | UnchangedInput
+  provider: 'ding_talk'
+}
+
+export type MsTeamsCredentialsUpdateInput = {
+  client_id: UuidString | UnchangedInput
+  client_secret: UnchangedInput
+  provider: 'ms_teams'
+  tenant_id: UuidString | UnchangedInput
+}
+
+export type WeComCredentialsUpdateInput = {
+  agent_id: string | UnchangedInput
+  corp_id: Identifier | UnchangedInput
+  provider: 'we_com'
+  secret: UnchangedInput
+}
+
 export type RequiredSecret = string
 
+export type UnchangedInput = {
+  type: 'unchanged'
+}
+
 export type OptionalSecret = string | null
+
+export type Identifier = string
+
+export type UuidString = string
 
 export type EmailChannelCreatePayloadWritable = {
   credentials: EmailProviderCredentialsWritable
@@ -185,7 +336,7 @@ export type EmailChannelTestPayloadWritable = {
 }
 
 export type EmailChannelUpdatePayloadWritable = {
-  credentials: EmailProviderCredentialsWritable
+  credentials: EmailProviderCredentialsUpdateInputWritable
   expected_config_version: ConfigVersion
 }
 
@@ -198,7 +349,7 @@ export type ImChannelTestPayloadWritable = {
 }
 
 export type ImChannelUpdatePayloadWritable = {
-  credentials: ImProviderCredentialsInputWritable
+  credentials: ImProviderCredentialsUpdateInputWritable
   expected_config_version: ConfigVersion
 }
 
@@ -210,6 +361,10 @@ export type ImChannelReplacementPayloadWritable = {
 export type EmailProviderCredentialsWritable = {
   provider: 'resend'
 } & ResendCredentialsWritable
+
+export type EmailProviderCredentialsUpdateInputWritable = {
+  provider: 'resend'
+} & ResendCredentialsUpdateInputWritable
 
 export type ImProviderCredentialsInputWritable =
   | ({
@@ -231,11 +386,38 @@ export type ImProviderCredentialsInputWritable =
       provider: 'we_com'
     } & WeComCredentialsInputWritable)
 
+export type ImProviderCredentialsUpdateInputWritable =
+  | ({
+      provider: 'feishu'
+    } & FeishuCredentialsUpdateInputWritable)
+  | ({
+      provider: 'lark'
+    } & LarkCredentialsUpdateInputWritable)
+  | ({
+      provider: 'slack'
+    } & SlackCredentialsUpdateInputWritable)
+  | ({
+      provider: 'ding_talk'
+    } & DingTalkCredentialsUpdateInputWritable)
+  | ({
+      provider: 'ms_teams'
+    } & MsTeamsCredentialsUpdateInputWritable)
+  | ({
+      provider: 'we_com'
+    } & WeComCredentialsUpdateInputWritable)
+
 export type ResendCredentialsWritable = {
   api_key: RequiredSecret
   provider?: 'resend'
   sender_email: string
   sender_name: string
+}
+
+export type ResendCredentialsUpdateInputWritable = {
+  api_key: RequiredSecret | UnchangedInput
+  provider: 'resend'
+  sender_email: string | UnchangedInput
+  sender_name: string | UnchangedInput
 }
 
 export type FeishuCredentialsInputWritable = {
@@ -282,6 +464,52 @@ export type WeComCredentialsInputWritable = {
   corp_id: string
   provider: 'we_com'
   secret: RequiredSecret
+}
+
+export type FeishuCredentialsUpdateInputWritable = {
+  app_id: Identifier | UnchangedInput
+  app_secret: RequiredSecret | UnchangedInput
+  encrypt_key: OptionalSecret | UnchangedInput
+  provider: 'feishu'
+  verification_token: OptionalSecret | UnchangedInput
+}
+
+export type LarkCredentialsUpdateInputWritable = {
+  app_id: Identifier | UnchangedInput
+  app_secret: RequiredSecret | UnchangedInput
+  encrypt_key: OptionalSecret | UnchangedInput
+  provider: 'lark'
+  verification_token: OptionalSecret | UnchangedInput
+}
+
+export type SlackCredentialsUpdateInputWritable = {
+  app_token: OptionalSecret | UnchangedInput
+  bot_token: RequiredSecret | UnchangedInput
+  client_id: Identifier | UnchangedInput
+  client_secret: RequiredSecret | UnchangedInput
+  provider: 'slack'
+  signing_secret: RequiredSecret | UnchangedInput
+}
+
+export type DingTalkCredentialsUpdateInputWritable = {
+  client_id: Identifier | UnchangedInput
+  client_secret: RequiredSecret | UnchangedInput
+  corp_id: Identifier | UnchangedInput
+  provider: 'ding_talk'
+}
+
+export type MsTeamsCredentialsUpdateInputWritable = {
+  client_id: UuidString | UnchangedInput
+  client_secret: RequiredSecret | UnchangedInput
+  provider: 'ms_teams'
+  tenant_id: UuidString | UnchangedInput
+}
+
+export type WeComCredentialsUpdateInputWritable = {
+  agent_id: string | UnchangedInput
+  corp_id: Identifier | UnchangedInput
+  provider: 'we_com'
+  secret: RequiredSecret | UnchangedInput
 }
 
 export type GetWorkspaceCurrentHumanInputV2ChannelProvidersData = {
@@ -404,6 +632,29 @@ export type PutWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdResponses = {
 export type PutWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdResponse =
   PutWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdResponses[keyof PutWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdResponses]
 
+export type PostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestData = {
+  body: EmailChannelUpdatePayloadWritable
+  path: {
+    channel_id: string
+  }
+  query?: never
+  url: '/workspace/current/human-input/v2/channels/email/{channel_id}/test'
+}
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestErrors = {
+  409: ChannelConflictResponse
+}
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestError =
+  PostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestErrors[keyof PostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestErrors]
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestResponses = {
+  200: ChannelTestResponse
+}
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestResponse =
+  PostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestResponses[keyof PostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestResponses]
+
 export type PostWorkspaceCurrentHumanInputV2ChannelsImData = {
   body: ImChannelCreatePayloadWritable
   path?: never
@@ -518,3 +769,27 @@ export type PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdReplacementResp
 
 export type PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdReplacementResponse =
   PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdReplacementResponses[keyof PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdReplacementResponses]
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestData = {
+  body: ImChannelUpdatePayloadWritable
+  path: {
+    channel_id: string
+  }
+  query?: never
+  url: '/workspace/current/human-input/v2/channels/im/{channel_id}/test'
+}
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestErrors = {
+  400: unknown
+  409: ChannelConflictResponse
+}
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestError =
+  PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestErrors[keyof PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestErrors]
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestResponses = {
+  200: ChannelTestResponse
+}
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestResponse =
+  PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestResponses[keyof PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestResponses]

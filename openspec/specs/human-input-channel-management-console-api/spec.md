@@ -6,7 +6,7 @@ Defines the authenticated Workspace Console v2 transport that projects independe
 ## Requirements
 ### Requirement: The Console API MUST expose one canonical Channels resource
 
-The Console API MUST expose the canonical prefix `/console/api/workspace/current/human-input/v2`。It MUST expose one configured Channel collection at `GET /channels` and one available-provider catalog at `GET /channel-providers`。Email and IM create、test and ID-addressed item routes MUST remain separated by kind。Every route MUST require a workspace owner or administrator。
+The Console API MUST expose the canonical prefix `/console/api/workspace/current/human-input/v2`。It MUST expose one configured Channel collection at `GET /channels` and one available-provider catalog at `GET /channel-providers`。Email and IM create、test and ID-addressed item routes MUST remain separated by kind。Each kind MUST expose `POST /channels/<kind>/<channel_id>/test` for testing edits against saved credentials。Every route MUST require a workspace owner or administrator。
 
 #### Scenario: Configured Channels are listed
 
@@ -84,7 +84,7 @@ Functional support in this change MUST target Community and Cloud. One pre-dispa
 
 ### Requirement: Console v2 MUST own provider credential DTOs
 
-`api/controllers/console/human_input_v2/providers.py` MUST be the canonical Console owner of `IMProviderCredentials`、`EmailProviderCredentials` and their provider-specific variants。Old controller transport DTOs that repeat these fields MUST be deleted or migrated。The Email and IM application owners MAY keep internal domain credential types, but those types MUST NOT register or define a second HTTP contract。
+The Console `human_input_v2` controller package MUST own provider transport DTOs。`providers.py` MUST own complete credential inputs、`provider_updates.py` MUST own credential edit inputs and `provider_views.py` MUST own redacted credential responses。Old controller transport DTOs that repeat these fields MUST be deleted or migrated。The Email and IM application owners MAY keep internal domain credential types, but those types MUST NOT register or define a second HTTP contract。
 
 #### Scenario: Provider credentials are submitted
 
@@ -98,17 +98,26 @@ Functional support in this change MUST target Community and Cloud. One pre-dispa
 - **THEN** the field MUST use Pydantic `SecretStr`
 - **AND** its value MUST NOT enter DTO repr、logs or validation diagnostics
 
-#### Scenario: Complete credentials are required
+#### Scenario: New credentials are required
 
-- **WHEN** create、update、replacement or test omits a required credential field or supplies a retention marker
+- **WHEN** create、replacement or unaddressed candidate test omits a required credential field or supplies a retention marker
 - **THEN** strict DTO validation MUST reject the request
-- **AND** the controller MUST NOT load persisted credentials to complete it
+- **AND** management MUST NOT load saved credentials to complete it
 
-#### Scenario: Resend credentials are submitted
+#### Scenario: An existing Channel is edited or tested
 
-- **WHEN** a caller creates、updates or tests a Resend Channel
-- **THEN** `sender_email`、`sender_name` and `api_key` MUST all be present and valid
-- **AND** update MUST require the complete configuration instead of supporting partial update or API-key retention
+- **WHEN** update or ID-addressed test submits provider credentials
+- **THEN** every credential edit field MUST be present
+- **AND** `{"type":"unchanged"}` MUST retain that field from the addressed saved snapshot
+- **AND** a submitted value MUST replace that field
+- **AND** `null` MUST clear only a nullable field
+- **AND** blank credentials、unknown marker properties and response-only `redacted` markers MUST be rejected
+
+#### Scenario: Resend configuration is partially edited
+
+- **WHEN** an update changes sender settings and retains `api_key`
+- **THEN** the Email owner MUST combine the submitted settings with the saved API key
+- **AND** save MUST protect the complete API key before persistence without provider I/O
 
 #### Scenario: Extra provider field is submitted
 
@@ -170,12 +179,15 @@ Resend save MUST protect and persist the structurally valid complete candidate w
 
 - **WHEN** an Email item GET succeeds
 - **THEN** the response MUST contain `summary`、`sender_name` and `sender_email`
-- **AND** it MUST NOT contain `api_key` or an API-key configured marker
+- **AND** `credentials` MUST contain the Resend provider and `api_key: {"type":"redacted"}`
 
 #### Scenario: IM Channel detail is read
 
 - **WHEN** an IM item GET succeeds
-- **THEN** the response MUST contain exactly one `summary` configured-state projection
+- **THEN** the response MUST contain one `summary` and provider-discriminated `credentials`
+- **AND** Feishu/Lark `app_id`、Slack `client_id`、DingTalk `corp_id` and `client_id`、Microsoft Teams `tenant_id` and `client_id`、WeCom `corp_id` and `agent_id` MUST contain their saved plaintext identifiers
+- **AND** each configured secret field MUST be represented by `{"type":"redacted"}` without its stored value
+- **AND** an unconfigured nullable credential MUST be represented by `null`
 
 #### Scenario: IM display identifier is built
 
@@ -343,3 +355,31 @@ The API MUST map management categories to stable HTTP statuses and safe bodies w
 - **THEN** the IM owner MUST atomically replace the addressed Channel
 - **AND** it MUST clear only identities and bindings owned by that Channel
 - **AND** the API MUST return `200` with the replacement summary
+
+### Requirement: Saved connection tests MUST use one versioned snapshot without saving
+
+ID-addressed test MUST accept the same credentials and `expected_config_version` shape as update。The application owner MUST check the addressed Channel and expected version before decrypting saved credentials or calling a provider。A missing or foreign Channel MUST return `404`。A stale version MUST return `409 provider_configuration_updated`。IM provider mismatch MUST return `400 bad_request`。
+
+#### Scenario: Saved connection test selects another provider
+
+- **WHEN** an ID-addressed test submits credentials for a provider different from the saved Channel
+- **THEN** the API MUST return `400 bad_request` before decrypting credentials or calling a provider
+- **AND** the editor MUST keep the saved connection test provider fixed to the Channel's provider
+- **AND** testing a different provider MUST use the unaddressed candidate test with complete new credentials
+
+#### Scenario: Saved credentials are tested with temporary edits
+
+- **WHEN** an administrator tests a current Channel with retained fields and submitted overrides
+- **THEN** the owner MUST test the complete merged credentials
+- **AND** the test MUST NOT change configuration、timestamps、status or configuration version
+- **AND** the response MUST use the existing `ChannelTestResponse`
+- **AND** a later save MUST independently enforce CAS
+
+#### Scenario: All credential fields are retained
+
+- **WHEN** every credential edit field is `{"type":"unchanged"}`
+- **THEN** the test MUST use the complete saved credentials
+
+### Requirement: Partial editing MUST preserve complete encrypted storage
+
+The application owner MUST merge credential edits before protection。IM update MUST serialize and encrypt the complete resulting provider credential document through `IMCredentialCodec`。The edit markers MUST NOT enter persistence or provider adapters。The Repository MUST continue storing one `IMEncryptedCredentials` envelope rather than per-field ciphertexts。Resend MUST retain its existing encrypted API-key storage format。

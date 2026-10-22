@@ -6,7 +6,7 @@ import json
 import re
 from base64 import b64decode
 from collections.abc import Callable
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, replace
 from datetime import datetime
 from typing import cast, override
 
@@ -42,6 +42,7 @@ from repositories.human_input_v2.im_channel_repository import (
     StaleIMChannelWriteError,
     WebhookId,
 )
+from services.human_input_v2.credential_update import FeishuCredentialsUpdate, SlackCredentialsUpdate, Unchanged
 from services.human_input_v2.errors import (
     ChannelAlreadyConfiguredError,
     ChannelNotFoundError,
@@ -235,6 +236,7 @@ class _Cipher:
         self.events = events
         self.error = error
         self.plaintexts: list[str] = []
+        self.stored_plaintext: str | None = None
 
     def encrypt(self, plaintext: str) -> bytes:
         self.events.append("encrypt")
@@ -245,6 +247,8 @@ class _Cipher:
 
     def decrypt(self, ciphertext: bytes) -> str:
         del ciphertext
+        if self.stored_plaintext is not None:
+            return self.stored_plaintext
         raise AssertionError("management projection must not decrypt credentials")
 
 
@@ -856,3 +860,231 @@ def test_workspace_service_binds_reader_writer_cipher_and_actor_to_trusted_conte
     assert bindings[0] == ("cipher", key_provider, "trusted-tenant")
     assert any(binding[0] == "reader" and binding[2] == tenant_id for binding in bindings)
     assert any(binding[0] == "writer" and binding[2:] == (tenant_id, account_id) for binding in bindings)
+
+
+def test_partial_update_merges_then_encrypts_the_entire_credential_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    credentials = _CASES[0].credentials
+    state = _State()
+    service = _TestService(state)
+    state.current = replace(
+        _channel(provider=IMProvider.FEISHU),
+        encrypted_credentials=IMCredentialCodec(service.cipher).seal(credentials),
+    )
+    service.cipher.stored_plaintext = credentials.model_dump_json()
+    _install_adapter(monkeypatch, state, provider=IMProvider.FEISHU)
+    edit = FeishuCredentialsUpdate(
+        app_id=Unchanged.VALUE,
+        app_secret="rotated-secret",
+        verification_token=Unchanged.VALUE,
+        encrypt_key=None,
+    )
+
+    view = service.update(state.current.id, state.current.config_version, edit)
+
+    assert json.loads(service.cipher.plaintexts[-1]) == {
+        "provider": "feishu",
+        "app_id": "feishu-app",
+        "app_secret": "rotated-secret",
+        "verification_token": "feishu-verification",
+        "encrypt_key": None,
+    }
+    assert state.current is not None
+    assert b64decode(state.current.encrypted_credentials.ciphertext) == b"opaque-ciphertext"
+    assert view.config_version == 4
+    assert state.current.webhook_id == WebhookId("persisted-webhook-id")
+    assert "rotated-secret" not in repr(view)
+
+
+@pytest.mark.parametrize("stale", [False, True])
+@pytest.mark.parametrize("saved_test", [False, True])
+def test_partial_update_checks_id_and_version_before_decryption_or_provider_io(stale: bool, saved_test: bool) -> None:
+    current = _channel()
+    state = _State(current=current)
+    service = _TestService(state)
+    edit = SlackCredentialsUpdate(*([Unchanged.VALUE] * 5))
+    operation = service.test_saved if saved_test else service.update
+
+    with pytest.raises(ProviderConfigurationUpdatedError if stale else ChannelNotFoundError):
+        operation(
+            current.id if stale else IMChannelId("missing"),
+            current.config_version + 1 if stale else current.config_version,
+            edit,
+        )
+
+    assert state.current == current
+    assert service.cipher.plaintexts == []
+
+
+def test_saved_connection_test_uses_merged_credentials_without_writing(monkeypatch: pytest.MonkeyPatch) -> None:
+    from services.human_input_v2 import im_channel_service as service_module
+
+    credentials = _CASES[0].credentials
+    state = _State()
+    service = _TestService(state)
+    current = replace(
+        _channel(provider=IMProvider.FEISHU), encrypted_credentials=IMCredentialCodec(service.cipher).seal(credentials)
+    )
+    state.current = current
+    service.cipher.stored_plaintext = credentials.model_dump_json()
+    tested: list[IMProviderCredentials] = []
+
+    def build(candidate: IMProviderCredentials) -> _Adapter:
+        tested.append(candidate)
+        return _Adapter(state.events, CredentialTestSuccess(IMProvider.FEISHU, "feishu-tenant"))
+
+    monkeypatch.setattr(service_module, "build_im_provider_adapter", build)
+    edit = FeishuCredentialsUpdate(Unchanged.VALUE, "temporary-secret", Unchanged.VALUE, None)
+    service.test_saved(current.id, current.config_version, edit)
+
+    assert len(tested) == 1
+    assert isinstance(tested[0], FeishuCredentials)
+    assert tested[0].app_id == "feishu-app"
+    assert tested[0].app_secret == "temporary-secret"
+    assert tested[0].encrypt_key is None
+    assert state.current == current
+    assert len(service.cipher.plaintexts) == 1
+
+
+@pytest.mark.parametrize("case", _CASES, ids=lambda case: case.credentials.provider.value)
+def test_all_retained_credentials_round_trip_through_one_encrypted_document(
+    monkeypatch: pytest.MonkeyPatch, case: _CredentialCase
+) -> None:
+    from pydantic import TypeAdapter
+
+    from controllers.console.human_input_v2.provider_updates import IMProviderCredentialsUpdateInput
+    from controllers.console.human_input_v2.provider_views import im_credentials_response
+
+    credentials = case.credentials
+    edit_payload = {
+        name: value if name == "provider" else {"type": "unchanged"}
+        for name, value in credentials.model_dump(mode="json").items()
+    }
+    edit = TypeAdapter(IMProviderCredentialsUpdateInput).validate_python(edit_payload).to_owner_update()
+    state = _State()
+    service = _TestService(state)
+    current = replace(
+        _channel(provider=credentials.provider),
+        encrypted_credentials=IMCredentialCodec(service.cipher).seal(credentials),
+    )
+    state.current = current
+    service.cipher.stored_plaintext = credentials.model_dump_json()
+    _install_adapter(monkeypatch, state, provider=credentials.provider)
+
+    service.test_saved(current.id, current.config_version, edit)
+    assert state.current == current
+    assert len(service.cipher.plaintexts) == 1
+    service.update(current.id, current.config_version, edit)
+    assert json.loads(service.cipher.plaintexts[-1]) == credentials.model_dump(mode="json")
+    detail = service.get_detail(current.id)
+    masked = im_credentials_response(detail.credentials).model_dump(mode="json")
+    assert masked["provider"] == credentials.provider.value
+    assert "credential-secret-ciphertext" not in repr(detail)
+    if isinstance(credentials, SlackCredentials):
+        assert masked["app_token"] == {"type": "redacted"}
+    if isinstance(credentials, LarkCredentials):
+        assert masked["encrypt_key"] is None
+        assert masked["verification_token"] is None
+    elif isinstance(credentials, FeishuCredentials):
+        assert masked["encrypt_key"] == {"type": "redacted"}
+        assert masked["verification_token"] == {"type": "redacted"}
+
+
+@pytest.mark.parametrize(
+    ("case", "expected"),
+    [
+        (
+            _CASES[0],
+            {
+                "provider": "feishu",
+                "app_id": "feishu-app",
+                "app_secret": {"type": "redacted"},
+                "verification_token": {"type": "redacted"},
+                "encrypt_key": {"type": "redacted"},
+            },
+        ),
+        (
+            _CASES[1],
+            {
+                "provider": "lark",
+                "app_id": "lark-app",
+                "app_secret": {"type": "redacted"},
+                "verification_token": None,
+                "encrypt_key": None,
+            },
+        ),
+        (
+            _CASES[2],
+            {
+                "provider": "slack",
+                "client_id": "slack-client",
+                "client_secret": {"type": "redacted"},
+                "signing_secret": {"type": "redacted"},
+                "bot_token": {"type": "redacted"},
+                "app_token": {"type": "redacted"},
+            },
+        ),
+        (
+            _CASES[3],
+            {
+                "provider": "ding_talk",
+                "corp_id": "ding-corp",
+                "client_id": "ding-client",
+                "client_secret": {"type": "redacted"},
+            },
+        ),
+        (
+            _CASES[4],
+            {
+                "provider": "ms_teams",
+                "tenant_id": "00000000-0000-0000-0000-000000000001",
+                "client_id": "00000000-0000-0000-0000-000000000002",
+                "client_secret": {"type": "redacted"},
+            },
+        ),
+        (
+            _CASES[5],
+            {
+                "provider": "we_com",
+                "corp_id": "wecom-corp",
+                "agent_id": "1001",
+                "secret": {"type": "redacted"},
+            },
+        ),
+    ],
+    ids=[case.credentials.provider.value for case in _CASES],
+)
+def test_credential_details_expose_identifiers_and_redact_only_secrets(
+    case: _CredentialCase, expected: dict[str, object]
+) -> None:
+    from controllers.console.human_input_v2.provider_views import im_credentials_response
+
+    state = _State()
+    service = _TestService(state)
+    current = replace(
+        _channel(provider=case.credentials.provider),
+        encrypted_credentials=IMCredentialCodec(service.cipher).seal(case.credentials),
+    )
+    state.current = current
+    service.cipher.stored_plaintext = case.credentials.model_dump_json()
+
+    detail = service.get_detail(current.id)
+
+    assert im_credentials_response(detail.credentials).model_dump(mode="json") == expected
+    assert state.current == current
+    assert state.last_written is None
+
+
+def test_saved_connection_test_rejects_another_provider_before_using_saved_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current = _channel(provider=IMProvider.SLACK)
+    state = _State(current=current)
+    service = _TestService(state)
+    _install_adapter(monkeypatch, state, build_error=AssertionError("provider must not be called"))
+    edit = FeishuCredentialsUpdate(Unchanged.VALUE, Unchanged.VALUE, Unchanged.VALUE, Unchanged.VALUE)
+
+    with pytest.raises(ReplacementRequiredError):
+        service.test_saved(current.id, current.config_version, edit)
+
+    assert state.current == current
+    assert state.last_written is None

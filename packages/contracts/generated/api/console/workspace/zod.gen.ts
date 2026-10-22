@@ -101,25 +101,9 @@ export const zEmailChannelMutationResponse = z.object({
 })
 
 /**
- * EmailChannelDetailResponse
- */
-export const zEmailChannelDetailResponse = z.object({
-  sender_email: z.string(),
-  sender_name: z.string(),
-  summary: zChannelSummary,
-})
-
-/**
  * IMChannelMutationResponse
  */
 export const zImChannelMutationResponse = z.object({
-  summary: zChannelSummary,
-})
-
-/**
- * IMChannelDetailResponse
- */
-export const zImChannelDetailResponse = z.object({
   summary: zChannelSummary,
 })
 
@@ -153,11 +137,30 @@ export const zEmailChannelTestPayload = z.object({
 })
 
 /**
- * EmailChannelUpdatePayload
+ * Redacted
+ *
+ * A configured credential whose stored value is omitted.
  */
-export const zEmailChannelUpdatePayload = z.object({
-  credentials: zEmailProviderCredentials,
-  expected_config_version: zConfigVersion,
+export const zRedacted = z.object({
+  type: z.literal('redacted').optional().default('redacted'),
+})
+
+/**
+ * ResendCredentialsResponse
+ */
+export const zResendCredentialsResponse = z.object({
+  api_key: zRedacted,
+  provider: z.literal('resend'),
+})
+
+/**
+ * EmailChannelDetailResponse
+ */
+export const zEmailChannelDetailResponse = z.object({
+  credentials: zResendCredentialsResponse,
+  sender_email: z.string(),
+  sender_name: z.string(),
+  summary: zChannelSummary,
 })
 
 /**
@@ -235,14 +238,6 @@ export const zImChannelTestPayload = z.object({
 })
 
 /**
- * IMChannelUpdatePayload
- */
-export const zImChannelUpdatePayload = z.object({
-  credentials: zImProviderCredentialsInput,
-  expected_config_version: zConfigVersion,
-})
-
-/**
  * IMChannelReplacementPayload
  */
 export const zImChannelReplacementPayload = z.object({
@@ -250,9 +245,218 @@ export const zImChannelReplacementPayload = z.object({
   expected_config_version: zConfigVersion,
 })
 
+/**
+ * FeishuLarkCredentialsResponse
+ */
+export const zFeishuLarkCredentialsResponse = z.object({
+  app_id: z.string(),
+  app_secret: zRedacted,
+  encrypt_key: zRedacted.nullable(),
+  provider: z.enum(['feishu', 'lark']),
+  verification_token: zRedacted.nullable(),
+})
+
+/**
+ * SlackCredentialsResponse
+ */
+export const zSlackCredentialsResponse = z.object({
+  app_token: zRedacted.nullable(),
+  bot_token: zRedacted,
+  client_id: z.string(),
+  client_secret: zRedacted,
+  provider: z.literal('slack'),
+  signing_secret: zRedacted,
+})
+
+/**
+ * DingTalkCredentialsResponse
+ */
+export const zDingTalkCredentialsResponse = z.object({
+  client_id: z.string(),
+  client_secret: zRedacted,
+  corp_id: z.string(),
+  provider: z.literal('ding_talk'),
+})
+
+/**
+ * MSTeamsCredentialsResponse
+ */
+export const zMsTeamsCredentialsResponse = z.object({
+  client_id: z.string(),
+  client_secret: zRedacted,
+  provider: z.literal('ms_teams'),
+  tenant_id: z.string(),
+})
+
+/**
+ * WeComCredentialsResponse
+ */
+export const zWeComCredentialsResponse = z.object({
+  agent_id: z.string(),
+  corp_id: z.string(),
+  provider: z.literal('we_com'),
+  secret: zRedacted,
+})
+
+export const zImProviderCredentialsResponse = z.union([
+  z
+    .object({
+      provider: z.union([z.literal('feishu'), z.literal('lark')]),
+    })
+    .and(zFeishuLarkCredentialsResponse),
+  z
+    .object({
+      provider: z.literal('slack'),
+    })
+    .and(zSlackCredentialsResponse),
+  z
+    .object({
+      provider: z.literal('ding_talk'),
+    })
+    .and(zDingTalkCredentialsResponse),
+  z
+    .object({
+      provider: z.literal('ms_teams'),
+    })
+    .and(zMsTeamsCredentialsResponse),
+  z
+    .object({
+      provider: z.literal('we_com'),
+    })
+    .and(zWeComCredentialsResponse),
+])
+
+/**
+ * IMChannelDetailResponse
+ */
+export const zImChannelDetailResponse = z.object({
+  credentials: zImProviderCredentialsResponse,
+  summary: zChannelSummary,
+})
+
 export const zRequiredSecret = z.string().min(1)
 
+/**
+ * UnchangedInput
+ *
+ * Retain the addressed saved field; valid only for updates and saved tests.
+ */
+export const zUnchangedInput = z.object({
+  type: z.literal('unchanged'),
+})
+
+/**
+ * ResendCredentialsUpdateInput
+ */
+export const zResendCredentialsUpdateInput = z.object({
+  api_key: zUnchangedInput,
+  provider: z.literal('resend'),
+  sender_email: z.union([z.string(), zUnchangedInput]),
+  sender_name: z.union([z.string().min(1).max(255), zUnchangedInput]),
+})
+
+export const zEmailProviderCredentialsUpdateInput = z
+  .object({
+    provider: z.literal('resend'),
+  })
+  .and(zResendCredentialsUpdateInput)
+
+/**
+ * EmailChannelUpdatePayload
+ */
+export const zEmailChannelUpdatePayload = z.object({
+  credentials: zEmailProviderCredentialsUpdateInput,
+  expected_config_version: zConfigVersion,
+})
+
 export const zOptionalSecret = z.string().min(1).nullable()
+
+export const zIdentifier = z.string().min(1).regex(/\S/)
+
+/**
+ * FeishuCredentialsUpdateInput
+ */
+export const zFeishuCredentialsUpdateInput = z.object({
+  app_id: z.union([zIdentifier, zUnchangedInput]),
+  app_secret: zUnchangedInput,
+  encrypt_key: zUnchangedInput,
+  provider: z.literal('feishu'),
+  verification_token: zUnchangedInput,
+})
+
+/**
+ * LarkCredentialsUpdateInput
+ */
+export const zLarkCredentialsUpdateInput = z.object({
+  app_id: z.union([zIdentifier, zUnchangedInput]),
+  app_secret: zUnchangedInput,
+  encrypt_key: zUnchangedInput,
+  provider: z.literal('lark'),
+  verification_token: zUnchangedInput,
+})
+
+/**
+ * SlackCredentialsUpdateInput
+ */
+export const zSlackCredentialsUpdateInput = z.object({
+  app_token: zUnchangedInput,
+  bot_token: zUnchangedInput,
+  client_id: z.union([zIdentifier, zUnchangedInput]),
+  client_secret: zUnchangedInput,
+  provider: z.literal('slack'),
+  signing_secret: zUnchangedInput,
+})
+
+/**
+ * DingTalkCredentialsUpdateInput
+ */
+export const zDingTalkCredentialsUpdateInput = z.object({
+  client_id: z.union([zIdentifier, zUnchangedInput]),
+  client_secret: zUnchangedInput,
+  corp_id: z.union([zIdentifier, zUnchangedInput]),
+  provider: z.literal('ding_talk'),
+})
+
+/**
+ * WeComCredentialsUpdateInput
+ */
+export const zWeComCredentialsUpdateInput = z.object({
+  agent_id: z.union([z.string(), zUnchangedInput]),
+  corp_id: z.union([zIdentifier, zUnchangedInput]),
+  provider: z.literal('we_com'),
+  secret: zUnchangedInput,
+})
+
+export const zUuidString = z
+  .string()
+  .regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
+
+/**
+ * MSTeamsCredentialsUpdateInput
+ */
+export const zMsTeamsCredentialsUpdateInput = z.object({
+  client_id: z.union([zUuidString, zUnchangedInput]),
+  client_secret: zUnchangedInput,
+  provider: z.literal('ms_teams'),
+  tenant_id: z.union([zUuidString, zUnchangedInput]),
+})
+
+export const zImProviderCredentialsUpdateInput = z.discriminatedUnion('provider', [
+  zFeishuCredentialsUpdateInput.extend({ provider: z.literal('feishu') }),
+  zLarkCredentialsUpdateInput.extend({ provider: z.literal('lark') }),
+  zSlackCredentialsUpdateInput.extend({ provider: z.literal('slack') }),
+  zDingTalkCredentialsUpdateInput.extend({ provider: z.literal('ding_talk') }),
+  zMsTeamsCredentialsUpdateInput.extend({ provider: z.literal('ms_teams') }),
+  zWeComCredentialsUpdateInput.extend({ provider: z.literal('we_com') }),
+])
+
+/**
+ * IMChannelUpdatePayload
+ */
+export const zImChannelUpdatePayload = z.object({
+  credentials: zImProviderCredentialsUpdateInput,
+  expected_config_version: zConfigVersion,
+})
 
 /**
  * ResendCredentials
@@ -285,10 +489,26 @@ export const zEmailChannelTestPayloadWritable = z.object({
 })
 
 /**
+ * ResendCredentialsUpdateInput
+ */
+export const zResendCredentialsUpdateInputWritable = z.object({
+  api_key: z.union([zRequiredSecret, zUnchangedInput]),
+  provider: z.literal('resend'),
+  sender_email: z.union([z.string(), zUnchangedInput]),
+  sender_name: z.union([z.string().min(1).max(255), zUnchangedInput]),
+})
+
+export const zEmailProviderCredentialsUpdateInputWritable = z
+  .object({
+    provider: z.literal('resend'),
+  })
+  .and(zResendCredentialsUpdateInputWritable)
+
+/**
  * EmailChannelUpdatePayload
  */
 export const zEmailChannelUpdatePayloadWritable = z.object({
-  credentials: zEmailProviderCredentialsWritable,
+  credentials: zEmailProviderCredentialsUpdateInputWritable,
   expected_config_version: zConfigVersion,
 })
 
@@ -380,18 +600,91 @@ export const zImChannelTestPayloadWritable = z.object({
 })
 
 /**
- * IMChannelUpdatePayload
+ * IMChannelReplacementPayload
  */
-export const zImChannelUpdatePayloadWritable = z.object({
+export const zImChannelReplacementPayloadWritable = z.object({
   credentials: zImProviderCredentialsInputWritable,
   expected_config_version: zConfigVersion,
 })
 
 /**
- * IMChannelReplacementPayload
+ * FeishuCredentialsUpdateInput
  */
-export const zImChannelReplacementPayloadWritable = z.object({
-  credentials: zImProviderCredentialsInputWritable,
+export const zFeishuCredentialsUpdateInputWritable = z.object({
+  app_id: z.union([zIdentifier, zUnchangedInput]),
+  app_secret: z.union([zRequiredSecret, zUnchangedInput]),
+  encrypt_key: z.union([zOptionalSecret, zUnchangedInput]),
+  provider: z.literal('feishu'),
+  verification_token: z.union([zOptionalSecret, zUnchangedInput]),
+})
+
+/**
+ * LarkCredentialsUpdateInput
+ */
+export const zLarkCredentialsUpdateInputWritable = z.object({
+  app_id: z.union([zIdentifier, zUnchangedInput]),
+  app_secret: z.union([zRequiredSecret, zUnchangedInput]),
+  encrypt_key: z.union([zOptionalSecret, zUnchangedInput]),
+  provider: z.literal('lark'),
+  verification_token: z.union([zOptionalSecret, zUnchangedInput]),
+})
+
+/**
+ * SlackCredentialsUpdateInput
+ */
+export const zSlackCredentialsUpdateInputWritable = z.object({
+  app_token: z.union([zOptionalSecret, zUnchangedInput]),
+  bot_token: z.union([zRequiredSecret, zUnchangedInput]),
+  client_id: z.union([zIdentifier, zUnchangedInput]),
+  client_secret: z.union([zRequiredSecret, zUnchangedInput]),
+  provider: z.literal('slack'),
+  signing_secret: z.union([zRequiredSecret, zUnchangedInput]),
+})
+
+/**
+ * DingTalkCredentialsUpdateInput
+ */
+export const zDingTalkCredentialsUpdateInputWritable = z.object({
+  client_id: z.union([zIdentifier, zUnchangedInput]),
+  client_secret: z.union([zRequiredSecret, zUnchangedInput]),
+  corp_id: z.union([zIdentifier, zUnchangedInput]),
+  provider: z.literal('ding_talk'),
+})
+
+/**
+ * MSTeamsCredentialsUpdateInput
+ */
+export const zMsTeamsCredentialsUpdateInputWritable = z.object({
+  client_id: z.union([zUuidString, zUnchangedInput]),
+  client_secret: z.union([zRequiredSecret, zUnchangedInput]),
+  provider: z.literal('ms_teams'),
+  tenant_id: z.union([zUuidString, zUnchangedInput]),
+})
+
+/**
+ * WeComCredentialsUpdateInput
+ */
+export const zWeComCredentialsUpdateInputWritable = z.object({
+  agent_id: z.union([z.string(), zUnchangedInput]),
+  corp_id: z.union([zIdentifier, zUnchangedInput]),
+  provider: z.literal('we_com'),
+  secret: z.union([zRequiredSecret, zUnchangedInput]),
+})
+
+export const zImProviderCredentialsUpdateInputWritable = z.discriminatedUnion('provider', [
+  zFeishuCredentialsUpdateInputWritable.extend({ provider: z.literal('feishu') }),
+  zLarkCredentialsUpdateInputWritable.extend({ provider: z.literal('lark') }),
+  zSlackCredentialsUpdateInputWritable.extend({ provider: z.literal('slack') }),
+  zDingTalkCredentialsUpdateInputWritable.extend({ provider: z.literal('ding_talk') }),
+  zMsTeamsCredentialsUpdateInputWritable.extend({ provider: z.literal('ms_teams') }),
+  zWeComCredentialsUpdateInputWritable.extend({ provider: z.literal('we_com') }),
+])
+
+/**
+ * IMChannelUpdatePayload
+ */
+export const zImChannelUpdatePayloadWritable = z.object({
+  credentials: zImProviderCredentialsUpdateInputWritable,
   expected_config_version: zConfigVersion,
 })
 
@@ -458,6 +751,19 @@ export const zPutWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdPath = z.ob
 export const zPutWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdResponse =
   zEmailChannelMutationResponse
 
+export const zPostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestBody =
+  zEmailChannelUpdatePayloadWritable
+
+export const zPostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestPath = z.object({
+  channel_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestResponse =
+  zChannelTestResponse
+
 export const zPostWorkspaceCurrentHumanInputV2ChannelsImBody = zImChannelCreatePayloadWritable
 
 /**
@@ -521,3 +827,16 @@ export const zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdReplacementPa
  */
 export const zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdReplacementResponse =
   zImChannelMutationResponse
+
+export const zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestBody =
+  zImChannelUpdatePayloadWritable
+
+export const zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestPath = z.object({
+  channel_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestResponse =
+  zChannelTestResponse
