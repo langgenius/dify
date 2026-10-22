@@ -1,5 +1,5 @@
 import { useAtomValue, useSetAtom, useStore } from 'jotai'
-import { useEffect, useRef } from 'react'
+import { useEffect, useEffectEvent, useRef } from 'react'
 import { difyBuilderActiveSessionIdAtom } from '../session/state'
 import { getSessionStorageKey } from './session-storage'
 
@@ -23,6 +23,7 @@ export const DifyBuilderSessionPersistence = ({
   const attemptedStorageKeyRef = useRef<string | null>(null)
   const persistedSessionIdRef = useRef<string | null>(null)
   const restoringRef = useRef(false)
+  const restoreSession = useEffectEvent(restore)
 
   useEffect(() => {
     if (!enabled || !storageKey || attemptedStorageKeyRef.current === storageKey) return
@@ -40,7 +41,7 @@ export const DifyBuilderSessionPersistence = ({
     restoringRef.current = true
     let disposed = false
     setActiveSessionId(storedSessionId)
-    void restore(storedSessionId)
+    void restoreSession(storedSessionId)
       .catch(() => undefined)
       .finally(() => {
         if (disposed) return
@@ -63,7 +64,7 @@ export const DifyBuilderSessionPersistence = ({
       attemptedStorageKeyRef.current = null
       restoringRef.current = false
     }
-  }, [enabled, jotaiStore, restore, setActiveSessionId, storageKey])
+  }, [enabled, jotaiStore, setActiveSessionId, storageKey])
 
   useEffect(() => {
     if (!enabled || !storageKey || restoringRef.current) return
