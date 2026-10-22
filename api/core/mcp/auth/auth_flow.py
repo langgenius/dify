@@ -24,6 +24,7 @@ from core.mcp.types import (
     ProtectedResourceMetadata,
 )
 from extensions.ext_redis import redis_client
+from services.tools.mcp_oauth_scope import get_effective_scope
 
 OAUTH_STATE_EXPIRY_SECONDS = 5 * 60  # 5 minutes expiry
 OAUTH_STATE_REDIS_KEY_PREFIX = "oauth_state:"
@@ -175,33 +176,6 @@ def discover_oauth_authorization_server_metadata(
             continue  # Try next URL
 
     return None
-
-
-def get_effective_scope(
-    scope_from_www_auth: str | None,
-    prm: ProtectedResourceMetadata | None,
-    asm: OAuthMetadata | None,
-    client_scope: str | None,
-) -> str | None:
-    """
-    Determine effective scope using priority-based selection strategy.
-
-    Priority order:
-    1. WWW-Authenticate header scope (server explicit requirement)
-    2. Protected Resource Metadata scopes
-    3. OAuth Authorization Server Metadata scopes
-    4. Client configured scope
-    """
-    if scope_from_www_auth:
-        return scope_from_www_auth
-
-    if prm and prm.scopes_supported:
-        return " ".join(prm.scopes_supported)
-
-    if asm and asm.scopes_supported:
-        return " ".join(asm.scopes_supported)
-
-    return client_scope
 
 
 def _create_secure_redis_state(state_data: OAuthCallbackState) -> str:
@@ -596,7 +570,7 @@ def auth(
     else:
         effective_grant_type = MCPSupportGrantType.CLIENT_CREDENTIALS.value
 
-    # Determine effective scope using priority-based strategy
+    # Respect the configured scope limit while handling server requirements
     effective_scope = get_effective_scope(scope_from_www_auth, prm, server_metadata, credentials.get("scope"))
 
     if not client_information:

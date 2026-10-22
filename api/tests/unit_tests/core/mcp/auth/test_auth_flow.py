@@ -1,6 +1,7 @@
 """Unit tests for MCP OAuth authentication flow."""
 
-from unittest.mock import patch
+import urllib.parse
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -41,6 +42,7 @@ from core.mcp.types import (
     OAuthTokens,
     ProtectedResourceMetadata,
 )
+from services.tools.mcp_oauth_scope import MCPConfiguredScopeError
 from tests.unit_tests.core.mcp.fixtures import make_provider
 
 
@@ -605,6 +607,68 @@ class TestCallbackHandling:
 class TestAuthOrchestration:
     """Test the main auth orchestration function."""
 
+    @pytest.mark.parametrize("grant_type", ["authorization_code", "client_credentials"])
+    @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
+    def test_configured_scope_reaches_authorization(
+        self, mock_discover: MagicMock, grant_type: str, provider: MCPProviderEntity
+    ) -> None:
+        provider.credentials = {"client_information": {"client_id": "c1"}, "scope": "devices:read"}
+        metadata = OAuthMetadata(
+            authorization_endpoint="https://auth.example.com/authorize",
+            token_endpoint="https://auth.example.com/token",
+            response_types_supported=["code"],
+            grant_types_supported=[grant_type],
+            scopes_supported=["devices:read", "files:write"],
+        )
+        prm = ProtectedResourceMetadata(
+            resource=provider.server_url,
+            authorization_servers=["https://auth.example.com"],
+            scopes_supported=["devices:read", "files:write"],
+        )
+        mock_discover.return_value = (metadata, prm, None)
+
+        with (
+            patch("core.mcp.auth.auth_flow._create_secure_redis_state", return_value="test-state"),
+            patch("core.mcp.auth.auth_flow.client_credentials_flow") as mock_client_credentials,
+        ):
+            mock_client_credentials.return_value = OAuthTokens(access_token="synthetic-token", token_type="Bearer")
+            result = auth(provider)
+
+        if grant_type == "authorization_code":
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(result.response["authorization_url"]).query)
+            assert query["scope"] == ["devices:read"]
+            assert query["code_challenge_method"] == ["S256"]
+            mock_client_credentials.assert_not_called()
+        else:
+            mock_client_credentials.assert_called_once_with(
+                provider.server_url, metadata, OAuthClientInformation(client_id="c1"), "devices:read"
+            )
+
+    @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
+    @patch("core.mcp.auth.auth_flow.register_client")
+    @patch("core.mcp.auth.auth_flow.start_authorization")
+    def test_scope_challenge_outside_limit_stops_before_authorization(
+        self,
+        mock_start: MagicMock,
+        mock_register: MagicMock,
+        mock_discover: MagicMock,
+        provider: MCPProviderEntity,
+    ) -> None:
+        provider.credentials = {"scope": "devices:read"}
+        metadata = OAuthMetadata(
+            authorization_endpoint="https://auth.example.com/authorize",
+            token_endpoint="https://auth.example.com/token",
+            response_types_supported=["code"],
+            grant_types_supported=["authorization_code"],
+        )
+        mock_discover.return_value = (metadata, None, "devices:read files:write")
+
+        with pytest.raises(MCPConfiguredScopeError):
+            auth(provider)
+
+        mock_register.assert_not_called()
+        mock_start.assert_not_called()
+
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     @patch("core.mcp.auth.auth_flow.register_client")
     @patch("core.mcp.auth.auth_flow.start_authorization")
@@ -924,7 +988,7 @@ class TestAuthOrchestration:
         result = discover_oauth_authorization_server_metadata(None, "https://api.example.com")
         assert result is None
 
-    def test_get_effective_scope(self):
+    def test_get_effective_scope(self) -> None:
         prm = ProtectedResourceMetadata(
             resource="https://api.example.com",
             authorization_servers=["https://auth"],
@@ -937,14 +1001,24 @@ class TestAuthOrchestration:
             scopes_supported=["openid", "profile"],
         )
 
-        # 1. WWW-Auth priority
-        assert get_effective_scope("scope1", prm, asm, "client") == "scope1"
-        # 2. PRM priority
-        assert get_effective_scope(None, prm, asm, "client") == "read write"
-        # 3. ASM priority
-        assert get_effective_scope(None, None, asm, "client") == "openid profile"
-        # 4. Client configured
-        assert get_effective_scope(None, None, None, "client") == "client"
+        # Unconfigured clients retain discovery precedence.
+        assert get_effective_scope("scope1", prm, asm, None) == "scope1"
+        assert get_effective_scope(None, prm, asm, None) == "read write"
+        assert get_effective_scope(None, None, asm, None) == "openid profile"
+        assert get_effective_scope(None, None, None, None) is None
+        assert get_effective_scope(None, prm, asm, "") == "read write"
+
+        # Supported scopes are not permission to expand an explicit limit.
+        assert get_effective_scope(None, prm, asm, "read") == "read"
+        assert get_effective_scope(None, None, asm, "read") == "read"
+        assert get_effective_scope(None, None, None, "read") == "read"
+        assert get_effective_scope("read", prm, asm, "read write") == "read"
+        assert get_effective_scope("read", prm, asm, "read") == "read"
+
+        with pytest.raises(MCPConfiguredScopeError):
+            get_effective_scope("read write", prm, asm, "read")
+        with pytest.raises(MCPConfiguredScopeError):
+            get_effective_scope("write", prm, asm, "write:all")
 
     @patch("core.mcp.auth.auth_flow.redis_client")
     def test_redis_state_management(self, mock_redis):
