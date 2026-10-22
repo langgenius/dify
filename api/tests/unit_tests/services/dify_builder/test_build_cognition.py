@@ -387,7 +387,9 @@ def test_discover_resources_retains_full_source_in_model_payload(monkeypatch: py
     payload = model.calls[0][0][1].get_text_content()
     source = f"ORIGINAL GOAL:\n{goal}\n\nCONFIRMED REQUIREMENTS:\n" + json.dumps(requirements, ensure_ascii=False)
     assert payload.startswith(source + "\n\nPLAN:\nretrieve knowledge\n\nAVAILABLE:\n")
-    assert payload.endswith("- tool/run (plugin, ready): Export\n  Action parameter declarations: unknown")
+    assert payload.endswith(
+        "- tool/run (plugin, ready): Export\n  Action parameter declarations: unknown\n  Action output schema: unknown"
+    )
 
 
 def test_assess_capability_gap_retains_source_and_distinguishes_same_label_resource_ids() -> None:
