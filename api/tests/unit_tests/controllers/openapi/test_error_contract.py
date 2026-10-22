@@ -13,6 +13,7 @@ from werkzeug.exceptions import (
     Forbidden,
     InternalServerError,
     NotFound,
+    ServiceUnavailable,
     TooManyRequests,
     Unauthorized,
     UnprocessableEntity,
@@ -28,18 +29,33 @@ from controllers.common.errors import (
 )
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi._errors import (
+    AccessModeNotAllowed,
+    AppAccessModeUnavailable,
+    AppQuotaExceeded,
+    BearerAuthDisabled,
     CatalogStale,
     DslInvalid,
     ErrorBody,
     ErrorDetail,
+    ExternalSsoRequiresEE,
     FilenameNotExists,
     HumanInputFormNotFound,
+    InsufficientScope,
+    InsufficientWorkspaceRole,
+    LicenseInvalid,
     MemberLicenseExceeded,
     MemberLimitExceeded,
     OpenApiError,
     OpenApiErrorCode,
     OpenApiErrorFormatter,
+    PermittedAppsUnavailable,
+    PrivateAppNotAllowed,
+    PrivateAppUserUnresolved,
     RecipientSurfaceMismatch,
+    ResourceNotAuthorized,
+    ServiceApiDisabled,
+    UnsupportedTokenType,
+    WorkspaceUnavailable,
 )
 from controllers.openapi._models import Hint
 from controllers.service_api.app.error import (
@@ -310,6 +326,21 @@ ERROR_MATRIX = [
     (HumanInputFormNotFound(), 404, "form_not_found"),
     (RecipientSurfaceMismatch(), 403, "recipient_surface_mismatch"),
     (CatalogStale(), 412, "catalog_stale"),
+    (ServiceUnavailable("x"), 503, "service_unavailable"),
+    (BearerAuthDisabled(), 503, "bearer_auth_disabled"),
+    (LicenseInvalid(), 403, "license_invalid"),
+    (InsufficientScope(), 403, "insufficient_scope"),
+    (UnsupportedTokenType(), 403, "unsupported_token_type"),
+    (AppQuotaExceeded(), 403, "app_quota_exceeded"),
+    (InsufficientWorkspaceRole(), 403, "insufficient_workspace_role"),
+    (WorkspaceUnavailable(), 403, "workspace_unavailable"),
+    (ExternalSsoRequiresEE(), 403, "external_sso_requires_ee"),
+    (AccessModeNotAllowed(), 403, "subject_not_allowed_for_access_mode"),
+    (AppAccessModeUnavailable(), 403, "app_access_mode_unavailable"),
+    (PrivateAppNotAllowed(), 403, "user_not_allowed_for_private_app"),
+    (PrivateAppUserUnresolved(), 403, "private_app_user_unresolved"),
+    (ResourceNotAuthorized(), 403, "resource_not_authorized"),
+    (PermittedAppsUnavailable(), 503, "permitted_apps_unavailable"),
 ]
 
 
@@ -358,3 +389,23 @@ def test_formatter_emits_hints_only_from_openapi_errors() -> None:
     foreign = BadRequest()
     foreign.hints = [hint]  # type: ignore[attr-defined]
     assert "hints" not in OpenApiErrorFormatter().finalize(foreign, {}, 400)
+
+
+def test_plain_503_gets_service_unavailable_code(fmt):
+    wire = fmt.finalize(ServiceUnavailable("x"), {"message": "x"}, 503)
+    assert wire["code"] == "service_unavailable"
+    assert wire["message"] == "Internal Server Error"
+
+
+def test_openapi_503_keeps_its_message_and_hint(fmt):
+    wire = fmt.finalize(BearerAuthDisabled(), {"message": BearerAuthDisabled.description}, 503)
+    assert wire == {
+        "code": "bearer_auth_disabled",
+        "message": "Sign-in with access tokens is turned off on this server.",
+        "status": 503,
+        "hint": "Ask an admin to set ENABLE_OAUTH_BEARER=true and restart the API.",
+    }
+
+
+def test_service_api_disabled_hint_has_no_api_wording():
+    assert ServiceApiDisabled.hint == "A workspace admin can turn it on."
