@@ -8,6 +8,7 @@ import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
+import TreeBranchLine from '@/app/components/base/tree-branch-line'
 import { consoleQuery } from '@/service/console'
 
 type ResourceFilter = 'all' | 'app' | 'dataset'
@@ -76,24 +77,7 @@ export default function ResourcePicker({
         key={`${resource.resource_type}:${resource.resource_id}`}
         className={`relative flex min-h-10 items-center py-1.5 ${nested ? 'gap-0' : 'gap-3'}`}
       >
-        {nested && (
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 40"
-            className="-ml-px h-10 w-6 shrink-0 overflow-visible text-divider-deep"
-          >
-            <path
-              d={
-                lastNested
-                  ? 'M0 0 V14 C0 17.3 2.7 20 6 20 H24'
-                  : 'M0 0 V40 M0 14 C0 17.3 2.7 20 6 20 H24'
-              }
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-            />
-          </svg>
-        )}
+        {nested && <TreeBranchLine last={lastNested} />}
         {!nested && (
           <Avatar size="xs">
             <AvatarFallback>{displayName.slice(0, 1)}</AvatarFallback>
