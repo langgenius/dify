@@ -1,4 +1,4 @@
-from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat
+from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -77,3 +77,22 @@ class AgentBackendConfig(BaseSettings):
         ),
         default=0.5,
     )
+
+    AGENT_KNOWLEDGE_MAX_RESULT_CONTENT_CHARS: PositiveInt = Field(
+        description="Maximum characters of each knowledge retrieval result exposed to the Agent model.",
+        default=2000,
+    )
+
+    AGENT_KNOWLEDGE_MAX_OBSERVATION_CHARS: PositiveInt = Field(
+        description="Maximum characters of the entire knowledge retrieval observation, including metadata.",
+        default=12000,
+    )
+
+    @model_validator(mode="after")
+    def validate_knowledge_observation_limits(self) -> "AgentBackendConfig":
+        if self.AGENT_KNOWLEDGE_MAX_OBSERVATION_CHARS < self.AGENT_KNOWLEDGE_MAX_RESULT_CONTENT_CHARS:
+            raise ValueError(
+                "AGENT_KNOWLEDGE_MAX_OBSERVATION_CHARS must be greater than or equal to "
+                "AGENT_KNOWLEDGE_MAX_RESULT_CONTENT_CHARS"
+            )
+        return self
