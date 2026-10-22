@@ -456,3 +456,35 @@ print("6 group dispatches and blocked drainer: consumers exited, sockets closed"
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=30, env=env)
     assert result.returncode == 0, result.stdout + result.stderr
     assert "6 group dispatches and blocked drainer" in result.stdout
+
+
+@pytest.mark.parametrize("failure_stage", ["pubsub", "disconnect"])
+def test_synchronous_cleanup_failure_is_logged_and_backend_restored(
+    celery_app: Celery, dispatch_backend: RedisBackend, failure_stage: str
+) -> None:
+    """同步消费者也必须记录清理异常；不依赖协程切换或专用覆盖率配置。"""
+    backend = dispatch_backend
+    previous = celery_app.backend
+    consumer = backend.result_consumer
+    consumer.drainer = Drainer(consumer)
+    result = subscribe_result(backend)
+    pubsub = consumer._pubsub
+    assert isinstance(pubsub, PubSub)
+    pool = backend.client.connection_pool
+    target, method = (pubsub, "close") if failure_stage == "pubsub" else (pool, "disconnect")
+    with (
+        patch.object(pool, "disconnect", wraps=pool.disconnect) as disconnect,
+        patch.object(target, method, side_effect=RuntimeError("cleanup failed")) as failing,
+        patch.object(schedule_task.logger, "exception") as log,
+    ):
+        with schedule_task._dispatch_result_backend():
+            pass
+        failing.assert_called_once()
+        if failure_stage == "pubsub":
+            disconnect.assert_called_once()
+        log.assert_called_once_with("Failed to close schedule dispatch Redis result backend")
+    assert celery_app.backend is previous
+    assert consumer._pubsub is None
+    assert not consumer.subscribed_to
+    assert not any(cast(BackendPendingResults, backend)._pending_results)
+    del result
