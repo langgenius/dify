@@ -1,5 +1,5 @@
 import json
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -7,6 +7,7 @@ from functools import partial
 from typing import override
 
 import pytest
+from _pytest.mark.structures import ParameterSet
 from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy.orm import Session
 
@@ -196,82 +197,107 @@ def app_task_workflow_run(sqlite_session: Session, monkeypatch: pytest.MonkeyPat
 _GRAPH_STOP_OPERATIONS = ["legacy_flag", "graph_command"]
 
 
-def _stop_run_cases() -> list[object]:
-    return [
-        pytest.param(
-            "running", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.STOPPED, _GRAPH_STOP_OPERATIONS, id="running"
-        ),
-        pytest.param("paused", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.STOPPED, [], id="paused"),
-        pytest.param("already-stopped", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.STOPPED, [], id="already-stopped"),
-        pytest.param("finished", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.NOT_STOPPABLE, [], id="finished"),
-        pytest.param(
-            "legacy-no-task-id", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.NOT_STOPPABLE, [], id="legacy-no-task-id"
-        ),
-        pytest.param("missing", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.NOT_FOUND, [], id="missing"),
-        pytest.param("other-app", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.NOT_FOUND, [], id="other-app"),
-        pytest.param(
-            "other-end-user", CreatorUserRole.END_USER, WorkflowStopOutcome.NOT_FOUND, [], id="other-end-user"
-        ),
-        pytest.param(
-            "own-end-user",
-            CreatorUserRole.END_USER,
-            WorkflowStopOutcome.STOPPED,
-            _GRAPH_STOP_OPERATIONS,
-            id="own-end-user",
-        ),
-        pytest.param(
-            "draft-run", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.STOPPED, _GRAPH_STOP_OPERATIONS, id="draft-run"
-        ),
-    ]
+@dataclass
+class _StopTarget:
+    """What the stop call addresses; a case's setup may change the run or redirect the call."""
+
+    run: WorkflowRun
+    session: Session
+    tenant_id: str
+    app_id: str
+    run_id: str
 
 
-@pytest.mark.parametrize(("case", "caller_role", "outcome", "operations"), _stop_run_cases())
+def _pause(target: _StopTarget) -> None:
+    target.run.status = WorkflowExecutionStatus.PAUSED
+    target.session.add(
+        WorkflowPause(workflow_id=target.run.workflow_id, workflow_run_id=target.run.id, state_object_key="state")
+    )
+
+
+def _redirect(**address: str) -> Callable[[_StopTarget], None]:
+    def setup(target: _StopTarget) -> None:
+        for name, value in address.items():
+            setattr(target, name, value)
+
+    return setup
+
+
+def _edit_run(**run_fields: object) -> Callable[[_StopTarget], None]:
+    def setup(target: _StopTarget) -> None:
+        for name, value in run_fields.items():
+            setattr(target.run, name, value)
+
+    return setup
+
+
+def _no_change(_: _StopTarget) -> None:
+    return None
+
+
+@dataclass(frozen=True)
+class _StopRunCase:
+    setup: Callable[[_StopTarget], None]
+    caller_role: CreatorUserRole
+    outcome: WorkflowStopOutcome
+    operations: list[str]
+    persisted_status: WorkflowExecutionStatus | None = None
+
+
+def _stop_run_cases() -> list[ParameterSet]:
+    stopped = WorkflowStopOutcome.STOPPED
+    not_stoppable = WorkflowStopOutcome.NOT_STOPPABLE
+    not_found = WorkflowStopOutcome.NOT_FOUND
+    account = CreatorUserRole.ACCOUNT
+    end_user = CreatorUserRole.END_USER
+    cases = {
+        "running": _StopRunCase(_no_change, account, stopped, _GRAPH_STOP_OPERATIONS),
+        "paused": _StopRunCase(_pause, account, stopped, [], persisted_status=WorkflowExecutionStatus.STOPPED),
+        "already-stopped": _StopRunCase(
+            _edit_run(status=WorkflowExecutionStatus.STOPPED, stop_requested_at=datetime(2026, 10, 20)),
+            account,
+            stopped,
+            [],
+        ),
+        "finished": _StopRunCase(_edit_run(status=WorkflowExecutionStatus.SUCCEEDED), account, not_stoppable, []),
+        "legacy-no-task-id": _StopRunCase(_edit_run(task_id=None), account, not_stoppable, []),
+        "missing": _StopRunCase(_redirect(run_id="22222222-2222-2222-2222-222222222222"), account, not_found, []),
+        "other-app": _StopRunCase(_redirect(app_id="other-app"), account, not_found, []),
+        "other-tenant": _StopRunCase(_redirect(tenant_id="other-tenant"), account, not_found, []),
+        "other-end-user": _StopRunCase(_edit_run(created_by="other-user"), end_user, not_found, []),
+        "owner-role": _StopRunCase(_edit_run(created_by_role=CreatorUserRole.ACCOUNT), end_user, not_found, []),
+        "own-end-user": _StopRunCase(_no_change, end_user, stopped, _GRAPH_STOP_OPERATIONS),
+        "draft-run": _StopRunCase(
+            _edit_run(triggered_from=WorkflowRunTriggeredFrom.DEBUGGING), account, stopped, _GRAPH_STOP_OPERATIONS
+        ),
+    }
+    return [pytest.param(case, id=name) for name, case in cases.items()]
+
+
+@pytest.mark.parametrize("case", _stop_run_cases())
 def test_stop_workflow_run_outcomes(
-    sqlite_session: Session,
-    app_task_workflow_run: WorkflowRun,
-    case: str,
-    caller_role: CreatorUserRole,
-    outcome: WorkflowStopOutcome,
-    operations: list[str],
+    sqlite_session: Session, app_task_workflow_run: WorkflowRun, case: _StopRunCase
 ) -> None:
     run = app_task_workflow_run
-    run_id = run.id
-    app_id = run.app_id
-    if case == "paused":
-        run.status = WorkflowExecutionStatus.PAUSED
-        sqlite_session.add(WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="state"))
-    if case == "already-stopped":
-        run.status = WorkflowExecutionStatus.STOPPED
-        run.stop_requested_at = datetime(2026, 10, 20)
-    if case == "finished":
-        run.status = WorkflowExecutionStatus.SUCCEEDED
-    if case == "legacy-no-task-id":
-        run.task_id = None
-    if case == "missing":
-        run_id = "22222222-2222-2222-2222-222222222222"
-    if case == "other-app":
-        app_id = "other-app"
-    if case == "other-end-user":
-        run.created_by = "other-user"
-    if case == "draft-run":
-        run.triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
+    target = _StopTarget(run=run, session=sqlite_session, tenant_id=run.tenant_id, app_id=run.app_id, run_id=run.id)
+    case.setup(target)
     sqlite_session.commit()
     redis = _StopRedis(read_error=AssertionError("Durable workflow ownership must not depend on Redis"))
 
     result = AppTaskControlService(redis_client=redis).stop_workflow_run(
-        tenant_id=run.tenant_id,
-        app_id=app_id,
-        run_id=run_id,
+        tenant_id=target.tenant_id,
+        app_id=target.app_id,
+        run_id=target.run_id,
         app_mode=AppMode.WORKFLOW,
-        caller_role=caller_role,
+        caller_role=case.caller_role,
         caller_id=_USER_ID,
     )
 
-    assert result is outcome
-    assert redis.operations == operations
-    if case == "paused":
+    assert result is case.outcome
+    assert redis.operations == case.operations
+    if case.persisted_status is not None:
         sqlite_session.refresh(run)
-        assert run.status == WorkflowExecutionStatus.STOPPED
+        assert run.status == case.persisted_status
 
 
 @pytest.mark.parametrize(
