@@ -56,6 +56,7 @@ it('maps an unreachable server to network_connection', async () => {
   const api = deviceApi(`http://127.0.0.1:${port}`, { insecure: true })
   await expect(api.requestCode({ device_label: 'test' })).rejects.toMatchObject({
     code: 'network_connection',
+    message: expect.stringMatching(/^network error calling POST http:\/\/127\.0\.0\.1:\d+\/.+: .+/),
   })
 })
 

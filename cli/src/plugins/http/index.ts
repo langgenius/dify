@@ -5,6 +5,7 @@ import { ErrorCode } from '@/errors/codes'
 import { errorMessage } from '@/errors/message'
 import { parseServerErrorBody } from '@/errors/server-body'
 import { definePlugin } from '@/kernel/plugin'
+import { networkCause } from '@/net/cause'
 import { buildFetchInit } from '@/net/fetch-init'
 import { proxyDispatcher } from '@/net/proxy'
 import { catalog, CATALOG_HEADER, CATALOG_PATH, fingerprintOf } from '@/plugins/catalog'
@@ -12,7 +13,7 @@ import { config } from '@/plugins/config'
 import { env } from '@/plugins/env'
 import { session } from '@/plugins/session'
 import { token } from '@/plugins/token'
-import { userAgent } from '@/version/info'
+import { BINARY, userAgent } from '@/version/info'
 
 export type HttpRequest = Readonly<{
   method: string
@@ -43,6 +44,10 @@ const CATALOG_UNAVAILABLE_PREFIX = 'failed to fetch the catalog: '
 // `refresh cache` would only repeat the fetch that failed, so it is not suggested.
 const CATALOG_UNAVAILABLE_HINT =
   'check that the saved server URL is right and the server is reachable, then retry'
+export function timeoutHint(timeoutMs: number): string {
+  return `raise the limit with ${BINARY} set config http.timeout ${timeoutMs * 2}`
+}
+
 export const CATALOG_OPENAPI_OFF_HINT =
   'the server has no OpenAPI catalog: ask its admin to set OPENAPI_ENABLED=true, or check the saved server URL'
 const CATALOG_HINT_BY_STATUS: Readonly<Record<number, string>> = {
@@ -181,11 +186,18 @@ export const http = definePlugin({
       try {
         res = await fetch(url, init)
       } catch (cause) {
+        if (deadlineExpired) {
+          throw new BaseError({
+            code: ErrorCode.NetworkConnection,
+            message: `${req.method} ${url} timed out after ${timeoutMs}ms`,
+            hint: timeoutHint(timeoutMs),
+            cause,
+          })
+        }
+        const detail = networkCause(cause)
         throw new BaseError({
           code: ErrorCode.NetworkConnection,
-          message: deadlineExpired
-            ? `${req.method} ${url} timed out after ${timeoutMs}ms`
-            : `network error calling ${req.method} ${url}`,
+          message: `network error calling ${req.method} ${url}${detail === undefined ? '' : `: ${detail}`}`,
           cause,
         })
       } finally {

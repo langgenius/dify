@@ -197,7 +197,22 @@ describe('http plugin', () => {
     ).rejects.toMatchObject({
       code: 'network_connection',
       message: expect.stringContaining(`timed out after ${SHORT_TIMEOUT_MS}ms`),
+      hint: `raise the limit with difyctl set config http.timeout ${SHORT_TIMEOUT_MS * 2}`,
     })
+  })
+
+  it('a refused connection names its cause and carries no hint', async () => {
+    process.env.DIFY_SERVER = 'http://127.0.0.1:9'
+    const error = await (
+      await new Context().get(http)
+    )
+      .request(() => ({ method: 'GET', path: '/x', auth: false }))
+      .catch((e: unknown) => e)
+    expect(error).toMatchObject({
+      code: 'network_connection',
+      message: expect.stringMatching(/^network error calling GET http:\/\/127\.0\.0\.1:9\/.+: .+/),
+    })
+    expect((error as { hint?: string }).hint).toBeUndefined()
   })
 
   it('a catalog fetch failure names the status and the catalog path', async () => {
