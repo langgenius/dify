@@ -341,3 +341,24 @@ def test_plugin_dispatch_errors_keep_json_response_without_persisting_or_publish
     assert response.get_json() == expected_body
     assert runtime.take_messages() == []
     assert not storage.exists("triggers/")
+
+
+def test_plugin_removed_before_dispatch_returns_not_found_without_persisting_or_publishing(
+    harness: _Harness, daemon: _Daemon, runtime: _Runtime
+) -> None:
+    subscription = _seed(harness, daemon, CredentialType.API_KEY)
+    daemon.response_data = None
+    daemon.response_code = -500
+    daemon.response_message = json.dumps({"error_type": "PluginNotFoundError", "message": "plugin uninstalled"})
+
+    response = Context().run(harness.client.post, f"/triggers/plugin/{subscription.endpoint_id}", data=b"body")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.data == b"Trigger provider not found"
+    assert response.content_type == "text/html; charset=utf-8"
+    assert [request.method for request in daemon.requests] == ["GET", "POST"]
+    assert daemon.requests[-1].path == f"/plugin/{harness.tenant_id}/dispatch/trigger/dispatch_event"
+    assert all(not request.open_transactions for request in daemon.requests)
+    assert runtime.take_messages() == []
+    assert runtime.publications == []
+    assert not storage.exists("triggers/")

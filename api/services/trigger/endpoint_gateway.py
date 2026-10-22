@@ -50,24 +50,32 @@ class PluginTriggerEndpointGateway:
                 ),
             )
             properties = properties_encrypter.decrypt(subscription.properties)
+        except Exception as error:
+            # TriggerManager wraps a missing plugin in ValueError, preserving its cause.
+            if isinstance(error, PluginNotFoundError) or (
+                isinstance(error, ValueError) and isinstance(error.__cause__, PluginNotFoundError)
+            ):
+                raise TriggerEndpointProviderNotFoundError(
+                    f"Trigger provider {subscription.provider_id} not found."
+                ) from error
+            raise TriggerEndpointLoadError(f"Failed to prepare trigger subscription {subscription.id}.") from error
+
+        try:
+            result = provider.dispatch(
+                request=request,
+                subscription=Subscription(
+                    expires_at=subscription.expires_at,
+                    endpoint=generate_plugin_trigger_endpoint_url(subscription.endpoint_id),
+                    parameters=subscription.parameters,
+                    properties=properties,
+                ),
+                credentials=credentials,
+                credential_type=subscription.credential_type,
+            )
         except PluginNotFoundError as error:
             raise TriggerEndpointProviderNotFoundError(
                 f"Trigger provider {subscription.provider_id} not found."
             ) from error
-        except Exception as error:
-            raise TriggerEndpointLoadError(f"Failed to prepare trigger subscription {subscription.id}.") from error
-
-        result = provider.dispatch(
-            request=request,
-            subscription=Subscription(
-                expires_at=subscription.expires_at,
-                endpoint=generate_plugin_trigger_endpoint_url(subscription.endpoint_id),
-                parameters=subscription.parameters,
-                properties=properties,
-            ),
-            credentials=credentials,
-            credential_type=subscription.credential_type,
-        )
         return TriggerEndpointDispatch(
             result=result, event_names=frozenset(event.identity.name for event in provider.get_events())
         )

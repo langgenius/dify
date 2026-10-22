@@ -1,5 +1,6 @@
 """Trigger capability failures exercise the real HTTP, SQL and daemon boundaries."""
 
+import json
 from contextvars import Context
 from http import HTTPStatus
 from uuid import uuid4
@@ -66,3 +67,49 @@ def test_provider_load_failure_preserves_text_error_after_subscription_transacti
     assert len(daemon.requests) == 1
     assert daemon.requests[0].method == "GET"
     assert not daemon.requests[0].open_transactions
+
+
+@pytest.mark.parametrize(
+    ("error_type", "expected_status", "expected_body"),
+    [
+        pytest.param("PluginNotFoundError", HTTPStatus.NOT_FOUND, b"Trigger provider not found", id="plugin-not-found"),
+        pytest.param(
+            "PluginDaemonInternalServerError",
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            b"Failed to get subscription by endpoint",
+            id="daemon-failure",
+        ),
+    ],
+)
+def test_provider_metadata_daemon_errors_reach_http_mapping_after_subscription_transaction_closes(
+    endpoint_harness: _Harness,
+    daemon: _Daemon,
+    error_type: str,
+    expected_status: HTTPStatus,
+    expected_body: bytes,
+) -> None:
+    subscription = _add_subscription(endpoint_harness)
+    daemon.get_response_code = -500
+    daemon.get_response_message = json.dumps({"error_type": error_type, "message": "provider unavailable"})
+
+    response = Context().run(endpoint_harness.client.post, f"/triggers/plugin/{subscription.endpoint_id}", json={})
+
+    assert response.status_code == expected_status
+    assert response.data == expected_body
+    assert response.content_type == "text/html; charset=utf-8"
+    assert len(daemon.requests) == 1
+    assert daemon.requests[0].method == "GET"
+    assert not daemon.requests[0].open_transactions
+
+
+def test_invalid_persisted_provider_is_load_failure_not_missing_plugin(
+    endpoint_harness: _Harness, daemon: _Daemon
+) -> None:
+    subscription = _add_subscription(endpoint_harness, provider_id="not/a/valid/provider")
+
+    response = Context().run(endpoint_harness.client.post, f"/triggers/plugin/{subscription.endpoint_id}", json={})
+
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert response.data == b"Failed to get subscription by endpoint"
+    assert response.content_type == "text/html; charset=utf-8"
+    assert daemon.requests == []
