@@ -11,6 +11,8 @@
   "changeScope.structure": "structură",
   "checklistIssues": "Probleme în lista de verificare",
   "configureModel": "Configurați un model",
+  "copy.actions.cancelTest": "Anulează testul",
+  "copy.actions.confirmTestOperation": "Confirmă această operațiune",
   "copy.actions.applyTheFix": "Aplică remedierea",
   "copy.actions.approveChanges": "Aprobă modificările",
   "copy.actions.approveFix": "Aprobă remedierea",

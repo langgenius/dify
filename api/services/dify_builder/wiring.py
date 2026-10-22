@@ -173,14 +173,26 @@ def build_service() -> DifyBuilderService:
         get_verification_identity_fn=_get_verification_identity,
         get_app_name_fn=_get_app_name,
         real_call_consent=build_real_call_consent_service(),
+        test_actions=_build_test_actions(),
     )
+
+
+def _build_test_actions():
+    from services.dify_builder.test_actions import BuilderTestActions
+
+    return BuilderTestActions(sessionmaker(bind=db.engine, expire_on_commit=False), build_native_test_api_service)
 
 
 def _public_actions(actions: object) -> list[dict[str, object]]:
     if not isinstance(actions, list):
         return []
     return [
-        {"id": action.get("id", ""), "label": action.get("label", ""), "kind": action.get("kind", "secondary")}
+        {
+            "id": action.get("id", ""),
+            "label": action.get("label", ""),
+            "kind": action.get("kind", "secondary"),
+            **({"payload": action["payload"]} if action.get("payload") else {}),
+        }
         for action in actions
         if isinstance(action, dict)
     ]
@@ -221,6 +233,8 @@ def _public_session_view(view: dict[str, Any], *, include_last_command_id: bool)
         "phase": view.get("phase", "understand"),
         "actions": _public_actions(view.get("actions")),
     }
+    if view.get("test_execution") is not None:
+        projected["test_execution"] = view["test_execution"]
     if view.get("diagnostics"):
         projected["diagnostics"] = view["diagnostics"]
     if view.get("decision") is not None:
@@ -249,6 +263,26 @@ def session_view_to_dict(view: SessionView) -> dict[str, object]:
 
 
 def dify_builder_error_response(exc: Exception) -> tuple[dict, int] | None:
+    if isinstance(exc, BuilderExecutionPolicyError):
+        reason = exc.reason_code
+        if reason in {"native_owner_mismatch", "execution_owner_mismatch"}:
+            return {"code": "not_found"}, 404
+        if reason == "execution_permission_denied":
+            return {"code": "bad_request", "message": "Test permission denied", "reason_code": reason}, 403
+        unavailable = reason in {
+            "native_runtime_unavailable",
+            "native_profile_unavailable",
+            "native_binding_unavailable",
+            "native_disclosure_unavailable",
+        }
+        return {
+            "code": "feature_unavailable" if unavailable else "conflict",
+            "message": "Test capability unavailable"
+            if unavailable
+            else "Test state changed; refresh before continuing",
+            "reason_code": reason,
+            "recoverable": True,
+        }, 503 if unavailable else 409
     if isinstance(exc, ModelUnavailableError):
         return {"code": "model_unavailable", "message": "Builder model is unavailable", "recoverable": True}, 400
     if isinstance(exc, BadRequestError):
