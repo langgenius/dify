@@ -73,7 +73,7 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => mockUseTheme(),
 }))
 
-vi.mock('../shiki-highlight', () => ({
+vi.mock('../code-highlight', () => ({
   highlightCode: mockHighlightCode,
 }))
 
@@ -147,7 +147,7 @@ describe('CodeBlock', () => {
     vi.clearAllMocks()
     mockUseTheme.mockReturnValue({ theme: Theme.light })
     mockHighlightCode.mockImplementation(async ({ code, language }) => (
-      <pre className="shiki">
+      <pre>
         <code className={`language-${language}`}>{code}</code>
       </pre>
     ))
@@ -264,7 +264,7 @@ describe('CodeBlock', () => {
       })
     })
 
-    it('should fall back to plain code block when shiki highlighting fails', async () => {
+    it('should fall back to plain code block when highlighting fails', async () => {
       mockHighlightCode.mockRejectedValueOnce(new Error('highlight failed'))
 
       render(<CodeBlock className="language-javascript">const z = 3;</CodeBlock>)

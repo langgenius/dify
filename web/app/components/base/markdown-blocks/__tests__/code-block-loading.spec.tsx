@@ -23,7 +23,7 @@ const runtime = vi.hoisted(() => {
   }
 })
 
-vi.mock('../shiki-highlight', () => ({
+vi.mock('../code-highlight', () => ({
   highlightCode: async ({ code }: { code: string }) => <pre>{code}</pre>,
 }))
 vi.mock('echarts-for-react', () => {

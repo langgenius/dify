@@ -1,42 +1,27 @@
-import type { createSingletonShorthands } from 'shiki/core'
-import type * as shikiCore from 'shiki/core'
+import type * as highlights from '@pierre/highlights'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { highlightCode } from '../shiki-highlight'
+import { highlightCode } from '../code-highlight'
 
-// `shiki/core` only exposes `getSingletonHighlighter` as a property of the
-// shorthand bundle returned by `createSingletonShorthands`, not as a top-level
-// symbol. Derive the accessor signature from the return type so wrapped calls
-// remain correctly typed without importing a non-exported name.
-type SingletonAccessor = ReturnType<typeof createSingletonShorthands>['getSingletonHighlighter']
-
-// Mock the singleton accessor so tests can assert that the WASM engine is not
-// loaded for plain-text fences while still letting supported-language tests
-// observe a real `getSingletonHighlighter` invocation.
-const { mockGetSingletonHighlighter } = vi.hoisted(() => ({
-  mockGetSingletonHighlighter: vi.fn(),
+// Wrap the real tokenizer so tests can assert that plain-text and unsupported
+// fences never reach the WebAssembly lexers.
+const { mockCodeToTokens } = vi.hoisted(() => ({
+  mockCodeToTokens: vi.fn(),
 }))
 
-vi.mock('shiki/core', async (importOriginal) => {
-  const actual = await importOriginal<typeof shikiCore>()
-  const realCreateSingletonShorthands = actual.createSingletonShorthands
+vi.mock('@pierre/highlights', async (importOriginal) => {
+  const actual = await importOriginal<typeof highlights>()
   return {
     ...actual,
-    createSingletonShorthands: (factory: Parameters<typeof realCreateSingletonShorthands>[0]) => {
-      const real = realCreateSingletonShorthands(factory)
-      // Wrap real `getSingletonHighlighter` so tests can observe invocations.
-      const realGet = real.getSingletonHighlighter
-      const wrapped: SingletonAccessor = (...args: Parameters<typeof realGet>) => {
-        mockGetSingletonHighlighter(...args)
-        return realGet(...args)
-      }
-      return { getSingletonHighlighter: wrapped }
+    codeToTokens: (...args: Parameters<typeof actual.codeToTokens>) => {
+      mockCodeToTokens(...args)
+      return actual.codeToTokens(...args)
     },
   }
 })
 
 describe('README code highlighting', () => {
   beforeEach(() => {
-    mockGetSingletonHighlighter.mockReset()
+    mockCodeToTokens.mockReset()
   })
 
   it.each(['github-light', 'github-dark'] as const)('highlights dotenv with %s', async (theme) => {
@@ -47,7 +32,8 @@ describe('README code highlighting', () => {
     expect(result).toContain('your-api-key')
     expect(result).toContain('OPENAI_ORGANIZATION=org-id')
     expect(result).toContain('<span style="color:')
-    expect(mockGetSingletonHighlighter).toHaveBeenCalledTimes(1)
+    expect(mockCodeToTokens).toHaveBeenCalledTimes(1)
+    expect(mockCodeToTokens.mock.calls[0]![1]).toMatchObject({ lang: 'bash' })
   })
 
   it('renders unsupported languages as readable, escaped plain text', async () => {
@@ -61,11 +47,11 @@ describe('README code highlighting', () => {
     )
 
     expect(result).toContain('&lt;custom&gt;example&lt;/custom&gt;')
-    expect(mockGetSingletonHighlighter).not.toHaveBeenCalled()
+    expect(mockCodeToTokens).not.toHaveBeenCalled()
   })
 
-  it.each(['', '   '])(
-    'renders a blank language %j without loading the WASM engine',
+  it.each(['', '   ', 'text', 'TXT'])(
+    'renders the plain language %j without tokenizing',
     async (language) => {
       const code = 'plain line one\nplain line two'
       const result = renderToStaticMarkup(
@@ -74,7 +60,7 @@ describe('README code highlighting', () => {
 
       expect(result).toContain('plain line one')
       expect(result).toContain('plain line two')
-      expect(mockGetSingletonHighlighter).not.toHaveBeenCalled()
+      expect(mockCodeToTokens).not.toHaveBeenCalled()
     },
   )
 
@@ -92,8 +78,26 @@ describe('README code highlighting', () => {
       const document = new DOMParser().parseFromString(result, 'text/html')
 
       expect(document.querySelector('code')?.textContent).toBe(lines.join('\n'))
+      expect(document.querySelectorAll('.line')).toHaveLength(lines.length)
       expect(document.querySelector('custom')).toBeNull()
-      expect(mockGetSingletonHighlighter).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['\n', '\r\n'])(
+    'renders one line element per highlighted line with %j line endings',
+    async (lineEnding) => {
+      const lines = ['const a = 1', '', '  const b = a']
+      const result = renderToStaticMarkup(
+        await highlightCode({
+          code: lines.join(lineEnding),
+          language: 'ts',
+          theme: 'github-dark',
+        }),
+      )
+      const document = new DOMParser().parseFromString(result, 'text/html')
+
+      expect(document.querySelector('code')?.textContent).toBe(lines.join('\n'))
+      expect(document.querySelectorAll('.line')).toHaveLength(lines.length)
     },
   )
 
@@ -104,20 +108,33 @@ describe('README code highlighting', () => {
     )
 
     expect(result).toContain('a &lt; b &amp;&amp; b &gt; c &amp; &quot;x&quot;')
-    expect(mockGetSingletonHighlighter).not.toHaveBeenCalled()
   })
 
-  it('preserves highlighting for bundled language aliases', async () => {
+  it('escapes HTML-sensitive characters in highlighted fences', async () => {
     const result = renderToStaticMarkup(
       await highlightCode({
-        code: 'const count = 1',
-        language: 'js',
+        code: '<div class="x">&amp;</div>',
+        language: 'html',
         theme: 'github-light',
       }),
     )
 
-    expect(result).toContain('const')
+    expect(result).not.toContain('<div class="x">')
+    expect(result).toContain('&lt;')
+    expect(result).toContain('&amp;amp;')
+  })
+
+  it.each(['js', 'Python', 'go'])('highlights the bundled language %s', async (language) => {
+    const result = renderToStaticMarkup(
+      await highlightCode({
+        code: 'const count = 1',
+        language,
+        theme: 'github-light',
+      }),
+    )
+
+    expect(result).toContain('count')
     expect(result).toContain('<span style="color:')
-    expect(mockGetSingletonHighlighter).toHaveBeenCalledTimes(1)
+    expect(mockCodeToTokens).toHaveBeenCalledTimes(1)
   })
 })
