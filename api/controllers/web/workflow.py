@@ -3,7 +3,16 @@ import logging
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
-from controllers.common.controller_schemas import WorkflowRunPayload
+from controllers.common.controller_schemas import WorkflowRunPayload as BaseWorkflowRunPayload
+from controllers.common.end_user_connections import (
+    ConnectionCheckUnavailableHTTPError,
+    ConnectionConfigurationHTTPError,
+    ConnectionNotFoundHTTPError,
+    ConnectionReauthorizationHTTPError,
+    ConnectionSecretUnavailableHTTPError,
+    ConnectionWorkflowChangedHTTPError,
+    raise_connection_error,
+)
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
@@ -32,12 +41,19 @@ from libs import helper
 from libs.external_api import error_responses
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
+from services.end_user_connections.errors import ConnectionError
+from services.end_user_connections.execution import ConnectionRunInput
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
+
+
+class WorkflowRunPayload(BaseWorkflowRunPayload, ConnectionRunInput):
+    pass
+
 
 register_schema_models(web_ns, WorkflowRunPayload)
 register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultResponse)
@@ -46,6 +62,12 @@ register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultRespon
 @web_ns.route("/workflows/run")
 class WorkflowRunApi(WebApiResource):
     @error_responses(
+        ConnectionCheckUnavailableHTTPError,
+        ConnectionConfigurationHTTPError,
+        ConnectionNotFoundHTTPError,
+        ConnectionReauthorizationHTTPError,
+        ConnectionSecretUnavailableHTTPError,
+        ConnectionWorkflowChangedHTTPError,
         CompletionRequestError,
         InvokeRateLimitHttpError,
         NotWorkflowAppError,
@@ -78,7 +100,7 @@ class WorkflowRunApi(WebApiResource):
             raise NotWorkflowAppError()
 
         payload = WorkflowRunPayload.model_validate(web_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
+        args = payload.model_dump(mode="json", exclude_none=True)
 
         try:
             response = AppGenerateService.generate(
@@ -92,6 +114,8 @@ class WorkflowRunApi(WebApiResource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except ConnectionError as error:
+            raise_connection_error(error)
         except TriggerWorkflowServiceModeUnavailableServiceError:
             raise TriggerWorkflowServiceModeUnavailableError()
         except ProviderTokenNotInitError as ex:

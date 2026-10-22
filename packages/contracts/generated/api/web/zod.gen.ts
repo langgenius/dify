@@ -116,6 +116,7 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
  * ChatMessagePayload
  */
 export const zChatMessagePayload = z.object({
+  connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   conversation_id: z.string().nullish(),
   files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -123,6 +124,7 @@ export const zChatMessagePayload = z.object({
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('web_app'),
+  workflow_id: z.uuid().nullish(),
 })
 
 /**
@@ -2084,6 +2086,7 @@ export const zWorkflowChangedError = zErrorResponse.and(
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
+  connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   files: z
     .array(
       z.union([
@@ -2119,6 +2122,7 @@ export const zWorkflowRunPayload = z.object({
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
+  workflow_id: z.uuid().nullish(),
 })
 
 /**

@@ -17,6 +17,7 @@ from services.end_user_connection_oauth_adapters import (
     RedisOAuthRefreshSingleFlight,
 )
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
+from services.end_user_connections.execution import ConnectionExecutionService
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
@@ -71,6 +72,24 @@ def build_end_user_connection_preflight(
     return ConnectionPreflightService(
         connections=repository,
         checks=connections,
+        requirements=PublishedPreflightRequirements(
+            workflows=repository,
+            providers=providers,
+            oauth=PluginConnectionOAuthGateway(
+                clients=repository,
+                providers=providers,
+                handler=OAuthHandler(),
+                auth=PluginCredentialAuthClient(),
+            ),
+        ),
+    )
+
+
+def build_end_user_connection_execution(*, database_client: sessionmaker[Session]) -> ConnectionExecutionService:
+    repository = EndUserConnectionRepository(session_factory=database_client)
+    providers = PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
+    return ConnectionExecutionService(
+        connections=repository,
         requirements=PublishedPreflightRequirements(
             workflows=repository,
             providers=providers,

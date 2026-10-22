@@ -113,6 +113,9 @@ export type BrandingModel = {
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
 export type ChatMessagePayload = {
+  connections?: {
+    [key: string]: string | null
+  } | null
   conversation_id?: string | null
   files?: Array<{
     [key: string]: unknown
@@ -124,6 +127,7 @@ export type ChatMessagePayload = {
   query: string
   response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
+  workflow_id?: string | null
 }
 
 export type CompletionMessagePayload = {
@@ -1371,6 +1375,9 @@ export type WorkflowChangedError = ErrorResponse & {
 }
 
 export type WorkflowRunPayload = {
+  connections?: {
+    [key: string]: string | null
+  } | null
   files?: Array<
     | {
         remote_url?: string
@@ -1404,6 +1411,7 @@ export type WorkflowRunPayload = {
   inputs: {
     [key: string]: unknown
   }
+  workflow_id?: string | null
 }
 
 export type EndUserConnectionPreflightResponseWritable = {
@@ -1493,15 +1501,18 @@ export type PostChatMessagesErrors = {
     | AgentNotPublishedError
     | AppUnavailableError
     | CompletionRequestError
+    | ConnectionConfigurationInvalidError
     | ModelCurrentlyNotSupportError
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionReauthorizationRequiredError | WorkflowChangedError | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2802,6 +2813,7 @@ export type PostWorkflowsRunData = {
 export type PostWorkflowsRunErrors = {
   400:
     | CompletionRequestError
+    | ConnectionConfigurationInvalidError
     | ModelCurrentlyNotSupportError
     | NotWorkflowAppError
     | ProviderNotInitializeError
@@ -2809,9 +2821,11 @@ export type PostWorkflowsRunErrors = {
     | ErrorResponse
   401: ErrorResponse
   403: TriggerWorkflowServiceModeUnavailableError | ErrorResponse
-  404: ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionReauthorizationRequiredError | WorkflowChangedError | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
