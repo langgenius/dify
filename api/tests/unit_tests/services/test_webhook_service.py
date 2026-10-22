@@ -820,6 +820,41 @@ class TestWebhookServiceUnit:
             with pytest.raises(ValueError, match="Invalid JSON body"):
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
+    @pytest.mark.parametrize("payload", [[{"event": "delivered"}, {"event": "open"}], "ping"])
+    def test_extract_and_validate_webhook_data_non_object_json(self, payload):
+        """A JSON array or scalar is passed through when no body parameters are configured."""
+        app = Flask(__name__)
+
+        with app.test_request_context(
+            "/webhook", method="POST", headers={"Content-Type": "application/json"}, json=payload
+        ):
+            node_config = {"data": {"method": "post", "content_type": "application/json"}}
+
+            result = WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+
+        assert result["body"] == payload
+
+    def test_extract_and_validate_webhook_data_non_object_json_with_body_params(self):
+        """Body parameters can't be read from a JSON array, so the request is rejected."""
+        app = Flask(__name__)
+
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            json=[{"event": "delivered"}],
+        ):
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "body": [{"name": "event", "type": "string", "required": False}],
+                }
+            }
+
+            with pytest.raises(ValueError, match="JSON body to be an object"):
+                WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+
     def test_extract_and_validate_webhook_data_validation_error(self):
         """Test unified data extraction with validation error."""
         app = Flask(__name__)
