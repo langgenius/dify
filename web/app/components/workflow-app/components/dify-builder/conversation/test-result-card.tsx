@@ -28,12 +28,18 @@ export const TestResultCard = ({
     payload.outcome ??
     (payload.status === 'succeeded' ? 'execution_succeeded_needs_review' : 'execution_failed')
   const succeeded = outcome === 'execution_succeeded_needs_review'
+  const unknown = outcome === 'execution_unknown'
   const headline =
     outcome === 'required_output_unresolved'
       ? t(($) => $['testResult.requiredOutputUnresolved'], { ns: 'difyBuilder' })
-      : outcome === 'execution_unknown'
-        ? t(($) => $['testResult.executionUnknown'], { ns: 'difyBuilder' })
-        : undefined
+      : undefined
+  const reviewNote =
+    renderText(payload.review_note) ||
+    (succeeded
+      ? t(($) => $['copy.replies.otherPathsAndGoalAcceptanceWereNotVerified'], {
+          ns: 'difyBuilder',
+        })
+      : undefined)
   const outputsLabel = t(($) => $['testResult.terminalOutputs'], { ns: 'difyBuilder' })
 
   return (
@@ -42,16 +48,28 @@ export const TestResultCard = ({
       headline={headline}
       invalidated={invalidated}
       status={{
-        state: succeeded ? 'done' : 'failed',
-        label: t(($) => (succeeded ? $['testResult.statusPassed'] : $['testResult.statusFailed']), {
-          ns: 'difyBuilder',
-        }),
-        className: succeeded ? 'text-util-colors-green-green-700' : undefined,
+        state: succeeded ? 'done' : unknown ? 'waiting' : 'failed',
+        label: t(
+          ($) =>
+            succeeded
+              ? $['testResult.statusPassed']
+              : unknown
+                ? $['testResult.executionUnknown']
+                : $['testResult.statusFailed'],
+          {
+            ns: 'difyBuilder',
+          },
+        ),
+        className: succeeded ? 'normal-case text-util-colors-green-green-700' : 'normal-case',
         icon: (
           <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
             <span
               className={
-                succeeded ? 'i-ri-checkbox-circle-line size-3.5' : 'i-ri-close-circle-line size-3.5'
+                succeeded
+                  ? 'i-ri-checkbox-circle-line size-3.5'
+                  : unknown
+                    ? 'i-ri-time-line size-3.5'
+                    : 'i-ri-close-circle-line size-3.5'
               }
             />
           </span>
@@ -61,6 +79,17 @@ export const TestResultCard = ({
       <div className="flex min-w-0 flex-col gap-2 system-xs-regular text-text-secondary">
         {payload.failure_reason && (
           <p className="wrap-anywhere whitespace-pre-wrap">{renderText(payload.failure_reason)}</p>
+        )}
+        {reviewNote && <p className="wrap-anywhere whitespace-pre-wrap">{reviewNote}</p>}
+        {!!payload.simulated_node_ids?.length && (
+          <dl className="flex min-w-0 flex-col gap-1">
+            <dt className="system-xs-medium">
+              {t(($) => $['testResult.simulatedNodes'], { ns: 'difyBuilder' })}
+            </dt>
+            <dd className="wrap-anywhere whitespace-pre-wrap">
+              {payload.simulated_node_ids.join(', ')}
+            </dd>
+          </dl>
         )}
         <ScrollArea className="max-h-80 min-w-0 rounded-sm">
           <ScrollAreaViewport

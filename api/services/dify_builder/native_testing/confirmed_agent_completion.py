@@ -301,6 +301,9 @@ def _project(*, sessions, actor, ref, request):
             _write_run(current, run)
             _write_run(reservation, run)
             repo._compare_and_advance_in_session(sql, session_id, owner.version, next_state, context, items)
+        from services.dify_builder import progress_bus
+
+        progress_bus.publish_native_change(session_id)
         return True
     except ConflictError:
         return False

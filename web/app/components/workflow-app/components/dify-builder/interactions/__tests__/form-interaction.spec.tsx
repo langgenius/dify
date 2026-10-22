@@ -38,7 +38,12 @@ const renderForm = (
     />,
   )
   const submit = screen.getByRole('button', {
-    name: variant === 'testdata' ? 'difyBuilder.runTest' : 'common.operation.submit',
+    name:
+      variant === 'testdata'
+        ? 'difyBuilder.runTest'
+        : variant === 'build_requirements'
+          ? 'difyBuilder.copy.actions.submitRequirements'
+          : 'difyBuilder.copy.actions.submitRules',
   })
   return { actionId, submit, submitInteraction }
 }

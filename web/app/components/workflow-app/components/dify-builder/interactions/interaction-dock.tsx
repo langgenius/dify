@@ -4,11 +4,13 @@ import type {
   DifyBuilderActionValidityChange,
   DifyBuilderActiveInteraction,
   DifyBuilderDecision,
+  SessionView,
 } from '../types'
 import type { InteractionResponseCopy } from './optimistic-response'
 import { Button } from '@langgenius/dify-ui/button'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useAtomValue } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormCard } from '../conversation/form-card'
@@ -19,6 +21,7 @@ import {
 } from '../conversation/form-values'
 import { ResourceCard } from '../conversation/resource-card'
 import { useBuilderText } from '../copy/use-builder-text'
+import { difyBuilderSessionViewAtom } from '../session/state'
 import { getDefaultActionPayload } from './action-payload'
 import { useDifyBuilderInteractionLocale } from './use-interaction-locale'
 
@@ -57,11 +60,13 @@ const InteractionDockShell = ({
 }
 
 const ChoiceInteraction = ({
+  actions,
   busy,
   decision,
   recheckReady,
   submitInteraction,
 }: {
+  actions: SessionView['actions']
   busy: boolean
   decision: DifyBuilderDecision
   recheckReady: boolean
@@ -73,7 +78,11 @@ const ChoiceInteraction = ({
   const options = decision.options ?? []
   const { renderText } = useBuilderText()
   const title = renderText(decision.title)
-  const [selectedId, setSelectedId] = useState(decision.default_option_id || options[0]?.id || '')
+  const requiresConsent = options.some((option) => option.id === 'confirm_test_operation')
+  const defaultOptionId = decision.default_option_id || options[0]?.id || ''
+  const requiresExplicitChoice =
+    requiresConsent || defaultOptionId === 'publish' || defaultOptionId === 'publish_workflow'
+  const [selectedId, setSelectedId] = useState(requiresExplicitChoice ? '' : defaultOptionId)
   const [freeText, setFreeText] = useState('')
   const [pending, setPending] = useState(false)
   const selectedOption = options.find((option) => option.id === selectedId)
@@ -92,6 +101,7 @@ const ChoiceInteraction = ({
     setPending(true)
     try {
       await submitInteraction('confirm', {
+        ...actions?.find((action) => action.id === selectedId)?.payload,
         option_id: selectedId,
         ...(optionInput && trimmedFreeText ? { free_text: trimmedFreeText } : {}),
       })
@@ -113,7 +123,9 @@ const ChoiceInteraction = ({
           loading={pending}
           disabled={pending ? false : busy || !canSubmit}
         >
-          {renderText(decision.submit?.label) || t(($) => $['operation.submit'], { ns: 'common' })}
+          {renderText(selectedOption?.label) ||
+            renderText(decision.submit?.label) ||
+            t(($) => $['operation.submit'], { ns: 'common' })}
         </Button>
       }
     >
@@ -237,7 +249,9 @@ const FormInteraction = ({
         >
           {actionId === 'provide_testdata'
             ? t(($) => $.runTest, { ns: 'difyBuilder' })
-            : t(($) => $['operation.submit'], { ns: 'common' })}
+            : actionId === 'submit_requirements'
+              ? t(($) => $['copy.actions.submitRequirements'], { ns: 'difyBuilder' })
+              : t(($) => $['copy.actions.submitRules'], { ns: 'difyBuilder' })}
         </Button>
       }
     >
@@ -301,7 +315,7 @@ const ResourceInteraction = ({
           loading={pending}
           disabled={pending ? false : busy}
         >
-          {t(($) => $['operation.submit'], { ns: 'common' })}
+          {t(($) => $['copy.actions.confirmResources'], { ns: 'difyBuilder' })}
         </Button>
       }
     >
@@ -343,6 +357,17 @@ export const DifyBuilderInteractionDock = ({
     copy: InteractionResponseCopy,
   ) => Promise<boolean>
 }) => {
+  const view = useAtomValue(difyBuilderSessionViewAtom)
+  const choiceKey = JSON.stringify([
+    view?.session_id,
+    view?.version,
+    decision,
+    view?.test_execution && [
+      view.test_execution.request_id,
+      view.test_execution.generation,
+      view.actions?.map((action) => [action.id, action.payload]),
+    ],
+  ])
   const locale = useDifyBuilderInteractionLocale()
   const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const { renderText } = useBuilderText()
@@ -380,6 +405,8 @@ export const DifyBuilderInteractionDock = ({
   if (decision) {
     return (
       <ChoiceInteraction
+        key={choiceKey}
+        actions={view?.actions}
         busy={busy}
         decision={decision}
         recheckReady={recheckReady}

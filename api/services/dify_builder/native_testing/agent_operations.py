@@ -1325,7 +1325,9 @@ def admit_confirmed_agent_execution(
         revision_basis="confirmed-canvas-v1",
     )
     context = compilation.context
-    with sessions.begin() as session:
+    from services.dify_builder.native_testing.repository import native_observation_transaction
+
+    with native_observation_transaction(sessions, session_id=lambda: session_id) as session:
         session.scalar(
             select(DifyBuilderSession)
             .where(

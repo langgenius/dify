@@ -18,12 +18,14 @@ pubsub client is initialized, so it must be called lazily inside
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from extensions.ext_redis import get_pubsub_broadcast_channel
 from libs.broadcast_channel.channel import Subscription, SupportsPreparedSubscription
 
 _TOPIC_FMT = "dify_builder:{session_id}"
+logger = logging.getLogger(__name__)
 
 
 def _topic(session_id: str) -> str:
@@ -33,6 +35,19 @@ def _topic(session_id: str) -> str:
 def publish(session_id: str, event: dict[str, Any]) -> None:
     """Publish ``event`` to ``session_id``'s progress topic, JSON-encoded."""
     get_pubsub_broadcast_channel().topic(_topic(session_id)).publish(json.dumps(event).encode())
+
+
+def publish_native_change(session_id: str) -> None:
+    """Notify observers after commit; delivery failure never retries execution.
+
+    No receipt or private native state travels on this invalidation. A live
+    subscriber rereads through the authenticated owner; reconnect restores the
+    durable snapshot if notification delivery was interrupted.
+    """
+    try:
+        publish(session_id, {"kind": "native_state_changed", "session_id": session_id})
+    except Exception:
+        logger.warning("Builder native observation notification unavailable")
 
 
 def subscribe(session_id: str) -> Subscription:

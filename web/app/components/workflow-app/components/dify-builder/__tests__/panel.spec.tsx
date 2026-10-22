@@ -7,6 +7,7 @@ import { queryClientAtom } from 'jotai-tanstack-query'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import DifyBuilderPanel from '../panel'
+import { createNativeReceipt } from '../session/__tests__/fixtures'
 import {
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
@@ -183,6 +184,33 @@ describe('DifyBuilderPanel', () => {
     }
   })
 
+  it('explains a native configuration wait while keeping cancel available and the session immutable', async () => {
+    const user = userEvent.setup()
+    renderPanel({
+      ...sessionView,
+      phase: 'test',
+      run_status: 'waiting_confirmation',
+      test_execution: createNativeReceipt({ status: 'waiting', wait_reason: 'configuration' }),
+      actions: [
+        {
+          id: 'cancel_test',
+          label: 'Cancel test',
+          kind: 'destructive',
+          payload: { request_id: 'request-1' },
+        },
+      ],
+    })
+    expect(screen.getByText('difyBuilder.testResult.configurationRequired')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'difyBuilder.reset' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: 'difyBuilder.messagePlaceholder' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Cancel test' }))
+    expect(mocks.runAction).toHaveBeenCalledExactlyOnceWith('cancel_test', {
+      request_id: 'request-1',
+    })
+    expect(mocks.reset).not.toHaveBeenCalled()
+    expect(mocks.sendMessage).not.toHaveBeenCalled()
+  })
+
   it('contains malformed conversation content while preserving controls and retries the same session', async () => {
     const user = userEvent.setup()
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -334,7 +362,7 @@ describe('DifyBuilderPanel', () => {
     renderPanel(choiceView)
 
     const option = screen.getByRole('radio', { name: 'Approve plan' })
-    const submit = screen.getByRole('button', { name: 'Submit' })
+    const submit = screen.getByRole('button', { name: 'Approve plan' })
     const dock = screen.getByRole('region', { name: 'Is this workflow plan ready to apply?' })
     const message = screen.getByText('Fix the workflow')
     expect(message.compareDocumentPosition(option) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -527,7 +555,7 @@ describe('DifyBuilderPanel', () => {
     }
   })
 
-  it('allows a terminal session to start a new flow from the composer', async () => {
+  it('continues the completed conversation from the composer', async () => {
     const user = userEvent.setup()
     renderPanel({
       ...sessionView,
@@ -542,15 +570,15 @@ describe('DifyBuilderPanel', () => {
     await user.type(composer, 'Build a smaller workflow')
     await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
 
-    expect(mocks.startBuild).toHaveBeenCalledWith('app-1', 'Build a smaller workflow', mocks.model)
-    expect(mocks.sendMessage).not.toHaveBeenCalled()
+    expect(mocks.sendMessage).toHaveBeenCalledWith('Build a smaller workflow')
+    expect(mocks.startBuild).not.toHaveBeenCalled()
   })
 
   it('submits a selected action through the single Submit button', async () => {
     const user = userEvent.setup()
     renderPanel(choiceView)
 
-    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await user.click(screen.getByRole('button', { name: 'Approve plan' }))
 
     expect(mocks.runAction.mock.calls.at(-1)?.slice(0, 2)).toEqual([
       'confirm',
@@ -567,7 +595,7 @@ describe('DifyBuilderPanel', () => {
     mocks.runAction.mockReturnValueOnce(action)
     renderPanel(choiceView)
 
-    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await user.click(screen.getByRole('button', { name: 'Approve plan' }))
 
     const log = screen.getByRole('log', { name: 'difyBuilder.panelTitle' })
     expect(
@@ -596,7 +624,7 @@ describe('DifyBuilderPanel', () => {
     })
     mocks.runAction.mockReturnValueOnce(action)
     renderPanel(choiceView)
-    const submit = screen.getByRole('button', { name: 'Submit' })
+    const submit = screen.getByRole('button', { name: 'Approve plan' })
 
     try {
       await user.click(submit)
@@ -605,7 +633,7 @@ describe('DifyBuilderPanel', () => {
         screen.getByRole('heading', { level: 2, name: 'difyBuilder.panelTitle' }),
       ).toHaveFocus()
       expect(submit).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Submit' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Approve plan' })).not.toBeInTheDocument()
       expect(screen.getByRole('textbox', { name: 'difyBuilder.messagePlaceholder' })).toBeDisabled()
     } finally {
       await act(async () => {
@@ -640,7 +668,7 @@ describe('DifyBuilderPanel', () => {
       })
     })
 
-    expect(screen.queryByRole('button', { name: 'Submit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve plan' })).not.toBeInTheDocument()
     expect(close).toHaveFocus()
   })
 
@@ -679,10 +707,11 @@ describe('DifyBuilderPanel', () => {
       expect(
         within(dock).getByRole('radio', { name: 'difyBuilder.copy.actions.tryAgain' }),
       ).toBeChecked()
-      const submit = within(dock).getByRole('button', { name: 'Submit' })
+      const submit = within(dock).getByRole('button', { name: 'difyBuilder.copy.actions.tryAgain' })
       expect(submit).toBeEnabled()
 
       await user.click(within(dock).getByRole('radio', { name: label }))
+      expect(submit).toHaveAccessibleName(label)
       await user.click(submit)
 
       expect(mocks.runAction.mock.calls.at(-1)?.slice(0, 2)).toEqual([
@@ -715,7 +744,7 @@ describe('DifyBuilderPanel', () => {
     const dock = screen.getByRole('region', { name: 'How should Builder proceed with this fix?' })
     await user.click(within(dock).getByRole('radio', { name: 'Reject' }))
     expect(within(dock).queryByRole('textbox')).not.toBeInTheDocument()
-    const submit = within(dock).getByRole('button', { name: 'Submit' })
+    const submit = within(dock).getByRole('button', { name: 'Reject' })
     expect(submit).toBeEnabled()
     await user.click(submit)
 
@@ -1039,7 +1068,7 @@ describe('DifyBuilderPanel', () => {
     })
 
     expect(screen.getByRole('radio', { name: 'Re-check' })).toBeChecked()
-    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Re-check' })).toBeDisabled()
   })
 
   it('allows an interrupted execution to be reset while keeping the composer disabled', async () => {
@@ -1085,7 +1114,7 @@ describe('DifyBuilderPanel', () => {
     expect(screen.getAllByText(reason)).toHaveLength(1)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Continue' })).toBeChecked()
-    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
     expect(mocks.runAction.mock.calls.at(-1)?.slice(0, 2)).toEqual([
       'confirm',
       { option_id: 'recovery_continue' },
@@ -1117,7 +1146,7 @@ describe('DifyBuilderPanel', () => {
 
     const retry = screen.getByRole('button', { name: 'workflow.common.retryCanvasSync' })
     expect(retry).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Approve plan' })).toBeDisabled()
     expect(
       screen.queryByRole('textbox', { name: 'difyBuilder.messagePlaceholder' }),
     ).not.toBeInTheDocument()

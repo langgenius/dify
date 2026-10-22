@@ -92,9 +92,15 @@ export const getSessionConversation = (
     { context: { silent: true }, signal },
   )
 
-export const getSessionStream = (sessionId: string, signal: AbortSignal) =>
+export const getSessionStream = (sessionId: string, signal: AbortSignal, nativeCursor?: string) =>
   consoleClient.difyBuilder.sessions.bySessionId.stream.get(
-    { params: { session_id: sessionId } },
+    {
+      params: { session_id: sessionId },
+      ...(nativeCursor !== undefined
+        ? { query: { native_tests: 'builder-native-test-v1' as const } }
+        : {}),
+      ...(nativeCursor ? { headers: { 'Last-Event-ID': nativeCursor } } : {}),
+    },
     { context: { silent: true }, signal },
   )
 
@@ -106,12 +112,14 @@ export const runSessionAction = (
   baseAppRevision: string,
   signal: AbortSignal,
   receiptSnapshot?: DifyBuilderReceiptSnapshot,
+  clientActionId?: string,
 ) =>
   consoleClient.difyBuilder.sessions.bySessionId.actions.post(
     {
       params: { session_id: sessionId },
       body: {
         action_id: actionId,
+        ...(clientActionId ? { client_action_id: clientActionId } : {}),
         payload,
         base_version: baseVersion,
         base_app_revision: baseAppRevision,

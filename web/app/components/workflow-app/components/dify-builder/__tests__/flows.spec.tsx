@@ -361,7 +361,7 @@ const getComposer = () => screen.getByRole('textbox', { name: 'difyBuilder.messa
 
 const getSendButton = () => screen.getByRole('button', { name: 'difyBuilder.messageSend' })
 
-const getSubmitButton = () => screen.getByRole('button', { name: 'Submit' })
+const getSubmitButton = (name: string) => screen.getByRole('button', { name })
 
 describe('Dify Builder Build, Edit, and Fix flows', () => {
   beforeEach(() => {
@@ -438,10 +438,14 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     renderFlow()
     await user.type(getComposer(), 'Build a support workflow')
     await user.click(getSendButton())
-    const submit = await screen.findByRole('button', { name: 'common.operation.submit' })
+    const submit = await screen.findByRole('button', {
+      name: 'difyBuilder.copy.actions.submitRequirements',
+    })
     await waitFor(() => expect(submit).toBeEnabled())
     await user.click(submit)
-    const confirm = await screen.findByRole('button', { name: 'common.operation.submit' })
+    const confirm = await screen.findByRole('button', {
+      name: 'difyBuilder.copy.actions.confirmResources',
+    })
     await waitFor(() => expect(confirm).toBeEnabled())
     expect(screen.queryByRole('heading', { name: 'Support workflow' })).not.toBeInTheDocument()
     await user.click(confirm)
@@ -545,7 +549,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     renderFlow()
     const retry = await screen.findByRole('radio', { name: 'Retry' })
     await waitFor(() => expect(retry).toBeEnabled())
-    await user.click(getSubmitButton())
+    await user.click(getSubmitButton('Retry'))
     expect(await screen.findByRole('radio', { name: 'Confirm resources' })).toBeInTheDocument()
     expect(screen.queryByText('Keep my original goal.')).not.toBeInTheDocument()
     expect(mocks.conversation).toHaveBeenCalledOnce()
@@ -607,7 +611,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       expect(mocks.refreshCanvas).toHaveBeenCalledOnce()
       expect(mocks.stream).not.toHaveBeenCalled()
 
-      await user.click(getSubmitButton())
+      await user.click(getSubmitButton('Run test'))
 
       const publish = await screen.findByRole('radio', { name: 'Publish' })
       await waitFor(() => expect(publish).toBeEnabled())
@@ -723,7 +727,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
 
     const approve = await screen.findByRole('radio', { name: 'Approve changes' })
     await waitFor(() => expect(approve).toBeEnabled())
-    await user.click(getSubmitButton())
+    await user.click(getSubmitButton('Approve changes'))
 
     expect(mocks.action).toHaveBeenCalledOnce()
     expect(mocks.action.mock.calls[0]?.[0].body).toMatchObject({
@@ -765,7 +769,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       renderFlow(1, reactStrictMode)
 
       const runTest = await screen.findByRole('radio', { name: 'Run test' })
-      expect(getSubmitButton()).toBeDisabled()
+      expect(getSubmitButton('Run test')).toBeDisabled()
       expect(mocks.refreshCanvas).not.toHaveBeenCalled()
 
       await act(async () => finishHistory(conversationPage()))
@@ -993,7 +997,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       }
       const approve = await screen.findByRole('radio', { name: 'Approve changes' })
       await waitFor(() => expect(approve).toBeEnabled())
-      await user.click(getSubmitButton())
+      await user.click(getSubmitButton('Approve changes'))
       await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
 
       await act(async () => {
@@ -1099,7 +1103,12 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: actionId === 'provide_testdata' ? 'difyBuilder.runTest' : 'common.operation.submit',
+          name:
+            actionId === 'provide_testdata'
+              ? 'difyBuilder.runTest'
+              : actionId === 'submit_requirements'
+                ? 'difyBuilder.copy.actions.submitRequirements'
+                : 'difyBuilder.copy.actions.submitRules',
         }),
       )
       await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
@@ -1179,7 +1188,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     expect(await screen.findByText('Plan reconciled from the server.')).toBeInTheDocument()
     await waitFor(() => expect(approvePlan).toBeEnabled())
 
-    await user.click(getSubmitButton())
+    await user.click(getSubmitButton('Approve plan'))
     await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
     expect(getComposer()).toBeDisabled()
 
@@ -1396,7 +1405,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce())
     expect(screen.queryByRole('textbox', { name: 'Build audience' })).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'common.operation.submit' }),
+      screen.queryByRole('button', { name: 'difyBuilder.copy.actions.submitRequirements' }),
     ).not.toBeInTheDocument()
 
     await act(async () => {

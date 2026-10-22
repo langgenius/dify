@@ -21,6 +21,7 @@ export type SessionCommandOptions = {
   knownSessionId?: string
   expectTerminalEvent: boolean
   startsSession?: boolean
+  prepareDraft?: boolean
   trace?: { kind: string; payload: unknown }
 }
 
