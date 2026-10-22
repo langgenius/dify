@@ -36,7 +36,17 @@ describe('validateKnowledgeRetrievals', () => {
     }))
 
     expect(validateKnowledgeRetrievals([classic, ...spaces]).isValid).toBe(true)
-    expect(validateKnowledgeRetrievals([...spaces, { ...spaces[0], id: 'extra', name: 'Extra', controlSpaceId: '00000000-0000-4000-8000-000000000011' }]).isValid).toBe(false)
+    expect(
+      validateKnowledgeRetrievals([
+        ...spaces,
+        {
+          ...spaces[0],
+          id: 'extra',
+          name: 'Extra',
+          controlSpaceId: '00000000-0000-4000-8000-000000000011',
+        },
+      ]).isValid,
+    ).toBe(false)
   })
 
   it('should reject blank and duplicate names', () => {

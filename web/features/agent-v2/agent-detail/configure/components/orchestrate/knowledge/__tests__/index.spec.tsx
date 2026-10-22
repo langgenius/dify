@@ -366,7 +366,10 @@ describe('KnowledgeFS composer interaction', () => {
     expect(snapshot().knowledge.sets).toHaveLength(1)
     await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
-    expect(snapshot().knowledge.sets[0]).toMatchObject({ id: 'legacy', datasets: [{ id: 'dataset' }] })
+    expect(snapshot().knowledge.sets[0]).toMatchObject({
+      id: 'legacy',
+      datasets: [{ id: 'dataset' }],
+    })
     expect(snapshot().knowledge.spaces).toHaveLength(1)
   })
 

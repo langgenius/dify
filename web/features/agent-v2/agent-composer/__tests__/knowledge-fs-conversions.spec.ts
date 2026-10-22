@@ -40,8 +40,14 @@ describe('KnowledgeFS configuration round trip', () => {
       formState: { ...defaultAgentSoulConfigFormState, knowledgeRetrievals: [classic, binding] },
     })
 
-    expect(config.knowledge?.sets?.[0]).toMatchObject({ id: 'classic', datasets: classic.datasetRefs })
-    expect(config.knowledge?.spaces?.[0]).toMatchObject({ id: 'docs', control_space_id: binding.controlSpaceId })
+    expect(config.knowledge?.sets?.[0]).toMatchObject({
+      id: 'classic',
+      datasets: classic.datasetRefs,
+    })
+    expect(config.knowledge?.spaces?.[0]).toMatchObject({
+      id: 'docs',
+      control_space_id: binding.controlSpaceId,
+    })
     expect(agentSoulConfigToFormState(config).knowledgeRetrievals).toMatchObject([binding, classic])
     expect(validateKnowledgeRetrievals([classic, binding]).isValid).toBe(true)
   })
