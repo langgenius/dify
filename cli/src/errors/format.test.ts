@@ -64,3 +64,31 @@ it('renders each server hint as a next line with the op spelled as a command', (
     'next: difyctl check console_app dsl — See every problem',
   ])
 })
+
+it('prints the given command for each next line', () => {
+  const env = {
+    error: {
+      code: 'access_denied',
+      message: 'off',
+      server: {
+        message: 'off',
+        hints: [
+          {
+            summary: 'Turn it on',
+            op: 'set.service_api',
+            input: { app_id: 'a', enabled: true },
+          },
+        ],
+      },
+    },
+  }
+  expect(
+    renderEnvelope(env, plain, {
+      verbose: false,
+      nextCommands: ['difyctl set service_api --app-id a --enabled'],
+    }).split('\n'),
+  ).toEqual([
+    'access_denied: off',
+    'next: difyctl set service_api --app-id a --enabled — Turn it on',
+  ])
+})

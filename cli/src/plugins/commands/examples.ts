@@ -1,5 +1,6 @@
-import type { Example, JsonSchema } from '@/plugins/catalog'
-import { COMMAND_SEPARATOR } from '@/protocol/op-id'
+import type { CatalogOp, Example, JsonSchema } from '@/plugins/catalog'
+import type { Hint } from '@/protocol/hint'
+import { COMMAND_SEPARATOR, spacedId } from '@/protocol/op-id'
 import { isRepeatable, isScalar, propertiesOf, shapeOf } from '@/protocol/shape'
 import { argToken, flagToken } from '@/util/flag-name'
 import { shellWord } from '@/util/shell-word'
@@ -11,6 +12,7 @@ type ExampleSource = Readonly<{ id: string; input: JsonSchema; positional: reado
 
 const PLACEHOLDER = /^<[^<>]*>$/
 const SKELETON_TITLE = 'Required fields'
+const INPUT_FLAG = flagToken('input')
 
 // A placeholder stands for a value the caller fills in, whatever the field's shape.
 function word(text: string): string {
@@ -62,4 +64,25 @@ export function skeletonExample(d: ExampleSource): CommandExample {
     input: Object.fromEntries(required.map((name) => [name, argToken(name)])),
   }
   return { ...example, command: exampleLine(d, example) }
+}
+
+// A hint is a command the server suggests. A field the server left null is one the
+// caller fills in. A reserved field name cannot be typed as a flag, so the whole input
+// travels as JSON, exactly as the server wrote it.
+export function hintLine(
+  hint: Hint,
+  op: CatalogOp | undefined,
+  reserved: readonly string[],
+): string {
+  const id = spacedId(hint.op)
+  const input = hint.input ?? {}
+  if (Object.keys(input).some((name) => reserved.includes(name)))
+    return [BINARY, id, INPUT_FLAG, shellWord(JSON.stringify(input))].join(COMMAND_SEPARATOR)
+  const filled = Object.fromEntries(
+    Object.entries(input).map(([name, value]) => [name, value === null ? argToken(name) : value]),
+  )
+  return exampleLine(
+    { id, input: op?.input ?? {}, positional: [] },
+    { title: hint.summary, input: filled },
+  )
 }

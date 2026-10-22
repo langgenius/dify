@@ -3,6 +3,7 @@ import type { CommandContext } from '@/plugins/base'
 import type { CollectOptions, CommandTree, ResolvedCommand } from '@/plugins/commands/registry'
 import type { IOService } from '@/plugins/io'
 import type { OpsService, TreeOptions } from '@/plugins/ops'
+import type { Hint } from '@/protocol/hint'
 import { commandTree } from '@/commands/tree'
 import { BaseError, isBaseError, notLoggedInMessage } from '@/errors/base'
 import { ErrorCode, ExitCode } from '@/errors/codes'
@@ -10,7 +11,9 @@ import { errorMessage } from '@/errors/message'
 import { definePlugin } from '@/kernel/plugin'
 import { parseArgv } from '@/plugins/argv/parse'
 import { BASE_PLUGINS } from '@/plugins/base'
+import { catalog } from '@/plugins/catalog'
 import { HELP_WORD, helpHint, Outcome } from '@/plugins/commands/command'
+import { hintLine } from '@/plugins/commands/examples'
 import {
   entriesOf,
   helpListing,
@@ -29,12 +32,13 @@ import {
 import { descriptorsView, descriptorView, listingView, mapView } from '@/plugins/commands/text'
 import { globalFlags } from '@/plugins/global-flags'
 import { io } from '@/plugins/io'
-import { ops } from '@/plugins/ops'
+import { ops, RESERVED_FLAGS } from '@/plugins/ops'
 import { session } from '@/plugins/session'
 import { COMMAND_SEPARATOR } from '@/protocol/op-id'
 
 export type CommandsService = {
   readonly run: () => Promise<number>
+  readonly hintCommands: (hints: readonly Hint[]) => Promise<readonly string[]>
 }
 
 const HELP_FLAGS: readonly string[] = ['--help', '-h']
@@ -307,5 +311,11 @@ export async function runPipeline(tree: CommandTree, ctx: CommandContext): Promi
 export const commands = definePlugin({
   name: 'commands',
   needs: BASE_PLUGINS,
-  build: (ctx): CommandsService => ({ run: () => runPipeline(commandTree, ctx) }),
+  build: (ctx): CommandsService => ({
+    run: () => runPipeline(commandTree, ctx),
+    hintCommands: async (hints) => {
+      const catalogService = await ctx.get(catalog)
+      return hints.map((hint) => hintLine(hint, catalogService.op(hint.op), RESERVED_FLAGS))
+    },
+  }),
 })

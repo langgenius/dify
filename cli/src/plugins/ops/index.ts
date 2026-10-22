@@ -6,6 +6,8 @@ import { http } from '@/plugins/http'
 import { session } from '@/plugins/session'
 import { opsTree } from './tree'
 
+export { RESERVED_FLAGS } from './command'
+
 export type ListOptions = Readonly<{ includeInternal: boolean }>
 
 export type TreeOptions = ListOptions & Readonly<{ fresh: boolean }>

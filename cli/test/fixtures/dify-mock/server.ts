@@ -450,6 +450,22 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     if (scenario === 'auth-expired') return unauthorized()
     if (scenario === 'forbidden')
       return errorResponse(ServerErrorCode.Forbidden, 'you may not do this', 403, FORBIDDEN_HINT)
+    if (scenario === 'hinted-forbidden')
+      return Response.json(
+        {
+          code: 'service_api_disabled',
+          message: 'The Service API is off for this app.',
+          status: 403,
+          hints: [
+            {
+              summary: 'Turn the Service API on',
+              op: 'set.service_api',
+              input: { app_id: 'app-1', enabled: true },
+            },
+          ],
+        },
+        { status: 403 },
+      )
     if (scenario === 'license-invalid')
       return errorResponse(
         ServerErrorCode.LicenseInvalid,

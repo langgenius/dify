@@ -5,9 +5,10 @@ import { expect, it } from 'vite-plus/test'
 import { callOptionsSchema } from '@/call/flags'
 import SkillsInstall from '@/commands/install/skills/index'
 import { parseCatalog } from '@/plugins/catalog'
+import { RESERVED_FLAGS } from '@/plugins/ops'
 import { colorScheme } from '@/sys/io/color'
 import { commandRow } from './describe'
-import { commandExamples, exampleLine } from './examples'
+import { commandExamples, exampleLine, hintLine } from './examples'
 import { helpMap } from './help'
 import { descriptorView, fieldRows, listingView, mapView, SECTIONS } from './text'
 
@@ -244,4 +245,78 @@ it('a listing is one aligned row per entry', () => {
     "get console_app         List apps                    read list
     legacy_run console_app  Deprecated: use the mode op  write sse deprecated"
   `)
+})
+
+const RESERVED = ['input', 'stream', 'only', 'output', 'verbose', 'json', 'help']
+
+it('the reserved names hintLine is given match what the CLI reserves', () => {
+  expect(RESERVED_FLAGS).toEqual(RESERVED)
+})
+
+it('a hint prints as a runnable command with its input as flags', () => {
+  expect(
+    hintLine(
+      { summary: 'Turn it on', op: 'set.service_api', input: { app_id: 'app-1', enabled: true } },
+      OPS['set.service_api'],
+      RESERVED,
+    ),
+  ).toBe('difyctl set service_api --app-id app-1 --enabled')
+})
+
+it('a null input value prints as a placeholder for the caller to fill', () => {
+  expect(
+    hintLine(
+      {
+        summary: 's',
+        op: 'check.console_app.dsl',
+        input: { workspace_id: 'ws-1', yaml_content: null, app_id: 'a' },
+      },
+      OPS['check.console_app.dsl'],
+      RESERVED,
+    ),
+  ).toBe(
+    'difyctl check console_app dsl --workspace-id ws-1 --yaml-content <yaml_content> --app-id a',
+  )
+})
+
+it('a value with spaces, quotes or a newline stays one shell word', () => {
+  expect(
+    hintLine(
+      { summary: 's', op: 'set.service_api', input: { app_id: "it's a\nb" } },
+      OPS['set.service_api'],
+      RESERVED,
+    ),
+  ).toBe(`difyctl set service_api --app-id 'it'\\''s a\nb'`)
+})
+
+it('a list value prints as JSON when the schema does not say it repeats', () => {
+  expect(
+    hintLine(
+      { summary: 's', op: 'install.plugin', input: { identifiers: ['a/b:1', 'c/d:2'] } },
+      OPS['install.plugin'],
+      RESERVED,
+    ),
+  ).toBe(`difyctl install plugin --identifiers '["a/b:1","c/d:2"]'`)
+})
+
+it('an op missing from the catalog still prints its flags', () => {
+  expect(
+    hintLine({ summary: 's', op: 'gone.op', input: { app_id: 'x' } }, undefined, RESERVED),
+  ).toBe('difyctl gone op --app-id x')
+})
+
+it('a reserved field name sends the whole input through --input', () => {
+  expect(
+    hintLine(
+      { summary: 's', op: 'set.service_api', input: { app_id: 'x', output: 'y' } },
+      OPS['set.service_api'],
+      RESERVED,
+    ),
+  ).toBe(`difyctl set service_api --input '{"app_id":"x","output":"y"}'`)
+})
+
+it('a hint without input prints the bare command', () => {
+  expect(
+    hintLine({ summary: 's', op: 'describe.account' }, OPS['describe.account'], RESERVED),
+  ).toBe('difyctl describe account')
 })
