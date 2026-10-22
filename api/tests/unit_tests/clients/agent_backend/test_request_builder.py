@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Any, cast
 
@@ -599,16 +600,21 @@ def test_knowledge_fs_requires_shell_and_can_coexist_with_classic_knowledge(mode
     mixed_layers = {layer.name: layer for layer in build().composition.layers}
     assert DIFY_KNOWLEDGE_BASE_LAYER_ID in mixed_layers
     assert "knowledge_fs" in mixed_layers
-    assert mixed_layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config["sets"][0]["id"] == "legacy"
-    assert mixed_layers["knowledge_fs"].config["spaces"][0]["id"] == "docs"
+    classic_config = DifyKnowledgeBaseLayerConfig.model_validate(mixed_layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config)
+    knowledge_fs_config = DifyKnowledgeFsLayerConfig.model_validate(mixed_layers["knowledge_fs"].config)
+    assert classic_config.sets[0].id == "legacy"
+    assert knowledge_fs_config.spaces[0].id == "docs"
     run_input.execution_context.app_id = "app-1"
     client = httpx.AsyncClient()
-    services = Services(
-        plugin_daemon_http_client=client,
-        dify_api_http_client=client,
-        runtime_backend_profile=cast(Any, object()),
-        knowledge_session_store=cast(Any, object()),
-    )
-    modules = create_modules(load_modules(build(), services, "mixed-knowledge-run"))
-    assert DIFY_KNOWLEDGE_BASE_LAYER_ID in modules
-    assert "knowledge_fs" in modules
+    try:
+        services = Services(
+            plugin_daemon_http_client=client,
+            dify_api_http_client=client,
+            runtime_backend_profile=cast(Any, object()),
+            knowledge_session_store=cast(Any, object()),
+        )
+        modules = create_modules(load_modules(build(), services, "mixed-knowledge-run"))
+        assert DIFY_KNOWLEDGE_BASE_LAYER_ID in modules
+        assert "knowledge_fs" in modules
+    finally:
+        asyncio.run(client.aclose())
