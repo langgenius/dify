@@ -36,7 +36,6 @@ from libs.helper import EmailStr
 from libs.password import valid_password
 from libs.token import (
     clear_webapp_access_token_from_cookie,
-    extract_console_cookie_token,
     extract_webapp_access_token,
     extract_webapp_passport,
 )
@@ -153,7 +152,7 @@ class LoginStatusApi(Resource):
                 mode=query.mode,
                 app_code=query.app_code,
                 user_id=query.user_id,
-                access_token=(extract_webapp_access_token(request) or extract_console_cookie_token(request))
+                access_token=extract_webapp_access_token(request)
                 if query.mode == LoginMode.END_USER
                 else extract_web_login_token(),
                 app_session_token=extract_webapp_passport(query.app_code, request) if query.app_code else None,

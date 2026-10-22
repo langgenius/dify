@@ -1,9 +1,8 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from http.cookies import SimpleCookie
 from types import SimpleNamespace
 from typing import NoReturn
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 import pytest
 from flask import Flask
@@ -13,7 +12,7 @@ from controllers.console import wraps as console_wraps
 from controllers.console.auth import oauth as oauth_controller
 from controllers.console.auth.oauth import OAuthCallback, OAuthLogin
 from enums import DeploymentEdition
-from libs.oauth import EndUserOAuthState, decode_end_user_oauth_state, encode_end_user_oauth_state, encode_oauth_state
+from libs.oauth import EndUserOAuthState, encode_end_user_oauth_state, encode_oauth_state
 from services.account_errors import (
     InvalidOAuthProviderError,
     OAuthIdentityLockUnavailableError,
@@ -22,7 +21,6 @@ from services.account_errors import (
     OAuthRegistrationError,
 )
 from services.entities.account_entities import AccountSessionTokens
-from services.entities.account_login_entities import LoginMode
 from services.entities.account_oauth_entities import (
     OAuthAuthorizationRequest,
     OAuthCallbackCommand,
@@ -312,36 +310,6 @@ def _end_user_state(target: str) -> str:
     )
 
 
-def test_end_user_oauth_round_trip_preserves_mode_and_exact_return_target(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-) -> None:
-    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=True, APP_WEB_URL="https://apps.example.com/share")
-    service = FakeOAuthService()
-    _install_service(monkeypatch, service)
-    target = "https://apps.example.com/share/workflow/app-code?input=a%26b#result"
-    with app.test_request_context("/oauth/login/github", query_string={"mode": "end_user", "redirect_url": target}):
-        response = OAuthLogin().get("github")
-    authorization = service.authorization_calls[0][1]
-    assert authorization.mode == LoginMode.END_USER
-    assert authorization.state is not None
-    decoded = decode_end_user_oauth_state(authorization.state)
-    assert decoded.context["redirect_url"] == target
-    cookies = SimpleCookie()
-    cookies.load(response.headers["Set-Cookie"])
-    cookie = cookies["end_user_oauth_github"]
-    assert cookie["httponly"]
-    assert cookie["samesite"] == "Lax"
-    with app.test_request_context(
-        "/oauth/authorize/github",
-        query_string={"code": "code-1", "state": authorization.state},
-        headers={"Cookie": f"end_user_oauth_github={cookie.value}"},
-    ):
-        response = OAuthCallback().get("github")
-    assert response.headers["Location"] == target
-    assert service.callback_calls[0].mode == LoginMode.END_USER
-    assert any("end_user_oauth_github=;" in value for value in response.headers.getlist("Set-Cookie"))
-
-
 @pytest.mark.parametrize("failure", ["tampered", "missing_cookie", "missing_state", "wrong_cookie", "wrong_provider"])
 def test_end_user_oauth_rejects_unbound_or_modified_state(
     app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], failure: str
@@ -400,7 +368,8 @@ def test_callback_retry_keeps_end_user_mode_and_web_app_return_target(
     service = FakeOAuthService(callback_error=OAuthRegistrationError("Try again"))
     _install_service(monkeypatch, service)
     target = "https://apps.example.com/chatbot/app-code?input=a%26b#message"
-    state = _end_user_state(target)
+    resume = f"{CONSOLE_WEB_URL}/signin?{urlencode({'mode': 'end_user', 'redirect_url': target})}"
+    state = _end_user_state(resume)
     with app.test_request_context(
         "/oauth/authorize/github",
         query_string={"code": "code-1", "state": state},
@@ -411,3 +380,16 @@ def test_callback_retry_keeps_end_user_mode_and_web_app_return_target(
     assert destination.netloc == "console.example.com"
     assert destination.path == "/signin"
     assert parse_qs(destination.query) == {"message": ["Try again"], "mode": ["end_user"], "redirect_url": [target]}
+
+
+@pytest.mark.parametrize("target", ["https://evil.example/signin", "/apps", "//evil.example/signin"])
+def test_end_user_oauth_requires_a_console_signin_return_target(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], target: str
+) -> None:
+    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=True)
+    service = FakeOAuthService()
+    _install_service(monkeypatch, service)
+    with app.test_request_context("/oauth/login/github", query_string={"mode": "end_user", "redirect_url": target}):
+        with pytest.raises(ValueError, match="sign-in page"):
+            OAuthLogin().get("github")
+    assert service.authorization_calls == []

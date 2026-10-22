@@ -4,7 +4,7 @@ import json
 import logging
 import urllib.parse
 from dataclasses import dataclass
-from typing import Literal, NotRequired, TypedDict, override
+from typing import NotRequired, TypedDict, override
 
 import httpx
 from itsdangerous import BadData, URLSafeTimedSerializer
@@ -37,8 +37,6 @@ class OAuthState(TypedDict, total=False):
     timezone: str
     language: str
     redirect_url: str
-    app_code: str
-    code_challenge: str
 
 
 END_USER_OAUTH_STATE_PREFIX = "end_user."
@@ -46,7 +44,6 @@ END_USER_OAUTH_STATE_MAX_AGE = 600
 
 
 class EndUserOAuthState(BaseModel):
-    mode: Literal["end_user"] = "end_user"
     provider: str
     nonce: str
     context: OAuthState

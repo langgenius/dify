@@ -1,13 +1,16 @@
 import base64
 import hashlib
 from datetime import UTC, datetime, timedelta
+from http.cookies import SimpleCookie
 from types import SimpleNamespace
 from typing import cast
-from urllib.parse import parse_qs, urlsplit
+from unittest.mock import MagicMock
+from urllib.parse import parse_qs, urlencode, urlsplit
 from uuid import uuid4
 
 import pytest
 from flask import Flask
+from redis import RedisError
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console import bp as console_bp
@@ -15,9 +18,11 @@ from controllers.console import wraps
 from controllers.console.auth import login as console_login
 from controllers.web import bp as web_bp
 from controllers.web import passport
+from extensions.ext_redis import RedisClientWrapper
 from libs.passport import PassportService
 from repositories.web_passport_repository import WebPassportRepository
-from services.web_login_handoff import WebLoginGrant, WebLoginHandoffService, WebLoginTarget
+from services.web_login_handoff import WebLoginHandoffService, WebLoginTarget
+from services.web_login_handoff_adapters import RedisWebLoginGrantStore
 from services.web_passport_gateways import PassportTokenGateway
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.controllers.web.test_web_account_passport_flow import identity_flow as identity_flow  # noqa: PLC0414 -- Register the shared pytest fixture in this module.
@@ -28,27 +33,14 @@ CHALLENGE = base64.urlsafe_b64encode(hashlib.sha256(VERIFIER.encode()).digest())
 RETURN_URL = "https://apps.example.net/chatbot/app-a?input=a%26b#message"
 
 
-class GrantStore:
-    def __init__(self) -> None:
-        self.records: dict[str, WebLoginGrant] = {}
-
-    def put(self, key: str, grant: WebLoginGrant) -> None:
-        self.records[key] = grant
-
-    def get(self, key: str) -> WebLoginGrant | None:
-        return self.records.get(key)
-
-    def consume(self, key: str) -> WebLoginGrant | None:
-        return self.records.pop(key, None)
-
-
 @pytest.fixture
 def handoff(
     identity_flow: tuple[PassportService, WebAccounts],
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> SimpleNamespace:
-    signer, accounts = identity_flow
+    signer, _ = identity_flow
     apply_config_overrides(
         monkeypatch,
         WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
@@ -56,11 +48,33 @@ def handoff(
         CONSOLE_API_URL="https://console.example.com",
         APP_WEB_URL="https://apps.example.net",
         COOKIE_DOMAIN="",
+        REDIS_KEY_PREFIX="deployment-a",
     )
+    redis, commands = redis_transport
+    records: dict[str, str] = {}
+
+    def execute(command: str, *args: object, **kwargs: object) -> object:
+        del kwargs
+        key = str(args[0])
+        assert key.startswith("deployment-a:webapp:login-grant:")
+        if command == "SET":
+            assert "NX" in args
+            assert args[args.index("EX") + 1] == 60
+            if key in records:
+                return None
+            records[key] = str(args[1])
+            return True
+        if command == "GET":
+            return records.get(key)
+        if command == "GETDEL":
+            return records.pop(key, None)
+        raise AssertionError(command)
+
+    commands.side_effect = execute
     services = cast(SimpleNamespace, passport.application_services())
     clock = [datetime.now(UTC)]
     services.web_login_handoff = WebLoginHandoffService(
-        grants=GrantStore(),
+        grants=RedisWebLoginGrantStore(redis=redis),
         apps=WebPassportRepository(session_factory=sqlite_session_factory, generate_session_id=lambda: str(uuid4())),
         identities=services.web_identity,
         tokens=PassportTokenGateway(passport=signer),
@@ -77,7 +91,7 @@ def handoff(
     login = signer.issue(
         {"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": int((clock[0] + timedelta(hours=1)).timestamp())}
     )
-    return SimpleNamespace(app=app, services=services, signer=signer, login=login, clock=clock, accounts=accounts)
+    return SimpleNamespace(app=app, services=services, signer=signer, login=login, clock=clock, commands=commands)
 
 
 def test_existing_console_session_crosses_sites_and_reuses_passport(handoff: SimpleNamespace) -> None:
@@ -198,17 +212,21 @@ def test_oauth_returns_through_webapp_signin_with_pkce_handoff(
     handoff.services.accounts = SimpleNamespace(oauth=service)
     monkeypatch.setattr(oauth, "application_services", lambda: handoff.services)
     client = handoff.app.test_client()
+    resume_query = {"mode": "end_user", "app_code": "app-a", "redirect_url": RETURN_URL, "code_challenge": CHALLENGE}
+    resume = f"https://console.example.com/signin?{urlencode(resume_query)}"
     response = client.get(
         "/console/api/oauth/login/github",
         base_url="https://console.example.com",
         query_string={
             "mode": "end_user",
-            "app_code": "app-a",
-            "redirect_url": RETURN_URL,
-            "code_challenge": CHALLENGE,
+            "redirect_url": resume,
         },
     )
     assert response.status_code == 302
+    cookies = SimpleCookie()
+    cookies.load(response.headers["Set-Cookie"])
+    assert cookies["end_user_oauth_github"]["httponly"]
+    assert cookies["end_user_oauth_github"]["samesite"] == "Lax"
     state = service.authorization_calls[0][1].state
     response = client.get(
         "/console/api/oauth/authorize/github",
@@ -216,7 +234,10 @@ def test_oauth_returns_through_webapp_signin_with_pkce_handoff(
         query_string={"code": "provider-code", "state": state},
     )
     assert response.status_code == 302
-    target = urlsplit(response.headers["Location"])
+    assert response.headers["Location"] == resume
+    response = client.get("/console/api/login", base_url="https://console.example.com", query_string=resume_query)
+    assert response.status_code == 200
+    target = urlsplit(response.json["redirect_url"])
     assert target.netloc == "apps.example.net"
     assert target.path == "/webapp-signin"
     query = parse_qs(target.query)
@@ -233,55 +254,33 @@ def test_oauth_returns_through_webapp_signin_with_pkce_handoff(
     assert response.status_code == 200
 
 
-def test_handoff_storage_failure_has_documented_retryable_error(
-    handoff: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from unittest.mock import Mock
+@pytest.mark.parametrize("failed_command", ["SET", "GET", "GETDEL"])
+def test_handoff_storage_failure_has_documented_retryable_error(handoff: SimpleNamespace, failed_command: str) -> None:
+    service = handoff.services.web_login_handoff
+    target = WebLoginTarget(app_code="app-a", redirect_url=RETURN_URL, code_challenge=CHALLENGE)
+    code = parse_qs(urlsplit(service.authorize(target, handoff.login)).query)["login_code"][0]
+    execute = handoff.commands.side_effect
 
-    from services.web_login_handoff import WebLoginUnavailableError
+    def fail(command: str, *args: object, **kwargs: object) -> object:
+        if command == failed_command:
+            raise RedisError("unavailable")
+        return execute(command, *args, **kwargs)
 
-    monkeypatch.setattr(handoff.services.web_login_handoff, "authorize", Mock(side_effect=WebLoginUnavailableError()))
+    handoff.commands.side_effect = fail
     client = handoff.app.test_client()
-    client.set_cookie("__Host-access_token", handoff.login, domain="console.example.com", secure=True)
-    response = client.get(
-        "/console/api/login",
-        base_url="https://console.example.com",
-        query_string={
-            "app_code": "app-a",
-            "redirect_url": RETURN_URL,
-            "code_challenge": CHALLENGE,
-        },
-    )
+    if failed_command == "SET":
+        client.set_cookie("__Host-access_token", handoff.login, domain="console.example.com", secure=True)
+        response = client.get(
+            "/console/api/login",
+            base_url="https://console.example.com",
+            query_string=target.model_dump(),
+        )
+    else:
+        response = client.post(
+            "/api/passport",
+            base_url="https://apps.example.net",
+            headers={"X-App-Code": "app-a"},
+            json={"login_code": code, "code_verifier": VERIFIER},
+        )
     assert response.status_code == 503
     assert response.json["code"] == "web_login_unavailable"
-
-
-def test_password_login_returns_the_same_handoff_contract(
-    handoff: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from unittest.mock import Mock
-
-    from services.entities.account_entities import AccountSessionTokens
-    from services.entities.account_login_entities import LoginMode, PasswordLoginResult
-
-    monkeypatch.setattr(wraps.SystemFeatureService, "is_email_password_login_enabled", lambda: True)
-    authentication = Mock()
-    authentication.login_with_password.return_value = PasswordLoginResult(
-        tokens=AccountSessionTokens(handoff.login, "refresh", "csrf"),
-        workspace_found=None,
-    )
-    handoff.services.accounts = SimpleNamespace(authentication=authentication)
-    response = handoff.app.test_client().post(
-        "/console/api/login",
-        base_url="https://console.example.com",
-        json={
-            "mode": "end_user",
-            "email": "consumer@example.com",
-            "password": base64.b64encode(b"Valid1234").decode(),
-            "webapp_login": {"app_code": "app-a", "redirect_url": RETURN_URL, "code_challenge": CHALLENGE},
-        },
-    )
-    assert response.status_code == 200
-    assert response.json["result"] == "success"
-    assert urlsplit(response.json["redirect_url"]).path == "/webapp-signin"
-    assert authentication.login_with_password.call_args.args[0].mode == LoginMode.END_USER

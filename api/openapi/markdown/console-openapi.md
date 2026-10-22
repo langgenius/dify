@@ -7052,10 +7052,9 @@ Delete an API key for a dataset
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountCodeLoginResponse](#accountcodeloginresponse)<br> |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailCodeError](#emailcodeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[LimitExceededError](#limitexceedederror)<br>[NormalizedEmailAlreadyInUseError](#normalizedemailalreadyinuseerror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[TurnstileVerificationFailedError](#turnstileverificationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [EmailCodeLoginServiceUnavailableError](#emailcodeloginserviceunavailableerror)<br>[TurnstileServiceUnavailableError](#turnstileserviceunavailableerror)<br>[WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [EmailCodeLoginServiceUnavailableError](#emailcodeloginserviceunavailableerror)<br>[TurnstileServiceUnavailableError](#turnstileserviceunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-register
@@ -7887,7 +7886,7 @@ Get instruction generation template
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /login
-Called by /signin in the Account origin before showing a login form. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed; otherwise returns a one-use PKCE-bound callback to the existing /webapp-signin page.
+Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed; otherwise returns a one-use PKCE-bound callback to the existing /webapp-signin page.
 
 #### Parameters
 
@@ -7919,11 +7918,10 @@ Called by /signin in the Account origin before showing a login form. Reuses or r
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountPasswordLoginResponse](#accountpasswordloginresponse)<br> |
+| 200 | Success | **application/json**: [SimpleResultOptionalDataResponse](#simpleresultoptionaldataresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[LimitExceededError](#limitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [EmailCodeLoginLimitError](#emailcodeloginlimiterror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /logout
@@ -8032,8 +8030,6 @@ Handle OAuth callback and complete login process
 | ---- | ----------- | ------ |
 | 302 | Redirect to console with access token | **application/json**: [RedirectResponse](#redirectresponse)<br> |
 | 400 | OAuth process failed | **application/json**: [OAuthErrorResponse](#oautherrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/data-source/binding/{provider}
@@ -8117,12 +8113,10 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path | OAuth provider name (github/google) | Yes | string |
-| app_code | query |  | No | string |
-| code_challenge | query |  | No | string |
 | invite_token | query | Optional invitation token | No | string |
 | language | query | Preferred interface language | No | string |
 | mode | query | End User mode skips workspace admission and provisioning | No | string, <br>**Available values:** "console", "end_user", <br>**Default:** console |
-| redirect_url | query | Page to resume after login; End User mode requires a configured Web App URL | No | string |
+| redirect_url | query | Console page to resume after login; End User mode resumes /signin to complete the Web App handoff | No | string |
 | timezone | query | Preferred timezone | No | string |
 
 #### Responses
@@ -15067,13 +15061,6 @@ Account is banned.
 | ---- | ---- | ----------- | -------- |
 | AccountBannedError |  | Account is banned. |  |
 
-#### AccountCodeLoginResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| redirect_url | string |  | No |
-| result | string | Operation result. | Yes |
-
 #### AccountDeletePayload
 
 | Name | Type | Description | Required |
@@ -15152,14 +15139,6 @@ Account not link tenant.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AccountNotLinkTenantError |  | Account not link tenant. |  |
-
-#### AccountPasswordLoginResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | string |  | No |
-| redirect_url | string |  | No |
-| result | string |  | Yes |
 
 #### AccountPasswordPayload
 
@@ -21278,7 +21257,6 @@ Too many incorrect password attempts. Please try again later.
 | timezone | string |  | No |
 | token | string (uuid) |  | Yes |
 | turnstile_token | string | Cloudflare Turnstile token for email-code verification. | No |
-| webapp_login | [WebLoginTarget](#weblogintarget) | Optional S256 PKCE Web App handoff. The initiating browser must retain its code_verifier across the login window. | No |
 
 #### EmailCodeLoginRateLimitExceededError
 
@@ -21397,14 +21375,6 @@ Too many emails have been sent from this IP address recently. Please try again l
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | EmptyObjectResponse | object |  |  |
-
-#### EndUserLoginRequiredError
-
-Sign in to manage personal connections.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| EndUserLoginRequiredError |  | Sign in to manage personal connections. |  |
 
 #### Endpoint
 
@@ -22823,7 +22793,6 @@ Unable to create account because the licensed seats limit was exceeded
 | mode | [LoginMode](#loginmode) | End User mode authenticates an Account without workspace admission or provisioning. | No |
 | password | string |  | Yes |
 | remember_me | boolean | Remember me flag | No |
-| webapp_login | [WebLoginTarget](#weblogintarget) | Optional S256 PKCE Web App handoff. The initiating browser must retain its code_verifier across the login window. | No |
 
 #### LoopNodeRunPayload
 
@@ -23772,12 +23741,10 @@ Only support workflow app.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_code | string |  | No |
-| code_challenge | string |  | No |
 | invite_token | string | Optional invitation token | No |
 | language | string | Preferred interface language | No |
 | mode | [LoginMode](#loginmode) | End User mode skips workspace admission and provisioning | No |
-| redirect_url | string | Page to resume after login; End User mode requires a configured Web App URL | No |
+| redirect_url | string | Console page to resume after login; End User mode resumes /signin to complete the Web App handoff | No |
 | timezone | string | Preferred timezone | No |
 
 #### OAuthProviderAccountResponse
@@ -28308,14 +28275,6 @@ The app access service is unavailable. Try again later.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
-
-#### WebLoginTarget
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| app_code | string |  | Yes |
-| code_challenge | string | S256 PKCE challenge | Yes |
-| redirect_url | string |  | Yes |
 
 #### WebLoginUnavailableError
 

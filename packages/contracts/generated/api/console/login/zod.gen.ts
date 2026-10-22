@@ -39,11 +39,10 @@ export const zWebLoginUnavailableError = zErrorResponse.and(
 )
 
 /**
- * AccountPasswordLoginResponse
+ * SimpleResultOptionalDataResponse
  */
-export const zAccountPasswordLoginResponse = z.object({
+export const zSimpleResultOptionalDataResponse = z.object({
   data: z.string().nullish(),
-  redirect_url: z.string().nullish(),
   result: z.string(),
 })
 
@@ -144,18 +143,6 @@ export const zAuthenticationFailedError = zErrorResponse.and(
 )
 
 /**
- * EndUserLoginRequiredError
- *
- * Sign in to manage personal connections.
- */
-export const zEndUserLoginRequiredError = zErrorResponse.and(
-  z.object({
-    code: z.literal('end_user_login_required'),
-    status: z.literal(401),
-  }),
-)
-
-/**
  * EmailCodeLoginLimitError
  *
  * Too many incorrect password attempts. Please try again later.
@@ -173,15 +160,6 @@ export const zEmailCodeLoginLimitError = zErrorResponse.and(
 export const zLoginMode = z.enum(['console', 'end_user'])
 
 /**
- * WebLoginTarget
- */
-export const zWebLoginTarget = z.object({
-  app_code: z.string().min(1),
-  code_challenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
-  redirect_url: z.string().min(1),
-})
-
-/**
  * LoginPayload
  */
 export const zLoginPayload = z.object({
@@ -190,7 +168,6 @@ export const zLoginPayload = z.object({
   mode: zLoginMode.optional().default('console'),
   password: z.string(),
   remember_me: z.boolean().optional().default(false),
-  webapp_login: zWebLoginTarget.nullish(),
 })
 
 export const zGetLoginQuery = z.object({
@@ -210,4 +187,4 @@ export const zPostLoginBody = zLoginPayload
 /**
  * Success
  */
-export const zPostLoginResponse = zAccountPasswordLoginResponse
+export const zPostLoginResponse = zSimpleResultOptionalDataResponse

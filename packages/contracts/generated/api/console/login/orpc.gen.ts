@@ -9,7 +9,6 @@ import {
   zAuthenticationFailedError,
   zEmailCodeLoginLimitError,
   zEmailDomainSuspendedError,
-  zEndUserLoginRequiredError,
   zInvalidAccountPasswordError,
   zInvalidEmailError,
   zLimitExceededError,
@@ -18,12 +17,12 @@ import {
 import { zGetLoginQuery, zGetLoginResponse, zPostLoginBody, zPostLoginResponse } from './zod.gen.ts'
 
 /**
- * Called by /signin in the Account origin before showing a login form. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed; otherwise returns a one-use PKCE-bound callback to the existing /webapp-signin page.
+ * Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed; otherwise returns a one-use PKCE-bound callback to the existing /webapp-signin page.
  */
 export const get = oc
   .route({
     description:
-      'Called by /signin in the Account origin before showing a login form. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed; otherwise returns a one-use PKCE-bound callback to the existing /webapp-signin page.',
+      'Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed; otherwise returns a one-use PKCE-bound callback to the existing /webapp-signin page.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getLogin',
@@ -55,11 +54,9 @@ export const post = oc
     authentication_failed: { status: 401, data: zAuthenticationFailedError },
     email_code_login_limit: { status: 429, data: zEmailCodeLoginLimitError },
     email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
-    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
     invalid_email: { status: 400, data: zInvalidEmailError },
     limit_exceeded: { status: 400, data: zLimitExceededError },
-    web_login_unavailable: { status: 503, data: zWebLoginUnavailableError },
   })
 
 export const login = {

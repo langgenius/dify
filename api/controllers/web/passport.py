@@ -14,8 +14,7 @@ from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import dump_response
-from libs.passport import PassportService
-from libs.token import check_csrf_token, extract_console_cookie_token, extract_webapp_access_token
+from libs.token import extract_webapp_access_token
 from services.entities.account_login_entities import LoginMode
 from services.entities.passport_entities import WebPassportRequest
 from services.web_passport_service import (
@@ -78,23 +77,10 @@ class PassportResource(Resource):
         if app_code is None:
             raise Unauthorized("X-App-Code header is missing.")
 
-        login_token = extract_webapp_access_token(request)
-        if query.mode == LoginMode.END_USER and not login_token:
-            login_token = extract_console_cookie_token(request)
-            if login_token:
-                claims = PassportService().verify(login_token)
-                account_id = claims.get("user_id")
-                if (
-                    claims.get("sub") != "Console API Passport"
-                    or claims.get("token_source") is not None
-                    or not isinstance(account_id, str)
-                ):
-                    raise ConnectionLoginRequiredError()
-                check_csrf_token(request, account_id)
         passport_request = WebPassportRequest(
             app_code=app_code,
             user_session_id=query.user_id,
-            access_token=login_token,
+            access_token=extract_webapp_access_token(request),
             mode=query.mode,
         )
         try:

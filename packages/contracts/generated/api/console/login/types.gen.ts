@@ -30,12 +30,10 @@ export type LoginPayload = {
   mode?: LoginMode
   password: string
   remember_me?: boolean
-  webapp_login?: WebLoginTarget | null
 }
 
-export type AccountPasswordLoginResponse = {
+export type SimpleResultOptionalDataResponse = {
   data?: string | null
-  redirect_url?: string | null
   result: string
 }
 
@@ -79,23 +77,12 @@ export type AuthenticationFailedError = ErrorResponse & {
   status: 401
 }
 
-export type EndUserLoginRequiredError = ErrorResponse & {
-  code: 'end_user_login_required'
-  status: 401
-}
-
 export type EmailCodeLoginLimitError = ErrorResponse & {
   code: 'email_code_login_limit'
   status: 429
 }
 
 export type LoginMode = 'console' | 'end_user'
-
-export type WebLoginTarget = {
-  app_code: string
-  code_challenge: string
-  redirect_url: string
-}
 
 export type GetLoginData = {
   body?: never
@@ -139,16 +126,15 @@ export type PostLoginErrors = {
     | InvalidEmailError
     | LimitExceededError
     | ErrorResponse
-  401: AuthenticationFailedError | EndUserLoginRequiredError | ErrorResponse
+  401: AuthenticationFailedError | ErrorResponse
   429: EmailCodeLoginLimitError | ErrorResponse
-  503: WebLoginUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
 export type PostLoginError = PostLoginErrors[keyof PostLoginErrors]
 
 export type PostLoginResponses = {
-  200: AccountPasswordLoginResponse
+  200: SimpleResultOptionalDataResponse
 }
 
 export type PostLoginResponse = PostLoginResponses[keyof PostLoginResponses]

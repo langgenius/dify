@@ -81,8 +81,6 @@ class WebLoginHandoffService:
         )
         if redirect_url is None or urlsplit(redirect_url).path.rsplit("/", 1)[-1] != target.app_code:
             raise ValueError("Invalid Web App login target.")
-        if self._apps.get_active_web_app(target.app_code) is None:
-            raise WebPassportNotFoundError()
         return redirect_url
 
     def authorize(self, target: WebLoginTarget, access_token: str) -> str:
