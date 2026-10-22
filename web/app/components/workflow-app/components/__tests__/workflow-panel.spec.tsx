@@ -1,4 +1,5 @@
 import type { Shape } from '@/app/components/workflow/store/workflow'
+import type { consoleClient } from '@/service/console'
 import type { fetchRunDetail, fetchTracingList } from '@/service/log'
 import type { FetchWorkflowDraftPageResponse, FetchWorkflowDraftResponse } from '@/types/workflow'
 import { act, screen, waitFor, within } from '@testing-library/react'
@@ -9,7 +10,7 @@ import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import DatasetsDetailProvider from '@/app/components/workflow/datasets-detail-store/provider'
 import { useStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
@@ -20,6 +21,7 @@ import { renderWorkflowEditor } from '@/test/workflow-editor'
 import WorkflowPanel from '../workflow-panel'
 
 const api = vi.hoisted(() => ({
+  externalTrace: vi.fn<typeof consoleClient.apps.byAppId.traceRuns.bySourceKind.bySourceId.get>(),
   run: vi.fn<typeof fetchRunDetail>(),
   tracing: vi.fn<typeof fetchTracingList>(),
   history: vi.fn<(url: string, options?: unknown) => Promise<FetchWorkflowDraftPageResponse>>(),
@@ -54,6 +56,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.byAppId.workflows.byWorkflowId.patch': api.update,
       'apps.byAppId.workflows.byWorkflowId.delete': api.remove,
+      'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': (input) => api.externalTrace(input),
       'workspaces.current.agentProviders.get': async () => [],
       'apps.byAppId.workflows.draft.environmentVariables.get': async () => ({ items: [] }),
     }),
@@ -126,7 +129,7 @@ function setup(
           <DatasetsDetailProvider nodes={nodes}>
             <OpenPanels />
             <WorkflowPanel />
-            <AppToastHost timeout={0} />
+            <AppToaster timeout={0} />
           </DatasetsDetailProvider>
         </EventEmitterContextProvider>
       </FeaturesProvider>
@@ -143,6 +146,13 @@ function setup(
 }
 let originalUrl: string
 beforeEach(() => {
+  api.externalTrace.mockReset().mockResolvedValue({
+    status: 'accepted',
+    source_kind: 'workflow',
+    source_id: 'run-1',
+    provider: 'langfuse',
+    trace_url: 'https://cloud.langfuse.com/trace/run-1',
+  })
   originalUrl = window.location.href
   window.history.replaceState({}, '', '/app/app-123/workflow')
   versions = [version()]
@@ -264,6 +274,13 @@ it('reopens a closed message log on its default detail tab', async () => {
     'true',
   )
   expect(api.run).toHaveBeenCalledWith('/apps/app-123/workflow-runs/run-1')
+  expect(await screen.findByRole('link', { name: 'app.tracing.run.viewTrace' })).toHaveAttribute(
+    'href',
+    'https://cloud.langfuse.com/trace/run-1',
+  )
+  expect(api.externalTrace).toHaveBeenCalledWith({
+    params: { app_id: 'app-123', source_kind: 'workflow', source_id: 'run-1' },
+  })
   await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
   expect(screen.getByRole('tab', { name: 'runLog.tracing' })).toHaveAttribute(
     'aria-selected',

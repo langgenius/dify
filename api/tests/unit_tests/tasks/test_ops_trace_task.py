@@ -1,16 +1,30 @@
 import json
 import sys
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 import pytest
 from celery.exceptions import Retry
+from flask import Flask
 
 from configs import dify_config
+from core.ops.base_trace_instance import (
+    ApplicationTracingHooksNotRegisteredError,
+    bind_application_tracing_hooks,
+)
 from core.ops.entities.config_entity import OPS_TRACE_FAILED_KEY
-from core.ops.exceptions import RetryableTraceDispatchError
+from core.ops.entities.trace_entity import BaseTraceInfo
+from core.ops.exceptions import PendingTraceParentContextError, RetryableTraceDispatchError
+from services.tracing.provider_dispatch import TraceExportUncertainError
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from tasks.ops_trace_task import process_trace_tasks
+from tests.unit_tests.config_override import apply_config_overrides
+
+
+@pytest.fixture(autouse=True)
+def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
 
 
 @contextmanager
@@ -81,10 +95,20 @@ def _run_task(file_info: dict[str, str], retries: int = 0) -> None:
         process_trace_tasks.pop_request()
 
 
-def test_process_trace_tasks_retries_retryable_dispatch_failure_and_preserves_payload():
+@pytest.mark.parametrize(
+    "pending_error",
+    [
+        _retryable_dispatch_error(),
+        PendingTraceParentContextError("parent-node"),
+        TraceExportUncertainError("DO_NOT_EXPOSE_PROVIDER_BODY"),
+    ],
+)
+def test_process_trace_tasks_retries_only_confirmed_retryable_dispatch_failures(
+    pending_error: RetryableTraceDispatchError,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     file_info = {"app_id": "app-id", "file_id": "file-id"}
     trace_instance = MagicMock()
-    pending_error = _retryable_dispatch_error()
     trace_instance.trace.side_effect = pending_error
     retry_error = Retry()
 
@@ -95,16 +119,23 @@ def test_process_trace_tasks_retries_retryable_dispatch_failure_and_preserves_pa
         patch("tasks.ops_trace_task.storage.delete") as mock_delete,
         patch("tasks.ops_trace_task.redis_client.incr") as mock_incr,
         patch.object(process_trace_tasks, "retry", side_effect=retry_error) as mock_retry,
-        pytest.raises(Retry),
+        pytest.raises(Retry) if not pending_error.acceptance_unknown else nullcontext(),
     ):
         _run_task(file_info)
 
-    mock_retry.assert_called_once_with(
-        exc=pending_error,
-        countdown=process_trace_tasks.default_retry_delay,
-    )
-    mock_delete.assert_not_called()
-    mock_incr.assert_not_called()
+    trace_instance.trace.assert_called_once_with({})
+    if pending_error.acceptance_unknown:
+        mock_retry.assert_not_called()
+        mock_delete.assert_called_once_with("ops_trace/app-id/file-id.json")
+        mock_incr.assert_called_once_with(f"{OPS_TRACE_FAILED_KEY}_app-id")
+        assert "DO_NOT_EXPOSE_PROVIDER_BODY" not in caplog.text
+    else:
+        mock_retry.assert_called_once_with(
+            exc=pending_error,
+            countdown=process_trace_tasks.default_retry_delay,
+        )
+        mock_delete.assert_not_called()
+        mock_incr.assert_not_called()
 
 
 def test_process_trace_tasks_marks_enterprise_trace_dispatched_before_retryable_dispatch_retry():
@@ -303,3 +334,150 @@ def test_process_trace_tasks_deletes_payload_and_counts_exhausted_retryable_disp
     mock_retry.assert_not_called()
     mock_delete.assert_called_once_with("ops_trace/app-id/file-id.json")
     mock_incr.assert_called_once_with(f"{OPS_TRACE_FAILED_KEY}_app-id")
+
+
+def test_managed_application_capture_receives_restored_info_and_preserves_enterprise(monkeypatch: pytest.MonkeyPatch):
+    from core.ops.entities.trace_entity import MessageTraceInfo
+
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+    calls: list[BaseTraceInfo] = []
+
+    def capture(info: BaseTraceInfo) -> bool:
+        calls.append(info)
+        return True
+
+    monkeypatch.setattr(RuntimeApplicationTracingHooks, "capture_terminal", staticmethod(capture))
+    hooks = RuntimeApplicationTracingHooks()
+    app = Flask(__name__)
+    bind_application_tracing_hooks(app, hooks)
+    enterprise_calls: list[BaseTraceInfo] = []
+
+    class RecordingEnterpriseTrace:
+        def trace(self, info: BaseTraceInfo) -> None:
+            enterprise_calls.append(info)
+
+    payload = json.dumps(
+        {
+            "trace_info_type": "MessageTraceInfo",
+            "trace_info": {
+                "metadata": {},
+                "message_id": "message-id",
+                "conversation_model": "agent",
+                "conversation_mode": "agent",
+                "message_tokens": 0,
+                "answer_tokens": 0,
+                "total_tokens": 0,
+            },
+        }
+    )
+    with (
+        app.app_context(),
+        patch("extensions.ext_enterprise_telemetry.is_enabled", return_value=True),
+        patch("enterprise.telemetry.enterprise_trace.EnterpriseOtelTrace", new=RecordingEnterpriseTrace),
+        patch(
+            "core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance",
+            side_effect=AssertionError("managed traces must not instantiate legacy providers"),
+        ) as lookup,
+        patch("tasks.ops_trace_task.storage.load", return_value=payload),
+        patch("tasks.ops_trace_task.storage.delete") as deleted,
+    ):
+        _run_task({"app_id": "app-id", "file_id": "file-id"})
+    assert len(calls) == 1
+    restored = calls[0]
+    assert isinstance(restored, MessageTraceInfo)
+    assert restored.message_id == "message-id"
+    assert enterprise_calls == [restored]
+    lookup.assert_not_called()
+    deleted.assert_called_once()
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_nonmanaged_task_uses_legacy_and_disabled_gate_never_calls_collector(
+    monkeypatch: pytest.MonkeyPatch, enabled: bool
+):
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=enabled)
+    legacy_calls: list[object] = []
+
+    class RecordingLegacyTrace:
+        def trace(self, info: object) -> None:
+            legacy_calls.append(info)
+
+    legacy = RecordingLegacyTrace()
+    calls: list[BaseTraceInfo] = []
+
+    def capture(info: BaseTraceInfo) -> bool:
+        calls.append(info)
+        return False
+
+    monkeypatch.setattr(RuntimeApplicationTracingHooks, "capture_terminal", staticmethod(capture))
+    hooks = RuntimeApplicationTracingHooks()
+    app = Flask(__name__)
+    bind_application_tracing_hooks(app, hooks)
+    with (
+        app.app_context(),
+        patch("extensions.ext_enterprise_telemetry.is_enabled", return_value=False),
+        patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=legacy) as lookup,
+        patch("tasks.ops_trace_task.storage.load", return_value=_make_payload()),
+        patch("tasks.ops_trace_task.storage.delete"),
+    ):
+        _run_task({"app_id": "app-id", "file_id": "file-id"})
+    assert calls == ([{}] if enabled else [])
+    assert legacy_calls == [{}]
+    lookup.assert_called_once_with("app-id")
+
+
+def test_capture_persistence_failure_preserves_payload_without_legacy_export(monkeypatch: pytest.MonkeyPatch):
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+    pending_error = RetryableTraceDispatchError("database busy")
+    calls: list[BaseTraceInfo] = []
+
+    def capture(info: BaseTraceInfo) -> bool:
+        calls.append(info)
+        raise pending_error
+
+    monkeypatch.setattr(RuntimeApplicationTracingHooks, "capture_terminal", staticmethod(capture))
+    hooks = RuntimeApplicationTracingHooks()
+    app = Flask(__name__)
+    bind_application_tracing_hooks(app, hooks)
+    with (
+        app.app_context(),
+        patch(
+            "core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance",
+            side_effect=AssertionError("capture failures must not instantiate legacy providers"),
+        ) as lookup,
+        patch("tasks.ops_trace_task.storage.load", return_value=_make_payload()),
+        patch("tasks.ops_trace_task.storage.delete") as deleted,
+        patch.object(process_trace_tasks, "retry", side_effect=Retry()) as retry,
+        pytest.raises(Retry),
+    ):
+        _run_task({"app_id": "app-id", "file_id": "file-id"})
+    lookup.assert_not_called()
+    deleted.assert_not_called()
+
+    assert calls == [{}]
+    retry.assert_called_once_with(exc=pending_error, countdown=process_trace_tasks.default_retry_delay)
+
+
+def test_unregistered_application_hooks_preserve_payload_without_legacy_export(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+    app = Flask(__name__)
+    with (
+        app.app_context(),
+        patch(
+            "core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance",
+            side_effect=AssertionError("unregistered hooks must not instantiate legacy providers"),
+        ) as lookup,
+        patch("tasks.ops_trace_task.storage.load", return_value=_make_payload()),
+        patch("tasks.ops_trace_task.storage.delete") as deleted,
+        patch("tasks.ops_trace_task.redis_client.incr") as failed,
+        patch.object(process_trace_tasks, "retry", side_effect=Retry()) as retry,
+        pytest.raises(Retry),
+    ):
+        _run_task({"app_id": "app-id", "file_id": "file-id"})
+
+    deleted.assert_not_called()
+    failed.assert_not_called()
+    retry.assert_called_once()
+    lookup.assert_not_called()
+    assert isinstance(retry.call_args.kwargs["exc"], ApplicationTracingHooksNotRegisteredError)
+    assert retry.call_args.kwargs["countdown"] == process_trace_tasks.default_retry_delay

@@ -1,8 +1,9 @@
 """
 Celery task for asynchronous ops trace dispatch.
 
-Trace providers may report explicitly retryable dispatch failures through the
-core retryable exception contract. The task preserves the payload file only
+Trace providers may report retryable dispatch failures through the core
+exception contract. Unknown acceptance is terminal to prevent automatic replay
+of a possibly accepted prefix. The task preserves the payload file only
 when Celery accepts the retry request; successful dispatches and terminal
 failures clean up the stored payload.
 
@@ -23,6 +24,7 @@ from celery.exceptions import Retry
 from flask import current_app
 
 from configs import dify_config
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.ops.entities.config_entity import OPS_FILE_PATH, OPS_TRACE_FAILED_KEY
 from core.ops.entities.trace_entity import trace_info_info_map
 from core.ops.exceptions import RetryableTraceDispatchError
@@ -58,7 +60,6 @@ def process_trace_tasks(self, file_info):
     trace_info = file_data.get("trace_info")
     trace_info_type = file_data.get("trace_info_type")
     enterprise_trace_dispatched = bool(file_data.get("_enterprise_trace_dispatched"))
-    trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
 
     if trace_info.get("message_data"):
         trace_info["message_data"] = Message.from_dict(data=trace_info["message_data"])
@@ -74,6 +75,13 @@ def process_trace_tasks(self, file_info):
         if trace_type:
             trace_info = trace_type(**trace_info)
 
+        application_trace_captured = False
+        if dify_config.OPS_AGENT_TRACE_ENABLED:
+            with current_app.app_context():
+                tracing_hooks = application_tracing_hooks()
+                if tracing_hooks is not None:
+                    application_trace_captured = tracing_hooks.capture_terminal(trace_info)
+
         from extensions.ext_enterprise_telemetry import is_enabled as is_ee_telemetry_enabled
 
         if is_ee_telemetry_enabled() and not enterprise_trace_dispatched:
@@ -87,21 +95,29 @@ def process_trace_tasks(self, file_info):
                 file_data["_enterprise_trace_dispatched"] = True
                 enterprise_trace_dispatched = True
 
-        if trace_instance:
-            with current_app.app_context():
-                trace_instance.trace(trace_info)
+        if not application_trace_captured:
+            trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
+            if trace_instance:
+                with current_app.app_context():
+                    trace_instance.trace(trace_info)
 
         logger.info("Processing trace tasks success, app_id: %s", app_id)
     except RetryableTraceDispatchError as e:
-        # Retryable dispatch failures represent a transient provider-side
-        # ordering gap, not corrupt payload data. Keep the payload only after
+        # Only confirmed retryable failures, including transient parent ordering
+        # gaps, may replay. Unknown acceptance must terminate without retry.
+        # Keep the payload only after
         # Celery accepts the retry request; otherwise this attempt becomes a
         # terminal failure and the stored file is cleaned up in `finally`.
         #
         # Enterprise telemetry runs before provider dispatch. If it already ran
         # and provider dispatch asks for a retry, persist that private flag so
         # the next attempt does not emit the same enterprise trace twice.
-        if self.request.retries >= _RETRYABLE_TRACE_DISPATCH_LIMIT:
+        if e.acceptance_unknown:
+            # Provider exception details can contain private request content.
+            logger.exception("Trace acceptance unknown; automatic retry suppressed, app_id: %s", app_id, exc_info=False)
+            failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
+            redis_client.incr(failed_key)
+        elif self.request.retries >= _RETRYABLE_TRACE_DISPATCH_LIMIT:
             logger.exception("Retryable trace dispatch budget exhausted, app_id: %s", app_id)
             failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
             redis_client.incr(failed_key)

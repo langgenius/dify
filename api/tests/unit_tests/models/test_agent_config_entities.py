@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from core.workflow.file_reference import build_file_reference
 from models.agent_config_entities import (
@@ -26,6 +27,30 @@ def test_agent_soul_model_settings_preserves_plugin_declared_parameters() -> Non
     assert dumped["temperature"] == 0.7
     assert dumped["enable_thinking"] is True
     assert dumped["thinking_budget"] == 4096
+
+
+@pytest.mark.parametrize(
+    "response_format",
+    [
+        "text",
+        "json_schema",
+        {"type": "text"},
+        {"type": "json_schema", "json_schema": {"name": "response", "schema": {"type": "object"}}},
+        None,
+    ],
+)
+def test_agent_model_response_format_preserves_plugin_and_legacy_shapes(response_format: object) -> None:
+    settings = AgentSoulModelSettings.model_validate({"response_format": response_format})
+
+    assert settings.model_dump(mode="json", exclude_none=True) == (
+        {"response_format": response_format} if response_format is not None else {}
+    )
+
+
+@pytest.mark.parametrize("response_format", [[], ["text"], 1, True])
+def test_agent_model_response_format_rejects_non_string_or_object_values(response_format: object) -> None:
+    with pytest.raises(ValidationError, match="response_format"):
+        AgentSoulModelSettings.model_validate({"response_format": response_format})
 
 
 def test_file_default_value_accepts_canonical_reference_mapping() -> None:

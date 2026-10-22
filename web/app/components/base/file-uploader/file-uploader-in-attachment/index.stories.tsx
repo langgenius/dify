@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { fn } from 'storybook/test'
 import { PreviewMode } from '@/app/components/base/features/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { TransferMethod } from '@/types/app'
 import FileUploaderInAttachmentWrapper from './index'
 
@@ -86,7 +86,7 @@ const AttachmentDemo = (props: React.ComponentProps<typeof FileUploaderInAttachm
 
   return (
     <>
-      <AppToastHost />
+      <AppToaster />
       <div className="w-[320px] rounded-2xl border border-divider-subtle bg-components-panel-bg p-4 shadow-xs">
         <FileUploaderInAttachmentWrapper {...props} value={files} onChange={setFiles} />
       </div>

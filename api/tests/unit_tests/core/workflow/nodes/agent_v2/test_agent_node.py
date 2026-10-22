@@ -118,7 +118,9 @@ class FakeVariablePool:
 class FakeBindingResolver(WorkflowAgentBindingResolver):
     def __init__(self):
         self.calls: list[dict[str, object]] = []
-        self.agent = Agent(id="agent-1", tenant_id="tenant-1", name="Agent")
+        self.agent = Agent(
+            scope=AgentScope.ROSTER, source=AgentSource.ROSTER, id="agent-1", tenant_id="tenant-1", name="Agent"
+        )
         self.snapshot = AgentConfigSnapshot(
             id="snapshot-1",
             tenant_id="tenant-1",
@@ -135,6 +137,8 @@ class FakeBindingResolver(WorkflowAgentBindingResolver):
             ),
         )
         self.binding = WorkflowAgentNodeBinding(
+            workflow_version="draft",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
             id="binding-1",
             tenant_id="tenant-1",
             app_id="app-1",

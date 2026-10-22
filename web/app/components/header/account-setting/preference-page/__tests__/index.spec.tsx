@@ -2,7 +2,7 @@ import type { GetAccountProfileResponse } from '@dify/contracts/api/console/acco
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { setLocaleOnClient } from '@/i18n/client'
 import { languages } from '@/i18n/language'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
@@ -58,7 +58,7 @@ const renderPage = () => {
   return render(
     <QueryClientProvider client={queryClient}>
       <PreferencePage />
-      <AppToastHost />
+      <AppToaster />
     </QueryClientProvider>,
   )
 }

@@ -1,7 +1,7 @@
 import { createToast, createToastManager } from '@langgenius/dify-ui/toast'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AppToastHost } from '../host'
+import { AppToaster } from '../app-toaster'
 
 const copy = vi.fn()
 const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
@@ -16,7 +16,7 @@ beforeEach(() => {
 function setup() {
   const manager = createToastManager()
   const toast = createToast(manager)
-  render(<AppToastHost manager={manager} timeout={0} />)
+  render(<AppToaster manager={manager} timeout={0} />)
   const user = userEvent.setup()
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: copy } })
   return { toast, user }
@@ -137,8 +137,8 @@ it('keeps scoped managers isolated from each other', async () => {
   const secondToast = createToast(second)
   render(
     <>
-      <AppToastHost manager={first} timeout={0} />
-      <AppToastHost manager={second} timeout={0} />
+      <AppToaster manager={first} timeout={0} />
+      <AppToaster manager={second} timeout={0} />
     </>,
   )
   act(() => {

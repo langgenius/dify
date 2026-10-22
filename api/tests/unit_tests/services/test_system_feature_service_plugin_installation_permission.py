@@ -89,7 +89,9 @@ def test_system_features_exposes_only_validated_plugin_installation_policy(
             }
         ),
     )
-    features = SystemFeatureModel(deployment_edition=DeploymentEdition.ENTERPRISE)
+    features = SystemFeatureModel(
+        agent_tracing_api_collection_enabled=False, deployment_edition=DeploymentEdition.ENTERPRISE
+    )
 
     SystemFeatureService._fulfill_params_from_enterprise(features)
 
