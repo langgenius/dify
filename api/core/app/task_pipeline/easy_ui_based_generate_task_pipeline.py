@@ -605,6 +605,19 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         :param event: agent thought event
         :return:
         """
+        if event.snapshot is not None:
+            return AgentThoughtStreamResponse(
+                task_id=self._application_generate_entity.task_id,
+                id=event.agent_thought_id,
+                position=event.snapshot.position,
+                thought=event.snapshot.thought,
+                observation=event.snapshot.observation,
+                tool=event.snapshot.tool,
+                tool_labels=event.snapshot.tool_labels,
+                tool_input=event.snapshot.tool_input,
+                message_files=[],
+            )
+
         with session_factory.create_session() as session:
             agent_thought: MessageAgentThought | None = session.scalar(
                 select(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).limit(1)

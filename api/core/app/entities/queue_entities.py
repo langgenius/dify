@@ -454,13 +454,29 @@ class QueueNodeFailedEvent(AppQueueEvent):
     error: str
 
 
+class QueueAgentThoughtSnapshot(BaseModel):
+    """Client-visible agent thought fields for a thought that is not persisted yet."""
+
+    position: int
+    thought: str
+    observation: str
+    tool: str
+    tool_labels: Mapping[str, object]
+    tool_input: str
+
+
 class QueueAgentThoughtEvent(AppQueueEvent):
     """
     QueueAgentThoughtEvent entity
+
+    ``snapshot`` is None when the thought row is already persisted and the task
+    pipeline loads it by ``agent_thought_id``; otherwise the publisher keeps the
+    row in memory until the turn ends and the snapshot is the source of truth.
     """
 
     event: QueueEvent = QueueEvent.AGENT_THOUGHT
     agent_thought_id: str
+    snapshot: QueueAgentThoughtSnapshot | None = None
 
 
 class QueueMessageFileEvent(AppQueueEvent):

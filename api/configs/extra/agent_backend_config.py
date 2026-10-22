@@ -75,5 +75,22 @@ class AgentBackendConfig(BaseSettings):
             "Buffer Agent App assistant text deltas for up to this many seconds before "
             "publishing SSE chunks. Set to 0 to publish each delta immediately."
         ),
-        default=0.5,
+        default=0.1,
+    )
+
+    AGENT_APP_THOUGHT_STREAM_INTERVAL_SECONDS: NonNegativeFloat = Field(
+        description=(
+            "Publish Agent App thinking and tool-argument snapshot updates at most once per this many "
+            "seconds; each update carries the full accumulated text. Set to 0 to publish each delta."
+        ),
+        default=0.1,
+    )
+
+    AGENT_APP_THOUGHT_PERSIST_INTERVAL_SECONDS: NonNegativeFloat = Field(
+        description=(
+            "Write streamed Agent App thoughts to the database at most once per this many seconds; "
+            "remaining changes are written when the turn ends. Message reads during a turn lag by up "
+            "to this interval. Set to 0 to write each change."
+        ),
+        default=1.0,
     )

@@ -353,6 +353,8 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             event_adapter=AgentBackendRunEventAdapter(),
             session_store=AgentAppWorkspaceStore(),
             text_delta_debounce_seconds=dify_config.AGENT_APP_TEXT_DELTA_DEBOUNCE_SECONDS,
+            thought_stream_interval_seconds=dify_config.AGENT_APP_THOUGHT_STREAM_INTERVAL_SECONDS,
+            thought_persist_interval_seconds=dify_config.AGENT_APP_THOUGHT_PERSIST_INTERVAL_SECONDS,
         )
 
     def _run_input_guards(

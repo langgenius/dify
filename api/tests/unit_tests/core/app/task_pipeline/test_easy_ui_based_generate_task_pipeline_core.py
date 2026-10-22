@@ -26,6 +26,7 @@ from core.app.entities.queue_entities import (
     MessageQueueMessage,
     QueueAgentMessageEvent,
     QueueAgentThoughtEvent,
+    QueueAgentThoughtSnapshot,
     QueueAnnotationReplyEvent,
     QueueErrorEvent,
     QueueLLMChunkEvent,
@@ -832,6 +833,48 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert response.tool == ""
         assert response.tool_input == ""
         assert response.model_dump(mode="json")["message_files"] == []
+
+    def test_agent_thought_to_stream_response_uses_inline_snapshot_without_database(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            queue_manager=_FakeQueueManager(),
+            conversation=_make_conversation(AppMode.CHAT),
+            message=_make_message(),
+            stream=True,
+        )
+
+        def _fail_create_session():
+            raise AssertionError("inline thought snapshots must not query the database")
+
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            _fail_create_session,
+        )
+        event = QueueAgentThoughtEvent(
+            agent_thought_id="thought",
+            snapshot=QueueAgentThoughtSnapshot(
+                position=2,
+                thought="thinking",
+                observation="ok",
+                tool="bash",
+                tool_labels={"bash": {"en_US": "bash"}},
+                tool_input='{"cmd": "ls"}',
+            ),
+        )
+
+        response = pipeline._agent_thought_to_stream_response(event)
+
+        assert response is not None
+        assert response.id == "thought"
+        assert response.position == 2
+        assert response.thought == "thinking"
+        assert response.observation == "ok"
+        assert response.tool == "bash"
+        assert response.tool_labels == {"bash": {"en_US": "bash"}}
+        assert response.tool_input == '{"cmd": "ls"}'
+        assert response.message_files == []
 
     def test_process_routes_to_stream_and_starts_conversation_name_generation(self):
         conversation = _make_conversation(AppMode.CHAT)

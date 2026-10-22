@@ -521,6 +521,44 @@ class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         )
 
 
+class _ThinkingThenAnswerStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        for index, delta in enumerate(("Let ", "me ", "think.")):
+            yield PydanticAIStreamRunEvent(
+                id=f"{index + 2}-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=PartDeltaEvent(index=0, delta=ThinkingPartDelta(content_delta=delta)),
+            )
+        for index, delta in enumerate(("hello ", "streamed ", "agent")):
+            yield PydanticAIStreamRunEvent(
+                id=f"{index + 5}-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=PartDeltaEvent(index=1, delta=TextPartDelta(content_delta=delta)),
+                agent_message_delta=delta,
+            )
+        yield RunSucceededEvent(
+            id="8-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output={"text": "final answer"},
+                session_snapshot=SessionSnapshot(layers={}),
+            ),
+        )
+
+
 class _FakeSessionStore:
     def __init__(
         self,
@@ -650,6 +688,8 @@ def _runner(
     store: _FakeSessionStore,
     *,
     text_delta_debounce_seconds: float = 0,
+    thought_stream_interval_seconds: float = 0,
+    thought_persist_interval_seconds: float = 0,
 ) -> AgentAppRunner:
     return AgentAppRunner(
         request_builder=AgentAppRuntimeRequestBuilder(
@@ -659,6 +699,8 @@ def _runner(
         event_adapter=AgentBackendRunEventAdapter(),
         session_store=store,  # type: ignore[arg-type]
         text_delta_debounce_seconds=text_delta_debounce_seconds,
+        thought_stream_interval_seconds=thought_stream_interval_seconds,
+        thought_persist_interval_seconds=thought_persist_interval_seconds,
     )
 
 
@@ -844,7 +886,7 @@ def test_thought_commit_failure_rolls_back_and_turn_continues(sqlite_session: Se
     event.listen(sqlite_session, "before_commit", fail_first_commit)
     event.listen(sqlite_session, "after_rollback", record_rollback)
     try:
-        client = _StreamingSingleAgentMessageDeltaFakeAgentBackendRunClient()
+        client = _StreamingTextNullOutputFakeAgentBackendRunClient()
         store = _FakeSessionStore()
         qm = _FakeQueueManager()
 
@@ -854,8 +896,11 @@ def test_thought_commit_failure_rolls_back_and_turn_continues(sqlite_session: Se
         event.remove(sqlite_session, "after_rollback", record_rollback)
 
     assert rollback_events == [sqlite_session]
-    assert _thought_rows(sqlite_session) == []
-    assert _llm_result(qm).message.content == "hello agent"
+    # The failed periodic write stays pending and the end-of-turn write retries it.
+    assert [row.answer for row in _thought_rows(sqlite_session)] == ["streamed answer"]
+    agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
+    assert [e.chunk.delta.message.content for e in agent_message_events] == ["streamed answer"]
+    assert len([e for e in qm.events if isinstance(e, QueueMessageEndEvent)]) == 1
 
 
 def test_successful_turn_with_null_terminal_output_publishes_empty_answer_not_literal_null() -> None:
@@ -910,7 +955,8 @@ def test_successful_turn_routes_agent_answer_to_agent_message(sqlite_session: Se
     assert len(end_events) == 1
     assert _llm_result(qm).message.content == "final answer"
     thought_events = [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
-    assert len(thought_events) == 2
+    # Answer text streams through agent-message deltas; only row creation is announced.
+    assert len(thought_events) == 1
 
     rows = _thought_rows(sqlite_session)
     assert len(rows) == 1
@@ -935,6 +981,148 @@ def test_agent_message_deltas_are_debounced_to_agent_message(
     assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello agent"]
     rows = _thought_rows(sqlite_session)
     assert rows == []
+
+
+def test_process_thoughts_within_one_persist_interval_are_written_once(sqlite_session: Session) -> None:
+    commits: list[Session] = []
+
+    def record_commit(session: Session) -> None:
+        commits.append(session)
+
+    event.listen(sqlite_session, "after_commit", record_commit)
+    try:
+        client = _ThinkingThenAnswerStreamingFakeAgentBackendRunClient()
+        qm = _FakeQueueManager()
+        _run(
+            _runner(
+                client,
+                _FakeSessionStore(),
+                thought_stream_interval_seconds=60,
+                thought_persist_interval_seconds=60,
+            ),
+            qm,
+        )
+    finally:
+        event.remove(sqlite_session, "after_commit", record_commit)
+
+    agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
+    assert [e.chunk.delta.message.content for e in agent_message_events] == ["hello ", "streamed ", "agent"]
+    # Thinking row creation, its pending snapshot before the answer row, then answer row creation.
+    thought_events = [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
+    assert [(e.snapshot.position, e.snapshot.thought) for e in thought_events if e.snapshot] == [
+        (1, "Let "),
+        (1, "Let me think."),
+        (2, ""),
+    ]
+    assert len(commits) == 1
+
+    rows = _thought_rows(sqlite_session)
+    assert [(row.thought, row.answer) for row in rows] == [("Let me think.", ""), ("", "hello streamed agent")]
+    assert [row.id for row in rows] == [thought_events[0].agent_thought_id, thought_events[2].agent_thought_id]
+
+
+def test_thinking_snapshots_publish_once_stream_interval_elapses(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(app_runner_module.time, "monotonic", _MonotonicClock(0.0, 0.0, 0.05, 0.2))
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+        stream_interval_seconds=0.1,
+        persist_interval_seconds=60,
+    )
+
+    def think(content_delta: str) -> None:
+        recorder.handle_stream_event(
+            AgentBackendStreamInternalEvent(
+                run_id="run-1",
+                data={
+                    "event_kind": "part_delta",
+                    "index": 0,
+                    "delta": {"part_delta_kind": "thinking", "content_delta": content_delta},
+                },
+            )
+        )
+
+    def published_thoughts() -> list[str]:
+        return [e.snapshot.thought for e in qm.events if isinstance(e, QueueAgentThoughtEvent) and e.snapshot]
+
+    for content_delta in ("a", "b", "c"):
+        think(content_delta)
+    assert published_thoughts() == ["a"]
+
+    think("d")
+    assert published_thoughts() == ["a", "abcd"]
+
+    think("e")
+    recorder.publish_pending()
+    assert published_thoughts() == ["a", "abcd", "abcde"]
+    assert _thought_rows(sqlite_session) == []
+
+    recorder.persist()
+    recorder.persist()
+    assert [row.thought for row in _thought_rows(sqlite_session)] == ["abcde"]
+
+
+def test_thoughts_persist_periodically_then_update_and_delete(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(app_runner_module.time, "monotonic", _MonotonicClock(0.0, 0.5, 1.2, 1.3))
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+        stream_interval_seconds=0,
+        persist_interval_seconds=1.0,
+    )
+
+    recorder.append_answer_text("a")
+    recorder.append_answer_text("b")
+    assert _thought_rows(sqlite_session) == []
+
+    recorder.append_answer_text("c")
+    assert [row.answer for row in _thought_rows(sqlite_session)] == ["abc"]
+
+    recorder.append_answer_text("d")
+    assert [row.answer for row in _thought_rows(sqlite_session)] == ["abc"]
+
+    recorder.persist()
+    assert [row.answer for row in _thought_rows(sqlite_session)] == ["abcd"]
+
+    recorder.trim_answer_suffix("abcd")
+    recorder.persist()
+    assert _thought_rows(sqlite_session) == []
+
+
+def test_periodic_persist_failure_rolls_back_and_retries(sqlite_session: Session) -> None:
+    should_fail = True
+
+    def fail_first_commit(_session: Session) -> None:
+        nonlocal should_fail
+        if should_fail:
+            should_fail = False
+            raise RuntimeError("forced thought commit failure")
+
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+        stream_interval_seconds=0,
+        persist_interval_seconds=0,
+    )
+    event.listen(sqlite_session, "before_commit", fail_first_commit)
+    try:
+        recorder.append_answer_text("a")
+        assert _thought_rows(sqlite_session) == []
+        recorder.append_answer_text("b")
+    finally:
+        event.remove(sqlite_session, "before_commit", fail_first_commit)
+
+    assert [row.answer for row in _thought_rows(sqlite_session)] == ["ab"]
 
 
 def test_successful_turn_persists_thinking_and_tool_process_events(
@@ -991,6 +1179,8 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
+        stream_interval_seconds=0,
+        persist_interval_seconds=0,
     )
 
     recorder.handle_stream_event(
@@ -1017,6 +1207,7 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(
         )
     )
 
+    recorder.persist()
     rows = _thought_rows(sqlite_session)
     assert len(rows) == 2
     assert rows[0].tool == "shell_run"
@@ -1033,11 +1224,14 @@ def test_answer_suffix_trim_keeps_non_terminal_prefix(sqlite_session: Session) -
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
+        stream_interval_seconds=0,
+        persist_interval_seconds=0,
     )
 
     recorder.append_answer_text("intermediate final answer")
     recorder.trim_answer_suffix("final answer")
 
+    recorder.persist()
     rows = _thought_rows(sqlite_session)
     assert len(rows) == 1
     assert rows[0].answer == "intermediate "
@@ -1049,6 +1243,8 @@ def test_tool_call_part_binds_late_call_id_to_delta_row(sqlite_session: Session)
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
+        stream_interval_seconds=0,
+        persist_interval_seconds=0,
     )
 
     recorder.handle_stream_event(
@@ -1095,6 +1291,7 @@ def test_tool_call_part_binds_late_call_id_to_delta_row(sqlite_session: Session)
         )
     )
 
+    recorder.persist()
     rows = _thought_rows(sqlite_session)
     assert len(rows) == 1
     assert rows[0].tool == "knowledge_base_search"
@@ -1108,6 +1305,8 @@ def test_thinking_after_tool_starts_new_snapshot_row(sqlite_session: Session) ->
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
+        stream_interval_seconds=0,
+        persist_interval_seconds=0,
     )
 
     recorder.handle_stream_event(
@@ -1151,6 +1350,7 @@ def test_thinking_after_tool_starts_new_snapshot_row(sqlite_session: Session) ->
         )
     )
 
+    recorder.persist()
     rows = _thought_rows(sqlite_session)
     assert [row.thought for row in rows] == ["The first thought.", "", "The next thought."]
     assert rows[0].id != rows[2].id
@@ -1166,6 +1366,8 @@ def test_tool_result_without_call_id_matches_unique_open_tool_name(
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
+        stream_interval_seconds=0,
+        persist_interval_seconds=0,
     )
 
     recorder.handle_stream_event(
@@ -1195,6 +1397,7 @@ def test_tool_result_without_call_id_matches_unique_open_tool_name(
         )
     )
 
+    recorder.persist()
     rows = _thought_rows(sqlite_session)
     assert len(rows) == 1
     assert rows[0].tool == "knowledge_base_search"
@@ -1210,6 +1413,8 @@ def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
+        stream_interval_seconds=0,
+        persist_interval_seconds=0,
     )
 
     recorder.handle_stream_event(
@@ -1265,6 +1470,7 @@ def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(
         )
     )
 
+    recorder.persist()
     rows = _thought_rows(sqlite_session)
     assert len(rows) == 2
     assert rows[0].tool == "shell_run"
@@ -1283,6 +1489,8 @@ def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_di
         dify_context=_dify_ctx(),
         message_id="msg-1",
         queue_manager=qm,  # type: ignore[arg-type]
+        stream_interval_seconds=0,
+        persist_interval_seconds=0,
     )
 
     for script, output in (("lookup find", "find output"), ("lookup out", "out output")):
@@ -1316,6 +1524,7 @@ def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_di
             )
         )
 
+    recorder.persist()
     rows = _thought_rows(sqlite_session)
     assert len(rows) == 2
     assert rows[0].tool == "shell_run"
