@@ -177,6 +177,18 @@ export type ConnectionOauthFailedError = ErrorResponse & {
   status: 400
 }
 
+export type ConnectionPreflightRequirement = {
+  allowed_credential_types: Array<ConnectionCredentialType>
+  check: CredentialCheckResult | null
+  connection_id: string | null
+  node_id: string
+  node_ids: Array<string>
+  provider: string
+  purpose: string
+  status: NodeConnectionStatus | null
+  title: string
+}
+
 export type ConnectionReauthorizationRequiredError = ErrorResponse & {
   code: 'connection_reauthorization_required'
   status: 409
@@ -292,6 +304,29 @@ export type EndUserConnectionOAuthPayload = {
 
 export type EndUserConnectionOAuthResponse = {
   authorization_url: string
+}
+
+export type EndUserConnectionPreflightPayload = (
+  | {
+      connections?: {
+        [key: string]: unknown
+      }
+    }
+  | {
+      workflow_id: string
+    }
+) & {
+  connections: {
+    [key: string]: string | null
+  }
+  conversation_id?: string | null
+  workflow_id?: string | null
+}
+
+export type EndUserConnectionPreflightResponse = {
+  readonly ready: boolean
+  requirements: Array<ConnectionPreflightRequirement>
+  workflow_id: string
 }
 
 export type EndUserConnectionResponse = {
@@ -602,6 +637,8 @@ export type NoFileUploadedError = ErrorResponse & {
   code: 'no_file_uploaded'
   status: 400
 }
+
+export type NodeConnectionStatus = 'connected' | 'disconnected' | 'invalid' | 'reconnect_required'
 
 export type NotChatAppError = ErrorResponse & {
   code: 'not_chat_app'
@@ -1376,6 +1413,11 @@ export type WorkflowRunPayload = {
   }
 }
 
+export type EndUserConnectionPreflightResponseWritable = {
+  requirements: Array<ConnectionPreflightRequirement>
+  workflow_id: string
+}
+
 export type GeneratedAppResponseWritable = ShallowJsonValue
 
 export type HumanInputFormSubmitResponseWritable = {
@@ -1636,6 +1678,34 @@ export type PostConnectionsOauthAuthorizationUrlResponses = {
 
 export type PostConnectionsOauthAuthorizationUrlResponse =
   PostConnectionsOauthAuthorizationUrlResponses[keyof PostConnectionsOauthAuthorizationUrlResponses]
+
+export type PostConnectionsPreflightData = {
+  body: EndUserConnectionPreflightPayload
+  path?: never
+  query?: never
+  url: '/connections/preflight'
+}
+
+export type PostConnectionsPreflightErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | WorkflowChangedError
+    | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsPreflightError =
+  PostConnectionsPreflightErrors[keyof PostConnectionsPreflightErrors]
+
+export type PostConnectionsPreflightResponses = {
+  200: EndUserConnectionPreflightResponse
+}
+
+export type PostConnectionsPreflightResponse =
+  PostConnectionsPreflightResponses[keyof PostConnectionsPreflightResponses]
 
 export type DeleteConnectionsByConnectionIdData = {
   body?: never

@@ -11,6 +11,7 @@ workspace credential overrides through the Console entry point (SNP-970), outsid
 this Web Passport and published-workflow contract.
 """
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Protocol, Self
 from uuid import UUID
@@ -115,6 +116,14 @@ class ConnectionCheckView(BaseModel):
     connection_id: str
     check: CredentialCheckResult
     credential_status: ConnectionCredentialStatus
+
+
+@dataclass(frozen=True)
+class ConnectionCheckOutcome:
+    """Internal check evidence pinned to the revision that was actually checked."""
+
+    view: ConnectionCheckView
+    revision: int
 
 
 class NodeConnectionState(BaseModel):

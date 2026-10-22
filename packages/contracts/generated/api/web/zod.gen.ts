@@ -259,6 +259,22 @@ export const zEndUserConnectionOAuthResponse = z.object({
   authorization_url: z.string(),
 })
 
+export const zEndUserConnectionPreflightPayload = z.intersection(
+  z.union([
+    z.object({
+      connections: z.record(z.string(), z.unknown()).optional(),
+    }),
+    z.object({
+      workflow_id: z.uuid(),
+    }),
+  ]),
+  z.object({
+    connections: z.record(z.string(), z.uuid().nullable()),
+    conversation_id: z.uuid().nullish(),
+    workflow_id: z.uuid().nullish(),
+  }),
+)
+
 /**
  * EndUserConnectionResponse
  */
@@ -949,6 +965,42 @@ export const zNoFileUploadedError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
+
+/**
+ * NodeConnectionStatus
+ *
+ * The current selection's effective status for one published Tool node.
+ */
+export const zNodeConnectionStatus = z.enum([
+  'connected',
+  'disconnected',
+  'invalid',
+  'reconnect_required',
+])
+
+/**
+ * ConnectionPreflightRequirement
+ */
+export const zConnectionPreflightRequirement = z.object({
+  allowed_credential_types: z.array(zConnectionCredentialType),
+  check: zCredentialCheckResult.nullable(),
+  connection_id: z.string().nullable(),
+  node_id: z.string(),
+  node_ids: z.array(z.string()),
+  provider: z.string(),
+  purpose: z.string(),
+  status: zNodeConnectionStatus.nullable(),
+  title: z.string(),
+})
+
+/**
+ * EndUserConnectionPreflightResponse
+ */
+export const zEndUserConnectionPreflightResponse = z.object({
+  ready: z.boolean().readonly(),
+  requirements: z.array(zConnectionPreflightRequirement),
+  workflow_id: z.string(),
+})
 
 /**
  * NotChatAppError
@@ -2093,6 +2145,14 @@ export const zWorkflowRunPayload = z.object({
 })
 
 /**
+ * EndUserConnectionPreflightResponse
+ */
+export const zEndUserConnectionPreflightResponseWritable = z.object({
+  requirements: z.array(zConnectionPreflightRequirement),
+  workflow_id: z.string(),
+})
+
+/**
  * GeneratedAppResponse
  */
 export const zGeneratedAppResponseWritable = zShallowJsonValue
@@ -2201,6 +2261,13 @@ export const zPostConnectionsOauthAuthorizationUrlBody = zEndUserConnectionOAuth
  * OAuth authorization URL
  */
 export const zPostConnectionsOauthAuthorizationUrlResponse = zEndUserConnectionOAuthResponse
+
+export const zPostConnectionsPreflightBody = zEndUserConnectionPreflightPayload
+
+/**
+ * Explicit connection requirements and readiness
+ */
+export const zPostConnectionsPreflightResponse = zEndUserConnectionPreflightResponse
 
 export const zDeleteConnectionsByConnectionIdPath = z.object({
   connection_id: z.uuid(),

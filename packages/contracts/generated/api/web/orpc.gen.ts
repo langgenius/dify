@@ -124,6 +124,8 @@ import {
   zPostConnectionsByConnectionIdReauthorizeResponse,
   zPostConnectionsOauthAuthorizationUrlBody,
   zPostConnectionsOauthAuthorizationUrlResponse,
+  zPostConnectionsPreflightBody,
+  zPostConnectionsPreflightResponse,
   zPostConnectionsResponse,
   zPostConversationsByCIdNameBody,
   zPostConversationsByCIdNamePath,
@@ -346,6 +348,35 @@ export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
+    operationId: 'postConnectionsPreflight',
+    path: '/connections/preflight',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostConnectionsPreflightBody }))
+  .output(zPostConnectionsPreflightResponse)
+  .errors({
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_unavailable: {
+      status: 503,
+      data: zConnectionCredentialsUnavailableError,
+    },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    workflow_changed: { status: 409, data: zWorkflowChangedError },
+  })
+
+export const preflight = {
+  post: post7,
+}
+
+export const post8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
     operationId: 'postConnectionsByConnectionIdCheck',
     path: '/connections/{connection_id}/check',
     tags: ['web'],
@@ -369,10 +400,10 @@ export const post7 = oc
   })
 
 export const check = {
-  post: post7,
+  post: post8,
 }
 
-export const post8 = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -399,7 +430,7 @@ export const post8 = oc
   })
 
 export const reauthorize = {
-  post: post8,
+  post: post9,
 }
 
 export const delete_ = oc
@@ -487,7 +518,7 @@ export const get2 = oc
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
   })
 
-export const post9 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -512,15 +543,16 @@ export const post9 = oc
 
 export const connections = {
   get: get2,
-  post: post9,
+  post: post10,
   oauth,
+  preflight,
   byConnectionId,
 }
 
 /**
  * Rename a specific conversation with a custom name or auto-generate one.
  */
-export const post10 = oc
+export const post11 = oc
   .route({
     description: 'Rename a specific conversation with a custom name or auto-generate one.',
     inputStructure: 'detailed',
@@ -540,7 +572,7 @@ export const post10 = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const name = {
-  post: post10,
+  post: post11,
 }
 
 /**
@@ -631,7 +663,7 @@ export const conversations = {
 /**
  * Verify email code and complete login
  */
-export const post11 = oc
+export const post12 = oc
   .route({
     description: 'Verify email code and complete login',
     inputStructure: 'detailed',
@@ -650,13 +682,13 @@ export const post11 = oc
   })
 
 export const validity = {
-  post: post11,
+  post: post12,
 }
 
 /**
  * Send email verification code for login
  */
-export const post12 = oc
+export const post13 = oc
   .route({
     description: 'Send email verification code for login',
     inputStructure: 'detailed',
@@ -670,7 +702,7 @@ export const post12 = oc
   .errors({ authentication_failed: { status: 401, data: zAuthenticationFailedError } })
 
 export const emailCodeLogin = {
-  post: post12,
+  post: post13,
   validity,
 }
 
@@ -701,7 +733,7 @@ export const emailCodeLogin = {
  * UnsupportedFileTypeError: File type not supported
  * BlockedFileExtensionError: File extension is blocked
  */
-export const post13 = oc
+export const post14 = oc
   .route({
     description:
       'Upload a file for use in web applications\nAccepts file uploads for use within web applications, supporting\nmultiple file types with automatic validation and storage.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user uploading the file\n\nForm Parameters:\n    file: The file to upload (required)\n    source: Optional source type (datasets or None)\n\nReturns:\n    dict: File information including ID, URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    NoFileUploadedError: No file provided in request\n    TooManyFilesError: Multiple files provided (only one allowed)\n    FilenameNotExistsError: File has no filename\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported\n    BlockedFileExtensionError: File extension is blocked',
@@ -724,7 +756,7 @@ export const post13 = oc
   })
 
 export const upload = {
-  post: post13,
+  post: post14,
 }
 
 export const files = {
@@ -734,7 +766,7 @@ export const files = {
 /**
  * Reset user password with verification token
  */
-export const post14 = oc
+export const post15 = oc
   .route({
     description: 'Reset user password with verification token',
     inputStructure: 'detailed',
@@ -752,13 +784,13 @@ export const post14 = oc
   })
 
 export const resets = {
-  post: post14,
+  post: post15,
 }
 
 /**
  * Verify password reset token validity
  */
-export const post15 = oc
+export const post16 = oc
   .route({
     description: 'Verify password reset token validity',
     inputStructure: 'detailed',
@@ -777,13 +809,13 @@ export const post15 = oc
   })
 
 export const validity2 = {
-  post: post15,
+  post: post16,
 }
 
 /**
  * Send password reset email
  */
-export const post16 = oc
+export const post17 = oc
   .route({
     description: 'Send password reset email',
     inputStructure: 'detailed',
@@ -801,7 +833,7 @@ export const post16 = oc
   })
 
 export const forgotPassword = {
-  post: post16,
+  post: post17,
   resets,
   validity: validity2,
 }
@@ -812,7 +844,7 @@ export const forgotPassword = {
  * Issue an upload token for an active human input form
  * POST /api/form/human_input/<form_token>/upload-token
  */
-export const post17 = oc
+export const post18 = oc
   .route({
     description:
       'Issue an upload token for an active human input form\nPOST /api/form/human_input/<form_token>/upload-token',
@@ -832,7 +864,7 @@ export const post17 = oc
   })
 
 export const uploadToken = {
-  post: post17,
+  post: post18,
 }
 
 /**
@@ -874,7 +906,7 @@ export const get4 = oc
  * "action": "Approve"
  * }
  */
-export const post18 = oc
+export const post19 = oc
   .route({
     description:
       'Submit a human input form by token\nPOST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
@@ -901,7 +933,7 @@ export const post18 = oc
 
 export const byFormToken = {
   get: get4,
-  post: post18,
+  post: post19,
   uploadToken,
 }
 
@@ -916,7 +948,7 @@ export const form = {
 /**
  * Upload one local file or remote URL file for a HITL human input form
  */
-export const post19 = oc
+export const post20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -948,7 +980,7 @@ export const post19 = oc
   })
 
 export const files2 = {
-  post: post19,
+  post: post20,
 }
 
 export const humanInputForms = {
@@ -979,7 +1011,7 @@ export const status = {
  *
  * Authenticate user for web application access
  */
-export const post20 = oc
+export const post21 = oc
   .route({
     description: 'Authenticate user for web application access',
     inputStructure: 'detailed',
@@ -997,14 +1029,14 @@ export const post20 = oc
   })
 
 export const login = {
-  post: post20,
+  post: post21,
   status,
 }
 
 /**
  * Logout user from web application
  */
-export const post21 = oc
+export const post22 = oc
   .route({
     description: 'Logout user from web application',
     inputStructure: 'detailed',
@@ -1016,13 +1048,13 @@ export const post21 = oc
   .output(zPostLogoutResponse)
 
 export const logout = {
-  post: post21,
+  post: post22,
 }
 
 /**
  * Submit feedback (like/dislike) for a specific message.
  */
-export const post22 = oc
+export const post23 = oc
   .route({
     description: 'Submit feedback (like/dislike) for a specific message.',
     inputStructure: 'detailed',
@@ -1041,7 +1073,7 @@ export const post22 = oc
   .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks = {
-  post: post22,
+  post: post23,
 }
 
 /**
@@ -1227,7 +1259,7 @@ export const passport = {
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
  */
-export const post23 = oc
+export const post24 = oc
   .route({
     description:
       'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileInvalidUrlError: Remote file URL is invalid\n    RemoteFileUrlBlockedError: Remote file URL is blocked\n    RemoteFileNotFoundError: Remote file does not exist\n    RemoteFileAccessDeniedError: Remote file requires authorization\n    RemoteFileUnavailableError: Remote file is unavailable\n    RemoteFileInvalidResponseError: Remote file response is invalid\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
@@ -1254,7 +1286,7 @@ export const post23 = oc
   })
 
 export const upload2 = {
-  post: post23,
+  post: post24,
 }
 
 /**
@@ -1346,7 +1378,7 @@ export const get13 = oc
 /**
  * Save a specific message for later reference.
  */
-export const post24 = oc
+export const post25 = oc
   .route({
     description: 'Save a specific message for later reference.',
     inputStructure: 'detailed',
@@ -1361,7 +1393,7 @@ export const post24 = oc
 
 export const savedMessages = {
   get: get13,
-  post: post24,
+  post: post25,
   byMessageId: byMessageId2,
 }
 
@@ -1417,7 +1449,7 @@ export const systemFeatures = {
  *
  * Convert text to audio using text-to-speech service.
  */
-export const post25 = oc
+export const post26 = oc
   .route({
     description: 'Convert text to audio using text-to-speech service.',
     inputStructure: 'detailed',
@@ -1438,7 +1470,7 @@ export const post25 = oc
   })
 
 export const textToAudio = {
-  post: post25,
+  post: post26,
 }
 
 /**
@@ -1523,7 +1555,7 @@ export const workflow = {
  *
  * Execute a workflow with provided inputs and files.
  */
-export const post26 = oc
+export const post27 = oc
   .route({
     description: 'Execute a workflow with provided inputs and files.',
     inputStructure: 'detailed',
@@ -1549,7 +1581,7 @@ export const post26 = oc
   })
 
 export const run = {
-  post: post26,
+  post: post27,
 }
 
 /**
@@ -1557,7 +1589,7 @@ export const run = {
  *
  * Stop a running workflow task.
  */
-export const post27 = oc
+export const post28 = oc
   .route({
     description: 'Stop a running workflow task.',
     inputStructure: 'detailed',
@@ -1572,7 +1604,7 @@ export const post27 = oc
   .errors({ not_workflow_app: { status: 400, data: zNotWorkflowAppError } })
 
 export const stop3 = {
-  post: post27,
+  post: post28,
 }
 
 export const byTaskId4 = {

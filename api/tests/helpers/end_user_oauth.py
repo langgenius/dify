@@ -116,6 +116,7 @@ class OAuthHarness:
     client_id: str
     app_code: str
     flight_joined: Event
+    providers: TestProviders
 
     def command(self) -> StartConnectionOAuthInput:
         return StartConnectionOAuthInput(
@@ -238,4 +239,6 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
             refreshes=RedisOAuthRefreshSingleFlight(redis=redis_client),
         ),
     )
-    return OAuthHarness(base, service, gateway, handler, attempts, values, client_id, app_code, flight_joined)
+    return OAuthHarness(
+        base, service, gateway, handler, attempts, values, client_id, app_code, flight_joined, providers
+    )

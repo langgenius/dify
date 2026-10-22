@@ -8,7 +8,7 @@ from typing import Any, Protocol
 
 from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
 from constants.end_user_connections import ConnectionCredentialStatus
-from services.end_user_connections.contracts import ConnectionCheckView
+from services.end_user_connections.contracts import ConnectionCheckOutcome, ConnectionCheckView
 from services.end_user_connections.entities import ConnectionMutationGuard, ConnectionOAuthClient, WebConnectionContext
 from services.end_user_connections.errors import (
     ConnectionConflictError,
@@ -110,18 +110,19 @@ class OAuthConnectionLifecycleService:
     def _reports_expired(result: CredentialCheckResult) -> bool:
         return result.status == "invalid" and result.reason_code == "credential_expired"
 
-    def check(self, context: WebConnectionContext, record: StoredConnection) -> ConnectionCheckView:
+    def check(self, context: WebConnectionContext, record: StoredConnection) -> ConnectionCheckOutcome:
         if self._expired(record):
             return self._refresh_once(context, record, force_refresh=False)
         client, credentials = self._resolve(context, record)
         result = self._gateway.check(context, record.access.provider, credentials)
         if self._reports_expired(result):
             return self._refresh_once(context, record, force_refresh=True)
-        return self._persist(context, record, client, result, refreshed=None, lease=None).view
+        outcome = self._persist(context, record, client, result, refreshed=None, lease=None)
+        return ConnectionCheckOutcome(view=outcome.view, revision=outcome.revision)
 
     def _refresh_once(
         self, context: WebConnectionContext, record: StoredConnection, *, force_refresh: bool
-    ) -> ConnectionCheckView:
+    ) -> ConnectionCheckOutcome:
         guard = connection_mutation_guard(context, record.access)
         result = self._refreshes.run(
             guard,
@@ -144,7 +145,10 @@ class OAuthConnectionLifecycleService:
             refreshed=None,
             ciphertext=None,
         )
-        return result.view.model_copy(update={"credential_status": current.access.credential_status})
+        return ConnectionCheckOutcome(
+            view=result.view.model_copy(update={"credential_status": current.access.credential_status}),
+            revision=current.access.revision,
+        )
 
     def _refresh_and_check(
         self,
