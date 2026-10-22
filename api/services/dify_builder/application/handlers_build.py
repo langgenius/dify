@@ -95,6 +95,7 @@ from services.dify_builder.business_acceptance import (
 from services.dify_builder.execution_messages import change_scope_label
 from services.dify_builder.initial_draft import build_intents_for_draft
 from services.dify_builder.plan import make_plan_card, store_plan
+from services.dify_builder.repair_gate import NO_REPAIR_REASON
 
 logger = logging.getLogger(__name__)
 
@@ -1162,6 +1163,8 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             else text_parts("\n\n", copy_text(BuilderCopyId.REPAIR_NO_SAFE_FOUND))
         ),
     )
+    if not intents and risk.reason and risk.reason != NO_REPAIR_REASON:
+        reply_text = text_parts(reply_text, "\n", copy_text(BuilderCopyId.REPAIR_REASON, reason=risk.reason))
     turn_items = append_assistant(
         env,
         s,

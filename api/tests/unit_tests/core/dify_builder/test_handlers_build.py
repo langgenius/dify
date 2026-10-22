@@ -847,7 +847,15 @@ def test_test_and_repair_fail_routes_to_await_repair_with_staged_repair() -> Non
     assert events == []
 
 
-def test_test_and_repair_fail_with_no_proposed_repair_still_routes_to_gate() -> None:
+@pytest.mark.parametrize(
+    ("reason", "expected_reason"),
+    [
+        ("The missing API credential must be configured before this node can run.", True),
+        ("No safe automatic fix found — try again or finish this session.", False),
+        ("", False),
+    ],
+)
+def test_test_and_repair_fail_with_no_proposed_repair_still_routes_to_gate(reason: str, expected_reason: bool) -> None:
     """When propose_repair finds no safe fix (empty intents), the fail path
     must still route to the gate, but WITHOUT a change_set card, and with the
     "no safe automatic fix" reply_text variant -- the `if intents` branch the
@@ -863,7 +871,7 @@ def test_test_and_repair_fail_with_no_proposed_repair_still_routes_to_gate() -> 
         diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
     ) -> tuple[list[MutationIntent], Risk]:
         _ = diagnosis, graph, reply_language
-        return ([], Risk(level="high", reason="no fix", has_external_side_effect=False))
+        return ([], Risk(level="high", reason=reason, has_external_side_effect=False))
 
     env.agent.propose_repair = propose_repair
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
@@ -877,7 +885,17 @@ def test_test_and_repair_fail_with_no_proposed_repair_still_routes_to_gate() -> 
     assert "error" not in kinds
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["cards"] == ["test_result"]
-    assert "No safe automatic fix was found" in english_text(assistant.payload["reply_text"])
+    reply = english_text(assistant.payload["reply_text"])
+    assert reply.count("No safe automatic fix was found") == 1
+    if expected_reason:
+        assert reply.count(reason) == 1
+        assert reply.index("No safe automatic fix was found") < reply.index(reason)
+    else:
+        assert "Reason:" not in reply
+        if reason:
+            assert reason not in reply
+    assert result.checkpoint is None
+    assert not env.fake_dify.applied
 
 
 def test_test_and_repair_reuses_persisted_inputs_on_retest() -> None:

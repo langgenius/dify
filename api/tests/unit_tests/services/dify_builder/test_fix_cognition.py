@@ -1633,3 +1633,146 @@ def test_repair_receives_native_failure_rule_without_inventing_a_stop_policy() -
     assert "user or known config" in system
     assert "Preserve existing error_strategy" in system
     assert "explicitly requested fallback" in system
+
+
+def test_empty_repair_preserves_permission_reason_without_validation_or_retry() -> None:
+    from services.dify_builder import trace_diagnostics as diagnostics
+
+    reason = "glm5.2 returned 403: permission required; no verified alternative is available."
+    model = _RecordingInstance([json.dumps({"intents": [], "risk": {"level": "low", "reason": reason}})])
+    graph = deepcopy(_RG)
+    records = []
+    with diagnostics.scope(records.append, "propose-repair"):
+        intents, risk = fix.propose_repair(model, _DIAG, graph)
+
+    assert intents == []
+    assert risk.reason == reason
+    assert risk.level == "high"
+    assert risk.has_external_side_effect is False
+    assert len(model.calls) == 1
+    assert graph == _RG
+    assert [record["code"] for record in records] == ["repair_not_proposed"]
+    assert reason not in json.dumps(records)
+
+
+def test_empty_repair_redacts_graph_and_runtime_secrets_before_bounding_reason() -> None:
+    from services.dify_builder import diagnostic_context
+
+    graph = deepcopy(_RG)
+    graph_secret = "graph-private-" + "g" * 2100
+    runtime_secret = "runtime-private-" + "r" * 2100
+    graph["nodes"][0]["data"]["api_key"] = graph_secret
+    failed_run = Run(error=f"token={runtime_secret}")
+    reason = f"403 permission denied {graph_secret} {runtime_secret} " + "detail " * 1000
+    model = _RecordingInstance([json.dumps({"intents": [], "risk": {"reason": reason}})])
+
+    _, risk = fix.propose_repair(
+        model,
+        _DIAG,
+        graph,
+        redact_text=lambda text: diagnostic_context.redact_diagnostic_text(text, failed_run, graph, []),
+    )
+
+    assert risk.reason.startswith("403 permission denied __DIFY_BUILDER_REDACTED__ __DIFY_BUILDER_REDACTED__ detail")
+    assert len(risk.reason) <= 2000
+    assert "graph-private" not in risk.reason
+    assert "runtime-private" not in risk.reason
+
+
+def test_retry_empty_repair_preserves_reason_and_only_prior_actual_refusal() -> None:
+    from services.dify_builder import trace_diagnostics as diagnostics
+
+    reason = "403 permission required; no safe graph repair is available."
+    model = _RecordingInstance([_operator_repair("=="), json.dumps({"intents": [], "risk": {"reason": reason}})])
+    records = []
+    with diagnostics.scope(records.append, "propose-repair"):
+        intents, risk = fix.propose_repair(model, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
+
+    assert intents == []
+    assert risk.reason == reason
+    assert len(model.calls) == 2
+    assert [record["code"] for record in records] == ["validation_refused", "repair_not_proposed"]
+    assert records[0]["attempt"] == 1
+
+
+def test_defensive_nonempty_nonapplicable_verdict_is_not_refused_or_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.dify_builder import preflight
+    from services.dify_builder import trace_diagnostics as diagnostics
+
+    model = _RecordingInstance([_operator_repair("≥")])
+    monkeypatch.setattr(preflight, "vet_intents", lambda *_args, **_kwargs: preflight.VettedIntents([], [], []))
+    records = []
+    graph = deepcopy(_IF_ELSE_GRAPH)
+    with diagnostics.scope(records.append, "propose-repair"):
+        intents, risk = fix.propose_repair(model, _DIAG, graph)
+
+    assert intents == []
+    assert risk.level == "high"
+    assert len(model.calls) == 1
+    assert [record["code"] for record in records] == ["repair_not_applicable"]
+
+
+@pytest.mark.parametrize("payload", [{}, {"intents": None}, {"intents": [{}]}])
+def test_malformed_repair_is_schema_invalid_not_empty_proposal(payload: dict[str, object]) -> None:
+    from services.dify_builder import trace_diagnostics as diagnostics
+
+    records = []
+    with diagnostics.scope(records.append, "propose-repair"):
+        intents, _risk = fix.propose_repair(_RecordingInstance([json.dumps(payload)]), _DIAG, _RG)
+
+    assert intents == []
+    assert [record["code"] for record in records] == ["response_schema_invalid"]
+
+
+def test_rejected_nonempty_repair_remains_validation_refused() -> None:
+    from services.dify_builder import trace_diagnostics as diagnostics
+
+    model = _RecordingInstance([_operator_repair("=="), _operator_repair("==")])
+    records = []
+    with diagnostics.scope(records.append, "propose-repair"):
+        intents, _risk = fix.propose_repair(model, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
+
+    assert intents == []
+    assert len(model.calls) == 2
+    assert [record["code"] for record in records] == ["validation_refused", "validation_refused"]
+
+
+@pytest.mark.parametrize("risk_payload", [{}, {"reason": "   \n"}])
+def test_empty_repair_without_explanation_uses_existing_generic_reason(risk_payload: dict[str, str]) -> None:
+    model = _RecordingInstance([json.dumps({"intents": [], "risk": risk_payload})])
+
+    intents, risk = fix.propose_repair(model, _DIAG, _RG)
+
+    assert intents == []
+    assert risk.reason == "No safe automatic fix found — try again or finish this session."
+    assert len(model.calls) == 1
+
+
+@pytest.mark.parametrize(
+    ("graph_secret", "runtime_secret"),
+    [
+        ("graph-prefix", "graph-prefix-runtime-private-suffix"),
+        ("runtime-prefix-graph-private-suffix", "runtime-prefix"),
+    ],
+)
+def test_empty_repair_redacts_overlapping_credentials_with_complete_runtime_profile(
+    graph_secret: str, runtime_secret: str
+) -> None:
+    from services.dify_builder import diagnostic_context
+
+    graph = deepcopy(_RG)
+    graph["nodes"][0]["data"]["api_key"] = graph_secret
+    failed_run = Run(error=f"token={runtime_secret}")
+    reason = f"403 permission required: {graph_secret} {runtime_secret}"
+    model = _RecordingInstance([json.dumps({"intents": [], "risk": {"reason": reason}})])
+
+    _, risk = fix.propose_repair(
+        model,
+        _DIAG,
+        graph,
+        redact_text=lambda text: diagnostic_context.redact_diagnostic_text(text, failed_run, graph, []),
+    )
+
+    assert risk.reason == "403 permission required: __DIFY_BUILDER_REDACTED__ __DIFY_BUILDER_REDACTED__"

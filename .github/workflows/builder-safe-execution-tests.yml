@@ -504,6 +504,7 @@ jobs:
           # PR44527: continuous native observations and commit notifications.
           FILES += ["api/tests/unit_tests/services/dify_builder/test_native_live_stream.py"]
           SELECTED_GUARDS = [
+              "api/tests/unit_tests/core/dify_builder/test_handlers_edit.py::test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate",
               "api/tests/unit_tests/controllers/console/app/test_workflow.py::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
           ]
           code = pytest.main([
@@ -1686,6 +1687,65 @@ jobs:
                   "test_confirmed_fix_verify_uses_saved_input_without_repair_and_returns_to_decision": 1,
                   "test_confirmed_fix_without_saved_input_refuses_instead_of_generating_mocks": 1,
                   "test_checklist_diagnosis_and_repair_use_persisted_reply_language": 1
+              }
+          })
+          # ENG-1300: empty proposals preserve an actionable reason without applying a repair.
+          a4_expected.update({
+              "tests.unit_tests.services.dify_builder.test_fix_cognition": {
+                  "test_diagnose_valid": 1,
+                  "test_diagnose_nonexistent_culprit_falls_back": 1,
+                  "test_diagnose_bad_severity_coerced": 1,
+                  "test_diagnose_none_model_degrades_with_real_error": 1,
+                  "test_diagnose_provider_error_degrades": 1,
+                  "test_diagnose_checklist_valid": 1,
+                  "test_diagnose_checklist_none_model_degrades": 1,
+                  "test_propose_config_fix_auto_applies_low_risk": 1,
+                  "test_real_fix_cognition_routes_repairs_through_core_approval": 2,
+                  "test_invalid_model_replacement_still_fails_native_preflight": 1,
+                  "test_real_fix_aggregator_source_switch_waits_for_explicit_approval": 2,
+                  "test_real_fix_native_data_access_changes_wait_for_explicit_approval": 22,
+                  "test_propose_external_config_forced_high": 1,
+                  "test_propose_structural_forced_high": 1,
+                  "test_propose_dangling_ref_reprompts_then_recovers": 1,
+                  "test_propose_invalid_twice_surfaces_to_human": 1,
+                  "test_propose_none_model_surfaces_to_human": 1,
+                  "test_propose_provider_error_surfaces": 1,
+                  "test_diagnose_none_model_surfaces_launch_error_when_no_failed_nodes": 1,
+                  "test_diagnose_withholds_nested_runtime_credentials_without_changing_evidence": 1,
+                  "test_diagnose_redacts_known_graph_credentials_before_truncating_runtime_text": 1,
+                  "test_diagnose_launch_failure_withholds_graph_credentials_and_preserves_safe_error": 1,
+                  "test_diagnose_withholds_runtime_only_credentials_repeated_in_graph_labels": 2,
+                  "test_culprit_config_withholds_the_nodes_secrets": 1,
+                  "test_propose_repair_prompt_does_not_carry_the_culprits_credentials": 1,
+                  "test_culprit_config_survives_a_node_whose_data_is_not_a_mapping": 1,
+                  "test_an_over_budget_culprit_config_drops_the_whole_key_and_names_it": 1,
+                  "test_a_within_budget_culprit_config_is_rendered_whole_as_json": 1,
+                  "test_propose_repair_reprompts_on_a_node_the_engine_would_refuse_and_recovers": 1,
+                  "test_the_fix_reprompt_quotes_the_engines_own_words": 1,
+                  "test_a_repair_the_engine_refuses_twice_surfaces_to_the_human": 1,
+                  "test_a_repair_the_engine_accepts_never_spends_the_reprompt": 1,
+                  "test_a_pre_existing_broken_node_does_not_veto_a_repair_elsewhere": 1,
+                  "test_a_repair_that_breaks_its_already_invalid_culprit_further_is_rejected": 1,
+                  "test_a_branch_connect_with_a_declared_handle_is_accepted_first_time": 1,
+                  "test_a_branch_connect_without_a_handle_is_refused_and_the_retry_recovers_it": 1,
+                  "test_a_handle_less_branch_connect_twice_still_surfaces_to_the_human": 1,
+                  "test_the_repair_prompt_states_the_handle_rule_and_shows_the_handles": 1,
+                  "test_a_repair_that_leaves_an_aggregator_unfed_surfaces_with_the_reason": 1,
+                  "test_a_repair_that_clobbers_an_array_surfaces_with_the_reason": 1,
+                  "test_a_purely_structural_refusal_keeps_the_generic_surface_reason": 1,
+                  "test_a_repair_that_answers_the_guard_on_the_retry_is_staged_as_normal": 1,
+                  "test_repair_receives_native_failure_rule_without_inventing_a_stop_policy": 1,
+                  "test_empty_repair_preserves_permission_reason_without_validation_or_retry": 1,
+                  "test_empty_repair_redacts_graph_and_runtime_secrets_before_bounding_reason": 1,
+                  "test_retry_empty_repair_preserves_reason_and_only_prior_actual_refusal": 1,
+                  "test_defensive_nonempty_nonapplicable_verdict_is_not_refused_or_empty": 1,
+                  "test_malformed_repair_is_schema_invalid_not_empty_proposal": 3,
+                  "test_rejected_nonempty_repair_remains_validation_refused": 1,
+                  "test_empty_repair_without_explanation_uses_existing_generic_reason": 2,
+                  "test_empty_repair_redacts_overlapping_credentials_with_complete_runtime_profile": 2
+              },
+              "tests.unit_tests.core.dify_builder.test_handlers_edit": {
+                  "test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate": 3
               }
           })
           for module, expected in {**a3_expected, **a4_expected}.items():
