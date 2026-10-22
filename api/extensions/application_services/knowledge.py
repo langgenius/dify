@@ -51,6 +51,7 @@ from services.knowledge.segments.adapters import (
 )
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.knowledge.segments.indexing import SegmentIndexingGateway
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
 from services.workflow_run_agg import WorkflowRunAgg
@@ -160,7 +161,7 @@ def build_knowledge_services(
             dataset_access=dataset_access,
             datasets=dataset_operations,
             rbac_enabled=dify_config.RBAC_ENABLED,
-            feature_enabled=lambda: dify_config.KNOWLEDGE_FS_ENABLED,
+            feature_enabled=lambda: get_knowledge_fs_features().enabled,
         ),
         document_sync=DocumentSyncApplicationService(
             dataset_access=dataset_access,

@@ -12,6 +12,7 @@ from core.app.entities.app_invoke_entities import DifyRunContext
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionPort
 from services.knowledge_fs.capability_broker import KnowledgeFSAppCapabilityIssuer, KnowledgeFSIssuedProductCapability
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_fs.product_dto import (
     KnowledgeFSMetadataFieldListQuery,
     KnowledgeFSMetadataFieldListResponse,
@@ -70,6 +71,8 @@ class KnowledgeFSAppExecutionCapabilityService:
         resource_id: str | None = None,
         trace_id: str | None = None,
     ) -> KnowledgeFSIssuedProductCapability:
+        if not get_knowledge_fs_features().enabled:
+            raise KnowledgeFSOperationUnavailableError("KnowledgeFS is disabled")
         profile = self._admission.admit(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -230,6 +233,8 @@ class KnowledgeFSAppExecutionCapabilityService:
         tenant_id: str,
         payload: dict[str, JsonValue],
     ) -> JsonValue:
+        if not get_knowledge_fs_features().enabled:
+            raise KnowledgeFSOperationUnavailableError("KnowledgeFS is disabled")
         operation_id = "captureAgentKnowledgeInvestigation"
         operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
         if (

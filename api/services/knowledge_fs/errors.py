@@ -53,7 +53,7 @@ class KnowledgeFSProductResourceNotFoundError(KnowledgeFSProductRemoteError):
 
 
 class KnowledgeFSOperationUnavailableError(RuntimeError):
-    """The Dify/KFS/Capability operation manifests are not yet aligned."""
+    """The operation is disabled or unavailable in the Dify/KFS/Capability deployment."""
 
 
 class KnowledgeFSProductRequestRejectedError(RuntimeError):

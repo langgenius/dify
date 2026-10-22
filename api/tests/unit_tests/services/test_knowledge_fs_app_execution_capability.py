@@ -9,6 +9,7 @@ import pytest
 from pydantic import JsonValue, ValidationError
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from enums import DeploymentEdition
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from services.knowledge_fs import app_execution_capability
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppPrincipalProfile
@@ -28,6 +29,12 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteJSONRequest,
     UnavailableKnowledgeFSProductRemote,
 )
+from tests.unit_tests.config_override import apply_config_overrides
+
+
+@pytest.fixture(autouse=True)
+def _enable_knowledge_fs(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, KNOWLEDGE_FS_ENABLED=True)
 
 
 class Admission:
@@ -176,6 +183,76 @@ def test_app_execution_capability_always_admits_binding_before_broker_issuance()
             "trace_id": "trace-1",
         }
     ]
+
+
+def test_disabled_feature_blocks_app_issuance_and_investigation_capture_before_io(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    admission = Admission()
+    broker = Broker()
+    remote = Remote()
+    service = KnowledgeFSAppExecutionCapabilityService(  # type: ignore[arg-type]
+        admission=admission,
+        broker=broker,
+        remote=remote,
+    )
+    previously_issued = KnowledgeFSIssuedProductCapability(
+        token="token",
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        operation_id="captureAgentKnowledgeInvestigation",
+        knowledge_space_id="space-1",
+        knowledge_space_revision=2,
+        trace_id="trace-1",
+    )
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=False)
+
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match="disabled"):
+        service.issue(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            control_space_id="control-1",
+            caller_kind=KnowledgeFSAppSpaceJoinType.AGENT,
+            operation_id="retrieveEvidence",
+        )
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match="disabled"):
+        service.create_research_task(
+            run_context=DifyRunContext(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                user_id="user-1",
+                user_from=UserFrom.END_USER,
+                invoke_from=InvokeFrom.WEB_APP,
+            ),
+            caller_kind=KnowledgeFSAppSpaceJoinType.AGENT,
+            resource=KnowledgeResourceRef(kind="knowledge_fs", control_space_id="control-1"),
+            payload=KnowledgeFSResearchTaskCreatePayload(query="Compare the evidence"),
+        )
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match="disabled"):
+        service.run_retrieval(
+            run_context=DifyRunContext(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                user_id="user-1",
+                user_from=UserFrom.END_USER,
+                invoke_from=InvokeFrom.WEB_APP,
+            ),
+            caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+            resource=KnowledgeResourceRef(kind="knowledge_fs", control_space_id="control-1"),
+            payload=KnowledgeFSRetrievalTestPayload.model_validate(
+                {
+                    "includeText": True,
+                    "mode": "fast",
+                    "query": "camera",
+                    "queryId": "10000000-0000-4000-8000-000000000010",
+                }
+            ),
+        )
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match="disabled"):
+        service.capture_agent_investigation(issued=previously_issued, tenant_id="tenant-1", payload={})
+
+    assert admission.calls == []
+    assert broker.calls == []
+    assert remote.calls == []
 
 
 def test_typed_knowledge_resource_ref_rejects_dataset_and_extra_authority_fields() -> None:

@@ -19,6 +19,7 @@ from dify_agent.protocol.knowledge_fs import (
 from sqlalchemy.orm import Session
 
 from core.app.file_access import FileAccessScope
+from enums import DeploymentEdition
 from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus, WorkflowAgentNodeBinding
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
@@ -158,9 +159,36 @@ def request(
 @pytest.fixture
 def authorized_gateway(monkeypatch: pytest.MonkeyPatch) -> tuple[gateway.AgentKnowledgeGateway, FakeRuntime]:
     monkeypatch.setattr(gateway.AgentKnowledgeGateway, "_authorize_context", staticmethod(lambda _: SOUL))
-    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_BASE_URL="http://kfs:8000")
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        KNOWLEDGE_FS_ENABLED=True,
+        KNOWLEDGE_FS_BASE_URL="http://kfs:8000",
+    )
     runtime = FakeRuntime()
     return gateway.AgentKnowledgeGateway(cast(KnowledgeFSRuntime, runtime)), runtime
+
+
+@pytest.mark.parametrize(
+    "context",
+    [CONTEXT, CONTEXT.model_copy(update={"agent_config_version_kind": "draft", "invoke_from": "debugger"})],
+    ids=("published", "preview"),
+)
+def test_disabled_feature_blocks_agent_commands_before_capability_issuance(
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, FakeRuntime],
+    monkeypatch: pytest.MonkeyPatch,
+    context: DifyExecutionContextLayerConfig,
+) -> None:
+    service, runtime = authorized_gateway
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=False)
+
+    with pytest.raises(KnowledgeFsError) as error:
+        service.prepare(request("search", context=context, query="hello"))
+
+    assert error.value.code == "KNOWLEDGE_UNAVAILABLE"
+    assert error.value.status_code == 503
+    assert runtime.app_capabilities.issue_calls == []
+    assert runtime.broker.issue_interactive_calls == []
 
 
 @pytest.mark.parametrize(

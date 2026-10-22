@@ -29,6 +29,7 @@ from services.knowledge.datasets.application import (
 )
 from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
 from services.knowledge.resource_scope import DatasetRef
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.rbac import contracts as rbac_contracts
 from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
@@ -163,12 +164,13 @@ class SQLAlchemyDatasetOperations:
                 dataset_ids=[item["id"] for item in data],
                 session=session,
             )
+            knowledge_fs_enabled = get_knowledge_fs_features().enabled
             for item in data:
                 _normalize_provider(item)
                 item["partial_member_list"] = members.get(item["id"], [])
                 item["knowledge_fs_upgrade"] = upgrade_discovery_response(
                     upgrade_jobs.get(item["id"]),
-                    feature_enabled=dify_config.KNOWLEDGE_FS_ENABLED,
+                    feature_enabled=knowledge_fs_enabled,
                     dataset_provider=str(item["provider"]),
                 ).model_dump(mode="json")
             return {

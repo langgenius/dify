@@ -485,6 +485,15 @@ def test_upgrade_retry_returns_queued(app, upgrades):
     assert response == {"id": "job-1", "status": "queued"}
 
 
+def test_upgrade_retry_maps_disabled_feature_to_not_found(app, upgrades):
+    upgrades.retry.side_effect = KnowledgeFSUpgradeUnavailableError()
+    with (
+        app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades/job-1"),
+        pytest.raises(NotFound),
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeJobApi.post)(DatasetKnowledgeFSUpgradeJobApi(), CONTEXT, DATASET_ID, "job-1")
+
+
 def test_api_key_create_rejects_non_string_dataset_ids_with_the_standard_error(app):
     # A raised BadRequest gets the standard error body; ``Namespace.abort(message=...)`` replaced it.
     with app.test_request_context("/", method="POST", json={"dataset_ids": [123]}), pytest.raises(BadRequest) as error:

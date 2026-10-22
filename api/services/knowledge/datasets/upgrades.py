@@ -27,7 +27,7 @@ _RECOVERABLE_STATUSES = (
 
 
 class KnowledgeFSUpgradeUnavailableError(Exception):
-    """The KnowledgeFS feature is disabled, so upgrades cannot start."""
+    """The KnowledgeFS feature is disabled, so upgrades cannot start or retry."""
 
 
 class KnowledgeUpgradeApplicationService:
@@ -110,6 +110,8 @@ class KnowledgeUpgradeApplicationService:
         return job
 
     def retry(self, context: RequestContext, *, dataset_id: str, job_id: str) -> KnowledgeFSUpgradeJob:
+        if not self._feature_enabled():
+            raise KnowledgeFSUpgradeUnavailableError()
         dataset = self._dataset_access.require_accessible(context, dataset_id)
         snapshots = self._snapshots()
         job = snapshots.retry(tenant_id=dataset.workspace_id, dataset_id=dataset.id, job_id=job_id)

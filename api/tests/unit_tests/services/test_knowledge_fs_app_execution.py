@@ -8,6 +8,7 @@ from pydantic import JsonValue
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from enums import DeploymentEdition
 from models.knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
     KnowledgeFSAppSpaceJoinStatus,
@@ -28,6 +29,7 @@ from services.knowledge_fs.app_execution_capability import (
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
 from services.knowledge_fs.product_dto import KnowledgeFSResearchTaskCreatePayload
 from services.knowledge_fs.product_remote import KnowledgeFSRemoteJSONRequest, UnavailableKnowledgeFSProductRemote
+from tests.unit_tests.config_override import apply_config_overrides
 
 pytestmark = pytest.mark.parametrize(
     "sqlite_session",
@@ -44,6 +46,11 @@ pytestmark = pytest.mark.parametrize(
     ],
     indirect=True,
 )
+
+
+@pytest.fixture(autouse=True)
+def _enable_knowledge_fs(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, KNOWLEDGE_FS_ENABLED=True)
 
 
 class Broker:

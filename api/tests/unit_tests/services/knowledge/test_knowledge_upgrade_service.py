@@ -113,6 +113,22 @@ def test_start_is_unavailable_when_knowledge_fs_is_disabled() -> None:
     assert access.requested == []
 
 
+def test_retry_is_unavailable_when_knowledge_fs_is_disabled() -> None:
+    access = FakeDatasetAccess()
+    enqueue = FakeEnqueue()
+    service = _service(feature_enabled=False, access=access, enqueue=enqueue)
+
+    with (
+        patch.object(service, "_snapshots") as snapshots,
+        pytest.raises(KnowledgeFSUpgradeUnavailableError),
+    ):
+        service.retry(CONTEXT, dataset_id="dataset-1", job_id="job-1")
+
+    assert access.requested == []
+    snapshots.assert_not_called()
+    assert enqueue.calls == []
+
+
 def test_start_snapshots_and_enqueues_without_remote_work() -> None:
     enqueue = FakeEnqueue()
     service = _service(enqueue=enqueue)

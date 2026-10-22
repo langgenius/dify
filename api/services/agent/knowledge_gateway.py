@@ -36,6 +36,7 @@ from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from models.model import App, AppMode, EndUser
 from services.agent_config_service import AgentConfigService, AgentConfigVersionKind
 from services.knowledge_fs.app_execution_capability import _move_query_image_grants_to_internal_header
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_fs.product_dto import KnowledgeFSRetrievalQueryImageReference, KnowledgeFSRetrievalTestPayload
 from services.knowledge_fs.product_operations import KNOWLEDGE_FS_PRODUCT_OPERATIONS, is_product_operation_ready
 from services.knowledge_fs.query_images import (
@@ -80,6 +81,8 @@ class AgentKnowledgeGateway:
         return expected
 
     def authorize_investigation(self, report: KnowledgeInvestigationPayload) -> KnowledgeFsPrepareRequest:
+        if not get_knowledge_fs_features().enabled:
+            raise KnowledgeFsError("KNOWLEDGE_UNAVAILABLE", "Agent Knowledge Base is disabled.", 503)
         request = KnowledgeFsPrepareRequest(
             execution_context=report.execution_context,
             bindings=report.bindings,
@@ -318,6 +321,8 @@ class AgentKnowledgeGateway:
 
     @staticmethod
     def _issue(runtime, request, binding, operation_id, resource_id=None):
+        if not get_knowledge_fs_features().enabled:
+            raise KnowledgeFsError("KNOWLEDGE_UNAVAILABLE", "Agent Knowledge Base is disabled.", 503)
         context = request.execution_context
         preview = context.agent_config_version_kind != "snapshot" or context.invoke_from in {"debugger", "validation"}
         if preview:

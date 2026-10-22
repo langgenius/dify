@@ -15,7 +15,7 @@ class KnowledgeFSFeatures:
 
 
 def get_knowledge_fs_features() -> KnowledgeFSFeatures:
-    """Resolve KnowledgeFS availability for the Console and Service API."""
+    """Resolve server-side KnowledgeFS availability for product surfaces."""
     enabled = bool(
         dify_config.KNOWLEDGE_FS_ENABLED
         and (
