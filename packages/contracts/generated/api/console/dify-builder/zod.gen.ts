@@ -996,6 +996,7 @@ export const zAction = z.object({
   kind: zActionKind,
   label: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
   next_state: z.string().nullish(),
+  payload: z.record(z.string(), z.unknown()).optional(),
 })
 
 /**

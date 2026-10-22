@@ -245,7 +245,20 @@ def _action(session_id: str, body, actor: Actor) -> Response | tuple[dict, int]:
         payload = DifyBuilderSubmitActionPayload.model_validate(body)
     except ValidationError:
         return {"code": "bad_request"}, 400
+    from uuid import NAMESPACE_URL, uuid5
+
+    command_id = (
+        str(
+            uuid5(
+                NAMESPACE_URL,
+                f"builder-action:{actor.tenant_id}:{actor.account_id}:{session_id}:{payload.client_action_id}",
+            )
+        )
+        if payload.client_action_id
+        else ""
+    )
     action = Action(
+        command_id=command_id,
         kind=resolve_submitted_action(payload.action_id, payload.payload),
         receipt_snapshot=payload.receipt_snapshot.model_dump() if payload.receipt_snapshot is not None else None,
         payload=payload.payload,
@@ -781,6 +794,12 @@ class DifyBuilderNativeTestInputApi(Resource):
     @console_ns.response(
         200, "Current saved test input binding", console_ns.models[DifyBuilderNativeTestInputResponse.__name__]
     )
+    @console_ns.doc(
+        deprecated=True,
+        description=(
+            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
+        ),
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -808,6 +827,12 @@ class DifyBuilderNativeTestsApi(Resource):
     @console_ns.response(
         200, "Native test admission receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__]
     )
+    @console_ns.doc(
+        deprecated=True,
+        description=(
+            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
+        ),
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -828,6 +853,12 @@ class DifyBuilderNativeTestsApi(Resource):
 @console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests/<string:request_id>")
 class DifyBuilderNativeTestApi(Resource):
     @console_ns.response(200, "Current native test receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__])
+    @console_ns.doc(
+        deprecated=True,
+        description=(
+            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
+        ),
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -846,6 +877,12 @@ class DifyBuilderNativeTestApi(Resource):
 class DifyBuilderNativeTestDecisionsApi(Resource):
     @console_ns.expect(console_ns.models[NativeTestDecisionPayload.__name__])
     @console_ns.response(200, "Saved native test decision", console_ns.models[DifyBuilderNativeTestResponse.__name__])
+    @console_ns.doc(
+        deprecated=True,
+        description=(
+            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
+        ),
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -870,6 +907,12 @@ class DifyBuilderNativeTestResumeApi(Resource):
     @console_ns.response(
         200, "Native test continuation receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__]
     )
+    @console_ns.doc(
+        deprecated=True,
+        description=(
+            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
+        ),
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -893,6 +936,12 @@ class DifyBuilderNativeTestCancelApi(Resource):
     @console_ns.expect(console_ns.models[NativeTestCancelPayload.__name__])
     @console_ns.response(
         200, "Native test cancellation receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__]
+    )
+    @console_ns.doc(
+        deprecated=True,
+        description=(
+            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
+        ),
     )
     @setup_required
     @login_required

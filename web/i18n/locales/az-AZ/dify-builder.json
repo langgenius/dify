@@ -11,6 +11,8 @@
   "changeScope.structure": "struktur",
   "checklistIssues": "Yoxlama siyahısındakı problemlər",
   "configureModel": "Model konfiqurasiya et",
+  "copy.actions.cancelTest": "Testi ləğv et",
+  "copy.actions.confirmTestOperation": "Bu əməliyyatı təsdiqlə",
   "copy.actions.applyTheFix": "Düzəlişi tətbiq et",
   "copy.actions.approveChanges": "Dəyişiklikləri təsdiqlə",
   "copy.actions.approveFix": "Düzəlişi təsdiqlə",

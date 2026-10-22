@@ -474,6 +474,8 @@ jobs:
            'api/tests/unit_tests/services/dify_builder/test_agent_operation_owner.py'] if path not in FILES]
           FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_completion.py'] if path not in FILES]
           FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/test_agent_model_result_canonical.py'] if path not in FILES]
+          FILES += ['api/tests/unit_tests/services/dify_builder/test_test_actions.py']
+          FILES += ['api/tests/unit_tests/services/dify_builder/test_advance_task.py']
           FILES += ['api/tests/unit_tests/services/dify_builder/test_output_evidence.py']
           FILES += ['api/tests/unit_tests/services/test_workflow_run_service_pause.py']
           FILES += [
@@ -1814,6 +1816,15 @@ jobs:
                   "test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate": 3
               }
           })
+          a4_expected['tests.unit_tests.services.dify_builder.test_advance_task'] = {'test_input_only_testdata_survives_revision_drift_through_the_worker': 6, 'test_revision_bound_commands_reject_draft_changes_while_queued': 3, 'test_input_only_testdata_still_rejects_a_session_change_while_queued': 1, 'test_terminal_review_projects_current_persisted_verification': 5, 'test_repair_command_only_requests_retest_after_a_committed_repair': 6, 'test_applied_repair_follow_up_respects_the_completed_views_lifecycle_restriction': 6, 'test_advance_session_drives_state_forward_emits_events_and_releases_lock': 1, 'test_progress_snapshot_is_cumulative_and_saved_before_broadcast': 1, 'test_progress_snapshot_failure_does_not_block_command_completion': 1, 'test_expired_queued_task_does_not_run_or_release_newer_lock': 1, 'test_advance_session_conflict_error_publishes_conflict_and_releases_lock': 1, 'test_terminal_error_is_published_after_the_advance_lock_is_released': 1, 'test_terminal_state_is_published_after_the_advance_lock_is_released': 1, 'test_terminal_state_projection_failure_publishes_error_frame': 1, 'test_message_advance_publishes_assistant_delta_before_durable_reply': 1, 'test_message_failure_keeps_the_durable_user_half_retryable': 1, 'test_advance_session_generic_exception_publishes_generic_error_and_releases_lock': 1, 'test_stale_worker_failure_does_not_overwrite_a_newer_session_head': 1, 'test_observer_publish_failure_is_best_effort_and_terminal_state_is_still_published_once': 1, 'test_advance_session_setup_failure_still_releases_lock': 1, 'test_agent_setup_failure_persists_restartable_failed_state': 1, 'test_start_build_emits_complete_reply_with_form_and_reaches_goal_analysis': 1, 'test_advance_session_resolves_edit_handler_via_merged_registry': 1, 'test_advance_builds_the_agent_for_the_acting_account': 1, 'test_first_test_command_finished_contains_native_receipt_without_opt_in': 1}
+          # ENG-1293: action API and terminal projection regressions, exact inventory.
+          a4_expected['tests.unit_tests.services.dify_builder.test_test_actions'] = {'test_action_accepts_stable_client_identity_without_changing_old_requests': 1, 'test_action_rejects_invalid_client_identity': 3, 'test_risk_action_preserves_pending_version_and_explicit_target': 1, 'test_risk_action_rejects_forged_or_coerced_authority': 3, 'test_resume_keeps_original_request_and_generation': 1, 'test_session_projects_test_state_without_starting_another_run': 1, 'test_resume_action_preserves_request_and_finishes_on_existing_transport': 1, 'test_old_request_cannot_control_current_test': 1, 'test_native_controls_keep_session_and_draft_version_guards': 1, 'test_response_loss_retries_same_action_without_a_second_native_command': 1, 'test_readonly_session_sse_retains_receipt_and_explicit_action_payload': 1, 'test_unknown_result_does_not_allow_run_test_or_implicit_replay': 1, 'test_waiting_operation_uses_existing_choice_with_concrete_risk_details': 1, 'test_standard_choice_envelope_can_submit_native_control': 1, 'test_earlier_action_identity_cannot_be_reused_after_another_command': 1}
+          a4_expected['tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion'].update({
+              'test_native_control_only_commits_do_not_strand_successful_builder_run': 1,
+              'test_terminal_projection_crash_is_recovered_without_get_or_dispatch': 1,
+              'test_native_control_receipt_cannot_hide_an_intervening_user_change': 1,
+              'test_paused_initial_ack_without_dispatch_is_selected_for_worker_recovery': 1,
+          })
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:
@@ -2238,8 +2249,9 @@ jobs:
                   'test_public_decision_refresh_and_readiness_never_dispatch': 1,
                   'test_expired_saved_decision_stays_frozen_but_cannot_resume': 1,
               })
+              EXPECTED['tests.test_containers_integration_tests.core.workflow.test_builder_test_action_api'] = {'test_confirm_and_refresh_use_only_existing_session_action_transport': 1, 'test_action_transport_rejects_foreign_scope_without_dispatch': 1, 'test_action_transport_still_requires_console_login_and_csrf': 1, 'test_native_resume_through_choice_reuses_one_durable_dispatch': 1, 'test_native_cancel_through_choice_does_not_claim_external_rollback': 1, 'test_action_controls_complete_real_graphon_run_without_repeated_http': 3}
               REPORT = "builder-native-console.xml"
-              code = pytest.main(['api/tests/test_containers_integration_tests/core/workflow/test_builder_native_console_api.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-console.xml', '-p', 'no:benchmark', '--no-cov', '--timeout=360', '--timeout-method=thread'])
+              code = pytest.main(['api/tests/test_containers_integration_tests/core/workflow/test_builder_native_console_api.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_test_action_api.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-console.xml', '-p', 'no:benchmark', '--no-cov', '--timeout=360', '--timeout-method=thread'])
               problems = []
               identities = set()
               actual = {module: Counter() for module in EXPECTED}

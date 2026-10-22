@@ -15,7 +15,14 @@ from sqlalchemy import select
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import Actor, EntryMode
 from core.dify_builder.state import PcState
-from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderRun, DifyBuilderSession, DifyBuilderTestInput
+from models.dify_builder import (
+    DifyBuilderConversationItem,
+    DifyBuilderExecutionRequest,
+    DifyBuilderRun,
+    DifyBuilderSession,
+    DifyBuilderSessionCommit,
+    DifyBuilderTestInput,
+)
 from models.dify_builder_native_tests import NativeEffectOperation, NativeInvocationState, NativeTestScope
 from models.enums import CreatorUserRole
 from models.workflow import Workflow, WorkflowRun
@@ -184,7 +191,6 @@ def _project(*, sessions, actor, ref, request):
         return False
     if (
         (owner.tenant_id, owner.owner_account_id) != (actor.tenant_id, actor.account_id)
-        or owner.version != request.context.get("expected_version", -2) + 1
         or owner.current_state not in pending_states
         or context.paused
         or context.recovery_class
@@ -194,6 +200,8 @@ def _project(*, sessions, actor, ref, request):
         return False
     reservation_id = str(uuid5(NAMESPACE_URL, f"dify-builder-full-run:{session_id}:{test_input_id}"))
     with sessions() as sql:
+        if not _control_only_versions(sql, request=request, current_version=owner.version):
+            return False
         current = sql.get(DifyBuilderRun, context.verify_run_id)
         reservation = sql.get(DifyBuilderRun, reservation_id)
         if (
@@ -307,3 +315,85 @@ def _project(*, sessions, actor, ref, request):
         return True
     except ConflictError:
         return False
+
+
+def _control_only_versions(sql, *, request, current_version):
+    """Accept only audited native controls after the original ordinary Run commit.
+
+    A user edit/recovery/model/input transition cannot inherit this exception.
+    The original immutable request/context and admission version stay unchanged.
+    """
+    from services.dify_builder.test_actions import TEST_ACTIONS
+
+    baseline = request.context.get("expected_version", -2) + 1
+    if current_version < baseline:
+        return False
+    if current_version == baseline:
+        return True
+    commits = sql.scalars(
+        select(DifyBuilderSessionCommit)
+        .where(
+            DifyBuilderSessionCommit.session_id == request.session_id,
+            DifyBuilderSessionCommit.version.between(baseline, current_version),
+        )
+        .order_by(DifyBuilderSessionCommit.version)
+    ).all()
+    if len(commits) != current_version - baseline + 1:
+        return False
+    ignored = {"next_seq", "last_command_id"}
+    previous = commits[0]
+    for commit in commits[1:]:
+        if commit.state != previous.state or (
+            {k: v for k, v in commit.context.items() if k not in ignored}
+            != {k: v for k, v in previous.context.items() if k not in ignored}
+        ):
+            return False
+        row = sql.scalar(
+            select(DifyBuilderConversationItem).where(
+                DifyBuilderConversationItem.session_id == request.session_id,
+                DifyBuilderConversationItem.at_version == commit.version,
+                DifyBuilderConversationItem.seq == previous.context.get("next_seq"),
+                DifyBuilderConversationItem.kind == "decision",
+            )
+        )
+        if (
+            row is None
+            or row.payload.get("request_id") != request.id
+            or row.payload.get("test_command_id") != commit.context.get("last_command_id")
+            or row.payload.get("test_action_kind") not in TEST_ACTIONS
+            or not row.payload.get("test_action_digest")
+            or commit.context.get("next_seq") != previous.context.get("next_seq", 0) + 1
+        ):
+            return False
+        previous = commit
+    return True
+
+
+def reconcile_completed_builder_runs(*, sessions, limit: int = 100) -> int:
+    """Recover terminal evidence after a lost projection callback, never execution."""
+    with sessions() as sql:
+        requests = sql.scalars(
+            select(DifyBuilderExecutionRequest)
+            .join(
+                DifyBuilderRun,
+                (DifyBuilderRun.session_id == DifyBuilderExecutionRequest.session_id)
+                & (DifyBuilderRun.inputs_ref == DifyBuilderExecutionRequest.test_input_id)
+                & (DifyBuilderRun.kind == "verify")
+                & (DifyBuilderRun.status == "running"),
+            )
+            .where(
+                DifyBuilderExecutionRequest.context["profile"]["profile_id"].as_string()
+                == "builder-agent-confirmed-v1",
+                DifyBuilderExecutionRequest.state == "sealed",
+            )
+            .order_by(DifyBuilderExecutionRequest.created_at)
+            .limit(limit)
+        ).all()
+    recovered = 0
+    for request in requests:
+        actor = Actor(tenant_id=request.tenant_id, account_id=request.actor_id)
+        ref = NativeTestContextRef(
+            request_id=request.id, invocation_id=request.context["invocation_id"], context_digest=request.context_digest
+        )
+        recovered += int(reconcile_builder_run(sessions=sessions, actor=actor, ref=ref))
+    return recovered

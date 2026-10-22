@@ -1014,6 +1014,24 @@ class ProfiledNativeTestCommands:
             return reconciled + service.publish_pending(limit=limit, request_id=request_id)
         return reconciled + lifecycle.publish_pending(publish=publish, limit=limit, request_id=request_id)
 
+    def recover_observation(self, *, actor, session_id, request_id):
+        """Worker-only ACK observation, separate from outbox publication and GET."""
+        service = self._service(actor=actor, session_id=session_id, request_id=request_id)
+        if isinstance(service, ConfirmedAgentCommands):
+            service.get(actor=actor, session_id=session_id, request_id=request_id)
+
+    def settle_builder(self, *, actor, session_id, request_id):
+        """POST-only result projection; never publish or launch work."""
+        service = self._service(actor=actor, session_id=session_id, request_id=request_id)
+        if isinstance(service, ConfirmedAgentCommands):
+            service._complete_builder(ref=service._root_ref(actor=actor, request_id=request_id))
+
+    def peek(self, **values):
+        """Public projection only: never recover ACKs or publish resume work on GET."""
+        service = self._service(**values)
+        api = service.api if isinstance(service, ConfirmedAgentCommands) else service
+        return api.get(**values)
+
     def start(self, **values):
         return self.legacy_factory().start(**values)
 

@@ -362,6 +362,8 @@ def test_worker_resolves_the_persisted_app_mode_before_constructing_the_agent(
 
     events: list[dict[str, object]] = []
     monkeypatch.setattr(task, "_build_repo", lambda: repo)
+    # This app-mode test uses an in-memory session with no native test request.
+    monkeypatch.setattr(task, "_build_test_actions", lambda _repo: None)
     monkeypatch.setattr(task, "WorkflowServiceDifyPort", lambda: port)
     monkeypatch.setattr(task, "build_dify_builder_agent", track_factory(original_factory))
     monkeypatch.setattr(LlmBuilderAgent, "model_or_none", lambda _self: None)

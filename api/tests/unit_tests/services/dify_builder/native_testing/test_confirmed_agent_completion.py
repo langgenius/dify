@@ -2000,3 +2000,104 @@ def test_edit_terminal_projection_refuses_stale_unknown_or_wrong_task_family(
     session, _ = owner.repo.get_session(owner.session.id)
     assert session.version == version
     assert session.current_state == PcState.EDIT_AWAIT_REPAIR
+
+
+def test_native_control_only_commits_do_not_strand_successful_builder_run(completed: CompletedOwner) -> None:
+    from core.dify_builder.models import ConversationItem
+
+    owner = completed
+    for kind, identity in [("confirm_test_operation", "confirm-1"), ("resume_test", "resume-1")]:
+        session, context = owner.repo.get_session(owner.session.id)
+        context.last_command_id = identity
+        item = ConversationItem(
+            seq=context.next_seq,
+            kind="decision",
+            at_version=session.version + 1,
+            payload={
+                "text": kind,
+                "test_action_kind": kind,
+                "test_command_id": identity,
+                "test_action_digest": "a" * 64,
+                "request_id": owner.request_id,
+            },
+        )
+        context.next_seq += 1
+        owner.repo.compare_and_advance(session.id, session.version, session.current_state, context, [item])
+    observe(owner)
+    assert owner.repo.get_run(owner.verify_id).status == "succeeded"
+    assert owner.repo.get_session(owner.session.id)[0].current_state == PcState.BUILD_REVIEW
+
+
+def test_terminal_projection_crash_is_recovered_without_get_or_dispatch(completed: CompletedOwner) -> None:
+    from services.dify_builder.native_testing.confirmed_agent_completion import reconcile_completed_builder_runs
+
+    owner = completed
+    assert reconcile_completed_builder_runs(sessions=owner.factory, limit=10) == 1
+    assert owner.repo.get_run(owner.verify_id).status == "succeeded"
+    assert reconcile_completed_builder_runs(sessions=owner.factory, limit=10) == 0
+
+
+def test_native_control_receipt_cannot_hide_an_intervening_user_change(completed: CompletedOwner) -> None:
+    from core.dify_builder.models import ConversationItem
+
+    owner = completed
+    session, context = owner.repo.get_session(owner.session.id)
+    context.model_config = {"provider": "changed"}
+    context.last_command_id = "forged-control"
+    item = ConversationItem(
+        seq=context.next_seq,
+        kind="decision",
+        at_version=session.version + 1,
+        payload={
+            "text": "resume",
+            "test_action_kind": "resume_test",
+            "test_command_id": "forged-control",
+            "test_action_digest": "a" * 64,
+            "request_id": owner.request_id,
+        },
+    )
+    context.next_seq += 1
+    owner.repo.compare_and_advance(session.id, session.version, session.current_state, context, [item])
+    observe(owner)
+    assert owner.repo.get_run(owner.verify_id).status == "running"
+
+
+def test_paused_initial_ack_without_dispatch_is_selected_for_worker_recovery(
+    completed: CompletedOwner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from types import SimpleNamespace
+
+    from models.dify_builder_native_tests import NativeDispatch
+    from schedule import dify_builder_reconcile_task as task
+    from services.dify_builder import wiring
+
+    owner = completed
+    with owner.factory.begin() as sql:
+        dispatch_table = NativeDispatch.__table__
+        assert isinstance(dispatch_table, Table)
+        dispatch_table.create(sql.connection(), checkfirst=True)
+        root = sql.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == owner.request_id))
+        assert root is not None
+        root.state = "running"
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert request is not None
+        request.state = "running"
+        request.native_run_id = None  # admission retained the identity; outer ACK was lost
+        native = sql.get(WorkflowRun, owner.native_id)
+        assert native is not None
+        native.status = WorkflowExecutionStatus.PAUSED
+    calls: list[str] = []
+
+    def recover(**kwargs: str) -> int:
+        calls.append(kwargs["request_id"])
+        return 0
+
+    monkeypatch.setattr(task, "_session_factory", lambda: owner.factory)
+    monkeypatch.setattr(
+        wiring,
+        "build_native_test_api_service",
+        lambda **_: SimpleNamespace(reconcile_pending=recover, recover_observation=recover),
+    )
+    monkeypatch.setattr(wiring, "native_runtime_owner", lambda: SimpleNamespace(retire_closed=lambda **_: None))
+    task.reconcile_native_tests()
+    assert calls == [owner.request_id]
