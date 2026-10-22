@@ -35,7 +35,7 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from graphon.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from models.model import Message
 from models.workflow import WorkflowNodeExecutionModel
 
@@ -169,10 +169,9 @@ def test_workflow_parent_children_usage_metadata_and_explicit_experiment(
             app_id="app",
             title=name,
             node_type=node_type,
-            status="succeeded",
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs='{"question":"synthetic"}',
             outputs='{"text":"answer"}',
-            created_at=started + timedelta(milliseconds=index),
             elapsed_time=0.1,
             process_data=json.dumps(
                 {
@@ -193,13 +192,15 @@ def test_workflow_parent_children_usage_metadata_and_explicit_experiment(
             ]
         )
     ]
+    for trace_node_index, trace_node_record in enumerate(nodes):
+        trace_node_record.created_at = started + timedelta(milliseconds=trace_node_index)
     monkeypatch.setattr(instance, "_get_workflow_nodes", lambda _run_id: nodes)
     info = WorkflowTraceInfo(
         workflow_id="workflow",
         tenant_id="tenant",
         workflow_run_id="run",
         workflow_run_elapsed_time=1,
-        workflow_run_status="succeeded",
+        workflow_run_status=WorkflowNodeExecutionStatus.SUCCEEDED,
         workflow_run_inputs={"q": "synthetic", "sys.hidden": "drop"},
         workflow_run_outputs={"answer": "answer"},
         workflow_run_version="1",

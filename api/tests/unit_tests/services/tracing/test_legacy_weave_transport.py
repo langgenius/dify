@@ -176,7 +176,6 @@ def test_workflow_emits_four_real_sdk_calls_with_original_ids_payload_and_status
             created_by_role=CreatorUserRole.ACCOUNT,
             inputs=json.dumps({"synthetic": True}),
             outputs=json.dumps({"answer": "ok"}),
-            created_at=START + timedelta(milliseconds=i),
             finished_at=START + timedelta(milliseconds=i + 100),
             elapsed_time=0.1,
             process_data=json.dumps(
@@ -197,6 +196,8 @@ def test_workflow_emits_four_real_sdk_calls_with_original_ids_payload_and_status
             [("Start", BuiltinNodeTypes.START), ("LLM", BuiltinNodeTypes.LLM), ("End", BuiltinNodeTypes.END)]
         )
     ]
+    for trace_node_index, trace_node_record in enumerate(nodes):
+        trace_node_record.created_at = START + timedelta(milliseconds=trace_node_index)
     sqlite_session.add_all(nodes)
     sqlite_session.commit()
     adapter = WeaveDataTrace(config())

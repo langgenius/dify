@@ -152,12 +152,12 @@ def workflow(
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=identifier("owner"),
-            created_at=now,
             finished_at=now + timedelta(seconds=2),
             elapsed_time=2,
             total_tokens=0,
             total_steps=0,
         )
+        row.created_at = now
         session.add(row)
     trace_run = (
         case.collection.repository.start(
@@ -365,42 +365,41 @@ def test_mixed_workflow_exports_normal_llm_and_agent_calls_without_double_usage(
             usage: dict[str, int] = (
                 {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15} if kind == "llm" else {}
             )
-            session.add(
-                WorkflowNodeExecutionModel(
-                    id=node_id,
-                    node_execution_id=node_id,
-                    tenant_id=row.tenant_id,
-                    app_id=row.app_id,
-                    workflow_id=row.workflow_id,
-                    workflow_run_id=row.id,
-                    triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-                    index=index,
-                    node_id=kind,
-                    node_type=kind,
-                    title=kind,
-                    inputs="{}",
-                    outputs="{}",
-                    process_data=json.dumps(
-                        {
-                            "model_mode": "chat",
-                            "model_name": "ordinary-model",
-                            "model_provider": "openai",
-                            "usage": usage,
-                        }
-                    )
-                    if kind == "llm"
-                    else "{}",
-                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    elapsed_time=1,
-                    execution_metadata=json.dumps(
-                        {"total_tokens": 15 if kind == "llm" else 10, "total_price": "0.02", "currency": "USD"}
-                    ),
-                    created_at=row.created_at,
-                    finished_at=row.finished_at,
-                    created_by=owner,
-                    created_by_role=CreatorUserRole.ACCOUNT,
+            trace_node_record = WorkflowNodeExecutionModel(
+                id=node_id,
+                node_execution_id=node_id,
+                tenant_id=row.tenant_id,
+                app_id=row.app_id,
+                workflow_id=row.workflow_id,
+                workflow_run_id=row.id,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                index=index,
+                node_id=kind,
+                node_type=kind,
+                title=kind,
+                inputs="{}",
+                outputs="{}",
+                process_data=json.dumps(
+                    {
+                        "model_mode": "chat",
+                        "model_name": "ordinary-model",
+                        "model_provider": "openai",
+                        "usage": usage,
+                    }
                 )
+                if kind == "llm"
+                else "{}",
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                elapsed_time=1,
+                execution_metadata=json.dumps(
+                    {"total_tokens": 15 if kind == "llm" else 10, "total_price": "0.02", "currency": "USD"}
+                ),
+                finished_at=row.finished_at,
+                created_by=owner,
+                created_by_role=CreatorUserRole.ACCOUNT,
             )
+            trace_node_record.created_at = row.created_at
+            session.add(trace_node_record)
     invocation = case.collection.repository.invocation(
         run_id=managed.id, agent_id=identifier("agent"), node_execution_id=agent_node_id, attempt=0, call_key="agent:0"
     )

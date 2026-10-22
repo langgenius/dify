@@ -312,29 +312,28 @@ def test_preview_terminal_uses_persisted_node_state_and_frozen_privacy(
     workflow_id = identifier("preview-definition")
     with case.sessions.begin() as session:
         session.add(make_workflow(workflow_id=workflow_id, tenant_id=case.run.tenant_id, app_id=case.run.app_id))
-        session.add(
-            WorkflowNodeExecutionModel(
-                id=node_id,
-                node_execution_id=node_id,
-                tenant_id=case.run.tenant_id,
-                app_id=case.run.app_id,
-                workflow_id=workflow_id,
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
-                index=0,
-                node_id="agent",
-                node_type="agent",
-                title="Agent preview",
-                inputs='{"secret":"private-input"}',
-                outputs='{"answer":"private-output"}',
-                process_data="{}",
-                status=status,
-                elapsed_time=2,
-                error="private-model-error" if status == WorkflowNodeExecutionStatus.FAILED else None,
-                created_at=datetime(2026, 1, 1),
-                created_by=identifier("account"),
-                created_by_role=CreatorUserRole.ACCOUNT,
-            )
+        trace_node_record = WorkflowNodeExecutionModel(
+            id=node_id,
+            node_execution_id=node_id,
+            tenant_id=case.run.tenant_id,
+            app_id=case.run.app_id,
+            workflow_id=workflow_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            index=0,
+            node_id="agent",
+            node_type="agent",
+            title="Agent preview",
+            inputs='{"secret":"private-input"}',
+            outputs='{"answer":"private-output"}',
+            process_data="{}",
+            status=status,
+            elapsed_time=2,
+            error="private-model-error" if status == WorkflowNodeExecutionStatus.FAILED else None,
+            created_by=identifier("account"),
+            created_by_role=CreatorUserRole.ACCOUNT,
         )
+        trace_node_record.created_at = datetime(2026, 1, 1)
+        session.add(trace_node_record)
     run = case.repository.start(
         tenant_id=case.run.tenant_id,
         app_id=case.run.app_id,
