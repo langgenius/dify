@@ -3,18 +3,13 @@ from pydantic import RootModel
 
 from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import (
-    account_initialization_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
+from controllers.console.flask_admission import console_account_admission
 from core.plugin.entities.plugin_daemon import PluginAgentProviderEntity
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
-from libs.login import login_required
-from models import Account
-from services.agent_service import AgentService
+from machinery.context import RequestContext
+from services.agent_provider_service import AgentProviderUnavailableError
 
 
 class AgentProviderResponse(PluginAgentProviderEntity, ResponseModel):
@@ -37,13 +32,9 @@ class AgentProviderListApi(Resource):
         "Success",
         console_ns.models[AgentProviderListResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account):
-        providers = AgentService.list_agent_providers(current_user.id, current_tenant_id)
+    @console_account_admission()
+    def get(self, request_context: RequestContext):
+        providers = application_services().agent_providers.list_providers(request_context)
         return AgentProviderListResponse.model_validate(providers, from_attributes=True).model_dump(mode="json")
 
 
@@ -57,11 +48,11 @@ class AgentProviderApi(Resource):
         "Success",
         console_ns.models[AgentProviderResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account, provider_name: str):
-        provider = AgentService.get_agent_provider(current_user.id, current_tenant_id, provider_name)
+    @console_account_admission()
+    def get(self, request_context: RequestContext, provider_name: str):
+        try:
+            provider = application_services().agent_providers.get_provider(request_context, provider_name)
+        except AgentProviderUnavailableError as error:
+            # Preserve the legacy ValueError -> 400 invalid_param contract.
+            raise ValueError(str(error)) from error
         return dump_response(AgentProviderResponse, provider)

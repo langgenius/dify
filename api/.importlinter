@@ -1181,3 +1181,35 @@ forbidden_modules =
     services.account.adapters
     sqlalchemy
     werkzeug
+
+[importlinter:contract:console-agent-provider-controller-boundary]
+name = Console Agent provider controller reaches the runtime through application services
+type = forbidden
+source_modules =
+    controllers.console.workspace.agent_providers
+forbidden_modules =
+    models
+    repositories
+    extensions.ext_database
+    services.agent_service
+    core.plugin.impl
+    sqlalchemy
+allow_indirect_imports = True
+
+[importlinter:contract:agent-provider-application-boundary]
+name = Agent provider application operations do not depend on runtime adapters
+type = forbidden
+source_modules =
+    services.agent_provider_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.agent_provider_gateway
+    services.agent_service
+    core.plugin.impl
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
