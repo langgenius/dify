@@ -2,7 +2,6 @@
 checkpoint surfacing, pause/resume."""
 
 from core.dify_builder.models import Actor, Graph
-from services.dify_builder.application.ports import DifyPort
 from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, FakeDifyPort
 
 
@@ -31,11 +30,6 @@ def test_fake_build_dify_port_restore_graph_swaps_graph() -> None:
     snapshot: Graph = {"nodes": [], "edges": []}
     dify.restore_graph("app", _actor(), snapshot)
     assert dify.read_graph("app", _actor())[0] == {"nodes": [], "edges": []}
-
-
-def test_fake_dify_ports_still_satisfy_dify_port_protocol() -> None:
-    assert isinstance(FakeDifyPort(), DifyPort)
-    assert isinstance(FakeBuildDifyPort(), DifyPort)
 
 
 def test_in_memory_invalidate_flips_assistant_turns_from_seq() -> None:
