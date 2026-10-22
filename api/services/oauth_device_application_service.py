@@ -91,7 +91,7 @@ class DeviceFlowStore(Protocol):
 
     def restore(self, device_code: str, state: DeviceFlowStateView, ttl_seconds: int) -> bool: ...
 
-    def remaining_seconds(self, device_code: str) -> int: ...
+    def remaining_seconds(self, device_code: str) -> int | None: ...
 
     def record_poll(self, device_code: str, interval_seconds: int) -> SlowDownDecision: ...
 
@@ -395,11 +395,10 @@ class OAuthDeviceApplicationService:
         device_code, state = found
         if state.status is not DeviceFlowStatus.PENDING:
             return DeviceLookup(valid=False, expires_in_remaining=0, client_id=state.client_id)
-        return DeviceLookup(
-            valid=True,
-            expires_in_remaining=self._store.remaining_seconds(device_code),
-            client_id=state.client_id,
-        )
+        remaining = self._store.remaining_seconds(device_code)
+        if remaining is None:
+            return DeviceLookup(valid=False, expires_in_remaining=0, client_id=state.client_id)
+        return DeviceLookup(valid=True, expires_in_remaining=remaining, client_id=state.client_id)
 
     def approve(self, context: RequestContext, *, user_code: str) -> DeviceMutation:
         device_code, state = self._pending_state(user_code)

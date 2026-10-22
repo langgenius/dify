@@ -77,7 +77,7 @@ class FakeStore:
     confirmation: ApprovalTransitionConfirmation | None = None
     confirm_error: Exception | None = None
     restore_error: Exception | None = None
-    remaining: int = 900
+    remaining: int | None = 900
     acquired: list[tuple[str, str, int]] = field(default_factory=list)
     released: list[tuple[str, str]] = field(default_factory=list)
     started: list[tuple[str, str, str, str]] = field(default_factory=list)
@@ -138,7 +138,7 @@ class FakeStore:
         self.restored.append(device_code)
         return True
 
-    def remaining_seconds(self, device_code: str) -> int:
+    def remaining_seconds(self, device_code: str) -> int | None:
         _ = device_code
         return self.remaining
 
@@ -588,6 +588,17 @@ def test_lookup_reports_the_real_remaining_lifetime() -> None:
     harness.store.states = {"ABCD-EFGH": ("device-1", FakeState(status=DeviceFlowStatus.PENDING))}
 
     assert harness.service.lookup(user_code="ABCD-EFGH").expires_in_remaining == 312
+
+
+def test_lookup_rejects_a_code_whose_lifetime_is_unknown() -> None:
+    harness = _harness()
+    harness.store.remaining = None
+    harness.store.states = {"ABCD-EFGH": ("device-1", FakeState(status=DeviceFlowStatus.PENDING))}
+
+    result = harness.service.lookup(user_code="ABCD-EFGH")
+
+    assert result.valid is False
+    assert result.expires_in_remaining == 0
 
 
 @pytest.mark.parametrize("operation", ["approve", "deny"])

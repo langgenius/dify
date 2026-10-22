@@ -187,9 +187,22 @@ def test_restore_does_not_overwrite_a_newer_state() -> None:
     assert [name for name, _value, _ttl in redis.set_calls] == ["device_code:device-1"]
 
 
-@pytest.mark.parametrize(("redis_ttl", "expected"), [(312, 312), (-1, 0), (-2, 0)])
-def test_remaining_seconds_floors_at_zero(redis_ttl: int, expected: int) -> None:
-    assert DeviceFlowRedis(_Redis(response="", ttl_seconds=redis_ttl)).remaining_seconds("device-1") == expected
+def test_remaining_seconds_returns_the_redis_ttl() -> None:
+    assert DeviceFlowRedis(_Redis(response="", ttl_seconds=312)).remaining_seconds("device-1") == 312
+
+
+def test_remaining_seconds_is_none_when_the_key_is_gone(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.ERROR):
+        assert DeviceFlowRedis(_Redis(response="", ttl_seconds=-2)).remaining_seconds("device-1") is None
+
+    assert caplog.text == ""
+
+
+def test_remaining_seconds_logs_and_is_none_when_the_key_has_no_expiry(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.ERROR):
+        assert DeviceFlowRedis(_Redis(response="", ttl_seconds=-1)).remaining_seconds("device-1") is None
+
+    assert "no expiry" in caplog.text
 
 
 def test_reader_tolerates_old_approved_state_with_poll_payload() -> None:

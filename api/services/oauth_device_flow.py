@@ -35,6 +35,9 @@ from services.oauth_device_contracts import (
 
 logger = logging.getLogger(__name__)
 
+REDIS_TTL_NO_EXPIRY = -1
+REDIS_TTL_MISSING = -2
+
 
 # ============================================================================
 # Redis state machine — device_code + user_code ephemeral state
@@ -309,8 +312,14 @@ class DeviceFlowRedis:
         self._redis.set(USER_CODE_KEY_FMT.format(code=state.user_code), device_code, nx=True, ex=ttl)
         return True
 
-    def remaining_seconds(self, device_code: str) -> int:
-        return max(int(self._redis.ttl(DEVICE_CODE_KEY_FMT.format(code=device_code))), 0)
+    def remaining_seconds(self, device_code: str) -> int | None:
+        ttl = int(self._redis.ttl(DEVICE_CODE_KEY_FMT.format(code=device_code)))
+        if ttl == REDIS_TTL_MISSING:
+            return None
+        if ttl == REDIS_TTL_NO_EXPIRY:
+            logger.error("device_code %s has no expiry; treating as invalid", device_code)
+            return None
+        return ttl
 
     def record_poll(self, device_code: str, interval_seconds: int) -> SlowDownDecision:
         now = time.time()

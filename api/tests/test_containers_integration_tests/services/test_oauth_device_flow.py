@@ -69,7 +69,9 @@ def test_approval_record_is_stored_without_a_token_and_claimed_once(subject_type
         assert restored is not None
         assert restored[0] == device_code
         assert restored[1].status is DeviceFlowStatus.APPROVED
-        assert 0 < store.remaining_seconds(device_code) <= ttl
+        remaining = store.remaining_seconds(device_code)
+        assert remaining is not None
+        assert 0 < remaining <= ttl
     finally:
         redis_client.delete(DEVICE_CODE_KEY_FMT.format(code=device_code), USER_CODE_KEY_FMT.format(code=user_code))
 
