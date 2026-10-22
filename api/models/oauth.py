@@ -98,23 +98,24 @@ class OAuthAccessToken(TypeBase):
     subject_issuer is non-NULL for all rows the app writes — both dialects
     treat NULLs as distinct in unique indices, so the device key would
     otherwise never collide. Unique on (subject_email, subject_issuer,
-    client_id, device_label, active_guard); active_guard is 1 while
+    client_id, device_key, active_guard); active_guard is 1 while
     revoked_at IS NULL and NULL after, so revoked history never collides
-    on either dialect.
+    on either dialect. device_key identifies the CLI install a login
+    rotates; device_label is only the display name.
     """
 
     __tablename__ = "oauth_access_tokens"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="oauth_access_tokens_pkey"),
         sa.Index(
-            "uq_oauth_active_guard_per_device",
+            "uq_oauth_active_per_device_key",
             "subject_email",
             "subject_issuer",
             "client_id",
-            "device_label",
+            "device_key",
             "active_guard",
             unique=True,
-            mysql_length={"subject_email": 191, "subject_issuer": 191, "device_label": 191},
+            mysql_length={"subject_email": 191, "subject_issuer": 191, "device_key": 191},
         ),
     )
 
@@ -128,6 +129,7 @@ class OAuthAccessToken(TypeBase):
     subject_email: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     client_id: Mapped[str] = mapped_column(sa.String(64), nullable=False)
     device_label: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    device_key: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     prefix: Mapped[str] = mapped_column(sa.String(8), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     subject_issuer: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)

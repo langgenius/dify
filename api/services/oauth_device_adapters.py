@@ -162,6 +162,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
                 account_id=account_id,
                 client_id=client_id,
                 device_label=device_label,
+                device_key=device_label,
                 prefix=token_type.prefix,
                 token_hash=sha256_hex(plaintext),
                 expires_at=expires_at,

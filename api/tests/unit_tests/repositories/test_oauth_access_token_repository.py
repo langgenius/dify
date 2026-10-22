@@ -30,6 +30,7 @@ def _token(
         account_id=account_id,
         client_id="difyctl",
         device_label=f"device-{token_id}",
+        device_key=f"device-{token_id}",
         prefix="dfoa_" if account_id is not None else "dfoe_",
         token_hash=token_hash,
         expires_at=expires_at or NOW + timedelta(days=1),

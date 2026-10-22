@@ -34,7 +34,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
                     OAuthAccessToken.subject_email == token.subject_email,
                     OAuthAccessToken.subject_issuer == token.subject_issuer,
                     OAuthAccessToken.client_id == token.client_id,
-                    OAuthAccessToken.device_label == token.device_label,
+                    OAuthAccessToken.device_key == token.device_key,
                     OAuthAccessToken.revoked_at.is_(None),
                 )
                 .limit(1)
@@ -53,6 +53,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
                 account_id=token.account_id,
                 client_id=token.client_id,
                 device_label=token.device_label,
+                device_key=token.device_key,
                 prefix=token.prefix,
                 token_hash=token.token_hash,
                 expires_at=token.expires_at,

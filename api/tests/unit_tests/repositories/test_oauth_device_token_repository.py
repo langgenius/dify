@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from functools import partial
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
@@ -14,7 +15,7 @@ from models.oauth import OAuthAccessToken
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
-from services.oauth_device_contracts import ACCOUNT_ISSUER_SENTINEL
+from services.oauth_device_contracts import ACCOUNT_ISSUER_SENTINEL, OAuthDeviceTokenWrite
 
 
 @dataclass
@@ -51,6 +52,20 @@ def _account(account_id: str = "account-1", email: str = "ada@example.com") -> A
         status="active",
         initialized_at=now,
         created_at=now,
+    )
+
+
+def _write(*, device_label: str, device_key: str) -> OAuthDeviceTokenWrite:
+    return OAuthDeviceTokenWrite(
+        subject_email="ada@example.com",
+        subject_issuer=ACCOUNT_ISSUER_SENTINEL,
+        account_id="account-1",
+        client_id="difyctl",
+        device_label=device_label,
+        device_key=device_key,
+        prefix="dfoa_",
+        token_hash=uuid4().hex,
+        expires_at=datetime.now(UTC) + timedelta(days=1),
     )
 
 
@@ -115,10 +130,9 @@ def test_issue_rotates_matching_live_token_and_invalidates_old_cache(
     second = issue_token()
 
     sqlite_session.expire_all()
-    records = list(sqlite_session.scalars(select(OAuthAccessToken).order_by(OAuthAccessToken.created_at)).all())
+    records = list(sqlite_session.scalars(select(OAuthAccessToken)).all())
     assert len(records) == 2
-    assert sum(record.revoked_at is None for record in records) == 1
-    assert records[-1].id == second.token_id
+    assert [record.id for record in records if record.revoked_at is None] == [second.token_id]
     assert redis.deleted == [TOKEN_CACHE_KEY_FMT.format(hash=sha256_hex(first.token))]
 
 
@@ -184,6 +198,7 @@ def test_second_live_token_for_the_same_device_is_rejected(sqlite_session: Sessi
             subject_issuer=ACCOUNT_ISSUER_SENTINEL,
             client_id="difyctl",
             device_label="Laptop",
+            device_key="Laptop",
             prefix="dfoa_",
             token_hash=token_hash,
             expires_at=datetime.now(UTC) + timedelta(days=1),
@@ -213,9 +228,61 @@ def test_rotation_keeps_revoked_history_under_the_unique_index(
     third = issue_token()
 
     sqlite_session.expire_all()
-    records = list(sqlite_session.scalars(select(OAuthAccessToken).order_by(OAuthAccessToken.created_at)).all())
-    assert [record.id for record in records if record.revoked_at is None] == [third.token_id]
-    assert [record.active_guard for record in records] == [None, None, 1]
+    guards = {record.id: record.active_guard for record in sqlite_session.scalars(select(OAuthAccessToken)).all()}
+    assert len(guards) == 3
+    assert guards.pop(third.token_id) == 1
+    assert set(guards.values()) == {None}
+
+
+def test_rotation_matches_device_key_not_label(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _issuer, repository, _redis, _ttl_policy = _repository(sqlite_session_factory)
+
+    first = repository.rotate_token(_write(device_label="host", device_key="install:aaaa1111"))
+    second = repository.rotate_token(_write(device_label="host", device_key="install:bbbb2222"))
+    assert second.replaced_token_id is None
+    third = repository.rotate_token(_write(device_label="renamed-host", device_key="install:aaaa1111"))
+
+    assert third.replaced_token_id == first.token_id
+    sqlite_session.expire_all()
+    live = {
+        record.id: (record.device_label, record.device_key)
+        for record in sqlite_session.scalars(select(OAuthAccessToken).where(OAuthAccessToken.revoked_at.is_(None)))
+    }
+    assert live == {
+        second.token_id: ("host", "install:bbbb2222"),
+        third.token_id: ("renamed-host", "install:aaaa1111"),
+    }
+
+
+def test_legacy_key_equals_label_keeps_old_rotation(sqlite_session_factory: sessionmaker[Session]) -> None:
+    _issuer, repository, _redis, _ttl_policy = _repository(sqlite_session_factory)
+
+    first = repository.rotate_token(_write(device_label="host", device_key="host"))
+    second = repository.rotate_token(_write(device_label="host", device_key="host"))
+
+    assert second.replaced_token_id == first.token_id
+
+
+def test_issuer_keys_rotation_on_the_device_label_until_an_install_key_arrives(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory)
+
+    issued = issuer.issue_account_token(
+        account=_account(),
+        workspace_id="workspace-1",
+        client_id="difyctl",
+        device_label="Laptop",
+    )
+
+    sqlite_session.expire_all()
+    record = sqlite_session.get(OAuthAccessToken, issued.token_id)
+    assert record is not None
+    assert record.device_key == "Laptop"
 
 
 def test_login_after_logout_on_the_same_device_succeeds(

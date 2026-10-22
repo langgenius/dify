@@ -98,6 +98,7 @@ class OAuthDeviceTokenWrite:
     account_id: str | None
     client_id: str
     device_label: str
+    device_key: str
     prefix: str
     token_hash: str
     expires_at: datetime

@@ -41,6 +41,7 @@ def _mint_account_token(
         account_id=str(account.id),
         client_id=client_id,
         device_label=device_label,
+        device_key=device_label,
         prefix=TokenType.OAUTH_ACCOUNT.prefix,
         token_hash=f"integration-{uuid4().hex}",
         expires_at=datetime.now(UTC) + timedelta(days=14),

@@ -85,6 +85,7 @@ def mint_token(flask_app: Flask):
                 subject_issuer=subject_issuer,
                 client_id="difyctl",
                 device_label="test-device",
+                device_key="test-device",
                 expires_at=datetime.now(UTC) + timedelta(hours=1),
             )
             db.session.add(row)

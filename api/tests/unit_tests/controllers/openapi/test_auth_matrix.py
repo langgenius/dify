@@ -1630,6 +1630,7 @@ def world(sqlite_session_factory: sessionmaker[Session], token_rows: dict[str, R
             subject_issuer=issuer,
             client_id="difyctl",
             device_label="matrix",
+            device_key="matrix",
             expires_at=datetime.now(UTC) + timedelta(days=365),
         )
         row.id = str(token_id)
