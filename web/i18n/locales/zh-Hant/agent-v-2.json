@@ -331,7 +331,7 @@
   "agentDetail.monitoring.metrics.totalConversations.title": "全部會話數",
   "agentDetail.monitoring.metrics.totalMessages.explanation": "使用者傳送給此 Agent 的訊息總數。",
   "agentDetail.monitoring.metrics.totalMessages.title": "全部訊息數",
-  "agentDetail.monitoring.metrics.userSatisfactionRate.explanation": "被使用者按讚的 Agent 回覆所占百分比。",
+  "agentDetail.monitoring.metrics.userSatisfactionRate.explanation": "被使用者按讚的 Agent 回覆所佔百分比。",
   "agentDetail.monitoring.metrics.userSatisfactionRate.title": "使用者滿意度",
   "agentDetail.monitoring.pickSource": "選擇應用",
   "agentDetail.monitoring.sourceLabel": "應用",

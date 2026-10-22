@@ -51,7 +51,7 @@
   "nodes.agent.roster.openPanel": "開啟 {{name}} 詳情",
   "nodes.agent.roster.panelLabel": "{{name}} 詳情",
   "nodes.agent.strategy.configureTip": "請配置 agentic 策略。",
-  "nodes.agent.strategy.configureTipDesc": "配置代理策略后，該節點將自動載入剩餘的配置。該策略將影響多步驟工具推理的機制。",
+  "nodes.agent.strategy.configureTipDesc": "配置代理策略後，該節點將自動載入剩餘的配置。該策略將影響多步驟工具推理的機制。",
   "nodes.agent.strategy.label": "代理策略",
   "nodes.agent.strategy.searchPlaceholder": "搜索代理策略",
   "nodes.agent.strategy.selectTip": "選擇代理策略",

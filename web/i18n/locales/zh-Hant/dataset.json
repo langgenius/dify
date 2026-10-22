@@ -16,7 +16,7 @@
   "chunkingMode.parentChild": "父子",
   "chunkingMode.qa": "問與答",
   "connectDataset": "連接到外部知識庫",
-  "connectDatasetIntro.content.end": ".然後找到對應的知識 ID 並在左側的表單中填寫。如果資訊全部正確，點擊連接按鈕后，會自動跳轉到知識庫中的檢索測試。",
+  "connectDatasetIntro.content.end": ".然後找到對應的知識 ID 並在左側的表單中填寫。如果資訊全部正確，點擊連接按鈕後，會自動跳轉到知識庫中的檢索測試。",
   "connectDatasetIntro.content.front": "要連接到外部知識庫，您需要先創建外部 API。請仔細閱讀並參考",
   "connectDatasetIntro.content.link": "瞭解如何創建外部 API",
   "connectDatasetIntro.learnMore": "瞭解更多資訊",
