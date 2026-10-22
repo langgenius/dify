@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@11.0.8",
   "engines": {
-    "node": "^22.22.1"
+    "node": "^22.23.4"
   },
   "scripts": {
     "dev": "concurrently -k -n vinext,proxy \"vp run dify-web#dev:vinext\" \"vp run dify-web#dev:proxy\"",
