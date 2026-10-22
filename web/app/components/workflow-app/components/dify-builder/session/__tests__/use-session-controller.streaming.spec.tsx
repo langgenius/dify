@@ -933,6 +933,83 @@ describe('useDifyBuilderSessionController streaming', () => {
     expect(store.get(difyBuilderExecutionProgressAtom)).toBeNull()
   })
 
+  it('budgets reasoning updates and commits all text even when its reveal is unfinished', async () => {
+    const waiting = createSessionView({
+      conversation_last_seq: 0,
+      version: 2,
+      run_status: 'waiting_input',
+    })
+    const stream = createControlledEventStream()
+    clientMocks.message.mockResolvedValue(stream.iterable)
+    const { result, store } = renderSessionHook()
+    act(() => {
+      store.set(difyBuilderSessionViewAtom, waiting)
+      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+      store.set(difyBuilderConversationAtom, [
+        {
+          seq: 0,
+          at_version: 2,
+          kind: 'user',
+          payload: { text: 'Continue', turn_id: 'turn-user-1' },
+        },
+      ])
+    })
+    let pending!: Promise<boolean>
+    act(() => {
+      pending = result.current.sendMessage('Continue')
+    })
+    await waitFor(() => expect(clientMocks.message).toHaveBeenCalledOnce())
+    act(() => stream.push(commandStartedEvent(waiting)))
+    await waitFor(() => expect(store.get(difyBuilderActiveCommandAtom)).not.toBeNull())
+
+    const reasoning = '测𝄞'.repeat(200)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      await act(async () => {
+        stream.push(reasoningEvent(reasoning, { at_version: 4 }))
+      })
+      act(flushAnimationFrames)
+      expect(store.get(difyBuilderReasoningAtom)?.text).toBe(
+        Array.from(reasoning).slice(0, 24).join(''),
+      )
+      act(() => vi.advanceTimersByTime(79))
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalledOnce()
+      act(() => vi.advanceTimersByTime(1))
+      act(flushAnimationFrames)
+      expect(store.get(difyBuilderReasoningAtom)?.text).toBe(
+        Array.from(reasoning).slice(0, 144).join(''),
+      )
+
+      await act(async () => {
+        stream.push(agentMessageEvent('Ready', 1, { text_bytes: 5 }))
+        stream.push(agentMessageEvent('', 2, { done: true, text_bytes: 5 }))
+      })
+      await act(async () => flushAnimationFrames())
+      await act(async () => flushAnimationFrames())
+      expect(store.get(difyBuilderConversationAtom)).toEqual([
+        expect.objectContaining({ kind: 'user' }),
+        expect.objectContaining({
+          kind: 'assistant_turn',
+          payload: expect.objectContaining({ reasoning_text: reasoning, reply_text: 'Ready' }),
+        }),
+      ])
+      expect(store.get(difyBuilderReasoningAtom)).toBeNull()
+      const frames = vi.mocked(globalThis.requestAnimationFrame).mock.calls.length
+      act(() => vi.advanceTimersByTime(200))
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalledTimes(frames)
+
+      await act(async () => {
+        stream.push(
+          stateEvent(createSessionView({ ...waiting, version: 4, conversation_last_seq: 1 })),
+        )
+        expect(await pending).toBe(true)
+      })
+    } finally {
+      vi.useRealTimers()
+      stream.close()
+    }
+  })
+
   it('buffers reasoning separately and clears transient streams on command completion', async () => {
     const started = createSessionView()
     const terminal = createSessionView({

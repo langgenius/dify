@@ -369,23 +369,36 @@ describe('DifyBuilderProvider', () => {
     )
   })
 
-  it('restores the creation prompt when starting the Builder throws', async () => {
-    mocks.startBuild.mockRejectedValueOnce(new Error('Connection failed.'))
-    const user = userEvent.setup()
-    renderWithConsoleQuery(<CreationNavigation />, {
-      queryClient: createBuilderQueryClient(),
-      features: { dify_builder_enabled: true },
-    })
+  it.each([
+    { error: new Error('Connection failed.'), reason: 'Connection failed.' },
+    { error: { data: { body: { message: 'Access denied.' } } }, reason: 'Access denied.' },
+    {
+      error: new Response('{"message":"Service unavailable."}', { status: 503 }),
+      reason: 'HTTP 503: Service unavailable.',
+    },
+    { error: {}, reason: '' },
+  ])(
+    'restores the creation prompt and formats the startup error: $reason',
+    async ({ error, reason }) => {
+      mocks.startBuild.mockRejectedValueOnce(error)
+      const user = userEvent.setup()
+      renderWithConsoleQuery(<CreationNavigation />, {
+        queryClient: createBuilderQueryClient(),
+        features: { dify_builder_enabled: true },
+      })
 
-    await user.click(screen.getByRole('button', { name: 'Create with Builder' }))
+      await user.click(screen.getByRole('button', { name: 'Create with Builder' }))
 
-    expect(screen.getByRole('textbox', { name: 'Builder draft' })).toHaveValue(
-      'Build an expense workflow',
-    )
-    expect(screen.getByRole('status', { name: 'Canvas refresh error' })).toHaveTextContent(
-      'Connection failed.',
-    )
-  })
+      expect(screen.getByRole('textbox', { name: 'Builder draft' })).toHaveValue(
+        'Build an expense workflow',
+      )
+      const message = screen.getByRole('status', { name: 'Canvas refresh error' })
+      await waitFor(() => expect(message).toHaveTextContent('difyBuilder.creationStartFailed'))
+      if (reason) expect(message).toHaveTextContent(reason)
+      expect(message).not.toHaveTextContent('[object Object]')
+      expect(message).not.toHaveTextContent('Error:')
+    },
+  )
 
   it.each([true, false])(
     'preserves a newer draft after the creation request settles with %s',
@@ -616,7 +629,7 @@ describe('DifyBuilderProvider', () => {
     )
     expect(screen.getByRole('status', { name: 'Refresh generation' })).toHaveTextContent('0')
     expect(screen.getByRole('status', { name: 'Canvas refresh error' })).toHaveTextContent(
-      'Workflow canvas refresh failed.',
+      'difyBuilder.canvasRefreshFailed',
     )
     expect(screen.getByRole('status', { name: 'Recheck ready' })).toHaveTextContent('false')
 
@@ -637,6 +650,19 @@ describe('DifyBuilderProvider', () => {
     await user.click(screen.getByRole('button', { name: 'Register checklist' }))
 
     expect(screen.getByRole('status', { name: 'Recheck ready' })).toHaveTextContent('true')
+  })
+
+  it('formats a rejected canvas refresh with localized copy and the response message', async () => {
+    mocks.refreshCanvas.mockRejectedValueOnce({ data: { body: { message: 'Connection lost.' } } })
+    const user = userEvent.setup()
+    renderProvider()
+
+    await user.click(screen.getByRole('button', { name: 'Refresh update' }))
+
+    const message = screen.getByRole('status', { name: 'Canvas refresh error' })
+    await waitFor(() => expect(message).toHaveTextContent('difyBuilder.canvasRefreshFailed'))
+    expect(message).toHaveTextContent('Connection lost.')
+    expect(message).not.toHaveTextContent('[object Object]')
   })
 
   it('highlights the edit target without refreshing the draft', async () => {

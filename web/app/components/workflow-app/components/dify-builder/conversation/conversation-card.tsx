@@ -12,8 +12,19 @@ import arrivalStyles from './reply-arrival.module.css'
 import { TestResultCard } from './test-result-card'
 import { Thinking } from './thinking'
 
-export const AssistantReply = ({ text }: { text: string }) => (
-  <Markdown content={text} className="px-1 text-sm! leading-5! tracking-[-0.07px]" />
+export const AssistantReply = ({
+  text,
+  isStreaming = false,
+}: {
+  text: string
+  isStreaming?: boolean
+}) => (
+  <Markdown
+    content={text}
+    mode={isStreaming ? 'streaming' : 'static'}
+    isAnimating={isStreaming}
+    className="px-1 text-sm! leading-5! tracking-[-0.07px]"
+  />
 )
 
 export const UserMessage = memo(({ text }: { text: string }) => {

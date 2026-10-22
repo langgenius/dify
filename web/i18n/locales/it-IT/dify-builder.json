@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "Impossibile aggiornare l’area di lavoro del flusso. {{reason}}",
   "cardCategory.checks": "Controlli",
   "cardCategory.form": "Modulo",
   "cardCategory.plan": "Piano",
@@ -270,6 +271,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "No",
   "copy.values.yes": "Sì",
+  "creationStartFailed": "Impossibile avviare App Builder. {{reason}}",
   "emptyBuildTitle": "Qui non c’è ancora nulla",
   "emptyDescription": "Dimmi cosa vuoi creare — prima ti mostrerò un piano. Non verrà creato nulla finché non lo approverai.",
   "exportDebugLog": "Esporta registro di debug",
