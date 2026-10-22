@@ -1,7 +1,5 @@
 import type { ConversationItem, SessionView } from '../types'
 
-export const isCompletedView = (view: SessionView) => view.run_status === 'complete'
-
 export const mergeConversation = (
   current: ConversationItem[],
   committed: ConversationItem[],
