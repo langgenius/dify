@@ -99,6 +99,21 @@ describe('HumanInputSharedPanelSections action editing', () => {
     expect(getActionIds()[3]).toHaveValue('action_5')
   })
 
+  it('keeps the previous action ID when pasting the system timeout handle', async () => {
+    const user = userEvent.setup()
+    render(<ActionPanel />)
+
+    const input = screen.getByDisplayValue('approve')
+    await user.click(input)
+    await user.keyboard('{Control>}a{/Control}')
+    await user.paste('__timeout')
+
+    expect(input).toHaveValue('approve')
+    expect(getActionIds()[1]).toHaveValue('defer')
+    expect(getActionIds()[2]).toHaveValue('reject')
+    expect(input).toHaveFocus()
+  })
+
   it('keeps focus while typing an action ID across controlled updates', async () => {
     const user = userEvent.setup()
     render(<ActionPanel />)

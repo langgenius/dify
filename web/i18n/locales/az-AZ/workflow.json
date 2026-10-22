@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Ən azı bir çatdırılma üsulu seçin",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Ən azı bir çatdırılma üsulunu aktivləşdirin",
   "nodes.humanInput.errorMsg.noUserActions": "Ən azı bir istifadəçi əməliyyatı əlavə edin",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} vaxt aşımı budağı üçün ayrılıb. Başqa əməliyyat ID-si seçin.",
   "nodes.humanInput.timeout.title": "Vaxt həddi",
   "nodes.humanInputV2.error.requestURLDuplicate": "Mesajın mətnində yalnız bir sorğu URL-si ola bilər.",
   "nodes.humanInputV2.error.requestURLRequired": "Mesajın mətninə sorğu URL-si əlavə edin.",

@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "لطفاً حداقل یک روش ارسال انتخاب کنید",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "لطفاً حداقل یک روش ارسال را فعال کنید",
   "nodes.humanInput.errorMsg.noUserActions": "لطفاً حداقل یک عملیات کاربر اضافه کنید",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} برای شاخه پایان مهلت رزرو شده است. شناسه دیگری برای اقدام انتخاب کنید.",
   "nodes.humanInput.timeout.title": "مهلت زمانی",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "مقدار پیش‌فرض نامعتبر است",
   "nodes.humanInputMigration.error.graphChanged": "گردش کار در هنگام انتقال تغییر کرد. دوباره تلاش کنید؛ ویرایش‌های فعلی شما حفظ شده‌اند.",

@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Vă rugăm selectați cel puțin o metodă de livrare",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Vă rugăm activați cel puțin o metodă de livrare",
   "nodes.humanInput.errorMsg.noUserActions": "Vă rugăm adăugați cel puțin o acțiune utilizator",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} este rezervat pentru ramura de expirare. Alegeți un alt ID de acțiune.",
   "nodes.humanInput.timeout.title": "Timeout",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Valoare implicită nevalidă",
   "nodes.humanInputMigration.error.graphChanged": "Fluxul de lucru s-a modificat în timpul migrării. Încercați din nou; modificările curente au fost păstrate.",

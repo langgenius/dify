@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "請至少選擇一種發送方式",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "請至少啟用一種發送方式",
   "nodes.humanInput.errorMsg.noUserActions": "請至少添加一個用戶操作",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} 是逾時分支的保留識別碼，請使用其他操作 ID。",
   "nodes.humanInput.timeout.title": "超時",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "預設值無效",
   "nodes.humanInputMigration.error.graphChanged": "遷移期間工作流程已更新，請重試。目前的編輯已保留。",

@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Wybierz co najmniej jedną metodę dostarczania",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Włącz co najmniej jedną metodę dostarczania",
   "nodes.humanInput.errorMsg.noUserActions": "Dodaj co najmniej jedną akcję użytkownika",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} jest zarezerwowany dla gałęzi przekroczenia czasu. Wybierz inny identyfikator akcji.",
   "nodes.humanInput.timeout.title": "Limit czasu",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Nieprawidłowa wartość domyślna",
   "nodes.humanInputMigration.error.graphChanged": "Przepływ pracy zmienił się podczas migracji. Spróbuj ponownie; bieżące zmiany zostały zachowane.",

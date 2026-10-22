@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "少なくとも1つの配信方法を選択してください",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "少なくとも1つの配信方法を有効にしてください",
   "nodes.humanInput.errorMsg.noUserActions": "少なくとも1つのユーザーアクションを追加してください",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} はタイムアウト分岐用に予約されています。別のアクション ID を指定してください。",
   "nodes.humanInput.timeout.title": "タイムアウト",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "デフォルト値が無効です",
   "nodes.humanInputMigration.error.graphChanged": "移行中にワークフローが変更されました。再試行してください。現在の編集内容は保持されています。",

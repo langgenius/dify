@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Пожалуйста, выберите хотя бы один способ доставки",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Пожалуйста, включите хотя бы один способ доставки",
   "nodes.humanInput.errorMsg.noUserActions": "Пожалуйста, добавьте хотя бы одно действие пользователя",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} зарезервирован для ветки тайм-аута. Выберите другой идентификатор действия.",
   "nodes.humanInput.timeout.title": "Тайм-аут",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Недопустимое значение по умолчанию",
   "nodes.humanInputMigration.error.graphChanged": "Рабочий процесс изменился во время миграции. Повторите попытку; текущие изменения сохранены.",

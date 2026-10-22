@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Veuillez sélectionner au moins une méthode de livraison",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Veuillez activer au moins une méthode de livraison",
   "nodes.humanInput.errorMsg.noUserActions": "Veuillez ajouter au moins une action utilisateur",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} est réservé à la branche d’expiration du délai. Choisissez un autre identifiant d’action.",
   "nodes.humanInput.timeout.title": "Délai d'expiration",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Valeur par défaut invalide",
   "nodes.humanInputMigration.error.graphChanged": "Le workflow a été modifié pendant la migration. Réessayez ; vos modifications actuelles ont été conservées.",

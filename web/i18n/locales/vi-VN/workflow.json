@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Vui lòng chọn ít nhất một phương thức giao hàng",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Vui lòng bật ít nhất một phương thức giao hàng",
   "nodes.humanInput.errorMsg.noUserActions": "Vui lòng thêm ít nhất một hành động người dùng",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} được dành riêng cho nhánh hết thời gian. Hãy chọn ID hành động khác.",
   "nodes.humanInput.timeout.title": "Hết thời gian",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Giá trị mặc định không hợp lệ",
   "nodes.humanInputMigration.error.graphChanged": "Quy trình đã thay đổi trong khi di chuyển. Hãy thử lại; các chỉnh sửa hiện tại đã được giữ lại.",

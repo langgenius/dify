@@ -356,6 +356,7 @@
   "nodes.humanInput.errorMsg.noDeliveryMethod": "โปรดเลือกวิธีการส่งมอบอย่างน้อยหนึ่งวิธี",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "โปรดเปิดใช้งานวิธีการส่งมอบอย่างน้อยหนึ่งวิธี",
   "nodes.humanInput.errorMsg.noUserActions": "โปรดเพิ่มการดำเนินการของผู้ใช้อย่างน้อยหนึ่งรายการ",
+  "nodes.humanInput.errorMsg.reservedActionId": "{{id}} สงวนไว้สำหรับสาขาที่หมดเวลา โปรดเลือก ID การดำเนินการอื่น",
   "nodes.humanInput.timeout.title": "หมดเวลา",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "ค่าเริ่มต้นไม่ถูกต้อง",
   "nodes.humanInputMigration.error.graphChanged": "เวิร์กโฟลว์เปลี่ยนแปลงระหว่างการย้าย กรุณาลองอีกครั้ง การแก้ไขปัจจุบันของคุณยังคงอยู่",
