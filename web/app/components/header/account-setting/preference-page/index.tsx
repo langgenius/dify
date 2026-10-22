@@ -141,7 +141,7 @@ export default function PreferencePage() {
           }}
         >
           <SelectLabel>{t(($) => $['language.displayLanguage'], { ns: 'common' })}</SelectLabel>
-          <SelectTrigger size="medium">
+          <SelectTrigger size="medium" focusableWhenDisabled>
             <SelectValue<Locale>
               placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
             />
@@ -173,7 +173,11 @@ export default function PreferencePage() {
           <ComboboxLabel>
             <span id={timezoneLabelId}>{t(($) => $['language.timezone'], { ns: 'common' })}</span>
           </ComboboxLabel>
-          <ComboboxTrigger className="group/timezone-trigger flex h-8 w-full min-w-0 items-center gap-0.5 rounded-lg border-0 bg-components-input-bg-normal py-2 pr-2 pl-3 text-start system-sm-regular text-components-input-text-filled hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled data-placeholder:text-components-input-text-placeholder data-disabled:data-placeholder:text-components-input-text-disabled data-popup-open:bg-state-base-hover-alt">
+          <ComboboxTrigger
+            tabIndex={updateProfile.isPending ? -1 : 0}
+            focusableWhenDisabled
+            className="group/timezone-trigger flex h-8 w-full min-w-0 items-center gap-0.5 rounded-lg border-0 bg-components-input-bg-normal py-2 pr-2 pl-3 text-start system-sm-regular text-components-input-text-filled hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled data-placeholder:text-components-input-text-placeholder data-disabled:data-placeholder:text-components-input-text-disabled data-popup-open:bg-state-base-hover-alt"
+          >
             <span className="min-w-0 grow truncate">
               <ComboboxValue<TimezoneValue>
                 placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}

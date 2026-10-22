@@ -152,6 +152,60 @@ const renderInputCombobox = ({
 
 describe('Combobox wrappers', () => {
   describe('Select-like trigger', () => {
+    it('should retain focus without reopening when a custom trigger becomes disabled', async () => {
+      const triggerRef = React.createRef<HTMLButtonElement>()
+      const onOpenChange = vi.fn()
+      const combobox = (disabled: boolean) => (
+        <Combobox
+          disabled={disabled}
+          defaultValue="workflow"
+          items={['workflow']}
+          onOpenChange={onOpenChange}
+        >
+          <ComboboxTrigger
+            ref={triggerRef}
+            aria-label="Resource type"
+            focusableWhenDisabled
+            render={(props, state) => (
+              <button {...props}>{state.open ? 'Close resources' : 'Choose resource'}</button>
+            )}
+          />
+          <ComboboxPortal>
+            <ComboboxPositioner>
+              <ComboboxPopup>
+                <ComboboxList>
+                  <ComboboxItem value="workflow">Workflow</ComboboxItem>
+                </ComboboxList>
+              </ComboboxPopup>
+            </ComboboxPositioner>
+          </ComboboxPortal>
+        </Combobox>
+      )
+      const screen = await render(combobox(false))
+      const trigger = screen.getByRole('combobox', { name: 'Resource type' })
+
+      await trigger.click()
+      await expect.element(screen.getByRole('option', { name: 'Workflow' })).toBeVisible()
+      await expect.element(trigger).toHaveTextContent('Close resources')
+      await userEvent.keyboard('{Escape}')
+      await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')
+
+      await screen.rerender(combobox(true))
+      await expect.element(trigger).toHaveAttribute('aria-disabled', 'true')
+      triggerRef.current?.blur()
+      await expect.element(trigger).not.toHaveFocus()
+      triggerRef.current?.focus()
+      await expect.element(trigger).toHaveFocus()
+      onOpenChange.mockClear()
+
+      await userEvent.keyboard('{Enter} {ArrowDown}')
+
+      await expect.element(trigger).toHaveFocus()
+      await expect.element(trigger).toHaveTextContent('Choose resource')
+      await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')
+      expect(onOpenChange).not.toHaveBeenCalled()
+    })
+
     it('should render label and trigger with combobox semantics', async () => {
       const screen = await renderSelectLikeCombobox()
 
