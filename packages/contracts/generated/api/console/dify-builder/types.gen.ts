@@ -2377,6 +2377,9 @@ export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecute
 
 export type GetDifyBuilderSessionsBySessionIdStreamData = {
   body?: never
+  headers?: {
+    'Last-Event-ID'?: string
+  }
   path: {
     session_id: string
   }

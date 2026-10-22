@@ -7,7 +7,7 @@ owners without decrypting credentials, OAuth, model, network or other I/O.
 """
 
 import json
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -15,7 +15,7 @@ from types import MappingProxyType
 from typing import Annotated, Literal, Protocol
 
 from pydantic import Field, StrictBool
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.models import Actor
@@ -25,6 +25,7 @@ from models.model import App
 from models.workflow import Workflow
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.contracts import ID, Counter, FrozenDTO, NativeTestContextRef, OperationKey
+from services.dify_builder import progress_bus
 
 Limits = dict[ID, Annotated[int, Field(strict=True, ge=0, le=2**63 - 1)]]
 
@@ -158,6 +159,37 @@ def admitted_graph_matches(workflow: Workflow, graph: dict, request_context: Map
     return normalize_execution_graph(current) == normalize_execution_graph(graph)
 
 
+@contextmanager
+def native_observation_transaction(
+    session_factory: sessionmaker[Session], *, session_id: Callable[[], str]
+) -> Generator[Session]:
+    """Notify after a changed native writer commits, including explicit flushes.
+
+    Read-only locks and rollbacks never notify. Delivery failure cannot retry
+    execution. The callback resolves the trusted session owner after loading.
+    """
+    changed = False
+
+    def flushed(session: Session, _context: object) -> None:
+        nonlocal changed
+        changed = (
+            changed
+            or bool(session.new or session.deleted)
+            or any(session.is_modified(row, include_collections=True) for row in session.dirty)
+        )
+
+    session = None
+    try:
+        with session_factory.begin() as session:
+            event.listen(session, "after_flush", flushed)
+            yield session
+    finally:
+        if session is not None and event.contains(session, "after_flush", flushed):
+            event.remove(session, "after_flush", flushed)
+    if changed:
+        progress_bus.publish_native_change(session_id())
+
+
 class OwnedNativeTestLoader:
     def __init__(self, session_factory: sessionmaker[Session], *, actor: Actor, resolver: NativeBindingResolver):
         if resolver is None:
@@ -179,7 +211,7 @@ class OwnedNativeTestLoader:
     def locked(
         self, *, ref: NativeTestContextRef, settlement: bool = False
     ) -> Generator[tuple[Session, OwnedNativeTest, NativeTestScope]]:
-        with self.session_factory.begin() as session:
+        with native_observation_transaction(self.session_factory, session_id=lambda: owned.session_id) as session:
             owned, scope = self._load(session, ref=ref, lock=True, settlement=settlement)
             yield session, owned, scope
 

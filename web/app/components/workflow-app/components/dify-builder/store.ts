@@ -163,12 +163,14 @@ export const difyBuilderRunActiveAtom = atom((get) => isActiveStatus(get(difyBui
 export const difyBuilderTestExecutionAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.test_execution,
 )
+export const difyBuilderNativeTestUnresolvedAtom = atom((get) =>
+  hasUnresolvedNativeTest(get(difyBuilderSessionViewAtom)),
+)
 export const difyBuilderNativeCancelAtom = atom((get) => {
   const view = get(difyBuilderSessionViewAtom)
-  return view?.run_status === 'processing' &&
-    view.test_execution &&
-    view.test_execution.status !== 'terminal'
-    ? view.actions?.find((action) => action.id === 'cancel_test')
+  return get(difyBuilderNativeTestUnresolvedAtom) &&
+    view?.test_execution?.cancellation?.status !== 'cancelling'
+    ? view?.actions?.find((action) => action.id === 'cancel_test')
     : undefined
 })
 export const difyBuilderInteractionBusyAtom = atom(
@@ -407,12 +409,12 @@ export const difyBuilderSubmitActionAtom = atom(
     const selectedActionId =
       actionId === 'confirm' && typeof payload.option_id === 'string' ? payload.option_id : actionId
     const nativeCancel =
-      selectedActionId === 'cancel_test' &&
-      get(difyBuilderSessionViewAtom)?.actions?.some((action) => action.id === 'cancel_test')
+      selectedActionId === 'cancel_test' && Boolean(get(difyBuilderNativeCancelAtom))
     if (
       !runtime?.enabled ||
       !runtime.canEdit ||
       get(difyBuilderSessionBusyAtom) ||
+      (selectedActionId === 'cancel_test' && !nativeCancel) ||
       (!nativeCancel && (get(difyBuilderInteractionBusyAtom) || !get(difyBuilderCanvasReadyAtom)))
     )
       return false
@@ -488,6 +490,7 @@ export const difyBuilderRegisterChecklistErrorsAtom = atom(
 )
 
 export const difyBuilderResetAtom = atom(null, (get, set) => {
+  if (get(difyBuilderNativeTestUnresolvedAtom)) return false
   get(difyBuilderRuntimeAtom)?.session.reset()
   set(difyBuilderSelectedModelAtom, null)
   set(difyBuilderDeriveAppNameAtom, false)

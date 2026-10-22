@@ -68,9 +68,10 @@ const ChoiceInteraction = ({
   const { renderText } = useBuilderText()
   const title = renderText(decision.title)
   const requiresConsent = options.some((option) => option.id === 'confirm_test_operation')
-  const [selectedId, setSelectedId] = useState(
-    requiresConsent ? '' : decision.default_option_id || options[0]?.id || '',
-  )
+  const defaultOptionId = decision.default_option_id || options[0]?.id || ''
+  const requiresExplicitChoice =
+    requiresConsent || defaultOptionId === 'publish' || defaultOptionId === 'publish_workflow'
+  const [selectedId, setSelectedId] = useState(requiresExplicitChoice ? '' : defaultOptionId)
   const [freeText, setFreeText] = useState('')
   const [pending, setPending] = useState(false)
   const selectedOption = options.find((option) => option.id === selectedId)
@@ -111,7 +112,9 @@ const ChoiceInteraction = ({
           loading={pending}
           disabled={pending ? false : busy || !canSubmit}
         >
-          {renderText(decision.submit?.label) || t(($) => $['operation.submit'], { ns: 'common' })}
+          {renderText(selectedOption?.label) ||
+            renderText(decision.submit?.label) ||
+            t(($) => $['operation.submit'], { ns: 'common' })}
         </Button>
       }
     >
@@ -217,7 +220,9 @@ const FormInteraction = ({
         >
           {actionId === 'provide_testdata'
             ? t(($) => $.runTest, { ns: 'difyBuilder' })
-            : t(($) => $['operation.submit'], { ns: 'common' })}
+            : actionId === 'submit_requirements'
+              ? t(($) => $['copy.actions.submitRequirements'], { ns: 'difyBuilder' })
+              : t(($) => $['copy.actions.submitRules'], { ns: 'difyBuilder' })}
         </Button>
       }
     >
@@ -285,7 +290,7 @@ const ResourceInteraction = ({
           loading={pending}
           disabled={pending ? false : busy}
         >
-          {t(($) => $['operation.submit'], { ns: 'common' })}
+          {t(($) => $['copy.actions.confirmResources'], { ns: 'difyBuilder' })}
         </Button>
       }
     >
@@ -328,13 +333,16 @@ export const DifyBuilderInteractionDock = ({
   ) => Promise<boolean>
 }) => {
   const view = useAtomValue(difyBuilderSessionViewAtom)
-  const choiceKey = view?.test_execution
-    ? JSON.stringify([
-        view.test_execution.request_id,
-        view.test_execution.generation,
-        view.actions?.map((action) => [action.id, action.payload]),
-      ])
-    : 'choice'
+  const choiceKey = JSON.stringify([
+    view?.session_id,
+    view?.version,
+    decision,
+    view?.test_execution && [
+      view.test_execution.request_id,
+      view.test_execution.generation,
+      view.actions?.map((action) => [action.id, action.payload]),
+    ],
+  ])
   const locale = useDifyBuilderInteractionLocale()
   const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const { renderText } = useBuilderText()

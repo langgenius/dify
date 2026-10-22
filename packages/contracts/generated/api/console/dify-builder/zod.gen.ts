@@ -2597,6 +2597,10 @@ export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecu
 export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponse =
   zDifyBuilderRealCallConsentResponse
 
+export const zGetDifyBuilderSessionsBySessionIdStreamHeaders = z.object({
+  'Last-Event-ID': z.string().optional(),
+})
+
 export const zGetDifyBuilderSessionsBySessionIdStreamPath = z.object({
   session_id: z.string(),
 })

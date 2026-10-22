@@ -13,7 +13,6 @@ import type {
   SessionView,
 } from '../types'
 import type { SessionCommandOptions, SessionRunEvents, SessionStreamOutcome } from './types'
-import { QueryObserver } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom, useStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef } from 'react'
@@ -62,6 +61,39 @@ const COMMAND_FINISHED_UNAVAILABLE_CODE = 'command_finished_unavailable'
 const isActiveRunStatus = (status: SessionView['run_status']) => status === 'processing'
 const isActiveView = (view: SessionView) => isActiveRunStatus(view.run_status) && !view.interrupted
 
+const olderNativeReceipt = (
+  current: SessionView['test_execution'],
+  incoming: SessionView['test_execution'],
+) =>
+  current &&
+  incoming &&
+  current.request_id === incoming.request_id &&
+  (incoming.generation < current.generation ||
+    (incoming.generation === current.generation && incoming.version < current.version) ||
+    (incoming.generation === current.generation &&
+      incoming.version === current.version &&
+      (incoming.decision_public_revision ?? 0) < (current.decision_public_revision ?? 0)))
+
+const hasNativeResult = (receipt: SessionView['test_execution'], items: ConversationItem[]) =>
+  Boolean(
+    receipt?.native_run_id &&
+    items.some(
+      (item) =>
+        item.kind === 'test_result' &&
+        item.payload.dify_run_id === receipt.native_run_id &&
+        (item.payload.status === 'succeeded' || item.payload.status === 'failed'),
+    ),
+  )
+
+// A delayed JSON page must not replace a row already updated by live SSE.
+const mergeConversationPage = (current: ConversationItem[], page: ConversationItem[]) => {
+  const versions = new Map(current.map((item) => [item.seq, item.at_version]))
+  return mergeConversation(
+    current,
+    page.filter((item) => (versions.get(item.seq) ?? -1) <= item.at_version),
+  )
+}
+
 /**
  * Owns the Dify Builder session lifecycle. Live commands render directly from
  * bounded command lifecycle SSE events and paginated JSON history. Token
@@ -75,9 +107,8 @@ export function useDifyBuilderSessionController(
 ): DifyBuilderSessionController {
   const store = useStore()
   const observedView = useAtomValue(difyBuilderSessionViewAtom)
-  const commandBusy = useAtomValue(difyBuilderSessionBusyAtom)
-  // Keep the observer owner through terminal history hydration. The query's
-  // interval stops at terminal; changing the effect identity would abort it.
+  // Keep native observation alive through terminal history hydration. Command
+  // requests have a separate controller and never own this subscription.
   const observedSessionId = observedView?.test_execution ? observedView.session_id : null
   const observedRequestId = observedView?.test_execution?.request_id
   const setActiveSessionId = useSetAtom(difyBuilderActiveSessionIdAtom)
@@ -127,7 +158,16 @@ export function useDifyBuilderSessionController(
       if (activeSessionId && activeSessionId !== nextView.session_id) return false
 
       const current = store.get(difyBuilderSessionViewAtom)
-      const projected = projectSessionView(current, nextView)
+      // Ordinary command projections do not opt into native metadata. Their
+      // omission must not end an independently observed native continuation.
+      const preserveReceipt =
+        current?.session_id === nextView.session_id &&
+        (nextView.test_execution === undefined ||
+          olderNativeReceipt(current.test_execution, nextView.test_execution))
+      const incoming = preserveReceipt
+        ? { ...nextView, test_execution: current.test_execution }
+        : nextView
+      const projected = projectSessionView(current, incoming)
       if (!projected) return false
 
       // Bounded JSON/SSE session projections replace metadata atomically;
@@ -183,8 +223,10 @@ export function useDifyBuilderSessionController(
           { before_seq: targetLastSeq + 1, limit: 20 },
           controller.signal,
         )
-        if (controller.signal.aborted) return false
-        items = page.data.filter((item) => item.seq <= targetLastSeq)
+        if (controller.signal.aborted || store.get(difyBuilderActiveSessionIdAtom) !== sessionId)
+          return false
+        const pageItems = page.data.filter((item) => item.seq <= targetLastSeq)
+        items = mergeConversationPage(store.get(difyBuilderConversationAtom), pageItems)
         setConversation(items)
         confirmLocalUserMessage(sessionId, items)
         setConversationHasMore(page.has_more)
@@ -197,9 +239,10 @@ export function useDifyBuilderSessionController(
           { after_seq: lastSeq, limit: 100 },
           controller.signal,
         )
-        if (controller.signal.aborted) return false
+        if (controller.signal.aborted || store.get(difyBuilderActiveSessionIdAtom) !== sessionId)
+          return false
         const boundedPage = page.data.filter((item) => item.seq <= targetLastSeq)
-        const merged = mergeConversation(items, boundedPage)
+        const merged = mergeConversationPage(store.get(difyBuilderConversationAtom), boundedPage)
         const nextLastSeq = merged.at(-1)?.seq ?? -1
         if (nextLastSeq <= lastSeq) return false
         items = merged
@@ -234,9 +277,10 @@ export function useDifyBuilderSessionController(
           { after_seq: cursor, limit: 100 },
           controller.signal,
         )
-        if (controller.signal.aborted) return false
+        if (controller.signal.aborted || store.get(difyBuilderActiveSessionIdAtom) !== sessionId)
+          return false
         const boundedPage = page.data.filter((item) => item.seq <= targetLastSeq)
-        const merged = mergeConversation(items, boundedPage)
+        const merged = mergeConversationPage(store.get(difyBuilderConversationAtom), boundedPage)
         const mergedSequences = new Set(merged.map((item) => item.seq))
         let nextCursor = cursor
         while (nextCursor < targetLastSeq && mergedSequences.has(nextCursor + 1)) nextCursor += 1
@@ -603,71 +647,145 @@ export function useDifyBuilderSessionController(
     [applySessionView, consumeStream, setActiveCommand, syncConversation],
   )
 
-  // Native continuations outlive the short Action command. Query owns periodic
-  // reads; this bridge keeps the existing session/history owner authoritative.
+  // Native execution outlives the short Builder command. This read-only
+  // subscription never owns command busy state or dispatches/replays an action.
   useEffect(() => {
-    if (!observedSessionId || commandBusy) return
-    const receipt = store.get(difyBuilderSessionViewAtom)?.test_execution
+    if (!observedSessionId || !observedRequestId) return
+    const initialReceipt = store.get(difyBuilderSessionViewAtom)?.test_execution
+    const settled = (receipt: SessionView['test_execution']) =>
+      receipt?.status === 'terminal' && receipt.cancellation?.status !== 'cancelling'
     if (
-      !receipt ||
-      (receipt.status === 'terminal' && receipt.cancellation?.status !== 'cancelling')
+      !initialReceipt ||
+      initialReceipt.request_id !== observedRequestId ||
+      (settled(initialReceipt) &&
+        hasNativeResult(initialReceipt, store.get(difyBuilderConversationAtom)))
     )
       return
     const controller = new AbortController()
-    const observer = new QueryObserver(
-      store.get(queryClientAtom),
-      consoleQuery.difyBuilder.sessions.bySessionId.get.queryOptions({
-        input: { params: { session_id: observedSessionId } },
-        retry: false,
-        staleTime: 0,
-        refetchInterval: (query) => {
-          const current = query.state.data?.test_execution
-          return !query.state.error &&
-            current &&
-            (current.status !== 'terminal' || current.cancellation?.status === 'cancelling')
-            ? 2000
-            : false
-        },
-        refetchOnWindowFocus: false,
-      }),
-    )
-    let appliedAt = -1
-    const unsubscribe = observer.subscribe((result) => {
-      if (result.isError) {
-        void requestErrorMessage(result.error).then((message) => {
-          if (!controller.signal.aborted) setLastError(message)
-        })
-        return
-      }
-      if (!result.data || result.dataUpdatedAt === appliedAt || controller.signal.aborted) return
-      appliedAt = result.dataUpdatedAt
-      if (!applySessionView(result.data)) return
-      traceRef.current.append({
-        dir: 'in',
-        kind: 'session_snapshot',
-        payload: result.data,
-        version: result.data.version,
-      })
-      void syncConversation(observedSessionId, result.data.conversation_last_seq, controller).catch(
-        async (error: unknown) => {
-          const message = await requestErrorMessage(error)
-          if (!controller.signal.aborted) setLastError(message)
-        },
+    let cursor = ''
+    let observationError = ''
+    const complete = (authoritativeProjection = false) => {
+      const receipt = store.get(difyBuilderSessionViewAtom)?.test_execution
+      return (
+        settled(receipt) &&
+        (receipt?.native_run_id
+          ? hasNativeResult(receipt, store.get(difyBuilderConversationAtom))
+          : authoritativeProjection)
       )
-    })
+    }
+
+    const hydrate = async (view: SessionView) => {
+      if (
+        controller.signal.aborted ||
+        store.get(difyBuilderActiveSessionIdAtom) !== observedSessionId ||
+        store.get(difyBuilderSessionViewAtom)?.test_execution?.request_id !== observedRequestId
+      )
+        return
+      applySessionView(view)
+      const items = store.get(difyBuilderConversationAtom)
+      const afterSequence = (items[0]?.seq ?? 0) - 1
+      if (hasConversationRange(items, afterSequence, view.conversation_last_seq)) return
+      if (items.length)
+        await syncConversationRange(
+          observedSessionId,
+          afterSequence,
+          view.conversation_last_seq,
+          controller,
+        )
+      else await syncConversation(observedSessionId, view.conversation_last_seq, controller)
+    }
+    const recover = async () => {
+      const view = await getSession(observedSessionId, controller.signal)
+      await hydrate(view)
+      if (
+        !controller.signal.aborted &&
+        observationError &&
+        store.get(difyBuilderSessionLastErrorAtom) === observationError
+      ) {
+        setLastError('')
+        observationError = ''
+      }
+      return complete()
+    }
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined
+    let finishReconnect: (() => void) | undefined
+    const reconnectDelay = () =>
+      new Promise<void>((resolve) => {
+        finishReconnect = resolve
+        reconnectTimer = setTimeout(resolve, 1000)
+      })
+    const observe = async () => {
+      let reconnect = false
+      while (!controller.signal.aborted) {
+        try {
+          if (reconnect) {
+            await reconnectDelay()
+            if (controller.signal.aborted || (await recover())) return
+          }
+          const events = await getSessionStream(observedSessionId, controller.signal, cursor)
+          for await (const event of events) {
+            if (controller.signal.aborted) return
+            if (event.event === 'native_execution') {
+              if (
+                event.data.session_id !== observedSessionId ||
+                event.data.receipt.request_id !== observedRequestId
+              )
+                continue
+              cursor = event.data.cursor
+              const view = store.get(difyBuilderSessionViewAtom)
+              if (
+                view?.session_id !== observedSessionId ||
+                view.test_execution?.request_id !== observedRequestId
+              )
+                return
+              traceRef.current.append({ dir: 'in', kind: event.event, payload: event.data })
+              const applied = applySessionView({ ...view, test_execution: event.data.receipt })
+              // Native terminal state can commit before the Builder result row.
+              // Recover the watermark once, but keep the stream until that exact
+              // native run's durable terminal result has also been hydrated.
+              if (applied && settled(event.data.receipt) && (await recover())) return
+            } else if (event.event === 'command_finished') {
+              if (event.data.session_id !== observedSessionId) continue
+              const { command_id, post_canvas_action_id: _postCanvasActionId, ...view } = event.data
+              await hydrate({ ...view, last_command_id: command_id })
+              if (complete(true)) return
+            } else if (event.event === 'conversation_item_appended') {
+              if (event.data.session_id !== observedSessionId) continue
+              setConversation((current) => mergeConversationPage(current, [event.data.item]))
+              confirmLocalUserMessage(observedSessionId, [event.data.item])
+              if (complete()) return
+            } else if (event.event === 'error') {
+              if (event.data.code !== 'timeout') setLastError(streamErrorMessage(event.data))
+              break
+            }
+          }
+        } catch (error) {
+          if (controller.signal.aborted) return
+          const message = await requestErrorMessage(error)
+          if (controller.signal.aborted) return
+          observationError = message
+          setLastError(message)
+          if ([403, 404, 410].includes(requestErrorStatus(error) ?? 0)) return
+        }
+        reconnect = true
+      }
+    }
+    void observe()
     return () => {
       controller.abort()
-      unsubscribe()
-      observer.destroy()
+      clearTimeout(reconnectTimer)
+      finishReconnect?.()
     }
   }, [
     applySessionView,
-    commandBusy,
+    confirmLocalUserMessage,
     observedRequestId,
     observedSessionId,
+    setConversation,
     setLastError,
     store,
     syncConversation,
+    syncConversationRange,
   ])
 
   const runCommand = useCallback(
@@ -981,8 +1099,10 @@ export function useDifyBuilderSessionController(
           kind: 'session_restore',
           payload: { session_id: normalizedSessionId },
         })
-        if (store.get(difyBuilderSessionViewAtom)?.session_id !== normalizedSessionId)
+        if (store.get(difyBuilderSessionViewAtom)?.session_id !== normalizedSessionId) {
+          setConversation([])
           runEvents?.reset()
+        }
         const outcome = await reconcileSession(normalizedSessionId, controller, true)
         if (controller.signal.aborted) return false
         if (outcome?.terminalEvent === 'command_finished') return outcome.stateApplied === true
@@ -1018,6 +1138,7 @@ export function useDifyBuilderSessionController(
       reconcileSession,
       runEvents,
       setActiveSessionId,
+      setConversation,
       setIsBusy,
       setLastError,
       setLocalUserMessage,
