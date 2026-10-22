@@ -653,6 +653,13 @@ describe('Inline Agent configure workspace', () => {
     expect(api.refreshConversation).not.toHaveBeenCalled()
     await waitFor(() => expect(screen.queryByText('Preview answer')).not.toBeInTheDocument())
     expect(api.deleteBuildDraft).not.toHaveBeenCalled()
+    await sendPreview(user)
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    expect(ssePost.mock.calls[1]?.[1].body).toEqual(
+      expect.objectContaining({ conversation_id: '', parent_message_id: null }),
+    )
+    await receive(1, 'new-preview-conversation', 'New preview answer')
+    await complete(1)
     await changeMode(user, 'build')
     expect(await screen.findByText('Build history')).toBeVisible()
   })

@@ -186,6 +186,13 @@ describe('Configure chat sessions', () => {
     await waitFor(() => expect(screen.queryByText('Preview answer')).not.toBeInTheDocument())
     expect(api.refresh).not.toHaveBeenCalled()
     expect(restartButton()).toBeDisabled()
+    await send(user, 'preview')
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    expect(ssePost.mock.calls[1]?.[1].body).toEqual(
+      expect.objectContaining({ conversation_id: '', parent_message_id: null }),
+    )
+    await receive(1, 'preview-2', 'New preview answer')
+    await complete(1)
     await changeMode(user, 'build')
     await waitFor(() => expect(modeButton('build')).toBeChecked())
     expect(api.refresh).toHaveBeenLastCalledWith({ params: { agent_id: 'agent-1' } })
