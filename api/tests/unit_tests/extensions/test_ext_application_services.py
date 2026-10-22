@@ -1048,6 +1048,8 @@ def test_build_application_services_wires_credential_query(
     records = services.credential_queries.list_models(workspace_id=tenant_id, provider="openai", actor_id=actor_id)
 
     assert [(record.id, record.name) for record in records] == [(credential_id, "Team")]
+    assert services.workspaces.trigger_subscriptions._credentials is services.credential_queries
+    assert services.workspaces.trigger_subscriptions._schemas is services.workspaces.trigger_providers
 
 
 def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(
