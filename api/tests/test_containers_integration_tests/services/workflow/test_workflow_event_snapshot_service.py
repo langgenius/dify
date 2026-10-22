@@ -61,10 +61,10 @@ class _FakePauseEntity(WorkflowPauseEntity):
         return self.pause_reasons
 
 
-def _build_resumption_context(workflow_run_id: str) -> WorkflowResumptionContext:
+def _build_resumption_context(workflow_run_id: str, *, tenant_id: str, app_id: str) -> WorkflowResumptionContext:
     app_config = WorkflowUIBasedAppConfig(
-        tenant_id=str(uuid4()),
-        app_id=str(uuid4()),
+        tenant_id=tenant_id,
+        app_id=app_id,
         app_mode=AppMode.WORKFLOW,
         workflow_id=str(uuid4()),
     )
@@ -88,11 +88,11 @@ def _build_resumption_context(workflow_run_id: str) -> WorkflowResumptionContext
     )
 
 
-def _build_workflow_run(workflow_run_id: str) -> WorkflowRun:
+def _build_workflow_run(workflow_run_id: str, *, tenant_id: str, app_id: str) -> WorkflowRun:
     return WorkflowRun(
         id=workflow_run_id,
-        tenant_id=str(uuid4()),
-        app_id=str(uuid4()),
+        tenant_id=tenant_id,
+        app_id=app_id,
         workflow_id=str(uuid4()),
         type="workflow",
         triggered_from="app-run",
@@ -157,12 +157,12 @@ def test_build_snapshot_events_resolves_variable_select_options(db_session_with_
 
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
     events = _build_snapshot_events(
-        workflow_run=_build_workflow_run(workflow_run_id),
+        workflow_run=_build_workflow_run(workflow_run_id, tenant_id=test_tenant_id, app_id=test_app_id),
         node_snapshots=[],
         task_id="task-1",
         message_context=None,
         pause_entity=pause_entity,
-        resumption_context=_build_resumption_context(workflow_run_id),
+        resumption_context=_build_resumption_context(workflow_run_id, tenant_id=test_tenant_id, app_id=test_app_id),
         session_maker=session_maker,
         node_executions={},
     )
