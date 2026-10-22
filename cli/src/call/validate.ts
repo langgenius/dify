@@ -29,13 +29,27 @@ const FIELD_ERRORS: Readonly<Record<string, Readonly<{ param: string; msg: strin
   additionalProperties: { param: 'additionalProperty', msg: 'unknown field' },
 }
 
+const ALLOWED_VALUES_SEPARATOR = ', '
+
+// Keyword messages that replace ajv's wording; undefined falls back to ajv's own message.
+const MESSAGES: Readonly<Record<string, (params: Record<string, unknown>) => string | undefined>> =
+  {
+    enum: (params) => {
+      const { allowedValues } = params
+      if (!Array.isArray(allowedValues) || allowedValues.length === 0) return undefined
+      const shown = allowedValues.map((v) => (typeof v === 'string' ? v : JSON.stringify(v)))
+      return `must be one of the allowed values: ${shown.join(ALLOWED_VALUES_SEPARATOR)}`
+    },
+  }
+
 function toDetail(error: ErrorObject): ValidationDetail {
   const reading = FIELD_ERRORS[error.keyword]
   const loc: (string | number)[] = error.instancePath.split(INSTANCE_PATH_SEPARATOR).filter(Boolean)
-  const named =
-    reading === undefined ? undefined : (error.params as Record<string, unknown>)[reading.param]
+  const params = error.params as Record<string, unknown>
+  const named = reading === undefined ? undefined : params[reading.param]
   if (typeof named === 'string') loc.push(named)
-  return { type: error.keyword, loc, msg: reading?.msg ?? error.message ?? error.keyword }
+  const msg = MESSAGES[error.keyword]?.(params) ?? reading?.msg ?? error.message ?? error.keyword
+  return { type: error.keyword, loc, msg }
 }
 
 export function validateInput(schema: JsonSchema, input: unknown): readonly ValidationDetail[] {

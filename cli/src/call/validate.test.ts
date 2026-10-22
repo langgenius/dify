@@ -7,6 +7,8 @@ import { validateInput } from './validate'
 const doc = parseCatalog(readFileSync(join(__dirname, '../../test/fixtures/catalog.json')))
 const run = doc.ops['run.console_app.workflow']!.input
 const list = doc.ops['get.console_app']!.input
+const ALLOWED_MODES_MSG =
+  'must be one of the allowed values: completion, chat, advanced-chat, workflow, agent-chat'
 
 it('returns no details for valid input against the real schemas', () => {
   expect(
@@ -29,8 +31,26 @@ it('reports missing required, wrong types and bad enums in the 422 detail shape'
   expect(validateInput(list, { workspace_id: 'w', mode: 'agent' })).toContainEqual({
     type: 'enum',
     loc: ['mode'],
-    msg: expect.stringContaining('allowed'),
+    msg: ALLOWED_MODES_MSG,
   })
+  expect(validateInput(list, { workspace_id: 'w', mode: 'advanced_chat' })).toContainEqual({
+    type: 'enum',
+    loc: ['mode'],
+    msg: ALLOWED_MODES_MSG,
+  })
+})
+
+it('lists every allowed value of a large enum', () => {
+  const values = Array.from({ length: 40 }, (_, i) => `v${i}`)
+  expect(validateInput({ enum: values }, 'nope')).toEqual([
+    { type: 'enum', loc: [], msg: `must be one of the allowed values: ${values.join(', ')}` },
+  ])
+})
+
+it('renders non-string enum values as JSON', () => {
+  expect(validateInput({ enum: [1, true, null, 'a', { k: 1 }] }, 'nope')).toEqual([
+    { type: 'enum', loc: [], msg: 'must be one of the allowed values: 1, true, null, a, {"k":1}' },
+  ])
 })
 
 it('lets unknown keys through to the server', () => {
