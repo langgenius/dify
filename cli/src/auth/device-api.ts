@@ -2,7 +2,7 @@ import type { Dispatcher } from 'undici'
 import { BaseError, HttpClientError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { parseServerErrorBody } from '@/errors/server-body'
-import { networkCause } from '@/net/cause'
+import { networkErrorMessage } from '@/net/cause'
 import { buildFetchInit } from '@/net/fetch-init'
 import { proxyDispatcher } from '@/net/proxy'
 
@@ -162,10 +162,9 @@ export function deviceApi(server: string, opts: DeviceApiOptions): DeviceApi {
     try {
       return { url, res: await fetch(url, init) }
     } catch (cause) {
-      const detail = networkCause(cause)
       throw new BaseError({
         code: ErrorCode.NetworkConnection,
-        message: `network error calling POST ${url}${detail === undefined ? '' : `: ${detail}`}`,
+        message: networkErrorMessage(`network error calling POST ${url}`, cause),
         cause,
       })
     }

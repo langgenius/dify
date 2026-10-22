@@ -1,4 +1,15 @@
 const MAX_CAUSE_DEPTH = 5
+const DETAIL_SEPARATOR = '; '
+
+function ownMessage(err: Error): string {
+  if (err instanceof AggregateError) {
+    const parts = err.errors.flatMap((e) =>
+      e instanceof Error && e.message !== '' ? [e.message] : [],
+    )
+    if (parts.length > 0) return [...new Set(parts)].join(DETAIL_SEPARATOR)
+  }
+  return err.message
+}
 
 export function networkCause(err: unknown): string | undefined {
   let deepest: Error | undefined
@@ -9,8 +20,14 @@ export function networkCause(err: unknown): string | undefined {
     if (current instanceof Error) deepest = current
   }
   if (deepest === undefined) return undefined
+  const message = ownMessage(deepest)
   const { code } = deepest as { code?: unknown }
-  if (typeof code === 'string' && !deepest.message.includes(code))
-    return `${code}: ${deepest.message}`
-  return deepest.message
+  if (typeof code !== 'string') return message === '' ? undefined : message
+  if (message === '') return code
+  return message.includes(code) ? message : `${code}: ${message}`
+}
+
+export function networkErrorMessage(prefix: string, cause: unknown): string {
+  const detail = networkCause(cause)
+  return detail === undefined ? prefix : `${prefix}: ${detail}`
 }

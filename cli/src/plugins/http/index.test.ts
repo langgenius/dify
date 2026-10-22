@@ -201,6 +201,18 @@ describe('http plugin', () => {
     })
   })
 
+  it('a refused connection on localhost names its cause, with no trailing separator', async () => {
+    process.env.DIFY_SERVER = 'http://localhost:9'
+    const error = await (
+      await new Context().get(http)
+    )
+      .request(() => ({ method: 'GET', path: '/x', auth: false }))
+      .catch((e: unknown) => e)
+    expect((error as Error).message).toMatch(
+      /^network error calling GET http:\/\/localhost:9\/x: \S.*[^:\s]$/,
+    )
+  })
+
   it('a refused connection names its cause and carries no hint', async () => {
     process.env.DIFY_SERVER = 'http://127.0.0.1:9'
     const error = await (
