@@ -64,10 +64,13 @@ def test_workflow_features() -> None:
     "image",
     [{"enabled": True}, {"enabled": True, "number_limits": 3}, {"enabled": True, "number_limits": 6}],
 )
-@pytest.mark.parametrize("accessor", ["features_dict", "normalized_features_dict"])
+@pytest.mark.parametrize(
+    "normalized",
+    [pytest.param(False, id="features_dict"), pytest.param(True, id="normalized_features_dict")],
+)
 @pytest.mark.parametrize("enabled", [True, False])
 def test_workflow_features_preserve_top_level_file_upload_config(
-    image: dict[str, JsonValue], accessor: str, enabled: bool
+    image: dict[str, JsonValue], normalized: bool, enabled: bool
 ) -> None:
     workflow = Workflow(
         features=json.dumps(
@@ -82,7 +85,8 @@ def test_workflow_features_preserve_top_level_file_upload_config(
         )
     )
 
-    file_upload = getattr(workflow, accessor)["file_upload"]
+    features = workflow.normalized_features_dict if normalized else workflow.features_dict
+    file_upload = features["file_upload"]
 
     assert file_upload["enabled"] is enabled
     assert file_upload["number_limits"] == 10
