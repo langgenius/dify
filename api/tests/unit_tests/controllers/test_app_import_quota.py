@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from controllers.console.app import app_import as console
+from controllers.inner_api.app import dsl as inner
 from controllers.openapi import app_dsl as openapi
 from controllers.openapi._errors import OpenApiErrorFormatter
 from controllers.openapi._models import AppDslImportPayload
@@ -35,8 +36,10 @@ class _EndpointView(Protocol):
     __handler__: Callable[..., tuple[object, int]]
 
 
-@pytest.mark.parametrize("surface", ["console", "openapi"])
-@pytest.mark.parametrize("confirm", [False, True])
+@pytest.mark.parametrize(
+    ("surface", "confirm"),
+    [("console", False), ("console", True), ("openapi", False), ("openapi", True), ("inner", False)],
+)
 @pytest.mark.parametrize("failure", ["timeout", "upstream_503", "invalid_response", "quota_exhausted"])
 def test_import_quota_failure_http_status(
     app_query_services: ControllerTestServices,
@@ -46,7 +49,10 @@ def test_import_quota_failure_http_status(
     confirm: bool,
     failure: str,
 ) -> None:
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    apply_config_overrides(
+        monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, INNER_API=True, INNER_API_KEY="test-inner-api-key"
+    )
+    monkeypatch.setattr("controllers.console.wraps._is_setup_completed", lambda: True)
     account = Account(name="Importer", email="importer@example.com")
     tenant = Tenant(name="Workspace")
     account.id, tenant.id = str(uuid4()), str(uuid4())
@@ -95,6 +101,8 @@ def test_import_quota_failure_http_status(
 
     class AdmittedImport(Resource):
         def post(self) -> tuple[object, int]:
+            if surface == "inner":
+                return inner.EnterpriseAppDSLImport().post(workspace_id=tenant.id)
             if surface == "console":
                 if confirm:
                     controller = console.AppImportConfirmApi()
@@ -115,7 +123,11 @@ def test_import_quota_failure_http_status(
             )
 
     api.add_resource(AdmittedImport, "/imports")
-    response = app.test_client().post("/imports", json={"mode": "yaml-content", "yaml_content": content})
+    response = app.test_client().post(
+        "/imports",
+        json={"mode": "yaml-content", "yaml_content": content, "creator_email": account.email},
+        headers={"X-Inner-Api-Key": "test-inner-api-key"},
+    )
 
     assert response.status_code == (403 if failure == "quota_exhausted" else 500)
     assert "Private" not in response.get_data(as_text=True)
