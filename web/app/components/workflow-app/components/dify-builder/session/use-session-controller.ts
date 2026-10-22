@@ -74,6 +74,17 @@ const olderNativeReceipt = (
       incoming.version === current.version &&
       (incoming.decision_public_revision ?? 0) < (current.decision_public_revision ?? 0)))
 
+const sameNativeReceiptOrder = (
+  current: SessionView['test_execution'],
+  incoming: SessionView['test_execution'],
+) =>
+  current &&
+  incoming &&
+  current.request_id === incoming.request_id &&
+  current.generation === incoming.generation &&
+  current.version === incoming.version &&
+  (current.decision_public_revision ?? 0) === (incoming.decision_public_revision ?? 0)
+
 const hasNativeResult = (receipt: SessionView['test_execution'], items: ConversationItem[]) =>
   Boolean(
     receipt?.native_run_id &&
@@ -129,6 +140,7 @@ export function useDifyBuilderSessionController(
     | Pick<DifyBuilderCanvasEventData, 'at_version' | 'operation_id' | 'revision' | 'session_id'>
     | undefined
   >(undefined)
+  const nativeObservationRef = useRef(0)
   const pendingActionRef = useRef<{ signature: string; id: string } | null>(null)
   const pendingMessageRef = useRef<{ sessionId: string; text: string; turnId: string } | null>(null)
   const pendingRetestRef = useRef<{
@@ -153,17 +165,24 @@ export function useDifyBuilderSessionController(
   }, [setConversationLoading, setIsBusy])
 
   const applySessionView = useCallback(
-    (nextView: SessionView) => {
+    (nextView: SessionView, observedAtStart: number | 'native' = nativeObservationRef.current) => {
       const activeSessionId = store.get(difyBuilderActiveSessionIdAtom)
       if (activeSessionId && activeSessionId !== nextView.session_id) return false
 
       const current = store.get(difyBuilderSessionViewAtom)
       // Ordinary command projections do not opt into native metadata. Their
       // omission must not end an independently observed native continuation.
+      // A snapshot request already in flight when native SSE advances cannot
+      // order equal-counter receipts. A fresh recovery GET can still advance.
+      const preserveObservedReceipt =
+        observedAtStart !== 'native' &&
+        observedAtStart < nativeObservationRef.current &&
+        sameNativeReceiptOrder(current?.test_execution, nextView.test_execution)
       const preserveReceipt =
         current?.session_id === nextView.session_id &&
         (nextView.test_execution === undefined ||
-          olderNativeReceipt(current.test_execution, nextView.test_execution))
+          olderNativeReceipt(current.test_execution, nextView.test_execution) ||
+          preserveObservedReceipt)
       const incoming = preserveReceipt
         ? { ...nextView, test_execution: current.test_execution }
         : nextView
@@ -172,6 +191,7 @@ export function useDifyBuilderSessionController(
 
       // Bounded JSON/SSE session projections replace metadata atomically;
       // durable conversation rows have their own paginated owner.
+      if (observedAtStart === 'native' && !preserveReceipt) nativeObservationRef.current += 1
       setView(projected)
       const canvasCursor = canvasCursorRef.current
       if (
@@ -332,6 +352,7 @@ export function useDifyBuilderSessionController(
       events: AsyncIterable<DifyBuilderStreamEventResponse>,
       controller: AbortController,
       initialSessionId?: string,
+      observedAtStart = nativeObservationRef.current,
     ): Promise<SessionStreamOutcome> => {
       const currentView = store.get(difyBuilderSessionViewAtom)
       const outcome: SessionStreamOutcome = {
@@ -483,7 +504,7 @@ export function useDifyBuilderSessionController(
           outcome.observedVersion = Math.max(outcome.observedVersion ?? 0, stateView.version)
           outcome.terminalInterrupted = stateView.interrupted
           outcome.terminalRunStatus = stateView.run_status
-          const stateApplied = applySessionView(stateView)
+          const stateApplied = applySessionView(stateView, observedAtStart)
           setActiveCommand((current) =>
             current?.session_id === stateView.session_id ? null : current,
           )
@@ -580,6 +601,7 @@ export function useDifyBuilderSessionController(
       for (let attempt = 0; attempt < MAX_RECONCILE_ATTEMPTS; attempt += 1) {
         if (controller.signal.aborted) return latestOutcome
         try {
+          const observedAtStart = nativeObservationRef.current
           const view = await getSession(sessionId, controller.signal)
           if (controller.signal.aborted) return latestOutcome
           traceRef.current.append({
@@ -588,7 +610,7 @@ export function useDifyBuilderSessionController(
             payload: view,
             version: view.version,
           })
-          const stateApplied = applySessionView(view)
+          const stateApplied = applySessionView(view, observedAtStart)
           if (isActiveView(view)) {
             setActiveCommand({
               session_id: view.session_id,
@@ -624,8 +646,9 @@ export function useDifyBuilderSessionController(
             kind: 'session_reconnect',
             payload: { session_id: sessionId },
           })
+          const streamObservedAtStart = nativeObservationRef.current
           const events = await getSessionStream(sessionId, controller.signal)
-          latestOutcome = await consumeStream(events, controller, sessionId)
+          latestOutcome = await consumeStream(events, controller, sessionId, streamObservedAtStart)
           if (latestOutcome.terminalEvent === 'command_finished') return latestOutcome
         } catch (error) {
           // A reconnect is best-effort. A later attempt may observe the
@@ -674,14 +697,14 @@ export function useDifyBuilderSessionController(
       )
     }
 
-    const hydrate = async (view: SessionView) => {
+    const hydrate = async (view: SessionView, observedAtStart: number) => {
       if (
         controller.signal.aborted ||
         store.get(difyBuilderActiveSessionIdAtom) !== observedSessionId ||
         store.get(difyBuilderSessionViewAtom)?.test_execution?.request_id !== observedRequestId
       )
         return
-      applySessionView(view)
+      applySessionView(view, observedAtStart)
       const items = store.get(difyBuilderConversationAtom)
       const afterSequence = (items[0]?.seq ?? 0) - 1
       if (hasConversationRange(items, afterSequence, view.conversation_last_seq)) return
@@ -695,8 +718,9 @@ export function useDifyBuilderSessionController(
       else await syncConversation(observedSessionId, view.conversation_last_seq, controller)
     }
     const recover = async () => {
+      const observedAtStart = nativeObservationRef.current
       const view = await getSession(observedSessionId, controller.signal)
-      await hydrate(view)
+      await hydrate(view, observedAtStart)
       if (
         !controller.signal.aborted &&
         observationError &&
@@ -722,6 +746,7 @@ export function useDifyBuilderSessionController(
             await reconnectDelay()
             if (controller.signal.aborted || (await recover())) return
           }
+          const observedAtStart = nativeObservationRef.current
           const events = await getSessionStream(observedSessionId, controller.signal, cursor)
           for await (const event of events) {
             if (controller.signal.aborted) return
@@ -739,7 +764,10 @@ export function useDifyBuilderSessionController(
               )
                 return
               traceRef.current.append({ dir: 'in', kind: event.event, payload: event.data })
-              const applied = applySessionView({ ...view, test_execution: event.data.receipt })
+              const applied = applySessionView(
+                { ...view, test_execution: event.data.receipt },
+                'native',
+              )
               // Native terminal state can commit before the Builder result row.
               // Recover the watermark once, but keep the stream until that exact
               // native run's durable terminal result has also been hydrated.
@@ -747,7 +775,7 @@ export function useDifyBuilderSessionController(
             } else if (event.event === 'command_finished') {
               if (event.data.session_id !== observedSessionId) continue
               const { command_id, post_canvas_action_id: _postCanvasActionId, ...view } = event.data
-              await hydrate({ ...view, last_command_id: command_id })
+              await hydrate({ ...view, last_command_id: command_id }, observedAtStart)
               if (complete(true)) return
             } else if (event.event === 'conversation_item_appended') {
               if (event.data.session_id !== observedSessionId) continue
@@ -841,9 +869,10 @@ export function useDifyBuilderSessionController(
         }
         if (trace) traceRef.current.append({ dir: 'out', kind: trace.kind, payload: trace.payload })
         commandStarted = true
+        const observedAtStart = nativeObservationRef.current
         const events = await openStream(controller.signal)
         if (controller.signal.aborted) return false
-        const outcome = await consumeStream(events, controller, knownSessionId)
+        const outcome = await consumeStream(events, controller, knownSessionId, observedAtStart)
         if (controller.signal.aborted) return false
         const sessionId = outcome.sessionId ?? knownSessionId
         const reconciledCommandSucceeded = (reconciled?: SessionStreamOutcome) => {
