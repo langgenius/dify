@@ -196,12 +196,20 @@ def test_url_without_any_import_permission_does_not_download(
 
 @pytest.mark.parametrize("is_yaml", [False, True])
 def test_url_quota_is_enforced_after_content_detection(
-    app: Flask, imports: Imports, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], is_yaml: bool
+    app: Flask,
+    imports: Imports,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    is_yaml: bool,
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION="CLOUD")
+    transfers = app_query_services.apps.console._transfers
+    assert isinstance(transfers, AppTransferGateway)
+    monkeypatch.setattr(transfers, "import_dsl", AppTransferGateway.import_dsl.__get__(transfers))
     features = FeatureModel(apps=LimitationModel(size=1, limit=1))
-    monkeypatch.setattr("services.app.console_gateway.FeatureService.get_features", lambda *_a, **_k: features)
-    _mock_download(monkeypatch, b"app: {}" if is_yaml else _roster_archive().getvalue())
+    monkeypatch.setattr("services.app_dsl_service.FeatureService.get_features", lambda *_a, **_k: features)
+    _mock_download(monkeypatch, b"app: {mode: workflow}" if is_yaml else _roster_archive().getvalue())
     if is_yaml:
         with pytest.raises(Forbidden, match="number of apps"):
             _post(app, imports, json={"mode": "yaml-url", "yaml_url": "https://example.com/download"})
@@ -490,14 +498,22 @@ def test_package_url_rejects_ambiguous_sources(app: Flask, imports: Imports, ext
 
 @pytest.mark.parametrize("quota", [False, True])
 def test_ordinary_package_import_checks_permission_and_quota(
-    app: Flask, imports: Imports, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], quota: bool
+    app: Flask,
+    imports: Imports,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    quota: bool,
 ) -> None:
     config_overrides(RBAC_ENABLED=not quota, DEPLOYMENT_EDITION="CLOUD" if quota else "COMMUNITY")
+    transfers = app_query_services.apps.console._transfers
+    assert isinstance(transfers, AppTransferGateway)
+    monkeypatch.setattr(transfers, "import_dsl", AppTransferGateway.import_dsl.__get__(transfers))
     monkeypatch.setattr(
         "services.app.console_gateway.rbac_service.RBACService.CheckAccess.check", lambda *_a, **_k: False
     )
     features = FeatureModel(apps=LimitationModel(size=1, limit=1))
-    monkeypatch.setattr("services.app.console_gateway.FeatureService.get_features", lambda *_a, **_k: features)
+    monkeypatch.setattr("services.app_dsl_service.FeatureService.get_features", lambda *_a, **_k: features)
     with AppPackageService().export(dsl="kind: app\napp: {mode: workflow}\n", name="Workflow") as package:
         with pytest.raises(Forbidden):
             _post(app, imports, data={"file": (package.archive, "workflow.ifpkg")})
