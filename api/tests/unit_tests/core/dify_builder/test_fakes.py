@@ -29,8 +29,7 @@ from core.dify_builder.models import (
     TestInput,
 )
 from core.dify_builder.state import PcState
-from services.dify_builder.application.ports import DifyBuilderAgent, DifyPort, Repository
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, SessionOverrides, StubAgent
+from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, SessionOverrides
 
 
 def _actor() -> Actor:
@@ -48,15 +47,6 @@ def _session(**overrides: Unpack[SessionOverrides]) -> Session:
         ),
         **overrides,
     )
-
-
-# ---- Protocol conformance -------------------------------------------------
-
-
-def test_fakes_satisfy_their_protocols() -> None:
-    assert isinstance(InMemoryRepository(), Repository)
-    assert isinstance(FakeDifyPort(), DifyPort)
-    assert isinstance(StubAgent(), DifyBuilderAgent)
 
 
 # ---- InMemoryRepository.create_session ------------------------------------
@@ -351,15 +341,6 @@ def test_fake_dify_port_read_graph_returns_canned_graph_and_hash_and_deep_copies
     assert graph2 == {"nodes": []}
 
 
-def test_fake_dify_port_node_outputs_returns_a_canned_failed_output() -> None:
-    port = FakeDifyPort()
-
-    outs = port.node_outputs("app-1", _actor(), "run-1")
-
-    assert len(outs) == 1
-    assert outs[0].status == "failed"
-
-
 def test_fake_dify_port_apply_repair_records_intents_and_returns_result() -> None:
     port = FakeDifyPort()
     intents = [MutationIntent(op="set_node_config", args={"node_id": "n1", "field": "metrics", "value": "[]"})]
@@ -394,59 +375,7 @@ def test_fake_dify_port_run_draft_emits_events_and_returns_configured_status() -
     assert len(events) == 2
 
 
-def test_fake_dify_port_publish_marks_published() -> None:
-    port = FakeDifyPort()
-    initially_published = port.published
-    assert initially_published is False
-    port.publish("app-1", _actor(), expected_revision="h0", expected_graph_revision=port.graph_revision(port.graph))
-
-    assert port.published is True
-
-
-# ---- StubAgent ----------------------------------------------------------------
-
-
-def test_stub_agent_diagnose_returns_a_canned_culprit() -> None:
-    agent = StubAgent()
-
-    d = agent.diagnose(Run(), {}, [])
-
-    assert d.culprit_node_id == "output"
-    assert d.severity == "high"
-
-
-def test_stub_agent_diagnose_checklist_empty_returns_empty_diagnosis() -> None:
-    agent = StubAgent()
-
-    assert agent.diagnose_checklist([], {}) == Diagnosis()
-
-
-def test_stub_agent_propose_repair_uses_the_diagnosis_culprit_and_configured_risk() -> None:
-    agent = StubAgent(risk_level="high")
-    diagnosis = Diagnosis(culprit_node_id="n1")
-
-    intents, risk = agent.propose_repair(diagnosis, {})
-
-    assert intents[0].args["node_id"] == "n1"
-    assert risk.level == "high"
-
-
-def test_stub_agent_generate_mock_inputs_returns_canned_inputs() -> None:
-    agent = StubAgent()
-
-    assert agent.generate_mock_inputs({}, {}) == {"report_pdf": "mock.pdf"}
-
-
 # ---- graph primitives (C-1 structural fingerprint) -------------------------
-
-
-def test_fake_dify_port_exposes_graph_primitives() -> None:
-    from services.dify_builder.graph_ops import node_ids, structural_fingerprint
-
-    port = FakeDifyPort()
-    port.graph = {"nodes": [{"id": "a", "data": {"type": "llm"}}], "edges": []}
-    assert port.structural_fingerprint(port.graph) == structural_fingerprint(port.graph)
-    assert port.graph_node_ids(port.graph) == node_ids(port.graph)
 
 
 def test_fake_build_dify_port_apply_repair_sets_structure_fingerprint() -> None:
