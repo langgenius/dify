@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net'
 import { createServer } from 'node:http'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, expect, it } from 'vite-plus/test'
+import { OPENAPI_OFF_HINT } from '@/errors/base'
 import { deviceApi } from './device-api'
 
 const mocks: DifyMock[] = []
@@ -36,7 +37,19 @@ it('maps a 404 on the code endpoint to a server_error naming the missing feature
   await expect(api.requestCode({ device_label: 'test' })).rejects.toMatchObject({
     code: 'server_error',
     message: 'this Dify host does not implement the OAuth device flow',
+    hint: OPENAPI_OFF_HINT,
   })
+})
+
+it('a 404 on the token endpoint carries the same OpenAPI hint', async () => {
+  await withServer(
+    (res) => res.writeHead(404).end(),
+    async (baseUrl) => {
+      await expect(
+        deviceApi(baseUrl, { insecure: true }).pollOnce({ device_code: 'dc' }),
+      ).rejects.toMatchObject({ code: 'server_error', hint: OPENAPI_OFF_HINT })
+    },
+  )
 })
 
 it('maps a non-2xx code response to a server_error carrying the raw body', async () => {

@@ -6,7 +6,7 @@
 
 **Check first.** Run `difyctl login --resume`. If it prints an `email`, you are logged in: skip login. If it fails with `not_logged_in`, log in.
 
-**Server.** Always pass `--server <url>`; `login` fails with `usage_missing_arg` without it. If the human has not named a server, ask which one. Never guess one.
+**Server.** Always pass `--server <url>`; `login` fails with `usage_missing_arg` without it. If the human has not named a server, ask which one. Never guess one. If `login` fails with `server_error` "does not implement the OAuth device flow", OpenAPI is off on that server or the URL is wrong: tell the human to ask the admin to set `OPENAPI_ENABLED=true`, or to check the URL. Don't retry.
 
 Log in only this way:
 

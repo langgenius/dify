@@ -1,5 +1,5 @@
 import type { Dispatcher } from 'undici'
-import { BaseError, HttpClientError } from '@/errors/base'
+import { BaseError, HttpClientError, OPENAPI_OFF_HINT } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { parseServerErrorBody } from '@/errors/server-body'
 import { networkErrorMessage } from '@/net/cause'
@@ -110,6 +110,7 @@ function unsupportedDeviceFlow(method: string, url: URL): HttpClientError {
   return new HttpClientError({
     code: ErrorCode.ServerError,
     message: DEVICE_FLOW_UNSUPPORTED_MESSAGE,
+    hint: OPENAPI_OFF_HINT,
     httpStatus: HttpStatus.NotFound,
     method,
     url: url.toString(),

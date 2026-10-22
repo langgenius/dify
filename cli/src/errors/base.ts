@@ -126,6 +126,10 @@ export function unknownError(message: string, cause?: unknown): BaseError {
 
 export const LOGIN_HINT = `run ${BINARY} help login`
 
+// A server with OPENAPI_ENABLED off answers 404 on every /openapi/v1 route.
+export const OPENAPI_OFF_HINT =
+  'OpenAPI may be off on this server: ask its admin to set OPENAPI_ENABLED=true, or check the server URL'
+
 export function notLoggedInMessage(reason?: string): string {
   return reason === undefined ? 'not logged in' : `not logged in: ${reason}`
 }

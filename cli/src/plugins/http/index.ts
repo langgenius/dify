@@ -1,7 +1,13 @@
 import type { ServerErrorBody } from '@/errors/base'
 import type { ErrorCodeValue } from '@/errors/codes'
 import type { CatalogService } from '@/plugins/catalog'
-import { BaseError, HttpClientError, LOGIN_HINT, unknownError } from '@/errors/base'
+import {
+  BaseError,
+  HttpClientError,
+  LOGIN_HINT,
+  OPENAPI_OFF_HINT,
+  unknownError,
+} from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { errorMessage } from '@/errors/message'
 import { parseServerErrorBody } from '@/errors/server-body'
@@ -46,10 +52,8 @@ const CATALOG_UNAVAILABLE_PREFIX = 'failed to fetch the catalog: '
 // `refresh cache` would only repeat the fetch that failed, so it is not suggested.
 const CATALOG_UNAVAILABLE_HINT =
   'check that the saved server URL is right and the server is reachable, then retry'
-export const CATALOG_OPENAPI_OFF_HINT =
-  'the server has no OpenAPI catalog: ask its admin to set OPENAPI_ENABLED=true, or check the saved server URL'
 const CATALOG_HINT_BY_STATUS: Readonly<Record<number, string>> = {
-  [HttpStatus.NotFound]: CATALOG_OPENAPI_OFF_HINT,
+  [HttpStatus.NotFound]: OPENAPI_OFF_HINT,
 }
 
 function catalogHint(cause: unknown): string {
