@@ -13,10 +13,12 @@ import startPlaceholderDefault from '@/app/components/workflow/nodes/start-place
 import startDefault from '@/app/components/workflow/nodes/start/default'
 import { generateNewNode } from '@/app/components/workflow/utils'
 import { consoleQuery } from '@/service/console'
+import { difyBuilderPendingCreationAtom } from '../components/dify-builder/creation'
 
 export const useWorkflowTemplate = () => {
   const isChatflow = useAtomValue(isChatflowAtom)
   const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const pendingCreation = useAtomValue(difyBuilderPendingCreationAtom)
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
@@ -95,7 +97,7 @@ export const useWorkflowTemplate = () => {
     const { newNode: startPlaceholderNode } = generateNewNode({
       data: {
         ...startPlaceholderDefault.defaultValue,
-        selected: true,
+        selected: pendingCreation?.appId !== appId,
         type: startPlaceholderDefault.metaData.type,
         title: t(($) => $[`blocks.${startPlaceholderDefault.metaData.type}`], { ns: 'workflow' }),
         desc: '',
