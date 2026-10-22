@@ -218,9 +218,8 @@ def test_damaged_compressed_ack_is_uncertain_after_real_http_submission(
             return client
 
         monkeypatch.setattr(ssrf_proxy, "_get_ssrf_client", get_client)
-        with caplog.at_level(logging.INFO, logger="httpx"):
-            with pytest.raises(TraceExportUncertainError) as error:
-                dispatch(owner)
+        with caplog.at_level(logging.INFO, logger="httpx"), pytest.raises(TraceExportUncertainError) as error:
+            dispatch(owner)
     assert error.value.acceptance_unknown is True
     assert error.value.__cause__ is None
     assert error.value.__context__ is None
