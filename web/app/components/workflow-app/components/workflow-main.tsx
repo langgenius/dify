@@ -63,7 +63,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const workflowStore = useWorkflowStore()
   const { appId } = useAtomValue(workflowAppIdentityAtom)
   const isWorkflowDataLoaded = useStore((s) => s.isWorkflowDataLoaded)
-  const hasWorkflowDraftConflict = useStore((s) => s.hasWorkflowDraftConflict)
   const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
@@ -439,7 +438,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       })
       if (!isCurrent()) return
 
-      if (refreshed) {
+      if (refreshed === 'refreshed') {
         collaborationManager.replaceGraphFromReactFlow(request)
         return
       }
@@ -617,7 +616,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     >
       <div className="flex size-full min-w-0 overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col">
-          {hasWorkflowDraftConflict && <WorkflowDraftConflict />}
+          <WorkflowDraftConflict />
           <div ref={containerRef} className="relative min-w-0 flex-1 overflow-hidden">
             <WorkflowWithInnerContext
               className={showDifyBuilderPanel ? 'min-w-0!' : undefined}

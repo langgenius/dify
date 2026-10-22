@@ -3,6 +3,7 @@ import type {
   DifyBuilderConversationItemAppendedEventData,
   DifyBuilderStreamEventResponse,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
+import type { WorkflowDraftRefreshResult } from '../../../hooks/use-workflow-refresh-draft'
 import type { ConversationItem, SessionView } from '../types'
 import type { MarkdownProps } from '@/app/components/base/markdown'
 import { zDefaultModelDataResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
@@ -23,7 +24,7 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   message: vi.fn(),
   stream: vi.fn(),
-  refreshCanvas: vi.fn(async () => true),
+  refreshCanvas: vi.fn(async (): Promise<WorkflowDraftRefreshResult> => 'refreshed'),
   setCanvasReadOnly: vi.fn(),
   setBuilderViewportManuallyChanged: vi.fn(),
   invalidateWorkflowDraftSync: vi.fn(),

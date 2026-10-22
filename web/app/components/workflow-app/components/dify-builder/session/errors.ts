@@ -30,7 +30,7 @@ export const requestErrorCode = async (error: unknown) => {
   return code.success ? code.data : null
 }
 
-export const requestErrorMessage = async (error: unknown): Promise<string> => {
+export const requestErrorMessage = async (error: unknown, fallback?: string): Promise<string> => {
   const status = requestErrorStatus(error)
   let body: unknown = error
   if (error instanceof Response) {
@@ -54,7 +54,9 @@ export const requestErrorMessage = async (error: unknown): Promise<string> => {
     if (message) return status ? `HTTP ${status}: ${message}` : message
   }
   if (status) return `HTTP ${status}`
-  return error instanceof Error ? error.message : String(error)
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  return fallback ?? String(error)
 }
 
 export const streamErrorMessage = (

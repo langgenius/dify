@@ -2907,6 +2907,7 @@ export default interface Resources {
   }
   difyBuilder: {
     buttonTooltip: 'App Builder'
+    canvasRefreshFailed: "Couldn't refresh the workflow canvas. {{reason}}"
     'cardCategory.checks': 'Checks'
     'cardCategory.form': 'Form'
     'cardCategory.plan': 'Plan'
@@ -3177,6 +3178,7 @@ export default interface Resources {
     'copy.values.empty': '—'
     'copy.values.no': 'No'
     'copy.values.yes': 'Yes'
+    creationStartFailed: "Couldn't start App Builder. {{reason}}"
     emptyBuildTitle: 'Nothing here yet'
     emptyDescription: 'Tell me what you want to build — I’ll show you a plan first. Nothing is built until you approve.'
     exportDebugLog: 'Export debug log'
@@ -5130,6 +5132,7 @@ export default interface Resources {
     'common.publishingToMarketplace': 'Publishing...'
     'common.redo': 'Redo'
     'common.restore': 'Restore'
+    'common.retryCanvasSync': 'Resync canvas'
     'common.run': 'Test Run'
     'common.runAllTriggers': 'Run all triggers'
     'common.runHistory': 'Run History'
@@ -5162,10 +5165,13 @@ export default interface Resources {
     'common.workflowSaveStatus': 'Workflow save status'
     customWebhook: 'Custom Webhook'
     difyTeam: 'Dify Team'
+    'draftConflict.cancel': 'Not now'
+    'draftConflict.confirmReload': 'Discard changes and reload'
     'draftConflict.description': 'Reload the latest draft to continue editing. Reloading will discard your unsaved changes.'
     'draftConflict.message': 'This workflow was updated elsewhere. Auto-save is paused.'
-    'draftConflict.reload': 'Reload draft'
     'draftConflict.reloadFailed': 'Could not reload the draft. Please try again.'
+    'draftConflict.resolve': 'Resolve conflict'
+    'draftConflict.title': 'Reload the latest draft?'
     'draftConflict.unsaved': 'Unsaved · Auto-save paused'
     'entryNodeStatus.enabled': 'START'
     'env.envDescription': 'Environment variables can be used to store private information and credentials. They are read-only and can be separated from the DSL file during export.'

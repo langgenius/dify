@@ -5,6 +5,7 @@ import type {
   FormField,
 } from '../types'
 import type { FormValidationError } from './form-values'
+import type { FileUpload } from '@/app/components/base/features/types'
 import type { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -21,7 +22,7 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { MAX_FILE_UPLOAD_LIMIT } from '@/app/components/base/file-uploader/constants'
@@ -36,6 +37,7 @@ import {
   FILE_FIELD_TYPES,
   FILE_TYPE_VALUES,
   FILE_UPLOAD_METHOD_VALUES,
+  getFormActionPayload,
   initialFormValues,
   MULTI_FILE_FIELD_TYPES,
   prepareFormValues,
@@ -69,6 +71,8 @@ export const FormCard = memo(
     const [values, setValues] = useState<Record<string, unknown>>(() =>
       initialFormValues(fields, item.payload.values),
     )
+    // Upload completions may share a batch or retain an earlier change callback.
+    const latestValuesRef = useRef(values)
     const [changedFields, setChangedFields] = useState<Set<string>>(() => new Set())
     const [invalidSubmitAttempts, setInvalidSubmitAttempts] = useState(0)
     const formRef = useRef<HTMLFormElement>(null)
@@ -81,33 +85,46 @@ export const FormCard = memo(
     const frozen = busy || item.payload.frozen === true
     const category = t(($) => $['cardCategory.form'], { ns: 'difyBuilder' })
     const prepared = useMemo(() => prepareFormValues(fields, values), [fields, values])
-    const actionPayloadChangeRef = useRef(onActionPayloadChange)
-    const actionValidityChangeRef = useRef(onActionValidityChange)
-
-    useEffect(() => {
-      actionPayloadChangeRef.current = onActionPayloadChange
-    }, [onActionPayloadChange])
-
-    useEffect(() => {
-      actionValidityChangeRef.current = onActionValidityChange
-    }, [onActionValidityChange])
-
-    useEffect(() => {
-      if (item.payload.frozen === true) return
-
-      const payload = { ...prepared.preparedValues }
-      if (actionId !== 'provide_testdata') {
-        // Requirements and edit rules merge into existing values; null clears a field.
-        fields.forEach(({ key }) => {
-          if (!(key in payload)) payload[key] = null
-        })
-      }
-      actionPayloadChangeRef.current(
-        actionId,
-        actionId === 'provide_testdata' ? { mode: 'provide', inputs: payload } : payload,
-      )
-      actionValidityChangeRef.current?.(actionId, prepared.valid)
-    }, [actionId, fields, item.payload.frozen, prepared])
+    const fileConfigs = useMemo(
+      () =>
+        new Map<string, FileUpload>(
+          fields
+            .filter((field) => FILE_FIELD_TYPES.has(field.type))
+            .map((field) => {
+              const configuredFileTypes = (field.allowed_file_types ?? []).filter(
+                (type): type is SupportUploadFileTypes => FILE_TYPE_VALUES.has(type),
+              )
+              const configuredUploadMethods = (field.allowed_file_upload_methods ?? []).filter(
+                (method): method is TransferMethod => FILE_UPLOAD_METHOD_VALUES.has(method),
+              )
+              return [
+                field.key,
+                {
+                  allowed_file_types:
+                    configuredFileTypes.length > 0
+                      ? configuredFileTypes
+                      : DEFAULT_ALLOWED_FILE_TYPES,
+                  allowed_file_extensions:
+                    configuredFileTypes.length > 0
+                      ? (field.allowed_file_extensions ?? [])
+                      : DEFAULT_ALLOWED_FILE_EXTENSIONS,
+                  allowed_file_upload_methods:
+                    configuredUploadMethods.length > 0
+                      ? configuredUploadMethods
+                      : DEFAULT_ALLOWED_FILE_UPLOAD_METHODS,
+                  number_limits: MULTI_FILE_FIELD_TYPES.has(field.type)
+                    ? (field.number_limits ??
+                      field.max_length ??
+                      fileUploadConfig?.workflow_file_upload_limit ??
+                      MAX_FILE_UPLOAD_LIMIT)
+                    : 1,
+                  fileUploadConfig,
+                },
+              ]
+            }),
+        ),
+      [fields, fileUploadConfig],
+    )
 
     useLayoutEffect(() => {
       if (invalidSubmitAttempts === 0) return
@@ -121,8 +138,17 @@ export const FormCard = memo(
     }, [invalidSubmitAttempts])
 
     const updateValues = (key: string, value: unknown) => {
+      const nextValues = { ...latestValuesRef.current, [key]: value }
+      latestValuesRef.current = nextValues
       setChangedFields((current) => new Set(current).add(key))
-      setValues((current) => ({ ...current, [key]: value }))
+      setValues(nextValues)
+      if (item.payload.frozen === true) return
+      const nextPrepared = prepareFormValues(fields, nextValues)
+      onActionPayloadChange(
+        actionId,
+        getFormActionPayload(actionId, fields, nextPrepared.preparedValues),
+      )
+      onActionValidityChange?.(actionId, nextPrepared.valid)
     }
 
     const validationMessage = (field: FormField, error: FormValidationError) => {
@@ -166,6 +192,7 @@ export const FormCard = memo(
         noValidate
         onSubmit={(event) => {
           event.preventDefault()
+          if (frozen) return
           if (!prepared.valid) {
             setInvalidSubmitAttempts((current) => current + 1)
             return
@@ -220,22 +247,6 @@ export const FormCard = memo(
 
           if (FILE_FIELD_TYPES.has(field.type)) {
             const files = toFileEntities(values[field.key])
-            const configuredFileTypes = (field.allowed_file_types ?? []).filter(
-              (type): type is SupportUploadFileTypes => FILE_TYPE_VALUES.has(type),
-            )
-            const configuredUploadMethods = (field.allowed_file_upload_methods ?? []).filter(
-              (method): method is TransferMethod => FILE_UPLOAD_METHOD_VALUES.has(method),
-            )
-            const allowedFileTypes =
-              configuredFileTypes.length > 0 ? configuredFileTypes : DEFAULT_ALLOWED_FILE_TYPES
-            const allowedFileExtensions =
-              configuredFileTypes.length > 0
-                ? (field.allowed_file_extensions ?? [])
-                : DEFAULT_ALLOWED_FILE_EXTENSIONS
-            const allowedFileUploadMethods =
-              configuredUploadMethods.length > 0
-                ? configuredUploadMethods
-                : DEFAULT_ALLOWED_FILE_UPLOAD_METHODS
             return (
               <fieldset
                 key={field.key}
@@ -253,18 +264,7 @@ export const FormCard = memo(
                 <FileUploaderInAttachmentWrapper
                   value={files}
                   isDisabled={frozen}
-                  fileConfig={{
-                    allowed_file_types: allowedFileTypes,
-                    allowed_file_extensions: allowedFileExtensions,
-                    allowed_file_upload_methods: allowedFileUploadMethods,
-                    number_limits: MULTI_FILE_FIELD_TYPES.has(field.type)
-                      ? (field.number_limits ??
-                        field.max_length ??
-                        fileUploadConfig?.workflow_file_upload_limit ??
-                        MAX_FILE_UPLOAD_LIMIT)
-                      : 1,
-                    fileUploadConfig,
-                  }}
+                  fileConfig={fileConfigs.get(field.key)!}
                   onChange={(files) =>
                     updateValues(
                       field.key,

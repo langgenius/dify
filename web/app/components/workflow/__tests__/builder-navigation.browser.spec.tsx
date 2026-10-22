@@ -394,7 +394,9 @@ it('preserves the manual view through collaboration recovery and still adopts th
     steps: 5,
   })
   await expect.poll(() => node.element().getBoundingClientRect().x).toBeCloseTo(initial.x + 100)
-  expect(await refreshDraft(false, { builderRefresh: true, resolveConflict: true })).toBe(true)
+  expect(await refreshDraft(false, { builderRefresh: true, resolveConflict: true })).toBe(
+    'refreshed',
+  )
   // CanvasLockSync releases this lock when the Builder session has completed.
   workflowStore.getState().setCanvasReadOnly(false)
   const moved = node.element().getBoundingClientRect()
@@ -417,7 +419,9 @@ it('preserves the manual view through collaboration recovery and still adopts th
   expect(collaborationManager.replaceGraphFromReactFlow).toHaveBeenCalledWith(request)
 
   workflowStore.getState().setWorkflowDraftConflict(true)
-  await screen.getByRole('button', { name: 'workflow.draftConflict.reload' }).click()
+  const conflict = screen.getByRole('alertdialog', { name: 'workflow.draftConflict.title' })
+  await conflict.getByRole('button', { name: 'workflow.draftConflict.confirmReload' }).click()
+  await expect.element(conflict).not.toBeInTheDocument()
   await expect.poll(() => recovered.element().getBoundingClientRect().x).toBeCloseTo(initial.x)
   expect(recovered.element().getBoundingClientRect().y).toBeCloseTo(initial.y)
 })
@@ -445,7 +449,9 @@ it('preserves the manually panned view on a visibility refresh after Builder fin
   })
   await expect.poll(() => node.element().getBoundingClientRect().x).toBeCloseTo(initial.x + 100)
 
-  expect(await refreshDraft(false, { builderRefresh: true, resolveConflict: true })).toBe(true)
+  expect(await refreshDraft(false, { builderRefresh: true, resolveConflict: true })).toBe(
+    'refreshed',
+  )
   await expect.poll(() => node.element().getBoundingClientRect().x).toBeCloseTo(initial.x + 100)
   const moved = node.element().getBoundingClientRect()
   fetchDraft.mockResolvedValueOnce({
@@ -464,7 +470,7 @@ it('preserves the manually panned view on a visibility refresh after Builder fin
   expect(refreshedNode.element().getBoundingClientRect().y).toBeCloseTo(moved.y)
 
   // An explicit reload still adopts the saved draft viewport.
-  expect(await refreshDraft()).toBe(true)
+  expect(await refreshDraft()).toBe('refreshed')
   await expect.poll(() => node.element().getBoundingClientRect().x).toBeCloseTo(initial.x)
   expect(node.element().getBoundingClientRect().y).toBeCloseTo(initial.y)
 })

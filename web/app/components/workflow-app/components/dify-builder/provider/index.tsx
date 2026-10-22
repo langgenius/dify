@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { WorkflowDraftRefreshResult } from '../../../hooks/use-workflow-refresh-draft'
 import type { SessionRunEvents } from '../session/types'
 import type { DifyBuilderCanvasSnapshot } from '../utils'
 import type { Edge, Node } from '@/app/components/workflow/types'
@@ -28,7 +29,7 @@ type DifyBuilderProviderProps = {
   canStartCreation?: boolean
   children: ReactNode
   getCanvasSnapshot: () => DifyBuilderCanvasSnapshot
-  onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
+  onRefreshCanvas: (shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>
   onSyncDraft: (saveDraft: boolean, signal: AbortSignal) => Promise<void>
   tenantId?: string
   userId?: string

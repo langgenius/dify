@@ -1,5 +1,7 @@
+import type { WorkflowDraftRefreshResult } from '../../../hooks/use-workflow-refresh-draft'
 import { useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { requestErrorMessage } from '../session/errors'
@@ -38,9 +40,10 @@ export const DifyBuilderCanvasRefreshSync = ({
   onRefreshCanvas,
   onCanvasRefreshed,
 }: {
-  onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
+  onRefreshCanvas: (shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>
   onCanvasRefreshed: () => void
 }) => {
+  const { t } = useTranslation(['difyBuilder'])
   const workflowStore = useWorkflowStore()
   const sessionStore = useJotaiStore()
   const builderNeedsRefresh = useStore((state) => state.workflowDraftSyncPhase === 'builder')
@@ -113,13 +116,19 @@ export const DifyBuilderCanvasRefreshSync = ({
       sessionStore.get(difyBuilderSessionIdAtom) === sessionId &&
       sessionStore.get(difyBuilderViewVersionAtom) === version &&
       !sessionStore.get(difyBuilderSessionBusyAtom)
-    const refreshPromise = onRefreshCanvas(shouldApply)
-    void refreshPromise
-      .then((refreshed) => {
+    const refresh = async (): Promise<WorkflowDraftRefreshResult> => {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const result = await onRefreshCanvas(shouldApply)
+        if (!shouldApply() || result !== 'superseded') return result
+      }
+      return 'failed'
+    }
+    void refresh()
+      .then((result) => {
         if (!shouldApply()) return
-        if (!refreshed) {
+        if (result === 'failed') {
           setCanvasRefreshFailed(true)
-          setLocalError('Workflow canvas refresh failed.')
+          setLocalError(t(($) => $.canvasRefreshFailed, { reason: '' }).trim())
           return
         }
         setCanvasRefreshGeneration((generation) => generation + 1)
@@ -135,10 +144,10 @@ export const DifyBuilderCanvasRefreshSync = ({
         onCanvasRefreshed()
       })
       .catch(async (error: unknown) => {
-        const message = await requestErrorMessage(error)
+        const message = await requestErrorMessage(error, '')
         if (!shouldApply()) return
         setCanvasRefreshFailed(true)
-        setLocalError(message)
+        setLocalError(t(($) => $.canvasRefreshFailed, { reason: message }).trim())
       })
       .finally(() => {
         if (requestId === refreshRequestIdRef.current) setCanvasRefreshing(false)
@@ -159,6 +168,7 @@ export const DifyBuilderCanvasRefreshSync = ({
     setCanvasRefreshing,
     setLocalError,
     setPendingRefresh,
+    t,
     version,
     workflowStore,
   ])

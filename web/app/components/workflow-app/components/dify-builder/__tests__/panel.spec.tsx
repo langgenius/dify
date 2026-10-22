@@ -1115,7 +1115,7 @@ describe('DifyBuilderPanel', () => {
       store.set(difyBuilderCanvasRefreshFailedAtom, true)
     })
 
-    const retry = screen.getByRole('button', { name: 'common.operation.retry' })
+    const retry = screen.getByRole('button', { name: 'workflow.common.retryCanvasSync' })
     expect(retry).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled()
     expect(
