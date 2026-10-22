@@ -277,12 +277,11 @@ class AppDslExportApi(Resource):
 
 @openapi_ns.route("/apps/<string:app_id>/dependencies:check")
 class AppDslCheckDependenciesApi(Resource):
-    """Check for leaked plugin dependencies after a DSL import.
+    """Check which plugins the app's current draft needs but the workspace lacks.
 
-    Call this after an import that reported ``COMPLETED_WITH_WARNINGS`` to
-    find which plugin dependencies referenced in the DSL are not yet installed
-    in the workspace.  Returns an empty ``leaked_dependencies`` list when all
-    dependencies are satisfied.
+    Works at any time, not only after an import. ``leaked_dependencies`` are
+    installable from the marketplace (the hint installs them).
+    ``unresolved_plugin_ids`` must be installed in the console.
     """
 
     @endpoint(
@@ -295,7 +294,12 @@ class AppDslCheckDependenciesApi(Resource):
         returns=(HTTPStatus.OK, CheckDependenciesResponse, "Dependencies checked"),
     )
     def get(self, ctx: RequestContext, app_id: str):
-        result = application_services().apps.imports.check_dependencies(ctx, str(UUID(app_id)))
+        try:
+            result = application_services().apps.imports.check_dependencies(ctx, str(UUID(app_id)))
+        except ConsoleAppNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+        except WorkflowNotFoundError as exc:
+            raise DraftNotFound() from exc
         missing = [
             dependency.value.plugin_unique_identifier
             for dependency in result.leaked_dependencies

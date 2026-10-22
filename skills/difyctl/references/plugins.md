@@ -10,7 +10,7 @@
 
 ## Missing plugins after an import
 
-1. `difyctl check console_app dependency --app-id <app_id>` lists what the app needs and lacks. Its hint is a ready `install.plugin` call with every missing marketplace plugin.
+1. `difyctl check console_app dependency --app-id <app_id>` checks the current draft. Its hint installs every missing marketplace plugin; `unresolved_plugin_ids` must be installed by a human in the console.
 2. Plugins from GitHub or a package file can't be installed with difyctl. Tell the human to install them in the console.
 
 ## Find and install

@@ -331,6 +331,7 @@ export type ChatWebAppPatch = {
 export type CheckDependenciesResponse = {
   hints?: Array<Hint>
   leaked_dependencies?: Array<PluginDependency>
+  unresolved_plugin_ids?: Array<string>
 }
 
 export type CheckDependenciesResult = {
