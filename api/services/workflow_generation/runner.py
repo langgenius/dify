@@ -87,6 +87,7 @@ from graphon.model_runtime.errors.invoke import (
 from services.dify_builder.api_tool_output_context import (
     format_api_tool_code_system_rules,
     format_api_tool_output_context,
+    format_plugin_tool_output_context,
 )
 from services.dify_builder.native_agent_output_contract import declares_native_agent_output, native_agent_config_errors
 from services.dify_builder.native_api_output_contract import (
@@ -1397,6 +1398,9 @@ class WorkflowGenerator:
             entries=tool_catalogue_entries,
         )
         tool_catalogue_section += api_context
+        tool_catalogue_section += format_plugin_tool_output_context(
+            plan_json=plan_json, target_node_id=node_id, entries=tool_catalogue_entries
+        )
         http_system_rules, http_user_context = format_http_output_context(http_contract_context, node_id)
         tool_catalogue_section += http_user_context
         constant_system_rules, constant_user_context = format_native_constant_output_context(
