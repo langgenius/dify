@@ -13,7 +13,7 @@ import zlib
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from io import BytesIO
-from typing import Literal
+from typing import Literal, Protocol, runtime_checkable
 from urllib.parse import unquote, urlsplit
 from uuid import UUID
 from xml.etree.ElementTree import Element, ParseError
@@ -42,6 +42,13 @@ _OFFICE_DOCUMENT_RELATIONSHIPS = {
     "http://purl.oclc.org/ooxml/officeDocument/relationships/officeDocument",
 }
 _DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
+
+
+@runtime_checkable
+class _ClosableStream(Protocol):
+    """Storage generators and other closeable byte streams release their owner."""
+
+    def close(self) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -261,9 +268,8 @@ def validate_native_docx(
                         break
                     data.extend(chunk)
             finally:
-                close = getattr(stream, "close", None)
-                if callable(close):
-                    close()
+                if isinstance(stream, _ClosableStream):
+                    stream.close()
         except Exception as exc:
             logger.warning("DOCX storage read unavailable (reason=%s)", type(exc).__name__)
             results.append(FileAcceptance("unverified", "tool_file_bytes_unavailable"))

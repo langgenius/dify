@@ -1505,6 +1505,8 @@ jobs:
                                                                                 'test_invalid_or_external_root_relationship_cannot_prove_docx': 6,
                                                                                 'test_main_part_must_have_the_docx_content_type_declaration': 1,
                                                                                 'test_missing_root_document_relationship_cannot_prove_docx': 1,
+                                                                                'test_non_generator_closeable_stream_releases_owner_on_completion': 1,
+                                                                                'test_plain_iterable_stream_needs_no_close_method': 1,
                                                                                 'test_readable_invalid_docx_bytes_fail_even_with_docx_filename': 5,
                                                                                 'test_root_relationship_requires_existing_safe_package_part': 3,
                                                                                 'test_root_relationship_xml_has_the_same_read_bound_as_document_xml': 1,

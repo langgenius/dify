@@ -71,9 +71,9 @@ def explicit_contract(s, fc):
 
 
 FLOWS = [
-    (handlers_fix, "handle_verify"),
-    (handlers_build, "handle_test_and_repair"),
-    (handlers_edit, "handle_test_affected_paths"),
+    (handlers_fix, handlers_fix.handle_verify),
+    (handlers_build, handlers_build.handle_test_and_repair),
+    (handlers_edit, handlers_edit.handle_test_affected_paths),
 ]
 
 
@@ -91,7 +91,7 @@ def test_contract_metadata_stays_out_of_start_inputs_and_invalid_only_cannot_pub
     ti = env.repo.get_test_input(fc.test_input_ref)
     assert ti.inputs == {"orders": "not-json"}
     env.dify.run_outputs = {"error": "Invalid JSON"}
-    result = getattr(module, test_handler)(env, turn, s, fc)
+    result = test_handler(env, turn, s, fc)
     assert result.run is not None
     env.repo.save_run(s.id, result.run)
     finding = result.run.verification.business_acceptance
