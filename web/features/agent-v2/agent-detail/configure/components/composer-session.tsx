@@ -471,6 +471,8 @@ function AgentConfigurePageComposerContent({
   return (
     <AgentConfigureWorkspace
       aria-busy={agentQuery.isFetching || isEnteringBuildMode}
+      className="h-full min-w-0 flex-1 overflow-hidden max-xl:flex-col max-xl:overflow-y-auto"
+      rightPanelContainerClassName="min-w-105 flex-1 overflow-hidden max-xl:w-full max-xl:min-w-0 max-xl:flex-none max-xl:flex-col max-xl:overflow-visible"
       leftPanel={
         <AgentOrchestratePanel
           className="max-xl:h-100 max-xl:w-full max-xl:max-w-none max-xl:min-w-0 max-xl:flex-none"
@@ -522,6 +524,7 @@ function AgentConfigurePageComposerContent({
       }
       rightPanel={
         <AgentConfigurePreviewSurface
+          className="min-w-105 flex-1 max-xl:h-100 max-xl:w-full max-xl:min-w-0 max-xl:flex-none"
           background={<AgentBuildPanelBackground visible={rightPanelChatMode === 'build'} />}
           header={
             <AgentPreviewHeader

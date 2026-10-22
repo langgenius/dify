@@ -662,8 +662,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
 
   return (
     <AgentConfigureWorkspace
-      className="rounded-[inherit]"
-      stackOnSmallScreen={false}
+      className="h-full min-w-0 flex-1 overflow-hidden rounded-[inherit]"
+      rightPanelContainerClassName="min-w-0 flex-1 overflow-hidden"
       leftPanel={
         <AgentOrchestratePanel
           agentId={agentId}
@@ -705,7 +705,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       }
       rightPanel={
         <AgentConfigurePreviewSurface
-          stackOnSmallScreen={false}
+          className="min-w-0 flex-1"
           background={<AgentBuildPanelBackground visible={rightPanelMode === 'build'} />}
           header={
             <AgentPreviewHeader
