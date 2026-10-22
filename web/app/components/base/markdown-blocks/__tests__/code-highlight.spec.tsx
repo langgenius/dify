@@ -1,27 +1,16 @@
-import type * as highlights from '@pierre/highlights'
+import { codeToTokens } from '@pierre/highlights'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { highlightCode } from '../code-highlight'
 
-// Wrap the real tokenizer so tests can assert that plain-text and unsupported
+// Spy on the real tokenizer so tests can assert that plain-text and unsupported
 // fences never reach the WebAssembly lexers.
-const { mockCodeToTokens } = vi.hoisted(() => ({
-  mockCodeToTokens: vi.fn(),
-}))
+vi.mock('@pierre/highlights', { spy: true })
 
-vi.mock('@pierre/highlights', async (importOriginal) => {
-  const actual = await importOriginal<typeof highlights>()
-  return {
-    ...actual,
-    codeToTokens: (...args: Parameters<typeof actual.codeToTokens>) => {
-      mockCodeToTokens(...args)
-      return actual.codeToTokens(...args)
-    },
-  }
-})
+const mockCodeToTokens = vi.mocked(codeToTokens)
 
 describe('README code highlighting', () => {
   beforeEach(() => {
-    mockCodeToTokens.mockReset()
+    mockCodeToTokens.mockClear()
   })
 
   it.each(['github-light', 'github-dark'] as const)('highlights dotenv with %s', async (theme) => {

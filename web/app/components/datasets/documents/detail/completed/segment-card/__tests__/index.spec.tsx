@@ -87,7 +87,7 @@ vi.mock('@/app/components/datasets/common/image-list', () => ({
   ),
 }))
 
-// Markdown uses next/dynamic and an ESM code highlighter
+// Markdown loads its code blocks through next/dynamic
 vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content, className }: { content: string; className?: string }) => (
     <div data-testid="markdown" className={`markdown-body ${className || ''}`}>
