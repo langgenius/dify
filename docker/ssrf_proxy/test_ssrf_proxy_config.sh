@@ -149,6 +149,8 @@ docker run \
   --volume "$ROOT_DIR/docker/ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh:ro" \
   --env HTTP_PORT=3128 \
   --env COREDUMP_DIR=/var/spool/squid \
+  --env SSRF_REQUEST_TIMEOUT=321 \
+  --env SSRF_READ_TIMEOUT=654 \
   --env SSRF_SANDBOX_PROXY_PORT=8194 \
   --env SSRF_SANDBOX_PROXY_HOST=sandbox \
   --env "SSRF_PROXY_ALLOW_PRIVATE_IPS=${SSRF_PROXY_ALLOW_PRIVATE_IPS:-}" \
@@ -171,6 +173,9 @@ if [[ -z "${probe_status:-}" ]]; then
   docker logs "$CONTAINER_NAME" >&2 || true
   exit 1
 fi
+
+docker exec "$CONTAINER_NAME" grep -Fx 'request_timeout 321 seconds' /etc/squid/dify_common.conf >/dev/null
+docker exec "$CONTAINER_NAME" grep -Fx 'read_timeout 654 seconds' /etc/squid/dify_common.conf >/dev/null
 
 assert_private_target_blocked "$proxy_url" "http://127.0.0.1:80/"
 assert_private_target_blocked "$proxy_url" "http://0.1.2.3:80/"
@@ -226,6 +231,8 @@ docker run \
   --volume "$ROOT_DIR/docker/ssrf_proxy/docker-agent-entrypoint.sh:/docker-entrypoint-mount.sh:ro" \
   --env HTTP_PORT=3128 \
   --env COREDUMP_DIR=/var/spool/squid \
+  --env SSRF_REQUEST_TIMEOUT=321 \
+  --env SSRF_READ_TIMEOUT=654 \
   --env "SSRF_PROXY_ALLOW_PRIVATE_IPS=${SSRF_PROXY_ALLOW_PRIVATE_IPS:-}" \
   --env "SSRF_PROXY_ALLOW_PRIVATE_DOMAINS=${SSRF_PROXY_ALLOW_PRIVATE_DOMAINS:-internal_api}" \
   "$IMAGE" \
@@ -246,6 +253,9 @@ if [[ -z "${agent_probe_status:-}" ]]; then
   docker logs "$AGENT_PROXY_CONTAINER_NAME" >&2 || true
   exit 1
 fi
+
+docker exec "$AGENT_PROXY_CONTAINER_NAME" grep -Fx 'request_timeout 321 seconds' /etc/squid/dify_common.conf >/dev/null
+docker exec "$AGENT_PROXY_CONTAINER_NAME" grep -Fx 'read_timeout 654 seconds' /etc/squid/dify_common.conf >/dev/null
 
 # Private targets must be blocked.
 assert_private_target_blocked "$agent_proxy_url" "http://127.0.0.1:80/"
