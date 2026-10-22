@@ -535,6 +535,58 @@ describe('WorkflowLogArchivesPage', () => {
       },
     )
 
+    it.each(['ready', 'failed'] as const)(
+      'keeps announcing a %s list result after the initial download status request fails',
+      async (status) => {
+        archiveRequests.download.mockRejectedValue(new Error('Temporary status failure'))
+        const deletingMonth = { ...archiveMonth, month: 2, deletion_status: 'processing' as const }
+        const data = {
+          ...archiveData,
+          months: [{ ...archiveMonth, download_task: downloadTask }, deletingMonth],
+        }
+        const { queryClient } = renderPage(data)
+        const row = screen.getByRole('row', { name: /2025-03/ })
+        const announcement = within(row).getByRole('status')
+        const taskQueryKey = consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryKey({
+          input: { params: { download_id: downloadTask.download_id } },
+        })
+        await waitFor(() => expect(queryClient.getQueryState(taskQueryKey)?.status).toBe('error'))
+        expect(announcement).toBeEmptyDOMElement()
+        archiveRequests.list.mockResolvedValue({
+          ...data,
+          months: [
+            {
+              ...archiveMonth,
+              download_task: { ...downloadTask, status, updated_at: '2025-03-03T00:00:00.500000Z' },
+            },
+            deletingMonth,
+          ],
+        })
+
+        for (let refresh = 0; refresh < 2; refresh++) {
+          await act(async () =>
+            queryClient.refetchQueries({
+              queryKey: consoleQuery.workflowRunArchives.get.queryKey(),
+            }),
+          )
+
+          expect(
+            await within(row).findByRole('button', {
+              name:
+                status === 'ready'
+                  ? 'common.operation.download 2025-03'
+                  : 'common.operation.retry 2025-03',
+            }),
+          ).toBeEnabled()
+          await waitFor(() =>
+            expect(announcement).toHaveTextContent(
+              `2025-03: appLog.archives.downloadHint.${status}`,
+            ),
+          )
+        }
+      },
+    )
+
     it.each([
       { status: 'ready', error: null, hint: 'appLog.archives.downloadHint.ready' },
       {

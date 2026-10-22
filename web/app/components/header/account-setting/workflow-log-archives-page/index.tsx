@@ -371,7 +371,21 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
     (!cachedTask || Date.parse(polledTask.updated_at) >= Date.parse(cachedTask.updated_at))
       ? polledTask
       : cachedTask
-  const isPreparing = createDownloadMutation.isPending || isPreparingStatus(currentTask?.status)
+  const isTaskPreparing = isPreparingStatus(currentTask?.status)
+  const isPreparing = createDownloadMutation.isPending || isTaskPreparing
+  const [observedPreparingTaskId, setObservedPreparingTaskId] = useState(
+    isTaskPreparing ? currentTask?.download_id : undefined,
+  )
+  // A list refresh can replace every preparing snapshot with the completed task.
+  if (
+    isTaskPreparing &&
+    !createDownloadMutation.isPending &&
+    observedPreparingTaskId !== currentTask?.download_id
+  ) {
+    setObservedPreparingTaskId(currentTask?.download_id)
+  } else if (observedPreparingTaskId && observedPreparingTaskId !== currentTask?.download_id) {
+    setObservedPreparingTaskId(undefined)
+  }
   const isReady = currentTask?.status === 'ready'
   const isFailed = currentTask?.status === 'failed'
   const failureReason = isFailed ? currentTask?.error?.trim() : undefined
@@ -394,14 +408,13 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const announceDownloadResult =
     !createDownloadMutation.isPending &&
     !isDownloadUnavailable &&
-    (isPreparingStatus(cachedTask?.status) ||
-      isPreparingStatus(polledTask?.status) ||
-      taskQuery.isFetching) &&
+    observedPreparingTaskId === currentTask?.download_id &&
     (isReady || isFailed)
 
   const prepareDownload = () => {
     if (createDownloadMutation.isPending || isDownloadUnavailable) return
 
+    setObservedPreparingTaskId(undefined)
     createDownloadMutation.mutate(
       {
         body: {
