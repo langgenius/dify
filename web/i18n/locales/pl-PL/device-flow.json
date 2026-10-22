@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "Logowanie dla narzędzi wiersza poleceń jest wyłączone na tym serwerze. Poproś administratora o ustawienie ENABLE_OAUTH_BEARER=true.",
   "approveError.codeInvalid": "Ten kod nie jest już ważny.",
   "approveError.codeMismatch": "Ten kod nie pasuje do aktywnej sesji. Uruchom ponownie difyctl auth login.",
   "approveError.codeResolved": "Ten kod został już zatwierdzony lub odrzucony.",

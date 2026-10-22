@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "Əmr sətri alətləri üçün giriş bu serverdə söndürülüb. Adminə ENABLE_OAUTH_BEARER=true təyin etməyi tapşırın.",
   "approveError.codeInvalid": "Bu kod artıq etibarlı deyil.",
   "approveError.codeMismatch": "Bu kod aktiv sessiyaya uyğun gəlmir. difyctl auth login əmrini yenidən icra edin.",
   "approveError.codeResolved": "Bu kod artıq təsdiqlənib və ya rədd edilib.",

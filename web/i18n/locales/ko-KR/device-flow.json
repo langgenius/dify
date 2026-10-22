@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "이 서버에서는 명령줄 도구 로그인이 꺼져 있습니다. 관리자에게 ENABLE_OAUTH_BEARER=true 설정을 요청하세요.",
   "approveError.codeInvalid": "이 코드는 더 이상 유효하지 않습니다.",
   "approveError.codeMismatch": "이 코드가 활성 세션과 일치하지 않습니다. difyctl auth login을 다시 실행하세요.",
   "approveError.codeResolved": "이 코드는 이미 승인되었거나 거부되었습니다.",

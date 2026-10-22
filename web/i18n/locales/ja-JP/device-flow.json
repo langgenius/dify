@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "このサーバーでは、コマンドラインツールからのサインインが無効になっています。管理者に ENABLE_OAUTH_BEARER=true の設定を依頼してください。",
   "approveError.codeInvalid": "このコードは無効になりました。",
   "approveError.codeMismatch": "このコードはアクティブなセッションと一致しません。もう一度 difyctl auth login を実行してください。",
   "approveError.codeResolved": "このコードはすでに承認または拒否されています。",

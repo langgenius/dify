@@ -2886,6 +2886,7 @@ export default interface Resources {
     'versions.deployTo': 'Deploy to {{name}}'
   }
   deviceFlow: {
+    'approveError.bearerDisabled': 'Sign-in for command-line tools is turned off on this server. Ask an admin to set ENABLE_OAUTH_BEARER=true.'
     'approveError.codeInvalid': 'This code is no longer valid.'
     'approveError.codeMismatch': 'This code does not match the active session. Run difyctl auth login again.'
     'approveError.codeResolved': 'This code was already approved or denied.'

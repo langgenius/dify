@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "此服务器已关闭命令行工具的登录功能。请联系管理员设置 ENABLE_OAUTH_BEARER=true。",
   "approveError.codeInvalid": "此验证码已失效。",
   "approveError.codeMismatch": "此验证码与当前活跃会话不匹配。请重新运行 difyctl auth login。",
   "approveError.codeResolved": "此验证码已被批准或拒绝。",

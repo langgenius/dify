@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "Die Anmeldung für Befehlszeilen-Tools ist auf diesem Server deaktiviert. Bitten Sie einen Administrator, ENABLE_OAUTH_BEARER=true zu setzen.",
   "approveError.codeInvalid": "Dieser Code ist nicht mehr gültig.",
   "approveError.codeMismatch": "Dieser Code stimmt nicht mit der aktiven Sitzung überein. Führen Sie difyctl auth login erneut aus.",
   "approveError.codeResolved": "Dieser Code wurde bereits genehmigt oder abgelehnt.",
