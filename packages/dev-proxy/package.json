@@ -18,7 +18,7 @@
     "src"
   ],
   "engines": {
-    "node": "^22.22.1"
+    "node": "^22.23.4"
   },
   "scripts": {
     "build": "vp pack",
