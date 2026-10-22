@@ -1,3 +1,4 @@
+import type { ServerErrorBody } from '@/errors/base'
 import type { ErrorCodeValue } from '@/errors/codes'
 import type { CatalogService } from '@/plugins/catalog'
 import { BaseError, HttpClientError, LOGIN_HINT, unknownError } from '@/errors/base'
@@ -65,7 +66,7 @@ function catalogFailure(cause: unknown): string {
   return errorMessage(cause)
 }
 
-const PERMISSION_DENIED_HINT = 'permission denied: this account may not do this'
+export const PERMISSION_DENIED_HINT = 'the server refused this request; the message says why'
 
 // `hint` replaces the server's hint; `fallbackHint` only fills in when it sent none.
 type StatusMapping = Readonly<{ code: ErrorCodeValue; hint?: string; fallbackHint?: string }>
@@ -75,6 +76,12 @@ const STATUS_MAPPINGS: Readonly<Record<number, StatusMapping>> = {
   // Logging in again does not grant a permission, and `login` revokes the session first.
   [HttpStatus.Forbidden]: { code: ErrorCode.AccessDenied, fallbackHint: PERMISSION_DENIED_HINT },
   [HttpStatus.TooManyRequests]: { code: ErrorCode.RateLimited },
+}
+
+function serverSentHint(serverError: ServerErrorBody | undefined): boolean {
+  if (serverError?.hint) return true
+  if ((serverError?.hints ?? []).length > 0) return true
+  return false
 }
 
 function classifyStatus(res: Response): StatusMapping {
@@ -211,7 +218,7 @@ export const http = definePlugin({
       throw new HttpClientError({
         code,
         message: serverError?.message ?? `HTTP ${res.status}`,
-        hint: hint ?? serverError?.hint ?? fallbackHint,
+        hint: hint ?? serverError?.hint ?? (serverSentHint(serverError) ? undefined : fallbackHint),
         httpStatus: res.status,
         method: req.method,
         url: url.toString(),

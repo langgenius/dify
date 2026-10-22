@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { Context } from '@/kernel/context'
 import { catalog, CATALOG_PATH } from '@/plugins/catalog'
 import { CONFIG_FILE_NAME } from '@/plugins/config'
-import { CATALOG_OPENAPI_OFF_HINT, http } from './index'
+import { CATALOG_OPENAPI_OFF_HINT, http, PERMISSION_DENIED_HINT } from './index'
 
 const SHORT_TIMEOUT_MS = 50
 
@@ -132,7 +132,7 @@ describe('http plugin', () => {
     })
   })
 
-  it('a 403 without a server hint says permission denied', async () => {
+  it('a 403 without any server hint says the server refused', async () => {
     process.env.DIFY_TOKEN = 'sk-test-resource'
     const h = await new Context().get(http)
     mock.setScenario('resource-token')
@@ -141,7 +141,17 @@ describe('http plugin', () => {
     ).rejects.toMatchObject({
       code: 'access_denied',
       httpStatus: 403,
-      hint: expect.stringMatching(/^permission denied/),
+      hint: PERMISSION_DENIED_HINT,
+    })
+  })
+
+  it('a 403 with server hints adds no guessed hint', async () => {
+    const h = await new Context().get(http)
+    mock.setScenario('hinted-forbidden')
+    await expect(h.request(account)).rejects.toMatchObject({
+      code: 'access_denied',
+      httpStatus: 403,
+      hint: undefined,
     })
   })
 
