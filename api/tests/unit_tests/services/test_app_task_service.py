@@ -21,7 +21,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowPause, WorkflowRun
-from services.app_task_service import AppTaskControlService, AppTaskService
+from services.app_task_service import AppTaskControlService, AppTaskService, WorkflowStopOutcome
 
 _TASK_ID = "task-with-non-uuid-id"
 _USER_ID = "user-1"
@@ -231,6 +231,87 @@ def app_task_workflow_run(sqlite_session: Session, monkeypatch: pytest.MonkeyPat
     return run
 
 
+_GRAPH_STOP_OPERATIONS = ["legacy_flag", "graph_command"]
+
+
+def _stop_run_cases() -> list[object]:
+    return [
+        pytest.param(
+            "running", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.STOPPED, _GRAPH_STOP_OPERATIONS, id="running"
+        ),
+        pytest.param("paused", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.STOPPED, [], id="paused"),
+        pytest.param("already-stopped", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.STOPPED, [], id="already-stopped"),
+        pytest.param("finished", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.NOT_STOPPABLE, [], id="finished"),
+        pytest.param(
+            "legacy-no-task-id", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.NOT_STOPPABLE, [], id="legacy-no-task-id"
+        ),
+        pytest.param("missing", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.NOT_FOUND, [], id="missing"),
+        pytest.param("other-app", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.NOT_FOUND, [], id="other-app"),
+        pytest.param(
+            "other-end-user", CreatorUserRole.END_USER, WorkflowStopOutcome.NOT_FOUND, [], id="other-end-user"
+        ),
+        pytest.param(
+            "own-end-user",
+            CreatorUserRole.END_USER,
+            WorkflowStopOutcome.STOPPED,
+            _GRAPH_STOP_OPERATIONS,
+            id="own-end-user",
+        ),
+        pytest.param(
+            "draft-run", CreatorUserRole.ACCOUNT, WorkflowStopOutcome.STOPPED, _GRAPH_STOP_OPERATIONS, id="draft-run"
+        ),
+    ]
+
+
+@pytest.mark.parametrize(("case", "caller_role", "outcome", "operations"), _stop_run_cases())
+def test_stop_workflow_run_outcomes(
+    sqlite_session: Session,
+    app_task_workflow_run: WorkflowRun,
+    case: str,
+    caller_role: CreatorUserRole,
+    outcome: WorkflowStopOutcome,
+    operations: list[str],
+) -> None:
+    run = app_task_workflow_run
+    run_id = run.id
+    app_id = run.app_id
+    if case == "paused":
+        run.status = WorkflowExecutionStatus.PAUSED
+        sqlite_session.add(WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="state"))
+    if case == "already-stopped":
+        run.status = WorkflowExecutionStatus.STOPPED
+        run.stop_requested_at = datetime(2026, 10, 20)
+    if case == "finished":
+        run.status = WorkflowExecutionStatus.SUCCEEDED
+    if case == "legacy-no-task-id":
+        run.task_id = None
+    if case == "missing":
+        run_id = "22222222-2222-2222-2222-222222222222"
+    if case == "other-app":
+        app_id = "other-app"
+    if case == "other-end-user":
+        run.created_by = "other-user"
+    if case == "draft-run":
+        run.triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
+    sqlite_session.commit()
+    redis = _StopRedis(read_error=AssertionError("Durable workflow ownership must not depend on Redis"))
+
+    result = AppTaskControlService(redis_client=redis).stop_workflow_run(
+        tenant_id=run.tenant_id,
+        app_id=app_id,
+        run_id=run_id,
+        app_mode=AppMode.WORKFLOW,
+        caller_role=caller_role,
+        caller_id=_USER_ID,
+    )
+
+    assert result is outcome
+    assert redis.operations == operations
+    if case == "paused":
+        sqlite_session.refresh(run)
+        assert run.status == WorkflowExecutionStatus.STOPPED
+
+
 @pytest.mark.parametrize("app_mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
 @pytest.mark.parametrize(
     ("caller_role", "run_owner_role", "run_owner_id"),
@@ -350,6 +431,30 @@ def test_stop_app_task_preserves_unadmitted_workflow_and_pause(
         assert pause.state_object_key == "state"
         assert form.status == HumanInputFormStatus.WAITING
         assert form.submitted_at is None
+
+
+@pytest.mark.parametrize(
+    ("caller_role", "cached_owner", "admitted"),
+    [
+        (CreatorUserRole.END_USER, b"end-user-user-1", True),
+        (CreatorUserRole.END_USER, b"end-user-other", False),
+        (CreatorUserRole.END_USER, None, False),
+        (CreatorUserRole.ACCOUNT, b"end-user-other", True),
+        (CreatorUserRole.ACCOUNT, None, True),
+    ],
+)
+def test_stop_message_task_applies_legacy_caller_ownership(
+    caller_role: CreatorUserRole, cached_owner: bytes | None, admitted: bool
+) -> None:
+    redis = _StopRedis(values={_OWNER_KEY: cached_owner} if cached_owner is not None else {})
+
+    result = AppTaskControlService(redis_client=redis).stop_message_task(
+        task_id=_TASK_ID, caller_role=caller_role, caller_id=_USER_ID
+    )
+
+    assert result is admitted
+    assert redis.operations == (["legacy_flag"] if admitted else [])
+    assert redis.commands == {}
 
 
 @pytest.mark.parametrize("owner", [None, b"account-another-user"])
