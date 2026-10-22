@@ -1526,7 +1526,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 | credentials | object |  | Yes |
 | name | string |  | Yes |
 | node_id | string |  | Yes |
-| workflow_id | string (uuid) |  | Yes |
+| workflow_id | string (uuid) | Expected connection contract revision from Web App parameters. | Yes |
 
 #### EndUserConnectionListQuery
 
@@ -1550,7 +1550,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
 | node_id | string |  | Yes |
-| workflow_id | string (uuid) |  | Yes |
+| workflow_id | string (uuid) | Expected connection contract revision from Web App parameters. | Yes |
 
 #### EndUserConnectionOAuthResponse
 
@@ -1564,7 +1564,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 | ---- | ---- | ----------- | -------- |
 | connections | object | Explicit choices keyed by independent authorization node ID. Missing/null choices remain disconnected; saved choices are never inferred. | Yes |
 | conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
-| workflow_id | string (uuid) | Published workflow version returned by Web App parameters. | Yes |
+| workflow_id | string (uuid) | Expected connection contract revision from Web App parameters. Must match the current published workflow; does not select an execution version. | Yes |
 
 #### EndUserConnectionPreflightResponse
 
@@ -1572,7 +1572,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 | ---- | ---- | ----------- | -------- |
 | ready | boolean |  | Yes |
 | requirements | [ [ConnectionPreflightRequirement](#connectionpreflightrequirement) ] |  | Yes |
-| workflow_id | string |  | Yes |
+| workflow_id | string | Connection contract revision evaluated by this preflight. | Yes |
 
 #### EndUserConnectionResponse
 
@@ -2472,7 +2472,7 @@ in form definition, or a variable while the workflow is running.
 | system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
 | text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
 | user_input_form | [ object<br>object<br>object<br>object<br>object<br>object<br>object<br>object<br>object ] |  | Yes |
-| workflow_id | string | Published workflow/chatflow version; null for other app modes. | Yes |
+| workflow_id | string | Connection contract revision represented by the published workflow/chatflow ID; null for other app modes. This is not an execution-version selector. | Yes |
 
 #### WebAppSiteResponse
 

@@ -33,7 +33,13 @@ NodeId = Annotated[str, Field(min_length=1, max_length=255)]
 
 
 class ConnectionPreflightInput(ConnectionInput):
-    workflow_id: UUID = Field(strict=False, description="Published workflow version returned by Web App parameters.")
+    workflow_id: UUID = Field(
+        strict=False,
+        description=(
+            "Expected connection contract revision from Web App parameters. "
+            "Must match the current published workflow; does not select an execution version."
+        ),
+    )
     # Only existing Chatflow Conversations have an authoritative business Session.
     # None checks a new conversation or a plain Workflow's App/user context.
     conversation_id: UUID | None = Field(
@@ -78,7 +84,7 @@ class ConnectionPreflightRequirement(BaseModel):
 class ConnectionPreflightView(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    workflow_id: str
+    workflow_id: str = Field(description="Connection contract revision evaluated by this preflight.")
     requirements: tuple[ConnectionPreflightRequirement, ...]
 
     @computed_field

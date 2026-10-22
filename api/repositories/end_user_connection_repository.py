@@ -115,6 +115,8 @@ class EndUserConnectionRepository:
     def _require_preflight_scope(
         session: Session, context: WebConnectionContext, app: App, workflow_id: str, conversation_id: str | None
     ) -> None:
+        # The client pins the connection contract it saw; it cannot select an
+        # arbitrary historical workflow as the execution version.
         if (
             app.workflow_id != workflow_id
             or session.scalar(

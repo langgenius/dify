@@ -59,7 +59,12 @@ class AppMetaResponse(BaseModel):
 
 
 class WebAppParametersResponse(Parameters, ResponseModel):
-    workflow_id: str | None = Field(description="Published workflow/chatflow version; null for other app modes.")
+    workflow_id: str | None = Field(
+        description=(
+            "Connection contract revision represented by the published workflow/chatflow ID; "
+            "null for other app modes. This is not an execution-version selector."
+        ),
+    )
     requires_end_user_connections: bool = Field(
         description="Whether this published version declares EndUser tool connections, independent of user readiness.",
     )

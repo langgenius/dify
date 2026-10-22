@@ -28,9 +28,12 @@ class ConnectionInput(BaseModel):
 
 
 class ConnectionTargetInput(ConnectionInput):
-    """Untrusted graph references, checked against the active published version."""
+    """Client connection contract references, checked against the current published graph."""
 
-    workflow_id: UUID = Field(strict=False)
+    workflow_id: UUID = Field(
+        strict=False,
+        description="Expected connection contract revision from Web App parameters.",
+    )
     node_id: str = Field(min_length=1, max_length=255)
 
 
