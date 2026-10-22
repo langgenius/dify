@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict
 
+from services.entities.account_login_entities import LoginMode
+
 
 @dataclass(frozen=True, slots=True)
 class WebAppRecord:
@@ -29,6 +31,7 @@ class WebPassportRequest:
     app_code: str
     user_session_id: str | None
     access_token: str | None
+    mode: LoginMode = LoginMode.CONSOLE
 
 
 @dataclass(frozen=True, slots=True)

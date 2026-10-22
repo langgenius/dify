@@ -3,11 +3,11 @@
 import * as z from 'zod'
 
 /**
- * SimpleResultOptionalDataResponse
+ * WebAppAccountSessionResponse
  */
-export const zSimpleResultOptionalDataResponse = z.object({
-  data: z.string().nullish(),
-  result: z.string(),
+export const zWebAppAccountSessionResponse = z.object({
+  logged_in: z.boolean(),
+  redirect_url: z.string().nullable(),
 })
 
 /**
@@ -24,6 +24,27 @@ export const zErrorResponse = z.object({
   message: z.string(),
   params: z.string().optional(),
   status: z.int(),
+})
+
+/**
+ * WebLoginUnavailableError
+ *
+ * Web App login is temporarily unavailable. Please retry.
+ */
+export const zWebLoginUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('web_login_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
+ * AccountPasswordLoginResponse
+ */
+export const zAccountPasswordLoginResponse = z.object({
+  data: z.string().nullish(),
+  redirect_url: z.string().nullish(),
+  result: z.string(),
 })
 
 /**
@@ -123,6 +144,18 @@ export const zAuthenticationFailedError = zErrorResponse.and(
 )
 
 /**
+ * EndUserLoginRequiredError
+ *
+ * Sign in to manage personal connections.
+ */
+export const zEndUserLoginRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('end_user_login_required'),
+    status: z.literal(401),
+  }),
+)
+
+/**
  * EmailCodeLoginLimitError
  *
  * Too many incorrect password attempts. Please try again later.
@@ -140,6 +173,15 @@ export const zEmailCodeLoginLimitError = zErrorResponse.and(
 export const zLoginMode = z.enum(['console', 'end_user'])
 
 /**
+ * WebLoginTarget
+ */
+export const zWebLoginTarget = z.object({
+  app_code: z.string().min(1),
+  code_challenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  redirect_url: z.string().min(1),
+})
+
+/**
  * LoginPayload
  */
 export const zLoginPayload = z.object({
@@ -148,11 +190,24 @@ export const zLoginPayload = z.object({
   mode: zLoginMode.optional().default('console'),
   password: z.string(),
   remember_me: z.boolean().optional().default(false),
+  webapp_login: zWebLoginTarget.nullish(),
 })
+
+export const zGetLoginQuery = z.object({
+  app_code: z.string().min(1),
+  code_challenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  mode: z.string().optional().default('end_user'),
+  redirect_url: z.string().min(1),
+})
+
+/**
+ * Existing Account session
+ */
+export const zGetLoginResponse = zWebAppAccountSessionResponse
 
 export const zPostLoginBody = zLoginPayload
 
 /**
  * Success
  */
-export const zPostLoginResponse = zSimpleResultOptionalDataResponse
+export const zPostLoginResponse = zAccountPasswordLoginResponse

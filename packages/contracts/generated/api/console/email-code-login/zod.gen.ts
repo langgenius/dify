@@ -123,9 +123,10 @@ export const zTurnstileServiceUnavailableError = zErrorResponse.and(
 )
 
 /**
- * SimpleResultResponse
+ * AccountCodeLoginResponse
  */
-export const zSimpleResultResponse = z.object({
+export const zAccountCodeLoginResponse = z.object({
+  redirect_url: z.string().nullish(),
   result: z.string(),
 })
 
@@ -214,6 +215,30 @@ export const zNotAllowedCreateWorkspaceError = zErrorResponse.and(
 )
 
 /**
+ * EndUserLoginRequiredError
+ *
+ * Sign in to manage personal connections.
+ */
+export const zEndUserLoginRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('end_user_login_required'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * WebLoginUnavailableError
+ *
+ * Web App login is temporarily unavailable. Please retry.
+ */
+export const zWebLoginUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('web_login_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * LoginMode
  */
 export const zLoginMode = z.enum(['console', 'end_user'])
@@ -229,6 +254,15 @@ export const zEmailCodeSendPayload = z.object({
 })
 
 /**
+ * WebLoginTarget
+ */
+export const zWebLoginTarget = z.object({
+  app_code: z.string().min(1),
+  code_challenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  redirect_url: z.string().min(1),
+})
+
+/**
  * EmailCodeLoginPayload
  */
 export const zEmailCodeLoginPayload = z.object({
@@ -239,6 +273,7 @@ export const zEmailCodeLoginPayload = z.object({
   timezone: z.string().nullish(),
   token: z.uuid(),
   turnstile_token: z.string().max(2048).nullish(),
+  webapp_login: zWebLoginTarget.nullish(),
 })
 
 export const zPostEmailCodeLoginBody = zEmailCodeSendPayload
@@ -253,4 +288,4 @@ export const zPostEmailCodeLoginValidityBody = zEmailCodeLoginPayload
 /**
  * Success
  */
-export const zPostEmailCodeLoginValidityResponse = zSimpleResultResponse
+export const zPostEmailCodeLoginValidityResponse = zAccountCodeLoginResponse

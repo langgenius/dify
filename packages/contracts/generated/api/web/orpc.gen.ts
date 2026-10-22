@@ -60,6 +60,7 @@ import {
   zUnsupportedFileTypeError,
   zUploadTokenRequiredError,
   zWebFormRateLimitExceededError,
+  zWebLoginUnavailableError,
   zWorkflowChangedError,
 } from './zod.gen.ts'
 import {
@@ -156,8 +157,9 @@ import {
   zPostMessagesByMessageIdFeedbacksPath,
   zPostMessagesByMessageIdFeedbacksQuery,
   zPostMessagesByMessageIdFeedbacksResponse,
-  zPostPassportAccountHeaders,
-  zPostPassportAccountResponse,
+  zPostPassportBody,
+  zPostPassportHeaders,
+  zPostPassportResponse,
   zPostRemoteFilesUploadBody,
   zPostRemoteFilesUploadResponse,
   zPostSavedMessagesBody,
@@ -1231,27 +1233,6 @@ export const parameters = {
 }
 
 /**
- * Exchange the Console login cookie for an app-scoped Account Passport after Account login. Requires the session CSRF cookie/header pair and WEBAPP_ACCOUNT_PASSPORT_ENABLED. Does not claim Guest connections or conversations. Use the returned access_token as X-App-Passport.
- */
-export const post24 = oc
-  .route({
-    description:
-      'Exchange the Console login cookie for an app-scoped Account Passport after Account login. Requires the session CSRF cookie/header pair and WEBAPP_ACCOUNT_PASSPORT_ENABLED. Does not claim Guest connections or conversations. Use the returned access_token as X-App-Passport.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postPassportAccount',
-    path: '/passport/account',
-    tags: ['web'],
-  })
-  .input(z.object({ headers: zPostPassportAccountHeaders }))
-  .output(zPostPassportAccountResponse)
-  .errors({ end_user_login_required: { status: 401, data: zEndUserLoginRequiredError } })
-
-export const account = {
-  post: post24,
-}
-
-/**
  * Get authentication passport for web application access
  */
 export const get11 = oc
@@ -1265,10 +1246,31 @@ export const get11 = oc
   })
   .input(z.object({ query: zGetPassportQuery.optional() }).optional())
   .output(zGetPassportResponse)
+  .errors({ end_user_login_required: { status: 401, data: zEndUserLoginRequiredError } })
+
+/**
+ * Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and a Web-only login proof for subsequent visits.
+ */
+export const post24 = oc
+  .route({
+    description:
+      'Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and a Web-only login proof for subsequent visits.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postPassport',
+    path: '/passport',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostPassportBody, headers: zPostPassportHeaders }))
+  .output(zPostPassportResponse)
+  .errors({
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+    web_login_unavailable: { status: 503, data: zWebLoginUnavailableError },
+  })
 
 export const passport = {
   get: get11,
-  account,
+  post: post24,
 }
 
 /**

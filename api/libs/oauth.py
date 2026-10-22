@@ -37,6 +37,8 @@ class OAuthState(TypedDict, total=False):
     timezone: str
     language: str
     redirect_url: str
+    app_code: str
+    code_challenge: str
 
 
 END_USER_OAUTH_STATE_PREFIX = "end_user."

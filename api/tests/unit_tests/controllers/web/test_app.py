@@ -85,7 +85,11 @@ class TestAppParameterApi:
         config_overrides: Callable[..., None],
         allow_anonymous: bool,
     ) -> None:
-        config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=allow_anonymous, WEBAPP_ACCOUNT_PASSPORT_ENABLED=True)
+        config_overrides(
+            END_USER_AUTH_ALLOW_ANONYMOUS=allow_anonymous,
+            WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
+            CONSOLE_WEB_URL="https://console.example.com/base",
+        )
         calls: list[tuple[str, str]] = []
 
         def get_web_parameters(app_id: str, tenant_id: str) -> dict[str, object]:
@@ -112,6 +116,7 @@ class TestAppParameterApi:
         assert result["requires_end_user_connections"] is False
         assert result["allow_anonymous_end_user_auth"] is allow_anonymous
         assert result["account_login_enabled"] is True
+        assert result["account_login_url"] == "https://console.example.com/base/signin"
 
     @pytest.mark.parametrize(
         ("service_error", "http_error"),

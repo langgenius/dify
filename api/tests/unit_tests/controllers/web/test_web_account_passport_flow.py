@@ -236,16 +236,16 @@ def test_explicit_http_exchange_selects_account_without_changing_guest(
     login = signer.issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000})
     csrf = generate_csrf_token(ACCOUNT_ID)
     with app.test_request_context(
-        "/passport/account?user_id=guest-session",
-        method="POST",
+        "/passport?mode=end_user&user_id=guest-session",
+        method="GET",
         headers={
             "X-App-Code": "app-a",
             "X-CSRF-Token": csrf,
             "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}={login}; {COOKIE_NAME_CSRF_TOKEN}={csrf}",
         },
     ):
-        response = passport.AccountPassportResource().post()
-    account_token = response.json["access_token"]
+        response = passport.PassportResource().get()
+    account_token = response["access_token"]
     claims = signer.verify(account_token)
     assert claims["end_user_id"] != guest_id
     assert claims["token_source"] == "webapp_account"

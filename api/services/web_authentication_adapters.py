@@ -67,6 +67,16 @@ class TokenManagerWebAuthenticationGateway(WebAuthenticationTokenGateway):
         return True
 
     @override
+    def account_id(self, token: str | None) -> str | None:
+        if not token:
+            return None
+        try:
+            claims = self._identities.resolve_login(PassportService().verify(token))
+            return claims.account_id if claims.token_source in {None, "webapp_account_login"} else None
+        except Exception:
+            return None
+
+    @override
     def send_email_login_code(self, *, account_id: str, email: str, language: str) -> str:
         code = self._generate_code()
         token = TokenManager.generate_token(
@@ -184,7 +194,7 @@ class PassportWebAppSessionGateway(WebAppSessionGateway):
         self._identities = identities
 
     @override
-    def verify(self, *, token: str | None, app_code: str, user_id: str | None) -> bool:
+    def verify(self, *, token: str | None, app_code: str, user_id: str | None, account_id: str | None = None) -> bool:
         if not token:
             return False
         try:
@@ -202,7 +212,7 @@ class PassportWebAppSessionGateway(WebAppSessionGateway):
                 app_code=token_app_code,
                 end_user_id=end_user_id,
             )
-            if session is None:
+            if session is None or (account_id is not None and session.account_id != account_id):
                 return False
             self._identities.validate_passport(decoded, account_id=session.account_id)
             if session.account_id is None and user_id is not None and session.end_user_session_id != user_id:

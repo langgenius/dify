@@ -60,6 +60,7 @@ class AppMetaResponse(BaseModel):
 
 
 class WebAppParametersResponse(Parameters, ResponseModel):
+    account_login_url: str | None = Field(description="Account-origin sign-in page for the existing Web App login flow")
     allow_anonymous_end_user_auth: bool = Field(description="Deployment policy for anonymous EndUser authentication.")
     account_login_enabled: bool = Field(description="Whether explicit Account login and Passport exchange are enabled.")
     workflow_id: str | None = Field(
@@ -115,6 +116,9 @@ class AppParameterApi(WebApiResource):
                 **parameters,
                 "allow_anonymous_end_user_auth": dify_config.END_USER_AUTH_ALLOW_ANONYMOUS,
                 "account_login_enabled": dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
+                "account_login_url": f"{dify_config.CONSOLE_WEB_URL.rstrip('/')}/signin"
+                if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+                else None,
             },
         )
 

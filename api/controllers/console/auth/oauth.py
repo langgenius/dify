@@ -8,14 +8,17 @@ from werkzeug.wrappers import Response
 
 from configs import dify_config
 from constants.languages import languages
+from controllers.common.end_user_connections import ConnectionLoginRequiredError
 from controllers.common.fields import RedirectResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.web_login import WebLoginUnavailableHTTPError, web_login_errors
 from controllers.console import console_ns
 from controllers.console.auth.login_mode import require_login_mode
 from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
 from controllers.console.wraps import model_validate, setup_required, social_oauth_login_enabled
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
 from libs.oauth import (
@@ -55,10 +58,13 @@ from services.entities.account_oauth_entities import (
     OAuthCallbackResult,
     OAuthInvitationResult,
 )
+from services.web_login_handoff import WebLoginTarget
 from services.web_login_redirect import resolve_web_login_redirect
 
 
 class OAuthLoginQuery(BaseModel):
+    app_code: str | None = Field(default=None, min_length=1)
+    code_challenge: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{43}$")
     mode: LoginMode = Field(
         default=LoginMode.CONSOLE, description="End User mode skips workspace admission and provisioning"
     )
@@ -195,6 +201,10 @@ class OAuthLogin(Resource):
     @model_validate(OAuthLoginQuery)
     def get(self, req_data: OAuthLoginQuery, provider: str):
         require_login_mode(req_data.mode, invite_token=req_data.invite_token)
+        if (req_data.app_code is None) != (req_data.code_challenge is None):
+            raise ValueError("Web App login requires both app_code and code_challenge.")
+        if req_data.app_code is not None and req_data.mode != LoginMode.END_USER:
+            raise ValueError("Web App handoff requires End User login mode.")
         state = None
         nonce = None
         redirect_url = req_data.redirect_url or None
@@ -202,6 +212,13 @@ class OAuthLogin(Resource):
             redirect_url = _end_user_return_target(redirect_url)
             nonce = secrets.token_urlsafe(32)
             context = {"redirect_url": redirect_url}
+            if req_data.app_code is not None and req_data.code_challenge is not None:
+                target = WebLoginTarget(
+                    app_code=req_data.app_code, redirect_url=redirect_url, code_challenge=req_data.code_challenge
+                )
+                with web_login_errors():
+                    application_services().web_login_handoff.validate_target(target)
+                context.update({"app_code": target.app_code, "code_challenge": target.code_challenge})
             if timezone := _validated_timezone(req_data.timezone):
                 context["timezone"] = timezone
             if language := _validated_language(req_data.language):
@@ -247,6 +264,7 @@ class OAuthCallback(Resource):
     @console_ns.response(400, "OAuth process failed", console_ns.models[OAuthErrorResponse.__name__])
     @setup_required
     @social_oauth_login_enabled
+    @error_responses(ConnectionLoginRequiredError, WebLoginUnavailableHTTPError)
     @model_validate(OAuthCallbackQuery)
     def get(self, req_data: OAuthCallbackQuery, provider: str):
         mode = LoginMode.CONSOLE
@@ -264,6 +282,10 @@ class OAuthCallback(Resource):
         return_params = {}
         if mode == LoginMode.END_USER:
             return_params = {"mode": mode.value, "redirect_url": _end_user_return_target(requested_redirect)}
+            if oauth_state.get("app_code"):
+                return_params.update(
+                    {"app_code": oauth_state["app_code"], "code_challenge": oauth_state["code_challenge"]}
+                )
         elif requested_redirect:
             return_params = {"redirect_url": _safe_console_redirect_target(requested_redirect)}
 
@@ -317,6 +339,12 @@ class OAuthCallback(Resource):
             return signin_redirect(exc.description)
 
         target_url = _oauth_callback_target(result, requested_redirect, mode)
+        if mode == LoginMode.END_USER and oauth_state.get("app_code"):
+            target = WebLoginTarget(
+                app_code=oauth_state["app_code"], redirect_url=target_url, code_challenge=oauth_state["code_challenge"]
+            )
+            with web_login_errors():
+                target_url = application_services().web_login_handoff.authorize(target, result.tokens.access_token)
         response = _redirect_with_console_session(result.tokens, target_url)
         if mode == LoginMode.END_USER:
             response.delete_cookie(_end_user_state_cookie(provider))

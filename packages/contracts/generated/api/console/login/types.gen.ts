@@ -4,16 +4,38 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type WebAppAccountSessionResponse = {
+  logged_in: boolean
+  redirect_url: string | null
+}
+
+export type WebLoginUnavailableError = ErrorResponse & {
+  code: 'web_login_unavailable'
+  status: 503
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type LoginPayload = {
   email: string
   invite_token?: string | null
   mode?: LoginMode
   password: string
   remember_me?: boolean
+  webapp_login?: WebLoginTarget | null
 }
 
-export type SimpleResultOptionalDataResponse = {
+export type AccountPasswordLoginResponse = {
   data?: string | null
+  redirect_url?: string | null
   result: string
 }
 
@@ -52,18 +74,13 @@ export type LimitExceededError = ErrorResponse & {
   status: 400
 }
 
-export type ErrorResponse = {
-  code: string
-  details?: {
-    [key: string]: unknown
-  }
-  message: string
-  params?: string
-  status: number
-}
-
 export type AuthenticationFailedError = ErrorResponse & {
   code: 'authentication_failed'
+  status: 401
+}
+
+export type EndUserLoginRequiredError = ErrorResponse & {
+  code: 'end_user_login_required'
   status: 401
 }
 
@@ -73,6 +90,37 @@ export type EmailCodeLoginLimitError = ErrorResponse & {
 }
 
 export type LoginMode = 'console' | 'end_user'
+
+export type WebLoginTarget = {
+  app_code: string
+  code_challenge: string
+  redirect_url: string
+}
+
+export type GetLoginData = {
+  body?: never
+  path?: never
+  query: {
+    app_code: string
+    code_challenge: string
+    mode?: string
+    redirect_url: string
+  }
+  url: '/login'
+}
+
+export type GetLoginErrors = {
+  503: WebLoginUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetLoginError = GetLoginErrors[keyof GetLoginErrors]
+
+export type GetLoginResponses = {
+  200: WebAppAccountSessionResponse
+}
+
+export type GetLoginResponse = GetLoginResponses[keyof GetLoginResponses]
 
 export type PostLoginData = {
   body: LoginPayload
@@ -91,15 +139,16 @@ export type PostLoginErrors = {
     | InvalidEmailError
     | LimitExceededError
     | ErrorResponse
-  401: AuthenticationFailedError | ErrorResponse
+  401: AuthenticationFailedError | EndUserLoginRequiredError | ErrorResponse
   429: EmailCodeLoginLimitError | ErrorResponse
+  503: WebLoginUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
 export type PostLoginError = PostLoginErrors[keyof PostLoginErrors]
 
 export type PostLoginResponses = {
-  200: SimpleResultOptionalDataResponse
+  200: AccountPasswordLoginResponse
 }
 
 export type PostLoginResponse = PostLoginResponses[keyof PostLoginResponses]

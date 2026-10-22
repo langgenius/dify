@@ -74,9 +74,11 @@ export type EmailCodeLoginPayload = {
   timezone?: string | null
   token: string
   turnstile_token?: string | null
+  webapp_login?: WebLoginTarget | null
 }
 
-export type SimpleResultResponse = {
+export type AccountCodeLoginResponse = {
+  redirect_url?: string | null
   result: string
 }
 
@@ -115,7 +117,23 @@ export type NotAllowedCreateWorkspaceError = ErrorResponse & {
   status: 400
 }
 
+export type EndUserLoginRequiredError = ErrorResponse & {
+  code: 'end_user_login_required'
+  status: 401
+}
+
+export type WebLoginUnavailableError = ErrorResponse & {
+  code: 'web_login_unavailable'
+  status: 503
+}
+
 export type LoginMode = 'console' | 'end_user'
+
+export type WebLoginTarget = {
+  app_code: string
+  code_challenge: string
+  redirect_url: string
+}
 
 export type PostEmailCodeLoginData = {
   body: EmailCodeSendPayload
@@ -166,7 +184,12 @@ export type PostEmailCodeLoginValidityErrors = {
     | NotAllowedCreateWorkspaceError
     | TurnstileVerificationFailedError
     | ErrorResponse
-  503: EmailCodeLoginServiceUnavailableError | TurnstileServiceUnavailableError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  503:
+    | EmailCodeLoginServiceUnavailableError
+    | TurnstileServiceUnavailableError
+    | WebLoginUnavailableError
+    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -174,7 +197,7 @@ export type PostEmailCodeLoginValidityError =
   PostEmailCodeLoginValidityErrors[keyof PostEmailCodeLoginValidityErrors]
 
 export type PostEmailCodeLoginValidityResponses = {
-  200: SimpleResultResponse
+  200: AccountCodeLoginResponse
 }
 
 export type PostEmailCodeLoginValidityResponse =

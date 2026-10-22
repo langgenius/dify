@@ -8,9 +8,8 @@ from flask import Flask
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
-from controllers.common.end_user_connections import ConnectionLoginRequiredError
 from controllers.web.error import WebAppAuthRequiredError
-from controllers.web.passport import AccountPassportResource, PassportQuery, PassportResource
+from controllers.web.passport import PassportQuery, PassportResource
 from enums import DeploymentEdition
 from services.entities.passport_entities import WebPassportRequest, WebPassportResult
 from services.web_passport_service import (
@@ -82,57 +81,7 @@ def test_existing_passport_endpoint_keeps_web_login_and_does_not_select_account_
 
 
 def test_passport_query_keeps_its_existing_contract() -> None:
-    assert set(PassportQuery.model_fields) == {"user_id"}
-
-
-def test_account_exchange_uses_only_console_cookie_and_disables_caching(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    apply_config_overrides(
-        monkeypatch,
-        WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
-        CONSOLE_WEB_URL="http://localhost",
-        CONSOLE_API_URL="http://localhost",
-    )
-    service = MagicMock()
-    service.issue_for_account.return_value = WebPassportResult(access_token="account-passport")
-    with (
-        app.test_request_context(
-            "/passport/account?user_id=guest-session",
-            method="POST",
-            headers={
-                "X-App-Code": "app-code",
-                "Authorization": "Bearer other-account",
-                "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}=account-login; {COOKIE_NAME_WEBAPP_ACCESS_TOKEN}=ee-login",
-            },
-        ),
-        patch("controllers.web.passport.application_services", return_value=SimpleNamespace(web_passport=service)),
-        patch(
-            "controllers.web.passport.PassportService.verify",
-            return_value={"sub": "Console API Passport", "user_id": "account-1"},
-        ),
-        patch("controllers.web.passport.check_csrf_token") as check_csrf,
-    ):
-        response = AccountPassportResource().post()
-    assert response.json == {"access_token": "account-passport"}
-    assert check_csrf.call_args.args[1] == "account-1"
-    assert response.headers["Cache-Control"] == "no-store"
-    service.issue_for_account.assert_called_once_with(app_code="app-code", access_token="account-login")
-    service.issue.assert_not_called()
-
-
-@pytest.mark.parametrize("enabled", [False, True])
-def test_account_exchange_rejects_disabled_feature_or_bearer_only(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, enabled: bool
-) -> None:
-    apply_config_overrides(monkeypatch, WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled)
-    with (
-        app.test_request_context(
-            "/passport/account", headers={"X-App-Code": "app-code", "Authorization": "Bearer account-login"}
-        ),
-        pytest.raises(ConnectionLoginRequiredError if enabled else NotFound),
-    ):
-        AccountPassportResource().post()
+    assert set(PassportQuery.model_fields) == {"user_id", "mode"}
 
 
 @pytest.mark.parametrize(
@@ -158,30 +107,3 @@ def test_passport_resource_translates_application_errors(
         pytest.raises(http_error),
     ):
         PassportResource().get()
-
-
-def test_account_exchange_rejects_missing_csrf_before_issuing_passport(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    apply_config_overrides(
-        monkeypatch,
-        WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
-        CONSOLE_WEB_URL="http://localhost",
-        CONSOLE_API_URL="http://localhost",
-    )
-    service = MagicMock()
-    with (
-        app.test_request_context(
-            "/passport/account",
-            method="POST",
-            headers={"X-App-Code": "app-code", "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}=account-login"},
-        ),
-        patch("controllers.web.passport.application_services", return_value=SimpleNamespace(web_passport=service)),
-        patch(
-            "controllers.web.passport.PassportService.verify",
-            return_value={"sub": "Console API Passport", "user_id": "account-1"},
-        ),
-        pytest.raises(Unauthorized, match="CSRF"),
-    ):
-        AccountPassportResource().post()
-    service.issue_for_account.assert_not_called()

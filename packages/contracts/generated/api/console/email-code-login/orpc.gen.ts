@@ -11,6 +11,7 @@ import {
   zEmailCodeLoginServiceUnavailableError,
   zEmailDomainSuspendedError,
   zEmailSendIpLimitError,
+  zEndUserLoginRequiredError,
   zInvalidEmailError,
   zInvalidOrExpiredTokenError,
   zLimitExceededError,
@@ -18,6 +19,7 @@ import {
   zNotAllowedCreateWorkspaceError,
   zTurnstileServiceUnavailableError,
   zTurnstileVerificationFailedError,
+  zWebLoginUnavailableError,
 } from './zod.gen.ts'
 import {
   zPostEmailCodeLoginBody,
@@ -46,6 +48,7 @@ export const post = oc
       data: zEmailCodeLoginServiceUnavailableError,
     },
     email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     invalid_email: { status: 400, data: zInvalidEmailError },
     invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
     limit_exceeded: { status: 400, data: zLimitExceededError },
@@ -53,6 +56,7 @@ export const post = oc
     not_allowed_create_workspace: { status: 400, data: zNotAllowedCreateWorkspaceError },
     turnstile_service_unavailable: { status: 503, data: zTurnstileServiceUnavailableError },
     turnstile_verification_failed: { status: 400, data: zTurnstileVerificationFailedError },
+    web_login_unavailable: { status: 503, data: zWebLoginUnavailableError },
   })
 
 export const validity = {

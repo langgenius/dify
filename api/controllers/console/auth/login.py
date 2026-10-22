@@ -1,5 +1,6 @@
+from contextlib import suppress
 from http import HTTPStatus
-from typing import Never
+from typing import Literal, Never
 from uuid import UUID
 
 import flask_login
@@ -7,13 +8,15 @@ from flask import make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
+from controllers.common.end_user_connections import ConnectionLoginRequiredError
 from controllers.common.fields import (
     SimpleResultDataResponse,
     SimpleResultMessageResponse,
     SimpleResultOptionalDataResponse,
     SimpleResultResponse,
 )
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.web_login import WebLoginUnavailableHTTPError, web_login_errors
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -48,6 +51,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
@@ -56,6 +60,7 @@ from libs.token import (
     clear_access_token_from_cookie,
     clear_csrf_token_from_cookie,
     clear_refresh_token_from_cookie,
+    extract_console_cookie_token,
     extract_refresh_token,
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
@@ -70,9 +75,16 @@ from services.entities.account_login_entities import (
     PasswordLoginCommand,
 )
 from services.entities.auth_entities import LoginPayloadBase
+from services.web_login_handoff import WebLoginTarget
+from services.web_passport_service import WebPassportUnauthorizedError
 
 
 class LoginPayload(LoginPayloadBase):
+    webapp_login: WebLoginTarget | None = Field(
+        default=None,
+        description="Optional S256 PKCE Web App handoff. "
+        "The initiating browser must retain its code_verifier across the login window.",
+    )
     mode: LoginMode = Field(
         default=LoginMode.CONSOLE,
         description="End User mode authenticates an Account without workspace admission or provisioning.",
@@ -99,6 +111,11 @@ class EmailCodeSendPayload(EmailPayload):
 
 
 class EmailCodeLoginPayload(BaseModel):
+    webapp_login: WebLoginTarget | None = Field(
+        default=None,
+        description="Optional S256 PKCE Web App handoff. "
+        "The initiating browser must retain its code_verifier across the login window.",
+    )
     mode: LoginMode = Field(
         default=LoginMode.CONSOLE,
         description="End User mode authenticates an Account without workspace admission or provisioning.",
@@ -128,11 +145,37 @@ class RefreshTokenPayload(BaseModel):
     )
 
 
+class WebAppAccountSessionQuery(WebLoginTarget):
+    mode: Literal["end_user"] = "end_user"
+
+
+class WebAppAccountSessionResponse(ResponseModel):
+    logged_in: bool
+    redirect_url: str | None
+
+
+class AccountPasswordLoginResponse(SimpleResultOptionalDataResponse):
+    redirect_url: str | None = Field(default=None, exclude_if=lambda value: value is None)
+
+
+class AccountCodeLoginResponse(SimpleResultResponse):
+    redirect_url: str | None = Field(default=None, exclude_if=lambda value: value is None)
+
+
 register_schema_models(
-    console_ns, LoginPayload, EmailPayload, EmailCodeSendPayload, EmailCodeLoginPayload, RefreshTokenPayload
+    console_ns,
+    LoginPayload,
+    EmailPayload,
+    EmailCodeSendPayload,
+    EmailCodeLoginPayload,
+    RefreshTokenPayload,
+    WebAppAccountSessionQuery,
 )
 register_response_schema_models(
     console_ns,
+    WebAppAccountSessionResponse,
+    AccountPasswordLoginResponse,
+    AccountCodeLoginResponse,
     SimpleResultDataResponse,
     SimpleResultMessageResponse,
     SimpleResultOptionalDataResponse,
@@ -142,7 +185,46 @@ register_response_schema_models(
 
 @console_ns.route("/login")
 class LoginApi(Resource):
-    """Resource for user login."""
+    """Resource for user login and silent reuse of an existing Account session."""
+
+    @setup_required
+    @console_ns.doc("reuse_web_app_account_login")
+    @console_ns.doc(
+        description="Called by /signin in the Account origin before showing a login form. "
+        "Reuses or refreshes the existing Account session without workspace admission. "
+        "Returns logged_in=false when authentication is needed; otherwise returns a one-use "
+        "PKCE-bound callback to the existing /webapp-signin page."
+    )
+    @console_ns.doc(params=query_params_from_model(WebAppAccountSessionQuery))
+    @console_ns.response(200, "Existing Account session", console_ns.models[WebAppAccountSessionResponse.__name__])
+    @error_responses(WebLoginUnavailableHTTPError)
+    @model_validate(WebAppAccountSessionQuery)
+    def get(self, query: WebAppAccountSessionQuery):
+        require_login_mode(LoginMode.END_USER)
+        with web_login_errors():
+            handoff = application_services().web_login_handoff
+            handoff.validate_target(query)
+            access_token = extract_console_cookie_token(request)
+            tokens = None
+            redirect_url = None
+            if access_token:
+                with suppress(WebPassportUnauthorizedError):
+                    redirect_url = handoff.authorize(query, access_token)
+            if redirect_url is None and (refresh_token := extract_refresh_token(request)):
+                try:
+                    tokens = application_services().accounts.authentication.refresh(
+                        refresh_token, mode=LoginMode.END_USER
+                    )
+                    redirect_url = handoff.authorize(query, tokens.access_token)
+                except (account_errors.InvalidRefreshTokenError, WebPassportUnauthorizedError):
+                    tokens = None
+            data = {"logged_in": redirect_url is not None, "redirect_url": redirect_url}
+            if tokens is not None:
+                return _token_response(tokens, WebAppAccountSessionResponse, data)
+        # response-contract:ignore authentication state must not be cached
+        response = make_response(dump_response(WebAppAccountSessionResponse, data))
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @error_responses(
         AccountBannedError,
@@ -154,16 +236,19 @@ class LoginApi(Resource):
         InvalidAccountPasswordRequestError,
         InvalidEmailError,
         WorkspacesLimitExceeded,
+        WebLoginUnavailableHTTPError,
+        ConnectionLoginRequiredError,
     )
     @setup_required
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[LoginPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultOptionalDataResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[AccountPasswordLoginResponse.__name__])
     @decrypt_password_field
     @model_validate(LoginPayload)
     def post(self, req_data: LoginPayload):
         """Authenticate user and login."""
         require_login_mode(req_data.mode, invite_token=req_data.invite_token)
+        _validate_webapp_login(req_data.mode, req_data.webapp_login)
         try:
             result = application_services().accounts.authentication.login_with_password(
                 PasswordLoginCommand(
@@ -185,7 +270,8 @@ class LoginApi(Resource):
                     "data": "workspace not found, please contact system admin to invite you to join in a workspace",
                 },
             )
-        return _token_response(result.tokens, SimpleResultOptionalDataResponse, {"result": "success"})
+        data = _login_result(result.tokens, req_data.webapp_login)
+        return _token_response(result.tokens, AccountPasswordLoginResponse, data)
 
 
 @console_ns.route("/logout")
@@ -277,14 +363,17 @@ class EmailCodeLoginApi(Resource):
         TurnstileServiceUnavailableError,
         TurnstileVerificationFailedError,
         WorkspacesLimitExceeded,
+        WebLoginUnavailableHTTPError,
+        ConnectionLoginRequiredError,
     )
     @setup_required
     @console_ns.expect(console_ns.models[EmailCodeLoginPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[AccountCodeLoginResponse.__name__])
     @decrypt_code_field
     @model_validate(EmailCodeLoginPayload)
     def post(self, req_data: EmailCodeLoginPayload):
         require_login_mode(req_data.mode)
+        _validate_webapp_login(req_data.mode, req_data.webapp_login)
         try:
             tokens = application_services().accounts.authentication.login_with_email_code(
                 EmailCodeLoginCommand(
@@ -300,7 +389,7 @@ class EmailCodeLoginApi(Resource):
             )
         except account_errors.AccountApplicationError as error:
             _raise_email_code_login_error(error)
-        return _token_response(tokens, SimpleResultResponse, {"result": "success"})
+        return _token_response(tokens, AccountCodeLoginResponse, _login_result(tokens, req_data.webapp_login))
 
 
 @console_ns.route("/refresh-token")
@@ -330,9 +419,27 @@ class RefreshTokenApi(Resource):
         return _token_response(tokens, SimpleResultResponse, {"result": "success"})
 
 
+def _validate_webapp_login(mode: LoginMode, target: WebLoginTarget | None) -> None:
+    if target is None:
+        return
+    if mode != LoginMode.END_USER:
+        raise ValueError("Web App handoff requires End User login mode.")
+    with web_login_errors():
+        application_services().web_login_handoff.validate_target(target)
+
+
+def _login_result(tokens: AccountSessionTokens, target: WebLoginTarget | None) -> dict[str, str]:
+    data = {"result": "success"}
+    if target is not None:
+        with web_login_errors():
+            data["redirect_url"] = application_services().web_login_handoff.authorize(target, tokens.access_token)
+    return data
+
+
 def _token_response(tokens: AccountSessionTokens, response_model: type[BaseModel], data: object):
     # response-contract:ignore cookie-bearing Flask response
     response = make_response(dump_response(response_model, data))
+    response.headers["Cache-Control"] = "no-store"
     set_csrf_token_to_cookie(request, response, tokens.csrf_token)
     set_access_token_to_cookie(request, response, tokens.access_token)
     set_refresh_token_to_cookie(request, response, tokens.refresh_token)

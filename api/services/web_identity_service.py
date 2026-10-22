@@ -32,6 +32,9 @@ class WebIdentityService:
         if claims.token_source is None:
             if not self._allow_console_login or claims.sub != "Console API Passport":
                 raise WebIdentityError("Invalid login token source.")
+        elif claims.token_source == "webapp_account_login":
+            if not self._allow_console_login or claims.sub != "Web API Account Login" or claims.auth_type != "internal":
+                raise WebIdentityError("Invalid Web App Account login token.")
         elif claims.token_source == "webapp_login_token":
             if (
                 not self._allow_webapp_login
@@ -43,7 +46,7 @@ class WebIdentityService:
             raise WebIdentityError("Invalid login token source.")
         if not claims.user_id or not claims.exp or claims.exp <= 0:
             raise WebIdentityError("Missing login identity or expiration.")
-        if claims.token_source is None and claims.account_id is not None:
+        if claims.token_source in {None, "webapp_account_login"} and claims.account_id is not None:
             self.require_account(claims.account_id)
         return claims
 
