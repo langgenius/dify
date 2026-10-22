@@ -140,7 +140,7 @@ describe('trusted current IP and allowlist editing', () => {
     expect(
       screen.getAllByPlaceholderText('10.0.0.0/8').map((row) => (row as HTMLInputElement).value),
     ).toEqual(['10.0.0.0/8', '203.0.113.42'])
-    expect(screen.getByRole('button', { name: 'Add it' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Add it' })).toHaveAttribute('aria-disabled', 'true')
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(onSubmit).not.toHaveBeenCalled()
   })
@@ -157,7 +157,10 @@ describe('trusted current IP and allowlist editing', () => {
     expect(screen.queryByRole('button', { name: 'Add it' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByText('Your current IP is 203.0.113.42')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add it' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Add it' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
   it.each(['203.0.113.42/32', '::ffff:203.0.113.42/128'])(
@@ -172,7 +175,10 @@ describe('trusted current IP and allowlist editing', () => {
           onOpenChange={vi.fn()}
         />,
       )
-      expect(await screen.findByRole('button', { name: 'Add it' })).toBeDisabled()
+      expect(await screen.findByRole('button', { name: 'Add it' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
     },
   )
 
@@ -186,7 +192,10 @@ describe('trusted current IP and allowlist editing', () => {
         onOpenChange={vi.fn()}
       />,
     )
-    expect(await screen.findByRole('button', { name: 'Add it' })).toBeDisabled()
+    expect(await screen.findByRole('button', { name: 'Add it' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled()
     expect(screen.getAllByPlaceholderText('10.0.0.0/8')).toHaveLength(100)
   })

@@ -6,6 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
+import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   IP_POLICY_CIDR_MAX_COUNT,
@@ -18,6 +19,7 @@ type AllowlistFieldProps = {
   entries: AllowlistRow[]
   currentIp?: string
   currentIpStatus?: 'loading' | 'error'
+  isRetryingCurrentIp?: boolean
   onRetryCurrentIp?: () => void
   onEntriesChange: (entries: AllowlistRow[]) => void
 }
@@ -26,10 +28,18 @@ export function AllowlistField({
   entries,
   currentIp,
   currentIpStatus,
+  isRetryingCurrentIp = false,
   onRetryCurrentIp,
   onEntriesChange,
 }: AllowlistFieldProps) {
   const { t } = useTranslation(['common'])
+  const entryInputsRef = useRef(new Map<string, HTMLInputElement>())
+  const currentIpActionLabelId = useId()
+  const currentIpActionDisabled =
+    !!currentIp &&
+    (entries.some((entry) => isSameIpAddress(entry.value, currentIp)) ||
+      (entries.length >= IP_POLICY_CIDR_MAX_COUNT &&
+        entries.every((entry) => entry.value.trim() !== '')))
 
   const errorMessage = (code: IpEntryErrorCode, max?: 32 | 128) => {
     switch (code) {
@@ -55,6 +65,9 @@ export function AllowlistField({
   }
 
   const removeEntry = (id: string) => {
+    const index = entries.findIndex((entry) => entry.id === id)
+    const nextEntry = entries[index + 1] ?? entries[index - 1] ?? entries[index]
+    if (nextEntry) entryInputsRef.current.get(nextEntry.id)?.focus()
     if (entries.length === 1) {
       const row = entries[0]
       if (!row) return
@@ -95,6 +108,10 @@ export function AllowlistField({
               <div className="flex items-center gap-2">
                 <div className="relative min-w-0 flex-1">
                   <Input
+                    ref={(input) => {
+                      if (input) entryInputsRef.current.set(entry.id, input)
+                      else entryInputsRef.current.delete(entry.id)
+                    }}
                     value={entry.value}
                     placeholder="10.0.0.0/8"
                     aria-label={t(($) => $['settings.ipPolicyAllowlist'], { ns: 'common' })}
@@ -139,38 +156,39 @@ export function AllowlistField({
         {t(($) => $['settings.ipPolicyAddEntry'], { ns: 'common' })}
       </Button>
 
-      {currentIpStatus && (
+      {(currentIpStatus || currentIp) && (
         <p
-          role="status"
+          role={currentIpStatus ? 'status' : undefined}
           className="flex min-h-6 shrink-0 flex-wrap items-center gap-1.5 system-xs-regular text-text-tertiary"
         >
-          {currentIpStatus === 'loading'
-            ? t(($) => $['settings.ipPolicyCurrentIpLoading'], { ns: 'common' })
-            : t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
-          {currentIpStatus === 'error' && onRetryCurrentIp && (
-            <Button type="button" variant="ghost" size="small" onClick={onRetryCurrentIp}>
-              {t(($) => $['operation.retry'], { ns: 'common' })}
+          <span>
+            {currentIpStatus === 'loading'
+              ? t(($) => $['settings.ipPolicyCurrentIpLoading'], { ns: 'common' })
+              : currentIpStatus === 'error'
+                ? t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })
+                : currentIp &&
+                  t(($) => $['settings.ipPolicyCurrentIp'], { ns: 'common', ip: currentIp })}
+          </span>
+          {(currentIp ||
+            ((currentIpStatus === 'error' || isRetryingCurrentIp) && onRetryCurrentIp)) && (
+            <Button
+              type="button"
+              variant={currentIp ? 'ghost-accent' : 'ghost'}
+              size="small"
+              aria-labelledby={currentIpActionLabelId}
+              loading={isRetryingCurrentIp}
+              disabled={currentIpActionDisabled}
+              focusableWhenDisabled
+              tabIndex={currentIpActionDisabled ? -1 : 0}
+              onClick={currentIp ? addCurrentIp : onRetryCurrentIp}
+            >
+              <span id={currentIpActionLabelId}>
+                {currentIp
+                  ? t(($) => $['settings.ipPolicyAddCurrentIp'], { ns: 'common' })
+                  : t(($) => $['operation.retry'], { ns: 'common' })}
+              </span>
             </Button>
           )}
-        </p>
-      )}
-
-      {currentIp && (
-        <p className="flex min-h-6 shrink-0 flex-wrap items-center gap-1.5 system-xs-regular text-text-tertiary">
-          <span>{t(($) => $['settings.ipPolicyCurrentIp'], { ns: 'common', ip: currentIp })}</span>
-          <Button
-            type="button"
-            variant="ghost-accent"
-            size="small"
-            disabled={
-              entries.some((entry) => isSameIpAddress(entry.value, currentIp)) ||
-              (entries.length >= IP_POLICY_CIDR_MAX_COUNT &&
-                entries.every((entry) => entry.value.trim() !== ''))
-            }
-            onClick={addCurrentIp}
-          >
-            {t(($) => $['settings.ipPolicyAddCurrentIp'], { ns: 'common' })}
-          </Button>
         </p>
       )}
     </Field>
