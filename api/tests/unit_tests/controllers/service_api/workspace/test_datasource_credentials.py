@@ -1,5 +1,6 @@
 from inspect import unwrap
 
+import pytest
 from flask import Flask
 
 from controllers.service_api.workspace import datasource_credentials as controller
@@ -8,7 +9,7 @@ from services.credentials.query import DatasourceCredentialListItem
 from tests.unit_tests.credential_query_fakes import CredentialServices, DatasourceCredentialQuery
 
 
-def test_lists_only_datasource_credential_metadata(monkeypatch, app: Flask) -> None:
+def test_lists_only_datasource_credential_metadata(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     query = DatasourceCredentialQuery(
         credentials=[
             DatasourceCredentialListItem(

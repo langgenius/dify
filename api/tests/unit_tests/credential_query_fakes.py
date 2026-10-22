@@ -3,7 +3,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from services.credentials.query import CredentialQuery, DatasourceCredentialListItem
+from services.credentials.query import (
+    CredentialQuery,
+    DatasourceCredentialListItem,
+    ModelCredentialRecord,
+    ToolCredentialRecord,
+    TriggerSubscriptionRecord,
+)
 
 
 @dataclass(frozen=True)
@@ -30,6 +36,27 @@ class DatasourceCredentialQuery(CredentialQuery):
             )
         )
         return self.credentials
+
+    # Datasource credential tests never read the other credential kinds.
+    def list_models(self, *, workspace_id: str, provider: str, actor_id: str | None) -> Sequence[ModelCredentialRecord]:
+        raise AssertionError(f"unexpected model credential lookup: {workspace_id=} {provider=} {actor_id=}")
+
+    def list_tools(
+        self,
+        *,
+        workspace_id: str,
+        provider: str,
+        actor_id: str | None,
+        include_credential_ids: Sequence[str] = (),
+    ) -> Sequence[ToolCredentialRecord]:
+        raise AssertionError(
+            f"unexpected tool credential lookup: {workspace_id=} {provider=} {actor_id=} {include_credential_ids=}"
+        )
+
+    def list_trigger_subscriptions(
+        self, *, workspace_id: str, provider: str, actor_id: str | None
+    ) -> Sequence[TriggerSubscriptionRecord]:
+        raise AssertionError(f"unexpected trigger subscription lookup: {workspace_id=} {provider=} {actor_id=}")
 
 
 @dataclass(frozen=True)
