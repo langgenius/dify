@@ -83,6 +83,8 @@ ignore_imports =
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
     core.tools.tool_manager -> services
     core.workflow.node_runtime -> services
+    # Personal credential resolution is wired through the application composition root.
+    core.workflow.node_runtime -> extensions.application_services.end_user_connections
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.node_factory -> extensions.application_services.data_sources
     core.workflow.nodes.agent.message_transformer -> services

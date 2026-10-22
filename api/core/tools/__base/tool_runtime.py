@@ -20,7 +20,9 @@ class ToolRuntime(BaseModel):
     tool_id: str | None = None
     invoke_from: InvokeFrom | None = None
     tool_invoke_from: ToolInvokeFrom | None = None
-    credentials: dict[str, Any] = Field(default_factory=dict)
+    credential_id: str | None = Field(default=None, exclude=True)
+    connection_id: str | None = Field(default=None, exclude=True)
+    credentials: dict[str, Any] = Field(default_factory=dict, repr=False)
     credential_type: CredentialType = Field(default=CredentialType.API_KEY)
     runtime_parameters: dict[str, Any] = Field(default_factory=dict)
 

@@ -17,10 +17,20 @@ from services.end_user_connection_oauth_adapters import (
     RedisOAuthRefreshSingleFlight,
 )
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
+from services.end_user_connection_runtime_adapters import get_tool_runtime
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
 from services.end_user_connections.preflight import ConnectionPreflightService
+from services.end_user_connections.runtime import ConnectionRuntimeService
+
+__all__ = [
+    "build_end_user_connection_oauth",
+    "build_end_user_connection_preflight",
+    "build_end_user_connection_runtime",
+    "build_end_user_connections",
+    "get_tool_runtime",
+]
 
 
 def build_end_user_connections(*, database_client: sessionmaker[Session]) -> ConnectionService:
@@ -81,4 +91,14 @@ def build_end_user_connection_preflight(
                 auth=PluginCredentialAuthClient(),
             ),
         ),
+    )
+
+
+def build_end_user_connection_runtime(
+    *, database_client: sessionmaker[Session], connections: ConnectionService
+) -> ConnectionRuntimeService:
+    return ConnectionRuntimeService(
+        store=EndUserConnectionRepository(session_factory=database_client),
+        checks=connections,
+        cipher=TenantConnectionCipher(),
     )

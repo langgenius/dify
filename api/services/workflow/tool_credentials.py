@@ -215,3 +215,21 @@ def check_tool_credentials(graph: Mapping[str, Any], *, complete: bool) -> list[
             continue
         issues.append(ToolCredentialIssue(node_id, ("reuse_node_id",), message))
     return issues
+
+
+def resolve_tool_credential_root(graph: Mapping[str, Any], node_id: str) -> tuple[str, ToolNodeSpec]:
+    """Resolve only this node's authentication source against its execution graph."""
+    nodes = {node["id"]: node for node in graph.get("nodes", []) if node.get("type") != "custom-note"}
+    try:
+        node = nodes[node_id]
+        config = ToolCredentialConfig.model_validate(node["data"])
+        root_id = config.reuse_node_id if config.credential_source == "reuse_node" else node_id
+        if root_id is None:
+            raise ValueError("Missing authentication source.")
+        root = nodes[root_id]
+        scope = [node] if root_id == node_id else [node, root]
+        if check_tool_credentials({"nodes": scope}, complete=True):
+            raise ValueError("Invalid authentication source.")
+        return root_id, ToolNodeSpec.model_validate(root["data"])
+    except (KeyError, TypeError, ValidationError):
+        raise ValueError("Invalid authentication source.") from None

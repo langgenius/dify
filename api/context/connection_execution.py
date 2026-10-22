@@ -23,6 +23,4 @@ class ConnectionExecutionContext(BaseModel):
     end_user_id: str
     account_id: str | None
     workflow_id: str
-    # None until a Chatflow Conversation exists, or for a plain Workflow.
-    conversation_id: str | None
     selections: tuple[ExecutionConnectionSelection, ...]

@@ -565,13 +565,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 session.commit()
                 session.refresh(conversation)
 
-            if application_generate_entity.connection_context is not None:
-                application_generate_entity.connection_context = (
-                    application_generate_entity.connection_context.model_copy(
-                        update={"conversation_id": conversation.id}
-                    )
-                )
-
             # get conversation dialogue count
             # NOTE: dialogue_count should not start from 0,
             # because during the first conversation, dialogue_count should be 1.

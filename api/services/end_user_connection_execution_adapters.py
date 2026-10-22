@@ -72,7 +72,6 @@ def validate_connection_execution(
         or workflow.id != context.workflow_id
         or workflow.tenant_id != identity.tenant_id
         or workflow.app_id != identity.app_id
-        or conversation_id != context.conversation_id
     ):
         raise ConnectionIdentityError()
-    repository.validate_execution_context(identity, context.workflow_id, context.conversation_id)
+    repository.validate_execution_context(identity, context.workflow_id, conversation_id)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Generator, Mapping, Sequence
+from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override
@@ -528,10 +529,15 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         self,
         run_context: Mapping[str, Any] | DifyRunContext,
         session_maker: sessionmaker[Session] | None = None,
+        *,
+        graph: Mapping[str, Any] | None = None,
+        workflow_id: str | None = None,
     ) -> None:
         self._run_context = resolve_dify_run_context(run_context)
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
         self._session_maker = session_maker
+        self._graph = deepcopy(graph) if graph is not None else None
+        self._workflow_id = workflow_id
 
     @property
     def file_reference_factory(self) -> FileReferenceFactoryProtocol:
@@ -550,26 +556,35 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         variable_pool,
         node_execution_id: str | None = None,
     ) -> ToolRuntimeHandle:
-        # Dify owns credential selection; reject unsupported sources before resolving workspace credentials.
         source = node_data.get("credential_source", "workspace")
-        if source != "workspace":
-            raise ToolRuntimeResolutionError(
-                f"Tool node {node_id!r}: credential source {source!r} is not supported by this runtime yet."
+        if source == "workspace":
+            try:
+                tool_runtime = ToolManager.get_workflow_tool_runtime(
+                    self._run_context.tenant_id,
+                    self._run_context.app_id,
+                    node_id,
+                    self._build_tool_runtime_spec(node_data),
+                    self._run_context.user_id,
+                    self._run_context.invoke_from,
+                    variable_pool,
+                )
+            except ToolNodeError:
+                raise
+            except Exception as exc:
+                raise ToolRuntimeResolutionError(str(exc)) from exc
+        else:
+            from extensions.application_services.end_user_connections import get_tool_runtime
+
+            if source not in ("end_user", "reuse_node") or self._graph is None or self._workflow_id is None:
+                raise ToolRuntimeResolutionError("Tool authentication requires its execution graph.")
+            tool_runtime = get_tool_runtime(
+                run_context=self._run_context,
+                workflow_id=self._workflow_id,
+                graph=self._graph,
+                node_id=node_id,
+                spec=self._build_tool_runtime_spec(node_data),
+                variable_pool=variable_pool,
             )
-        try:
-            tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self._run_context.tenant_id,
-                self._run_context.app_id,
-                node_id,
-                self._build_tool_runtime_spec(node_data),
-                self._run_context.user_id,
-                self._run_context.invoke_from,
-                variable_pool,
-            )
-        except ToolNodeError:
-            raise
-        except Exception as exc:
-            raise ToolRuntimeResolutionError(str(exc)) from exc
 
         conversation_id = (
             None if variable_pool is None else get_system_text(variable_pool, SystemVariableKey.CONVERSATION_ID)

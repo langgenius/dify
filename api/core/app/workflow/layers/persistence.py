@@ -163,6 +163,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             inputs=self._prepare_workflow_inputs(),
             started_at=naive_utc_now(),
             accumulated_elapsed_time=timing.elapsed_time,
+            connection_context=self._application_generate_entity.connection_context,
         )
 
         self._workflow_execution_repository.save(workflow_execution)

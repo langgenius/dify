@@ -815,6 +815,8 @@ class WorkflowRun(Base):
     triggered_from: Mapped[WorkflowRunTriggeredFrom] = mapped_column(EnumText(WorkflowRunTriggeredFrom, length=255))
     version: Mapped[str] = mapped_column(String(255))
     graph: Mapped[str | None] = mapped_column(LongText)
+    # Keep the Run's reference snapshot even when a selected Connection is deleted.
+    connection_context: Mapped[str | None] = mapped_column(LongText, nullable=True)
     inputs: Mapped[str | None] = mapped_column(LongText)
     status: Mapped[WorkflowExecutionStatus] = mapped_column(
         EnumText(WorkflowExecutionStatus, length=255),

@@ -32,6 +32,7 @@ from extensions.application_services.datasets import build_dataset_dependencies
 from extensions.application_services.end_user_connections import (
     build_end_user_connection_oauth,
     build_end_user_connection_preflight,
+    build_end_user_connection_runtime,
     build_end_user_connections,
 )
 from extensions.application_services.installed_app import InstalledAppServices, build_installed_app_services
@@ -132,6 +133,7 @@ from services.end_user_connections.execution import ConnectionExecutionService
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
 from services.end_user_connections.preflight import ConnectionPreflightService
+from services.end_user_connections.runtime import ConnectionRuntimeService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
@@ -320,6 +322,7 @@ class ApplicationServices:
     web_passport: WebPassportService
     web_identity: WebIdentityService
     end_user_connection_execution: ConnectionExecutionService
+    end_user_connection_runtime: ConnectionRuntimeService
     end_user_connections: ConnectionService
     end_user_connection_oauth: OAuthConnectionService
     end_user_connection_preflight: ConnectionPreflightService
@@ -724,6 +727,9 @@ def build_application_services(
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_identity=web_identity,
         end_user_connection_execution=ConnectionExecutionService(preflight=end_user_connection_preflight),
+        end_user_connection_runtime=build_end_user_connection_runtime(
+            database_client=database_client, connections=end_user_connections
+        ),
         end_user_connections=end_user_connections,
         end_user_connection_preflight=end_user_connection_preflight,
         end_user_connection_oauth=build_end_user_connection_oauth(database_client=database_client),
