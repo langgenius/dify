@@ -412,15 +412,6 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
       {
         onSuccess: (task) => {
           setDownloadTask(task)
-          if (task.status === 'failed') {
-            const reason = task.error?.trim()
-            toast.error(
-              reason
-                ? t(($) => $['archives.downloadHint.failedWithReason'], { ns: 'appLog', reason })
-                : t(($) => $['archives.downloadHint.failed'], { ns: 'appLog' }),
-            )
-            return
-          }
           toast.success(
             task.status === 'ready'
               ? t(($) => $['archives.action.downloadReady'], { ns: 'appLog' })

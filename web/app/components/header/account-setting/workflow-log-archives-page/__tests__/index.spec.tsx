@@ -592,15 +592,14 @@ describe('WorkflowLogArchivesPage', () => {
 
     it.each([
       { status: 'ready', error: null, notification: 'appLog.archives.action.downloadReady' },
-      { status: 'failed', error: null, notification: 'appLog.archives.downloadHint.failed' },
+      { status: 'failed', error: null, notification: 'appLog.archives.action.prepareStarted' },
       {
         status: 'failed',
         error: 'Storage unavailable',
-        notification:
-          'appLog.archives.downloadHint.failedWithReason:{"reason":"Storage unavailable"}',
+        notification: 'appLog.archives.action.prepareStarted',
       },
     ] as const)(
-      'reports an immediately $status task once through the existing notification ($error)',
+      'preserves the existing notification for an immediately $status task ($error)',
       async ({ status, error: failureReason, notification }) => {
         const user = userEvent.setup()
         const success = vi.spyOn(toast, 'success')
@@ -620,13 +619,8 @@ describe('WorkflowLogArchivesPage', () => {
 
         const row = screen.getByRole('row', { name: /2025-03/ })
         expect(within(row).getByRole('status')).toBeEmptyDOMElement()
-        if (status === 'ready') {
-          expect(success).toHaveBeenCalledExactlyOnceWith(notification)
-          expect(error).not.toHaveBeenCalled()
-        } else {
-          expect(error).toHaveBeenCalledExactlyOnceWith(notification)
-          expect(success).not.toHaveBeenCalled()
-        }
+        expect(success).toHaveBeenCalledExactlyOnceWith(notification)
+        expect(error).not.toHaveBeenCalled()
       },
     )
 
