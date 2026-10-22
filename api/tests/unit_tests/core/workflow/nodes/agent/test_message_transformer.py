@@ -15,6 +15,18 @@ from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 from graphon.variables.segments import ArrayFileSegment
 
 
+def _assert_signed_tool_file_text(text: str, tool_file_id: str, extension: str) -> None:
+    """Tool file URLs are signed (#39222); verify path, params, and signature."""
+    from urllib.parse import parse_qs, urlsplit
+
+    from core.tools.signature import verify_tool_file_signature
+
+    assert text.startswith(f"File: /files/tools/{tool_file_id}{extension}?")
+    assert text.endswith("\n")
+    query = parse_qs(urlsplit(text.removeprefix("File: ").removesuffix("\n")).query)
+    assert verify_tool_file_signature(tool_file_id, query["timestamp"][0], query["nonce"][0], query["sign"][0])
+
+
 def _file() -> File:
     return File(
         type=FileType.DOCUMENT,
@@ -90,7 +102,7 @@ def test_transform_promotes_tool_file_message_to_files_output() -> None:
 
     text, files = _run_transform([message])
 
-    assert text == "File: /files/tools/tool-file-id.docx\n"
+    _assert_signed_tool_file_text(text, "tool-file-id", ".docx")
     assert files.value == [file]
 
 
