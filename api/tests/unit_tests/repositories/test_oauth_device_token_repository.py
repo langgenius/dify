@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import partial
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
@@ -13,6 +14,7 @@ from models.oauth import OAuthAccessToken
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
+from services.oauth_device_contracts import ACCOUNT_ISSUER_SENTINEL
 
 
 @dataclass
@@ -173,6 +175,72 @@ def test_rollback_does_not_restore_predecessor_after_later_rotation(
     first_record = sqlite_session.get(OAuthAccessToken, first.token_id)
     assert first_record is not None
     assert first_record.revoked_at is not None
+
+
+def test_second_live_token_for_the_same_device_is_rejected(sqlite_session: Session) -> None:
+    def row(token_hash: str) -> OAuthAccessToken:
+        return OAuthAccessToken(
+            subject_email="ada@example.com",
+            subject_issuer=ACCOUNT_ISSUER_SENTINEL,
+            client_id="difyctl",
+            device_label="Laptop",
+            prefix="dfoa_",
+            token_hash=token_hash,
+            expires_at=datetime.now(UTC) + timedelta(days=1),
+        )
+
+    sqlite_session.add(row("a" * 64))
+    sqlite_session.commit()
+    sqlite_session.add(row("b" * 64))
+    with pytest.raises(IntegrityError):
+        sqlite_session.commit()
+
+
+def test_rotation_keeps_revoked_history_under_the_unique_index(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory)
+    issue_token = partial(
+        issuer.issue_account_token,
+        account=_account(),
+        workspace_id="workspace-1",
+        client_id="difyctl",
+        device_label="Laptop",
+    )
+    issue_token()
+    issue_token()
+    third = issue_token()
+
+    sqlite_session.expire_all()
+    records = list(sqlite_session.scalars(select(OAuthAccessToken).order_by(OAuthAccessToken.created_at)).all())
+    assert [record.id for record in records if record.revoked_at is None] == [third.token_id]
+    assert [record.active_guard for record in records] == [None, None, 1]
+
+
+def test_login_after_logout_on_the_same_device_succeeds(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    issuer, repository, _redis, _ttl_policy = _repository(sqlite_session_factory)
+    issue_token = partial(
+        issuer.issue_account_token,
+        account=_account(),
+        workspace_id="workspace-1",
+        client_id="difyctl",
+        device_label="Laptop",
+    )
+    first = issue_token()
+    assert repository.revoke_account_session(account_id="account-1", token_id=first.token_id) is True
+
+    second = issue_token()
+
+    assert second.token_id != first.token_id
+    assert second.rotation.replaced_token_id is None
+    sqlite_session.expire_all()
+    records = list(sqlite_session.scalars(select(OAuthAccessToken)).all())
+    assert len(records) == 2
+    assert [record.id for record in records if record.revoked_at is None] == [second.token_id]
 
 
 def test_list_account_sessions_pages_only_live_owned_tokens(

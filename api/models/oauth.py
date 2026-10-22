@@ -95,14 +95,28 @@ class OAuthAccessToken(TypeBase):
     """Device-flow bearer. account_id NOT NULL ⇒ dfoa_ (Dify account,
     subject_issuer = "dify:account" sentinel); account_id NULL +
     subject_issuer = verified IdP issuer ⇒ dfoe_ (external SSO, EE-only).
-    subject_issuer is non-NULL for all rows the app writes — Postgres
-    treats NULLs as distinct in unique indices, so the partial unique
-    index on (subject_email, subject_issuer, client_id, device_label)
-    WHERE revoked_at IS NULL would otherwise fail to rotate in place.
+    subject_issuer is non-NULL for all rows the app writes — both dialects
+    treat NULLs as distinct in unique indices, so the device key would
+    otherwise never collide. Unique on (subject_email, subject_issuer,
+    client_id, device_label, active_guard); active_guard is 1 while
+    revoked_at IS NULL and NULL after, so revoked history never collides
+    on either dialect.
     """
 
     __tablename__ = "oauth_access_tokens"
-    __table_args__ = (sa.PrimaryKeyConstraint("id", name="oauth_access_tokens_pkey"),)
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="oauth_access_tokens_pkey"),
+        sa.Index(
+            "uq_oauth_active_guard_per_device",
+            "subject_email",
+            "subject_issuer",
+            "client_id",
+            "device_label",
+            "active_guard",
+            unique=True,
+            mysql_length={"subject_email": 191, "subject_issuer": 191, "device_label": 191},
+        ),
+    )
 
     id: Mapped[str] = mapped_column(
         StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
@@ -121,6 +135,12 @@ class OAuthAccessToken(TypeBase):
     token_hash: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None)
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
     revoked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
+    active_guard: Mapped[int | None] = mapped_column(
+        sa.SmallInteger,
+        sa.Computed("CASE WHEN revoked_at IS NULL THEN 1 ELSE NULL END"),
+        nullable=True,
+        init=False,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False

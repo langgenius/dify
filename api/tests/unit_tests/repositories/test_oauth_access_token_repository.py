@@ -29,7 +29,7 @@ def _token(
         subject_issuer="dify:account" if account_id is not None else "https://idp.example.com",
         account_id=account_id,
         client_id="difyctl",
-        device_label="test-device",
+        device_label=f"device-{token_id}",
         prefix="dfoa_" if account_id is not None else "dfoe_",
         token_hash=token_hash,
         expires_at=expires_at or NOW + timedelta(days=1),
