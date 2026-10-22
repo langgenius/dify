@@ -496,7 +496,7 @@ describe('WorkflowLogArchivesPage', () => {
       expect(within(table).getAllByRole('row', { hidden: true })).toHaveLength(2)
     })
 
-    it('should present an archive request error in a cell spanning the table columns', async () => {
+    it('presents an archive request error outside the scrolling table', async () => {
       const queryClient = createConsoleQueryClient()
       const queryKey = consoleQuery.workflowRunArchives.get.queryKey()
       queryClient.setQueryDefaults(queryKey, { retryOnMount: false })
@@ -510,14 +510,14 @@ describe('WorkflowLogArchivesPage', () => {
       renderPage(null, queryClient)
 
       const table = screen.getByRole('table')
-      const errorCell = within(table).getByRole('cell', { name: /appLog\.archives\.error\.title/ })
-      expect(errorCell).toHaveAttribute('colspan', '4')
-      expect(within(errorCell).getByText('appLog.archives.error.description')).toBeInTheDocument()
-      expect(within(table).queryByText('appLog.archives.empty.title')).not.toBeInTheDocument()
+      expect(screen.getByText('appLog.archives.error.title')).toBeInTheDocument()
+      expect(screen.getByText('appLog.archives.error.description')).toBeInTheDocument()
+      expect(within(table).queryByText('appLog.archives.error.title')).not.toBeInTheDocument()
+      expect(screen.queryByText('appLog.archives.empty.title')).not.toBeInTheDocument()
       expect(within(table).queryByRole('button')).not.toBeInTheDocument()
     })
 
-    it('should present an empty archive message in a cell spanning the table columns', () => {
+    it('presents an empty archive message outside the scrolling table', () => {
       renderPage({
         months: [],
         summary: {
@@ -529,10 +529,10 @@ describe('WorkflowLogArchivesPage', () => {
       })
 
       const table = screen.getByRole('table')
-      const emptyCell = within(table).getByRole('cell', { name: /appLog\.archives\.empty\.title/ })
-      expect(emptyCell).toHaveAttribute('colspan', '4')
-      expect(within(emptyCell).getByText('appLog.archives.empty.description')).toBeInTheDocument()
-      expect(within(table).queryByText('appLog.archives.error.title')).not.toBeInTheDocument()
+      expect(screen.getByText('appLog.archives.empty.title')).toBeInTheDocument()
+      expect(screen.getByText('appLog.archives.empty.description')).toBeInTheDocument()
+      expect(within(table).queryByText('appLog.archives.empty.title')).not.toBeInTheDocument()
+      expect(screen.queryByText('appLog.archives.error.title')).not.toBeInTheDocument()
       expect(within(table).queryByRole('button')).not.toBeInTheDocument()
     })
 

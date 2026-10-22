@@ -239,42 +239,6 @@ export default function WorkflowLogArchivesPage() {
                   ))}
                 </>
               )}
-              {!isLoading && archiveListQuery.isError && (
-                <tr>
-                  <td colSpan={4}>
-                    <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 text-center">
-                      <span
-                        className="i-ri-error-warning-line size-6 text-text-tertiary"
-                        aria-hidden="true"
-                      />
-                      <div className="system-sm-semibold text-text-secondary">
-                        {t(($) => $['archives.error.title'], { ns: 'appLog' })}
-                      </div>
-                      <div className="system-xs-regular text-text-tertiary">
-                        {t(($) => $['archives.error.description'], { ns: 'appLog' })}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              )}
-              {!isLoading && !archiveListQuery.isError && archiveMonths.length === 0 && (
-                <tr>
-                  <td colSpan={4}>
-                    <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 text-center">
-                      <span
-                        className="i-ri-archive-line size-6 text-text-tertiary"
-                        aria-hidden="true"
-                      />
-                      <div className="system-sm-semibold text-text-secondary">
-                        {t(($) => $['archives.empty.title'], { ns: 'appLog' })}
-                      </div>
-                      <div className="system-xs-regular text-text-tertiary">
-                        {t(($) => $['archives.empty.description'], { ns: 'appLog' })}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              )}
               {!isLoading &&
                 visibleArchiveMonths.map((archive) => {
                   const archiveMonth = formatMonth(archive.year, archive.month)
@@ -296,6 +260,31 @@ export default function WorkflowLogArchivesPage() {
             </tbody>
           </table>
         </div>
+        {!isLoading && archiveListQuery.isError && (
+          <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 py-4 text-center">
+            <span
+              className="i-ri-error-warning-line size-6 text-text-tertiary"
+              aria-hidden="true"
+            />
+            <div className="system-sm-semibold text-text-secondary">
+              {t(($) => $['archives.error.title'], { ns: 'appLog' })}
+            </div>
+            <div className="system-xs-regular text-text-tertiary">
+              {t(($) => $['archives.error.description'], { ns: 'appLog' })}
+            </div>
+          </div>
+        )}
+        {!isLoading && !archiveListQuery.isError && archiveMonths.length === 0 && (
+          <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 py-4 text-center">
+            <span className="i-ri-archive-line size-6 text-text-tertiary" aria-hidden="true" />
+            <div className="system-sm-semibold text-text-secondary">
+              {t(($) => $['archives.empty.title'], { ns: 'appLog' })}
+            </div>
+            <div className="system-xs-regular text-text-tertiary">
+              {t(($) => $['archives.empty.description'], { ns: 'appLog' })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
