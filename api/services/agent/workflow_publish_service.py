@@ -63,7 +63,10 @@ class WorkflowAgentPublishService:
     def project_draft_bindings_to_graph(
         cls, *, session: Session, draft_workflow: Workflow, binding_version: str = Workflow.VERSION_DRAFT
     ) -> dict[str, Any]:
-        """Return draft graph with persisted Agent binding fields projected into node data.
+        """Return the workflow graph with persisted Agent binding fields projected into node data.
+
+        Reads the binding rows of ``binding_version``. The default is the draft;
+        a DSL export passes the exported workflow's own version.
 
         Workflow draft graph is the front-end's editing source of truth, while
         runtime/publish reads WorkflowAgentNodeBinding. This

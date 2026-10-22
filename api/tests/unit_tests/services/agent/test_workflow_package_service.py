@@ -552,8 +552,7 @@ def test_reader_keeps_legacy_packaged_roster_nodes(sqlite_session: Session, stor
         content = exported.archive.read()
 
     def mutate(_manifest: AppPackageManifest, data: dict[str, object], _members: dict[str, bytes]) -> None:
-        node = data["workflow"]["graph"]["nodes"][0]  # type: ignore[index]
-        node["data"]["agent_binding"]["binding_type"] = "roster_agent"
+        cast(dict[str, object], _node_data(data, "node-1")["agent_binding"])["binding_type"] = "roster_agent"
 
     legacy = _rewrite(content, mutate)
     prepared = AppPackageService().read_package(io.BytesIO(legacy), accept_roster_references=True)
@@ -659,7 +658,7 @@ def test_published_export_projects_the_exported_versions_bindings(
     app = _source(sqlite_session, storage, published=True)
     _add_roster_node(sqlite_session, app, graph_binding={"binding_type": "roster_agent", "agent_id": "stale-agent"})
     with AppPackageService().export_app(
-        app_model=app, workflow_id="workflow-1", preserve_agent_bindings=True, version_bindings=True
+        app_model=app, workflow_id="workflow-1", preserve_agent_bindings=True
     ) as exported:
         content = exported.archive.read()
     data, _manifest = _read_export(content)

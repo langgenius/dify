@@ -935,7 +935,6 @@ class AppDslService:
         version_id: uuid.UUID | None = None,
         resource_exporter: AgentPackageResourceExporter | None = None,
         preserve_agent_bindings: bool = False,
-        version_bindings: bool = False,
     ) -> AppDslExportData:
         """Load App and Site data, optionally retaining roster references for duplication."""
         app_mode = AppMode.value_of(app_model.mode)
@@ -960,7 +959,6 @@ class AppDslService:
                     session=session,
                     resource_exporter=resource_exporter,
                     preserve_agent_bindings=preserve_agent_bindings,
-                    version_bindings=version_bindings,
                 )
             else:
                 dependencies = cls._append_model_config_export_data(export_data, app_model, session=session)
@@ -1006,7 +1004,6 @@ class AppDslService:
         workflow_id: str | None = None,
         resource_exporter: AgentPackageResourceExporter | None = None,
         preserve_agent_bindings: bool = False,
-        version_bindings: bool = False,
     ) -> list[str]:
         """
         Append workflow export data
@@ -1022,7 +1019,7 @@ class AppDslService:
             graph = WorkflowAgentPublishService.project_draft_bindings_to_graph(
                 session=session,
                 draft_workflow=workflow,
-                binding_version=workflow.version if version_bindings else Workflow.VERSION_DRAFT,
+                binding_version=workflow.version,
             )
             agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
             for binding in cls._workflow_agent_bindings(workflow=workflow, session=session):

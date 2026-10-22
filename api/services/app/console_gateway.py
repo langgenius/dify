@@ -420,7 +420,6 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
             include_secret=options.include_secret,
             workflow_id=options.workflow_id,
             preserve_agent_bindings=options.preserve_agent_bindings,
-            version_bindings=options.version_bindings,
         )
 
     @override

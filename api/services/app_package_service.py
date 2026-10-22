@@ -19,7 +19,7 @@ from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from models.agent import WorkflowAgentBindingType
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import App, AppMode
-from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY, AgentPackage
+from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AGENT_PACKAGE_REF_KEY, AgentPackage
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.package_resource_importer import AgentPackageResourceImporter
@@ -38,6 +38,8 @@ from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.dsl_content import DSL_MAX_SIZE
 from services.entities.dsl_entities import DslImportWarning
 from services.entities.site_dsl import SiteDsl
+
+_AGENT_ID_KEY = "agent_id"
 
 
 class AppPackageManifest(BaseModel):
@@ -220,13 +222,14 @@ class AppPackageService(RosterAgentPackageReader):
                     if cls._is_roster_reference(binding_type, binding):
                         cls._validate_roster_reference(binding, node_data)
                         continue
-                    if binding.get("agent_id") is not None:
-                        raise ValueError("Agent binding cannot be both packaged and a roster reference")
+                    if binding_type == WorkflowAgentBindingType.ROSTER_AGENT:
+                        if binding.get(_AGENT_ID_KEY) is not None:
+                            raise ValueError("Agent binding cannot be both packaged and a roster reference")
                 reference = binding[AGENT_PACKAGE_REF_KEY]
                 if not isinstance(reference, str):
                     raise ValueError("Agent package reference must be a string")
                 references.add(reference)
-                WorkflowNodeJobConfig.model_validate(node_data.get("agent_job") or {})
+                WorkflowNodeJobConfig.model_validate(node_data.get(AGENT_NODE_JOB_DSL_KEY) or {})
             if set(agents) != set(manifest.agent_resources) or references != set(agents):
                 raise ValueError("Agent resources must match workflow package references")
             for ref, group in manifest.agent_resources.items():
@@ -243,12 +246,12 @@ class AppPackageService(RosterAgentPackageReader):
 
     @staticmethod
     def _validate_roster_reference(binding: Mapping[str, Any], node_data: Mapping[str, Any]) -> None:
-        agent_id = binding.get("agent_id")
+        agent_id = binding.get(_AGENT_ID_KEY)
         if not isinstance(agent_id, str):
             raise ValueError("Roster Agent reference requires an agent id")
         if not agent_id:
             raise ValueError("Roster Agent reference requires an agent id")
-        WorkflowNodeJobConfig.model_validate(node_data.get("agent_job") or {})
+        WorkflowNodeJobConfig.model_validate(node_data.get(AGENT_NODE_JOB_DSL_KEY) or {})
 
     def export_app(
         self,
@@ -257,7 +260,6 @@ class AppPackageService(RosterAgentPackageReader):
         include_secret: bool = False,
         workflow_id: str | None = None,
         preserve_agent_bindings: bool = False,
-        version_bindings: bool = False,
     ) -> RosterAgentPackageExport:
         from services.app_dsl_service import AppDslService
 
@@ -270,7 +272,6 @@ class AppPackageService(RosterAgentPackageReader):
                 workflow_id=workflow_id,
                 resource_exporter=resources,
                 preserve_agent_bindings=preserve_agent_bindings,
-                version_bindings=version_bindings,
             )
             resources.collect_icon(session=session, tenant_id=app_model.tenant_id, metadata=prepared.data["app"])
             if isinstance(prepared.data.get("site"), dict):
