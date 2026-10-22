@@ -1,6 +1,6 @@
 """Secret-free references shared by execution, queueing and pause/resume boundaries."""
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 
 class ExecutionConnectionSelection(BaseModel):
@@ -26,17 +26,3 @@ class ConnectionExecutionContext(BaseModel):
     # None until a Chatflow Conversation exists, or for a plain Workflow.
     conversation_id: str | None
     selections: tuple[ExecutionConnectionSelection, ...]
-
-
-class RuntimeConnectionReference(BaseModel):
-    """Non-secret provenance of the credentials actually loaded for a tool call."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    connection_id: str
-    provider: str
-    credential_type: str
-    revision: int
-    oauth_client_source: str | None
-    oauth_client_configuration_id: str | None
-    oauth_client_id: str | None = Field(repr=False)

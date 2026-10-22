@@ -5,7 +5,6 @@ from typing import Any
 
 from clients.plugin.auth import PluginCredentialAuthClient
 from constants.end_user_connections import ConnectionCredentialType
-from context.connection_execution import RuntimeConnectionReference
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.db import session_factory
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -119,7 +118,6 @@ def get_tool_runtime(
             resolved = application_services().end_user_connection_runtime.resolve(
                 identity, connection_id=connection_id, target=target
             )
-            client = resolved.access.oauth_client
             tool = provider.get_tool(spec.tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=identity.tenant_id,
@@ -128,15 +126,7 @@ def get_tool_runtime(
                     tool_invoke_from=ToolInvokeFrom.WORKFLOW,
                     credentials=dict(resolved.credentials),
                     credential_type=CredentialType(resolved.access.credential_type.value),
-                    connection_reference=RuntimeConnectionReference(
-                        connection_id=resolved.access.id,
-                        provider=resolved.access.provider,
-                        credential_type=resolved.access.credential_type.value,
-                        revision=resolved.access.revision,
-                        oauth_client_source=client.source.value if client is not None else None,
-                        oauth_client_configuration_id=client.configuration_id if client is not None else None,
-                        oauth_client_id=client.client_id if client is not None else None,
-                    ),
+                    connection_id=resolved.access.id,
                 )
             )
         return ToolManager.get_workflow_tool_runtime(

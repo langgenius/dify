@@ -100,12 +100,9 @@ def test_personal_tool_injects_selected_current_credentials_without_workspace_fa
     first = loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
     tool = loader._tool_from_handle(first)
     assert tool.runtime.credentials == {"api_key": "selected-secret"}
-    reference = tool.runtime.connection_reference
-    assert reference is not None
-    assert reference.connection_id == selected.id
-    assert reference.revision == 1
+    assert tool.runtime.connection_id == selected.id
     assert "selected-secret" not in repr(tool.runtime)
-    assert "connection_reference" not in tool.runtime.model_dump()
+    assert "connection_id" not in tool.runtime.model_dump()
     harness.base.service.update_connection(
         harness.base.context, selected.id, UpdateConnectionInput(credentials={"api_key": "replacement-secret"})
     )
@@ -207,7 +204,7 @@ def test_guest_owned_connection_can_execute(harness: OAuthHarness) -> None:
     assert loader._tool_from_handle(handle).runtime.credentials == {"api_key": "original-secret"}
 
 
-def test_oauth_refresh_produces_current_credentials_and_grant_reference(harness: OAuthHarness) -> None:
+def test_oauth_refresh_preserves_connection_id_and_checks_current_client(harness: OAuthHarness) -> None:
     selected = harness.finish(harness.start())
     with harness.base.sessions.begin() as session:
         session.execute(
@@ -222,10 +219,7 @@ def test_oauth_refresh_produces_current_credentials_and_grant_reference(harness:
     tool = loader._tool_from_handle(handle)
     assert tool.runtime.credentials["access_token"] == "new-access-secret"
     assert len(harness.handler.refreshes) == 1
-    assert tool.runtime.connection_reference is not None
-    assert tool.runtime.connection_reference.oauth_client_configuration_id == harness.client_id
-    assert tool.runtime.connection_reference.revision == 2
-    assert tool.runtime.connection_reference.oauth_client_id == "public-client"
+    assert tool.runtime.connection_id == selected.id
     with harness.base.sessions.begin() as session:
         session.execute(
             sa.update(ToolOAuthTenantClient)
@@ -281,7 +275,7 @@ def test_reuse_of_workspace_source_keeps_existing_resolution(harness: OAuthHarne
     workspace.assert_called_once()
     assert workspace.call_args.kwargs["credential_id"] == "workspace-credential"
     assert result.runtime.credentials == {"api_key": "workspace-secret"}
-    assert result.runtime.connection_reference is None
+    assert result.runtime.connection_id is None
 
 
 @pytest.mark.parametrize("target", ["child", "missing", "chain"])

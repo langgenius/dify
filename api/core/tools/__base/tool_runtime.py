@@ -2,7 +2,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from context.connection_execution import RuntimeConnectionReference
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.tool_entities import ToolInvokeFrom
@@ -22,7 +21,7 @@ class ToolRuntime(BaseModel):
     invoke_from: InvokeFrom | None = None
     tool_invoke_from: ToolInvokeFrom | None = None
     credential_id: str | None = Field(default=None, exclude=True)
-    connection_reference: RuntimeConnectionReference | None = Field(default=None, exclude=True)
+    connection_id: str | None = Field(default=None, exclude=True)
     credentials: dict[str, Any] = Field(default_factory=dict, repr=False)
     credential_type: CredentialType = Field(default=CredentialType.API_KEY)
     runtime_parameters: dict[str, Any] = Field(default_factory=dict)
