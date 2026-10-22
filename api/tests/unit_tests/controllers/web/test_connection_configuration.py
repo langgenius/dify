@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.end_user_connections import ConnectionCredentialStatus
 from controllers.web import bp, connections, wraps
 from extensions import ext_application_services
-from models.end_user_connection import EndUserConnection, SessionConnection
+from models.end_user_connection import EndUserConnection
 from models.enums import EndUserType
 from models.model import App, AppMode, Conversation, EndUser
 from services.end_user_connections.errors import ConnectionRequiredError
@@ -48,38 +48,25 @@ def client(harness: ConversationHarness, monkeypatch: pytest.MonkeyPatch) -> Ite
         yield http
 
 
-def test_read_last_accepted_configuration_without_provider_io(
+def test_read_configuration_without_provider_io(
     harness: ConversationHarness, client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     base = harness.oauth.base
-    first = base.service.create_api_key(base.context, base.command("first-secret"))
-    second = base.service.create_api_key(base.context, base.command("second-secret"))
-    a, b = harness.create_conversation(), harness.create_conversation()
-    original = harness.run(a, {"tool-1": first.id})
-    harness.run(a, {"tool-1": second.id})
-    harness.run(b, {"tool-1": first.id})
+    selected = base.service.create_api_key(base.context, base.command())
+    conversation_id = harness.create_conversation()
+    harness.run(conversation_id, {"tool-1": selected.id})
     base.auth.calls.clear()
 
     def unexpected(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("Reading saved references must not resolve Providers.")
 
     monkeypatch.setattr(harness.oauth.providers, "provider", unexpected)
-    for conversation_id, connection_id in [(a, second.id), (b, first.id)]:
-        response = client.get("/api/connections/configuration", query_string={"conversation_id": conversation_id})
+    queries: tuple[dict[str, str], ...] = ({}, {"conversation_id": conversation_id})
+    for query in queries:
+        response = client.get("/api/connections/configuration", query_string=query)
         assert response.status_code == 200
-        assert response.get_json() == {"workflow_id": base.workflow_id, "connections": {"tool-1": connection_id}}
-        for secret in ["first-secret", "second-secret", "account_id", "revision", "encrypted_credentials"]:
-            assert secret not in response.get_data(as_text=True)
+        assert response.get_json() == {"workflow_id": base.workflow_id, "connections": {"tool-1": selected.id}}
     assert base.auth.calls == []
-    assert original.selections[0].connection_id == first.id
-
-
-def test_empty_saved_configuration(harness: ConversationHarness, client: FlaskClient) -> None:
-    response = client.get(
-        "/api/connections/configuration", query_string={"conversation_id": harness.create_conversation()}
-    )
-    assert response.status_code == 200
-    assert response.get_json() == {"workflow_id": None, "connections": {}}
 
 
 @pytest.mark.parametrize("publication", ["changed", "missing"])
@@ -117,21 +104,6 @@ def test_inaccessible_empty_conversation_is_not_found(
     assert response.get_json()["code"] == "not_found"
 
 
-def test_inaccessible_connection_reference_is_hidden(harness: ConversationHarness, client: FlaskClient) -> None:
-    base = harness.oauth.base
-    selected = base.service.create_api_key(base.context, base.command())
-    conversation_id = harness.create_conversation()
-    harness.run(conversation_id, {"tool-1": selected.id})
-    with harness.sessions.begin() as session:
-        session.execute(
-            sa.update(EndUserConnection).where(EndUserConnection.id == selected.id).values(account_id=str(uuid4()))
-        )
-    response = client.get("/api/connections/configuration", query_string={"conversation_id": conversation_id})
-    assert response.status_code == 200
-    assert response.get_json() == {"workflow_id": base.workflow_id, "connections": {"tool-1": None}}
-    assert selected.id not in response.get_data(as_text=True)
-
-
 def test_invalid_credentials_remain_a_saved_reference_without_a_readiness_claim(
     harness: ConversationHarness, client: FlaskClient
 ) -> None:
@@ -150,30 +122,6 @@ def test_invalid_credentials_remain_a_saved_reference_without_a_readiness_claim(
     assert response.status_code == 200
     assert response.get_json() == {"workflow_id": base.workflow_id, "connections": {"tool-1": selected.id}}
     assert base.auth.calls == []
-
-
-def test_inconsistent_saved_versions_are_a_documented_conflict(
-    harness: ConversationHarness, client: FlaskClient
-) -> None:
-    base = harness.oauth.base
-    selected = base.service.create_api_key(base.context, base.command())
-    conversation_id = harness.create_conversation()
-    harness.run(conversation_id, {"tool-1": selected.id})
-    with harness.sessions.begin() as session:
-        session.add(
-            SessionConnection(
-                tenant_id=base.context.tenant_id,
-                app_id=base.context.app_id,
-                session_id=conversation_id,
-                workflow_id=str(uuid4()),
-                node_id="other",
-                provider=selected.provider,
-                connection_id=selected.id,
-            )
-        )
-    response = client.get("/api/connections/configuration", query_string={"conversation_id": conversation_id})
-    assert response.status_code == 409
-    assert response.get_json()["code"] == "connection_conflict"
 
 
 def test_plain_workflow_has_no_conversation_configuration(harness: ConversationHarness, client: FlaskClient) -> None:

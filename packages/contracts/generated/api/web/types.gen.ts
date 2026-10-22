@@ -1687,7 +1687,6 @@ export type GetConnectionsConfigurationData = {
 
 export type GetConnectionsConfigurationErrors = {
   400: ConnectionConfigurationInvalidError | ErrorResponse
-  409: ConnectionConflictError | ErrorResponse
   default: ErrorResponse
 }
 

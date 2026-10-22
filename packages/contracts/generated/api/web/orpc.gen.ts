@@ -345,7 +345,6 @@ export const get = oc
   .output(zGetConnectionsConfigurationResponse)
   .errors({
     connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
-    connection_conflict: { status: 409, data: zConnectionConflictError },
   })
 
 export const configuration = {

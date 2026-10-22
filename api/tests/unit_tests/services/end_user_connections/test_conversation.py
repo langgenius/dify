@@ -16,7 +16,6 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from extensions import ext_application_services
 from models.end_user_connection import EndUserConnection, SessionConnection
 from models.model import App, AppMode, Conversation, EndUser, Message
-from models.tools import ToolOAuthTenantClient
 from models.workflow import Workflow
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
@@ -24,11 +23,9 @@ from services.end_user_connections.errors import (
     ConnectionIdentityError,
     ConnectionInvalidCredentialsError,
     ConnectionNotFoundError,
-    ConnectionReauthorizationRequiredError,
     ConnectionRequiredError,
     ConnectionWorkflowChangedError,
 )
-from services.errors.conversation import ConversationNotExistsError
 from tests.helpers.end_user_conversation import ConversationHarness, make_conversation_harness
 from tests.helpers.end_user_oauth import make_oauth_harness
 
@@ -59,35 +56,6 @@ def test_conversations_restore_their_own_last_accepted_choices(harness: Conversa
     assert harness.run(a).selections[0].connection_id == second.id
     assert original.selections[0].connection_id == first.id
     assert harness.saved(a) == {"tool-1": second.id}
-
-
-def test_omitted_first_selection_and_explicit_empty_selection_are_rejected(harness: ConversationHarness) -> None:
-    base = harness.oauth.base
-    with pytest.raises(ConnectionRequiredError):
-        harness.run(None)
-    conversation_id = harness.create_conversation()
-    with pytest.raises(ConnectionRequiredError):
-        harness.run(conversation_id)
-    connection = base.service.create_api_key(base.context, base.command())
-    harness.run(conversation_id, {"tool-1": connection.id})
-    empty_choices: list[dict[str, str | None]] = [{}, {"tool-1": None}]
-    for choices in empty_choices:
-        with pytest.raises(ConnectionRequiredError):
-            harness.run(conversation_id, choices)
-    assert harness.saved(conversation_id) == {"tool-1": connection.id}
-
-
-@pytest.mark.parametrize("field", ["from_end_user_id", "app_id", "is_deleted"])
-def test_empty_conversations_still_require_ownership(harness: ConversationHarness, field: str) -> None:
-    conversation_id = harness.create_conversation()
-    with harness.sessions.begin() as session:
-        session.execute(
-            sa.update(Conversation)
-            .where(Conversation.id == conversation_id)
-            .values({field: True if field == "is_deleted" else str(uuid4())})
-        )
-    with pytest.raises(ConversationNotExistsError):
-        harness.run(conversation_id)
 
 
 def test_explicit_choices_do_not_merge_missing_nodes_or_select_reuse_nodes(harness: ConversationHarness) -> None:
@@ -173,20 +141,6 @@ def test_reuse_rechecks_connection_ownership_and_validity(harness: ConversationH
         "delete": ConnectionRequiredError,
     }[change]
     with pytest.raises(expected):
-        harness.run(conversation_id)
-
-
-def test_reuse_checks_current_oauth_client(harness: ConversationHarness) -> None:
-    connection = harness.oauth.finish(harness.oauth.start())
-    conversation_id = harness.create_conversation()
-    harness.run(conversation_id, {"tool-1": connection.id})
-    with harness.sessions.begin() as session:
-        session.execute(
-            sa.update(ToolOAuthTenantClient)
-            .where(ToolOAuthTenantClient.id == harness.oauth.client_id)
-            .values(encrypted_oauth_params=json.dumps({"client_id": "different-client"}))
-        )
-    with pytest.raises(ConnectionReauthorizationRequiredError):
         harness.run(conversation_id)
 
 

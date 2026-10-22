@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from context.connection_execution import ConnectionExecutionContext
 from services.end_user_connections.entities import ConnectionAccessRecord, WebConnectionContext
-from services.end_user_connections.errors import ConnectionConflictError, ConnectionWorkflowChangedError
+from services.end_user_connections.errors import ConnectionWorkflowChangedError
 
 
 @dataclass(frozen=True)
@@ -64,19 +64,12 @@ class ConnectionSelectionService:
         return {item.node_id: UUID(item.connection_id) for item in saved}
 
     def get(self, context: WebConnectionContext, conversation_id: str | None) -> ConnectionConfiguration:
-        saved = (
-            self._store.conversation_selections(context, conversation_id)
-            if conversation_id is not None
-            else self._store.app_selections(context)
-        )
-        if conversation_id is not None and not saved:
+        saved = self._store.conversation_selections(context, conversation_id) if conversation_id is not None else ()
+        if not saved:
             saved = self._store.app_selections(context)
-        workflow_ids = {item.workflow_id for item in saved}
-        if len(workflow_ids) > 1:
-            raise ConnectionConflictError()
         records = self._store.access_records(context, frozenset(item.connection_id for item in saved))
         return ConnectionConfiguration(
-            workflow_id=next(iter(workflow_ids), None),
+            workflow_id=saved[0].workflow_id if saved else None,
             connections={item.node_id: item.connection_id if item.connection_id in records else None for item in saved},
         )
 

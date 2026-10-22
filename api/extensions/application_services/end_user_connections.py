@@ -24,10 +24,8 @@ from services.end_user_connections.oauth import OAuthConnectionService
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
 from services.end_user_connections.preflight import ConnectionPreflightService
 from services.end_user_connections.runtime import ConnectionRuntimeService
-from services.end_user_connections.selections import ConnectionSelectionService
 
 __all__ = [
-    "build_connection_selections",
     "build_end_user_connection_oauth",
     "build_end_user_connection_preflight",
     "build_end_user_connection_runtime",
@@ -106,10 +104,6 @@ def build_end_user_connection_runtime(
         checks=connections,
         cipher=TenantConnectionCipher(),
     )
-
-
-def build_connection_selections(*, database_client: sessionmaker[Session]) -> ConnectionSelectionService:
-    return ConnectionSelectionService(store=EndUserConnectionRepository(session_factory=database_client))
 
 
 def initialize_conversation_connections(

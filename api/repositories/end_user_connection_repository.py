@@ -376,7 +376,6 @@ class EndUserConnectionRepository:
             )
             for item in selections
         )
-        session.flush()
 
     def list(self, context: WebConnectionContext, query: ListConnectionsInput, after_id: str | None) -> ConnectionPage:
         with self._sessions() as session:

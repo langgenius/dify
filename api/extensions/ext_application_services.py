@@ -30,7 +30,6 @@ from extensions.application_services.data_sources import (
 )
 from extensions.application_services.datasets import build_dataset_dependencies
 from extensions.application_services.end_user_connections import (
-    build_connection_selections,
     build_end_user_connection_oauth,
     build_end_user_connection_preflight,
     build_end_user_connection_runtime,
@@ -70,6 +69,7 @@ from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.conversation_variable_query_repository import ConversationVariableQueryRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
+from repositories.end_user_connection_repository import EndUserConnectionRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
@@ -729,7 +729,9 @@ def build_application_services(
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_identity=web_identity,
-        connection_selections=build_connection_selections(database_client=database_client),
+        connection_selections=ConnectionSelectionService(
+            store=EndUserConnectionRepository(session_factory=database_client)
+        ),
         end_user_connection_execution=ConnectionExecutionService(preflight=end_user_connection_preflight),
         end_user_connection_runtime=build_end_user_connection_runtime(
             database_client=database_client, connections=end_user_connections
