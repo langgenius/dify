@@ -11,6 +11,8 @@
   "changeScope.structure": "cấu trúc",
   "checklistIssues": "Vấn đề trong danh sách kiểm tra",
   "configureModel": "Cấu hình mô hình",
+  "copy.actions.cancelTest": "Hủy kiểm thử",
+  "copy.actions.confirmTestOperation": "Xác nhận thao tác này",
   "copy.actions.applyTheFix": "Áp dụng bản sửa",
   "copy.actions.approveChanges": "Phê duyệt thay đổi",
   "copy.actions.approveFix": "Phê duyệt bản sửa",

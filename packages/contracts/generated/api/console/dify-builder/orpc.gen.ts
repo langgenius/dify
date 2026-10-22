@@ -128,8 +128,16 @@ export const messages = {
   post: post3,
 }
 
+/**
+ * Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
+ *
+ * @deprecated
+ */
 export const get2 = oc
   .route({
+    deprecated: true,
+    description:
+      'Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDifyBuilderSessionsBySessionIdNativeTestInput',
@@ -143,8 +151,16 @@ export const nativeTestInput = {
   get: get2,
 }
 
+/**
+ * Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
+ *
+ * @deprecated
+ */
 export const post4 = oc
   .route({
+    deprecated: true,
+    description:
+      'Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancel',
@@ -163,8 +179,16 @@ export const cancel = {
   post: post4,
 }
 
+/**
+ * Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
+ *
+ * @deprecated
+ */
 export const post5 = oc
   .route({
+    deprecated: true,
+    description:
+      'Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisions',
@@ -183,8 +207,16 @@ export const decisions = {
   post: post5,
 }
 
+/**
+ * Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
+ *
+ * @deprecated
+ */
 export const post6 = oc
   .route({
+    deprecated: true,
+    description:
+      'Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResume',
@@ -203,8 +235,16 @@ export const resume = {
   post: post6,
 }
 
+/**
+ * Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
+ *
+ * @deprecated
+ */
 export const get3 = oc
   .route({
+    deprecated: true,
+    description:
+      'Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDifyBuilderSessionsBySessionIdNativeTestsByRequestId',
@@ -221,8 +261,16 @@ export const byRequestId = {
   resume,
 }
 
+/**
+ * Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
+ *
+ * @deprecated
+ */
 export const post7 = oc
   .route({
+    deprecated: true,
+    description:
+      'Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDifyBuilderSessionsBySessionIdNativeTests',
