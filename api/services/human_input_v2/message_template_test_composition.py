@@ -7,12 +7,15 @@ from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdap
 from core.human_input_v2.shared.values import AccountId, TenantId
 from extensions.ext_database import db
 from extensions.ext_key_provider import key_provider_manager
+from graphon.variable_loader import VariableLoader
 from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmailChannelRepository
 from repositories.human_input_v2.im_channel_repository import IMChannel
+from services.human_input_v2.form_service import HumanInputDeliveryTestFormService
 from services.human_input_v2.im_credential_codec import IMCredentialCodec
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 from services.human_input_v2.message_template_test_service import MessageTemplateTestService
 from services.human_input_v2.resend_channel import ResendProviderGateway
+from services.workflow_draft_variable_service import DraftVarLoader
 
 
 def build_message_template_test_service(
@@ -25,6 +28,9 @@ def build_message_template_test_service(
         credentials = IMCredentialCodec(cipher).load(channel.provider, channel.encrypted_credentials)
         return build_im_provider_adapter(credentials)
 
+    def build_variable_loader(app_id: str) -> VariableLoader:
+        return DraftVarLoader(engine=db.engine, app_id=app_id, tenant_id=tenant_id, user_id=account_id)
+
     return MessageTemplateTestService(
         session_factory=sessions,
         tenant_id=TenantId(tenant_id),
@@ -33,4 +39,10 @@ def build_message_template_test_service(
         email_repository=SQLAlchemyEmailChannelRepository(sessions),
         email_gateway=ResendProviderGateway(),
         im_adapter_factory=build_adapter,
+        form_service=HumanInputDeliveryTestFormService(
+            session_factory=sessions,
+            tenant_id=TenantId(tenant_id),
+            account_id=AccountId(account_id),
+            variable_loader_factory=build_variable_loader,
+        ),
     )
