@@ -85,6 +85,8 @@ ignore_imports =
     core.workflow.node_runtime -> services
     # Personal credential resolution is wired through the application composition root.
     core.workflow.node_runtime -> extensions.application_services.end_user_connections
+    # Initial selections share the new Conversation transaction through the composition root.
+    core.app.apps.message_based_app_generator -> extensions.application_services.end_user_connections
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.node_factory -> extensions.application_services.data_sources
     core.workflow.nodes.agent.message_transformer -> services

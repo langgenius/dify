@@ -3,6 +3,7 @@
 from sqlalchemy.orm import Session, sessionmaker
 
 from clients.plugin.auth import PluginCredentialAuthClient
+from context.connection_execution import ConnectionExecutionContext
 from core.plugin.impl.oauth import OAuthHandler
 from extensions.ext_redis import redis_client
 from repositories.end_user_connection_repository import EndUserConnectionRepository
@@ -18,6 +19,7 @@ from services.end_user_connection_oauth_adapters import (
 )
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
 from services.end_user_connection_runtime_adapters import get_tool_runtime
+from services.end_user_connections.conversation import ConversationConnectionService
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
@@ -25,11 +27,13 @@ from services.end_user_connections.preflight import ConnectionPreflightService
 from services.end_user_connections.runtime import ConnectionRuntimeService
 
 __all__ = [
+    "build_conversation_connections",
     "build_end_user_connection_oauth",
     "build_end_user_connection_preflight",
     "build_end_user_connection_runtime",
     "build_end_user_connections",
     "get_tool_runtime",
+    "initialize_conversation_connections",
 ]
 
 
@@ -102,3 +106,13 @@ def build_end_user_connection_runtime(
         checks=connections,
         cipher=TenantConnectionCipher(),
     )
+
+
+def build_conversation_connections(*, database_client: sessionmaker[Session]) -> ConversationConnectionService:
+    return ConversationConnectionService(store=EndUserConnectionRepository(session_factory=database_client))
+
+
+def initialize_conversation_connections(
+    session: Session, context: ConnectionExecutionContext, conversation_id: str
+) -> None:
+    EndUserConnectionRepository.initialize_conversation_selections(session, context, conversation_id)

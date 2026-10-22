@@ -6,7 +6,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from context.connection_execution import ConnectionExecutionContext
-from models.model import Account, App, EndUser
+from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connection_identity import connection_context_from_web_passport
@@ -43,12 +43,22 @@ def prepare_web_connection_execution(
 
     from extensions.ext_application_services import application_services
 
-    return application_services().end_user_connection_execution.prepare(
+    services = application_services()
+    conversation_id = args.get("conversation_id")
+    has_explicit_connections = "connections" in args
+    if app.mode == AppMode.ADVANCED_CHAT and conversation_id and not has_explicit_connections:
+        command = command.model_copy(
+            update={"connections": services.conversation_connections.restore(identity, workflow.id, conversation_id)}
+        )
+    execution = services.end_user_connection_execution.prepare(
         identity,
         command,
         workflow_id=workflow.id,
         conversation_id=args.get("conversation_id"),
     )
+    if conversation_id and has_explicit_connections:
+        services.conversation_connections.save_run(execution, conversation_id)
+    return execution
 
 
 def validate_connection_execution(

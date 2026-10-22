@@ -16,11 +16,13 @@ from core.plugin.impl.oauth import OAuthHandler
 from enums import DeploymentEdition
 from extensions import ext_application_services
 from models.end_user_connection import AppConnection, SessionConnection
+from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import WorkflowRun
 from services.app_generate_service import AppGenerateService
 from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
+from services.end_user_connections.conversation import ConversationConnectionService
 from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
@@ -166,7 +168,10 @@ def real_execution_gate(
     monkeypatch.setattr(
         ext_application_services,
         "application_services",
-        lambda: SimpleNamespace(end_user_connection_execution=ConnectionExecutionService(preflight=preflight)),
+        lambda: SimpleNamespace(
+            end_user_connection_execution=ConnectionExecutionService(preflight=preflight),
+            conversation_connections=ConversationConnectionService(store=harness.repository),
+        ),
     )
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, PUBSUB_REDIS_CHANNEL_TYPE="streams")
     rate_limit = mocker.patch("services.app_generate_service.RateLimit")
@@ -279,3 +284,55 @@ def test_ready_selection_is_checked_before_serializing_the_queued_context(
     assert params.workflow_id == harness.workflow_id
     assert params.connection_context.selections[0].connection_id == connection.id
     assert "original-secret" not in enqueue.call_args.args[0]
+
+
+@pytest.mark.usefixtures("real_execution_gate")
+@pytest.mark.parametrize("selection", ["omitted", "null", "empty", "node-null"])
+def test_only_chatflow_omission_restores_last_conversation_choices(
+    client: tuple[FlaskClient, str], harness: ConnectionHarness, mocker: MockerFixture, selection: str
+) -> None:
+    connection = harness.service.create_api_key(harness.context, harness.command())
+    with harness.sessions.begin() as session:
+        conversation = Conversation(
+            app_id=harness.context.app_id,
+            mode=AppMode.ADVANCED_CHAT,
+            name="Chat",
+            _inputs={},
+            from_source=ConversationFromSource.API,
+            from_end_user_id=harness.context.end_user_id,
+        )
+        session.add(conversation)
+        session.flush()
+        conversation_id = conversation.id
+    params = mocker.spy(AppExecutionParams, "new")
+    mocker.patch("services.app_generate_service.MessageBasedAppGenerator.retrieve_events", return_value=iter(()))
+    enqueue = mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
+    http, path = client
+    payload: dict[str, object] = {
+        "inputs": {},
+        "query": "hello",
+        "response_mode": "streaming",
+        "workflow_id": harness.workflow_id,
+        "conversation_id": conversation_id,
+        "connections": {"tool-1": connection.id},
+    }
+    assert http.post(path, json=payload).status_code == 200
+    params.reset_mock()
+    payload.pop("connections")
+    if selection != "omitted":
+        explicit_choices: dict[str, dict[str, str | None] | None] = {
+            "null": None,
+            "empty": {},
+            "node-null": {"tool-1": None},
+        }
+        payload["connections"] = explicit_choices[selection]
+    response = http.post(path, json=payload)
+    if path == "/api/chat-messages" and selection == "omitted":
+        assert response.status_code == 200
+        params.assert_called_once()
+        assert params.call_args.kwargs["connection_context"].selections[0].connection_id == connection.id
+    else:
+        assert response.status_code == 400
+        assert response.get_json()["code"] == "connection_required"
+        params.assert_not_called()
+    enqueue.assert_not_called()

@@ -52,6 +52,7 @@ from services.app_task_service import AppTaskService
 from services.conversation_service import ConversationService
 from services.end_user_connections.errors import ConnectionError
 from services.end_user_connections.execution import ConnectionRunInput
+from services.end_user_connections.preflight import ConnectionId, NodeId
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,15 @@ class CompletionMessagePayload(BaseModel):
 
 
 class ChatMessagePayload(ConnectionRunInput):
+    connections: dict[NodeId, ConnectionId | None] | None = Field(
+        default=None,
+        description=(
+            "Chatflow choices keyed by independent authorization node ID. Omit on an existing conversation to reuse "
+            "its last accepted choices. Explicit choices replace the saved configuration after validation. "
+            "An explicit null, empty map, or missing node does not inherit saved choices. "
+            "Required for a new conversation with EndUser tool authentication."
+        ),
+    )
     inputs: dict[str, Any] = Field(
         description="Input variables for the chat",
     )
@@ -254,6 +264,8 @@ class ChatApi(WebApiResource):
         if app_mode != AppMode.ADVANCED_CHAT and (payload.workflow_id is not None or payload.connections is not None):
             raise ValueError("Connection selections require a Chatflow app.")
         args = payload.model_dump(mode="json", exclude_none=True)
+        if "connections" in payload.model_fields_set and payload.connections is None:
+            args["connections"] = None
 
         streaming = _resolve_agent_app_streaming(app_mode=app_mode, response_mode=payload.response_mode)
         args["auto_generate_name"] = False
