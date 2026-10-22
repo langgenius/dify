@@ -1018,6 +1018,10 @@ def test_build_application_services_wires_credential_query(
     gateway = services.workspaces.trigger_oauth._builders
     assert isinstance(gateway, TriggerOAuthBuilderGateway)
     assert gateway._builders is services.workspaces.trigger_builders
+    assert (
+        services.workspaces.trigger_builders._create_subscription
+        == services.workspaces.trigger_subscription_management.create
+    )
 
 
 def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(

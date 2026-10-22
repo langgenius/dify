@@ -6,12 +6,14 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.trigger_manager import TriggerManager
+from core.trigger.utils.encryption import delete_cache_for_subscription
 from extensions.ext_redis import RedisClientWrapper
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
+from repositories.trigger.subscription_repository import RedisTriggerSubscriptionLocks, TriggerSubscriptionRepository
 from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
@@ -27,7 +29,7 @@ from services.trigger.oauth_service import TriggerOAuthService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
 from services.trigger.provider_query import TriggerProviderQuery
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
-from services.trigger.trigger_provider_service import TriggerProviderService
+from services.trigger.subscription_service import TriggerSubscriptionService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.workspace.gateways import (
     DeploymentWorkspaceCreationPolicy,
@@ -66,6 +68,7 @@ class WorkspaceServices:
     resource_cleanup: WorkspaceResourceCleanupService
     trigger_providers: TriggerProviderQuery
     trigger_subscriptions: TriggerSubscriptionQueryService
+    trigger_subscription_management: TriggerSubscriptionService
     trigger_builders: TriggerSubscriptionBuilderService
     trigger_oauth_clients: TriggerOAuthClientService
     trigger_oauth: TriggerOAuthService
@@ -107,12 +110,19 @@ def build_workspace_services(
     credentials: CredentialQuery,
 ) -> WorkspaceServices:
     trigger_providers = PluginTriggerProviderQuery()
+    trigger_subscription_management = TriggerSubscriptionService(
+        subscriptions=TriggerSubscriptionRepository(session_factory=database_client),
+        get_provider=TriggerManager.get_trigger_provider,
+        subscribe=TriggerManager.subscribe_trigger,
+        unsubscribe=TriggerManager.unsubscribe_trigger,
+        locks=RedisTriggerSubscriptionLocks(redis=redis),
+        invalidate_cache=delete_cache_for_subscription,
+    )
     trigger_builders = TriggerSubscriptionBuilderService(
         builders=RedisTriggerSubscriptionBuilderRepository(redis=redis),
         get_provider=TriggerManager.get_trigger_provider,
         subscribe=TriggerManager.subscribe_trigger,
-        # Keep the shared subscription writer until subscription management migrates.
-        create_subscription=TriggerProviderService.add_trigger_subscription,
+        create_subscription=trigger_subscription_management.create,
     )
     trigger_oauth_provider = PluginTriggerOAuthGateway(oauth=OAuthHandler())
     trigger_oauth_clients = TriggerOAuthClientService(
@@ -153,6 +163,7 @@ def build_workspace_services(
         ),
         trigger_providers=trigger_providers,
         trigger_subscriptions=TriggerSubscriptionQueryService(credentials=credentials, schemas=trigger_providers),
+        trigger_subscription_management=trigger_subscription_management,
         trigger_builders=trigger_builders,
         trigger_oauth_clients=trigger_oauth_clients,
         trigger_oauth=TriggerOAuthService(

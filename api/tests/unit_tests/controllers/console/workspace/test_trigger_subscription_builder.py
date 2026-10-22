@@ -15,6 +15,7 @@ from yarl import URL
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl import base as plugin_transport
 from core.plugin.impl.trigger import PluginTriggerClient
+from extensions.ext_redis import redis_client
 from models.account import TenantAccountRole
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _PROVIDER, _Harness
@@ -41,12 +42,15 @@ class _DaemonRequest:
     headers: dict[str, str]
     payload: dict[str, object]
     open_transactions: bool
+    lock_held: bool | None
 
 
 @dataclass
 class _Daemon:
     provider: dict[str, object] = field(default_factory=_provider)
     response_data: dict[str, object] | None = field(default_factory=lambda: {"result": True})
+    responses_by_path: dict[str, dict[str, object] | None] = field(default_factory=dict)
+    observed_lock_key: str | None = None
     response_code: int = 0
     response_message: str = ""
     status: HTTPStatus = HTTPStatus.OK
@@ -64,7 +68,8 @@ def daemon(harness: _Harness) -> Iterator[_Daemon]:
 
         def do_POST(self) -> None:
             payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-            self.respond(payload, daemon.response_data, daemon.post_status, streamed=True)
+            data = daemon.responses_by_path.get(self.path, daemon.response_data)
+            self.respond(payload, data, daemon.post_status, streamed=True)
 
         def respond(
             self, payload: dict[str, object], data: dict[str, object] | None, status: HTTPStatus, *, streamed: bool
@@ -76,6 +81,9 @@ def daemon(harness: _Harness) -> Iterator[_Daemon]:
                     dict(self.headers.items()),
                     payload,
                     any(session.in_transaction() for session in harness.metadata.sessions),
+                    bool(redis_client.exists(daemon.observed_lock_key))
+                    if daemon.observed_lock_key is not None
+                    else None,
                 )
             )
             body = json.dumps(

@@ -1,13 +1,11 @@
 import logging
 from http import HTTPStatus
-from typing import Any
+from typing import Any, NoReturn, Self
 
 from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, RootModel, model_validator
-from sqlalchemy.orm import sessionmaker
 from werkzeug import Response
-from werkzeug.exceptions import BadRequest
 
 from configs import dify_config
 from controllers.common.errors import ForbiddenError, NotFoundError
@@ -21,17 +19,17 @@ from controllers.console.workspace.error import (
     TriggerOAuthClientConfigInvalidError,
     TriggerOAuthContextInvalidError,
     TriggerOAuthProviderRequestError,
+    TriggerSubscriptionChangedError,
+    TriggerSubscriptionInvalidError,
+    TriggerSubscriptionLimitError,
+    TriggerSubscriptionNameConflictError,
+    TriggerSubscriptionNotFoundError,
+    TriggerSubscriptionProviderError,
 )
 from controllers.console.wraps import (
     RBACPermission,
-    account_initialization_required,
-    edit_permission_required,
-    is_admin_or_owner_required,
     model_validate,
-    rbac_permission_required,
     setup_required,
-    with_current_tenant_id,
-    with_current_user,
 )
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -43,13 +41,10 @@ from core.trigger.entities.api_entities import (
 from core.trigger.entities.entities import RequestLog, SubscriptionBuilderUpdater
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import dump_response
-from libs.login import login_required
 from machinery.context import RequestContext
-from models.account import Account
 from models.provider_ids import TriggerProviderID
 from services.trigger.oauth_client_service import TriggerOAuthClientChangedError as TriggerOAuthClientChanged
 from services.trigger.oauth_client_service import TriggerOAuthClientConfigError
@@ -59,10 +54,31 @@ from services.trigger.oauth_service import (
     TriggerOAuthContextError,
     TriggerOAuthProviderError,
 )
-from services.trigger.trigger_provider_service import TriggerProviderService
-from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
+from services.trigger.subscription_service import TriggerSubscriptionChangedError as SubscriptionChanged
+from services.trigger.subscription_service import TriggerSubscriptionError
+from services.trigger.subscription_service import TriggerSubscriptionInvalidError as SubscriptionInvalid
+from services.trigger.subscription_service import TriggerSubscriptionLimitError as SubscriptionLimit
+from services.trigger.subscription_service import TriggerSubscriptionNameConflictError as SubscriptionNameConflict
+from services.trigger.subscription_service import TriggerSubscriptionNotFoundError as SubscriptionNotFound
+from services.trigger.subscription_service import TriggerSubscriptionProviderError as SubscriptionProviderError
 
 logger = logging.getLogger(__name__)
+
+
+def _raise_subscription_error(error: TriggerSubscriptionError) -> NoReturn:
+    if isinstance(error, SubscriptionNotFound):
+        raise TriggerSubscriptionNotFoundError(str(error)) from error
+    if isinstance(error, SubscriptionNameConflict):
+        raise TriggerSubscriptionNameConflictError(str(error)) from error
+    if isinstance(error, SubscriptionChanged):
+        raise TriggerSubscriptionChangedError(str(error)) from error
+    if isinstance(error, SubscriptionLimit):
+        raise TriggerSubscriptionLimitError(str(error)) from error
+    if isinstance(error, SubscriptionInvalid):
+        raise TriggerSubscriptionInvalidError(str(error)) from error
+    if isinstance(error, SubscriptionProviderError):
+        raise TriggerSubscriptionProviderError(str(error)) from error
+    raise error
 
 
 class TriggerSubscriptionBuilderCreatePayload(BaseModel):
@@ -84,7 +100,7 @@ class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
     credentials: dict[str, Any] | None = None
 
     @model_validator(mode="after")
-    def check_at_least_one_field(self):
+    def check_at_least_one_field(self) -> Self:
         if all(v is None for v in self.model_dump().values()):
             raise ValueError("At least one of name, credentials, parameters, or properties must be provided")
         return self
@@ -417,6 +433,9 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/build/<path:subscription_builder_id>",
 )
 class TriggerSubscriptionBuilderBuildApi(Resource):
+    @error_responses(
+        TriggerSubscriptionNameConflictError, TriggerSubscriptionLimitError, TriggerSubscriptionProviderError
+    )
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -450,6 +469,8 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
                 ),
             )
             return SimpleResultResponse(result="success").model_dump(mode="json")
+        except TriggerSubscriptionError as error:
+            _raise_subscription_error(error)
         except Exception as e:
             logger.exception("Error building provider credential", exc_info=e)
             raise ValueError(str(e)) from e
@@ -459,99 +480,61 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
     "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/update",
 )
 class TriggerSubscriptionUpdateApi(Resource):
+    @error_responses(
+        TriggerSubscriptionNotFoundError,
+        TriggerSubscriptionNameConflictError,
+        TriggerSubscriptionChangedError,
+        TriggerSubscriptionProviderError,
+    )
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
     @console_ns.response(
-        200, "Trigger subscription updated successfully", console_ns.models[SimpleResultResponse.__name__]
+        HTTPStatus.OK, "Trigger subscription updated successfully", console_ns.models[SimpleResultResponse.__name__]
     )
-    @setup_required
-    @login_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
-    @account_initialization_required
-    @with_current_tenant_id
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
+    )
     @model_validate(TriggerSubscriptionBuilderUpdatePayload)
-    def post(self, req_data: TriggerSubscriptionBuilderUpdatePayload, tenant_id: str, subscription_id: str):
-        """Update a subscription instance"""
-
-        subscription = TriggerProviderService.get_subscription_by_id(
-            tenant_id=tenant_id,
-            subscription_id=subscription_id,
-        )
-        if not subscription:
-            raise NotFoundError(f"Subscription {subscription_id} not found")
-
-        provider_id = TriggerProviderID(subscription.provider_id)
-
+    def post(
+        self, req_data: TriggerSubscriptionBuilderUpdatePayload, context: RequestContext, subscription_id: str
+    ) -> dict[str, Any]:
+        """Rename a subscription or rebuild its provider configuration."""
         try:
-            # For rename only, just update the name
-            rename = req_data.name is not None and not any(
-                (req_data.credentials, req_data.parameters, req_data.properties)
-            )
-            # When credential type is UNAUTHORIZED, it indicates the subscription was manually created
-            # For Manually created subscription, they dont have credentials, parameters
-            # They only have name and properties(which is input by user)
-            manually_created = subscription.credential_type == CredentialType.UNAUTHORIZED
-            if rename or manually_created:
-                TriggerProviderService.update_trigger_subscription(
-                    tenant_id=tenant_id,
-                    subscription_id=subscription_id,
-                    name=req_data.name,
-                    properties=req_data.properties,
-                )
-                return SimpleResultResponse(result="success").model_dump(mode="json")
-
-            # For the rest cases(API_KEY, OAUTH2)
-            # we need to call third party provider(e.g. GitHub) to rebuild the subscription
-            TriggerProviderService.rebuild_trigger_subscription(
-                tenant_id=tenant_id,
-                name=req_data.name,
-                provider_id=provider_id,
+            application_services().workspaces.trigger_subscription_management.update(
+                tenant_id=context.active_workspace_id,
                 subscription_id=subscription_id,
-                credentials=req_data.credentials or subscription.credentials,
-                parameters=req_data.parameters or subscription.parameters,
+                name=req_data.name,
+                properties=req_data.properties,
+                parameters=req_data.parameters,
+                credentials=req_data.credentials,
             )
-            return SimpleResultResponse(result="success").model_dump(mode="json")
-        except ValueError as e:
-            raise BadRequest(str(e)) from e
-        except Exception as e:
-            logger.exception("Error updating subscription", exc_info=e)
-            raise
+        except TriggerSubscriptionError as error:
+            _raise_subscription_error(error)
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route(
     "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/delete",
 )
 class TriggerSubscriptionDeleteApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
-    @account_initialization_required
-    @with_current_tenant_id
-    def post(self, tenant_id: str, subscription_id: str):
-        """Delete a subscription instance"""
-
+    @error_responses(
+        TriggerSubscriptionNotFoundError, TriggerSubscriptionChangedError, TriggerSubscriptionProviderError
+    )
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
+    )
+    def post(self, context: RequestContext, subscription_id: str) -> dict[str, Any]:
+        """Delete the subscription and its workflow trigger bindings."""
         try:
-            with sessionmaker(db.engine).begin() as session:
-                # Delete trigger provider subscription
-                TriggerProviderService.delete_trigger_provider(
-                    session=session,
-                    tenant_id=tenant_id,
-                    subscription_id=subscription_id,
-                )
-                # Delete plugin triggers
-                TriggerSubscriptionOperatorService.delete_plugin_trigger_by_subscription(
-                    session=session,
-                    tenant_id=tenant_id,
-                    subscription_id=subscription_id,
-                )
-            return SimpleResultResponse(result="success").model_dump(mode="json")
-        except ValueError as e:
-            raise BadRequest(str(e)) from e
-        except Exception as e:
-            logger.exception("Error deleting provider credential", exc_info=e)
-            raise
+            application_services().workspaces.trigger_subscription_management.delete(
+                tenant_id=context.active_workspace_id,
+                subscription_id=subscription_id,
+            )
+        except TriggerSubscriptionError as error:
+            _raise_subscription_error(error)
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/subscriptions/oauth/authorize")
@@ -715,42 +698,36 @@ class TriggerOAuthClientManageApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/verify/<path:subscription_id>",
 )
 class TriggerSubscriptionVerifyApi(Resource):
+    @error_responses(
+        TriggerSubscriptionNotFoundError, TriggerSubscriptionInvalidError, TriggerSubscriptionProviderError
+    )
     @console_ns.expect(console_ns.models[TriggerSubscriptionVerifyPayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Trigger subscription verified successfully",
         console_ns.models[TriggerVerificationResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
+    )
     @model_validate(TriggerSubscriptionVerifyPayload)
     def post(
         self,
         req_data: TriggerSubscriptionVerifyPayload,
-        tenant_id: str,
-        user: Account,
+        context: RequestContext,
         provider: str,
         subscription_id: str,
-    ):
-        """Verify credentials for an existing subscription (edit mode only)"""
-
+    ) -> dict[str, Any]:
+        """Verify credentials against the subscription's own provider without updating it."""
         try:
-            result = TriggerProviderService.verify_subscription_credentials(
-                tenant_id=tenant_id,
-                user_id=user.id,
+            result = application_services().workspaces.trigger_subscription_management.verify(
+                tenant_id=context.active_workspace_id,
+                user_id=context.account_id,
                 provider_id=TriggerProviderID(provider),
                 subscription_id=subscription_id,
                 credentials=req_data.credentials,
             )
-            return dump_response(TriggerVerificationResponse, result)
-        except ValueError as e:
-            logger.warning("Credential verification failed", exc_info=e)
-            raise BadRequest(str(e)) from e
-        except Exception as e:
-            logger.exception("Error verifying subscription credentials", exc_info=e)
-            raise BadRequest(str(e)) from e
+        except TriggerSubscriptionError as error:
+            _raise_subscription_error(error)
+        return dump_response(TriggerVerificationResponse, result)

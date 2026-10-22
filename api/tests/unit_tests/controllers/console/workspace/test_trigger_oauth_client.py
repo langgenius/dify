@@ -29,7 +29,10 @@ from controllers.console.workspace.trigger_providers import (
     TriggerSubscriptionBuilderLogsApi,
     TriggerSubscriptionBuilderUpdateApi,
     TriggerSubscriptionBuilderVerifyApi,
+    TriggerSubscriptionDeleteApi,
     TriggerSubscriptionListApi,
+    TriggerSubscriptionUpdateApi,
+    TriggerSubscriptionVerifyApi,
 )
 from controllers.console.wraps import _is_setup_completed
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
@@ -257,6 +260,18 @@ def harness(
         )
         api.add_resource(TriggerSubscriptionBuilderLogsApi, f"{builder_path}/logs/<path:subscription_builder_id>")
         api.add_resource(TriggerSubscriptionBuilderBuildApi, f"{builder_path}/build/<path:subscription_builder_id>")
+        api.add_resource(
+            TriggerSubscriptionUpdateApi,
+            "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/update",
+        )
+        api.add_resource(
+            TriggerSubscriptionDeleteApi,
+            "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/delete",
+        )
+        api.add_resource(
+            TriggerSubscriptionVerifyApi,
+            "/workspaces/current/trigger-provider/<path:provider>/subscriptions/verify/<path:subscription_id>",
+        )
         app.register_blueprint(blueprint)
 
         with app.app_context():
