@@ -490,6 +490,81 @@ describe('WorkflowLogArchivesPage', () => {
   })
 
   describe('Download status announcements', () => {
+    it('resumes polling when another page retries a failed task with the same ID', async () => {
+      vi.useFakeTimers()
+      try {
+        archiveRequests.download.mockResolvedValue({ ...downloadTask, status: 'failed' })
+        const { queryClient } = renderPage({
+          ...archiveData,
+          months: [{ ...archiveMonth, download_task: downloadTask }],
+        })
+        await act(async () => vi.advanceTimersByTimeAsync(3001))
+        expect(screen.getByRole('button', { name: 'common.operation.retry 2025-03' })).toBeEnabled()
+
+        const retriedTask = { ...downloadTask, updated_at: '2025-03-03T00:00:01Z' }
+        archiveRequests.download
+          .mockResolvedValueOnce({ ...downloadTask, status: 'failed' })
+          .mockResolvedValue({
+            ...retriedTask,
+            status: 'ready',
+            updated_at: '2025-03-03T00:00:02Z',
+          })
+        archiveRequests.list.mockResolvedValue({
+          ...archiveData,
+          months: [{ ...archiveMonth, download_task: retriedTask }],
+        })
+        await act(async () =>
+          queryClient.refetchQueries({ queryKey: consoleQuery.workflowRunArchives.get.queryKey() }),
+        )
+        await act(async () => vi.advanceTimersByTimeAsync(10000))
+
+        expect(
+          screen.getByRole('button', { name: 'common.operation.download 2025-03' }),
+        ).toBeEnabled()
+        const row = screen.getByRole('row', { name: /2025-03/ })
+        expect(within(row).getByRole('status')).toHaveTextContent(
+          '2025-03: appLog.archives.downloadHint.ready',
+        )
+        const pollCount = archiveRequests.download.mock.calls.length
+        await act(async () => vi.advanceTimersByTimeAsync(6000))
+        expect(archiveRequests.download).toHaveBeenCalledTimes(pollCount)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('uses a newer list result after preparing a download in this page', async () => {
+      const user = userEvent.setup()
+      archiveRequests.prepareDownload.mockResolvedValue(downloadTask)
+      const { queryClient } = renderPage()
+      await user.click(
+        screen.getByRole('button', { name: 'appLog.archives.action.prepareDownload 2025-03' }),
+      )
+      expect(
+        screen.getByRole('button', { name: 'appLog.archives.action.preparing 2025-03' }),
+      ).toHaveAttribute('aria-disabled', 'true')
+      archiveRequests.list.mockResolvedValue({
+        ...archiveData,
+        months: [
+          {
+            ...archiveMonth,
+            download_task: { ...downloadTask, status: 'ready', updated_at: '2025-03-03T00:00:01Z' },
+          },
+        ],
+      })
+      await act(async () =>
+        queryClient.refetchQueries({ queryKey: consoleQuery.workflowRunArchives.get.queryKey() }),
+      )
+
+      expect(
+        await screen.findByRole('button', { name: 'common.operation.download 2025-03' }),
+      ).toBeEnabled()
+      const row = screen.getByRole('row', { name: /2025-03/ })
+      expect(within(row).getByRole('status')).toHaveTextContent(
+        '2025-03: appLog.archives.downloadHint.ready',
+      )
+    })
+
     it.each(['ready', 'failed'] as const)(
       'reports a newer %s result from the archive list instead of stale polling data',
       async (status) => {

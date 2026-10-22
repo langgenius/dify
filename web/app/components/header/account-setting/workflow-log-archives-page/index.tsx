@@ -73,6 +73,17 @@ function isPreparingStatus(status: WorkflowRunArchiveDownloadStatus | undefined)
   return status === 'pending' || status === 'processing'
 }
 
+function latestDownloadTask(
+  snapshot: WorkflowRunArchiveDownloadTaskResponse | null | undefined,
+  candidate: WorkflowRunArchiveDownloadTaskResponse | null | undefined,
+) {
+  if (!candidate) return snapshot
+  if (!snapshot || Date.parse(candidate.updated_at) >= Date.parse(snapshot.updated_at)) {
+    return candidate
+  }
+  return snapshot
+}
+
 function isDeletingStatus(status: WorkflowRunArchiveMonthResponse['deletion_status']) {
   return status === 'pending' || status === 'processing'
 }
@@ -344,7 +355,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const isDeleting = deleteArchiveMutation.isPending || isDeletionActive
   const isDownloadUnavailable = deleteArchiveMutation.isPending || archive.deletion_status != null
 
-  const cachedTask = downloadTask ?? archive.download_task ?? null
+  const cachedTask = latestDownloadTask(archive.download_task, downloadTask)
   const downloadTaskId = cachedTask?.download_id
   const taskQuery = useQuery(
     consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryOptions({
@@ -355,9 +366,13 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
             },
           }
         : skipToken,
-      enabled: !!downloadTaskId && !isDownloadUnavailable && isPreparingStatus(cachedTask?.status),
+      enabled: (query) =>
+        !!downloadTaskId &&
+        !isDownloadUnavailable &&
+        isPreparingStatus(latestDownloadTask(cachedTask, query.state.data)?.status),
       refetchInterval: (query) =>
-        !isDownloadUnavailable && isPreparingStatus(query.state.data?.status ?? cachedTask?.status)
+        !isDownloadUnavailable &&
+        isPreparingStatus(latestDownloadTask(cachedTask, query.state.data)?.status)
           ? DOWNLOAD_TASK_POLLING_INTERVAL
           : false,
     }),
@@ -365,12 +380,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const createDownloadMutation = useMutation(
     consoleQuery.workflowRunArchives.downloads.post.mutationOptions(),
   )
-  const polledTask = taskQuery.data
-  const currentTask =
-    polledTask &&
-    (!cachedTask || Date.parse(polledTask.updated_at) >= Date.parse(cachedTask.updated_at))
-      ? polledTask
-      : cachedTask
+  const currentTask = latestDownloadTask(cachedTask, taskQuery.data)
   const isTaskPreparing = isPreparingStatus(currentTask?.status)
   const isPreparing = createDownloadMutation.isPending || isTaskPreparing
   const [observedPreparingTaskId, setObservedPreparingTaskId] = useState(
