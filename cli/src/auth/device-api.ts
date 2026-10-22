@@ -1,6 +1,7 @@
 import type { Dispatcher } from 'undici'
 import { BaseError, HttpClientError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
+import { parseServerErrorBody } from '@/errors/server-body'
 import { buildFetchInit } from '@/net/fetch-init'
 import { proxyDispatcher } from '@/net/proxy'
 
@@ -116,13 +117,16 @@ function unsupportedDeviceFlow(method: string, url: URL): HttpClientError {
 
 async function nonOkError(method: string, url: URL, res: Response): Promise<HttpClientError> {
   const rawResponse = await res.text()
+  const serverError = parseServerErrorBody(rawResponse)
   return new HttpClientError({
     code: ErrorCode.ServerError,
-    message: `${method} ${url.pathname} failed: HTTP ${res.status}`,
+    message: serverError?.message ?? `${method} ${url.pathname} failed: HTTP ${res.status}`,
+    hint: serverError?.hint,
     httpStatus: res.status,
     method,
     url: url.toString(),
     rawResponse,
+    serverError,
   })
 }
 

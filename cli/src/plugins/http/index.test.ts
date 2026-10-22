@@ -2,7 +2,7 @@ import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { FORBIDDEN_HINT, startMock } from '@test/fixtures/dify-mock/server'
+import { FORBIDDEN_HINT, LICENSE_INVALID_HINT, startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { Context } from '@/kernel/context'
 import { catalog, CATALOG_PATH } from '@/plugins/catalog'
@@ -114,6 +114,18 @@ describe('http plugin', () => {
       code: 'access_denied',
       message: 'you may not do this',
       hint: FORBIDDEN_HINT,
+    })
+  })
+
+  it('a 403 license_invalid keeps its server code, message and hint', async () => {
+    const h = await new Context().get(http)
+    mock.setScenario('license-invalid')
+    await expect(h.request(account)).rejects.toMatchObject({
+      code: 'access_denied',
+      httpStatus: 403,
+      message: "This Dify server's license is not active.",
+      hint: LICENSE_INVALID_HINT,
+      serverError: expect.objectContaining({ code: 'license_invalid' }),
     })
   })
 

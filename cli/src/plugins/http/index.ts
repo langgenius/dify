@@ -1,9 +1,9 @@
-import type { ServerErrorBody } from '@/errors/base'
 import type { ErrorCodeValue } from '@/errors/codes'
 import type { CatalogService } from '@/plugins/catalog'
 import { BaseError, HttpClientError, LOGIN_HINT, unknownError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { errorMessage } from '@/errors/message'
+import { parseServerErrorBody } from '@/errors/server-body'
 import { definePlugin } from '@/kernel/plugin'
 import { buildFetchInit } from '@/net/fetch-init'
 import { proxyDispatcher } from '@/net/proxy'
@@ -12,7 +12,6 @@ import { config } from '@/plugins/config'
 import { env } from '@/plugins/env'
 import { session } from '@/plugins/session'
 import { token } from '@/plugins/token'
-import { parseHints } from '@/protocol/hint'
 import { userAgent } from '@/version/info'
 
 export type HttpRequest = Readonly<{
@@ -67,23 +66,6 @@ const STATUS_MAPPINGS: Readonly<Record<number, StatusMapping>> = {
 
 function classifyStatus(res: Response): StatusMapping {
   return STATUS_MAPPINGS[res.status] ?? { code: ErrorCode.ServerError }
-}
-
-function parseServerErrorBody(raw: string): ServerErrorBody | undefined {
-  if (raw === '') return undefined
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return undefined
-  }
-  if (parsed === null || typeof parsed !== 'object') return undefined
-  const record = parsed as Record<string, unknown>
-  if (record.code !== undefined && typeof record.code !== 'string') return undefined
-  const message = typeof record.message === 'string' ? record.message : record.error
-  if (typeof message !== 'string') return undefined
-  const body = { ...record, message } as ServerErrorBody
-  return record.hints === undefined ? body : { ...body, hints: parseHints(record.hints) }
 }
 
 function appendQuery(url: URL, query: HttpRequest['query']): void {
