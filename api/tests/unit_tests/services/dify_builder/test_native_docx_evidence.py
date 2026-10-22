@@ -174,6 +174,28 @@ def test_stream_is_bounded_and_closed_when_actual_bytes_exceed_limit():
     assert events == ["first", "closed"]
 
 
+def test_plain_iterable_stream_needs_no_close_method():
+    blob = docx()
+    result, _ = assess(blob=blob, load_stream=lambda _key: [blob])
+    assert result.state == "passed"
+
+
+def test_non_generator_closeable_stream_releases_owner_on_completion():
+    events = []
+    blob = docx()
+
+    class OwnedByteStream:
+        def __iter__(self):
+            yield blob
+
+        def close(self):
+            events.append("closed")
+
+    result, _ = assess(blob=blob, load_stream=lambda _key: OwnedByteStream())
+    assert result.state == "passed"
+    assert events == ["closed"]
+
+
 def test_zip_uncompressed_size_bound_is_checked_before_expansion():
     result, _ = assess(
         blob=docx({"[Content_Types].xml": CONTENT_TYPES, "word/document.xml": DOCUMENT, "large": b"x" * 20000}),
