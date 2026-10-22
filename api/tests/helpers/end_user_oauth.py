@@ -149,7 +149,7 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
 
     monkeypatch.setattr(redis_client, "setex", setex)
     monkeypatch.setattr(redis_client, "get", lambda key: values.get(key))
-    monkeypatch.setattr(redis_client, "getdel", lambda key: values.pop(key, None))
+    monkeypatch.setattr(redis_client, "delete", lambda key: int(values.pop(key, None) is not None))
     providers = TestProviders(base.auth, controller)
     handler = ScriptedOAuthHandler()
     gateway = PluginConnectionOAuthGateway(clients=base.repository, providers=providers, handler=handler)
