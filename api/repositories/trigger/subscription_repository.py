@@ -1,4 +1,4 @@
-"""Short SQL transactions and Redis serialization for trigger subscription commands."""
+"""Short SQL transactions and Redis serialization for trigger subscriptions."""
 
 import logging
 import sqlite3
@@ -64,6 +64,12 @@ class TriggerSubscriptionRepository(TriggerSubscriptionStore):
                     TriggerSubscription.tenant_id == tenant_id, TriggerSubscription.id == subscription_id
                 )
             )
+            return self._snapshot(row) if row is not None else None
+
+    def get_by_endpoint(self, *, endpoint_id: str) -> TriggerSubscriptionSnapshot | None:
+        """Resolve a public endpoint capability, deriving its owner from the stored row."""
+        with self._session_factory() as session:
+            row = session.scalar(select(TriggerSubscription).where(TriggerSubscription.endpoint_id == endpoint_id))
             return self._snapshot(row) if row is not None else None
 
     @override

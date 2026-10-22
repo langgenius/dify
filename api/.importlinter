@@ -1201,10 +1201,11 @@ forbidden_modules =
 allow_indirect_imports = True
 
 [importlinter:contract:trigger-subscription-builder-persistence-boundary]
-name = Trigger subscription builder orchestration uses injected persistence
+name = Trigger builder and endpoint orchestration use injected persistence
 type = forbidden
 source_modules =
     services.trigger.trigger_subscription_builder_service
+    services.trigger.endpoint_service
 forbidden_modules =
     controllers
     extensions

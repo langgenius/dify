@@ -33,6 +33,8 @@ from services.errors.workspace import (
     WorkspaceOwnerNotFoundError,
     WorkspacesLimitExceededError,
 )
+from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
+from services.trigger.endpoint_service import TriggerEndpointService
 from services.trigger.oauth_client_service import TriggerOAuthClientService
 from services.trigger.oauth_gateway import (
     OAuthProxyContextGateway,
@@ -44,6 +46,7 @@ from services.trigger.provider_gateway import PluginTriggerProviderQuery
 from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
 from services.trigger.subscription_service import TriggerSubscriptionService
+from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.workspace.contracts import CreatedWorkspace, WorkspaceMembership
 from services.workspace.provisioning_service import WorkspaceProvisioningService
@@ -93,6 +96,12 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
             schemas=PluginTriggerProviderQuery(),
         ),
         trigger_builders=builders,
+        trigger_endpoints=TriggerEndpointService(
+            subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+            provider=PluginTriggerEndpointGateway(),
+            requests=TriggerHttpRequestCachingService,
+            publish=enqueue_triggered_workflows,
+        ),
         trigger_subscription_management=subscription_management,
         trigger_oauth_clients=oauth_clients,
         trigger_oauth=TriggerOAuthService(

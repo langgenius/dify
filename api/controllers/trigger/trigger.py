@@ -1,12 +1,17 @@
 import logging
 import re
+from http import HTTPStatus
 
 from flask import Response, jsonify, request
 
 from controllers.common.access_response import plugin_endpoint_not_found_response
 from controllers.trigger import bp
 from extensions.ext_application_services import application_services
-from services.trigger.trigger_service import TriggerService
+from services.trigger.endpoint_service import (
+    TriggerEndpointEventNotFoundError,
+    TriggerEndpointLoadError,
+    TriggerEndpointProviderNotFoundError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -23,17 +28,22 @@ def trigger_endpoint(endpoint_id: str) -> Response | tuple[Response, int]:
     if not UUID_MATCHER.match(endpoint_id):
         return plugin_endpoint_not_found_response()
     try:
-        response = TriggerService.process_endpoint(endpoint_id, request)
-        if not response:
+        response = application_services().workspaces.trigger_endpoints.process(endpoint_id, request)
+        if response is None:
             response = application_services().workspaces.trigger_builders.process_builder_validation_endpoint(
                 endpoint_id, request
             )
-        if not response:
+        if response is None:
             logger.info("Endpoint not found for %s", endpoint_id)
             return plugin_endpoint_not_found_response()
         return response
-    except ValueError as e:
-        return jsonify({"error": "Endpoint processing failed", "message": str(e)}), 400
+    except TriggerEndpointProviderNotFoundError:
+        return Response(status=HTTPStatus.NOT_FOUND, response="Trigger provider not found")
+    except TriggerEndpointLoadError:
+        logger.exception("Failed to load trigger subscription for endpoint %s", endpoint_id)
+        return Response(status=HTTPStatus.INTERNAL_SERVER_ERROR, response="Failed to get subscription by endpoint")
+    except (TriggerEndpointEventNotFoundError, ValueError) as e:
+        return jsonify({"error": "Endpoint processing failed", "message": str(e)}), HTTPStatus.BAD_REQUEST
     except Exception:
         logger.exception("Webhook processing failed for %s", endpoint_id)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Internal server error"}), HTTPStatus.INTERNAL_SERVER_ERROR
