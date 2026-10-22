@@ -12,13 +12,15 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Setup pnpm and Node.js
-      uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
-      env:
-        # pnpm/setup downloads its executable with Node fetch, which must honor runner proxies.
-        NODE_USE_ENV_PROXY: '1'
+    - name: Setup Node.js
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
-        install: false
+        node-version-file: package.json
+        package-manager-cache: false
+    - name: Setup pnpm
+      uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      with:
+        run_install: false
     - name: Setup Vite+
       uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
       with:
