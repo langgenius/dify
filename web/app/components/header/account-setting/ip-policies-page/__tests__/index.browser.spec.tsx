@@ -170,3 +170,44 @@ it('keeps policy data readable and keyboard scrollable inside Settings at 320 px
     queryClient.clear()
   }
 })
+
+it('keeps Add clear of Settings Close at 320 px and preserves the desktop action order', async () => {
+  // Real hit testing catches the global Close overlay; the desktop order must survive reflow.
+  const { screen, queryClient } = await renderPoliciesSettings()
+  try {
+    const settings = screen.getByRole('dialog', { name: 'Settings', exact: true })
+    const add = settings.getByRole('button', { name: 'Add', exact: true })
+    const close = settings.getByRole('button', { name: 'Close', exact: true })
+    const bounds = add.element().getBoundingClientRect()
+    const other = close.element().getBoundingClientRect()
+    const overlap =
+      Math.max(0, Math.min(bounds.right, other.right) - Math.max(bounds.left, other.left)) *
+      Math.max(0, Math.min(bounds.bottom, other.bottom) - Math.max(bounds.top, other.top))
+    expect(overlap, 'Add must not sit beneath the global Close button').toBe(0)
+    await add.click()
+    const editor = screen.getByRole('dialog', { name: 'New IP Policy', exact: true })
+    await expect.element(editor).toBeVisible()
+    await editor.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect.element(editor).not.toBeInTheDocument()
+    await expect.element(add).toHaveFocus()
+
+    await page.viewport(1280, 800)
+    await expect
+      .element(settings.getByRole('region', { name: 'IP Policies', exact: true }))
+      .toHaveAttribute('tabindex', '-1')
+    const order = [
+      settings.getByRole('button', { name: 'Internal Network', exact: true }),
+      settings.getByRole('button', { name: 'More actions for Internal Network', exact: true }),
+      settings.getByRole('button', { name: 'Engineering Office', exact: true }),
+      settings.getByRole('button', { name: 'More actions for Engineering Office', exact: true }),
+      close,
+    ]
+    for (const target of order) {
+      await userEvent.tab()
+      await expect.element(target).toHaveFocus()
+    }
+  } finally {
+    await screen.unmount()
+    queryClient.clear()
+  }
+})

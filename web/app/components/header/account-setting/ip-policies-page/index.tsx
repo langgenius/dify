@@ -168,8 +168,8 @@ export default function IpPoliciesPage() {
   if (!canReadPolicies) return null
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex min-h-15 items-start justify-between gap-4 py-2">
+    <div className="@container flex flex-col gap-4">
+      <div className="flex min-h-15 items-start justify-between gap-4 py-2 @max-[480px]:flex-col">
         <div className="flex min-w-0 flex-col gap-1">
           <h2 id={titleId} className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['settings.ipPolicies'], { ns: 'common' })}
