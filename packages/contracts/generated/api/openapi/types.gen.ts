@@ -398,6 +398,7 @@ export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
 export type DeviceCodeRequest = {
   client_id: string
   device_label: string
+  installation_id?: string | null
 }
 
 export type DeviceCodeResponse = {

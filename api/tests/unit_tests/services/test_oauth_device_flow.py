@@ -2,7 +2,14 @@ import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
-from services.oauth_device_contracts import ApprovalTransitionConfirmation, DeviceFlowStatus, PollPayload
+import pytest
+
+from services.oauth_device_contracts import (
+    ApprovalTransitionConfirmation,
+    DeviceFlowStatus,
+    PollPayload,
+    device_key_for,
+)
 from services.oauth_device_flow import DeviceFlowRedis, DeviceFlowState
 
 
@@ -13,6 +20,11 @@ class _Redis:
     deleted: list[str] = field(default_factory=list)
     script_sources: list[str] = field(default_factory=list)
     script_calls: list[tuple[str, tuple[str, ...], tuple[object, ...]]] = field(default_factory=list)
+    written: dict[str, str] = field(default_factory=dict)
+
+    def setex(self, name: str, time: int, value: str) -> None:
+        _ = time
+        self.written[name] = value
 
     def set(self, name: str, value: str, *, nx: bool, ex: int) -> bool:
         _ = (name, value, nx, ex)
@@ -170,6 +182,7 @@ def test_transition_marker_does_not_add_a_top_level_state_field() -> None:
         "created_ip",
         "last_poll_at",
         "poll_payload",
+        "installation_id",
     }
 
     assert set(json.loads(serialized)) <= old_schema_fields
@@ -190,3 +203,38 @@ def test_state_reader_tolerates_legacy_approval_fields() -> None:
     state = DeviceFlowState.from_json(json.dumps(legacy))
 
     assert state.status is DeviceFlowStatus.PENDING
+
+
+def test_device_key_prefers_installation_id() -> None:
+    assert device_key_for(installation_id="abcd1234", device_label="host") == "install:abcd1234"
+    assert device_key_for(installation_id="", device_label="host") == "host"
+
+
+@pytest.mark.parametrize("installation_id", ["abcd1234", ""], ids=["install", "legacy"])
+def test_start_stores_the_installation_id_in_pending_state(installation_id: str) -> None:
+    redis = _Redis(response="")
+
+    device_code, _user_code, _ttl = DeviceFlowRedis(redis).start(
+        client_id="difyctl",
+        device_label="CLI",
+        installation_id=installation_id,
+        created_ip="127.0.0.1",
+    )
+
+    state = DeviceFlowState.from_json(redis.written[f"device_code:{device_code}"])
+    assert state.installation_id == installation_id
+    assert state.device_label == "CLI"
+
+
+def test_state_round_trips_installation_id_and_reads_old_states() -> None:
+    state = DeviceFlowState(
+        user_code="ABCD-EFGH",
+        client_id="difyctl",
+        device_label="CLI",
+        status=DeviceFlowStatus.PENDING,
+        installation_id="abcd1234",
+    )
+    assert DeviceFlowState.from_json(state.to_json()).installation_id == "abcd1234"
+
+    old = DeviceFlowState.from_json('{"user_code":"A","client_id":"difyctl","device_label":"h","status":"pending"}')
+    assert old.installation_id == ""

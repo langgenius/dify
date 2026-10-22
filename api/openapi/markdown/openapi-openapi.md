@@ -2293,6 +2293,7 @@ Enum representing the deployment edition of the platform.
 | ---- | ---- | ----------- | -------- |
 | client_id | string |  | Yes |
 | device_label | string |  | Yes |
+| installation_id | string | Stable id of the CLI install; logins from the same install replace each other | No |
 
 #### DeviceCodeResponse
 

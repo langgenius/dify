@@ -12,6 +12,15 @@ DEFAULT_POLL_INTERVAL_SECONDS = 5
 # a non-null issuer so the active-token uniqueness key remains stable.
 ACCOUNT_ISSUER_SENTINEL = "dify:account"
 
+INSTALL_KEY_PREFIX = "install:"
+
+
+def device_key_for(*, installation_id: str, device_label: str) -> str:
+    """Rotation key for a device; CLIs that send no installation id rotate on their label."""
+    if not installation_id:
+        return device_label
+    return INSTALL_KEY_PREFIX + installation_id
+
 
 class DeviceFlowStatus(StrEnum):
     PENDING = "pending"
@@ -171,6 +180,7 @@ class DeviceApprovalContext:
 class DeviceFlowStateView(Protocol):
     client_id: str
     device_label: str
+    installation_id: str
     status: DeviceFlowStatus
     token_id: str | None
     created_ip: str

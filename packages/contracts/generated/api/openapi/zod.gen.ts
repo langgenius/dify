@@ -461,6 +461,10 @@ export const zDeploymentEdition = z.enum(['CLOUD', 'COMMUNITY', 'ENTERPRISE'])
 export const zDeviceCodeRequest = z.object({
   client_id: z.string(),
   device_label: z.string(),
+  installation_id: z
+    .string()
+    .regex(/^[A-Za-z0-9-]{8,64}$/)
+    .nullish(),
 })
 
 /**

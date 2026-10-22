@@ -110,6 +110,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         workspace_id: str,
         client_id: str,
         device_label: str,
+        device_key: str,
     ) -> IssuedOAuthToken:
         return self._issue_token(
             token_type=TokenType.OAUTH_ACCOUNT,
@@ -118,6 +119,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
             account_id=account.id,
             client_id=client_id,
             device_label=device_label,
+            device_key=device_key,
             workspace_id=workspace_id,
         )
 
@@ -129,6 +131,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         subject_issuer: str,
         client_id: str,
         device_label: str,
+        device_key: str,
     ) -> IssuedOAuthToken:
         if not subject_issuer.strip():
             raise ValueError("external-SSO token requires non-empty subject_issuer")
@@ -139,6 +142,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
             account_id=None,
             client_id=client_id,
             device_label=device_label,
+            device_key=device_key,
             workspace_id=None,
         )
 
@@ -151,6 +155,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         account_id: str | None,
         client_id: str,
         device_label: str,
+        device_key: str,
         workspace_id: str | None,
     ) -> IssuedOAuthToken:
         plaintext = token_type.prefix + secrets.token_urlsafe(_OAUTH_TOKEN_BODY_BYTES)
@@ -162,7 +167,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
                 account_id=account_id,
                 client_id=client_id,
                 device_label=device_label,
-                device_key=device_label,
+                device_key=device_key,
                 prefix=token_type.prefix,
                 token_hash=sha256_hex(plaintext),
                 expires_at=expires_at,

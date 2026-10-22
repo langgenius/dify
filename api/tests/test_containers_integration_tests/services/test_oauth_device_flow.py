@@ -19,7 +19,7 @@ def test_approval_preserves_payload_and_is_consumed_once(
     subject_type: str, workspaces: list[dict[str, object]]
 ) -> None:
     store = DeviceFlowRedis(redis_client)
-    device_code, user_code, _ = store.start("difyctl", "CLI", "127.0.0.1")
+    device_code, user_code, _ = store.start("difyctl", "CLI", "", "127.0.0.1")
     payload: PollPayload = {
         "token": "test-device-token",
         "expires_at": "2030-01-01T00:00:00+00:00",
@@ -57,7 +57,7 @@ def test_approval_preserves_payload_and_is_consumed_once(
 
 def test_denied_state_has_no_payload_and_is_consumed_once() -> None:
     store = DeviceFlowRedis(redis_client)
-    device_code, user_code, _ = store.start("difyctl", "CLI", "127.0.0.1")
+    device_code, user_code, _ = store.start("difyctl", "CLI", "", "127.0.0.1")
     try:
         store.deny(device_code, "deny-1")
         store.deny(device_code, "deny-1")

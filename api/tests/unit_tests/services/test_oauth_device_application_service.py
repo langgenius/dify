@@ -53,6 +53,7 @@ from services.oauth_device_contracts import (
 class FakeState:
     client_id: str = "difyctl"
     device_label: str = "CLI"
+    installation_id: str = ""
     status: DeviceFlowStatus = DeviceFlowStatus.PENDING
     token_id: str | None = None
     transition_id: str | None = None
@@ -71,9 +72,10 @@ class FakeStore:
     confirm_error: Exception | None = None
     acquired: list[tuple[str, str, int]] = field(default_factory=list)
     released: list[tuple[str, str]] = field(default_factory=list)
+    started: list[tuple[str, str, str, str]] = field(default_factory=list)
 
-    def start(self, client_id: str, device_label: str, created_ip: str) -> tuple[str, str, int]:
-        _ = (client_id, device_label, created_ip)
+    def start(self, client_id: str, device_label: str, installation_id: str, created_ip: str) -> tuple[str, str, int]:
+        self.started.append((client_id, device_label, installation_id, created_ip))
         return "device-1", "ABCD-EFGH", 900
 
     def load_by_user_code(self, user_code: str) -> tuple[str, FakeState] | None:
@@ -177,6 +179,7 @@ class FakeTokens:
     external_issues: int = 0
     account_issues: int = 0
     rollbacks: list[str] = field(default_factory=list)
+    device_keys: list[str] = field(default_factory=list)
     sessions: tuple[OAuthDeviceSession, ...] = ()
     revoke_allowed: bool = True
 
@@ -187,8 +190,10 @@ class FakeTokens:
         workspace_id: str,
         client_id: str,
         device_label: str,
+        device_key: str,
     ) -> IssuedOAuthToken:
         _ = (account, workspace_id, client_id, device_label)
+        self.device_keys.append(device_key)
         self.account_issues += 1
         return self.account_token
 
@@ -199,8 +204,10 @@ class FakeTokens:
         subject_issuer: str,
         client_id: str,
         device_label: str,
+        device_key: str,
     ) -> IssuedOAuthToken:
         _ = (subject_email, subject_issuer, client_id, device_label)
+        self.device_keys.append(device_key)
         self.external_issues += 1
         return self.external_token
 
@@ -372,6 +379,7 @@ def test_start_rejects_unknown_client_before_writing_state() -> None:
         harness.service.start(
             client_id="unknown",
             device_label="CLI",
+            installation_id="",
             created_ip="127.0.0.1",
             request_origin="https://api.example",
         )
@@ -634,7 +642,11 @@ def test_start_returns_device_codes_with_configured_or_request_origin(base_url: 
     harness = _harness(settings=FakeSettings(verification_base_url=base_url))
 
     result = harness.service.start(
-        client_id="difyctl", device_label="CLI", created_ip="127.0.0.1", request_origin="https://request.example/"
+        client_id="difyctl",
+        device_label="CLI",
+        installation_id="abcd1234",
+        created_ip="127.0.0.1",
+        request_origin="https://request.example/",
     )
 
     assert result.device_code == "device-1"
@@ -642,6 +654,7 @@ def test_start_returns_device_codes_with_configured_or_request_origin(base_url: 
     assert result.verification_uri == (base_url or "https://request.example/") + "device"
     assert result.expires_in == 900
     assert result.interval == 5
+    assert harness.store.started == [("difyctl", "CLI", "abcd1234", "127.0.0.1")]
 
 
 @pytest.mark.parametrize(
@@ -760,6 +773,40 @@ def _approve(harness: Harness, *, external: bool) -> DeviceMutation:
             user_code="ABCD-EFGH",
         )
     return harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
+
+
+@pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
+@pytest.mark.parametrize(
+    ("installation_id", "expected_key"),
+    [("abcd1234", "install:abcd1234"), ("", "CLI")],
+    ids=["install", "legacy"],
+)
+def test_approval_mints_on_the_device_key_from_the_code_request(
+    external: bool, installation_id: str, expected_key: str
+) -> None:
+    harness = _harness()
+    harness.store.states["ABCD-EFGH"] = ("device-1", FakeState(installation_id=installation_id))
+
+    _approve(harness, external=external)
+
+    assert harness.tokens.device_keys == [expected_key]
+
+
+@pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
+def test_rotation_guard_follows_the_device_key_not_the_label(external: bool) -> None:
+    harness = _harness()
+    attempts = [
+        FakeState(device_label="host", installation_id="aaaa1111"),
+        FakeState(device_label="renamed-host", installation_id="aaaa1111"),
+        FakeState(device_label="host", installation_id="bbbb2222"),
+    ]
+    for attempt in attempts:
+        harness.store.states["ABCD-EFGH"] = ("device-1", attempt)
+        _approve(harness, external=external)
+
+    first, renamed, other_install = (guard_id for guard_id, _owner, _ttl in harness.store.acquired)
+    assert first == renamed
+    assert first != other_install
 
 
 @pytest.mark.parametrize("external", [False, True], ids=["account", "external"])

@@ -122,6 +122,7 @@ class DeviceFlowState:
     created_ip: str = ""
     last_poll_at: str = ""
     poll_payload: PollPayload | None = field(default=None)
+    installation_id: str = ""
 
     def to_json(self) -> str:
         return json.dumps(asdict(self))
@@ -161,13 +162,20 @@ class DeviceFlowRedis:
         self._transition_script = redis_client.register_script(_TRANSITION_LUA)
         self._release_guard_script = redis_client.register_script(_RELEASE_GUARD_LUA)
 
-    def start(self, client_id: str, device_label: str, created_ip: str) -> tuple[str, str, int]:
+    def start(
+        self,
+        client_id: str,
+        device_label: str,
+        installation_id: str,
+        created_ip: str,
+    ) -> tuple[str, str, int]:
         device_code = _random_device_code()
         user_code = self._claim_user_code(device_code)
         state = DeviceFlowState(
             user_code=user_code,
             client_id=client_id,
             device_label=device_label,
+            installation_id=installation_id,
             status=DeviceFlowStatus.PENDING,
             created_at=datetime.now(UTC).isoformat(),
             created_ip=created_ip,

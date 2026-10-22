@@ -57,6 +57,7 @@ from services.oauth_device_contracts import (
     SlowDownDecision,
     StateNotFoundError,
     UnsupportedClientError,
+    device_key_for,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,13 @@ _SSO_COMPLETE_PATH = "/openapi/v1/oauth/device/sso-complete"
 
 
 class DeviceFlowStore(Protocol):
-    def start(self, client_id: str, device_label: str, created_ip: str) -> tuple[str, str, int]: ...
+    def start(
+        self,
+        client_id: str,
+        device_label: str,
+        installation_id: str,
+        created_ip: str,
+    ) -> tuple[str, str, int]: ...
 
     def load_by_user_code(self, user_code: str) -> tuple[str, DeviceFlowStateView] | None: ...
 
@@ -116,6 +123,7 @@ class OAuthDeviceTokenIssuer(Protocol):
         workspace_id: str,
         client_id: str,
         device_label: str,
+        device_key: str,
     ) -> IssuedOAuthToken: ...
 
     def issue_external_token(
@@ -125,6 +133,7 @@ class OAuthDeviceTokenIssuer(Protocol):
         subject_issuer: str,
         client_id: str,
         device_label: str,
+        device_key: str,
     ) -> IssuedOAuthToken: ...
 
     def rollback_token(self, token: IssuedOAuthToken) -> bool: ...
@@ -227,13 +236,19 @@ class OAuthDeviceApplicationService:
         *,
         client_id: str,
         device_label: str,
+        installation_id: str,
         created_ip: str,
         request_origin: str,
     ) -> DeviceAuthorization:
         if client_id not in self._settings.known_client_ids:
             raise UnsupportedClientError
 
-        device_code, user_code, expires_in = self._store.start(client_id, device_label, created_ip)
+        device_code, user_code, expires_in = self._store.start(
+            client_id=client_id,
+            device_label=device_label,
+            installation_id=installation_id,
+            created_ip=created_ip,
+        )
         base_url = self._settings.verification_base_url or request_origin
         return DeviceAuthorization(
             device_code=device_code,
@@ -284,11 +299,12 @@ class OAuthDeviceApplicationService:
             raise DeviceStateLostError
         workspaces = tuple(self._workspaces.list_for_device_flow(account.id))
         transition_id = secrets.token_urlsafe(16)
+        device_key = device_key_for(installation_id=state.installation_id, device_label=state.device_label)
         guard_id = self._rotation_guard_id(
             subject_email=account.email,
             subject_issuer=ACCOUNT_ISSUER_SENTINEL,
             client_id=state.client_id,
-            device_label=state.device_label,
+            device_key=device_key,
         )
         if not self._store.try_acquire_approval(guard_id, transition_id, _APPROVE_GUARD_TTL_SECONDS):
             raise ApprovalInProgressError
@@ -305,6 +321,7 @@ class OAuthDeviceApplicationService:
                 workspace_id=context.active_workspace_id,
                 client_id=state.client_id,
                 device_label=state.device_label,
+                device_key=device_key,
             )
             try:
                 poll_payload = self._build_account_poll_payload(
@@ -463,11 +480,12 @@ class OAuthDeviceApplicationService:
             raise AlreadyResolvedError
 
         transition_id = secrets.token_urlsafe(16)
+        device_key = device_key_for(installation_id=state.installation_id, device_label=state.device_label)
         guard_id = self._rotation_guard_id(
             subject_email=claims.subject_email,
             subject_issuer=claims.subject_issuer,
             client_id=state.client_id,
-            device_label=state.device_label,
+            device_key=device_key,
         )
         if not self._store.try_acquire_approval(guard_id, transition_id, _APPROVE_GUARD_TTL_SECONDS):
             raise ApprovalInProgressError
@@ -504,6 +522,7 @@ class OAuthDeviceApplicationService:
                 subject_issuer=claims.subject_issuer,
                 client_id=state.client_id,
                 device_label=state.device_label,
+                device_key=device_key,
             )
             poll_payload: PollPayload = {
                 "token": mint.token,
@@ -632,9 +651,9 @@ class OAuthDeviceApplicationService:
         subject_email: str,
         subject_issuer: str,
         client_id: str,
-        device_label: str,
+        device_key: str,
     ) -> str:
-        identity = "\0".join((subject_email, subject_issuer, client_id, device_label))
+        identity = "\0".join((subject_email, subject_issuer, client_id, device_key))
         return sha256(identity.encode()).hexdigest()
 
     def _release_approval_nonce(self, nonce: str, reservation_id: str) -> None:

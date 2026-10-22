@@ -15,7 +15,7 @@ from models.oauth import OAuthAccessToken
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
-from services.oauth_device_contracts import ACCOUNT_ISSUER_SENTINEL, OAuthDeviceTokenWrite
+from services.oauth_device_contracts import ACCOUNT_ISSUER_SENTINEL, OAuthDeviceTokenWrite, device_key_for
 
 
 @dataclass
@@ -101,6 +101,7 @@ def test_issue_account_token_persists_with_short_lived_session(
         workspace_id="workspace-1",
         client_id="difyctl",
         device_label="Laptop",
+        device_key="Laptop",
     )
 
     assert issued.token.startswith("dfoa_")
@@ -124,6 +125,7 @@ def test_issue_rotates_matching_live_token_and_invalidates_old_cache(
         workspace_id="workspace-1",
         client_id="difyctl",
         device_label="Laptop",
+        device_key="Laptop",
     )
 
     first = issue_token()
@@ -147,6 +149,7 @@ def test_rollback_rotation_removes_new_token_and_restores_previous_session(
         workspace_id="workspace-1",
         client_id="difyctl",
         device_label="Laptop",
+        device_key="Laptop",
     )
     first = issue_token()
     second = issue_token()
@@ -176,6 +179,7 @@ def test_rollback_does_not_restore_predecessor_after_later_rotation(
         workspace_id="workspace-1",
         client_id="difyctl",
         device_label="Laptop",
+        device_key="Laptop",
     )
     first = issue_token()
     second = issue_token()
@@ -222,6 +226,7 @@ def test_rotation_keeps_revoked_history_under_the_unique_index(
         workspace_id="workspace-1",
         client_id="difyctl",
         device_label="Laptop",
+        device_key="Laptop",
     )
     issue_token()
     issue_token()
@@ -266,9 +271,16 @@ def test_legacy_key_equals_label_keeps_old_rotation(sqlite_session_factory: sess
     assert second.replaced_token_id == first.token_id
 
 
-def test_issuer_keys_rotation_on_the_device_label_until_an_install_key_arrives(
+@pytest.mark.parametrize(
+    ("installation_id", "expected_key"),
+    [("abcd1234", "install:abcd1234"), ("", "Laptop")],
+    ids=["install", "legacy"],
+)
+def test_issuer_keys_rotation_on_the_install_id_or_the_legacy_device_label(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
+    installation_id: str,
+    expected_key: str,
 ) -> None:
     issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory)
 
@@ -277,12 +289,14 @@ def test_issuer_keys_rotation_on_the_device_label_until_an_install_key_arrives(
         workspace_id="workspace-1",
         client_id="difyctl",
         device_label="Laptop",
+        device_key=device_key_for(installation_id=installation_id, device_label="Laptop"),
     )
 
     sqlite_session.expire_all()
     record = sqlite_session.get(OAuthAccessToken, issued.token_id)
     assert record is not None
-    assert record.device_key == "Laptop"
+    assert record.device_label == "Laptop"
+    assert record.device_key == expected_key
 
 
 def test_login_after_logout_on_the_same_device_succeeds(
@@ -296,6 +310,7 @@ def test_login_after_logout_on_the_same_device_succeeds(
         workspace_id="workspace-1",
         client_id="difyctl",
         device_label="Laptop",
+        device_key="Laptop",
     )
     first = issue_token()
     assert repository.revoke_account_session(account_id="account-1", token_id=first.token_id) is True
@@ -321,12 +336,14 @@ def test_list_account_sessions_pages_only_live_owned_tokens(
             workspace_id="workspace-1",
             client_id="difyctl",
             device_label=device_label,
+            device_key=device_label,
         )
     issuer.issue_account_token(
         account=_account("account-2", "grace@example.com"),
         workspace_id="workspace-2",
         client_id="difyctl",
         device_label="Other",
+        device_key="Other",
     )
 
     page = repository.list_account_sessions(account_id="account-1", page=1, limit=1)
@@ -346,6 +363,7 @@ def test_revoke_account_session_scopes_update_and_invalidates_cache(
         workspace_id="workspace-1",
         client_id="difyctl",
         device_label="Laptop",
+        device_key="Laptop",
     )
 
     assert repository.revoke_account_session(account_id="account-2", token_id=issued.token_id) is False
@@ -368,4 +386,5 @@ def test_issue_external_token_rejects_empty_issuer(sqlite_session_factory: sessi
             subject_issuer=" ",
             client_id="difyctl",
             device_label="CLI",
+            device_key="CLI",
         )
