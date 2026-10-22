@@ -1,8 +1,10 @@
+import re
 from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
 from constants import UUID_NIL
@@ -198,3 +200,45 @@ def test_get_thread_messages_length_keeps_non_empty_latest_answer(sqlite_session
     length = get_thread_messages_length("conversation-2", session=sqlite_session)
 
     assert length == 2
+
+
+def test_get_thread_messages_length_skips_saved_prompt_column(sqlite_engine: Engine, sqlite_session: Session):
+    """Message.message stores each turn's full prompt, so counting the thread must neither select nor lazy-load it."""
+    id1, id2 = str(uuid4()), str(uuid4())
+    now = datetime.now()
+    sqlite_session.add_all(
+        [
+            _persisted_message(
+                message_id=id2,
+                conversation_id="conversation-3",
+                parent_message_id=id1,
+                answer="latest-answer",
+                created_at=now,
+            ),
+            _persisted_message(
+                message_id=id1,
+                conversation_id="conversation-3",
+                parent_message_id=UUID_NIL,
+                answer="older-answer",
+                created_at=now - timedelta(seconds=1),
+            ),
+        ]
+    )
+    sqlite_session.commit()
+    # Reload rows from the database instead of reusing fully loaded instances from the identity map.
+    sqlite_session.expunge_all()
+    statements: list[str] = []
+
+    def record_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+        statements.append(statement)
+
+    event.listen(sqlite_engine, "before_cursor_execute", record_statement)
+    try:
+        length = get_thread_messages_length("conversation-3", session=sqlite_session)
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", record_statement)
+
+    assert length == 2
+    message_selects = [sql for sql in statements if "FROM messages" in sql]
+    assert len(message_selects) == 1
+    assert re.search(r"\bmessages\.message\b", message_selects[0]) is None

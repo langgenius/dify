@@ -104,6 +104,7 @@ catalog:
   '@orpc/contract': 1.15.7
   '@orpc/openapi-client': 1.15.7
   '@orpc/tanstack-query': 1.15.7
+  '@pierre/highlights': 0.2.0
   '@playwright/test': 1.64.1
   '@remixicon/react': 4.9.0
   '@sentry/react': 10.76.2
@@ -198,7 +199,6 @@ catalog:
   foxact: 0.3.12
   fuse.js: 7.5.0
   happy-dom: 20.14.6
-  hast-util-to-jsx-runtime: 2.3.6
   hono: 4.13.13
   html-entities: 2.6.0
   html-to-image: 1.11.13
@@ -251,7 +251,6 @@ catalog:
   scheduler: 0.28.0
   server-only: 0.0.1
   sharp: 0.35.5
-  shiki: 4.5.0
   socket.io-client: 4.8.4
   sortablejs: 1.15.7
   std-semver: 1.0.8

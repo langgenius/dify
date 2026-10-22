@@ -23,7 +23,7 @@ export function useAgentConfigureSessionController({
 }) {
   const [buildCallbackRevision, setBuildCallbackRevision] = useState(0)
   const [buildDraftActionsDisabled, setBuildDraftActionsDisabled] = useState(false)
-  const [hasStartedBuildChat, setHasStartedBuildChat] = useState(false)
+  const hasStartedBuildChatRef = useRef(false)
   const [isEnteringBuildMode, setIsEnteringBuildMode] = useState(false)
   const [showSwitchToPreviewConfirm, setShowSwitchToPreviewConfirm] = useState(false)
   const buildCallbackGeneration = useMemo(
@@ -104,7 +104,7 @@ export function useAgentConfigureSessionController({
         throw new Error('The Build session is no longer active.')
 
       if (markBuildChatStarted) {
-        setHasStartedBuildChat(true)
+        hasStartedBuildChatRef.current = true
         setBuildDraftActionsDisabled(true)
       }
 
@@ -121,7 +121,7 @@ export function useAgentConfigureSessionController({
       } catch (error) {
         if (markBuildChatStarted && isBuildCallbackCurrent(generation)) {
           setBuildDraftActionsDisabled(false)
-          setHasStartedBuildChat(false)
+          hasStartedBuildChatRef.current = false
         }
         throw error
       } finally {
@@ -145,7 +145,7 @@ export function useAgentConfigureSessionController({
       buildCallbacksEnabledRef.current && modeRef.current === 'build'
     rotateBuildCallbackGeneration(keepBuildCallbacksEnabled)
     setBuildDraftActionsDisabled(false)
-    setHasStartedBuildChat(false)
+    hasStartedBuildChatRef.current = false
   }, [rotateBuildCallbackGeneration])
 
   const resetBuildSession = useCallback(
@@ -197,7 +197,7 @@ export function useAgentConfigureSessionController({
       if (nextMode === modeRef.current) return
 
       const isLeavingBuildMode = modeRef.current === 'build' && nextMode === 'preview'
-      if (isLeavingBuildMode && (hasActiveBuildDraft || hasStartedBuildChat)) {
+      if (isLeavingBuildMode && (hasActiveBuildDraft || hasStartedBuildChatRef.current)) {
         setShowSwitchToPreviewConfirm(true)
         return
       }
@@ -259,7 +259,6 @@ export function useAgentConfigureSessionController({
       buildDraftAgentSoulConfig,
       discardBuildDraftAndSwitchToPreview,
       hasActiveBuildDraft,
-      hasStartedBuildChat,
       isBuildDraftActive,
       normalAgentSoulConfig,
       onModeChange,

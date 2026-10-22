@@ -20,6 +20,7 @@ code that mutates ``os.environ`` concurrently.
 from __future__ import annotations
 
 import os
+import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from threading import RLock
@@ -31,12 +32,14 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ALWAYS_ON, ParentBased
 
-from dify_agent.runtime.observability import AgentObservability, IsolatedTracerProvider
+from dify_agent.runtime.application_trace_exporter import ApplicationBatchSpanProcessor, JSONSpanExporter
+from dify_agent.runtime.observability import AgentObservability, ApplicationAgentObservability, IsolatedTracerProvider
 from dify_agent.server.settings import ServerSettings
 
 _global_instrumentation_ready = False
 _global_trace_context_mode: Literal["isolated", "shared"] | None = None
 _observability_configuration_lock = RLock()
+logger = logging.getLogger(__name__)
 
 
 @contextmanager
@@ -174,8 +177,42 @@ def configure_agent_observability(settings: ServerSettings) -> AgentObservabilit
     )
 
 
+def configure_application_observability(settings: ServerSettings) -> ApplicationAgentObservability | None:
+    """Configure application collection once, separately from platform/trajectory.
+
+    Application policy is API-issued per invocation; destinations and provider
+    credentials remain inside the Dify API. No SDK environment is inherited.
+    """
+    if not settings.application_tracing_enabled:
+        return None
+    if not settings.inner_api_key:
+        logger.warning("Application tracing is enabled without an inner API credential; collector disabled")
+        return None
+    exporter = JSONSpanExporter(inner_api_url=settings.inner_api_url, inner_api_key=settings.inner_api_key)
+    processor = ApplicationBatchSpanProcessor(exporter)
+    try:
+        with _isolated_agent_environment():
+            client = logfire.configure(
+                local=True,
+                send_to_logfire=False,
+                service_name="dify-agent-application",
+                console=False,
+                metrics=False,
+                inspect_arguments=False,
+                add_baggage_to_attributes=False,
+                sampling=logfire.SamplingOptions(head=ParentBased(ALWAYS_ON)),
+                additional_span_processors=[processor],
+            )
+    except Exception:
+        processor.shutdown()
+        logger.warning("Application tracing setup failed; collector disabled", exc_info=True)
+        return None
+    return ApplicationAgentObservability(client=client, exporter=exporter, processor=processor)
+
+
 __all__ = [
     "AgentObservability",
     "configure_agent_observability",
+    "configure_application_observability",
     "configure_server_observability",
 ]

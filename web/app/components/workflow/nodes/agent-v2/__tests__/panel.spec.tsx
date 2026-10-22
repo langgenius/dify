@@ -3,6 +3,12 @@ import userEvent from '@testing-library/user-event'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { createData, createPanelEnvironment } from './panel-test-env'
 
+vi.mock('@/app/components/app/tracing/inherited-tracing-summary', () => ({
+  InheritedTracingSummary: ({ resource }: { resource: { appId: string } }) => (
+    <div data-testid="inherited-tracing">{resource.appId}</div>
+  ),
+}))
+
 const outputPrefix = 'workflowAgent.nodes.agent.outputVars'
 const task = () => screen.getByRole('textbox', { name: 'workflowAgent.nodes.agent.task.label' })
 const outputForm = () => within(screen.getByRole('form', { name: `${outputPrefix}.editorLabel` }))
@@ -24,6 +30,17 @@ const openOutputs = async (user: ReturnType<typeof userEvent.setup>) => {
 }
 
 describe('Agent task and declared outputs', () => {
+  it('shows the calling workflow tracing summary only inside a workflow app', () => {
+    const workflow = createPanelEnvironment({
+      resource: { kind: 'app', appId: 'workflow-1', mode: 'workflow' },
+    })
+    const { unmount } = workflow.render()
+    expect(screen.getByTestId('inherited-tracing')).toHaveTextContent('workflow-1')
+    unmount()
+    createPanelEnvironment({ resource: { kind: 'snippet', snippetId: 'snippet-1' } }).render()
+    expect(screen.queryByTestId('inherited-tracing')).not.toBeInTheDocument()
+  })
+
   it('loads graph outputs alongside the built-in text output', async () => {
     const user = userEvent.setup()
     renderPanel(

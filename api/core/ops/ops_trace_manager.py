@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.helper.trace_id_helper import ParentTraceContext
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.ops.entities.config_entity import (
     BaseTracingConfig,
     TracingProviderEnum,
@@ -390,7 +391,11 @@ class OpsTraceManager:
         # Encrypt necessary keys
         for key in secret_keys:
             if key in tracing_config:
-                if "*" in tracing_config[key]:
+                if tracing_config[key] is None:
+                    # Preserve explicit clearing for optional credentials; the
+                    # provider model still rejects null on a required secret.
+                    new_config[key] = None
+                elif "*" in tracing_config[key]:
                     # If the key contains '*', retain the original value from the current config
                     if current_trace_config:
                         new_config[key] = current_trace_config.get(key, tracing_config[key])
@@ -439,8 +444,10 @@ class OpsTraceManager:
                 provider_config_map[tracing_provider]["secret_keys"],
                 provider_config_map[tracing_provider]["other_keys"],
             )
-            new_config: dict[str, Any] = {}
-            keys_to_decrypt = [key for key in secret_keys if key in tracing_config]
+            new_config: dict[str, Any] = {
+                key: None for key in secret_keys if key in tracing_config and tracing_config[key] is None
+            }
+            keys_to_decrypt = [key for key in secret_keys if tracing_config.get(key) is not None]
             if keys_to_decrypt:
                 decrypted_values = batch_decrypt_token(tenant_id, [tracing_config[key] for key in keys_to_decrypt])
                 new_config.update(zip(keys_to_decrypt, decrypted_values, strict=False))
@@ -1477,7 +1484,15 @@ class TraceQueueManager:
 
         self.app_id = app_id
         self.user_id = user_id
-        self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
+        self.trace_instance = None
+        self._application_tracing_enabled = False
+        if dify_config.OPS_AGENT_TRACE_ENABLED:
+            tracing_hooks = application_tracing_hooks()
+            self._application_tracing_enabled = (
+                tracing_hooks.queue_enabled_at_start(app_id) if tracing_hooks is not None else False
+            )
+        else:
+            self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
         self.flask_app = current_app._get_current_object()  # type: ignore
 
         from core.telemetry.gateway import is_enterprise_telemetry_enabled
@@ -1489,7 +1504,7 @@ class TraceQueueManager:
     def add_trace_task(self, trace_task: TraceTask):
         global trace_manager_timer, trace_manager_queue
         try:
-            if self._enterprise_telemetry_enabled or self.trace_instance:
+            if self._enterprise_telemetry_enabled or self._application_tracing_enabled or self.trace_instance:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
         except Exception:

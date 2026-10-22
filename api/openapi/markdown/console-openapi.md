@@ -1471,6 +1471,185 @@ Get available TTS voices for an Agent and language
 | 404 | Agent not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /agent/{agent_id}/trace
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent tracing settings | **application/json**: [AppTraceResponse](#apptraceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /agent/{agent_id}/trace
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppTracePayload](#apptracepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Updated Agent tracing settings | **application/json**: [AppTraceResponse](#apptraceresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidTracingConfigError](#invalidtracingconfigerror)<br>[TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [TraceConfigNotFoundError](#traceconfignotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TracingConfigConflictError](#tracingconfigconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /agent/{agent_id}/trace-capabilities
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| tracing_provider | query | Tracing provider name | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Provider support declarations | **application/json**: [TraceProviderCapabilitiesResponse](#traceprovidercapabilitiesresponse)<br> |
+| 400 | Bad Request | **application/json**: [UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /agent/{agent_id}/trace-config
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| tracing_provider | query | Tracing provider name | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Agent provider configuration deleted |  |
+| 400 | Bad Request | **application/json**: [UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[TraceConfigNotFoundError](#traceconfignotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /agent/{agent_id}/trace-config
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| tracing_provider | query | Tracing provider name | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Masked Agent provider configuration | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
+| 400 | Bad Request | **application/json**: [TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /agent/{agent_id}/trace-config
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TraceConfigPayload](#traceconfigpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent provider updated | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidTracingConfigError](#invalidtracingconfigerror)<br>[TracingConfigVerificationFailedError](#tracingconfigverificationfailederror)<br>[TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[TraceConfigNotFoundError](#traceconfignotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TracingConfigConflictError](#tracingconfigconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /agent/{agent_id}/trace-config
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TraceConfigPayload](#traceconfigpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Agent provider configured | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidTracingConfigError](#invalidtracingconfigerror)<br>[TracingConfigVerificationFailedError](#tracingconfigverificationfailederror)<br>[TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TraceConfigAlreadyExistsError](#traceconfigalreadyexistserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /agent/{agent_id}/trace-runs/{message_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| node_execution_id | query | Select an Agent node invocation within this run | No | string (uuid) |
+| agent_id | path |  | Yes | string (uuid) |
+| message_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Frozen trace destination and export state | **application/json**: [TraceRunStatusResponse](#tracerunstatusresponse)<br> |
+| 404 | Not Found | **application/json**: [TracingNodeNotFoundError](#tracingnodenotfounderror)<br>[TracingSourceNotFoundError](#tracingsourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /agent/{agent_id}/trace-runs/{message_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| node_execution_id | query | Select an Agent node invocation within this run | No | string (uuid) |
+| agent_id | path |  | Yes | string (uuid) |
+| message_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TraceRunRetryPayload](#tracerunretrypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Retry state for the same frozen destination | **application/json**: [TraceRunStatusResponse](#tracerunstatusresponse)<br> |
+| 404 | Not Found | **application/json**: [TracingNodeNotFoundError](#tracingnodenotfounderror)<br>[TracingRunNotFoundError](#tracingrunnotfounderror)<br>[TracingSourceNotFoundError](#tracingsourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TracingAlreadyAcceptedError](#tracingalreadyacceptederror)<br>[TracingDuplicateAcknowledgementRequiredError](#tracingduplicateacknowledgementrequirederror)<br>[TracingRetryNotAllowedError](#tracingretrynotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /agent/{agent_id}/versions
 #### Parameters
 
@@ -3611,8 +3790,27 @@ Update app tracing configuration
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trace configuration updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidTracingConfigError](#invalidtracingconfigerror)<br>[TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[TraceConfigNotFoundError](#traceconfignotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TracingConfigConflictError](#tracingconfigconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/trace-capabilities
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| tracing_provider | query | Tracing provider name | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Provider support declarations | **application/json**: [TraceProviderCapabilitiesResponse](#traceprovidercapabilitiesresponse)<br> |
+| 400 | Bad Request | **application/json**: [UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/trace-config
@@ -3683,6 +3881,7 @@ Update an existing tracing configuration for an application
 | 400 | Invalid request parameters or tracing configuration | **application/json**: [InvalidTracingConfigError](#invalidtracingconfigerror)<br>[TracingConfigVerificationFailedError](#tracingconfigverificationfailederror)<br>[TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Application or tracing configuration not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[TraceConfigNotFoundError](#traceconfignotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TracingConfigConflictError](#tracingconfigconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Tracing configuration processing failed | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3715,6 +3914,49 @@ Create a new tracing configuration for an application
 | 500 | Tracing configuration processing failed | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /apps/{app_id}/trace-runs/{source_kind}/{source_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| source_kind | path |  | Yes | string, <br>**Available values:** "message", "node", "workflow" |
+| node_execution_id | query | Select an Agent node invocation within this run | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| source_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Frozen trace destination and export state | **application/json**: [TraceRunStatusResponse](#tracerunstatusresponse)<br> |
+| 404 | Not Found | **application/json**: [TracingNodeNotFoundError](#tracingnodenotfounderror)<br>[TracingSourceNotFoundError](#tracingsourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/trace-runs/{source_kind}/{source_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| source_kind | path |  | Yes | string, <br>**Available values:** "message", "node", "workflow" |
+| node_execution_id | query | Select an Agent node invocation within this run | No | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
+| source_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TraceRunRetryPayload](#tracerunretrypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Retry state for the same frozen destination | **application/json**: [TraceRunStatusResponse](#tracerunstatusresponse)<br> |
+| 404 | Not Found | **application/json**: [TracingNodeNotFoundError](#tracingnodenotfounderror)<br>[TracingRunNotFoundError](#tracingrunnotfounderror)<br>[TracingSourceNotFoundError](#tracingsourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TracingAlreadyAcceptedError](#tracingalreadyacceptederror)<br>[TracingDuplicateAcknowledgementRequiredError](#tracingduplicateacknowledgementrequirederror)<br>[TracingRetryNotAllowedError](#tracingretrynotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /apps/{app_id}/trigger-enable
 **Update app trigger (enable/disable)**
 
@@ -3735,7 +3977,7 @@ Create a new tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkflowTriggerResponse](#workflowtriggerresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[AppTriggerNotFoundError](#apptriggernotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/triggers
@@ -5276,7 +5518,7 @@ Full value for one declared output of a published run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WebhookTriggerResponse](#webhooktriggerresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[WebhookTriggerNotFoundError](#webhooktriggernotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflows/{workflow_id}
@@ -17095,7 +17337,7 @@ rather than being dropped.
 | frequency_penalty | number |  | No |
 | max_tokens | integer |  | No |
 | presence_penalty | number |  | No |
-| response_format | [AgentModelResponseFormatConfig](#agentmodelresponseformatconfig) |  | No |
+| response_format | string<br>[AgentModelResponseFormatConfig](#agentmodelresponseformatconfig) |  | No |
 | stop | [ string ] |  | No |
 | temperature | number |  | No |
 | top_p | number |  | No |
@@ -18903,6 +19145,8 @@ Function Suggested questions after answer disabled.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| capture_agent | boolean, <br>**Default:** true | Capture Agent internals when deployment support is enabled | No |
+| capture_content | boolean | Include prompt, output and tool content in new traces | No |
 | enabled | boolean | Enable or disable tracing | Yes |
 | tracing_provider | string | Tracing provider | No |
 
@@ -18910,8 +19154,18 @@ Function Suggested questions after answer disabled.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| capture_agent | boolean, <br>**Default:** true |  | No |
+| capture_content | boolean |  | No |
 | enabled | boolean |  | No |
 | tracing_provider | string |  | No |
+
+#### AppTriggerNotFoundError
+
+Trigger not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppTriggerNotFoundError |  | Trigger not found. |  |
 
 #### AppUnavailableError
 
@@ -27371,6 +27625,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
 | deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
@@ -27869,14 +28124,100 @@ Tracing configuration not found.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| activate | boolean | Save, select this provider, and enable tracing atomically; preserve capture settings | No |
 | tracing_config | object | Tracing configuration data | Yes |
 | tracing_provider | string | Tracing provider name | Yes |
+
+#### TraceProviderCapabilitiesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_spans | boolean |  | Yes |
+| api_collection_enabled | boolean | Current API collection gate only; does not probe Agent runtime or confirm delivery | Yes |
+| export_ack | string | Exporter acknowledgement does not confirm query visibility | Yes |
+| native_cost | boolean |  | Yes |
+| native_usage | boolean |  | Yes |
+| provider | string |  | Yes |
+| session | boolean |  | Yes |
+| span_url | boolean |  | Yes |
+| trace_url | boolean |  | Yes |
 
 #### TraceProviderQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | tracing_provider | string | Tracing provider name | Yes |
+
+#### TraceProviderSupportResponse
+
+Adapter support declarations, not successful-delivery or platform-verification results.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_spans | boolean |  | Yes |
+| export_ack | string | Exporter acknowledgement does not confirm query visibility | Yes |
+| native_cost | boolean |  | Yes |
+| native_usage | boolean |  | Yes |
+| provider | string |  | Yes |
+| session | boolean |  | Yes |
+| span_url | boolean |  | Yes |
+| trace_url | boolean |  | Yes |
+
+#### TraceRunQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_execution_id | string | Select an Agent node invocation within this run | No |
+
+#### TraceRunRetryPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| acknowledge_possible_duplicates | boolean | Acknowledge possible duplicate records when retrying an uncertain export | No |
+
+#### TraceRunStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| accepted_at | string | Ingestion acknowledgement time, not query visibility | No |
+| attempts | integer |  | No |
+| capabilities | [TraceProviderSupportResponse](#traceprovidersupportresponse) |  | No |
+| capture_agent | boolean |  | No |
+| capture_content | boolean |  | No |
+| config_revision | string | Frozen destination configuration revision | No |
+| error_code | string |  | No |
+| project_url | string | Frozen destination project URL; null when unavailable, never resolved from current config | No |
+| provider | string |  | No |
+| queryable | boolean | Null when third-party query visibility is not verified | No |
+| source_id | string |  | Yes |
+| source_kind | [TraceSourceKind](#tracesourcekind) |  | Yes |
+| span_count | integer |  | No |
+| span_url | string |  | No |
+| status | string, <br>**Available values:** "accepted", "collecting", "exporting", "failed", "not_collected", "ready", "retrying", "uncertain" | *Enum:* `"accepted"`, `"collecting"`, `"exporting"`, `"failed"`, `"not_collected"`, `"ready"`, `"retrying"`, `"uncertain"` | Yes |
+| trace_id | string |  | No |
+| trace_url | string |  | No |
+
+#### TraceSourceKind
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TraceSourceKind | string |  |  |
+
+#### TracingAlreadyAcceptedError
+
+An accepted trace cannot be exported again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TracingAlreadyAcceptedError |  | An accepted trace cannot be exported again. |  |
+
+#### TracingConfigConflictError
+
+Tracing configuration changed. Refresh and try again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TracingConfigConflictError |  | Tracing configuration changed. Refresh and try again. |  |
 
 #### TracingConfigProcessingFailedError
 
@@ -27894,6 +28235,22 @@ The tracing configuration could not be verified.
 | ---- | ---- | ----------- | -------- |
 | TracingConfigVerificationFailedError |  | The tracing configuration could not be verified. |  |
 
+#### TracingDuplicateAcknowledgementRequiredError
+
+Acknowledge possible duplicates before retrying an uncertain export.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TracingDuplicateAcknowledgementRequiredError |  | Acknowledge possible duplicates before retrying an uncertain export. |  |
+
+#### TracingNodeNotFoundError
+
+The Agent node invocation does not belong to this trace.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TracingNodeNotFoundError |  | The Agent node invocation does not belong to this trace. |  |
+
 #### TracingProviderUnavailableError
 
 The tracing provider is not available in this deployment.
@@ -27901,6 +28258,30 @@ The tracing provider is not available in this deployment.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TracingProviderUnavailableError |  | The tracing provider is not available in this deployment. |  |
+
+#### TracingRetryNotAllowedError
+
+This trace is not in a retryable state.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TracingRetryNotAllowedError |  | This trace is not in a retryable state. |  |
+
+#### TracingRunNotFoundError
+
+No collected trace is available to retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TracingRunNotFoundError |  | No collected trace is available to retry. |  |
+
+#### TracingSourceNotFoundError
+
+The tracing source does not exist in this application.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TracingSourceNotFoundError |  | The tracing source does not exist in this application. |  |
 
 #### TrialAgentConfigQuery
 
@@ -28516,6 +28897,14 @@ The app access service is unavailable. Try again later.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+
+#### WebhookTriggerNotFoundError
+
+Webhook trigger not found for this node.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebhookTriggerNotFoundError |  | Webhook trigger not found for this node. |  |
 
 #### WebhookTriggerQuery
 

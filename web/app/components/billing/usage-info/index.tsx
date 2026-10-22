@@ -4,7 +4,6 @@ import type { FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { NUM_INFINITE } from '../config'
@@ -53,6 +52,7 @@ const UsageInfo: FC<Props> = ({
 
   const isBelowThreshold = !usageUnknown && storageMode && usage < storageThreshold
   const isSandboxFull = !usageUnknown && storageMode && isSandboxPlan && usage >= storageThreshold
+  const storageHelp = !usageUnknown && storageMode ? storageTooltip : undefined
 
   // Zero count quotas have no remaining capacity; storage keeps its separate limit convention.
   const isZeroQuota = !storageMode && total === 0
@@ -146,18 +146,6 @@ const UsageInfo: FC<Props> = ({
     </Meter>
   )
 
-  const wrapWithStorageTooltip = (children: ReactNode) => {
-    if (!usageUnknown && storageMode && storageTooltip) {
-      return (
-        <Tooltip>
-          <TooltipTrigger render={<div className="cursor-default">{children}</div>} />
-          <TooltipContent className="w-50 max-w-50">{storageTooltip}</TooltipContent>
-        </Tooltip>
-      )
-    }
-    return children
-  }
-
   return (
     <div
       role="group"
@@ -170,11 +158,12 @@ const UsageInfo: FC<Props> = ({
       <dl className="flex flex-col gap-2">
         <dt className="flex items-center gap-1 system-xs-medium text-text-tertiary">
           <span id={labelId}>{name}</span>
-          {tooltip && (
+          {(tooltip || storageHelp) && (
             <Infotip>
               <InfotipTrigger aria-labelledby={labelId} />
               <InfotipContent aria-labelledby={labelId} className="w-45">
-                {tooltip}
+                {tooltip && <p>{tooltip}</p>}
+                {storageHelp && <p>{storageHelp}</p>}
               </InfotipContent>
             </Infotip>
           )}
@@ -183,11 +172,11 @@ const UsageInfo: FC<Props> = ({
           data-testid="billing-quota-value"
           className="flex items-center gap-1 system-md-semibold text-text-primary"
         >
-          {wrapWithStorageTooltip(usageDisplay)}
+          {usageDisplay}
           {rightInfo}
         </dd>
       </dl>
-      {!usageUnknown && wrapWithStorageTooltip(bar)}
+      {!usageUnknown && bar}
     </div>
   )
 }
