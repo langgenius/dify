@@ -181,7 +181,9 @@ class DeviceApproveApi(Resource):
         openapi_ns.models[DeviceFlowErrorResponse.__name__],
     )
     @openapi_ns.response(
-        HTTPStatus.SERVICE_UNAVAILABLE, "Approval outcome unknown", openapi_ns.models[DeviceFlowErrorResponse.__name__]
+        HTTPStatus.SERVICE_UNAVAILABLE,
+        "Approval outcome unknown, or sign-in with access tokens is turned off on this server",
+        openapi_ns.models[DeviceFlowErrorResponse.__name__],
     )
     @_bearer_enabled
     @console_account_admission()
@@ -208,7 +210,9 @@ class DeviceDenyApi(Resource):
         openapi_ns.models[DeviceFlowErrorResponse.__name__],
     )
     @openapi_ns.response(
-        HTTPStatus.SERVICE_UNAVAILABLE, "Approval outcome unknown", openapi_ns.models[DeviceFlowErrorResponse.__name__]
+        HTTPStatus.SERVICE_UNAVAILABLE,
+        "Approval outcome unknown, or sign-in with access tokens is turned off on this server",
+        openapi_ns.models[DeviceFlowErrorResponse.__name__],
     )
     @_bearer_enabled
     @console_account_admission()

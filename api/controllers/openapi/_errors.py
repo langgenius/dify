@@ -539,7 +539,7 @@ class WorkspaceUnavailable(OpenApiError):  # noqa: N818
     code = 403
     error_code = OpenApiErrorCode.WORKSPACE_UNAVAILABLE
     description = "This workspace is archived or not available."
-    hint = "Pick another workspace; get.workspace lists them."
+    hint = "Pick another workspace; `difyctl get workspace` lists them."
 
 
 class ExternalSsoRequiresEE(OpenApiError):  # noqa: N818
