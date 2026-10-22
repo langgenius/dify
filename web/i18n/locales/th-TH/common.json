@@ -4,7 +4,6 @@
   "about.nowAvailable": "Dify {{version}} พร้อมใช้งานแล้ว",
   "about.updateNow": "อัพเดตเดี๋ยวนี้",
   "about.version": "เวอร์ชัน {{version}}",
-  "actionMsg.copySuccessfully": "คัดลอกสําเร็จแล้ว",
   "actionMsg.downloadUnsuccessfully": "ดาวน์โหลดล้มเหลว โปรดลองอีกครั้งในภายหลัง",
   "actionMsg.generatedSuccessfully": "สร้างสําเร็จ",
   "actionMsg.generatedUnsuccessfully": "สร้างไม่สําเร็จ",

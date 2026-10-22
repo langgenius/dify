@@ -4,7 +4,6 @@
   "about.nowAvailable": "Dify {{version}} ພ້ອມໃຫ້ໃຊ້ງານແລ້ວ.",
   "about.updateNow": "ອັບເດດດຽວນີ້",
   "about.version": "ເວີຊັນ {{version}}",
-  "actionMsg.copySuccessfully": "ຄັດລອກສຳເລັດແລ້ວ",
   "actionMsg.downloadUnsuccessfully": "ດາວໂຫຼດບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່ພາຍຫຼັງ.",
   "actionMsg.generatedSuccessfully": "ສ້າງສຳເລັດແລ້ວ",
   "actionMsg.generatedUnsuccessfully": "ສ້າງບໍ່ສຳເລັດ",

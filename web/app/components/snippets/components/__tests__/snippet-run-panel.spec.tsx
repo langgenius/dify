@@ -22,16 +22,13 @@ const renderWorkflowComponent = (
   })
 
 const toastMocks = vi.hoisted(() => ({
+  error: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
   info: vi.fn(),
 }))
 
-const copyMock = vi.hoisted(() => vi.fn())
-
-vi.mock('copy-to-clipboard', () => ({
-  default: copyMock,
-}))
+const writeTextMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/notifications', () => ({
   toast: toastMocks,
@@ -145,7 +142,7 @@ describe('SnippetRunPanel', () => {
     expect(screen.getByText('empty-result')).toBeInTheDocument()
   })
 
-  it('should copy successful text results and open details from the result panel', async () => {
+  it('should copy successful text results onto the button and open details from the result panel', async () => {
     const user = userEvent.setup()
 
     renderWorkflowComponent(<SnippetRunPanel fields={[]} />, {
@@ -172,10 +169,18 @@ describe('SnippetRunPanel', () => {
 
     expect(screen.getByText('final answer')).toBeInTheDocument()
 
+    writeTextMock.mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    })
     await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
 
-    expect(copyMock).toHaveBeenCalledWith('final answer')
-    expect(toastMocks.success).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
+    expect(writeTextMock).toHaveBeenCalledWith('final answer')
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.copied' }),
+    ).toBeInTheDocument()
+    expect(toastMocks.success).not.toHaveBeenCalled()
 
     await user.click(screen.getByText('final answer'))
 

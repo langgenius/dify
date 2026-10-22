@@ -1,7 +1,7 @@
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import copy from 'copy-to-clipboard'
+import { useClipboard } from 'foxact/use-clipboard'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,6 +27,13 @@ import { getPreviewPanelMaxWidth } from './panel-width'
 const WorkflowPreview = () => {
   const { t } = useTranslation(['common', 'runLog', 'workflow'])
   const panelId = useId()
+  const copyLabelId = useId()
+  const { copied, copy } = useClipboard({
+    timeout: 2000,
+    onCopyError: () => {
+      toast.error(t(($) => $['operation.copyErrorFailed'], { ns: 'common' }))
+    },
+  })
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
   const appId = useAtomValue(editorAppIdAtom)
@@ -240,16 +247,24 @@ const WorkflowPreview = () => {
                 workflowRunningData?.resultText &&
                 typeof workflowRunningData?.resultText === 'string' && (
                   <Button
-                    className={cn('mb-4 ml-4')}
+                    aria-labelledby={copyLabelId}
+                    className="mb-4 ml-4"
                     onClick={() => {
                       const content = workflowRunningData?.resultText
-                      if (typeof content === 'string') copy(content)
-                      else copy(JSON.stringify(content))
-                      toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
+                      if (typeof content === 'string') void copy(content)
                     }}
                   >
-                    <span className="i-ri-clipboard-line size-3.5" />
-                    <div>{t(($) => $['operation.copy'], { ns: 'common' })}</div>
+                    <span
+                      aria-hidden="true"
+                      className={
+                        copied ? 'i-ri-check-line size-3.5' : 'i-ri-clipboard-line size-3.5'
+                      }
+                    />
+                    <span id={copyLabelId}>
+                      {copied
+                        ? t(($) => $['operation.copied'], { ns: 'common' })
+                        : t(($) => $['operation.copy'], { ns: 'common' })}
+                    </span>
                   </Button>
                 )}
             </div>

@@ -5,9 +5,10 @@ import { toast } from '@/app/components/app/configuration/toast'
 import Result from '../result'
 import { GeneratorType } from '../types'
 
-const mockCopy = vi.fn()
-vi.mock('copy-to-clipboard', () => ({ default: (text: string) => mockCopy(text) }))
-vi.mock('@/app/components/app/configuration/toast', () => ({ toast: { success: vi.fn() } }))
+const mockWriteText = vi.fn()
+vi.mock('@/app/components/app/configuration/toast', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}))
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
   default: () => ({ availableVars: [], availableNodes: [] }),
 }))
@@ -24,6 +25,15 @@ const versions = [
   { modified: 'First output', message: 'First note' },
   { modified: 'Second output', message: 'Second note' },
 ]
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockWriteText.mockResolvedValue(undefined)
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: mockWriteText },
+  })
+})
 
 it('switches generated versions, copies the selected output and confirms before applying it', async () => {
   const user = userEvent.setup()
@@ -50,8 +60,11 @@ it('switches generated versions, copies the selected output and confirms before 
   expect(await screen.findByText('Second note')).toBeInTheDocument()
   expect(screen.queryByText('First output')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
-  expect(mockCopy).toHaveBeenCalledWith('Second output')
-  expect(toast.success).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
+  expect(mockWriteText).toHaveBeenCalledWith('Second output')
+  expect(
+    await screen.findByRole('button', { name: 'common.operation.copied' }),
+  ).toBeInTheDocument()
+  expect(toast.success).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: /generate\.apply$/ }))
   expect(screen.getByRole('alertdialog')).toBeInTheDocument()
   expect(onApply).not.toHaveBeenCalled()

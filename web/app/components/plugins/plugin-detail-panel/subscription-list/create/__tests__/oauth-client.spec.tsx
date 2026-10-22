@@ -87,7 +87,13 @@ const renderModal = (oauthConfig = config) => {
   )
   return { ...view, onOpenChange, showOAuthCreateModal }
 }
+const mockWriteText = vi.fn()
 beforeEach(() => {
+  mockWriteText.mockResolvedValue(undefined)
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: mockWriteText },
+  })
   requests.configure.mockResolvedValue({})
   requests.authorize.mockResolvedValue({
     authorization_url: 'https://example.com/authorize',
@@ -189,4 +195,15 @@ it('continues authorization polling after errors and stops when verification suc
   })
   expect(requests.verify).toHaveBeenCalledTimes(3)
   unmount()
+})
+
+it('copies the redirect URI and shows copied feedback on the button', async () => {
+  const user = userEvent.setup()
+  renderModal()
+  await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
+  expect(mockWriteText).toHaveBeenCalledWith('https://example.com/oauth/callback')
+  expect(
+    await screen.findByRole('button', { name: 'common.operation.copied' }),
+  ).toBeInTheDocument()
+  expect(toast.success).not.toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
 })

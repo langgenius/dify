@@ -10,6 +10,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useClipboard } from 'foxact/use-clipboard'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
@@ -50,6 +51,35 @@ function isSkillBuilderProgressStage(stage: unknown): stage is SkillBuilderProgr
   return (
     typeof stage === 'string' &&
     skillBuilderProgressStages.includes(stage as SkillBuilderProgressStage)
+  )
+}
+
+function SkillBuilderCopyButton({ content }: { content: string }) {
+  const { t } = useTranslation(['skill', 'common'])
+  const { copied, copy } = useClipboard({
+    timeout: 2000,
+    onCopyError: () => {
+      toast.error(t(($) => $['operation.copyErrorFailed'], { ns: 'common' }))
+    },
+  })
+  const label = copied
+    ? t(($) => $['operation.copied'], { ns: 'common' })
+    : t(($) => $['skillManagement.detail.builder.copyResponse'])
+
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      className="flex size-7 cursor-pointer items-center justify-center rounded-md outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      onClick={() => {
+        void copy(content)
+      }}
+    >
+      <span
+        aria-hidden
+        className={copied ? 'i-ri-clipboard-fill size-4' : 'i-ri-clipboard-line size-4'}
+      />
+    </button>
   )
 }
 
@@ -799,11 +829,6 @@ export function SkillBuilderPanel({
     })
   }
 
-  const handleCopyMessage = async (content: string) => {
-    await navigator.clipboard.writeText(content)
-    toast.success(t(($) => $['skillManagement.detail.builder.copySuccess']))
-  }
-
   const handleReadMessage = (content: string) => {
     window.speechSynthesis.cancel()
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(content))
@@ -927,14 +952,7 @@ export function SkillBuilderPanel({
                           >
                             <span aria-hidden className="i-ri-volume-up-line size-4" />
                           </button>
-                          <button
-                            type="button"
-                            aria-label={t(($) => $['skillManagement.detail.builder.copyResponse'])}
-                            className="flex size-7 cursor-pointer items-center justify-center rounded-md outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                            onClick={() => void handleCopyMessage(message.content)}
-                          >
-                            <span aria-hidden className="i-ri-clipboard-line size-4" />
-                          </button>
+                          <SkillBuilderCopyButton content={message.content} />
                           <button
                             type="button"
                             aria-label={t(($) => $['skillManagement.detail.builder.retryResponse'])}

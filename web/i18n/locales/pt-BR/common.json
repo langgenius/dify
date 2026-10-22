@@ -4,7 +4,6 @@
   "about.nowAvailable": "Dify {{version}} já está disponível.",
   "about.updateNow": "Atualizar agora",
   "about.version": "versão {{version}}",
-  "actionMsg.copySuccessfully": "Copiado com sucesso",
   "actionMsg.downloadUnsuccessfully": "Falha no download. Por favor, tente novamente mais tarde.",
   "actionMsg.generatedSuccessfully": "Gerado com sucesso",
   "actionMsg.generatedUnsuccessfully": "Geração sem sucesso",
