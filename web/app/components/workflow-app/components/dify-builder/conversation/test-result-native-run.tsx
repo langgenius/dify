@@ -3,6 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { useQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
+import { Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
@@ -88,7 +89,9 @@ export const TestResultRunDetails = ({ appId, runId }: NativeRunProps) => {
       </CollapsibleTrigger>
       <CollapsiblePanel>
         <div className="px-2.5 pt-1 pb-2">
-          <NativeRunTracing appId={appId} runId={runId} />
+          <Suspense fallback={<RunLoading />}>
+            <NativeRunTracing appId={appId} runId={runId} />
+          </Suspense>
         </div>
       </CollapsiblePanel>
     </Collapsible>
