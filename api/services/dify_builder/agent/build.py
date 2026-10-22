@@ -20,7 +20,7 @@ from core.app.app_config.entities import ModelConfig
 from core.dify_builder import urls
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import BuildNodesResult, MutationIntent
-from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES
+from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES, TOOL_OUTPUT_SEMANTICS_RULES
 from core.workflow.generator.tool_catalogue import score_tool_relevance
 from graphon.enums import BUILT_IN_NODE_TYPES
 from runtime_contracts.builder.copy_ids import BuilderCopyId
@@ -478,6 +478,8 @@ def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
         "If a requested setting is undeclared or the declarations are unknown, explain that limitation; "
         "do not claim the tool implements it. Credential setup cannot add undeclared parameters: "
         "an unsupported requirement remains unmet, not pending authorization or future configuration. "
+        "If the output schema is absent or unknown, do not commit a downstream step to a guessed output channel; "
+        "plan explicit parsing and validation of the actual payload instead of claiming that json contains records. "
         "A separate native transformation may implement a supported "
         "result-processing requirement, but cannot establish a tool's safety or timeout behavior. "
         "as a separate word (with a space on "
@@ -551,7 +553,7 @@ def propose_plan_v1(
         "deferral does not establish API availability, authentication, request schema or response "
         "schema; do not invent any of them. Resource mentions, including optional or negative "
         "mentions, do not alone require using a resource."
-        f"{CODE_FAILURE_POLICY_RULES}\n\n"
+        f"{CODE_FAILURE_POLICY_RULES}{TOOL_OUTPUT_SEMANTICS_RULES}\n\n"
         f"{_planner_tool_section(tools)}{_planner_agent_section(agents, agent_source_error)}\n\n"
         f"{PLAN_PRESENTATION_INSTRUCTION}"
     )
@@ -672,6 +674,7 @@ def _discovery_line(rid: str, kind: str, ref: ResourceRef) -> str:
             else "unknown"
         )
         line += "\n  Action parameter declarations: " + declarations
+        line += "\n  Action output schema: " + ref.output_schema_state
     if ref.model_contract:
         line += "\n  Model declaration: " + json.dumps(ref.model_contract, sort_keys=True)
     if ref.availability:

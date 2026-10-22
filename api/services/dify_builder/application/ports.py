@@ -213,6 +213,7 @@ class DifyPort(Protocol):
         *,
         expected_revision: str,
         failed_run_id: str | None = None,
+        business_failure_run_id: str | None = None,
         confirmed_resource_ids: Sequence[str] | None = None,
         expected_resource_fingerprints: dict[str, str] | None = None,
         expected_node_resources: dict[str, str] | None = None,

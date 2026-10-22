@@ -50,6 +50,21 @@ Tool parameter semantics:
   changing the spelling of a reference-like constant does not resolve it.
 """
 
+# Fixed native channel semantics; provider declarations remain user-context data.
+TOOL_OUTPUT_SEMANTICS_RULES = """
+Native Tool message channels:
+- text concatenates emitted text; files contains emitted files; json is a collection of JSON messages,
+  not automatic JSON parsing of text. When no JSON messages are emitted, json may contain a runtime
+  fallback wrapper such as [{"data": []}]; that is not proof the requested application records are empty.
+- A public output_schema declares provider outputs, not a conversion between these message channels.
+  An absent or unavailable schema establishes no application payload shape or channel. Do not infer
+  that a Tool's json root contains the requested records from its label, name, or matching array type.
+- When the action returns the requested JSON as text, bind text and explicitly JSON-parse it in Code.
+  Validate the consumed root, items and required fields before filtering or aggregating; a valid empty
+  application array remains empty. Never turn missing or malformed expected fields into zero/empty success.
+  Preserve actual provider-declared outputs when present; never invent fields or force every Tool to text.
+"""
+
 # Shared by the planner and the normalized plan sent to every isolated builder.
 # A consumer does not otherwise see the aggregator producer's config snippet.
 VARIABLE_AGGREGATOR_OUTPUT_RULES = """
