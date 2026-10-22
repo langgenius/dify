@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { Context } from '@/kernel/context'
 import { catalog, CATALOG_PATH } from '@/plugins/catalog'
 import { CONFIG_FILE_NAME } from '@/plugins/config'
-import { http } from './index'
+import { CATALOG_OPENAPI_OFF_HINT, http } from './index'
 
 const SHORT_TIMEOUT_MS = 50
 
@@ -205,6 +205,14 @@ describe('http plugin', () => {
     await expect((await new Context().get(http)).request(account)).rejects.toMatchObject({
       code: 'catalog_unavailable',
       message: `failed to fetch the catalog: HTTP 404 from ${CATALOG_PATH}`,
+      hint: CATALOG_OPENAPI_OFF_HINT,
+    })
+  })
+
+  it('a catalog fetch with no status keeps the reachability hint', async () => {
+    process.env.DIFY_SERVER = 'http://127.0.0.1:1'
+    await expect((await new Context().get(http)).request(account)).rejects.toMatchObject({
+      code: 'catalog_unavailable',
       hint: expect.stringContaining('server is reachable'),
     })
   })

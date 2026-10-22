@@ -43,6 +43,17 @@ const CATALOG_UNAVAILABLE_PREFIX = 'failed to fetch the catalog: '
 // `refresh cache` would only repeat the fetch that failed, so it is not suggested.
 const CATALOG_UNAVAILABLE_HINT =
   'check that the saved server URL is right and the server is reachable, then retry'
+export const CATALOG_OPENAPI_OFF_HINT =
+  'the server has no OpenAPI catalog: ask its admin to set OPENAPI_ENABLED=true, or check the saved server URL'
+const CATALOG_HINT_BY_STATUS: Readonly<Record<number, string>> = {
+  [HttpStatus.NotFound]: CATALOG_OPENAPI_OFF_HINT,
+}
+
+function catalogHint(cause: unknown): string {
+  if (cause instanceof HttpClientError && cause.httpStatus !== undefined)
+    return CATALOG_HINT_BY_STATUS[cause.httpStatus] ?? CATALOG_UNAVAILABLE_HINT
+  return CATALOG_UNAVAILABLE_HINT
+}
 
 // The catalog fetch is the CLI's first request, so its failure has to name itself:
 // a rejected status for the catalog route, or whatever the network said.
@@ -207,7 +218,7 @@ export const http = definePlugin({
         throw new BaseError({
           code: ErrorCode.CatalogUnavailable,
           message: `${CATALOG_UNAVAILABLE_PREFIX}${catalogFailure(cause)}`,
-          hint: CATALOG_UNAVAILABLE_HINT,
+          hint: catalogHint(cause),
           cause,
         })
       }
