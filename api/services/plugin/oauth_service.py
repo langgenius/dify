@@ -61,8 +61,8 @@ class OAuthProxyService(BasePluginClient):
             raise ValueError("context_id is required")
         # get data from redis
         key = f"{OAuthProxyService.__KEY_PREFIX__}{context_id}"
-        data = redis_client.get(key)
+        # Consume atomically so two callbacks cannot exchange or persist one grant twice.
+        data = redis_client.getdel(key)
         if not data:
             raise ValueError("context_id is invalid")
-        redis_client.delete(key)
         return json.loads(data)

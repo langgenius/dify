@@ -244,6 +244,22 @@ export const zEndUserConnectionListQuery = z.object({
 })
 
 /**
+ * EndUserConnectionOAuthPayload
+ */
+export const zEndUserConnectionOAuthPayload = z.object({
+  name: z.string().min(1).max(100),
+  node_id: z.string().min(1).max(255),
+  workflow_id: z.uuid(),
+})
+
+/**
+ * EndUserConnectionOAuthResponse
+ */
+export const zEndUserConnectionOAuthResponse = z.object({
+  authorization_url: z.string(),
+})
+
+/**
  * EndUserConnectionResponse
  */
 export const zEndUserConnectionResponse = z.object({
@@ -437,6 +453,30 @@ export const zConnectionNotFoundError = zErrorResponse.and(
   z.object({
     code: z.literal('connection_not_found'),
     status: z.literal(404),
+  }),
+)
+
+/**
+ * ConnectionOauthFailedError
+ *
+ * OAuth authorization could not be completed. Start authorization again.
+ */
+export const zConnectionOauthFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_oauth_failed'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionReauthorizationRequiredError
+ *
+ * The OAuth client changed or is unavailable. Start authorization again.
+ */
+export const zConnectionReauthorizationRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_reauthorization_required'),
+    status: z.literal(409),
   }),
 )
 
@@ -2155,6 +2195,13 @@ export const zPostConnectionsBody = zEndUserConnectionCreatePayload
  */
 export const zPostConnectionsResponse = zEndUserConnectionResponse
 
+export const zPostConnectionsOauthAuthorizationUrlBody = zEndUserConnectionOAuthPayload
+
+/**
+ * OAuth authorization URL
+ */
+export const zPostConnectionsOauthAuthorizationUrlResponse = zEndUserConnectionOAuthResponse
+
 export const zDeleteConnectionsByConnectionIdPath = z.object({
   connection_id: z.uuid(),
 })
@@ -2192,6 +2239,15 @@ export const zPostConnectionsByConnectionIdCheckPath = z.object({
  * Credential check result
  */
 export const zPostConnectionsByConnectionIdCheckResponse = zEndUserConnectionCheckResponse
+
+export const zPostConnectionsByConnectionIdReauthorizePath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * OAuth reauthorization URL
+ */
+export const zPostConnectionsByConnectionIdReauthorizeResponse = zEndUserConnectionOAuthResponse
 
 export const zGetConversationsQuery = z.object({
   last_id: z.string().optional(),

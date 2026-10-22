@@ -72,12 +72,12 @@ class PluginApiKeyCredentialGateway:
                 raise ConnectionConfigurationError()
         except ValueError:
             raise ConnectionConfigurationError() from None
-        if CredentialType.API_KEY not in controller.get_supported_credential_types():
-            raise ConnectionConfigurationError()
         return controller
 
     def validate_format(self, tenant_id: str, provider: str, credentials: Mapping[str, Any]) -> dict[str, Any]:
         controller = self.provider(tenant_id, provider)
+        if CredentialType.API_KEY not in controller.get_supported_credential_types():
+            raise ConnectionConfigurationError()
         normalized = deepcopy(dict(credentials))
         try:
             controller.validate_credentials_format(normalized)
@@ -124,7 +124,7 @@ class PluginApiKeyCredentialGateway:
             )
 
 
-class ApiKeyConnectionTargetResolver:
+class PublishedConnectionTargetResolver:
     def __init__(self, *, workflows: ConnectionWorkflowQuery, providers: PluginApiKeyCredentialGateway) -> None:
         self._workflows = workflows
         self._providers = providers
@@ -169,6 +169,6 @@ class ApiKeyConnectionTargetResolver:
                 for value in provider.get_supported_credential_types()
                 if value in (CredentialType.API_KEY, CredentialType.OAUTH2)
             ),
-            # OAuth Client resolution joins the OAuth vertical slice; this resolver creates API keys only.
+            # The authorization service resolves and pins the Client before accepting OAuth creation.
             oauth_client=None,
         )

@@ -7,7 +7,7 @@ with one-time use semantics, and validation error paths.
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -85,7 +85,7 @@ class TestUseProxyContext:
     def test_raises_when_context_not_found(self) -> None:
         redis_client = _redis_mock()
 
-        redis_client.get.return_value = None
+        redis_client.getdel.return_value = None
 
         with pytest.raises(ValueError, match="context_id is invalid"):
             OAuthProxyService.use_proxy_context("nonexistent-id")
@@ -94,14 +94,13 @@ class TestUseProxyContext:
         redis_client = _redis_mock()
 
         stored = {"user_id": "u1", "tenant_id": "t1", "plugin_id": "p1", "provider": "github"}
-        redis_client.get.return_value = json.dumps(stored).encode()
+        redis_client.getdel.return_value = json.dumps(stored).encode()
 
-        with patch("services.plugin.oauth_service.redis_client.delete") as delete:
-            result = OAuthProxyService.use_proxy_context("valid-id")
+        result = OAuthProxyService.use_proxy_context("valid-id")
 
         assert result == stored
         expected_key = "oauth_proxy_context:valid-id"
-        delete.assert_called_once_with(expected_key)
+        redis_client.getdel.assert_called_once_with(expected_key)
 
     def test_returns_context_with_credential_id(self) -> None:
         redis_client = _redis_mock()
@@ -113,7 +112,7 @@ class TestUseProxyContext:
             "provider": "github",
             "credential_id": "cred-42",
         }
-        redis_client.get.return_value = json.dumps(stored).encode()
+        redis_client.getdel.return_value = json.dumps(stored).encode()
 
         result = OAuthProxyService.use_proxy_context("ctx-with-cred")
 

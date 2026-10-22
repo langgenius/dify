@@ -54,3 +54,8 @@ class ConnectionInvalidCredentialsError(ConnectionError):
 class ConnectionSecretUnavailableError(ConnectionError):
     def __init__(self) -> None:
         super().__init__("Connection credentials are temporarily unavailable.")
+
+
+class ConnectionOAuthError(ConnectionError):
+    def __init__(self) -> None:
+        super().__init__("OAuth authorization could not be completed. Start authorization again.")

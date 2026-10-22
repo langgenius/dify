@@ -2,6 +2,8 @@
 
 from enum import StrEnum
 
+END_USER_OAUTH_CONTEXT_PREFIX = "end-user."
+
 
 class ConnectionCredentialType(StrEnum):
     API_KEY = "api-key"

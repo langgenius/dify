@@ -146,6 +146,42 @@ Stop a running completion message task.
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /connections/oauth/authorization-url
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndUserConnectionOAuthPayload](#enduserconnectionoauthpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | OAuth authorization URL | **application/json**: [EndUserConnectionOAuthResponse](#enduserconnectionoauthresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionOauthFailedError](#connectionoauthfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[WorkflowChangedError](#workflowchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /connections/oauth/{provider}/callback
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to OAuth completion page |  |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionOauthFailedError](#connectionoauthfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[WorkflowChangedError](#workflowchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [DELETE] /connections/{connection_id}
 #### Parameters
 
@@ -222,6 +258,25 @@ Stop a running completion message task.
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /connections/{connection_id}/reauthorize
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | OAuth reauthorization URL | **application/json**: [EndUserConnectionOAuthResponse](#enduserconnectionoauthresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionOauthFailedError](#connectionoauthfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1321,6 +1376,22 @@ Connection not found.
 | ---- | ---- | ----------- | -------- |
 | ConnectionNotFoundError |  | Connection not found. |  |
 
+#### ConnectionOauthFailedError
+
+OAuth authorization could not be completed. Start authorization again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionOauthFailedError |  | OAuth authorization could not be completed. Start authorization again. |  |
+
+#### ConnectionReauthorizationRequiredError
+
+The OAuth client changed or is unavailable. Start authorization again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionReauthorizationRequiredError |  | The OAuth client changed or is unavailable. Start authorization again. |  |
+
 #### ConversationInfiniteScrollPagination
 
 | Name | Type | Description | Required |
@@ -1441,6 +1512,20 @@ Too many emails have been sent from this IP address recently. Please try again l
 | data | [ [EndUserConnectionResponse](#enduserconnectionresponse) ] |  | Yes |
 | has_more | boolean |  | Yes |
 | next_cursor | string |  | Yes |
+
+#### EndUserConnectionOAuthPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| node_id | string |  | Yes |
+| workflow_id | string (uuid) |  | Yes |
+
+#### EndUserConnectionOAuthResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authorization_url | string |  | Yes |
 
 #### EndUserConnectionResponse
 

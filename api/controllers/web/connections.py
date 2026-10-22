@@ -1,21 +1,32 @@
 """Web management of personal API-key Connections."""
 
 from datetime import datetime
-from typing import Any, NoReturn
+from typing import Any
 from uuid import UUID
 
 from flask import request
 from pydantic import ConfigDict, Field, JsonValue, ValidationError, field_serializer
 from pydantic.json_schema import SkipJsonSchema
-from werkzeug.exceptions import Unauthorized
 
+from controllers.common.end_user_connections import (
+    ConnectionCheckUnavailableHTTPError,
+    ConnectionConfigurationHTTPError,
+    ConnectionConflictHTTPError,
+    ConnectionCredentialsHTTPError,
+    ConnectionLoginRequiredError,
+    ConnectionNotFoundHTTPError,
+    ConnectionSecretUnavailableHTTPError,
+    ConnectionWorkflowChangedHTTPError,
+)
+from controllers.common.end_user_connections import (
+    raise_connection_error as _raise_error,
+)
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.datetime_utils import to_utc_timestamp
-from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App, EndUser
@@ -28,17 +39,7 @@ from services.end_user_connections.contracts import (
     UpdateConnectionInput,
 )
 from services.end_user_connections.entities import WebConnectionContext
-from services.end_user_connections.errors import (
-    ConnectionCheckUnavailableError,
-    ConnectionConfigurationError,
-    ConnectionConflictError,
-    ConnectionError,
-    ConnectionIdentityError,
-    ConnectionInvalidCredentialsError,
-    ConnectionNotFoundError,
-    ConnectionSecretUnavailableError,
-    ConnectionWorkflowChangedError,
-)
+from services.end_user_connections.errors import ConnectionError
 
 
 class EndUserConnectionCreatePayload(CreateApiKeyConnectionInput):
@@ -84,54 +85,6 @@ class EndUserConnectionCheckResponse(ConnectionCheckView, ResponseModel):
     pass
 
 
-class ConnectionLoginRequiredError(BaseHTTPException):
-    code = 401
-    error_code = "end_user_login_required"
-    description = "Sign in to manage personal connections."
-
-
-class ConnectionNotFoundHTTPError(BaseHTTPException):
-    code = 404
-    error_code = "connection_not_found"
-    description = "Connection not found."
-
-
-class ConnectionConfigurationHTTPError(BaseHTTPException):
-    code = 400
-    error_code = "connection_configuration_invalid"
-    description = "The connection is not compatible with this tool configuration."
-
-
-class ConnectionConflictHTTPError(BaseHTTPException):
-    code = 409
-    error_code = "connection_conflict"
-    description = "Connection changed during the operation."
-
-
-class ConnectionWorkflowChangedHTTPError(BaseHTTPException):
-    code = 409
-    error_code = "workflow_changed"
-    description = "The workflow changed. Confirm the connection selection again."
-
-
-class ConnectionCredentialsHTTPError(BaseHTTPException):
-    code = 400
-    error_code = "connection_credentials_invalid"
-    description = "Invalid credentials for this provider."
-
-
-class ConnectionCheckUnavailableHTTPError(BaseHTTPException):
-    code = 503
-    error_code = "credential_check_unavailable"
-    description = "Credential validation is temporarily unavailable."
-
-
-class ConnectionSecretUnavailableHTTPError(BaseHTTPException):
-    code = 503
-    error_code = "connection_credentials_unavailable"
-    description = "Connection credentials are temporarily unavailable."
-
-
 def _context(app: App, end_user: EndUser) -> WebConnectionContext:
     context = connection_context_from_web_passport(app=app, end_user=end_user)
     # SNP-976 owns the deployment-level anonymous-connection gate. Until then,
@@ -139,23 +92,6 @@ def _context(app: App, end_user: EndUser) -> WebConnectionContext:
     if context.account_id is None:
         raise ConnectionLoginRequiredError()
     return context
-
-
-def _raise_error(error: ConnectionError) -> NoReturn:
-    if isinstance(error, ConnectionIdentityError):
-        raise Unauthorized(str(error)) from None
-    errors: dict[type[ConnectionError], type[BaseHTTPException]] = {
-        ConnectionNotFoundError: ConnectionNotFoundHTTPError,
-        ConnectionConfigurationError: ConnectionConfigurationHTTPError,
-        ConnectionConflictError: ConnectionConflictHTTPError,
-        ConnectionWorkflowChangedError: ConnectionWorkflowChangedHTTPError,
-        ConnectionInvalidCredentialsError: ConnectionCredentialsHTTPError,
-        ConnectionCheckUnavailableError: ConnectionCheckUnavailableHTTPError,
-        ConnectionSecretUnavailableError: ConnectionSecretUnavailableHTTPError,
-    }
-    if exception := errors.get(type(error)):
-        raise exception() from None
-    raise error
 
 
 register_schema_models(
