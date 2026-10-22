@@ -31,9 +31,11 @@ def test_enabled_port_reports_missing_registration_without_context(monkeypatch: 
 
 def test_enabled_port_reports_missing_registration_in_app(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
-    with Flask(__name__).app_context():
-        with pytest.raises(ApplicationTracingHooksNotRegisteredError, match="application_tracing_hooks_not_registered"):
-            application_tracing_hooks()
+    with (
+        Flask(__name__).app_context(),
+        pytest.raises(ApplicationTracingHooksNotRegisteredError, match="application_tracing_hooks_not_registered"),
+    ):
+        application_tracing_hooks()
 
 
 def test_port_does_not_leak_between_flask_applications(monkeypatch: pytest.MonkeyPatch) -> None:

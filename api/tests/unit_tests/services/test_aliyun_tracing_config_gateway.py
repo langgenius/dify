@@ -244,9 +244,8 @@ def test_controller_rejects_embedded_license_without_echo_or_state_change(
         activate=True,
     )
     save = inspect.unwrap(controller.TraceAppConfigApi.patch if update else controller.TraceAppConfigApi.post)
-    with app.test_request_context():
-        with pytest.raises(InvalidTracingConfigError) as caught:
-            save(controller.TraceAppConfigApi(), payload, case.context, UUID(case.app_id))
+    with app.test_request_context(), pytest.raises(InvalidTracingConfigError) as caught:
+        save(controller.TraceAppConfigApi(), payload, case.context, UUID(case.app_id))
     # The real controller exposes this fixed BaseHTTPException body. Neither
     # Pydantic inputs nor a credential-bearing exception chain reaches it.
     assert caught.value.data == {
