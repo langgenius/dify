@@ -597,7 +597,7 @@ describe('WorkflowLogArchivesPage', () => {
       )
     })
 
-    it('discloses download failure details before retrying the affected month', async () => {
+    it('describes the failed download when its retry button receives keyboard focus', async () => {
       const user = userEvent.setup()
       renderPage({
         ...archiveData,
@@ -622,12 +622,13 @@ describe('WorkflowLogArchivesPage', () => {
 
       const retry = screen.getByRole('button', { name: 'common.operation.retry 2025-03' })
       expect(retry).toBeEnabled()
-      await user.hover(retry)
-      expect(
-        await screen.findByText(
-          'appLog.archives.downloadHint.failedWithReason:{"reason":"Storage unavailable"}',
-        ),
-      ).toBeVisible()
+      await user.tab()
+      expect(retry).toHaveFocus()
+      const tooltip = await screen.findByRole('tooltip')
+      const failureHint =
+        'appLog.archives.downloadHint.failedWithReason:{"reason":"Storage unavailable"}'
+      expect(tooltip).toHaveTextContent(failureHint)
+      expect(retry).toHaveAccessibleDescription(failureHint)
       expect(archiveRequests.prepareDownload).not.toHaveBeenCalled()
       expect(
         screen.queryByRole('button', { name: 'common.operation.learnMore: 2025-03' }),

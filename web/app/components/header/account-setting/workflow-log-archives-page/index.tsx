@@ -320,6 +320,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const archiveMonthLabelId = useId()
   const downloadActionLabelId = useId()
+  const downloadHintId = useId()
   const deleteActionLabelId = useId()
   const confirmDeleteLabelId = useId()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -457,6 +458,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                     focusableWhenDisabled
                     className="shrink-0 px-2"
                     aria-labelledby={`${downloadActionLabelId} ${archiveMonthLabelId}`}
+                    aria-describedby={downloadHintId}
                     onClick={onAction}
                   />
                 }
@@ -469,7 +471,9 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                 )}
                 <span id={downloadActionLabelId}>{buttonContent}</span>
               </TooltipTrigger>
-              <TooltipContent>{downloadHint}</TooltipContent>
+              <TooltipContent id={downloadHintId} role="tooltip">
+                {downloadHint}
+              </TooltipContent>
             </Tooltip>
             {isCurrentWorkspaceOwner && (
               <AlertDialog
