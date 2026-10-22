@@ -58,7 +58,8 @@ export const PlanCard = ({
         {items.length > 0 && (
           <ol className="flex flex-col">
             {items.map((text, index) => (
-              <li key={text} className="flex items-start gap-2 py-1">
+              // oxlint-disable-next-line react/no-array-index-key -- Plan steps are ordered strings without IDs; the position distinguishes repeated text.
+              <li key={`${index}:${text}`} className="flex items-start gap-2 py-1">
                 <span
                   aria-hidden
                   className="flex size-4 shrink-0 items-center justify-center rounded-md bg-components-badge-bg-gray-soft system-2xs-semibold-uppercase text-text-tertiary"

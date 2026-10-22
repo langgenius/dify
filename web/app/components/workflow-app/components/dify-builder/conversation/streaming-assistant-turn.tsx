@@ -60,7 +60,7 @@ export const StreamingAssistantTurn = ({
       )}
       {activityCount > 0 ? <ExecutionProgress execution={liveExecution?.execution} /> : null}
       <Thinking text={reasoningText} isStreaming onVisibleContentChange={onContentChange} />
-      {replyText ? <AssistantReply text={replyText} /> : null}
+      {replyText ? <AssistantReply text={replyText} isStreaming /> : null}
     </article>
   )
 }

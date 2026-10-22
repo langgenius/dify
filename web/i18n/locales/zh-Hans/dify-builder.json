@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "刷新工作流画布失败。{{reason}}",
   "cardCategory.checks": "检查",
   "cardCategory.form": "表单",
   "cardCategory.plan": "计划",
@@ -270,6 +271,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "否",
   "copy.values.yes": "是",
+  "creationStartFailed": "启动 App Builder 失败。{{reason}}",
   "emptyBuildTitle": "这里还没有内容",
   "emptyDescription": "告诉我你想构建什么，我会先展示计划。确认后才会开始构建。",
   "exportDebugLog": "导出调试日志",

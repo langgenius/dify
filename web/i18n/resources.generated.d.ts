@@ -2907,6 +2907,7 @@ export default interface Resources {
   }
   difyBuilder: {
     buttonTooltip: 'App Builder'
+    canvasRefreshFailed: "Couldn't refresh the workflow canvas. {{reason}}"
     'cardCategory.checks': 'Checks'
     'cardCategory.form': 'Form'
     'cardCategory.plan': 'Plan'
@@ -3177,6 +3178,7 @@ export default interface Resources {
     'copy.values.empty': '—'
     'copy.values.no': 'No'
     'copy.values.yes': 'Yes'
+    creationStartFailed: "Couldn't start App Builder. {{reason}}"
     emptyBuildTitle: 'Nothing here yet'
     emptyDescription: 'Tell me what you want to build — I’ll show you a plan first. Nothing is built until you approve.'
     exportDebugLog: 'Export debug log'

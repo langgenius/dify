@@ -1,6 +1,7 @@
 import type { WorkflowDraftRefreshResult } from '../../../hooks/use-workflow-refresh-draft'
 import { useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { requestErrorMessage } from '../session/errors'
@@ -42,6 +43,7 @@ export const DifyBuilderCanvasRefreshSync = ({
   onRefreshCanvas: (shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>
   onCanvasRefreshed: () => void
 }) => {
+  const { t } = useTranslation(['difyBuilder'])
   const workflowStore = useWorkflowStore()
   const sessionStore = useJotaiStore()
   const builderNeedsRefresh = useStore((state) => state.workflowDraftSyncPhase === 'builder')
@@ -126,7 +128,7 @@ export const DifyBuilderCanvasRefreshSync = ({
         if (!shouldApply()) return
         if (result === 'failed') {
           setCanvasRefreshFailed(true)
-          setLocalError('Workflow canvas refresh failed.')
+          setLocalError(t(($) => $.canvasRefreshFailed, { reason: '' }).trim())
           return
         }
         setCanvasRefreshGeneration((generation) => generation + 1)
@@ -142,10 +144,10 @@ export const DifyBuilderCanvasRefreshSync = ({
         onCanvasRefreshed()
       })
       .catch(async (error: unknown) => {
-        const message = await requestErrorMessage(error)
+        const message = await requestErrorMessage(error, '')
         if (!shouldApply()) return
         setCanvasRefreshFailed(true)
-        setLocalError(message)
+        setLocalError(t(($) => $.canvasRefreshFailed, { reason: message }).trim())
       })
       .finally(() => {
         if (requestId === refreshRequestIdRef.current) setCanvasRefreshing(false)
@@ -166,6 +168,7 @@ export const DifyBuilderCanvasRefreshSync = ({
     setCanvasRefreshing,
     setLocalError,
     setPendingRefresh,
+    t,
     version,
     workflowStore,
   ])

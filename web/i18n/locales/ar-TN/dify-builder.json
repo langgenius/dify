@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "تعذّر تحديث لوحة سير العمل. {{reason}}",
   "cardCategory.checks": "الفحوصات",
   "cardCategory.form": "نموذج",
   "cardCategory.plan": "الخطة",
@@ -270,6 +271,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "لا",
   "copy.values.yes": "نعم",
+  "creationStartFailed": "تعذّر تشغيل App Builder. {{reason}}",
   "emptyBuildTitle": "لا يوجد شيء هنا بعد",
   "emptyDescription": "أخبرني بما تريد إنشاءه — سأعرض عليك خطة أولًا. لن يتم إنشاء أي شيء حتى توافق.",
   "exportDebugLog": "تصدير سجل التصحيح",
