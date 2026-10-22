@@ -368,7 +368,7 @@ class HumanInputDeliveryService:
                     )
                 else:
                     body = template.body.replace(
-                        EmailDeliveryConfig.URL_PLACEHOLDER, self._request_url(token, auth_type)
+                        EmailDeliveryConfig.URL_PLACEHOLDER, build_form_request_url(token, auth_type)
                     )
                     result = adapter.messaging.send_text(user_id, body, subject=template.subject)
             except DynamicCardMessagingError:
@@ -401,7 +401,9 @@ class HumanInputDeliveryService:
             return None
         token = SecretStr(secrets.token_urlsafe(32))
         delivery = self._prepare_delivery(context, snapshot, context.auth_type, token)
-        body = template.body.replace(EmailDeliveryConfig.URL_PLACEHOLDER, self._request_url(token, context.auth_type))
+        body = template.body.replace(
+            EmailDeliveryConfig.URL_PLACEHOLDER, build_form_request_url(token, context.auth_type)
+        )
         html = EmailDeliveryConfig.render_markdown_body(body)
         try:
             client.send(to=target.email, subject=template.subject, html=html)
@@ -414,22 +416,6 @@ class HumanInputDeliveryService:
         return self._record(delivery, outcome, message_locator=None)
 
     @staticmethod
-    def _request_url(token: SecretStr, auth_type: SubmissionAuthType) -> str:
-        if auth_type == SubmissionAuthType.CONSOLE:
-            base_url = dify_config.CONSOLE_WEB_URL
-            page_path = _CONSOLE_FORM_PAGE_PATH
-            required_setting = "CONSOLE_WEB_URL"
-        else:
-            base_url = dify_config.APP_WEB_URL
-            page_path = (
-                _PUBLIC_V2_FORM_PAGE_PATH if auth_type == SubmissionAuthType.EMAIL_OTP else _LEGACY_FORM_PAGE_PATH
-            )
-            required_setting = "APP_WEB_URL"
-        if not base_url:
-            raise ValueError(f"{required_setting} is required for Human Input approval links")
-        return f"{base_url.rstrip('/')}{page_path}/{quote(token.get_secret_value(), safe='')}"
-
-    @staticmethod
     def _warn(context: _RecipientContext, reason: str) -> None:
         logger.warning(
             "Human Input channel skipped: tenant_id=%s form_id=%s recipient_id=%s reason=%s",
@@ -438,3 +424,18 @@ class HumanInputDeliveryService:
             context.recipient.id,
             reason,
         )
+
+
+def build_form_request_url(token: SecretStr, auth_type: SubmissionAuthType) -> str:
+    """Select the form entry point from its authentication contract."""
+    if auth_type == SubmissionAuthType.CONSOLE:
+        base_url = dify_config.CONSOLE_WEB_URL
+        page_path = _CONSOLE_FORM_PAGE_PATH
+        required_setting = "CONSOLE_WEB_URL"
+    else:
+        base_url = dify_config.APP_WEB_URL
+        page_path = _PUBLIC_V2_FORM_PAGE_PATH if auth_type == SubmissionAuthType.EMAIL_OTP else _LEGACY_FORM_PAGE_PATH
+        required_setting = "APP_WEB_URL"
+    if not base_url:
+        raise ValueError(f"{required_setting} is required for Human Input approval links")
+    return f"{base_url.rstrip('/')}{page_path}/{quote(token.get_secret_value(), safe='')}"

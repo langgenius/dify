@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import secrets
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import timedelta
@@ -23,7 +24,7 @@ from core.helper import encrypter
 from core.human_input_v2.entities import DebugChannel
 from core.human_input_v2.shared.values import AccountId, ContactId, NormalizedEmail, TenantId
 from core.workflow.human_input_adapter import EmailDeliveryConfig
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus, TimeoutUnit
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, TimeoutUnit
 from core.workflow.nodes.human_input_v2.entities import (
     AllWorkspaceContacts,
     Contact,
@@ -33,10 +34,13 @@ from core.workflow.nodes.human_input_v2.entities import (
     OnetimeEmail,
     RecipientConfig,
 )
-from core.workflow.nodes.human_input_v2.form_compiler import compile_resolved_form
+from core.workflow.nodes.human_input_v2.form_compiler import MissingResolvedInputError, compile_resolved_form
+from core.workflow.nodes.human_input_v2.node import HumanInputNode
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, PreparedForm
 from graphon.enums import WorkflowExecutionStatus
+from graphon.runtime import VariablePool
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.variable_loader import VariableLoader, load_into_variable_pool
 from graphon.variables.segments import StringSegment
 from graphon.variables.template_resolution import convert_template
 from libs.datetime_utils import naive_utc_now
@@ -45,7 +49,12 @@ from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.human_input_v2.contact import Contact as ResolvedContact
 from repositories.human_input_v2.contact import ContactQuery, ContactType
-from repositories.human_input_v2.delivery_repository import InitiatorSnapshot
+from repositories.human_input_v2.delivery_repository import (
+    DeliveryCreateParams,
+    InitiatorSnapshot,
+    SubmissionAuthType,
+    TargetSnapshot,
+)
 from repositories.human_input_v2.form_repository import Form, FormCreateParams
 from repositories.human_input_v2.recipient_repository import (
     ContactRecipientSubject,
@@ -60,11 +69,114 @@ from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchem
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
 
-from .delivery_service import ResolvedMessageTemplate
+from .delivery_service import ResolvedMessageTemplate, build_form_request_url
 
 logger = logging.getLogger(__name__)
 _EMAIL = TypeAdapter(EmailStr)
 _CONTACT_PAGE_SIZE = 100
+
+
+class HumanInputTestFormError(Exception):
+    """The editor's draft cannot produce a usable delivery-test form."""
+
+
+class HumanInputDeliveryTestFormService:
+    """Create frozen editor-only test forms independently of workflow execution.
+
+    Own draft variable preparation, deadlines, and the atomic form/recipient/access
+    transaction. A notification channel supplies its target snapshot; it does not
+    create the form or choose its authentication contract.
+    """
+
+    def __init__(
+        self,
+        *,
+        session_factory: Callable[[], Session],
+        tenant_id: TenantId,
+        account_id: AccountId,
+        variable_loader_factory: Callable[[str], VariableLoader],
+    ) -> None:
+        self._sessions = session_factory
+        self._tenant_id = tenant_id
+        self._account_id = account_id
+        self._variable_loader_factory = variable_loader_factory
+
+    def create_form(
+        self,
+        *,
+        app_id: str,
+        node_id: str,
+        node_data: HumanInputNodeData,
+        variable_pool: VariablePool,
+        target: TargetSnapshot,
+    ) -> str:
+        """Commit a test form and return its Console-authenticated request URL.
+
+        Ignore configured recipients: only the authenticated editor can access
+        this form. The returned link is usable before notification I/O starts.
+        """
+        # The message test has already populated its manual values. Resolve the
+        # remaining dependencies from the draft, excluding configured recipients.
+        test_node_data = node_data.model_copy(update={"recipients_spec": []})
+        variable_mapping = HumanInputNode.extract_variable_selector_to_variable_mapping(
+            graph_config={}, config={"id": node_id, "data": test_node_data}
+        )
+        load_into_variable_pool(
+            variable_loader=self._variable_loader_factory(app_id),
+            variable_pool=variable_pool,
+            variable_mapping=variable_mapping,
+            user_inputs={},
+        )
+        for selector in variable_mapping.values():
+            if variable_pool.get(selector) is None:
+                raise HumanInputTestFormError(f"The form variable {'.'.join(selector)} is unavailable.")
+        try:
+            resolved_form = compile_resolved_form(node_data, variable_pool)
+        except (MissingResolvedInputError, TypeError) as exc:
+            raise HumanInputTestFormError("A valid Human Input v2 form is required.") from exc
+        token = SecretStr(secrets.token_urlsafe(32))
+        try:
+            request_url = build_form_request_url(token, SubmissionAuthType.CONSOLE)
+        except ValueError as exc:
+            raise HumanInputTestFormError(str(exc)) from exc
+        duration = (
+            timedelta(hours=node_data.timeout)
+            if node_data.timeout_unit == TimeoutUnit.HOUR
+            else timedelta(days=node_data.timeout)
+        )
+        with self._sessions() as session, session.begin():
+            contact = SQLAlchemyContactRepository(session).get_contact_by_account_id(self._tenant_id, self._account_id)
+            if contact is None:
+                raise HumanInputTestFormError("The current editor has no available Contact in this workspace.")
+            now = naive_utc_now()
+            form = SQLAlchemyFormRepository(session, self._tenant_id, app_id).create_form(
+                FormCreateParams(
+                    workflow_run_id=None,
+                    node_execution_id=None,
+                    form_kind=HumanInputFormKind.DELIVERY_TEST,
+                    resolved_form=resolved_form,
+                    expiration_time=now + duration,
+                    global_timeout_deadline=now + timedelta(seconds=dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS),
+                )
+            )
+            (recipient,) = SQLAlchemyRecipientRepository(session, self._tenant_id, form.id).create_recipients(
+                [
+                    RecipientCreateParams(
+                        ContactRecipientSubject(contact.id), (Contact(contact_id=contact.id),), contact.name
+                    )
+                ]
+            )
+            SQLAlchemyDeliveryRepository(session).create_delivery(
+                tenant_id=self._tenant_id,
+                form_id=form.id,
+                params=DeliveryCreateParams(
+                    recipient_id=recipient.id,
+                    token_hash=hashlib.sha256(token.get_secret_value().encode()).hexdigest(),
+                    auth_type=SubmissionAuthType.CONSOLE,
+                    target_snapshot=target,
+                ),
+            )
+        return request_url
 
 
 @dataclass(frozen=True, slots=True)
@@ -441,3 +553,6 @@ def load_prepared_forms(
             token = SecretStr(plaintext)
         prepared[form.id] = PreparedForm(form, token)
     return prepared
+
+
+from configs import dify_config
