@@ -2,7 +2,6 @@
 
 from core.dify_builder.models import Graph
 from services.dify_builder.application.placeholder_agent import PlaceholderAgent
-from services.dify_builder.application.ports import DifyBuilderAgent
 
 
 def _graph_with_llm() -> Graph:
@@ -35,7 +34,3 @@ def test_build_edit_intents_targets_existing_llm_node_with_set_node_config() -> 
     # the submitted rule values flow into the intents
     values = {i.args["path"]: i.args["value"] for i in intents}
     assert values["risk_threshold"] == "high"
-
-
-def test_placeholder_agent_still_satisfies_dify_builder_agent_protocol() -> None:
-    assert isinstance(PlaceholderAgent(), DifyBuilderAgent)

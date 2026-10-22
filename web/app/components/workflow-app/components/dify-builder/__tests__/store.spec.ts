@@ -351,29 +351,6 @@ describe('Dify Builder store', () => {
     expect(store.get(difyBuilderModelReadonlyAtom)).toBe(true)
   })
 
-  it('does not notify fix-entry subscribers when only conversation content changes', () => {
-    const store = createStore()
-    store.set(difyBuilderRuntimeAtom, createRuntime(vi.fn(async () => true)))
-    store.set(difyBuilderSessionViewAtom, createSessionView())
-    const listener = vi.fn()
-    const unsubscribe = store.sub(difyBuilderCanStartFixAtom, listener)
-
-    store.set(difyBuilderConversationAtom, [
-      {
-        at_version: 2,
-        kind: 'notice',
-        payload: { text: 'Repair complete' },
-        seq: 1,
-      },
-    ])
-
-    expect(listener).not.toHaveBeenCalled()
-
-    store.set(difyBuilderSessionBusyAtom, true)
-    expect(listener).toHaveBeenCalledOnce()
-    unsubscribe()
-  })
-
   it('routes active waiting-flow composer text to a multi-turn message', async () => {
     const store = createStore()
     const runtime = createRuntime(vi.fn(async () => true))

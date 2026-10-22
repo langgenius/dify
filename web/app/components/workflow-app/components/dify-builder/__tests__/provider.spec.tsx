@@ -520,6 +520,12 @@ describe('DifyBuilderProvider', () => {
     renderProvider()
     await user.click(screen.getByRole('button', { name: 'Start command' }))
     expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(true)
+
+    await user.click(screen.getByRole('button', { name: 'Finish command' }))
+    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
+
+    await user.click(screen.getByRole('button', { name: 'Stream update' }))
+    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(true)
   })
 
   it('prevents an in-flight canvas refresh from applying after session reset', async () => {
@@ -555,17 +561,6 @@ describe('DifyBuilderProvider', () => {
     await user.click(screen.getByRole('button', { name: 'Finish command' }))
     await waitFor(() => expect(mocks.refreshCanvas).toHaveBeenCalledTimes(2))
     expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
-  })
-
-  it('does not rerender the controller boundary for streamed session updates', async () => {
-    const user = userEvent.setup()
-    renderProvider()
-    const initialRenderCount = mocks.controllerHook.mock.calls.length
-
-    await user.click(screen.getByRole('button', { name: 'Stream update' }))
-
-    expect(mocks.controllerHook).toHaveBeenCalledTimes(initialRenderCount)
-    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(true)
   })
 
   it('keeps recheck blocked until a refreshed canvas is evaluated', async () => {

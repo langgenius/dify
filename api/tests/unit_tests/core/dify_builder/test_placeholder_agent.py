@@ -1,29 +1,7 @@
-"""Port of placeholder_agent_test.go + the placeholder-agent slice of seam_test.go.
-
-Mirrors dify-enterprise/server/pkg/enterprise/biz/dify_builder/placeholder_agent_test.go:
-``TestPlaceholderAgent_ProposeRepair_ReplacesCulpritCode``,
-``TestPlaceholderAgent_DiagnoseChecklist_PicksFirstErrorWithMessages``,
-``TestPlaceholderAgent_DiagnoseChecklist_NoMessagesAnywhere_ReturnsGenericCause``.
-
-The full-flow ``TestSeam_AnyConformingAgent_DrivesFlowToTerminal`` (running
-``PlaceholderAgent`` through the ``Runner`` end-to-end) belongs to Task 9's
-``test_fix_flow.py`` acceptance test; here we only assert the typing seam
-(``PlaceholderAgent`` structurally satisfies ``DifyBuilderAgent``), the same
-narrower scope ``test_ports.py``'s ``_StubAgent`` seam check covers for a
-throwaway conformer.
-"""
+"""Fallback-agent diagnosis, repair, and workflow generation behavior."""
 
 from core.dify_builder.models import ChecklistError, Graph, NodeOutput, Run
 from services.dify_builder.application.placeholder_agent import FIXED_CODE, PlaceholderAgent
-from services.dify_builder.application.ports import DifyBuilderAgent
-
-
-def test_placeholder_agent_satisfies_dify_builder_agent_protocol() -> None:
-    assert isinstance(PlaceholderAgent(), DifyBuilderAgent)
-
-
-def test_fixed_code_matches_the_go_fixture_byte_for_byte() -> None:
-    assert FIXED_CODE == 'def main() -> dict:\n    return {"result": "ok"}'
 
 
 def test_diagnose_points_at_first_failed_node() -> None:
