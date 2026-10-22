@@ -236,10 +236,6 @@ class AlreadyResolvedError(OAuthDeviceError):
     pass
 
 
-class ApprovalInProgressError(OAuthDeviceError):
-    pass
-
-
 class ApprovalOutcomeUnknownError(OAuthDeviceError):
     """The Redis transition may have committed and must not be compensated."""
 

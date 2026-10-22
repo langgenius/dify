@@ -39,7 +39,6 @@ from machinery.context import RequestContext
 from services.oauth_device_contracts import (
     AccessDeniedError,
     AlreadyResolvedError,
-    ApprovalInProgressError,
     ApprovalOutcomeUnknownError,
     AuthorizationPendingError,
     DeviceStateLostError,
@@ -82,8 +81,6 @@ def _error_response(error: OAuthDeviceError) -> tuple[dict[str, str], int]:
             return {"error": "expired_or_unknown"}, HTTPStatus.NOT_FOUND
         case AlreadyResolvedError():
             return {"error": "already_resolved"}, HTTPStatus.CONFLICT
-        case ApprovalInProgressError():
-            return {"error": "approve_in_progress"}, HTTPStatus.CONFLICT
         case ApprovalOutcomeUnknownError():
             return {"error": "approval_outcome_unknown"}, HTTPStatus.SERVICE_UNAVAILABLE
         case DeviceStateLostError():

@@ -18,7 +18,6 @@ from services.oauth_device_application_service import OAuthDeviceApplicationServ
 from services.oauth_device_contracts import (
     AccessDeniedError,
     AlreadyResolvedError,
-    ApprovalInProgressError,
     ApprovalOutcomeUnknownError,
     ApprovalSessionConsumedError,
     AuthorizationPendingError,
@@ -193,7 +192,6 @@ def test_lookup_returns_public_validity_without_token_data(openapi_app: Flask, d
         ("token", "poll", AccessDeniedError(), 400, "access_denied"),
         ("approve", "approve", ExpiredOrUnknownError(), 404, "expired_or_unknown"),
         ("approve", "approve", AlreadyResolvedError(), 409, "already_resolved"),
-        ("approve", "approve", ApprovalInProgressError(), 409, "approve_in_progress"),
         ("approve", "approve", ApprovalOutcomeUnknownError(), 503, "approval_outcome_unknown"),
         ("deny", "deny", DeviceStateLostError(), 409, "state_lost"),
     ],
@@ -400,7 +398,6 @@ def test_external_approval_uses_cookie_and_csrf_header_then_clears_cookie(
         ("approve-external", "approve_external", ExternalUserCodeMismatchError(), 400, "user_code_mismatch"),
         ("approve-external", "approve_external", ExternalUserCodeNotFoundError(), 404, "user_code_not_pending"),
         ("approve-external", "approve_external", AlreadyResolvedError(), 409, "user_code_not_pending"),
-        ("approve-external", "approve_external", ApprovalInProgressError(), 409, "approve_in_progress"),
         ("approve-external", "approve_external", ApprovalOutcomeUnknownError(), 503, "approval_outcome_unknown"),
         ("approve-external", "approve_external", ExternalIdentityConflictError(), 403, "email_belongs_to_dify_account"),
         ("approve-external", "approve_external", ApprovalSessionConsumedError(), 401, "session_already_consumed"),

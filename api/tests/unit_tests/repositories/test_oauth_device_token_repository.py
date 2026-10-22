@@ -142,7 +142,7 @@ def test_rollback_rotation_removes_new_token_and_restores_previous_session(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    issuer, _repository_, redis, _ttl_policy = _repository(sqlite_session_factory)
+    issuer, repository, redis, _ttl_policy = _repository(sqlite_session_factory)
     issue_token = partial(
         issuer.issue_account_token,
         account=_account(),
@@ -154,7 +154,7 @@ def test_rollback_rotation_removes_new_token_and_restores_previous_session(
     first = issue_token()
     second = issue_token()
 
-    assert issuer.rollback_token(second) is True
+    assert repository.rollback_rotation(second.rotation) is True
 
     sqlite_session.expire_all()
     first_record = sqlite_session.get(OAuthAccessToken, first.token_id)
@@ -172,7 +172,7 @@ def test_rollback_does_not_restore_predecessor_after_later_rotation(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory)
+    issuer, repository, _redis, _ttl_policy = _repository(sqlite_session_factory)
     issue_token = partial(
         issuer.issue_account_token,
         account=_account(),
@@ -185,7 +185,7 @@ def test_rollback_does_not_restore_predecessor_after_later_rotation(
     second = issue_token()
     third = issue_token()
 
-    assert issuer.rollback_token(second) is False
+    assert repository.rollback_rotation(second.rotation) is False
 
     sqlite_session.expire_all()
     records = list(sqlite_session.scalars(select(OAuthAccessToken)).all())

@@ -175,10 +175,6 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         )
         return IssuedOAuthToken(token=plaintext, expires_at=expires_at.isoformat(), rotation=rotation)
 
-    @override
-    def rollback_token(self, token: IssuedOAuthToken) -> bool:
-        return self._tokens.rollback_rotation(token.rotation)
-
 
 class _ExternalSubjectAssertionPayload(BaseModel):
     email: str = _EMAIL_FIELD

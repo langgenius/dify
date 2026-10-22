@@ -414,7 +414,6 @@ export type DeviceFlowErrorResponse = {
     | 'access_denied'
     | 'already_resolved'
     | 'approval_outcome_unknown'
-    | 'approve_in_progress'
     | 'authorization_pending'
     | 'expired_or_unknown'
     | 'expired_token'

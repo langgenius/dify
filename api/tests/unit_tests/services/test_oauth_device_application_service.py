@@ -185,7 +185,6 @@ class FakeTokens:
     external_issues: int = 0
     account_issues: int = 0
     issue_error: Exception | None = None
-    rollbacks: list[str] = field(default_factory=list)
     device_keys: list[str] = field(default_factory=list)
     sessions: tuple[OAuthDeviceSession, ...] = ()
     revoke_allowed: bool = True
@@ -221,10 +220,6 @@ class FakeTokens:
         self.device_keys.append(device_key)
         self.external_issues += 1
         return self.external_token
-
-    def rollback_token(self, token: IssuedOAuthToken) -> bool:
-        self.rollbacks.append(token.token_id)
-        return True
 
     def list_account_sessions(self, *, account_id: str, page: int, limit: int) -> OAuthDeviceSessionPage:
         _ = account_id

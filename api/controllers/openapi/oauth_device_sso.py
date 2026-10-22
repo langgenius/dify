@@ -38,7 +38,6 @@ from libs.helper import dump_response
 from libs.rate_limit import LIMIT_SSO_INITIATE_PER_IP, rate_limit
 from services.oauth_device_contracts import (
     AlreadyResolvedError,
-    ApprovalInProgressError,
     ApprovalOutcomeUnknownError,
     ApprovalSessionConsumedError,
     DeviceRequestContext,
@@ -108,8 +107,6 @@ def _raise_http_error(error: OAuthDeviceError, *, session_error: str = "invalid_
             raise NotFound("user_code_not_pending") from error
         case AlreadyResolvedError():
             raise Conflict("user_code_not_pending") from error
-        case ApprovalInProgressError():
-            raise Conflict("approve_in_progress") from error
         case ApprovalOutcomeUnknownError():
             raise ServiceUnavailable("approval_outcome_unknown") from error
         case ExternalIdentityConflictError():

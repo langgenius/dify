@@ -131,8 +131,6 @@ class OAuthDeviceTokenIssuer(Protocol):
         device_key: str,
     ) -> IssuedOAuthToken: ...
 
-    def rollback_token(self, token: IssuedOAuthToken) -> bool: ...
-
 
 class OAuthDeviceSessionRepository(Protocol):
     def list_account_sessions(
@@ -148,8 +146,6 @@ class OAuthDeviceSessionRepository(Protocol):
 
 class OAuthDeviceTokenPersistence(Protocol):
     def rotate_token(self, token: OAuthDeviceTokenWrite) -> OAuthDeviceTokenRotation: ...
-
-    def rollback_rotation(self, rotation: OAuthDeviceTokenRotation) -> bool: ...
 
 
 class OAuthDeviceTokenTTLPolicy(Protocol):

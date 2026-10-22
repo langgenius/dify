@@ -2312,7 +2312,7 @@ instead of ``ErrorBody`` because device clients parse it.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| error | string, <br>**Available values:** "access_denied", "already_resolved", "approval_outcome_unknown", "approve_in_progress", "authorization_pending", "expired_or_unknown", "expired_token", "slow_down", "state_lost", "unsupported_client" | *Enum:* `"access_denied"`, `"already_resolved"`, `"approval_outcome_unknown"`, `"approve_in_progress"`, `"authorization_pending"`, `"expired_or_unknown"`, `"expired_token"`, `"slow_down"`, `"state_lost"`, `"unsupported_client"` | Yes |
+| error | string, <br>**Available values:** "access_denied", "already_resolved", "approval_outcome_unknown", "authorization_pending", "expired_or_unknown", "expired_token", "slow_down", "state_lost", "unsupported_client" | *Enum:* `"access_denied"`, `"already_resolved"`, `"approval_outcome_unknown"`, `"authorization_pending"`, `"expired_or_unknown"`, `"expired_token"`, `"slow_down"`, `"state_lost"`, `"unsupported_client"` | Yes |
 
 #### DeviceLookupQuery
 
