@@ -1514,7 +1514,7 @@ export type ResourceOption = {
   readiness: string
 }
 
-export type CoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData = {
+export type WorkflowStartStreamResponseData = {
   created_at: number
   id: string
   inputs: {
