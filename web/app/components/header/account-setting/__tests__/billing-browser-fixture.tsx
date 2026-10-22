@@ -58,7 +58,6 @@ export async function renderBillingSettings() {
   )
   const dialog = screen.getByRole('dialog', { name: 'Settings' })
   const viewPlan = dialog.getByRole('button', { name: 'View Plan' })
-  const preferences = dialog.getByRole('button', { name: 'Preferences' })
   await expect.element(viewPlan).toBeInTheDocument()
   await expect.element(dialog.getByRole('button', { name: 'Close' })).toHaveFocus()
 
@@ -75,5 +74,5 @@ export async function renderBillingSettings() {
   expect(scrollable.scrollHeight).toBeGreaterThan(scrollable.clientHeight)
   expect(scrollable.contains(viewPlan.element())).toBe(true)
 
-  return { dialog, preferences, viewPlan, viewport: scrollable }
+  return { dialog, viewPlan, viewport: scrollable }
 }
