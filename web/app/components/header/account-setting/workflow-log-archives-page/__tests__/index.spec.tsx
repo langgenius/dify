@@ -342,6 +342,7 @@ describe('WorkflowLogArchivesPage', () => {
       )
 
       expect(await screen.findByText('appLog.archives.empty.title')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('appLog.archives.empty.title')
       expect(screen.queryByRole('row', { name: /2025-03/ })).not.toBeInTheDocument()
       const runCount = screen.getByText('appLog.archives.summary.runs').parentElement
       expect(runCount).toHaveTextContent('0')
@@ -669,6 +670,37 @@ describe('WorkflowLogArchivesPage', () => {
   })
 
   describe('Archive table states', () => {
+    it('announces an asynchronous empty result in an already mounted status region', async () => {
+      let resolveArchives!: (data: GetWorkflowRunArchivesResponse) => void
+      archiveRequests.list.mockImplementation(
+        () =>
+          new Promise<GetWorkflowRunArchivesResponse>((resolve) => {
+            resolveArchives = resolve
+          }),
+      )
+      renderPage(null)
+      const announcement = screen.getByRole('status')
+      expect(announcement).toBeEmptyDOMElement()
+      await waitFor(() => expect(archiveRequests.list).toHaveBeenCalled())
+
+      await act(async () =>
+        resolveArchives({
+          months: [],
+          summary: {
+            archived_month_count: 0,
+            workflow_run_count: 0,
+            archive_bytes: 0,
+            latest_archived_at: null,
+          },
+        }),
+      )
+
+      await waitFor(() => expect(announcement).toHaveTextContent('appLog.archives.empty.title'))
+      expect(announcement).toHaveTextContent('appLog.archives.empty.description')
+      expect(announcement).toHaveAttribute('aria-atomic', 'true')
+      expect(screen.getByRole('status')).toBe(announcement)
+    })
+
     it('should hide loading rows from assistive technology until archives arrive', async () => {
       const queryClient = createConsoleQueryClient()
       let resolveArchives!: (data: GetWorkflowRunArchivesResponse) => void

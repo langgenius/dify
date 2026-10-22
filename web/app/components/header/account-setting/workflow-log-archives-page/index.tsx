@@ -274,17 +274,19 @@ export default function WorkflowLogArchivesPage() {
             </div>
           </div>
         )}
-        {!isLoading && !archiveListQuery.isError && archiveMonths.length === 0 && (
-          <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 py-4 text-center">
-            <span className="i-ri-archive-line size-6 text-text-tertiary" aria-hidden="true" />
-            <div className="system-sm-semibold text-text-secondary">
-              {t(($) => $['archives.empty.title'], { ns: 'appLog' })}
+        <div role="status" aria-atomic="true">
+          {!isLoading && !archiveListQuery.isError && archiveMonths.length === 0 && (
+            <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 py-4 text-center">
+              <span className="i-ri-archive-line size-6 text-text-tertiary" aria-hidden="true" />
+              <div className="system-sm-semibold text-text-secondary">
+                {t(($) => $['archives.empty.title'], { ns: 'appLog' })}
+              </div>
+              <div className="system-xs-regular text-text-tertiary">
+                {t(($) => $['archives.empty.description'], { ns: 'appLog' })}
+              </div>
             </div>
-            <div className="system-xs-regular text-text-tertiary">
-              {t(($) => $['archives.empty.description'], { ns: 'appLog' })}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )
