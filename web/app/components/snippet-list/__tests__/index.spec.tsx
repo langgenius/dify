@@ -1,8 +1,10 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
+import { SnippetDetailTop } from '@/app/components/snippets/components/snippet-detail-top'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { renderWithNuqs } from '@/test/nuqs-testing'
 import SnippetList from '..'
 
 const mockUseInfiniteSnippetList = vi.hoisted(() => vi.fn())
@@ -160,16 +162,25 @@ const renderList = ({
   const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
     accountProfile: { id: 'creator-1' },
   })
-  const createList = () => (
+  const onUrlUpdate = vi.fn()
+  const createRoute = (path: string, params: string, content: ReactNode) => (
     <ConsoleQueryWrapper>
-      <SnippetList />
+      <NuqsTestingAdapter key={path} searchParams={params} hasMemory onUrlUpdate={onUrlUpdate}>
+        {content}
+      </NuqsTestingAdapter>
     </ConsoleQueryWrapper>
   )
-  const rendered = renderWithNuqs(createList(), { searchParams, hasMemory: true })
+  const createList = () => createRoute('/snippets', searchParams, <SnippetList />)
+  const rendered = render(createList())
 
   return {
     ...rendered,
+    onUrlUpdate,
     rerenderList: () => rendered.rerender(createList()),
+    showDetail: () =>
+      rendered.rerender(createRoute('/snippets/snippet-1/orchestrate', '', <SnippetDetailTop />)),
+    showList: (href: string) =>
+      rendered.rerender(createRoute('/snippets', href.split('?')[1] ?? '', <SnippetList />)),
   }
 }
 
@@ -230,6 +241,94 @@ describe('SnippetList', () => {
         },
         { enabled: true },
       ),
+    )
+  })
+
+  it('restores creator, tag and publication filters from the URL', () => {
+    renderList({
+      searchParams:
+        '?creatorIDs=creator-1;creator-2&tagIDs=tag-1;tag-2&keywords=sales&publishStatus=draft',
+    })
+    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
+      {
+        page: 1,
+        limit: 30,
+        keyword: 'sales',
+        creator_ids: ['creator-1', 'creator-2'],
+        tag_ids: ['tag-1', 'tag-2'],
+        is_published: false,
+      },
+      { enabled: true },
+    )
+    expect(screen.getByRole('button', { name: 'snippet.draft' })).toBeInTheDocument()
+  })
+
+  it('retains creator, tag and publication selections through the snippet return link', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate, showDetail, showList } = renderList()
+    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
+    await user.click(await screen.findByRole('option', { name: /Alice/ }))
+    await user.click(screen.getByRole('option', { name: /Bob/ }))
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('combobox', { name: 'common.tag.placeholder' }))
+    await user.click(await screen.findByRole('option', { name: 'Sales' }))
+    await user.keyboard('{Escape}')
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.common.published / snippet.draft' }),
+    )
+    await user.click(await screen.findByRole('menuitemradio', { name: 'snippet.draft' }))
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('publishStatus')).toBe('draft'),
+    )
+
+    showDetail()
+    const href = screen.getByRole('link', { name: 'workflow.tabs.snippets' }).getAttribute('href')!
+    const params = new URLSearchParams(href.split('?')[1])
+    expect(params.get('creatorIDs')).toBe('creator-1;creator-2')
+    expect(params.get('tagIDs')).toBe('tag-1')
+    expect(params.get('publishStatus')).toBe('draft')
+    showList(href)
+    expect(screen.getByRole('button', { name: 'snippet.draft' })).toBeInTheDocument()
+    expect(await screen.findByRole('combobox', { name: 'Sales' })).toBeInTheDocument()
+    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
+    expect(await screen.findByRole('option', { name: /Alice/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByRole('option', { name: /Bob/ })).toHaveAttribute('aria-selected', 'true')
+    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        creator_ids: ['creator-1', 'creator-2'],
+        tag_ids: ['tag-1'],
+        is_published: false,
+      }),
+      { enabled: true },
+    )
+  })
+
+  it('does not restore cleared creators, tags or publication status', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate, showDetail, showList } = renderList({
+      searchParams: '?creatorIDs=creator-1&tagIDs=tag-1&publishStatus=published',
+    })
+    await user.click(screen.getByRole('button', { name: 'app.studio.filters.reset' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.published' }))
+    await user.click(await screen.findByRole('menuitemradio', { name: 'app.types.all' }))
+    await waitFor(() => expect(onUrlUpdate.mock.lastCall?.[0].searchParams.toString()).toBe(''))
+    showDetail()
+    expect(screen.getByRole('link', { name: 'workflow.tabs.snippets' })).toHaveAttribute(
+      'href',
+      '/snippets',
+    )
+    showList('/snippets')
+    expect(
+      screen.queryByRole('button', { name: 'app.studio.filters.reset' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'common.tag.placeholder' })).toBeInTheDocument()
+    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
+      { page: 1, limit: 30, keyword: '' },
+      { enabled: true },
     )
   })
 

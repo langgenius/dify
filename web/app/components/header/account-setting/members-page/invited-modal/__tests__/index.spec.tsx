@@ -1,7 +1,8 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import InvitedModal from '../index'
 
@@ -26,7 +27,7 @@ describe('InvitedModal', () => {
     deploymentEdition = 'COMMUNITY'
   })
 
-  it('should show success and failed invitation sections', async () => {
+  it('should show invitation results', async () => {
     render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
 
     expect(await screen.findByText(/members\.invitationSent$/i)).toBeInTheDocument()
@@ -35,6 +36,86 @@ describe('InvitedModal', () => {
     expect(screen.getByText(/members\.alreadyInTeam$/i)).toBeInTheDocument()
     expect(screen.getByText('member@example.com')).toBeInTheDocument()
     expect(screen.getByText('failed@example.com')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'failed@example.com' })).toBeInTheDocument()
+  })
+
+  it('opens and reopens a failure reason with the keyboard without closing the results dialog', async () => {
+    const user = userEvent.setup()
+    render(
+      <InvitedModal
+        invitationResults={[
+          { email: 'failed@example.com', status: 'failed', message: 'Quota exceeded' },
+        ]}
+        onCancel={mockOnCancel}
+      />,
+    )
+
+    const closeButton = screen.getByRole('button', { name: /operation\.close/ })
+    await waitFor(() => expect(closeButton).toHaveFocus())
+    expect(screen.queryByRole('dialog', { name: 'failed@example.com' })).not.toBeInTheDocument()
+
+    await user.tab()
+    const failureTrigger = screen.getByRole('button', { name: 'failed@example.com' })
+    expect(failureTrigger).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('dialog', { name: 'failed@example.com' })).toHaveTextContent(
+      'Quota exceeded',
+    )
+
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'failed@example.com' })).not.toBeInTheDocument(),
+    )
+    expect(mockOnCancel).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: /members\.invitationSent$/ })).toBeVisible()
+    expect(failureTrigger).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('dialog', { name: 'failed@example.com' })).toHaveTextContent(
+      'Quota exceeded',
+    )
+  })
+
+  it('opens a failure reason by clicking without hovering first', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
+
+    await user.click(screen.getByRole('button', { name: 'failed@example.com' }))
+
+    expect(await screen.findByRole('dialog', { name: 'failed@example.com' })).toHaveTextContent(
+      'Error msg',
+    )
+    expect(mockOnCancel).not.toHaveBeenCalled()
+  })
+
+  it('shows each failure reason when its email is hovered', async () => {
+    const user = userEvent.setup()
+    render(
+      <InvitedModal
+        invitationResults={[
+          { email: 'first@example.com', status: 'failed', message: 'Quota exceeded' },
+          { email: 'second@example.com', status: 'failed', message: 'Email delivery failed' },
+        ]}
+        onCancel={mockOnCancel}
+      />,
+    )
+
+    const firstTrigger = screen.getByRole('button', { name: 'first@example.com' })
+    await user.hover(firstTrigger)
+    expect(await screen.findByRole('dialog', { name: 'first@example.com' })).toHaveTextContent(
+      'Quota exceeded',
+    )
+
+    await user.unhover(firstTrigger)
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'first@example.com' })).not.toBeInTheDocument(),
+    )
+
+    const secondTrigger = screen.getByRole('button', { name: 'second@example.com' })
+    await user.hover(secondTrigger)
+    expect(await screen.findByRole('dialog', { name: 'second@example.com' })).toHaveTextContent(
+      'Email delivery failed',
+    )
   })
 
   it('should hide invitation link section when there are no successes', () => {

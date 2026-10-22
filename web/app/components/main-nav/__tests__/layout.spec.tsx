@@ -3,6 +3,8 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider, useAtomValue, useSetAtom } from 'jotai'
 import { renderToString } from 'react-dom/server'
+import DatasetDocumentCreateFromPipelineDetailSidebarSlot from '@/app/(commonLayout)/@detailSidebar/datasets/[datasetId]/documents/create-from-pipeline/page'
+import DatasetDocumentCreateDetailSidebarSlot from '@/app/(commonLayout)/@detailSidebar/datasets/[datasetId]/documents/create/page'
 import {
   detailSidebarModeAtom,
   setDetailSidebarModeAtom,
@@ -53,6 +55,10 @@ vi.mock('../index', () => ({
       MainNav
     </aside>
   ),
+}))
+
+vi.mock('@/app/components/app-sidebar/dataset-detail-sidebar', () => ({
+  DatasetDetailSidebar: () => <aside aria-label="Knowledge sidebar">Knowledge sidebar</aside>,
 }))
 
 describe('MainNavLayout', () => {
@@ -181,26 +187,49 @@ describe('MainNavLayout', () => {
     expect(screen.getByTestId('main-nav')).toBeInTheDocument()
   })
 
-  it.each(['/datasets/create', '/datasets/dataset-1/documents/create', '/deployments/create'])(
-    'keeps the global main nav on collection and creation route %s',
-    (pathname) => {
-      ;(usePathname as Mock).mockReturnValue(pathname)
+  it.each([
+    ['/datasets/dataset-1/documents/create', DatasetDocumentCreateDetailSidebarSlot],
+    [
+      '/datasets/dataset-1/documents/create-from-pipeline',
+      DatasetDocumentCreateFromPipelineDetailSidebarSlot,
+    ],
+  ] as const)(
+    'keeps the Knowledge sidebar on document upload route %s',
+    (pathname, SidebarSlot) => {
+      vi.mocked(usePathname).mockReturnValue(pathname)
 
       render(
-        <MainNavLayout
-          initialDetailSidebarMode="expand"
-          detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}
-        >
-          <div>content</div>
+        <MainNavLayout initialDetailSidebarMode="expand" detailSidebar={<SidebarSlot />}>
+          <div>document upload</div>
         </MainNavLayout>,
       )
 
-      expect(screen.getByTestId('main-nav')).toBeInTheDocument()
-      expect(
-        screen.queryByRole('complementary', { name: 'Detail sidebar' }),
-      ).not.toBeInTheDocument()
+      expect(screen.getByRole('complementary', { name: 'Knowledge sidebar' })).toBeInTheDocument()
+      expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+      expect(screen.getByRole('main')).toHaveTextContent('document upload')
     },
   )
+
+  it.each([
+    '/datasets/create',
+    '/datasets/create-from-pipeline',
+    '/datasets/connect',
+    '/deployments/create',
+  ])('keeps the global main nav on collection and creation route %s', (pathname) => {
+    ;(usePathname as Mock).mockReturnValue(pathname)
+
+    render(
+      <MainNavLayout
+        initialDetailSidebarMode="expand"
+        detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}
+      >
+        <div>content</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Detail sidebar' })).not.toBeInTheDocument()
+  })
 
   it.each([
     { pathname: '/agents/agent-1/configure', datasetOperator: true, agentV2Enabled: true },

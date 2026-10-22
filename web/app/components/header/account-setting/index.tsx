@@ -27,7 +27,6 @@ import {
 import { env } from '@/env'
 import { canReadNetworkAccessAtom } from '@/features/network-access/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
@@ -39,7 +38,7 @@ import ResourceAccessTokenPage from './resource-access-token-page'
 import WorkflowLogArchivesPage from './workflow-log-archives-page'
 
 const iconClassName = `
-  w-4 h-4 mr-2
+  size-4 shrink-0 sm:mr-2
 `
 
 type IAccountSettingProps = {
@@ -196,8 +195,6 @@ export default function AccountSetting({
       .filter((item): item is GroupItem => Boolean(item))
   })()
 
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
   const preferenceItem = settingItems.find((item) => item.key === ACCOUNT_SETTING_TAB.PREFERENCES)
 
   const menuItems = [
@@ -218,8 +215,8 @@ export default function AccountSetting({
       onClose={onCancelAction}
     >
       <div className="mx-auto flex h-screen w-full max-w-270 px-4">
-        <div className="flex w-11 shrink-0 flex-col pr-6 pl-4 sm:w-56">
-          <div className="mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">
+        <div className="flex w-11 shrink-0 flex-col pr-2 sm:w-56 sm:pr-6 sm:pl-4">
+          <div className="invisible mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary sm:visible">
             {t(($) => $['settings.settings'], { ns: 'navigation' })}
           </div>
           <div className="w-full">
@@ -228,8 +225,8 @@ export default function AccountSetting({
                 key={menuItem.key}
                 className={cn(menuItem.key === 'workspace-group' ? 'mb-2' : 'mt-2')}
               >
-                {menuItem.name && !isMobile && (
-                  <div className="flex h-7 items-center px-3 system-xs-medium-uppercase text-text-tertiary">
+                {menuItem.name && (
+                  <div className="hidden h-7 items-center px-3 system-xs-medium-uppercase text-text-tertiary sm:flex">
                     {menuItem.name}
                   </div>
                 )}
@@ -243,19 +240,20 @@ export default function AccountSetting({
                       type="button"
                       key={item.key}
                       className={cn(
-                        'mb-0.5 flex h-8 w-full items-center rounded-lg px-3 text-left text-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                        'mb-0.5 flex h-8 w-full items-center justify-center rounded-lg px-2 text-left text-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:justify-start sm:px-3',
                         activeMenu === item.key
                           ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active'
                           : 'system-sm-medium text-components-menu-item-text',
                       )}
                       aria-label={item.name}
+                      aria-current={activeMenu === item.key ? 'page' : undefined}
                       title={item.name}
                       onClick={() => {
                         onTabChangeAction(item.key)
                       }}
                     >
                       {activeMenu === item.key ? item.activeIcon : item.icon}
-                      {!isMobile && <div className="truncate">{item.name}</div>}
+                      <div className="hidden truncate sm:block">{item.name}</div>
                     </button>
                   ))}
                 </div>
@@ -268,28 +266,30 @@ export default function AccountSetting({
             aria-hidden
             className="pointer-events-none absolute inset-y-0 left-full w-screen bg-components-panel-bg"
           />
-          <ScrollArea className="h-full min-h-0 min-w-0 flex-1 bg-components-panel-bg">
+          <ScrollArea className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-components-panel-bg">
+            {activeMenu !== ACCOUNT_SETTING_TAB.IP_POLICIES && (
+              <div className="mx-4 flex min-h-15 shrink-0 items-end bg-components-panel-bg pt-8 pr-12 pb-2 sm:mx-8">
+                <div className="min-w-0 flex-1">
+                  <h3 className="title-2xl-semi-bold text-text-primary">
+                    {activeItem?.title ?? activeItem?.name}
+                  </h3>
+                  {activeItem?.description && (
+                    <p className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
+                      {activeItem?.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
             <ScrollAreaViewport
               ref={scrollContainerRef}
               style={{ overflowX: 'hidden' }}
-              className="overscroll-contain"
+              className="min-h-0 flex-1 overscroll-contain"
             >
               <ScrollAreaContent
                 style={{ minWidth: 0 }}
                 className="min-h-full w-full max-w-full pb-4"
               >
-                {activeMenu !== ACCOUNT_SETTING_TAB.IP_POLICIES && (
-                  <div className="sticky top-0 z-20 mx-8 flex min-h-15 items-end bg-components-panel-bg pt-8 pb-2">
-                    <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
-                      {activeItem?.title ?? activeItem?.name}
-                      {activeItem?.description && (
-                        <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
-                          {activeItem?.description}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
                 <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
                   {/* First-use translations and queries must not suspend the dialog shell. */}
                   <Suspense fallback={<LoadingPlaceholder className="py-10" />}>

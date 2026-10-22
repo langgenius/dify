@@ -1,35 +1,36 @@
-import logging
+from dataclasses import asdict
 from datetime import datetime
+from http import HTTPStatus
+from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, field_validator
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from controllers.common.rbac import PlainApp, RBACCheck
-from controllers.common.schema import query_params_from_model, register_schema_models
-from controllers.common.session import with_session
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import (
-    RBACPermission,
-    account_initialization_required,
-    edit_permission_required,
-    model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-)
+from controllers.console.app.error import AppNotFoundError, AppTriggerNotFoundError, WebhookTriggerNotFoundError
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import RBACPermission, model_validate
+from core.trigger.utils.endpoint import generate_webhook_trigger_endpoint
+from enums.account import TenantAccountRole
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response
-from libs.login import login_required
-from models.enums import AppTriggerStatus
-from models.model import App, AppMode
-from models.trigger import AppTrigger, WorkflowWebhookTrigger
-
-logger = logging.getLogger(__name__)
+from machinery.context import RequestContext
+from models.enums import AppTriggerType
+from services.app.console_service import ConsoleAppNotFoundError
+from services.trigger.app_trigger_store import (
+    AppTriggerNotFoundError as AppTriggerMissing,
+)
+from services.trigger.app_trigger_store import (
+    AppTriggerRecord,
+)
+from services.trigger.app_trigger_store import (
+    WebhookTriggerNotFoundError as WebhookTriggerMissing,
+)
 
 
 class WebhookTriggerQuery(BaseModel):
@@ -80,126 +81,86 @@ class WebhookTriggerResponse(ResponseModel):
         return str(value)
 
 
-register_schema_models(
+register_schema_models(console_ns, WebhookTriggerQuery, ParserEnable)
+register_response_schema_models(
     console_ns,
-    WebhookTriggerQuery,
-    ParserEnable,
     WorkflowTriggerResponse,
     WorkflowTriggerListResponse,
     WebhookTriggerResponse,
 )
 
 
+def _with_trigger_icon(trigger: AppTriggerRecord) -> dict[str, object]:
+    icon = ""
+    if trigger.trigger_type == AppTriggerType.TRIGGER_PLUGIN:
+        icon = (
+            dify_config.CONSOLE_API_URL
+            + "/console/api/workspaces/current/tool-provider/builtin/"
+            + (trigger.provider_name or "")
+            + "/icon"
+        )
+    return {**asdict(trigger), "icon": icon}
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/triggers/webhook")
 class WebhookTriggerApi(Resource):
-    """Webhook Trigger API"""
-
+    @error_responses(AppNotFoundError, WebhookTriggerNotFoundError)
     @console_ns.doc(params=query_params_from_model(WebhookTriggerQuery))
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[WebhookTriggerResponse.__name__])
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session(write=False)
-    @get_app_model(mode=AppMode.WORKFLOW)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WebhookTriggerResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())])
     @model_validate(WebhookTriggerQuery)
-    def get(self, req_data: WebhookTriggerQuery, session: Session, app_model: App):
+    def get(self, req_data: WebhookTriggerQuery, context: RequestContext, app_id: UUID) -> dict[str, object]:
         """Get webhook trigger for a node"""
-
-        node_id = req_data.node_id
-
-        # Get webhook trigger for this app and node
-        webhook_trigger = session.scalar(
-            select(WorkflowWebhookTrigger)
-            .where(
-                WorkflowWebhookTrigger.app_id == app_model.id,
-                WorkflowWebhookTrigger.node_id == node_id,
-            )
-            .limit(1)
+        try:
+            webhook = application_services().apps.triggers.get_webhook(context, str(app_id), req_data.node_id)
+        except ConsoleAppNotFoundError as error:
+            raise AppNotFoundError(str(error)) from error
+        except WebhookTriggerMissing as error:
+            raise WebhookTriggerNotFoundError(str(error)) from error
+        return dump_response(
+            WebhookTriggerResponse,
+            {
+                **asdict(webhook),
+                "webhook_url": generate_webhook_trigger_endpoint(webhook.webhook_id),
+                "webhook_debug_url": generate_webhook_trigger_endpoint(webhook.webhook_id, debug=True),
+            },
         )
-
-        if not webhook_trigger:
-            raise NotFound("Webhook trigger not found for this node")
-
-        return dump_response(WebhookTriggerResponse, webhook_trigger)
 
 
 @console_ns.route("/apps/<uuid:app_id>/triggers")
 class AppTriggersApi(Resource):
-    """App Triggers list API"""
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerListResponse.__name__])
-    @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session(write=False)
-    @get_app_model(mode=AppMode.WORKFLOW)
-    def get(self, session: Session, current_tenant_id: str, app_model: App):
+    @error_responses(AppNotFoundError)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkflowTriggerListResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())])
+    def get(self, context: RequestContext, app_id: UUID) -> dict[str, object]:
         """Get app triggers list"""
-        # Get all triggers for this app using select API
-        triggers = (
-            session.execute(
-                select(AppTrigger)
-                .where(
-                    AppTrigger.tenant_id == current_tenant_id,
-                    AppTrigger.app_id == app_model.id,
-                )
-                .order_by(AppTrigger.created_at.desc(), AppTrigger.id.desc())
-            )
-            .scalars()
-            .all()
+        try:
+            triggers = application_services().apps.triggers.list_triggers(context, str(app_id))
+        except ConsoleAppNotFoundError as error:
+            raise AppNotFoundError(str(error)) from error
+        return dump_response(
+            WorkflowTriggerListResponse, {"data": [_with_trigger_icon(trigger) for trigger in triggers]}
         )
-
-        # Add computed icon field for each trigger
-        url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
-        for trigger in triggers:
-            if trigger.trigger_type == "trigger-plugin":
-                trigger.icon = url_prefix + trigger.provider_name + "/icon"  # type: ignore
-            else:
-                trigger.icon = ""  # type: ignore
-
-        return dump_response(WorkflowTriggerListResponse, {"data": triggers})
 
 
 @console_ns.route("/apps/<uuid:app_id>/trigger-enable")
 class AppTriggerEnableApi(Resource):
+    @error_responses(AppNotFoundError, AppTriggerNotFoundError)
     @console_ns.expect(console_ns.models[ParserEnable.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
-    @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerResponse.__name__])
-    @with_current_tenant_id
-    @with_session
-    @get_app_model(mode=AppMode.WORKFLOW)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkflowTriggerResponse.__name__])
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.APP_EDIT, PlainApp())],
+    )
     @model_validate(ParserEnable)
-    def post(self, req_data: ParserEnable, session: Session, current_tenant_id: str, app_model: App):
+    def post(self, req_data: ParserEnable, context: RequestContext, app_id: UUID) -> dict[str, object]:
         """Update app trigger (enable/disable)"""
-
-        trigger_id = req_data.trigger_id
-        # Find the trigger using select
-        trigger = session.execute(
-            select(AppTrigger).where(
-                AppTrigger.id == trigger_id,
-                AppTrigger.tenant_id == current_tenant_id,
-                AppTrigger.app_id == app_model.id,
+        try:
+            trigger = application_services().apps.triggers.set_enabled(
+                context, str(app_id), req_data.trigger_id, enabled=req_data.enable_trigger
             )
-        ).scalar_one_or_none()
-
-        if not trigger:
-            raise NotFound("Trigger not found")
-
-        # Update status based on enable_trigger boolean
-        trigger.status = AppTriggerStatus.ENABLED if req_data.enable_trigger else AppTriggerStatus.DISABLED
-
-        # Add computed icon field
-        url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
-        if trigger.trigger_type == "trigger-plugin":
-            trigger.icon = url_prefix + trigger.provider_name + "/icon"  # type: ignore
-        else:
-            trigger.icon = ""  # type: ignore
-
-        return dump_response(WorkflowTriggerResponse, trigger)
+        except ConsoleAppNotFoundError as error:
+            raise AppNotFoundError(str(error)) from error
+        except AppTriggerMissing as error:
+            raise AppTriggerNotFoundError(str(error)) from error
+        return dump_response(WorkflowTriggerResponse, _with_trigger_icon(trigger))

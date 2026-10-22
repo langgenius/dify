@@ -13,7 +13,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
@@ -106,7 +106,7 @@ const render = (ui: ReactElement) => {
     >
       <EventEmitterContextProvider>
         {ui}
-        <AppToastHost timeout={0} />
+        <AppToaster timeout={0} />
       </EventEmitterContextProvider>
     </DatasetDetailContext.Provider>,
     { queryClient, workspacePermissionKeys: [] },
@@ -296,6 +296,26 @@ describe('DocumentDetail', () => {
       expect(
         screen.queryByText('dataset.metadata.documentMetadata.documentInformation'),
       ).not.toBeInTheDocument()
+    })
+
+    it('opens metadata in a drawer on mobile instead of beside the chunks', async () => {
+      const user = userEvent.setup()
+      vi.stubGlobal('innerWidth', 390)
+      try {
+        render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+        expect(
+          screen.queryByText('dataset.metadata.documentMetadata.documentInformation'),
+        ).not.toBeInTheDocument()
+
+        await user.click(screen.getByRole('button', { name: /metadata\.title/ }))
+        expect(
+          within(await screen.findByRole('dialog')).getByText(
+            'dataset.metadata.documentMetadata.documentInformation',
+          ),
+        ).toBeVisible()
+      } finally {
+        vi.unstubAllGlobals()
+      }
     })
 
     it.each([true, false])(

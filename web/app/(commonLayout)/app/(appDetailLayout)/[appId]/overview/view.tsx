@@ -3,12 +3,12 @@
 import { useSuspenseQueries } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
+import { TracingConfiguration } from '@/app/components/app/tracing/configuration'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 import ChartView from './chart-view'
-import TracingPanel from './tracing/panel'
 
 type OverviewViewProps = {
   appId: string
@@ -43,7 +43,10 @@ const OverviewView = ({ appId }: OverviewViewProps) => {
       appMode={appDetail.mode}
       headerRight={
         appACLCapabilities.canConfigureTracing ? (
-          <TracingPanel appId={appId} readOnly={false} />
+          <TracingConfiguration
+            resource={{ kind: 'app', appId, mode: appDetail.mode }}
+            readOnly={false}
+          />
         ) : null
       }
     />

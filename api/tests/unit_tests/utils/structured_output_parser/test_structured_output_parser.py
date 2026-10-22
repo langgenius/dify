@@ -1,10 +1,13 @@
 from decimal import Decimal
+from typing import Literal, NotRequired
 from unittest.mock import MagicMock, patch
 
 import pytest
+from typing_extensions import TypedDict
 
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
@@ -19,7 +22,31 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType, ParameterRule, ParameterType
+
+
+class _StructuredOutputCase(TypedDict):
+    name: str
+    provider: str
+    model_name: str
+    support_structure_output: bool
+    stream: bool
+    json_schema: dict[str, object]
+    expected_llm_response: LLMResult | list[LLMResultChunk] | list[MagicMock]
+    expected_result_type: type[LLMResultWithStructuredOutput] | Literal["generator"] | None
+    should_raise: bool
+    parameter_rules: NotRequired[list[ParameterRule]]
+    expected_response_format: NotRequired[str]
+    expected_error: NotRequired[type[Exception]]
+
+
+def _response_format_rule(*options: str) -> ParameterRule:
+    return ParameterRule(
+        name="response_format",
+        label=I18nObject(en_US="Response Format"),
+        type=ParameterType.STRING,
+        options=list(options),
+    )
 
 
 def create_mock_usage(prompt_tokens: int = 10, completion_tokens: int = 5) -> LLMUsage:
@@ -49,7 +76,7 @@ def get_model_entity(provider: str, model_name: str, support_structure_output: b
     model_schema.model_provider = provider
     model_schema.model_name = model_name
     model_schema.support_structure_output = support_structure_output
-    model_schema.parameter_rules = []
+    model_schema.parameter_rules = list[object]()
 
     return model_schema
 
@@ -58,14 +85,14 @@ def get_model_instance() -> MagicMock:
     """Create a mock ModelInstance for testing"""
     mock_instance = MagicMock()
     mock_instance.provider = "openai"
-    mock_instance.credentials = {}
+    mock_instance.credentials = dict[str, object]()
     return mock_instance
 
 
-def test_structured_output_parser():
+def test_structured_output_parser() -> None:
     """Test cases for invoke_llm_with_structured_output function"""
 
-    testcases = [
+    testcases: list[_StructuredOutputCase] = [
         # Test case 1: Model with native structured output support, non-streaming
         {
             "name": "native_structured_output_non_streaming",
@@ -246,9 +273,8 @@ def test_structured_output_parser():
             "support_structure_output": True,
             "stream": False,
             "json_schema": {"type": "object", "properties": {"result": {"type": "string"}}},
-            "parameter_rules": [
-                MagicMock(name="response_format", options=["json_schema"], required=False),
-            ],
+            "parameter_rules": [_response_format_rule("json_schema")],
+            "expected_response_format": "json_schema",
             "expected_llm_response": LLMResult(
                 model="gpt-4o",
                 message=AssistantPromptMessage(content='{"result": "success"}'),
@@ -265,9 +291,8 @@ def test_structured_output_parser():
             "support_structure_output": False,
             "stream": False,
             "json_schema": {"type": "object", "properties": {"output": {"type": "string"}}},
-            "parameter_rules": [
-                MagicMock(name="response_format", options=["JSON"], required=False),
-            ],
+            "parameter_rules": [_response_format_rule("JSON")],
+            "expected_response_format": "JSON",
             "expected_llm_response": LLMResult(
                 model="claude-3-sonnet",
                 message=AssistantPromptMessage(content='{"output": "result"}'),
@@ -298,7 +323,9 @@ def test_structured_output_parser():
 
         if case["should_raise"]:
             # Test error cases
-            with pytest.raises(case["expected_error"]):  # noqa: PT012
+            expected_error = case.get("expected_error")
+            assert expected_error is not None
+            with pytest.raises(expected_error):  # noqa: PT012
                 if case["stream"]:
                     result_generator = invoke_llm_with_structured_output(
                         provider=case["provider"],
@@ -356,7 +383,9 @@ def test_structured_output_parser():
                     assert isinstance(last_chunk.structured_output, dict)
                 else:
                     # Test non-streaming results
-                    assert isinstance(result, case["expected_result_type"])
+                    expected_type = case["expected_result_type"]
+                    assert isinstance(expected_type, type)
+                    assert isinstance(result, expected_type)
                     assert result.model == case["model_name"]
                     assert result.structured_output is not None
                     assert isinstance(result.structured_output, dict)
@@ -368,10 +397,12 @@ def test_structured_output_parser():
                 assert call_args.kwargs["stream"] == case["stream"]
                 assert "user" not in call_args.kwargs
                 assert "temperature" in call_args.kwargs["model_parameters"]
+                if "expected_response_format" in case:
+                    assert call_args.kwargs["model_parameters"]["response_format"] == case["expected_response_format"]
                 assert "max_tokens" in call_args.kwargs["model_parameters"]
 
 
-def test_parse_structured_output_edge_cases():
+def test_parse_structured_output_edge_cases() -> None:
     """Test edge cases for structured output parsing"""
 
     # Test case with list that contains dict (reasoning model scenario)
@@ -422,7 +453,7 @@ def test_parse_structured_output_edge_cases():
         assert result.structured_output == {"thought": "reasoning process"}
 
 
-def test_model_specific_schema_preparation():
+def test_model_specific_schema_preparation() -> None:
     """Test schema preparation for different model types"""
 
     # Test Gemini model

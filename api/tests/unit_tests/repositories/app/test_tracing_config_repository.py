@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import datetime
 
 import pytest
 from sqlalchemy import select
@@ -6,7 +7,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.model import App, AppMode, TraceAppConfig
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
-from services.app_tracing_config_service import AppTracingConfigAppNotFoundError, AppTracingConfigRecord
+from services.app_tracing_config_service import (
+    AppTraceSettings,
+    AppTracingConfigAppNotFoundError,
+    AppTracingConfigConflictError,
+    AppTracingConfigRecord,
+)
 from tests.unit_tests.repositories.app.console_visibility import UNADDRESSABLE_IN_WORKSPACE, MakeUnaddressable
 
 _APP_ID = "11111111-1111-1111-1111-111111111111"
@@ -69,6 +75,7 @@ def test_config_lifecycle_is_persisted_by_owned_transactions(
         app_id=_APP_ID,
         tracing_provider=_PROVIDER,
         tracing_config={"public_key": "updated"},
+        expected=record,
     )
     with sqlite_session_factory() as session:
         config = session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == _APP_ID))
@@ -76,12 +83,14 @@ def test_config_lifecycle_is_persisted_by_owned_transactions(
         assert config.tracing_config == {"public_key": "updated"}
 
     assert repository.delete(workspace_id=_WORKSPACE_ID, app_id=_APP_ID, tracing_provider=_PROVIDER)
-    assert not repository.update(
-        workspace_id=_WORKSPACE_ID,
-        app_id=_APP_ID,
-        tracing_provider=_PROVIDER,
-        tracing_config={"public_key": "missing"},
-    )
+    with pytest.raises(AppTracingConfigConflictError):
+        repository.update(
+            workspace_id=_WORKSPACE_ID,
+            app_id=_APP_ID,
+            tracing_provider=_PROVIDER,
+            tracing_config={"public_key": "missing"},
+            expected=record,
+        )
     assert not repository.delete(workspace_id=_WORKSPACE_ID, app_id=_APP_ID, tracing_provider=_PROVIDER)
     with sqlite_session_factory() as session:
         assert session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == _APP_ID)) is None
@@ -106,6 +115,9 @@ def test_all_operations_reject_apps_console_cannot_address(
     repository = _repository(sqlite_session_factory)
     operations: tuple[Callable[[], object], ...] = (
         lambda: repository.get(workspace_id=workspace_id, app_id=_APP_ID, tracing_provider=_PROVIDER),
+        lambda: repository.set_trace(
+            workspace_id=workspace_id, app_id=_APP_ID, settings=AppTraceSettings(), expected=None
+        ),
         lambda: repository.create(
             workspace_id=workspace_id,
             app_id=_APP_ID,
@@ -117,6 +129,7 @@ def test_all_operations_reject_apps_console_cannot_address(
             app_id=_APP_ID,
             tracing_provider=_PROVIDER,
             tracing_config={},
+            expected=AppTracingConfigRecord("config", _APP_ID, _PROVIDER, {}, True, datetime.now(), datetime.now()),
         ),
         lambda: repository.delete(workspace_id=workspace_id, app_id=_APP_ID, tracing_provider=_PROVIDER),
     )

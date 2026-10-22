@@ -8,6 +8,14 @@ from machinery.context import RequestContext
 
 
 @dataclass(frozen=True, slots=True)
+class AppTraceSettings:
+    enabled: bool = False
+    tracing_provider: str | None = None
+    capture_content: bool = False
+    capture_agent: bool = True
+
+
+@dataclass(frozen=True, slots=True)
 class AppTracingConfigRecord:
     id: str
     app_id: str
@@ -34,6 +42,7 @@ class AppTracingConfigStore(Protocol):
         app_id: str,
         tracing_provider: str,
         tracing_config: dict[str, Any],
+        activate: bool = False,
     ) -> bool: ...
 
     def update(
@@ -43,6 +52,8 @@ class AppTracingConfigStore(Protocol):
         app_id: str,
         tracing_provider: str,
         tracing_config: dict[str, Any],
+        expected: AppTracingConfigRecord,
+        activate: bool = False,
     ) -> bool: ...
 
     def delete(
@@ -53,9 +64,17 @@ class AppTracingConfigStore(Protocol):
         tracing_provider: str,
     ) -> bool: ...
 
+    def set_trace(
+        self, *, workspace_id: str, app_id: str, settings: AppTraceSettings, expected: AppTracingConfigRecord | None
+    ) -> None: ...
+
 
 class TracingConfigProviderGateway(Protocol):
     def validate_provider(self, tracing_provider: str) -> None: ...
+
+    def validate_saved_config(
+        self, *, workspace_id: str, tracing_provider: str, tracing_config: dict[str, Any]
+    ) -> None: ...
 
     def prepare_new_config(
         self,
@@ -95,6 +114,11 @@ class AppTracingConfigAppNotFoundError(AppTracingConfigError):
 class AppTracingConfigAlreadyExistsError(AppTracingConfigError):
     def __init__(self) -> None:
         super().__init__("Trace config is exist.")
+
+
+class AppTracingConfigConflictError(AppTracingConfigError):
+    def __init__(self) -> None:
+        super().__init__("Tracing configuration changed. Refresh and try again.")
 
 
 class AppTracingConfigNotFoundError(AppTracingConfigError):
@@ -167,6 +191,8 @@ class AppTracingConfigService:
         app_id: str,
         tracing_provider: str,
         tracing_config: dict[str, Any],
+        *,
+        activate: bool = False,
     ) -> None:
         workspace_id = context.active_workspace_id
         current = self._configs.get(
@@ -188,6 +214,7 @@ class AppTracingConfigService:
             app_id=app_id,
             tracing_provider=tracing_provider,
             tracing_config=encrypted_config,
+            activate=activate,
         )
         if not created:
             raise AppTracingConfigAlreadyExistsError
@@ -198,6 +225,8 @@ class AppTracingConfigService:
         app_id: str,
         tracing_provider: str,
         tracing_config: dict[str, Any],
+        *,
+        activate: bool = False,
     ) -> None:
         workspace_id = context.active_workspace_id
         current = self._configs.get(
@@ -220,6 +249,8 @@ class AppTracingConfigService:
             app_id=app_id,
             tracing_provider=tracing_provider,
             tracing_config=encrypted_config,
+            expected=current,
+            activate=activate,
         )
         if not updated:
             raise AppTracingConfigNotFoundError
@@ -233,3 +264,25 @@ class AppTracingConfigService:
         )
         if not deleted:
             raise AppTracingConfigNotFoundError
+
+    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
+        expected = None
+        provider = settings.tracing_provider
+        if provider is not None:
+            self._provider.validate_provider(provider)
+        if settings.enabled:
+            if provider is None:
+                raise AppTracingConfigNotFoundError
+            expected = self._configs.get(
+                workspace_id=context.active_workspace_id, app_id=app_id, tracing_provider=provider
+            )
+            if expected is None or not expected.is_active or not expected.tracing_config:
+                raise AppTracingConfigNotFoundError
+            self._provider.validate_saved_config(
+                workspace_id=context.active_workspace_id,
+                tracing_provider=provider,
+                tracing_config=expected.tracing_config,
+            )
+        self._configs.set_trace(
+            workspace_id=context.active_workspace_id, app_id=app_id, settings=settings, expected=expected
+        )
