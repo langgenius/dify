@@ -80,7 +80,6 @@ class ConnectionExecutionService:
             selections.append(
                 ExecutionConnectionSelection(
                     node_id=target.node_id,
-                    node_ids=requirement.node_ids,
                     provider=target.provider,
                     connection_id=connection_id,
                 )

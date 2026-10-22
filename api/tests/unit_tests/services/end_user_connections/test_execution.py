@@ -142,8 +142,8 @@ def test_reuse_requires_root_selection_and_keeps_independent_nodes_separate(
         graph["nodes"].extend([independent, reused])
         workflow.graph = json.dumps(graph)
     context = prepare(harness, service, {"tool-1": connection.id})
-    assert context.selections[0].node_ids == ("tool-1", "reused")
-    assert context.selections[1].node_id == "independent"
+    assert tuple(selection.node_id for selection in context.selections) == ("tool-1", "independent")
+    assert context.selections[0].connection_id == connection.id
     assert context.selections[1].connection_id is None
     with pytest.raises(ConnectionConfigurationError):
         prepare(harness, service, {"reused": connection.id})
@@ -306,3 +306,31 @@ def test_entry_ignores_client_authority_fields(
     assert context.tenant_id == harness.base.context.tenant_id
     assert context.end_user_id == harness.base.context.end_user_id
     assert context.account_id == harness.base.context.account_id
+
+
+@pytest.mark.parametrize("pin", ["matching", "missing", "stale"])
+def test_workspace_only_entry_only_checks_explicit_protocol_pin(
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, pin: str
+) -> None:
+    from extensions import ext_application_services
+
+    def unexpected_services() -> None:
+        raise AssertionError("Workspace-only runs must not resolve personal connections.")
+
+    monkeypatch.setattr(ext_application_services, "application_services", unexpected_services)
+    with harness.base.sessions.begin() as session:
+        app = session.get(App, harness.base.context.app_id)
+        user = session.get(EndUser, harness.base.context.end_user_id)
+        workflow = session.get(Workflow, harness.base.workflow_id)
+        assert app is not None
+        assert user is not None
+        assert workflow is not None
+        workflow.graph = json.dumps({"nodes": [], "edges": []})
+    args: dict[str, object] = {"connections": {"removed-node": str(uuid4())}}
+    if pin != "missing":
+        args["workflow_id"] = workflow.id if pin == "matching" else str(uuid4())
+    if pin == "stale":
+        with pytest.raises(ConnectionWorkflowChangedError):
+            prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args)
+    else:
+        assert prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args) is None

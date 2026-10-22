@@ -4,10 +4,11 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ExecutionConnectionSelection(BaseModel):
+    """One authorization root's choice; reuse is resolved from the Run's workflow."""
+
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     node_id: str
-    node_ids: tuple[str, ...]
     provider: str
     connection_id: str | None
 

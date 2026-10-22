@@ -575,6 +575,18 @@ class APIWorkflowRunRepository(Protocol):
         """
         ...
 
+    def fail_workflow_pause(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_id: str,
+        pause_id: str,
+        error: str,
+    ) -> WorkflowRun | None:
+        """Fail the specified active pause; return None if another attempt already transitioned it."""
+        ...
+
     def resume_workflow_pause(
         self,
         workflow_run_id: str,
