@@ -25,8 +25,10 @@ Exit: 2 bad input caught locally (incl. near-miss command); 1 server rejection o
 When a command fails:
 
 - Exit 7: wait `error.retry_after` seconds (5 if absent), then retry once. Exit 7 again: stop and tell the human.
-- `network_connection` that says "timed out": the server is slow. Run the `hint` (`difyctl set config http.timeout <ms>`), then retry once.
-- Exit 6 `catalog_unavailable` with "HTTP 404": OpenAPI is off on that server. Tell the human to ask its admin to set `OPENAPI_ENABLED=true`. Don't retry.
-- A 403 or 503 whose hint names an admin or owner: stop and tell the human what it says. Logging in again does not help.
+- `network_connection` that says "timed out": the server is slow. Run the `hint` (`difyctl set config http.timeout <ms>`). Then retry once if the command only reads. If it changes state (create, import, publish), it may have worked on the server: check the current state first, then decide. Never make a second copy.
+- Exit 6 `catalog_unavailable` with "HTTP 404": either OpenAPI is off on that server, or the saved server URL is wrong. Tell the human to ask the admin to set `OPENAPI_ENABLED=true`, or to check the URL. Don't retry.
+- A 403 whose hint does not tell you to sign in: stop and tell the human the message and the hint. Logging in again does not help.
+- A 503 whose hint names an admin: stop and tell the human.
+- A 403 whose hint says to sign in with an account (`unsupported_token_type`): log in as that account.
 
 PowerShell: use `--input @file.json`, and `$env:VAR='v'; difyctl ...`.
