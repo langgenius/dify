@@ -246,13 +246,50 @@ const storageRestrictedProperties = [
   },
 ] satisfies NonNullable<OxlintConfig['rules']>[string]
 
+const focusIndicatorOverrides = [
+  'ring-w',
+  'ring-color',
+  'ring-offset-w',
+  'ring-offset-color',
+  'outline-w',
+  'outline-color',
+  'outline-style',
+  'outline-offset',
+  'focus:inset-ring-*',
+  'focus*:inset-ring-*',
+  '*:focus:inset-ring-*',
+  '*:focus*:inset-ring-*',
+]
+
 export const stylingContractRules = {
   'shadcn/no-restyle': [
     'error',
     {
-      componentImports: ['^@langgenius/dify-ui/(tooltip|infotip|dialog|alert-dialog)$'],
+      componentImports: ['^@langgenius/dify-ui/'],
       allow: ['*'],
       contracts: [
+        {
+          pattern: '^(ScrollArea|ScrollAreaViewport)$',
+          allow: ['*'],
+          deny: [...focusIndicatorOverrides, 'ring-*', 'inset-ring-*'],
+          message:
+            '"{{className}}" duplicates or overrides the ScrollArea focus indicator. Put focus, keyboard events and accessible names on ScrollAreaViewport; ScrollArea paints the indicator above its contents. Do not add another ring or outline to either part.',
+        },
+        {
+          pattern: '^(Button|IconButton)$',
+          allow: ['*'],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" duplicates or overrides the {{component}} focus indicator. Keep its width, color and primary-button inner separator. Callers may use ring-inset to avoid clipping; a different focus owner or a box-shadow animation requires a documented local exception.',
+        },
+        {
+          pattern:
+            '^(Input|Textarea|InputGroup|InputGroupInput|NumberFieldGroup|NumberFieldInput|ComboboxInputGroup|ComboboxInput|AutocompleteInputGroup|AutocompleteInput|DropdownMenuInputGroup|DropdownMenuInput)$',
+          allow: ['*'],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" duplicates or overrides the {{component}} focus indicator. The visible field owns focus; an input inside a styled group stays bare. Use ring-inset for clipped edges. A custom composite that moves the indicator needs a documented local exception.',
+        },
         {
           pattern: '^TooltipContent$',
           allow: ['flex', 'items-center', 'gap-1', 'w-*', 'max-w-*'],
@@ -316,6 +353,16 @@ export const stylingContractRules = {
             '"{{className}}" is outside the {{component}} styling contract. The body owns the content gutter and scrolls between the header and footer; callers may lay out its content.',
         },
       ],
+    },
+  ],
+} satisfies NonNullable<OxlintConfig['rules']>
+
+export const storyStylingContractRules = {
+  'shadcn/no-restyle': [
+    'error',
+    {
+      ...stylingContractRules['shadcn/no-restyle'][1],
+      componentImports: ['^@langgenius/dify-ui/', '^\\.{1,2}(?:/|$)'],
     },
   ],
 } satisfies NonNullable<OxlintConfig['rules']>
@@ -1083,6 +1130,10 @@ export const lintConfig = {
     {
       files: ['web/**/*.{jsx,tsx}'],
       rules: stylingContractRules,
+    },
+    {
+      files: ['packages/dify-ui/**/*.stories.{jsx,tsx}'],
+      rules: storyStylingContractRules,
     },
     {
       files: ['web/**/*.stories.{js,cjs,mjs,jsx,ts,tsx}', 'web/**/*.story.{js,cjs,mjs,jsx,ts,tsx}'],

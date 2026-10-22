@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 
 import pytest
+import requests
 from sqlalchemy.orm import Session
 
 from core.ops.entities.trace_entity import WorkflowTraceInfo
@@ -12,11 +13,20 @@ from extensions.ext_database import db
 from models import Account
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from tests.unit_tests.services.tracing.test_mlflow_legacy_destination import (
+    exported_spans,
+)
+from tests.unit_tests.services.tracing.test_mlflow_legacy_destination import (
+    transport as transport,  # noqa: PLC0414 - Reuse the real SDK's isolated requests boundary.
+)
 
 
 @pytest.mark.parametrize("exporter", ["canonical", "mlflow"])
 def test_external_workflow_trace_omits_source_internals(
-    exporter: str, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    exporter: str,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    transport: list[requests.PreparedRequest],
 ) -> None:
     started_at = datetime(2025, 1, 1)
     public_inputs = {"query": "public tool input"}
@@ -94,31 +104,28 @@ def test_external_workflow_trace_omits_source_internals(
         from dify_trace_mlflow.config import MLflowConfig
         from dify_trace_mlflow.mlflow_trace import MLflowDataTrace
         from mlflow.entities import Span
-        from mlflow.tracing import provider
-        from mlflow.tracing.processor.mlflow_v3 import MlflowV3SpanProcessor
         from mlflow.tracing.trace_manager import InMemoryTraceManager
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-        monkeypatch.setattr("dify_trace_mlflow.mlflow_trace.mlflow.set_tracking_uri", lambda _uri: None)
-        monkeypatch.setattr("dify_trace_mlflow.mlflow_trace.mlflow.set_experiment", lambda **_kwargs: None)
-        monkeypatch.setattr("mlflow.tracking.fluent._active_experiment_id", "0")
         monkeypatch.setattr(InMemoryTraceManager, "_instance", InMemoryTraceManager())
-        monkeypatch.setenv("MLFLOW_ENABLE_ASYNC_TRACE_LOGGING", "true")
-        span_exporter = InMemorySpanExporter()
-        tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(MlflowV3SpanProcessor(span_exporter, export_metrics=False))
-        monkeypatch.setattr(provider, "_get_tracer", tracer_provider.get_tracer)
+        # OSS owns a private synchronous SDK pipeline. Inspect its real wire spans
+        # instead of replacing the unrelated process-wide MLflow tracer.
+        instance = MLflowDataTrace(MLflowConfig(tracking_uri="https://workflow-boundary.example", experiment_id="0"))
         try:
-            MLflowDataTrace(MLflowConfig()).workflow_trace(info)
-            spans = [Span(span) for span in span_exporter.get_finished_spans()]
+            instance.trace(info)
+            spans = [Span.from_otel_proto(span) for span in exported_spans(transport)]
             assert len(spans) == 2
             payload = json.dumps([span.to_dict() for span in spans])
             tool = next(span for span in spans if span.name == "outer-tool")
             assert tool.inputs == public_inputs
             assert tool.outputs == public_outputs
+            assert transport
+            assert {request.url for request in transport} <= {
+                "https://workflow-boundary.example/version",
+                "https://workflow-boundary.example/api/3.0/mlflow/traces",
+                "https://workflow-boundary.example/v1/traces",
+            }
         finally:
-            tracer_provider.shutdown()
+            instance._provider.shutdown()
     assert "private source" not in payload
     assert "source-llm" not in payload
     assert "recursive-llm" not in payload

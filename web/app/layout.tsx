@@ -5,7 +5,7 @@ import { HydrationBoundary } from '@tanstack/react-query'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { IS_PROD } from '@/config'
 import { getDatasetMap } from '@/env'
 import AppAccessBoundary from '@/features/app-access-error/boundary'
@@ -86,7 +86,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <TanStackQueryProvider>
                     <HydrationBoundary state={dehydratedState}>
                       <I18nServerProvider>
-                        <AppToastHost timeout={5000} limit={3} />
+                        <AppToaster timeout={5000} limit={3} />
                         <SystemFeaturesBootstrapBoundary>
                           <TooltipProvider delay={300} closeDelay={200}>
                             <AppAccessBoundary>{children}</AppAccessBoundary>
