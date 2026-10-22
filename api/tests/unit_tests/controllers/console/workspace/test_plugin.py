@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
@@ -72,6 +73,9 @@ from core.plugin.plugin_service import PluginService
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
+from enums import DeploymentEdition
+from extensions.ext_application_services import build_application_services
+from extensions.ext_redis import RedisClientWrapper
 from models.account import (
     Account,
     TenantAccountRole,
@@ -83,8 +87,11 @@ from models.account import (
     TenantPluginInstallPermission,
 )
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client
 from tests.unit_tests.controllers.error_body import raised_error
 from tests.unit_tests.model_factories import make_account
+
+application_redis = test_trigger_oauth_client.application_redis
 
 
 def _plugin_category_list_item(category: str = "tool") -> dict[str, Any]:
@@ -760,7 +767,20 @@ class TestPluginFetchPermissionApi:
 
 
 class TestPluginFetchDynamicSelectOptionsApi:
-    def test_fetch_dynamic_options(self, app: Flask, user):
+    def test_fetch_dynamic_options(
+        self,
+        user: Account,
+        sqlite_session_factory: sessionmaker[Session],
+        application_redis: RedisClientWrapper,
+    ) -> None:
+        app = Flask(__name__)
+        services = build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=application_redis,
+        )
+        app.extensions["application_services"] = services
         api = PluginFetchDynamicSelectOptionsApi()
         method = unwrap(api.get)
 
@@ -769,7 +789,7 @@ class TestPluginFetchDynamicSelectOptionsApi:
             patch(
                 "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options",
                 return_value=[_dynamic_option()],
-            ),
+            ) as get_options,
         ):
             result = method(
                 api,
@@ -781,6 +801,7 @@ class TestPluginFetchDynamicSelectOptionsApi:
             )
 
         assert result == {"options": [_expected_dynamic_option_dump()]}
+        assert get_options.call_args.kwargs["builders"] is services.workspaces.trigger_builders
 
 
 class TestPluginReadmeApi:

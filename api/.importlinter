@@ -1198,3 +1198,16 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 allow_indirect_imports = True
+
+[importlinter:contract:trigger-subscription-builder-persistence-boundary]
+name = Trigger subscription builder orchestration uses injected persistence
+type = forbidden
+source_modules =
+    services.trigger.trigger_subscription_builder_service
+forbidden_modules =
+    controllers
+    extensions
+    repositories
+    sqlalchemy
+    services.trigger.trigger_provider_service
+allow_indirect_imports = True

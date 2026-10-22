@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from inspect import unwrap
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -12,21 +11,12 @@ from werkzeug.exceptions import BadRequest
 
 from controllers.common.errors import NotFoundError
 from controllers.console.workspace.trigger_providers import (
-    TriggerSubscriptionBuilderBuildApi,
-    TriggerSubscriptionBuilderCreateApi,
-    TriggerSubscriptionBuilderCreatePayload,
-    TriggerSubscriptionBuilderGetApi,
-    TriggerSubscriptionBuilderLogsApi,
-    TriggerSubscriptionBuilderUpdateApi,
     TriggerSubscriptionBuilderUpdatePayload,
-    TriggerSubscriptionBuilderVerifyApi,
     TriggerSubscriptionBuilderVerifyPayload,
     TriggerSubscriptionUpdateApi,
     TriggerSubscriptionVerifyApi,
 )
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity
-from core.trigger.entities.entities import RequestLog
 from models.account import Account
 
 
@@ -34,181 +24,6 @@ def mock_user() -> Account:
     user = Account(name="User", email="user.com")
     user.id = "u1"
     return user
-
-
-def subscription_builder() -> SubscriptionBuilderApiEntity:
-    return SubscriptionBuilderApiEntity(
-        id="b1",
-        name="Builder",
-        provider="github",
-        endpoint="b1",
-        parameters={"repo": "dify"},
-        properties={"branch": "main"},
-        credentials={"token": "secret"},
-        credential_type=CredentialType.UNAUTHORIZED,
-    )
-
-
-def request_log() -> RequestLog:
-    return RequestLog(
-        id="log1",
-        endpoint="/hooks/b1",
-        request={"headers": {}, "body": {"event": "push"}},
-        response={"status": 200, "body": {"ok": True}},
-        created_at=datetime(2024, 1, 1),
-    )
-
-
-class TestTriggerSubscriptionBuilderApis:
-    def test_create_builder(self, app: Flask) -> None:
-        api = TriggerSubscriptionBuilderCreateApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={"credential_type": "UNAUTHORIZED"}),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.create_trigger_subscription_builder",
-                return_value=subscription_builder(),
-            ),
-        ):
-            result = method(
-                api,
-                TriggerSubscriptionBuilderCreatePayload(credential_type="UNAUTHORIZED"),
-                "t1",
-                mock_user(),
-                "github",
-            )
-            assert result["subscription_builder"]["id"] == "b1"
-
-    def test_get_builder(self, app: Flask) -> None:
-        api = TriggerSubscriptionBuilderGetApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.get_subscription_builder_by_id",
-                return_value=subscription_builder(),
-            ) as mock_get_builder,
-        ):
-            assert method(api, "t1", mock_user(), "github", "b1")["id"] == "b1"
-        mock_get_builder.assert_called_once_with(
-            tenant_id="t1",
-            user_id="u1",
-            provider_id=ANY,
-            subscription_builder_id="b1",
-        )
-
-    def test_verify_builder(self, app: Flask) -> None:
-        api = TriggerSubscriptionBuilderVerifyApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={"credentials": {"a": 1}}),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.update_and_verify_builder",
-                return_value={"verified": True},
-            ),
-        ):
-            assert method(
-                api,
-                TriggerSubscriptionBuilderVerifyPayload(credentials={"a": 1}),
-                "t1",
-                mock_user(),
-                "github",
-                "b1",
-            ) == {"verified": True}
-
-    def test_verify_builder_error(self, app: Flask) -> None:
-        api = TriggerSubscriptionBuilderVerifyApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={"credentials": {}}),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.update_and_verify_builder",
-                side_effect=Exception("err"),
-            ),
-        ):
-            with pytest.raises(ValueError, match="err"):
-                method(
-                    api,
-                    TriggerSubscriptionBuilderVerifyPayload(credentials={}),
-                    "t1",
-                    mock_user(),
-                    "github",
-                    "b1",
-                )
-
-    def test_update_builder(self, app: Flask) -> None:
-        api = TriggerSubscriptionBuilderUpdateApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={"name": "n"}),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.update_trigger_subscription_builder",
-                return_value=subscription_builder(),
-            ) as mock_update_builder,
-        ):
-            assert (
-                method(
-                    api,
-                    TriggerSubscriptionBuilderUpdatePayload(name="n"),
-                    "t1",
-                    mock_user(),
-                    "github",
-                    "b1",
-                )["id"]
-                == "b1"
-            )
-        mock_update_builder.assert_called_once_with(
-            tenant_id="t1",
-            user_id="u1",
-            provider_id=ANY,
-            subscription_builder_id="b1",
-            subscription_builder_updater=ANY,
-        )
-
-    def test_logs(self, app: Flask) -> None:
-        api = TriggerSubscriptionBuilderLogsApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.list_logs",
-                return_value=[request_log()],
-            ) as mock_list_logs,
-        ):
-            result = method(api, "t1", mock_user(), "github", "b1")
-            assert result["logs"][0]["id"] == "log1"
-        mock_list_logs.assert_called_once_with(
-            tenant_id="t1",
-            user_id="u1",
-            provider_id=ANY,
-            subscription_builder_id="b1",
-        )
-
-    def test_build(self, app: Flask) -> None:
-        api = TriggerSubscriptionBuilderBuildApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={"name": "x"}),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.update_and_build_builder",
-                return_value=None,
-            ),
-        ):
-            assert method(
-                api,
-                TriggerSubscriptionBuilderUpdatePayload(name="x"),
-                "t1",
-                mock_user(),
-                "github",
-                "b1",
-            ) == {"result": "success"}
 
 
 class TestTriggerSubscriptionCrud:

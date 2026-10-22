@@ -21,6 +21,7 @@ from models.account import TenantAccountRole
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _PROVIDER, _Harness
 
+application_redis = test_trigger_oauth_client.application_redis
 harness = test_trigger_oauth_client.harness
 
 _LIST = "/console/api/workspaces/current/triggers"

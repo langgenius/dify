@@ -16,6 +16,7 @@ from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_cl
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _PROVIDER, _Harness
 from tests.unit_tests.controllers.console.workspace.test_trigger_provider_query import _Daemon
 
+application_redis = test_trigger_oauth_client.application_redis
 harness = test_trigger_oauth_client.harness
 daemon = test_trigger_provider_query.daemon
 

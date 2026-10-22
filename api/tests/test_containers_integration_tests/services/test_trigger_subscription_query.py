@@ -28,6 +28,7 @@ from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client im
 from tests.unit_tests.controllers.console.workspace.test_trigger_provider_query import _Daemon, _provider
 from tests.unit_tests.controllers.console.workspace.test_trigger_subscription_query import _LIST, _add_subscription
 
+application_redis = test_trigger_oauth_client.application_redis
 harness = test_trigger_oauth_client.harness
 daemon = test_trigger_provider_query.daemon
 

@@ -10,16 +10,20 @@ import pytest
 from flask import Flask
 from flask.typing import ResponseReturnValue
 from flask_restx import Api, Resource
+from redis import Redis
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.inner_api.workspace import workspace as controller
 from controllers.inner_api.wraps import InnerApiUnauthorizedError
 from core.plugin.impl.oauth import OAuthHandler
+from core.trigger.trigger_manager import TriggerManager
 from extensions.application_services.workspace import WorkspaceServices
+from extensions.ext_redis import RedisClientWrapper
 from libs.external_api import register_external_error_handlers
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
+from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
 from services.account_errors import AccountNotFoundError
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
@@ -36,6 +40,8 @@ from services.trigger.oauth_gateway import (
 from services.trigger.oauth_service import TriggerOAuthService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
+from services.trigger.trigger_provider_service import TriggerProviderService
+from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.workspace.contracts import CreatedWorkspace, WorkspaceMembership
 from services.workspace.provisioning_service import WorkspaceProvisioningService
 from services.workspace.service import WorkspaceQueryService, WorkspaceService
@@ -54,6 +60,14 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
         clients=TriggerOAuthClientRepository(session_factory=sqlite_session_factory),
         providers=oauth_provider,
     )
+    redis = RedisClientWrapper()
+    redis.initialize(Redis())
+    builders = TriggerSubscriptionBuilderService(
+        builders=RedisTriggerSubscriptionBuilderRepository(redis=redis),
+        get_provider=TriggerManager.get_trigger_provider,
+        subscribe=TriggerManager.subscribe_trigger,
+        create_subscription=TriggerProviderService.add_trigger_subscription,
+    )
     services = WorkspaceServices(
         queries=create_autospec(WorkspaceQueryService, instance=True),
         management=create_autospec(WorkspaceService, instance=True),
@@ -69,12 +83,13 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
             credentials=CredentialQueryRepository(session_factory=sqlite_session_factory),
             schemas=PluginTriggerProviderQuery(),
         ),
+        trigger_builders=builders,
         trigger_oauth_clients=oauth_clients,
         trigger_oauth=TriggerOAuthService(
             clients=oauth_clients,
             providers=oauth_provider,
             contexts=OAuthProxyContextGateway(),
-            builders=TriggerOAuthBuilderGateway(),
+            builders=TriggerOAuthBuilderGateway(builders=builders),
         ),
     )
     monkeypatch.setattr(controller, "application_services", lambda: Services(services))
