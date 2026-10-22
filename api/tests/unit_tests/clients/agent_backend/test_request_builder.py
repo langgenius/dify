@@ -1,6 +1,5 @@
 import json
 from typing import Any, cast
-from unittest.mock import Mock
 
 import httpx
 import pytest
@@ -603,7 +602,7 @@ def test_knowledge_fs_requires_shell_and_can_coexist_with_classic_knowledge(mode
     assert mixed_layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config["sets"][0]["id"] == "legacy"
     assert mixed_layers["knowledge_fs"].config["spaces"][0]["id"] == "docs"
     run_input.execution_context.app_id = "app-1"
-    client = cast(httpx.AsyncClient, Mock(spec=httpx.AsyncClient))
+    client = httpx.AsyncClient()
     services = Services(
         plugin_daemon_http_client=client,
         dify_api_http_client=client,
