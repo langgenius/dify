@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  AgentConfigSnapshotDetailResponse,
-  AgentConfigSnapshotSummaryResponse,
-} from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import type { AgentConfigurePublishResult } from '../../use-agent-configure-sync'
 import type { AgentBuildDraftChangedKey } from './build-draft-changes-context'
@@ -16,7 +13,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentOrchestrateAddActionsProvider } from './add-actions'
 import { AgentAdvancedSettings } from './advanced'
@@ -42,7 +39,6 @@ type AgentOrchestratePanelProps = {
   agentId: string
   appId?: string
   nodeId?: string
-  agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
   currentModel?: AgentComposerModel
   isPublishing?: boolean
@@ -68,7 +64,6 @@ export function AgentOrchestratePanel({
   agentId,
   appId,
   nodeId,
-  agentSoulConfig: _agentSoulConfig,
   agentName,
   currentModel,
   isPublishing,
@@ -91,7 +86,7 @@ export function AgentOrchestratePanel({
 }: AgentOrchestratePanelProps) {
   const { t } = useTranslation(['agentV2'])
   const isTemplatePreview = !!trialAppId
-  const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
+  const orchestrateHeadingId = useId()
   const orchestrateLabel = t(($) => $['agentDetail.configure.title'])
   const orchestrateBottomAction =
     bottomAction ??
@@ -132,7 +127,7 @@ export function AgentOrchestratePanel({
   return (
     <div
       className={cn(
-        'relative flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg',
+        'relative flex flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg',
         className,
       )}
     >

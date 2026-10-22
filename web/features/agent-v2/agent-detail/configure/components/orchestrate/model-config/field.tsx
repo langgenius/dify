@@ -61,6 +61,7 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
         </div>
       ) : (
         <ModelParameterModal
+          triggerContainerClassName="min-w-0"
           isAdvancedMode
           modelId={currentModel?.model ?? ''}
           provider={currentModel?.provider ?? ''}

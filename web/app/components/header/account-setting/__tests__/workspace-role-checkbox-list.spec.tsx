@@ -125,6 +125,33 @@ describe('WorkspaceRoleCheckboxList', () => {
     expect(screen.getByRole('checkbox', { name: /Second role/i })).toBeInTheDocument()
   })
 
+  it('should announce role loading and empty search results without moving focus', async () => {
+    const user = userEvent.setup()
+
+    render(<WorkspaceRoleCheckboxList selectedRoleIds={[]} onSelectedRolesChange={vi.fn()} />)
+
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('permission.role.loading')
+    await screen.findByRole('checkbox', { name: /First role/i })
+    expect(status).toBeEmptyDOMElement()
+
+    const searchInput = screen.getByRole('searchbox', {
+      name: 'permission.role.searchPlaceholder',
+    })
+    await user.type(searchInput, 'No such role')
+
+    expect(status).toBeInTheDocument()
+    expect(status).toHaveTextContent('permission.role.noMatchingRoles')
+    expect(searchInput).toHaveFocus()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+
+    await user.clear(searchInput)
+
+    expect(status).toBeEmptyDOMElement()
+    expect(searchInput).toHaveFocus()
+    expect(screen.getByRole('checkbox', { name: /First role/i })).toBeInTheDocument()
+  })
+
   it('should expose disabled state on single-role options', async () => {
     render(
       <WorkspaceRoleCheckboxList

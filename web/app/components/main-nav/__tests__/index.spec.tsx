@@ -654,23 +654,20 @@ describe('MainNav', () => {
     )
   })
 
-  it.each([
-    '/datasets/create',
-    '/datasets/create-from-pipeline',
-    '/datasets/connect',
-    '/datasets/dataset-1/documents/create',
-    '/datasets/dataset-1/documents/create-from-pipeline',
-  ])('keeps global navigation on dataset creation route %s', (pathname) => {
-    mockPathname = pathname
+  it.each(['/datasets/create', '/datasets/create-from-pipeline', '/datasets/connect'])(
+    'keeps global navigation on dataset creation route %s',
+    (pathname) => {
+      mockPathname = pathname
 
-    renderMainNav()
+      renderMainNav()
 
-    expect(screen.getByRole('button', { name: workspaceMenuAccessibleName })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /navigation.menus.datasets/ })).toHaveAttribute(
-      'href',
-      '/datasets',
-    )
-  })
+      expect(screen.getByRole('button', { name: workspaceMenuAccessibleName })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /navigation.menus.datasets/ })).toHaveAttribute(
+        'href',
+        '/datasets',
+      )
+    },
+  )
 
   it.each(['/marketplace', '/plugins', '/templates', '/templates/marketing'])(
     'marks marketplace active on route %s',

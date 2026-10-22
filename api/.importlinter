@@ -1157,6 +1157,35 @@ forbidden_modules =
 # so only direct imports are checked here.
 allow_indirect_imports = True
 
+[importlinter:contract:app-trigger-store-boundary]
+name = App trigger management contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.trigger.app_trigger_store
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:console-app-trigger-controller-boundary]
+name = Console app trigger controller reaches persistence only through the composition root
+type = forbidden
+source_modules =
+    controllers.console.app.workflow_trigger
+forbidden_modules =
+    extensions.ext_database
+    models.model
+    models.trigger
+    repositories
+    sqlalchemy
+# The composition root wires repositories, so only direct imports are checked here.
+allow_indirect_imports = True
+
 [importlinter:contract:app-audio-boundary]
 name = App audio operations and values are framework and persistence neutral
 type = forbidden

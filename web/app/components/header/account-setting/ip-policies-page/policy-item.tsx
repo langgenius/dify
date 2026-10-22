@@ -86,29 +86,40 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
 
   return (
     <div
+      role="row"
       className={`${policyRowClassName} relative border-b border-divider-subtle py-3 hover:bg-state-base-hover`}
     >
-      {/* Extend the native button's hit area across the row without nesting the actions. */}
-      <Button
-        variant="ghost"
-        aria-label={group.name}
-        className="h-auto min-w-0 flex-1 justify-start gap-0 overflow-visible rounded-none p-0 text-left after:absolute after:inset-0 hover:bg-transparent"
-        onClick={() => onView(group)}
+      <div role="cell" className="flex min-w-0 flex-1">
+        {/* Extend the name button's hit area across the row without nesting the actions. */}
+        <Button
+          variant="ghost"
+          className="h-auto w-full min-w-0 justify-start gap-0 overflow-visible rounded-none p-0 text-left after:absolute after:inset-0 hover:bg-transparent"
+          onClick={() => onView(group)}
+        >
+          <span className={`${policyNameColClassName} system-sm-medium text-text-secondary`}>
+            {group.name}
+          </span>
+        </Button>
+      </div>
+      <div
+        role="cell"
+        className={`${policyIpEntriesColClassName} system-sm-regular text-text-tertiary`}
       >
-        <span className={`${policyNameColClassName} system-sm-medium text-text-secondary`}>
-          {group.name}
-        </span>
-        <span className={`${policyIpEntriesColClassName} system-sm-regular text-text-tertiary`}>
-          {group.allowed_cidrs.length}
-        </span>
-        <span className={`${policyUsedByColClassName} system-sm-regular text-text-tertiary`}>
-          {usedByLabel}
-        </span>
-        <span className={`${policyUpdatedColClassName} system-sm-regular text-text-tertiary`}>
-          {formatTimeFromNow(Date.parse(group.updated_at))}
-        </span>
-      </Button>
-      <div className={`${policyActionsColClassName} pointer-events-none relative`}>
+        {group.allowed_cidrs.length}
+      </div>
+      <div
+        role="cell"
+        className={`${policyUsedByColClassName} system-sm-regular text-text-tertiary`}
+      >
+        {usedByLabel}
+      </div>
+      <div
+        role="cell"
+        className={`${policyUpdatedColClassName} system-sm-regular text-text-tertiary`}
+      >
+        {formatTimeFromNow(Date.parse(group.updated_at))}
+      </div>
+      <div role="cell" className={`${policyActionsColClassName} pointer-events-none relative`}>
         {canMutate && (
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <Tooltip>

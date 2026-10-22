@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from io import BytesIO
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
@@ -14,13 +15,17 @@ from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
+from enums import DeploymentEdition
 from models import Account, App, AppMode
 from models.enums import CustomizeTokenStrategy
 from models.model import AppModelConfig, AppModelConfigDict, IconType, Site
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage
+from services.agent.roster_package_entities import PackageIcon
 from services.app_dsl_service import AppDslService, PendingData
+from services.app_package_service import PreparedAppPackage
 from services.entities.dsl_entities import ImportStatus
+from services.entities.feature_entities import FeatureModel, LimitationModel
 from services.entities.site_dsl import SiteDsl
 from services.errors.app import DraftChangedError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
@@ -93,6 +98,155 @@ def _workflow(
     *, graph: dict[str, object], environment_variables: list[LLMEnvironmentVariable] | None = None
 ) -> Workflow:
     return make_workflow(workflow_id="workflow-1", graph=graph, environment_variables=environment_variables or [])
+
+
+@pytest.mark.parametrize("version", [CURRENT_APP_DSL_VERSION, "99.0.0"])
+@pytest.mark.parametrize("size", [5, 6])
+def test_import_rejects_cloud_app_quota_before_side_effects(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, version: str, size: int
+) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    feature_calls: list[tuple[str, bool]] = []
+
+    def features(tenant_id: str, *, exclude_vector_space: bool) -> FeatureModel:
+        feature_calls.append((tenant_id, exclude_vector_space))
+        return FeatureModel(apps=LimitationModel(size=size, limit=5))
+
+    def unexpected_side_effect(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("Quota rejection must precede import side effects")
+
+    monkeypatch.setattr("services.app_dsl_service.FeatureService.get_features", features)
+    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", unexpected_side_effect)
+    service = AppDslService(unbound_session)
+    monkeypatch.setattr(service, "_create_or_update_app", unexpected_side_effect)
+    package = PreparedAppPackage(
+        archive=BytesIO(),
+        members={},
+        dsl="",
+        agents={},
+        agent_resources={},
+        icons=[PackageIcon(id="i_000001", path="i_000001.png", size=0, sha256="0" * 64)],
+    )
+    monkeypatch.setattr(package, "materialize_icons", unexpected_side_effect)
+    monkeypatch.setattr(package, "materialize_agents", unexpected_side_effect)
+
+    with (
+        package,
+        pytest.raises(NoPermissionError, match="The number of apps has reached the limit of your subscription"),
+    ):
+        service.import_app(
+            account=_account(),
+            import_mode="yaml-content",
+            yaml_content=yaml.safe_dump({"version": version, "app": {"name": "Imported", "mode": "workflow"}}),
+            package=package,
+        )
+
+    assert feature_calls == [("tenant-1", True)]
+
+
+@pytest.mark.parametrize("confirmed", [False, True])
+@pytest.mark.parametrize(
+    ("edition", "size", "limit", "overwrite"),
+    [
+        (DeploymentEdition.COMMUNITY, 5, 5, False),
+        (DeploymentEdition.ENTERPRISE, 5, 5, False),
+        (DeploymentEdition.CLOUD, 4, 5, False),
+        (DeploymentEdition.CLOUD, 5, 0, False),
+        (DeploymentEdition.CLOUD, 5, 5, True),
+    ],
+)
+def test_import_app_quota_allows_other_editions_available_capacity_and_overwrites(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    confirmed: bool,
+    edition: DeploymentEdition,
+    size: int,
+    limit: int,
+    overwrite: bool,
+) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition)
+    feature_calls: list[tuple[str, bool]] = []
+
+    def features(tenant_id: str, *, exclude_vector_space: bool) -> FeatureModel:
+        feature_calls.append((tenant_id, exclude_vector_space))
+        return FeatureModel(apps=LimitationModel(size=size, limit=limit))
+
+    monkeypatch.setattr("services.app_dsl_service.FeatureService.get_features", features)
+    monkeypatch.setattr(
+        "services.app_dsl_service.WorkflowDraftVariableService.delete_app_workflow_variables",
+        lambda *_args, **_kwargs: None,
+    )
+    service = AppDslService(sqlite_session)
+    app = _app(mode=AppMode.WORKFLOW)
+    imported: list[App] = []
+
+    def create_or_update(**_kwargs: object) -> App:
+        imported.append(app)
+        return app
+
+    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+    monkeypatch.setattr(service, "_load_app_for_overwrite", lambda *_args: app)
+    pending = PendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        import_mode="yaml-content",
+        yaml_content=yaml.safe_dump(
+            {"version": CURRENT_APP_DSL_VERSION, "app": {"name": "Imported", "mode": "workflow"}}
+        ),
+        app_id=app.id if overwrite else None,
+    )
+
+    if confirmed:
+        monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _: pending.model_dump_json())
+        result = service.confirm_import(import_id="pending", account=_account())
+    else:
+        result = service.import_app(
+            account=_account(),
+            import_mode=pending.import_mode,
+            yaml_content=pending.yaml_content,
+            app_id=pending.app_id,
+        )
+
+    assert result.status == ImportStatus.COMPLETED, result.error
+    assert imported == [app]
+    assert feature_calls == ([("tenant-1", True)] if edition == DeploymentEdition.CLOUD and not overwrite else [])
+
+
+def test_confirm_import_rechecks_cloud_app_quota_and_preserves_pending_on_rejection(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    features = FeatureModel(apps=LimitationModel(size=4, limit=5))
+    monkeypatch.setattr("services.app_dsl_service.FeatureService.get_features", lambda *_args, **_kwargs: features)
+    pending_imports: dict[str, str] = {}
+    monkeypatch.setattr(
+        "services.app_dsl_service.redis_client.setex",
+        lambda key, _expiry, value: pending_imports.__setitem__(key, value),
+    )
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending_imports.get)
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending_imports.pop)
+    service = AppDslService(unbound_session)
+    imported: list[App] = []
+
+    def create_or_update(**_kwargs: object) -> App:
+        app = _app(mode=AppMode.WORKFLOW)
+        imported.append(app)
+        return app
+
+    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+    pending = service.import_app(account=_account(), import_mode="yaml-content", yaml_content=_PENDING_WORKFLOW_DSL)
+    assert pending.status == ImportStatus.PENDING
+
+    features.apps.size = 5
+    with pytest.raises(NoPermissionError, match="The number of apps has reached the limit of your subscription"):
+        service.confirm_import(import_id=pending.id, account=_account())
+    assert not imported
+    assert f"app_import_info:{pending.id}" in pending_imports
+
+    features.apps.size = 4
+    assert service.confirm_import(import_id=pending.id, account=_account()).status == ImportStatus.COMPLETED
+    assert len(imported) == 1
+    assert f"app_import_info:{pending.id}" not in pending_imports
 
 
 def test_extract_workflow_dependencies_includes_plugin_nodes(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -383,7 +537,11 @@ def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, 
     assert redis_key not in pending_imports
 
 
-def test_pending_import_requires_current_tenant(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.CLOUD])
+def test_pending_import_requires_current_tenant(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, edition: DeploymentEdition
+) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition)
     setex = Mock()
     monkeypatch.setattr("services.app_dsl_service.redis_client.setex", setex)
     account = _account()
