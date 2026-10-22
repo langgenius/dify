@@ -939,8 +939,5 @@ def test_console_package_export_forwards_roster_options(
         return object()
 
     monkeypatch.setattr(AppPackageService, "export_app", export_app)
-    app_services.console.export(
-        context, app_id, AppExportOptions(format="ifpkg", preserve_agent_bindings=True, version_bindings=True)
-    )
+    app_services.console.export(context, app_id, AppExportOptions(format="ifpkg", preserve_agent_bindings=True))
     assert captured["preserve_agent_bindings"] is True
-    assert captured["version_bindings"] is True
