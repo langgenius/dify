@@ -353,6 +353,19 @@ describe.skipIf(!PWSH || process.platform === 'win32')('install.ps1 Write-SkillH
     }
   })
 
+  it('does not enter command discovery for a missing binary path', () => {
+    const result = runPwsh(`
+      $script:missingLookups = 0
+      $ExecutionContext.InvokeCommand.PreCommandLookupAction = {
+        param($commandName, $eventArgs)
+        if ($commandName -eq '/nonexistent/difyctl') { $script:missingLookups++ }
+      }
+      Write-SkillHint '/nonexistent/difyctl'
+      Write-Output "lookups=$script:missingLookups"
+    `)
+    expect(result).toMatchObject({ code: 0, stdout: 'lookups=0' })
+  })
+
   it('prints nothing when the binary cannot run', () => {
     expect(hint('/nonexistent/difyctl')).toMatchObject({ code: 0, stdout: '' })
   })
