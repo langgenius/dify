@@ -402,9 +402,10 @@ describe('Inline Agent configure workspace', () => {
     expect(api.deleteBuildDraft).not.toHaveBeenCalled()
     await confirm(user)
     await waitFor(() => expect(api.deleteBuildDraft).toHaveBeenCalledOnce())
-    expect(api.stopMessage).toHaveBeenCalledWith({
-      params: { agent_id: 'agent-1', task_id: 'task-0' },
-    })
+    expect(api.stopMessage).toHaveBeenCalledWith(
+      { params: { agent_id: 'agent-1', task_id: 'task-0' } },
+      { context: { silent: true } },
+    )
     expect(api.stopMessage.mock.invocationCallOrder[0]).toBeLessThan(
       api.deleteBuildDraft.mock.invocationCallOrder[0]!,
     )

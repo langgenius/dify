@@ -10,7 +10,10 @@ from services.system_feature_service import SystemFeatureService
 
 
 def test_system_feature_model_defaults_enable_learn_app() -> None:
-    system_features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
+    system_features = SystemFeatureModel(
+        agent_tracing_api_collection_enabled=False, deployment_edition=DeploymentEdition.COMMUNITY
+    )
+
     assert system_features.enable_learn_app is True
     assert system_features.enable_step_by_step_tour is False
 

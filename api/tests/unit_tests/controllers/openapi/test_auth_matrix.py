@@ -1713,7 +1713,7 @@ def world(sqlite_session_factory: sessionmaker[Session], token_rows: dict[str, R
 def _system_features(
     *, edition: DeploymentEdition, webapp_auth: bool, license_status: LicenseStatus
 ) -> SystemFeatureModel:
-    features = SystemFeatureModel(deployment_edition=edition)
+    features = SystemFeatureModel(agent_tracing_api_collection_enabled=False, deployment_edition=edition)
     features.webapp_auth.enabled = webapp_auth
     features.license.status = license_status
     return features

@@ -6,6 +6,16 @@ import { createNodeTracing } from '../../__tests__/fixtures'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import NodePanel from '../node'
 
+const { request } = vi.hoisted(() => ({
+  request:
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
+}))
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request,
+}))
+
 const createNodeInfo = (overrides: Partial<NodeTracing> = {}) =>
   createNodeTracing({
     id: 'trace-node-1',
@@ -22,6 +32,66 @@ const createNodeInfo = (overrides: Partial<NodeTracing> = {}) =>
   })
 
 describe('Run NodePanel', () => {
+  it('opens the historical Agent V2 span even when process data was truncated', async () => {
+    const user = userEvent.setup()
+    const urls: URL[] = []
+    request.mockImplementation(async (_url, _init, { request: sent }) => {
+      urls.push(new URL(sent.url))
+      return Response.json({
+        status: 'accepted',
+        source_kind: 'workflow',
+        source_id: 'run-1',
+        provider: 'langfuse',
+        span_url: 'https://cloud.langfuse.com/trace/frozen?observation=agent',
+      })
+    })
+    render(
+      <NodePanel
+        nodeInfo={createNodeInfo({
+          node_type: BlockEnum.Agent,
+          title: 'Agent V2',
+          process_data: { workflow_agent_binding_id: 'binding-1' },
+          process_data_truncated: true,
+          extras: {},
+        })}
+        externalTraceRun={{ appId: 'app-1', workflowRunId: 'run-1' }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Agent V2/ }))
+
+    expect(
+      await screen.findByRole('link', { name: 'app.tracing.run.viewSpan Agent V2' }),
+    ).toHaveAttribute('href', 'https://cloud.langfuse.com/trace/frozen?observation=agent')
+    expect(urls).toHaveLength(1)
+    expect(urls[0]!.pathname).toMatch(/\/apps\/app-1\/trace-runs\/workflow\/run-1$/)
+    expect(urls[0]!.searchParams.get('node_execution_id')).toBe('trace-node-1')
+  })
+
+  it('does not query Agent V2 spans for a legacy Agent in the same workflow', async () => {
+    const user = userEvent.setup()
+    render(
+      <NodePanel
+        nodeInfo={createNodeInfo({
+          node_type: BlockEnum.Agent,
+          title: 'Legacy Agent',
+          process_data: {},
+          extras: {},
+        })}
+        externalTraceRun={{ appId: 'app-1', workflowRunId: 'run-1' }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Legacy Agent/ }))
+
+    expect(screen.getByRole('button', { name: /Legacy Agent/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(screen.queryByRole('link', { name: /app.tracing.run.view/ })).not.toBeInTheDocument()
+    expect(request).not.toHaveBeenCalled()
+  })
+
   it('expands and collapses trace details from the keyboard', async () => {
     const user = userEvent.setup()
     render(<NodePanel nodeInfo={createNodeInfo({ status: NodeRunningStatus.Stopped })} />)

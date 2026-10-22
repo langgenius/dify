@@ -82,6 +82,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_OUTBOUND_HTTP_MAX_KEEPALIVE_CONNECTIONS` | `20` | Maximum idle shared outbound HTTP connections. |
 | `DIFY_AGENT_OUTBOUND_HTTP_KEEPALIVE_EXPIRY` | `30` | Idle keep-alive expiry in seconds. |
 | `DIFY_AGENT_TRAJECTORY_ENABLED` | `false` | Opt-in switch for the separate Agent trajectory export pipeline. |
+| `DIFY_AGENT_APPLICATION_TRACING_ENABLED` | `false` | Collect API-authorized application spans into the Dify inner API tracing inbox. Requires the server inner API URL and key. |
 | `DIFY_AGENT_TRAJECTORY_OTLP_TRACES_ENDPOINT` | empty | Full HTTP(S) OTLP traces endpoint required when trajectory export is enabled. |
 | `DIFY_AGENT_TRAJECTORY_OTLP_HEADERS` | `{}` | JSON object of request headers sent with Agent OTLP trace exports. |
 | `DIFY_AGENT_TRAJECTORY_SERVICE_NAME` | `dify-agent-trajectory` | Resource service name attached to Agent trajectory spans. |
@@ -118,6 +119,48 @@ The two SDK instances, exporters, enable switch, and content opt-in remain
 separate. The mode is fixed at process initialization and requires a restart
 to change. No extra shared root span is added; incomplete traces may still
 appear temporarily while a run or export is in progress.
+
+Application tracing is a third, independent pipeline. When enabled, a run's
+API-issued `execution_context.tracing` supplies its durable run/invocation IDs,
+OpenTelemetry parent, session and content/sampling policy. Its spans are sent as
+JSON to `POST /inner/api/agent/tracing/batches`, authenticated with the server's
+`DIFY_AGENT_INNER_API_KEY` in `X-Inner-Api-Key`. Provider credentials and routing
+remain in the Dify API. Application spans do not inherit platform or deployment
+trajectory destinations, and one Agent is never instrumented by both application
+and deployment pipelines. Binary content is excluded.
+
+The actual model-call span also carries the Dify gateway's billed amount as
+`dify.llm.total_price` (a decimal string) and `dify.llm.currency` when a usage
+payload is returned. `gen_ai.response.time_to_first_token` is measured in seconds
+(`dify.llm.time_to_first_token_unit=s`): gateway-provided TTFT takes precedence;
+otherwise it measures request issue to the first content/tool-call chunk.
+`dify.llm.time_to_first_token_source` distinguishes those two sources. Missing
+accounting is left absent. The current Graphon LLM gateway does not expose cache
+token counters, so the Agent adapter does not manufacture them.
+
+Each batch has a stable `batch_id`. Retries reuse the same payload, and a 2xx
+response is accepted only with `{result: "success", batch_id, accepted_spans}`
+matching that batch. An invocation emits an empty `final: true` batch after its
+ended spans are flushed and acknowledged, before its normal terminal event when
+delivery completes within five seconds. Failure or cancellation still flushes.
+Collection failures do not fail the Agent run; outstanding delivery can finish
+in the background after the terminal-event deadline. A full in-memory queue or
+unacknowledged data suppresses completion instead of claiming a complete trace.
+The queue is bounded (2048 spans, batches of at most 128), with up to 128 unacknowledged
+batches retained until invocation finalization. Batches are split below 1 MiB
+of UTF-8 JSON. A single oversized span is dropped and marks its invocation
+incomplete rather than silently truncating content or sending a success marker.
+This is not a durable local
+spool: process loss can leave an incomplete trace in the API. Shutdown drains the
+collector after active runs finish.
+
+If setup fails or cancellation arrives before Pydantic AI starts its Agent span,
+the collector emits one failed `invoke_agent` span with the measured setup
+interval, then finalizes normally. It records `dify.agent.execution_state` as
+`initialization_failed` or `cancelled`. Runs that already started their native
+Agent span keep that span without an extra wrapper. Sampling-off invocations
+remain span-free; successful but unexplained empty collections are not converted
+to synthetic success.
 
 Example `.env`:
 

@@ -31,7 +31,11 @@ from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.runtime.context import Services
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.auth import create_bearer_token_dependency
-from dify_agent.server.observability import configure_agent_observability, configure_server_observability
+from dify_agent.server.observability import (
+    configure_agent_observability,
+    configure_application_observability,
+    configure_server_observability,
+)
 from dify_agent.server.routes.e2b_usage import create_e2b_usage_router
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.routes.execution_bindings import create_execution_bindings_router
@@ -112,7 +116,9 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         agent_observability = configure_agent_observability(resolved_settings)
+        application_observability = configure_application_observability(resolved_settings)
         _app.state.agent_observability = agent_observability
+        _app.state.application_observability = application_observability
         redis = Redis.from_url(resolved_settings.redis_url)
         plugin_daemon_http_client = create_plugin_daemon_http_client(resolved_settings)
         dify_api_inner_http_client = create_dify_api_inner_http_client(resolved_settings)
@@ -146,6 +152,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             stream_text_delta_flush_interval_seconds=(resolved_settings.stream_text_delta_flush_interval_ms / 1000),
             stream_text_delta_max_chars=resolved_settings.stream_text_delta_max_chars,
             agent_observability=agent_observability,
+            application_observability=application_observability,
         )
         state["store"] = store
         state["scheduler"] = scheduler
@@ -159,6 +166,8 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             # Closed last so runs draining above still reach the exporter.
             if agent_observability is not None:
                 await agent_observability.aclose()
+            if application_observability is not None:
+                await application_observability.aclose()
 
     app = FastAPI(title="Dify Agent Run Server", version="0.1.0", lifespan=lifespan)
     app.state.platform_observability = configure_server_observability(app, settings=resolved_settings)

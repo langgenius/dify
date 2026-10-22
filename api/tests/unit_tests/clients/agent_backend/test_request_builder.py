@@ -1,9 +1,11 @@
+import json
 from typing import Any, cast
 
 import pytest
+from dify_agent.adapters.llm.model import _get_stop_sequences, _map_model_settings_to_parameters
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginToolConfig, DifyPluginToolsLayerConfig
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
 from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge_fs import DifyKnowledgeFsLayerConfig
 from dify_agent.layers.prompt import Config as PromptConfig
@@ -15,7 +17,7 @@ from dify_agent.protocol import (
     DIFY_AGENT_OUTPUT_LAYER_ID,
     CreateRunRequest,
 )
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
 
 from clients.agent_backend import (
     AGENT_SOUL_PROMPT_LAYER_ID,
@@ -33,6 +35,7 @@ from clients.agent_backend import (
     redact_for_agent_backend_log,
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
+from models.agent_config_entities import AgentSoulModelSettings
 
 
 def _run_input() -> AgentBackendWorkflowNodeRunInput:
@@ -122,6 +125,70 @@ def test_request_builder_forwards_plugin_specific_model_settings_via_extra_body(
     }
 
 
+@pytest.mark.parametrize("builder_kind", ["agent_app", "workflow_node"])
+@pytest.mark.parametrize(
+    "settings",
+    [
+        pytest.param({}, id="default"),
+        pytest.param({"response_format": None}, id="none"),
+        pytest.param({"response_format": "text"}, id="plugin-text"),
+        pytest.param(
+            {
+                "response_format": "json_schema",
+                "json_schema": json.dumps(
+                    {"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"]}
+                ),
+            },
+            id="plugin-json-schema",
+        ),
+        pytest.param({"response_format": {"type": "text"}}, id="legacy-text"),
+        pytest.param(
+            {
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {"name": "response", "schema": {"type": "object"}},
+                }
+            },
+            id="legacy-json-schema",
+        ),
+    ],
+)
+def test_response_format_reaches_plugin_parameters_through_real_request_serialization(
+    builder_kind: str, settings: dict[str, JsonValue]
+) -> None:
+    soul_settings = AgentSoulModelSettings.model_validate(
+        {**settings, "temperature": 0.2, "stop": ["END"], "enable_thinking": True}
+    )
+    model = AgentBackendModelConfig(
+        plugin_id="langgenius/openai",
+        model_provider="openai",
+        model="gpt-test",
+        model_settings=soul_settings.model_dump(mode="json", exclude_none=True),
+    )
+    builder = AgentBackendRunRequestBuilder()
+    if builder_kind == "agent_app":
+        request = builder.build_for_agent_app(_agent_app_input().model_copy(update={"model": model}))
+    else:
+        request = builder.build_for_workflow_node(_run_input().model_copy(update={"model": model}))
+
+    request = CreateRunRequest.model_validate_json(request.model_dump_json())
+    model_layer = next(layer for layer in request.composition.layers if layer.name == DIFY_AGENT_MODEL_LAYER_ID)
+    model_config = DifyPluginLLMLayerConfig.model_validate(model_layer.config)
+    plugin_settings = {key: value for key, value in settings.items() if value is not None}
+
+    assert model_config.model_settings == {
+        "temperature": 0.2,
+        "stop_sequences": ["END"],
+        "extra_body": {"enable_thinking": True, **plugin_settings},
+    }
+    assert _map_model_settings_to_parameters(model_config.model_settings) == {
+        "temperature": 0.2,
+        "enable_thinking": True,
+        **plugin_settings,
+    }
+    assert _get_stop_sequences(model_config.model_settings) == ["END"]
+
+
 @pytest.mark.parametrize("agent_config_version_kind", ["snapshot", "draft"])
 def test_agent_app_request_builder_keeps_agent_soul_prompt_for_snapshot_and_draft(
     agent_config_version_kind: str,
@@ -191,6 +258,38 @@ def test_request_builder_sets_model_and_output_layer_contract_ids() -> None:
     assert model_config.plugin_id == "langgenius/openai"
     assert "credentials" not in model_config.model_dump(mode="json")
     assert layers[DIFY_AGENT_MODEL_LAYER_ID].config["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
+
+
+@pytest.mark.parametrize("mode", ["agent_app", "workflow_node"])
+@pytest.mark.parametrize("traced", [False, True])
+def test_context_wire_contract_omits_tracing_for_legacy_runtime(mode: str, traced: bool) -> None:
+    run_input = _agent_app_input() if mode == "agent_app" else _run_input()
+    tracing = ApplicationTracingContext(
+        run_id="00000000-0000-0000-0000-000000000001",
+        invocation_id="00000000-0000-0000-0000-000000000002",
+        trace_id="a" * 32,
+        parent_span_id="b" * 16,
+        session_id="session",
+        capture_content=False,
+    )
+    if traced:
+        run_input = run_input.model_copy(
+            update={"execution_context": run_input.execution_context.model_copy(update={"tracing": tracing})}
+        )
+    builder = AgentBackendRunRequestBuilder()
+    request = (
+        builder.build_for_agent_app(run_input)
+        if isinstance(run_input, AgentBackendAgentAppRunInput)
+        else builder.build_for_workflow_node(run_input)
+    )
+    payload = next(
+        layer.config for layer in request.composition.layers if layer.name == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    )
+    if traced:
+        assert payload["tracing"] == tracing.model_dump(mode="json")
+    else:
+        # Pre-tracing runtimes reject even a null unknown field (extra=forbid).
+        assert "tracing" not in payload
 
 
 def test_request_builder_adds_dify_plugin_tools_layer_when_configured() -> None:

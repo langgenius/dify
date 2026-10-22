@@ -49,6 +49,7 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm.model_access import resolve_model_context_window
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from graphon.file import File, FileTransferMethod
@@ -232,6 +233,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             agent_soul.model.plugin_id,
         )
 
+        tracing_hooks = application_tracing_hooks()
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
                 model=AgentBackendModelConfig(
@@ -263,6 +265,13 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                     trace_id=context.dify_context.trace_session_id,
+                    tracing=(
+                        tracing_hooks.prepare_workflow_agent(
+                            context, get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID)
+                        )
+                        if tracing_hooks is not None
+                        else None
+                    ),
                 ),
                 backend_binding_ref=context.backend_binding_ref,
                 agent_soul_prompt=soul_prompt or None,

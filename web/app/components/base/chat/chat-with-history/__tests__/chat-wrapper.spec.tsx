@@ -290,7 +290,7 @@ it.each(['button', 'chat instance'] as const)(
     })
     if (action === 'button')
       await user.click(screen.getByRole('button', { name: /appDebug.operation.stopResponding/i }))
-    else act(() => context.currentChatInstanceRef.current.handleStop())
+    else await act(async () => context.currentChatInstanceRef.current.handleStop())
     expect(stopChatMessageResponding).toHaveBeenCalledExactlyOnceWith(
       '',
       'task-123',

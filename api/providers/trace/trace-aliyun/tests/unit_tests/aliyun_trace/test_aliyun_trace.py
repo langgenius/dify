@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import json
-import logging
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import dify_trace_aliyun.aliyun_trace as aliyun_trace_module
+import httpx
 import pytest
 from dify_trace_aliyun.aliyun_trace import AliyunDataTrace
 from dify_trace_aliyun.config import AliyunConfig
+from dify_trace_aliyun.configuration import AliyunConfigurationError
 from dify_trace_aliyun.entities.aliyun_trace_entity import SpanData, TraceMetadata
 from dify_trace_aliyun.entities.semconv import (
     DIFY_NODE_TYPE,
@@ -44,8 +46,10 @@ from dify_trace_aliyun.entities.semconv import (
     TOOL_TYPE_FUNCTION,
     GenAISpanKind,
 )
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from opentelemetry.trace import Link, SpanContext, SpanKind, Status, StatusCode, TraceFlags
 
+from core.helper import ssrf_proxy
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
@@ -64,6 +68,9 @@ class RecordingTraceClient:
         self.service_name = service_name
         self.endpoint = endpoint
         self.added_spans: list[object] = []
+
+    def batch(self) -> nullcontext[None]:
+        return nullcontext()
 
     def add_span(self, span: object) -> None:
         self.added_spans.append(span)
@@ -213,7 +220,6 @@ def _make_suggested_question_trace_info(**overrides) -> SuggestedQuestionTraceIn
 
 @pytest.fixture
 def trace_instance(monkeypatch: pytest.MonkeyPatch) -> AliyunDataTrace:
-    monkeypatch.setattr(aliyun_trace_module, "build_endpoint", lambda base_url, license_key: "built-endpoint")
     monkeypatch.setattr(aliyun_trace_module, "TraceClient", RecordingTraceClient)
     # Mock get_service_account_with_tenant to avoid DB errors
     monkeypatch.setattr(AliyunDataTrace, "get_service_account_with_tenant", lambda self, app_id: MagicMock())
@@ -223,17 +229,12 @@ def trace_instance(monkeypatch: pytest.MonkeyPatch) -> AliyunDataTrace:
     return trace
 
 
-def test_init_builds_endpoint_and_client(monkeypatch: pytest.MonkeyPatch):
-    build_endpoint = MagicMock(return_value="built")
-    trace_client_cls = MagicMock()
-    monkeypatch.setattr(aliyun_trace_module, "build_endpoint", build_endpoint)
-    monkeypatch.setattr(aliyun_trace_module, "TraceClient", trace_client_cls)
-
-    config = AliyunConfig(app_name="my-app", license_key="license", endpoint="https://example.com")
+def test_init_builds_endpoint_and_client() -> None:
+    config = AliyunConfig(app_name="my-app", license_key="license", endpoint="https://example.com/prefix")
     trace = AliyunDataTrace(config)
-
-    build_endpoint.assert_called_once_with("https://example.com", "license")
-    trace_client_cls.assert_called_once_with(service_name="my-app", endpoint="built")
+    config.license_key = "mutated"
+    assert trace.trace_client.endpoint == "https://example.com/prefix/adapt_license/api/otlp/traces"
+    assert trace.trace_client.resource.attributes["service.name"] == "my-app"
     assert trace.trace_config == config
 
 
@@ -269,25 +270,48 @@ def test_trace_dispatches_to_correct_methods(trace_instance: AliyunDataTrace, mo
     trace_instance.trace(GenerateNameTraceInfo(tenant_id="t", metadata={}))
 
 
-def test_api_check_delegates(trace_instance: AliyunDataTrace):
-    trace_instance.trace_client.api_check = MagicMock(return_value=False)
-    assert trace_instance.api_check() is False
+@pytest.mark.parametrize(
+    ("status", "body", "verified"),
+    [
+        (200, b'"success"', True),
+        (200, b"", False),
+        (200, b"{}", False),
+        (403, b"DO_NOT_EXPOSE_BODY", False),
+        (405, b"", False),
+    ],
+)
+def test_api_check_verifies_credentials_with_zero_spans(
+    trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch, status: int, body: bytes, verified: bool
+) -> None:
+    sent: list[ExportTraceServiceRequest] = []
+
+    def send(method: str, url: str, **options: Any) -> httpx.Response:
+        assert method == "POST"
+        assert url == "https://example.com/adapt_k/api/otlp/traces"
+        assert options["max_retries"] == 0
+        assert options["follow_redirects"] is False
+        payload = ExportTraceServiceRequest()
+        payload.ParseFromString(options["content"])
+        sent.append(payload)
+        return httpx.Response(status, content=body)
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", send)
+    if verified:
+        assert trace_instance.api_check() is True
+    else:
+        with pytest.raises(AliyunConfigurationError) as error:
+            trace_instance.api_check()
+        assert "DO_NOT_EXPOSE_BODY" not in str(error.value)
+        assert "adapt_" not in str(error.value)
+    assert len(sent) == 1
+    assert len(sent[0].resource_spans) == 1
+    resource = sent[0].resource_spans[0]
+    assert len(resource.scope_spans) == 0
+    assert {item.key: item.value.string_value for item in resource.resource.attributes} == {"service.name": "app"}
 
 
 def test_get_project_url_success(trace_instance: AliyunDataTrace):
-    assert trace_instance.get_project_url() == "project-url"
-
-
-def test_get_project_url_error(
-    trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-):
-    monkeypatch.setattr(trace_instance.trace_client, "get_project_url", MagicMock(side_effect=Exception("boom")))
-
-    caplog.set_level(logging.INFO, logger=aliyun_trace_module.logger.name)
-    with pytest.raises(ValueError, match=r"Aliyun get project url failed: boom"):
-        trace_instance.get_project_url()
-
-    assert "Aliyun get project url failed: boom" in caplog.text
+    assert trace_instance.get_project_url() == "https://arms.console.aliyun.com/#/llm"
 
 
 def test_workflow_trace_adds_workflow_and_node_spans(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):

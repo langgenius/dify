@@ -24,7 +24,9 @@ def test_system_features_exposes_valid_enterprise_sso_protocols(
             }
         ),
     )
-    features = SystemFeatureModel(deployment_edition=DeploymentEdition.ENTERPRISE)
+    features = SystemFeatureModel(
+        agent_tracing_api_collection_enabled=False, deployment_edition=DeploymentEdition.ENTERPRISE
+    )
 
     SystemFeatureService._fulfill_params_from_enterprise(features)
 
@@ -48,7 +50,9 @@ def test_system_features_normalizes_empty_enterprise_sso_protocols_to_none(
             }
         ),
     )
-    features = SystemFeatureModel(deployment_edition=DeploymentEdition.ENTERPRISE)
+    features = SystemFeatureModel(
+        agent_tracing_api_collection_enabled=False, deployment_edition=DeploymentEdition.ENTERPRISE
+    )
 
     SystemFeatureService._fulfill_params_from_enterprise(features)
 
@@ -73,7 +77,9 @@ def test_system_features_rejects_invalid_enterprise_sso_protocols(
             }
         ),
     )
-    features = SystemFeatureModel(deployment_edition=DeploymentEdition.ENTERPRISE)
+    features = SystemFeatureModel(
+        agent_tracing_api_collection_enabled=False, deployment_edition=DeploymentEdition.ENTERPRISE
+    )
 
     with caplog.at_level(logging.ERROR, logger="services.system_feature_service"):
         SystemFeatureService._fulfill_params_from_enterprise(features)
@@ -84,7 +90,9 @@ def test_system_features_rejects_invalid_enterprise_sso_protocols(
 
 
 def test_system_features_defaults_sso_protocols_to_none() -> None:
-    features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
+    features = SystemFeatureModel(
+        agent_tracing_api_collection_enabled=False, deployment_edition=DeploymentEdition.COMMUNITY
+    )
 
     assert features.sso_enforced_for_signin_protocol is None
     assert features.webapp_auth.sso_config.protocol is None

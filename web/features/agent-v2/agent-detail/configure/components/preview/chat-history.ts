@@ -138,6 +138,7 @@ export function getFormattedAgentDebugChatTree(
         score: source.score ?? 0,
         word_count: source.word_count ?? 0,
       })),
+      isError: item.status === 'error',
       agent_thoughts: addFileInfos(
         sortAgentSorts(
           (item.agent_thoughts ?? []).map((thought) =>

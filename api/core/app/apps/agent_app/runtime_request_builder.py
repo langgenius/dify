@@ -37,6 +37,7 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm.model_access import resolve_model_context_window, resolve_model_supports_vision
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
@@ -172,6 +173,7 @@ class AgentAppRuntimeRequestBuilder:
             include_image_references=knowledge_config is not None,
         )
 
+        tracing_hooks = application_tracing_hooks()
         request = self._request_builder.build_for_agent_app(
             AgentBackendAgentAppRunInput(
                 model=AgentBackendModelConfig(
@@ -194,6 +196,7 @@ class AgentAppRuntimeRequestBuilder:
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                     agent_mode="agent_app",
                     trace_id=context.dify_context.trace_session_id,
+                    tracing=tracing_hooks.prepare_agent_app(context) if tracing_hooks is not None else None,
                 ),
                 backend_binding_ref=context.backend_binding_ref,
                 # ENG-616: expand slash-menu mention tokens to canonical names so
