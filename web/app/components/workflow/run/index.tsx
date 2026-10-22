@@ -244,6 +244,9 @@ function RunSession({
               exceptionCounts={runDetail.exceptions_count}
               isListening={isListening}
               workflowRunId={runDetail.id}
+              externalTrace={
+                appId ? { appId, kind: 'workflow', workflowRunId: runDetail.id } : undefined
+              }
               onOpenTracingTab={() => switchTab('TRACING')}
             />
           )}
@@ -254,6 +257,9 @@ function RunSession({
         <TabsPanel value="TRACING">
           {!loading && (
             <TracingPanel
+              externalTraceRun={
+                appId && runDetail ? { appId, workflowRunId: runDetail.id } : undefined
+              }
               key={runDetail?.id}
               className="bg-background-section-burn"
               list={list}

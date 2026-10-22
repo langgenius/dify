@@ -599,12 +599,6 @@ project-excludes = [
   "test_pytest_dify.py",
   "tools/test_api_tool.py",
   "tools/test_mcp_tool.py",
-  "utils/encryption/test_system_encryption.py",
-  "utils/http_parser/test_oauth_convert_request_to_raw_data.py",
-  "utils/position_helper/test_position_helper.py",
-  "utils/structured_output_parser/test_structured_output_parser.py",
-  "utils/test_text_processing.py",
-  "utils/yaml/test_yaml_utils.py",
 ]
 
 [errors]

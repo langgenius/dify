@@ -7,6 +7,7 @@ DTO, but that runtime implementation still lives in sibling modules.
 """
 
 from dify_agent.layers.execution_context.configs import (
+    ApplicationTracingContext,
     DifyExecutionContextAgentConfigVersionKind,
     DifyExecutionContextAgentMode,
     DifyExecutionContextInvokeFrom,
@@ -15,6 +16,7 @@ from dify_agent.layers.execution_context.configs import (
 )
 
 __all__ = [
+    "ApplicationTracingContext",
     "DifyExecutionContextAgentConfigVersionKind",
     "DifyExecutionContextAgentMode",
     "DifyExecutionContextInvokeFrom",

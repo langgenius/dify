@@ -13,7 +13,7 @@ import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useWorkflowSearch } from '@/app/components/workflow/hooks/use-workflow-search'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -146,7 +146,7 @@ function setup({ datasetOperator = false, enableSkill = true, canInstall = true 
     <ConsoleWrapper>
       <ThemeProvider defaultTheme="light" enableSystem={false}>
         <GotoAnything />
-        <AppToastHost timeout={0} />
+        <AppToaster timeout={0} />
       </ThemeProvider>
     </ConsoleWrapper>,
   )

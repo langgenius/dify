@@ -35,6 +35,16 @@ vi.mock('@/service/console', async (importOriginal) => {
       'agent.byAgentId.logs.get': mocks.logsQueryFn,
       'agent.byAgentId.logSources.get': mocks.logSourcesQueryFn,
       'agent.byAgentId.logs.byConversationId.messages.get': mocks.messagesQueryFn,
+      'agent.byAgentId.traceRuns.byMessageId.get': async () => ({
+        status: 'not_collected',
+        source_kind: 'message',
+        source_id: 'message-1',
+      }),
+      'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': async () => ({
+        status: 'not_collected',
+        source_kind: 'workflow',
+        source_id: 'message-1',
+      }),
       'agent.byAgentId.feedbacks.post': mocks.feedbackMutationFn,
     }),
   }

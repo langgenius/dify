@@ -79,6 +79,7 @@ export type ChatProps = {
   sendOnEnter?: boolean
   speechToTextTarget?: SpeechToTextTarget
   onBeforeSpeechToText?: () => Promise<unknown>
+  renderMessageFooter?: (item: ChatItem) => ReactNode
   renderAgentContent?: (props: {
     item: ChatItem
     responding?: boolean
@@ -142,6 +143,7 @@ const Chat: FC<ChatProps> = ({
   speechToTextTarget,
   onBeforeSpeechToText,
   renderAgentContent,
+  renderMessageFooter,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
@@ -241,6 +243,7 @@ const Chat: FC<ChatProps> = ({
                     switchSibling={switchSibling}
                     hideAvatar={hideAvatar}
                     renderAgentContent={renderAgentContent}
+                    footer={renderMessageFooter?.(item)}
                     onHumanInputFormSubmit={onHumanInputFormSubmit}
                   />
                 )
