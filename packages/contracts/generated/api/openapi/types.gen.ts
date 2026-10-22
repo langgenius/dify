@@ -1120,6 +1120,7 @@ export type SessionListResponse = {
 export type SessionRow = {
   client_id: string
   created_at?: string | null
+  current: boolean
   device_label: string
   expires_at?: string | null
   id: string

@@ -95,7 +95,7 @@ class AccountSessionsApi(Resource):
             limit=page.limit,
             total=page.total,
             has_more=page.has_more,
-            data=[_session_row(session) for session in page.items],
+            data=[_session_row(session, current_token_id=str(ctx.subject.token_id)) for session in page.items],
         )
 
 
@@ -139,12 +139,13 @@ def _iso(dt: datetime | None) -> str | None:
     return dt.isoformat().replace("+00:00", "Z")
 
 
-def _session_row(session: AccountSessionSnapshot) -> SessionRow:
+def _session_row(session: AccountSessionSnapshot, *, current_token_id: str) -> SessionRow:
     return SessionRow(
         id=session.id,
         prefix=session.prefix,
         client_id=session.client_id,
         device_label=session.device_label,
+        current=session.id == current_token_id,
         created_at=_iso(session.created_at),
         last_used_at=_iso(session.last_used_at),
         expires_at=_iso(session.expires_at),

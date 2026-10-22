@@ -3153,6 +3153,7 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | client_id | string |  | Yes |
 | created_at | string |  | No |
+| current | boolean |  | Yes |
 | device_label | string |  | Yes |
 | expires_at | string |  | No |
 | id | string |  | Yes |
