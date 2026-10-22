@@ -25,6 +25,7 @@ import {
   difyBuilderInterruptedAtom,
   difyBuilderLoadOlderConversationAtom,
   difyBuilderLocalInteractionResponseAtom,
+  difyBuilderNativeTestUnresolvedAtom,
   difyBuilderResetAtom,
   difyBuilderSessionIdAtom,
   difyBuilderViewVersionAtom,
@@ -42,6 +43,7 @@ const DifyBuilderPanelContent = () => {
   const localInteractionResponse = useAtomValue(difyBuilderLocalInteractionResponseAtom)
   const hasSession = useAtomValue(difyBuilderHasSessionAtom)
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
+  const nativeTestUnresolved = useAtomValue(difyBuilderNativeTestUnresolvedAtom)
   const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
   const interrupted = useAtomValue(difyBuilderInterruptedAtom)
   const sessionId = useAtomValue(difyBuilderSessionIdAtom)
@@ -101,7 +103,7 @@ const DifyBuilderPanelContent = () => {
         <DifyBuilderPanelBackground />
 
         <DifyBuilderPanelHeader
-          resetDisabled={!hasSession || interactionBusy}
+          resetDisabled={!hasSession || interactionBusy || nativeTestUnresolved}
           titleRef={panelTitleRef}
           onReset={handleReset}
           onClose={() => setShowDifyBuilderPanel(false)}

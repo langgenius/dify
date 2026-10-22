@@ -46,7 +46,12 @@ from services.dify_builder.native_testing.pending_intents import (
 from services.dify_builder.native_testing.private_reads import validate_private_read
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt, PendingActionDisclosure
 from services.dify_builder.native_testing.public_projection import decision_public_revision, project_pending_decision
-from services.dify_builder.native_testing.repository import NativeBindingResolver, OwnedNativeTestLoader, utc_now
+from services.dify_builder.native_testing.repository import (
+    NativeBindingResolver,
+    OwnedNativeTestLoader,
+    native_observation_transaction,
+    utc_now,
+)
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 
 
@@ -236,7 +241,7 @@ class NativeTestApiService:
             outcome=None,
             evidence_refs=(),
         )
-        with self.sessions.begin() as session:
+        with native_observation_transaction(self.sessions, session_id=lambda: session_id) as session:
             self.admission.compiler.recheck_local(session=session, actor=actor, compilation=compilation)
             for row in session.scalars(
                 select(DifyBuilderExecutionRequest).where(

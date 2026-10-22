@@ -548,8 +548,13 @@ class DifyBuilderSessionStreamApi(Resource):
             "native_tests": {
                 "in": "query",
                 "enum": ["builder-native-test-v1"],
-                "description": "Include durable native execution snapshots with reconnect cursors",
-            }
+                "description": "Observe durable native execution changes until settlement, with reconnect cursors",
+            },
+            "Last-Event-ID": {
+                "in": "header",
+                "type": "string",
+                "description": "Last observed native execution cursor; reconnect never repeats execution",
+            },
         }
     )
     @typed_event_stream_response(console_ns, DifyBuilderStreamEventResponse)

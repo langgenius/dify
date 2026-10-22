@@ -87,7 +87,7 @@ export const DifyBuilderCard = ({
                   (statusStyle && (
                     <span aria-hidden className={cn('size-3.5 shrink-0', statusStyle.icon)} />
                   ))}
-                {status.label && <span className="max-w-24 truncate">{status.label}</span>}
+                {status.label && <span className="max-w-40 text-end">{status.label}</span>}
               </span>
             )}
           </span>

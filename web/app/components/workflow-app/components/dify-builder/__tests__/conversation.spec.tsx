@@ -1433,7 +1433,7 @@ describe('DifyBuilderConversation test data form', () => {
     expect(card).toHaveTextContent('difyBuilder.testResult.outputsUnavailable')
   })
 
-  it('shows escaped final outputs without review boilerplate or execution IDs', () => {
+  it('shows escaped final outputs and review scope without execution IDs', () => {
     render(
       <DifyBuilderConversation
         busy={false}
@@ -1471,12 +1471,12 @@ describe('DifyBuilderConversation test data form', () => {
     for (const value of ['null', 'false', '0', '\"\"', '[]', '{}', '<script>alert(1)</script>'])
       expect(within(outputs).getByText(value, { exact: true })).toBeInTheDocument()
     expect(card.querySelector('script')).toBeNull()
+    expect(within(card).getByText('Inspect the answer against the requested goal.')).toBeVisible()
     for (const removed of [
       'difyBuilder.testResult.executionSucceeded',
       'difyBuilder.testResult.terminalOutputs',
       'difyBuilder.testResult.rawOutputs',
       'difyBuilder.testResult.reviewRequired',
-      'Inspect the answer against the requested goal.',
       'difyBuilder.testResult.scopeLimit',
       'difyBuilder.testResult.observedNodes',
       'difyBuilder.testResult.runId',
@@ -1543,7 +1543,7 @@ describe('DifyBuilderConversation test data form', () => {
 
   it.each([
     ['required_output_unresolved', 'succeeded', 'requiredOutputUnresolved'],
-    ['execution_unknown', 'succeeded', 'executionUnknown'],
+    ['execution_unknown', 'succeeded', null],
     ['execution_failed', 'succeeded', null],
   ] as const)('distinguishes %s from compatibility status', (outcome, status, heading) => {
     render(
@@ -1576,7 +1576,12 @@ describe('DifyBuilderConversation test data form', () => {
         }),
       ).not.toBeInTheDocument()
     expect(screen.getByText('Details for inspection')).toBeInTheDocument()
-    expect(screen.getByText('difyBuilder.testResult.statusFailed')).toBeInTheDocument()
+    if (outcome === 'execution_unknown') {
+      expect(screen.getByText('difyBuilder.testResult.executionUnknown')).toBeVisible()
+      expect(screen.queryByText('difyBuilder.testResult.statusFailed')).not.toBeInTheDocument()
+    } else {
+      expect(screen.getByText('difyBuilder.testResult.statusFailed')).toBeVisible()
+    }
     expect(
       screen.queryByRole('heading', { name: 'difyBuilder.testResult.executionSucceeded' }),
     ).not.toBeInTheDocument()
