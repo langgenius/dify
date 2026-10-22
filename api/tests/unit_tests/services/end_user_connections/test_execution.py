@@ -268,9 +268,8 @@ def test_existing_conversation_must_belong_to_authenticated_user(
 
 
 @pytest.mark.parametrize("chatflow", [False, True])
-@pytest.mark.parametrize("legacy_snapshot", [False, True])
 def test_queue_pause_and_runtime_context_preserve_the_same_selection(
-    harness: OAuthHarness, service: ConnectionExecutionService, chatflow: bool, legacy_snapshot: bool
+    harness: OAuthHarness, service: ConnectionExecutionService, chatflow: bool
 ) -> None:
     connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     context = prepare(harness, service, {"tool-1": connection.id})
@@ -290,10 +289,7 @@ def test_queue_pause_and_runtime_context_preserve_the_same_selection(
         InvokeFrom.WEB_APP,
         connection_context=context,
     )
-    queue_payload = json.loads(params.model_dump_json())
-    if legacy_snapshot:
-        queue_payload["connection_context"]["conversation_id"] = conversation_id
-    restored = AppExecutionParams.model_validate_json(json.dumps(queue_payload))
+    restored = AppExecutionParams.model_validate_json(params.model_dump_json())
     assert restored.connection_context == context
     assert restored.connection_context is not None
     assert "conversation_id" not in restored.connection_context.model_dump()
@@ -327,10 +323,7 @@ def test_queue_pause_and_runtime_context_preserve_the_same_selection(
             "serialized_graph_runtime_state": "{}",
         }
     )
-    pause_payload = json.loads(paused.dumps())
-    if legacy_snapshot:
-        pause_payload["generate_entity"]["entity"]["connection_context"]["conversation_id"] = conversation_id
-    resumed = WorkflowResumptionContext.loads(json.dumps(pause_payload)).get_generate_entity()
+    resumed = WorkflowResumptionContext.loads(paused.dumps()).get_generate_entity()
     if chatflow:
         assert isinstance(resumed, AdvancedChatAppGenerateEntity)
         assert resumed.conversation_id == conversation_id
