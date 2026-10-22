@@ -672,6 +672,24 @@ Upload a file to use as an input variable when running the app
 | 200 | Run detail | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/runs/{run_id}/events
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| continue_on_pause | query | Whether to keep the event stream open on pause | No | boolean |
+| include_state_snapshot | query | Whether to include workflow state snapshots | No | boolean |
+| app_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /apps/{app_id}/runs/{run_id}/nodes
 #### Parameters
 
@@ -685,6 +703,21 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node steps | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/runs/{run_id}:stop
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run stopped | **application/json**: [TaskStopResponse](#taskstopresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /apps/{app_id}/service-api
@@ -754,24 +787,6 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Service API | **application/json**: [AgentServiceApi](#agentserviceapi)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [GET] /apps/{app_id}/tasks/{task_id}/events
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| continue_on_pause | query | Whether to keep the event stream open on pause | No | boolean |
-| include_state_snapshot | query | Whether to include workflow state snapshots | No | boolean |
-| app_id | path |  | Yes | string |
-| task_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -3207,8 +3222,8 @@ generated CLI whitelist all derive from it.
 
 #### TaskStopResponse
 
-200 body for POST /apps/<id>/tasks/<task_id>:stop. The handler always returns
-{"result": "success"}, so `result` is required (no default) — the generated contract
+200 body for POST /apps/<id>/runs/<run_id>:stop and POST /apps/<id>/tasks/<task_id>:stop.
+The handlers always return {"result": "success"}, so `result` is required (no default) — the generated contract
 types it as a required `'success'` rather than an optional field.
 
 | Name | Type | Description | Required |

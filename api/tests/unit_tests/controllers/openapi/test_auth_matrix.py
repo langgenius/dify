@@ -727,7 +727,7 @@ ROUTES: tuple[Route, ...] = (
     Route(
         "workflow_events.stream",
         "GET",
-        "/apps/{app_id}/tasks/{task_id}/events",
+        "/apps/{app_id}/runs/{run_id}/events",
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     ),
     Route(
@@ -2027,7 +2027,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/apps/{app_id}/files"): frozenset({"201", "400", "401", "413", "415", "422", "default"}),
     ("get", "/apps/{app_id}/human-input-forms/{form_token}"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/human-input-forms/{form_token}:submit"): frozenset({"200", "422", "default"}),
-    ("get", "/apps/{app_id}/tasks/{task_id}/events"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/runs/{run_id}/events"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/runs/{run_id}:stop"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/tasks/{task_id}:stop"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/workflow:run"): frozenset({"200", "422", "default"}),

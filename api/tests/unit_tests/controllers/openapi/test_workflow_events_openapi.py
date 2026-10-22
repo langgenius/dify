@@ -133,7 +133,7 @@ class TestOpenApiWorkflowEventsApi:
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
-                    task_id="wf-run-1",
+                    run_id="wf-run-1",
                     query=WorkflowEventsQuery(),
                 )
 
@@ -152,7 +152,7 @@ class TestOpenApiWorkflowEventsApi:
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
-                    task_id="wf-run-1",
+                    run_id="wf-run-1",
                     query=WorkflowEventsQuery(),
                 )
 
@@ -166,7 +166,7 @@ class TestOpenApiWorkflowEventsApi:
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
-                    task_id="wf-run-1",
+                    run_id="wf-run-1",
                     query=WorkflowEventsQuery(),
                 )
 
@@ -181,7 +181,7 @@ class TestOpenApiWorkflowEventsApi:
                 api,
                 _context(_make_end_user(), CreatorUserRole.END_USER),
                 app_id="app-1",
-                task_id="wf-run-1",
+                run_id="wf-run-1",
                 query=WorkflowEventsQuery(),
             )
         assert resp.mimetype == "text/event-stream"
@@ -219,7 +219,7 @@ class TestOpenApiWorkflowEventsApi:
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         api = OpenApiWorkflowEventsApi()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            resp = api.get.__handler__(api, ctx, app_id="app-1", task_id="wf-run-1", query=WorkflowEventsQuery())
+            resp = api.get.__handler__(api, ctx, app_id="app-1", run_id="wf-run-1", query=WorkflowEventsQuery())
             ctx.seal()
             body = "".join(resp.response)
 
@@ -249,7 +249,7 @@ class TestOpenApiWorkflowEventsApi:
         api = OpenApiWorkflowEventsApi()
         query = WorkflowEventsQuery(include_state_snapshot=include_state_snapshot)
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            resp = api.get.__handler__(api, ctx, app_id="app-1", task_id="wf-run-1", query=query)
+            resp = api.get.__handler__(api, ctx, app_id="app-1", run_id="wf-run-1", query=query)
             ctx.seal()
             body = "".join(resp.response)
 
@@ -272,7 +272,7 @@ class TestOpenApiWorkflowEventsApi:
                 api,
                 _context(_make_account(), CreatorUserRole.ACCOUNT),
                 app_id="app-1",
-                task_id="wf-run-1",
+                run_id="wf-run-1",
                 query=WorkflowEventsQuery(continue_on_pause=continue_on_pause),
             )
             "".join(resp.response)
