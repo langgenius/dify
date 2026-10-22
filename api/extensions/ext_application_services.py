@@ -140,6 +140,8 @@ from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
 from services.message_suggested_questions_service import MessageSuggestedQuestions
+from services.model_load_balancing_adapters import ModelLoadBalancingOperations
+from services.model_load_balancing_application_service import ModelLoadBalancingApplicationService
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
     NetworkAccessGroupGateway,
@@ -256,6 +258,7 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    model_load_balancing: ModelLoadBalancingApplicationService
     rbac: RBACServices
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
@@ -523,6 +526,9 @@ def build_application_services(
         invitation_tokens=invitation_tokens,
     )
     return ApplicationServices(
+        model_load_balancing=ModelLoadBalancingApplicationService(
+            operations=ModelLoadBalancingOperations(session_factory=database_client),
+        ),
         rbac=rbac,
         accounts=account_services,
         apps=apps,

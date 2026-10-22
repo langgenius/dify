@@ -1,159 +1,114 @@
-"""Unit tests for load balancing credential validation APIs."""
+"""The credential validation envelope and unconditional privileged-role gate."""
 
-from __future__ import annotations
-
-import builtins
-import importlib
-import sys
-from collections.abc import Callable
-from types import ModuleType
-from unittest.mock import ANY, MagicMock
+from dataclasses import dataclass
+from inspect import unwrap
+from unittest.mock import create_autospec
 
 import pytest
 from flask import Flask
-from flask.views import MethodView
 from werkzeug.exceptions import Forbidden
 
+from controllers.console.workspace import load_balancing_config as controller
+from enums.account import TenantAccountRole
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
-
-if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
-
-from models.account import Account, TenantAccountRole
+from libs.login import AccountWithTenant
+from machinery.context import RequestContext
+from services.model_load_balancing_application_service import ModelLoadBalancingApplicationService
+from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account
 
-
-@pytest.fixture
-def app() -> Flask:
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    return app
+CONTEXT = RequestContext("request", None, "account", "workspace")
 
 
-@pytest.fixture
-def load_balancing_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
-    """Reload controller module with lightweight decorators for testing."""
-
-    from controllers.console import console_ns, wraps
-    from libs import login
-
-    def _noop(func: Callable[..., object]) -> Callable[..., object]:
-        return func
-
-    monkeypatch.setattr(login, "login_required", _noop)
-    monkeypatch.setattr(wraps, "setup_required", _noop)
-    monkeypatch.setattr(wraps, "account_initialization_required", _noop)
-
-    def _noop_route(*_args: object, **_kwargs: object):  # type: ignore[override]
-        def _decorator(cls: type) -> type:
-            return cls
-
-        return _decorator
-
-    monkeypatch.setattr(console_ns, "route", _noop_route)
-
-    module_name = "controllers.console.workspace.load_balancing_config"
-    sys.modules.pop(module_name, None)
-    module = importlib.import_module(module_name)
-    return module
+@dataclass(frozen=True)
+class LoadBalancingTestServices:
+    model_load_balancing: ModelLoadBalancingApplicationService
 
 
-def _account(role: TenantAccountRole) -> Account:
-    return make_account(name="Owner", email="owner@example.com", role=role)
-
-
-def _prepare_context(
-    module: ModuleType, monkeypatch: pytest.MonkeyPatch, role: TenantAccountRole = TenantAccountRole.OWNER
-) -> MagicMock:
-    user = _account(role)
-    from controllers.console import wraps
-
-    monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: (user, "tenant-123"))
-    mock_service = MagicMock()
-    monkeypatch.setattr(module, "ModelLoadBalancingService", lambda: mock_service)
-    return mock_service
-
-
-def _request_payload() -> dict[str, object]:
-    return {"model": "gpt-4o", "model_type": ModelType.LLM, "credentials": {"api_key": "sk-***"}}
-
-
-def test_validate_credentials_success(
-    app: Flask, load_balancing_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("config_id", [None, "config"])
+@pytest.mark.parametrize("failure", [None, "invalid credentials"])
+def test_validation_response(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    config_id: str | None,
+    failure: str | None,
 ) -> None:
-    service = _prepare_context(load_balancing_module, monkeypatch)
-
-    with app.test_request_context(
-        "/workspaces/current/model-providers/openai/models/load-balancing-configs/credentials-validate",
-        method="POST",
-        json=_request_payload(),
-    ):
-        response = load_balancing_module.LoadBalancingCredentialsValidateApi().post(provider="openai")
-
-    assert response == {"result": "success"}
-    service.validate_load_balancing_credentials.assert_called_once_with(
-        tenant_id="tenant-123",
-        provider="openai",
-        model="gpt-4o",
+    service = create_autospec(ModelLoadBalancingApplicationService, instance=True)
+    if failure:
+        service.validate_credentials.side_effect = CredentialsValidateFailedError(failure)
+    monkeypatch.setattr(
+        controller, "application_services", lambda: LoadBalancingTestServices(model_load_balancing=service)
+    )
+    account = make_account(role=TenantAccountRole.OWNER)
+    monkeypatch.setattr(controller, "current_account_with_tenant", lambda: AccountWithTenant(account, "workspace"))
+    payload = controller.LoadBalancingCredentialPayload(
+        model="gpt-4",
         model_type=ModelType.LLM,
-        credentials={"api_key": "sk-***"},
-        session=ANY,
+        credentials={"api_key": "secret"},
+    )
+    api = (
+        controller.LoadBalancingCredentialsValidateApi()
+        if config_id is None
+        else controller.LoadBalancingConfigCredentialsValidateApi()
+    )
+    kwargs: dict[str, str] = {} if config_id is None else {"config_id": config_id}
+    with app.test_request_context("/"):
+        response = unwrap(api.post)(api, payload, CONTEXT, provider="openai", **kwargs)
+
+    assert response == ({"result": "error", "error": failure} if failure else {"result": "success"})
+    service.validate_credentials.assert_called_once_with(
+        CONTEXT,
+        provider="openai",
+        model="gpt-4",
+        model_type=ModelType.LLM,
+        credentials={"api_key": "secret"},
+        config_id=config_id,
     )
 
 
-def test_validate_credentials_returns_error_message(
-    app: Flask, load_balancing_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("config_id", [None, "config"])
+@pytest.mark.parametrize("rbac_enabled", [False, True])
+@pytest.mark.parametrize("role", list(TenantAccountRole))
+def test_role_gate_is_independent_of_rbac(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    config_id: str | None,
+    rbac_enabled: bool,
+    role: TenantAccountRole,
 ) -> None:
-    service = _prepare_context(load_balancing_module, monkeypatch)
-    service.validate_load_balancing_credentials.side_effect = CredentialsValidateFailedError("invalid credentials")
-
-    with app.test_request_context(
-        "/workspaces/current/model-providers/openai/models/load-balancing-configs/credentials-validate",
-        method="POST",
-        json=_request_payload(),
-    ):
-        response = load_balancing_module.LoadBalancingCredentialsValidateApi().post(provider="openai")
-
-    assert response == {"result": "error", "error": "invalid credentials"}
-
-
-def test_validate_credentials_requires_privileged_role(
-    app: Flask, load_balancing_module: ModuleType, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _prepare_context(load_balancing_module, monkeypatch, role=TenantAccountRole.NORMAL)
-
-    with app.test_request_context(
-        "/workspaces/current/model-providers/openai/models/load-balancing-configs/credentials-validate",
-        method="POST",
-        json=_request_payload(),
-    ):
-        api = load_balancing_module.LoadBalancingCredentialsValidateApi()
-        with pytest.raises(Forbidden):
-            api.post(provider="openai")
-
-
-def test_validate_credentials_with_config_id(
-    app: Flask, load_balancing_module: ModuleType, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    service = _prepare_context(load_balancing_module, monkeypatch)
-
-    with app.test_request_context(
-        "/workspaces/current/model-providers/openai/models/load-balancing-configs/cfg-1/credentials-validate",
-        method="POST",
-        json=_request_payload(),
-    ):
-        response = load_balancing_module.LoadBalancingConfigCredentialsValidateApi().post(
-            provider="openai", config_id="cfg-1"
-        )
-
-    assert response == {"result": "success"}
-    service.validate_load_balancing_credentials.assert_called_once_with(
-        tenant_id="tenant-123",
-        provider="openai",
-        model="gpt-4o",
-        model_type=ModelType.LLM,
-        credentials={"api_key": "sk-***"},
-        session=ANY,
-        config_id="cfg-1",
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=rbac_enabled)
+    service = create_autospec(ModelLoadBalancingApplicationService, instance=True)
+    monkeypatch.setattr(
+        controller, "application_services", lambda: LoadBalancingTestServices(model_load_balancing=service)
     )
+    account = make_account(role=role)
+    monkeypatch.setattr(controller, "current_account_with_tenant", lambda: AccountWithTenant(account, "workspace"))
+    payload = controller.LoadBalancingCredentialPayload(model="gpt-4", model_type=ModelType.LLM, credentials={})
+    api = (
+        controller.LoadBalancingCredentialsValidateApi()
+        if config_id is None
+        else controller.LoadBalancingConfigCredentialsValidateApi()
+    )
+    kwargs: dict[str, str] = {} if config_id is None else {"config_id": config_id}
+    with app.test_request_context("/"):
+        if role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}:
+            assert unwrap(api.post)(api, payload, CONTEXT, provider="openai", **kwargs) == {"result": "success"}
+        else:
+            with pytest.raises(Forbidden):
+                unwrap(api.post)(api, payload, CONTEXT, provider="openai", **kwargs)
+            service.validate_credentials.assert_not_called()
+
+
+def test_missing_config_stays_a_value_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = create_autospec(ModelLoadBalancingApplicationService, instance=True)
+    service.validate_credentials.side_effect = ValueError("Load balancing config missing does not exist.")
+    monkeypatch.setattr(
+        controller, "application_services", lambda: LoadBalancingTestServices(model_load_balancing=service)
+    )
+    account = make_account(role=TenantAccountRole.ADMIN)
+    monkeypatch.setattr(controller, "current_account_with_tenant", lambda: AccountWithTenant(account, "workspace"))
+    api = controller.LoadBalancingConfigCredentialsValidateApi()
+    payload = controller.LoadBalancingCredentialPayload(model="gpt-4", model_type=ModelType.LLM, credentials={})
+    with app.test_request_context("/"), pytest.raises(ValueError, match="missing does not exist"):
+        unwrap(api.post)(api, payload, CONTEXT, provider="openai", config_id="missing")
