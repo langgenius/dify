@@ -10,7 +10,11 @@ import json
 from collections.abc import Iterable
 from typing import Any
 
-from core.workflow.generator.prompts.builder_prompts import get_node_config_snippet
+from core.workflow.generator.prompts.builder_prompts import (
+    TOOL_PARAMETER_SEMANTICS_RULES,
+    VARIABLE_AGGREGATOR_OUTPUT_RULES,
+    get_node_config_snippet,
+)
 
 _CONTAINER_CONFIG_SNIPPETS = {
     "iteration": """- iteration:
@@ -20,11 +24,22 @@ _CONTAINER_CONFIG_SNIPPETS = {
      "error_handle_mode": "terminated", "flatten_output": true}
     The runner supplies start_node_id, child wrappers, and the synthetic start node.""",
     "loop": """- loop:
-    {"break_conditions": [{"id": "c1",
-                            "variable_selector": ["<child>", "<var>"],
-                            "comparison_operator": "is",
-                            "value": "<value>"}],
+    {"loop_variables": [{"label": "counter", "var_type": "number",
+                         "value_type": "constant", "value": 0}],
+     "break_conditions": [{"id": "c1", "varType": "number",
+                            "variable_selector": ["<loop-id>", "counter"],
+                            "comparison_operator": "≥", "value": "10"}],
      "loop_count": 10, "logical_operator": "and"}
+    Declare the requested mutable state in loop_variables[].label, using exactly
+    the plan's declared names, not a name/variable key or an outputs mapping.
+    Each entry requires label, var_type, value_type and value. A constant value
+    is literal; value_type "variable" takes a source selector ["<src>", "<var>"].
+    Loop state is referenceable inside AND after the container as
+    ["<loop-id>", "<label>"]; assigner children update that same selector.
+    Use input_type "constant", operation "+=", value 1 to increment it.
+    Conditions compare the declared Loop state; a variable RHS uses a template
+    such as "{{#<start-id>.limit#}}". Numeric operators are ≥ / ≤ / ≠, not >= / <= / !=.
+    loop_count is the fixed maximum; Loop also publishes loop_round.
     The runner supplies start_node_id, child wrappers, and the synthetic start node.""",
 }
 
@@ -74,7 +89,8 @@ Return {{"config": {{...}}}} for target node {node_id} now.
 def get_node_builder_system_prompt(node_type: str) -> str:
     """Build a one-node prompt containing only that node's semantic schema."""
     snippet = _CONTAINER_CONFIG_SNIPPETS.get(node_type) or get_node_config_snippet(node_type)
-    return _NODE_BUILDER_HEAD + (snippet or f"- {node_type}: emit the minimum valid config fields.")
+    parameter_rules = TOOL_PARAMETER_SEMANTICS_RULES if node_type in {"code", "tool"} else ""
+    return _NODE_BUILDER_HEAD + (snippet or f"- {node_type}: emit the minimum valid config fields.") + parameter_rules
 
 
 def format_parallel_plan(
@@ -93,10 +109,24 @@ def format_parallel_plan(
     fields flat, which is the one reference form the engine cannot resolve.
     ``format_node_outputs_section`` renders them per call instead, where the
     node's type is known.
+
+    When aggregation is planned, its native envelope contract also travels
+    here: isolated consumers cannot see the producer's schema snippet and
+    must keep object fields beneath ``output`` instead of inventing outputs.
     """
     payload: dict[str, Any] = {"nodes": plan_nodes, "edges": plan_edges}
     if start_inputs:
         payload["start_inputs"] = start_inputs
+    aggregator_ids = [
+        node["id"]
+        for node in plan_nodes
+        if node.get("node_type") == "variable-aggregator" and isinstance(node.get("id"), str)
+    ]
+    if aggregator_ids:
+        payload["native_variable_aggregator_contract"] = {
+            "node_ids": aggregator_ids,
+            "rules": VARIABLE_AGGREGATOR_OUTPUT_RULES,
+        }
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
 
@@ -172,7 +202,8 @@ def format_node_outputs_section(
             "This node MUST expose exactly these output names, spelled exactly: "
             + _quoted_names(own)
             + " (a code node's ``outputs`` keys, a parameter-extractor's parameter names, a "
-            "human-input input's ``output_variable_name``, an llm's ``structured_output`` schema fields, "
+            "human-input input's ``output_variable_name``, a loop's ``loop_variables[].label``, "
+            "an llm's ``structured_output`` schema fields, "
             "or a native New Agent caller's custom ``agent_declared_outputs``). "
             "Agent custom declarations do not rename system text or route-dependent switch outputs."
         )

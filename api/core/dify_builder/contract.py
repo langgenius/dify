@@ -629,6 +629,9 @@ class TestResultCard(_Card, BuilderPresentation):
         ]
         | None
     ) = None
+    # Machine status only; presentation owners localize any displayed copy.
+    business_acceptance_state: Literal["passed", "failed", "unverified"] | None = None
+    business_acceptance_case_id: str | None = None
     terminal_outputs: dict[str, Any] | None = None
     executed_node_ids: list[str] = field(default_factory=list)
     review_note: BuilderText | None = None

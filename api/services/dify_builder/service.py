@@ -65,7 +65,7 @@ from services.dify_builder.application.execution_policy import (
     decode_http_fixture_submission,
 )
 from services.dify_builder.application.ports import Repository
-from services.dify_builder.application.verification import publication_decision
+from services.dify_builder.business_acceptance import context_publication_decision
 from services.dify_builder.receipt_snapshot import apply_receipt_snapshot
 from services.dify_builder.repair_gate import NO_REPAIR_ACTIONS, NO_REPAIR_DECISION_COPY
 
@@ -1430,8 +1430,8 @@ class DifyBuilderService:
             with suppress(NotFoundError):
                 run = self._repo.get_run(fc.verify_run_id)
         revision, graph_revision = self._get_verification_identity_fn(s.app_id, actor)
-        return publication_decision(
-            run, session_id=s.id, current_revision=revision, current_graph_revision=graph_revision
+        return context_publication_decision(
+            run, s, fc, current_revision=revision, current_graph_revision=graph_revision, load_run=self._repo.get_run
         )
 
     def _build_session_view(self, s: Session, fc: DifyBuilderContext) -> SessionView:
