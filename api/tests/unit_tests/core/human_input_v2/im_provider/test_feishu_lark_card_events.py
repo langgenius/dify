@@ -44,6 +44,7 @@ from core.human_input_v2.resolved_form import (
 _FIXTURE_DIRECTORY = Path(__file__).with_name("fixtures")
 _WEBHOOK_FIXTURE = _FIXTURE_DIRECTORY / "feishu_lark_card_action_webhook.json"
 _STREAM_FIXTURE = _FIXTURE_DIRECTORY / "feishu_lark_card_action_stream.json"
+_NO_INPUTS_FIXTURE = _FIXTURE_DIRECTORY / "feishu_lark_card_action_without_inputs.json"
 _RECEIVED_AT = datetime(2026, 8, 12, 10, 0, 0)
 _DIFY_ACTION_MARKER = "__dify.human_input.action"
 _WEBHOOK_VERIFICATION_TOKEN = "verification_test_only"
@@ -676,6 +677,32 @@ def test_sanitized_real_callbacks_converge_for_both_provider_discriminators(
     )
 
 
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+@pytest.mark.parametrize("ingress_kind", [IMEventIngressKind.WEBHOOK, IMEventIngressKind.STREAM])
+@pytest.mark.parametrize("include_form_value", [False, True], ids=("omitted-form-values", "empty-form-values"))
+def test_callbacks_without_inputs_decode_to_empty_inputs(
+    provider: IMProvider,
+    ingress_kind: IMEventIngressKind,
+    include_form_value: bool,
+) -> None:
+    fixture = json.loads(_NO_INPUTS_FIXTURE.read_text(encoding="utf-8"))
+    callback = fixture["authenticated_event"]["payload"]
+    if include_form_value:
+        _callback_action(callback)["form_value"] = {}
+    adapter = (
+        feishu_lark.FeishuIMProviderAdapter if provider is IMProvider.FEISHU else feishu_lark.LarkIMProviderAdapter
+    )
+
+    result = adapter.card_event_decoder().decode(_event(callback, provider=provider, ingress_kind=ingress_kind))
+
+    assert result == IMCardEvent(
+        provider_user_id=ProviderUserId("union_test_only"),
+        action_id="confirm",
+        inputs={},
+        correlation_token=CorrelationToken("no-inputs-correlation-token-test-only"),
+    )
+
+
 def test_encode_and_decode_preserve_exact_unicode_and_input_metadata_names() -> None:
     codec = feishu_lark._MSFeishuLarkCardCodec()
     intent = ResolvedForm(
@@ -910,6 +937,7 @@ def _without(callback: dict[str, object], path: tuple[str, ...]) -> None:
         (("event", "action", "tag"), "select_static"),
         (("event", "action", "name"), "reject"),
         (("event", "action", "form_value"), ["sensitive-submitted-input"]),
+        (("event", "action", "form_value"), None),
         (("event", "action", "value", _DIFY_ACTION_MARKER, "version"), 2),
         (("event", "action", "value", _DIFY_ACTION_MARKER, "action_id"), "reject"),
         (("event", "action", "value", _DIFY_ACTION_MARKER, "correlation_token"), None),
@@ -921,6 +949,7 @@ def _without(callback: dict[str, object], path: tuple[str, ...]) -> None:
         "action-tag",
         "outer-action-id",
         "form-values",
+        "null-form-values",
         "metadata-version",
         "embedded-action-id",
         "correlation-token",
@@ -964,11 +993,10 @@ def test_recognized_callbacks_fail_strictly_without_exposing_callback_values(
     [
         ("event", "operator"),
         ("event", "operator", "union_id"),
-        ("event", "action", "form_value"),
         ("event", "action", "value", _DIFY_ACTION_MARKER, "action_id"),
         ("event", "action", "value", _DIFY_ACTION_MARKER, "correlation_token"),
     ],
-    ids=("operator", "union-id", "form-values", "action-id", "correlation-token"),
+    ids=("operator", "union-id", "action-id", "correlation-token"),
 )
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 @pytest.mark.parametrize("ingress_kind", [IMEventIngressKind.WEBHOOK, IMEventIngressKind.STREAM])

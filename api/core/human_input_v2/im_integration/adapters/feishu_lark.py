@@ -897,7 +897,8 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
         tag: Literal["button"]
         name: str = Field(min_length=1)
         value: _MSFeishuLarkCardCodec._ButtonValue
-        form_value: dict[str, JsonValue]
+        # Feishu/Lark omit form_value when the card has no input components.
+        form_value: dict[str, JsonValue] = Field(default_factory=dict)
 
         @field_validator("name")
         @classmethod
