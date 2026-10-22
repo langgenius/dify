@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "Platna poteka dela ni bilo mogoče osvežiti. {{reason}}",
   "cardCategory.checks": "Preverjanja",
   "cardCategory.form": "Obrazec",
   "cardCategory.plan": "Načrt",
@@ -270,6 +271,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "Ne",
   "copy.values.yes": "Da",
+  "creationStartFailed": "App Builderja ni bilo mogoče zagnati. {{reason}}",
   "emptyBuildTitle": "Tukaj še ni ničesar",
   "emptyDescription": "Povejte mi, kaj želite ustvariti — najprej vam bom pokazal načrt. Nič ne bo ustvarjeno brez vaše odobritve.",
   "exportDebugLog": "Izvozi dnevnik razhroščevanja",

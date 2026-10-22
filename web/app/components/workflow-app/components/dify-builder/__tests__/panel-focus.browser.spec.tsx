@@ -1,3 +1,4 @@
+import type { DifyBuilderRuntime } from '../store'
 import type { SessionView } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createStore, Provider } from 'jotai'
@@ -5,7 +6,11 @@ import { queryClientAtom } from 'jotai-tanstack-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import DifyBuilderPanel from '../panel'
-import { difyBuilderSessionViewAtom } from '../session/state'
+import {
+  difyBuilderConversationHasMoreAtom,
+  difyBuilderConversationLoadingAtom,
+  difyBuilderSessionViewAtom,
+} from '../session/state'
 import { difyBuilderRuntimeAtom } from '../store'
 
 // Conversation rendering and the disabled composer have independent owner tests.
@@ -18,6 +23,32 @@ vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(selector: (state: { setShowDifyBuilderPanel: (show: boolean) => void }) => T) =>
     selector({ setShowDifyBuilderPanel: vi.fn() }),
 }))
+
+const createRuntime = (
+  session: Partial<DifyBuilderRuntime['session']> = {},
+): DifyBuilderRuntime => ({
+  appId: 'app-1',
+  canEdit: true,
+  enabled: true,
+  getCanvasSnapshot: () => ({ nodes: [], edges: [], isChatflow: false }),
+  session: {
+    getTrace: () => ({ entries: [], truncated: false }),
+    loadOlderConversation: async () => true,
+    onCanvasRefreshed: vi.fn(),
+    refresh: async () => true,
+    reset: vi.fn(),
+    restore: async () => true,
+    runAction: async () => true,
+    sendMessage: async () => true,
+    startBuild: async () => true,
+    startChecklistFix: async () => true,
+    startEdit: async () => true,
+    startFix: async () => true,
+    updateModel: async () => true,
+    ...session,
+  },
+  setShowPanel: vi.fn(),
+})
 
 it('moves focus before making a submitted interaction inert and preserves its animated lifetime', async () => {
   // Chromium's inert focus eviction and native Tab order expose an attribute update
@@ -50,28 +81,7 @@ it('moves focus before making a submitted interaction inert and preserves its an
   const action = new Promise<boolean>((resolve) => {
     finishAction = resolve
   })
-  store.set(difyBuilderRuntimeAtom, {
-    appId: 'app-1',
-    canEdit: true,
-    enabled: true,
-    getCanvasSnapshot: () => ({ nodes: [], edges: [], isChatflow: false }),
-    session: {
-      getTrace: () => ({ entries: [], truncated: false }),
-      loadOlderConversation: async () => true,
-      onCanvasRefreshed: vi.fn(),
-      refresh: async () => true,
-      reset: vi.fn(),
-      restore: async () => true,
-      runAction: () => action,
-      sendMessage: async () => true,
-      startBuild: async () => true,
-      startChecklistFix: async () => true,
-      startEdit: async () => true,
-      startFix: async () => true,
-      updateModel: async () => true,
-    },
-    setShowPanel: vi.fn(),
-  })
+  store.set(difyBuilderRuntimeAtom, createRuntime({ runAction: () => action }))
   const screen = await render(
     <QueryClientProvider client={queryClient}>
       <Provider store={store}>
@@ -126,6 +136,70 @@ it('moves focus before making a submitted interaction inert and preserves its an
   } finally {
     finishAction(false)
     await action
+    queryClient.clear()
+  }
+})
+
+it('retains focus and the tab stop while loading older conversation and blocks repeated activation', async () => {
+  // Loading must retain Chromium's real native focus and tab order in the production panel.
+  const store = createStore()
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  store.set(queryClientAtom, queryClient)
+  store.set(difyBuilderSessionViewAtom, {
+    canvas_read_only: false,
+    conversation_last_seq: 5,
+    interrupted: false,
+    phase: 'plan',
+    reply_language: '',
+    run_status: 'waiting_input',
+    session_id: 'session-1',
+    version: 1,
+  })
+  store.set(difyBuilderConversationHasMoreAtom, true)
+  let finishLoading!: (loaded: boolean) => void
+  const request = new Promise<boolean>((resolve) => {
+    finishLoading = resolve
+  })
+  const loadOlderConversation = vi.fn(async () => {
+    store.set(difyBuilderConversationLoadingAtom, true)
+    try {
+      return await request
+    } finally {
+      store.set(difyBuilderConversationLoadingAtom, false)
+    }
+  })
+  store.set(difyBuilderRuntimeAtom, createRuntime({ loadOlderConversation }))
+  const screen = await render(
+    <QueryClientProvider client={queryClient}>
+      <Provider store={store}>
+        <div className="h-160 w-100">
+          <DifyBuilderPanel />
+          <button type="button">After builder</button>
+        </div>
+      </Provider>
+    </QueryClientProvider>,
+  )
+  const more = screen.getByRole('button', { name: 'common.operation.more' }).nth(1)
+  try {
+    await expect.element(more).toBeVisible()
+    more.element().focus()
+    await userEvent.keyboard('{Enter}')
+    await expect.element(more).toHaveAttribute('aria-disabled', 'true')
+    await expect.element(more).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    expect(loadOlderConversation).toHaveBeenCalledOnce()
+
+    await userEvent.tab()
+    await expect.element(screen.getByRole('button', { name: 'After builder' })).toHaveFocus()
+    await userEvent.tab({ shift: true })
+    await expect.element(more).toHaveFocus()
+
+    finishLoading(true)
+    await expect.element(more).not.toHaveAttribute('aria-disabled', 'true')
+    await expect.element(more).toHaveFocus()
+  } finally {
+    finishLoading(false)
+    await request
     queryClient.clear()
   }
 })

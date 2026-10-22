@@ -45,6 +45,7 @@ const ThinkingDetails = ({
         <div className="ml-5 border-l border-divider-subtle py-1 pl-3">
           <Markdown
             content={text}
+            mode={isStreaming ? 'streaming' : 'static'}
             isAnimating={isStreaming}
             className="text-xs! leading-5! text-text-tertiary!"
           />
