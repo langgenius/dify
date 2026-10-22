@@ -56,6 +56,7 @@ from core.dify_builder.models import (
     NodeEvent,
     NodeOutput,
     PublicationDecision,
+    Risk,
     Run,
     Session,
     Snapshot,
@@ -76,7 +77,11 @@ from services.dify_builder.application.verification import (
     is_execution_policy_blocker,
     result_card,
 )
-from services.dify_builder.business_acceptance import confirm_testdata_contract, record_run_acceptance
+from services.dify_builder.business_acceptance import (
+    business_failure_context,
+    confirm_testdata_contract,
+    record_run_acceptance,
+)
 from services.dify_builder.effect_disclosure import split_confirmations
 from services.dify_builder.effect_presentation import (
     effect_confirmation_fields,
@@ -409,7 +414,7 @@ def failure_signature(run: Run) -> str:
     return f"|{launch_error}" if launch_error else ""
 
 
-def note_repair_error(fc: DifyBuilderContext, run: Run) -> None:
+def note_repair_error(fc: DifyBuilderContext, run: Run, *, business_signature: str = "") -> None:
     """Record this failure's signature and count CONSECUTIVE repeats of it.
 
     ``repair_attempts`` is not a global budget: a different failure means the
@@ -418,10 +423,11 @@ def note_repair_error(fc: DifyBuilderContext, run: Run) -> None:
     cause, so the count advances. Call this once per diagnosis, before
     ``repair_is_repeating``.
 
-    Takes the ``Run`` rather than a message so the key comes from the engine
-    (see ``failure_signature``) and not from anything an LLM wrote.
+    Native failures use the Run's engine evidence. A caller may instead pass
+    the signature of a validated current explicit business mismatch; that key
+    comes from its contract/checks, never from an LLM's diagnosis prose.
     """
-    signature = failure_signature(run)
+    signature = business_signature or failure_signature(run)
     if signature and signature == fc.last_repair_error:
         fc.repair_attempts += 1
     else:
@@ -1087,10 +1093,20 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     from services.dify_builder.condition_evidence import diagnose_failure
 
     progress.activate("fix-diagnose-cause")
-    diagnosis = diagnose_failure(env, s.app_id, turn.actor, failed, graph)
+    diagnosis = diagnose_failure(env, s.app_id, turn.actor, failed, graph, task=(s, fc, graph_hash))
     fc.diagnosis = diagnosis
     fc.last_snapshot_hash = graph_hash
     fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
+    business = business_failure_context(
+        failed, s, fc, current_revision=graph_hash, current_graph_revision=env.dify.graph_revision(graph)
+    )
+    repeating_business = False
+    if business is not None:
+        note_repair_error(fc, failed, business_signature=business.signature)
+        repeating_business = repair_is_repeating(fc)
+        if repeating_business:
+            fc.staged_repair = []
+            fc.risk = Risk(level="high", has_external_side_effect=False)
 
     execution = progress.finish()
     items = append_assistant(
@@ -1106,7 +1122,7 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
         execution=execution,
     )
     return StepResult(
-        next=PcState.FIX_PROPOSE,
+        next=PcState.FIX_AWAIT_APPROVAL if repeating_business else PcState.FIX_PROPOSE,
         context=fc,
         items=items,
         checkpoint=Snapshot(session_id=s.id, hash=graph_hash, graph=graph),
@@ -1170,7 +1186,17 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
             ),
             failed_run_id=(
                 env.repo.get_run(fc.failed_run_id).dify_run_id
-                if fc.source != "checklist" and fc.failed_run_id
+                if fc.source != "checklist"
+                and fc.failed_run_id
+                and not (fc.business_acceptance_contract and env.repo.get_run(fc.failed_run_id).status == "succeeded")
+                else None
+            ),
+            business_failure_run_id=(
+                fc.failed_run_id
+                if fc.source != "checklist"
+                and fc.failed_run_id
+                and fc.business_acceptance_contract
+                and env.repo.get_run(fc.failed_run_id).status == "succeeded"
                 else None
             ),
         )
@@ -1596,6 +1622,17 @@ def handle_await_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             return publication_denied(env, s, fc, PcState.FIX_AWAIT_DECISION, decision.reason)
         return StepResult(next=PcState.FIX_PUBLISH, context=fc)
     if kind == "re_fix":
+        if fc.verify_run_id and fc.business_acceptance_contract:
+            latest = env.repo.get_run(fc.verify_run_id)
+            graph, revision = env.dify.read_graph(s.app_id, turn.actor)
+            if (
+                business_failure_context(
+                    latest, s, fc, current_revision=revision, current_graph_revision=env.dify.graph_revision(graph)
+                )
+                is not None
+            ):
+                fc.failed_run_id = latest.id
+                fc.retained_test_input_ref = latest.inputs_ref
         fc.diagnosis = None
         fc.staged_repair = []
         fc.risk = None

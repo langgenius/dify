@@ -161,11 +161,11 @@ describe('Starting Build', () => {
 })
 
 describe('Leaving Build', () => {
-  it('confirms an existing draft, allows cancellation, and stops streaming before discarding and changing URL', async () => {
+  it('allows cancelling departure, then confirms discard and changes URL only after it settles', async () => {
     const user = userEvent.setup()
     const discard = createDeferred<{ result: string }>()
-    const view = createEnvironment({ buildDraft: createBuildDraft() }).render()
     api.discard.mockReturnValueOnce(discard.promise)
+    const view = createEnvironment({ buildDraft: createBuildDraft() }).render()
     await send(user)
     await receive()
     await changeMode(user, 'preview')
@@ -178,6 +178,33 @@ describe('Leaving Build', () => {
     )
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(await screen.findByText('Built answer')).toBeVisible()
+    expect(modeButton('build')).toBeChecked()
+    expect(api.stop).not.toHaveBeenCalled()
+    await changeMode(user, 'preview')
+    await confirm(user)
+    expect(api.stop).toHaveBeenCalledWith({ params: { agent_id: 'agent-1', task_id: 'task-0' } })
+    expect(api.stop.mock.invocationCallOrder[0]).toBeLessThan(
+      api.discard.mock.invocationCallOrder[0]!,
+    )
+    expect(view.onUrlUpdate).not.toHaveBeenCalled()
+    expect(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.confirm',
+      }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    await act(async () => discard.resolve({ result: 'success' }))
+    await waitFor(() => expect(modeButton('preview')).toBeChecked())
+    expect(view.onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('mode')).toBe('preview')
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('stops streaming before confirmed discard and ignores late completion across mode changes', async () => {
+    const user = userEvent.setup()
+    const discard = createDeferred<{ result: string }>()
+    const view = createEnvironment({ buildDraft: createBuildDraft() }).render()
+    api.discard.mockReturnValueOnce(discard.promise)
+    await send(user)
+    await receive()
     await changeMode(user, 'preview')
     await confirm(user)
     expect(api.stop).toHaveBeenCalledWith({ params: { agent_id: 'agent-1', task_id: 'task-0' } })

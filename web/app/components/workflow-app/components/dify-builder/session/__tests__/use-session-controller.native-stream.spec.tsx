@@ -1,6 +1,7 @@
 import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ConversationItem } from '../../types'
 import { act, waitFor } from '@testing-library/react'
+import { difyBuilderCanComposeAtom } from '../../store'
 import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
@@ -116,6 +117,127 @@ it.each(['omitted', 'stale'])(
     expect(mocks.get).not.toHaveBeenCalled()
   },
 )
+
+it.each(['waiting', 'terminal'] as const)(
+  'keeps an observed %s receipt when a delayed command snapshot has equal native ordering fields',
+  async (status) => {
+    const observation = createControlledEventStream()
+    const commandStream = createControlledEventStream()
+    mocks.stream.mockResolvedValue(observation.iterable)
+    mocks.action.mockResolvedValue(commandStream.iterable)
+    const receipt = createNativeReceipt({
+      status,
+      native_status: status === 'terminal' ? 'succeeded' : 'paused',
+      outcome: status === 'terminal' ? 'succeeded' : null,
+      wait_reason: status === 'waiting' ? 'approval' : null,
+      decision_public_revision: 0,
+    })
+    mocks.get.mockResolvedValue({ ...initial(), test_execution: receipt })
+    const { result, store } = renderSessionHook()
+    act(() => {
+      store.set(difyBuilderActiveSessionIdAtom, 'session-1')
+      store.set(difyBuilderSessionViewAtom, initial())
+    })
+    await waitFor(() => expect(mocks.stream).toHaveBeenCalledOnce())
+    let command!: Promise<boolean>
+    act(() => {
+      command = result.current.runAction('confirm', { option_id: 'cancel_test' })
+    })
+    await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
+    act(() => {
+      commandStream.push(commandStartedEvent(initial()))
+      observation.push({
+        event: 'native_execution',
+        data: { session_id: 'session-1', cursor: 'a'.repeat(64), receipt },
+      })
+    })
+    await waitFor(() =>
+      expect(store.get(difyBuilderSessionViewAtom)?.test_execution?.status).toBe(status),
+    )
+    await act(async () => {
+      commandStream.push(
+        stateEvent({
+          ...initial(),
+          version: 2,
+          test_execution: createNativeReceipt({ decision_public_revision: 0 }),
+        }),
+      )
+      expect(await command).toBe(true)
+    })
+    expect(store.get(difyBuilderSessionViewAtom)?.version).toBe(2)
+    expect(store.get(difyBuilderSessionViewAtom)?.test_execution).toEqual(receipt)
+    expect(store.get(difyBuilderSessionBusyAtom)).toBe(false)
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(status === 'terminal')
+  },
+)
+
+it.each(['native', 'command'] as const)(
+  'accepts a real resume from %s after observing a wait',
+  async (source) => {
+    const observation = createControlledEventStream()
+    mocks.stream.mockResolvedValue(observation.iterable)
+    const { store } = renderSessionHook()
+    act(() => {
+      store.set(difyBuilderActiveSessionIdAtom, 'session-1')
+      store.set(difyBuilderSessionViewAtom, initial())
+    })
+    await waitFor(() => expect(mocks.stream).toHaveBeenCalledOnce())
+    act(() => {
+      observation.push({
+        event: 'native_execution',
+        data: {
+          session_id: 'session-1',
+          cursor: 'b'.repeat(64),
+          receipt: createNativeReceipt({ status: 'waiting', wait_reason: 'approval' }),
+        },
+      })
+    })
+    await waitFor(() =>
+      expect(store.get(difyBuilderSessionViewAtom)?.test_execution?.status).toBe('waiting'),
+    )
+    const resumed = createNativeReceipt({ generation: source === 'command' ? 1 : 0 })
+    act(() => {
+      observation.push(
+        source === 'command'
+          ? stateEvent({ ...initial(), version: 2, test_execution: resumed })
+          : {
+              event: 'native_execution',
+              data: { session_id: 'session-1', cursor: 'c'.repeat(64), receipt: resumed },
+            },
+      )
+    })
+    await waitFor(() =>
+      expect(store.get(difyBuilderSessionViewAtom)?.test_execution).toEqual(resumed),
+    )
+  },
+)
+
+it('accepts fresh equal-counter terminal recovery after an observed running stream disconnects', async () => {
+  vi.useFakeTimers()
+  const observation = createControlledEventStream()
+  mocks.stream.mockResolvedValue(observation.iterable)
+  const terminal = createNativeReceipt({ status: 'terminal', outcome: 'succeeded' })
+  mocks.get.mockResolvedValue({ ...initial(), test_execution: terminal })
+  const { store } = renderSessionHook()
+  try {
+    await act(async () => {
+      store.set(difyBuilderActiveSessionIdAtom, 'session-1')
+      store.set(difyBuilderSessionViewAtom, initial())
+    })
+    await act(async () => {
+      observation.push(nativeFrame(1))
+      observation.close()
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    expect(mocks.get).toHaveBeenCalledOnce()
+    expect(store.get(difyBuilderSessionViewAtom)?.test_execution).toEqual(terminal)
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(true)
+  } finally {
+    vi.useRealTimers()
+  }
+})
 
 it.each(['error', 'eof'])(
   'reconnects after %s using the native cursor without replaying a command',

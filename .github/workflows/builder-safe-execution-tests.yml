@@ -490,9 +490,12 @@ jobs:
               'api/tests/unit_tests/core/workflow/generator/test_planner_token_budget.py',
               'api/tests/unit_tests/services/dify_builder/test_business_acceptance.py',
               'api/tests/unit_tests/services/dify_builder/test_business_acceptance_integration.py',
+              'api/tests/unit_tests/services/dify_builder/test_business_failure_repair.py',
+              'api/tests/unit_tests/services/dify_builder/test_business_failure_port.py',
               'api/tests/unit_tests/services/dify_builder/test_native_docx_evidence.py',
               'api/tests/unit_tests/services/dify_builder/test_planning_tool_contract.py',
               'api/tests/unit_tests/services/dify_builder/test_tool_parameter_semantics.py',
+              'api/tests/unit_tests/services/dify_builder/test_plugin_tool_output_context.py',
           ]
           # PR44527: continuous native observations and commit notifications.
           FILES += ["api/tests/unit_tests/services/dify_builder/test_native_live_stream.py"]
@@ -1518,7 +1521,9 @@ jobs:
                                                                                 'test_unrelated_or_failed_tool_output_cannot_prove_terminal_file': 1,
                                                                                 'test_wrong_tenant_row_never_reads_storage': 1,
                                                                                 'test_zip_uncompressed_size_bound_is_checked_before_expansion': 1},
-           'tests.unit_tests.services.dify_builder.test_planning_tool_contract': {'test_planner_and_discovery_receive_the_actual_action_parameters': 1,
+           'tests.unit_tests.services.dify_builder.test_planning_tool_contract': {'test_high_level_plan_receives_tool_channels_before_committing_consumer_steps': 1,
+                                                                                  'test_inventory_exposes_output_schema_availability_to_the_high_level_planner': 3,
+                                                                                  'test_planner_and_discovery_receive_the_actual_action_parameters': 1,
                                                                                   'test_unknown_parameter_contract_is_distinct_from_a_no_parameter_action': 1},
            'tests.unit_tests.services.dify_builder.test_tool_parameter_semantics': {'test_generated_parser_feeds_distinct_native_tool_parameters': 3,
                                                                                     'test_missing_parser_repair_receives_installed_contract_and_start_schema': 2,
@@ -1527,6 +1532,43 @@ jobs:
                                                                                     'test_repair_contract_source_failure_is_explicit': 1,
                                                                                     'test_repair_reference_literals_uses_real_selector_shape': 2,
                                                                                     'test_source_declarations_exclude_values_and_code': 1}})
+          # ENG-1102: exact public plugin output-channel contract inventory.
+          a4_expected.update({'tests.unit_tests.services.dify_builder.test_plugin_tool_output_context': {
+              'test_native_text_json_does_not_populate_json_messages': 1,
+              'test_planner_and_code_builder_distinguish_channels_and_require_shape_validation': 1,
+              'test_plugin_contract_states_preserve_public_declarations_without_inventing_transport': 3,
+              'test_workspace_schema_stays_user_data_and_api_context_is_not_replaced': 1,
+              'test_missing_or_unbound_plugin_context_does_not_guess': 2,
+              'test_real_generation_delivers_upstream_plugin_contract_to_isolated_code_builder': 1,
+              'test_bounded_context_reports_omitted_upstream_tools': 1,
+          }})
+          # ENG-1187: current business failures and owned native write provenance.
+          a4_expected.update({'tests.unit_tests.services.dify_builder.test_business_failure_repair': {
+              'test_business_context_does_not_reuse_unbound_or_unavailable_findings': 6,
+              'test_business_diagnosis_keeps_successful_native_run_and_uses_no_failed_run_lookup': 1,
+              'test_business_diagnosis_uses_bounded_successful_upstream_native_observations': 1,
+              'test_business_observations_do_not_promote_unusable_native_rows': 5,
+              'test_business_proposal_retains_noop_routing_and_unknown_if_guards': 4,
+              'test_business_proposal_stops_if_task_source_changes_after_diagnosis': 1,
+              'test_diagnostic_projection_redacts_before_model_boundary_and_keeps_oracle_immutable': 1,
+              'test_explicit_approval_forwards_builder_business_run_identity_without_native_failure_authority': 3,
+              'test_explicit_fix_again_uses_latest_business_run_and_retains_owned_sample': 1,
+              'test_fix_business_failure_uses_same_bounded_proposal_breaker': 1,
+              'test_legacy_fix_again_does_not_read_graph_for_absent_business_contract': 1,
+              'test_native_success_with_current_business_failure_reaches_existing_repair_gate': 2,
+              'test_progress_to_a_different_failing_path_resets_existing_repeat_counter': 1,
+              'test_real_fix_prompt_boundary_receives_goal_oracle_and_native_success_kind': 1,
+              'test_real_llm_builder_proposal_vets_a_current_business_code_repair': 1,
+              'test_repair_checkpoint_restores_pre_repair_graph_and_preserves_run_oracle': 2,
+              'test_same_unmet_case_uses_existing_repeat_breaker_across_revisions_and_run_ids': 1,
+              'test_unverified_or_absent_expectations_do_not_trigger_business_repair': 3,
+              'test_valid_explicit_null_is_not_reported_as_a_business_mismatch': 1,
+          }, 'tests.unit_tests.services.dify_builder.test_business_failure_port': {
+              'test_ambiguous_native_and_business_repair_authority_is_rejected': 1,
+              'test_business_case_is_rechecked_at_the_actual_write_boundary': 1,
+              'test_current_business_failure_writes_configuration_without_changing_successful_run': 1,
+              'test_untrusted_or_stale_business_failure_cannot_write': 10,
+          }})
           # PR44527: exact native observation function and parameter inventory.
           a4_expected.update({'tests.unit_tests.services.dify_builder.test_native_live_stream': {'test_legacy_stream_ignores_native_change_notifications': 1,
                                                                               'test_native_change_notification_follows_commit_and_never_rollback': 2,

@@ -13,6 +13,7 @@ topology and node types so every builder gets a tight scaffold.
 
 from core.workflow.generator.prompts.builder_prompts import (
     CODE_FAILURE_POLICY_RULES,
+    TOOL_OUTPUT_SEMANTICS_RULES,
     TOOL_PARAMETER_SEMANTICS_RULES,
     VARIABLE_AGGREGATOR_OUTPUT_RULES,
 )
@@ -175,7 +176,12 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
 """
 
 
-PLANNER_SYSTEM_PROMPT += CODE_FAILURE_POLICY_RULES + TOOL_PARAMETER_SEMANTICS_RULES + VARIABLE_AGGREGATOR_OUTPUT_RULES
+PLANNER_SYSTEM_PROMPT += (
+    CODE_FAILURE_POLICY_RULES
+    + TOOL_PARAMETER_SEMANTICS_RULES
+    + VARIABLE_AGGREGATOR_OUTPUT_RULES
+    + TOOL_OUTPUT_SEMANTICS_RULES
+)
 
 
 PLANNER_USER_PROMPT = """# Mode

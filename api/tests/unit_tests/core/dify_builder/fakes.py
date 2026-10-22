@@ -343,6 +343,7 @@ class FakeDifyPort(DifyPort):
         self.graph: Graph = {"nodes": []}
         self.hash: str = "h0"
         self.applied: list[MutationIntent] = []
+        self.last_business_failure_run_id: str | None = None
         self.published: bool = False
         self.verify_pass: bool = True
         self.run_draft_inputs: Inputs = {}
@@ -412,11 +413,13 @@ class FakeDifyPort(DifyPort):
         *,
         expected_revision: str = "",
         failed_run_id: str | None = None,
+        business_failure_run_id: str | None = None,
         confirmed_resource_ids: Sequence[str] | None = None,
         expected_resource_fingerprints: dict[str, str] | None = None,
         expected_node_resources: dict[str, str] | None = None,
     ) -> ApplyResult:
         self.expected_revision = expected_revision
+        self.last_business_failure_run_id = business_failure_run_id
         self.last_repair_run_id = failed_run_id
         self.applied = copy.deepcopy(intents)
         self.hash = "h1"
@@ -674,6 +677,7 @@ class FakeBuildDifyPort(DifyPort):
         self.graph: Graph = {"nodes": [], "edges": []}
         self.hash: str = "h0"
         self.applied: list[MutationIntent] = []
+        self.last_business_failure_run_id: str | None = None
         self.published: bool = False
         self.verify_pass: bool = True
         self.run_draft_inputs: Inputs = {}
@@ -738,11 +742,13 @@ class FakeBuildDifyPort(DifyPort):
         *,
         expected_revision: str = "",
         failed_run_id: str | None = None,
+        business_failure_run_id: str | None = None,
         confirmed_resource_ids: Sequence[str] | None = None,
         expected_resource_fingerprints: dict[str, str] | None = None,
         expected_node_resources: dict[str, str] | None = None,
     ) -> ApplyResult:
         self.expected_revision = expected_revision
+        self.last_business_failure_run_id = business_failure_run_id
         self.last_repair_run_id = failed_run_id
         self.applied.extend(copy.deepcopy(intents))
         before = copy.deepcopy(self.graph)
