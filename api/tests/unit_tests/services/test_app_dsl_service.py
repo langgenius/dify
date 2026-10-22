@@ -537,7 +537,11 @@ def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, 
     assert redis_key not in pending_imports
 
 
-def test_pending_import_requires_current_tenant(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.CLOUD])
+def test_pending_import_requires_current_tenant(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, edition: DeploymentEdition
+) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition)
     setex = Mock()
     monkeypatch.setattr("services.app_dsl_service.redis_client.setex", setex)
     account = _account()
