@@ -104,9 +104,9 @@ def test_disabled_knowledge_fs_rejects_console_work_before_preview_upload_or_que
             ("space-1",),
         ),
     )
-    for resource_type, post, args in routes:
+    for resource_type, view, args in routes:
         handler = inspect.unwrap(
-            post,
+            view,
             stop=lambda view: "_knowledge_fs_errors.<locals>.decorated" in view.__code__.co_qualname,
         )
         with pytest.raises(NotFound):
