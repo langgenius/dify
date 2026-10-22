@@ -190,7 +190,7 @@ export default function WorkflowLogArchivesPage() {
       </div>
 
       <div className="overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs">
-        <div className="overflow-x-auto">
+        <div className="@container overflow-x-auto">
           <table className="w-full min-w-140 table-auto">
             <colgroup>
               <col />
@@ -239,6 +239,24 @@ export default function WorkflowLogArchivesPage() {
                   ))}
                 </>
               )}
+              {!isLoading && archiveListQuery.isError && (
+                <tr>
+                  <td colSpan={4}>
+                    <div className="sticky start-0 flex min-h-36 max-w-[100cqw] flex-col items-center justify-center gap-2 px-4 py-4 text-center">
+                      <span
+                        className="i-ri-error-warning-line size-6 text-text-tertiary"
+                        aria-hidden="true"
+                      />
+                      <div className="system-sm-semibold text-text-secondary">
+                        {t(($) => $['archives.error.title'], { ns: 'appLog' })}
+                      </div>
+                      <div className="system-xs-regular text-text-tertiary">
+                        {t(($) => $['archives.error.description'], { ns: 'appLog' })}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
               {!isLoading &&
                 visibleArchiveMonths.map((archive) => {
                   const archiveMonth = formatMonth(archive.year, archive.month)
@@ -260,20 +278,6 @@ export default function WorkflowLogArchivesPage() {
             </tbody>
           </table>
         </div>
-        {!isLoading && archiveListQuery.isError && (
-          <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 py-4 text-center">
-            <span
-              className="i-ri-error-warning-line size-6 text-text-tertiary"
-              aria-hidden="true"
-            />
-            <div className="system-sm-semibold text-text-secondary">
-              {t(($) => $['archives.error.title'], { ns: 'appLog' })}
-            </div>
-            <div className="system-xs-regular text-text-tertiary">
-              {t(($) => $['archives.error.description'], { ns: 'appLog' })}
-            </div>
-          </div>
-        )}
         <div role="status" aria-atomic="true">
           {!isLoading && !archiveListQuery.isError && archiveMonths.length === 0 && (
             <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 py-4 text-center">

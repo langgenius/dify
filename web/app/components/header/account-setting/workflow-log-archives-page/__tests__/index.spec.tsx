@@ -728,7 +728,7 @@ describe('WorkflowLogArchivesPage', () => {
       expect(within(table).getAllByRole('row', { hidden: true })).toHaveLength(2)
     })
 
-    it('presents an archive request error outside the scrolling table', async () => {
+    it('presents an archive request error below the table headers', async () => {
       const queryClient = createConsoleQueryClient()
       const queryKey = consoleQuery.workflowRunArchives.get.queryKey()
       queryClient.setQueryDefaults(queryKey, { retryOnMount: false })
@@ -742,11 +742,44 @@ describe('WorkflowLogArchivesPage', () => {
       renderPage(null, queryClient)
 
       const table = screen.getByRole('table')
-      expect(screen.getByText('appLog.archives.error.title')).toBeInTheDocument()
-      expect(screen.getByText('appLog.archives.error.description')).toBeInTheDocument()
-      expect(within(table).queryByText('appLog.archives.error.title')).not.toBeInTheDocument()
+      const headerRow = within(table).getByRole('row', { name: /appLog\.archives\.table\.month/ })
+      const errorRow = within(table).getByRole('row', { name: /appLog\.archives\.error\.title/ })
+      expect(within(table).getAllByRole('row')).toEqual([headerRow, errorRow])
+      expect(within(headerRow).getAllByRole('columnheader')).toHaveLength(4)
+      expect(within(errorRow).getByText('appLog.archives.error.title')).toBeInTheDocument()
+      expect(within(errorRow).getByText('appLog.archives.error.description')).toBeInTheDocument()
       expect(screen.queryByText('appLog.archives.empty.title')).not.toBeInTheDocument()
       expect(within(table).queryByRole('button')).not.toBeInTheDocument()
+    })
+
+    it('keeps a refresh error between the headers and retained archive rows', async () => {
+      const { queryClient } = renderPage()
+      archiveRequests.list.mockRejectedValue(new Error('Archives unavailable'))
+
+      await act(async () =>
+        queryClient.refetchQueries({
+          queryKey: consoleQuery.workflowRunArchives.get.queryKey(),
+        }),
+      )
+      await screen.findByText('appLog.archives.error.title')
+
+      const table = screen.getByRole('table')
+      const headerRow = within(table).getByRole('row', { name: /appLog\.archives\.table\.month/ })
+      const errorRow = within(table).getByRole('row', { name: /appLog\.archives\.error\.title/ })
+      const archiveRow = within(table).getByRole('row', { name: /2025-03/ })
+      expect(within(table).getAllByRole('row')).toEqual([headerRow, errorRow, archiveRow])
+      expect(within(headerRow).getAllByRole('columnheader')).toHaveLength(4)
+      expect(
+        within(errorRow).getByRole('cell', {
+          name: /appLog\.archives\.error\.title/,
+        }),
+      ).toHaveAttribute('colspan', '4')
+      expect(archiveRow).toHaveTextContent('2025-03')
+      expect(
+        within(archiveRow).getByRole('button', {
+          name: 'appLog.archives.action.prepareDownload 2025-03',
+        }),
+      ).toBeInTheDocument()
     })
 
     it('presents an empty archive message outside the scrolling table', () => {
