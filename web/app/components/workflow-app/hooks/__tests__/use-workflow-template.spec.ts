@@ -1,31 +1,65 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import { useHydrateAtoms } from 'jotai/utils'
 import { renderEditorHook as renderHookWithConsoleQuery } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { difyBuilderPendingCreationAtom } from '../../components/dify-builder/creation'
+import { useWorkflowDraftGraphForCanvas } from '../use-workflow-draft-graph-for-canvas'
 import { useWorkflowTemplate } from '../use-workflow-template'
 
-const renderTemplateHook = (mode: AppMode) => {
+const renderTemplateHook = (mode: AppMode, pendingCreationAppId?: string) => {
   const queryClient = createConsoleQueryClient()
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode }))
-  return renderHookWithConsoleQuery(() => useWorkflowTemplate(), {
-    queryClient,
-    resource: { kind: 'app', appId: 'app-1', mode: mode === 'advanced-chat' ? mode : 'workflow' },
-  })
+  return renderHookWithConsoleQuery(
+    () => {
+      useHydrateAtoms([
+        [
+          difyBuilderPendingCreationAtom,
+          pendingCreationAppId ? { appId: pendingCreationAppId, prompt: 'Build a workflow' } : null,
+        ],
+      ])
+      const template = useWorkflowTemplate()
+      const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(mode)
+      return {
+        ...template,
+        initialGraph: getWorkflowDraftGraphForCanvas(
+          { nodes: [], edges: [] },
+          { localStartPlaceholderNodes: template.nodes },
+        ),
+      }
+    },
+    {
+      queryClient,
+      resource: { kind: 'app', appId: 'app-1', mode: mode === 'advanced-chat' ? mode : 'workflow' },
+    },
+  )
 }
 
 describe('useWorkflowTemplate', () => {
-  it('should return only the start placeholder template in workflow mode', () => {
-    const { result } = renderTemplateHook('workflow')
-
-    expect(result.current.nodes).toHaveLength(1)
-    expect(result.current.edges).toEqual([])
-    expect(result.current.nodes[0]!.data).toMatchObject({
-      type: 'start-placeholder',
-      title: 'workflow.blocks.start-placeholder',
+  it.each([
+    { entry: 'regular creation', pendingCreationAppId: undefined, selected: true },
+    { entry: 'Builder creation', pendingCreationAppId: 'app-1', selected: false },
+    {
+      entry: 'another app with a pending Builder creation',
+      pendingCreationAppId: 'app-2',
       selected: true,
-      desc: '',
-    })
-  })
+    },
+  ])(
+    'selects the initial start placeholder appropriately for $entry',
+    ({ pendingCreationAppId, selected }) => {
+      const { result } = renderTemplateHook('workflow', pendingCreationAppId)
+
+      expect(result.current.nodes).toHaveLength(1)
+      expect(result.current.edges).toEqual([])
+      expect(result.current.nodes[0]!.data).toMatchObject({
+        type: 'start-placeholder',
+        title: 'workflow.blocks.start-placeholder',
+        selected,
+        desc: '',
+      })
+      expect(result.current.initialGraph.nodes[0]!.data.selected).toBe(selected)
+    },
+  )
 
   it('should return the start node template for non-workflow app modes', () => {
     const { result } = renderTemplateHook('completion')
