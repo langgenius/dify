@@ -20,7 +20,10 @@ from core.dify_builder.models import (
     Run,
 )
 from core.model_manager import ModelInstance
-from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES
+from core.workflow.generator.prompts.builder_prompts import (
+    CODE_FAILURE_POLICY_RULES,
+    TOOL_PARAMETER_SEMANTICS_RULES,
+)
 from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
 from services.dify_builder import (
     condition_evidence,
@@ -354,6 +357,7 @@ def propose_repair(
     *,
     prompt_graph: Graph | None = None,
     redact_text: Callable[[str], str] | None = None,
+    tool_context: str = "",
 ) -> tuple[list[MutationIntent], Risk]:
     if model is None:
         return _no_fix()
@@ -366,6 +370,7 @@ def propose_repair(
             '"risk": {"level": "low|high", "reason": "...", "has_external_side_effect": true|false}}.\n'
             + _OP_SCHEMA
             + CODE_FAILURE_POLICY_RULES
+            + TOOL_PARAMETER_SEMANTICS_RULES
             + "Allowed node types: "
             + ", ".join(sorted(_ALLOWED_NODE_TYPES))
             + ".\n"
@@ -380,6 +385,9 @@ def propose_repair(
         f"{_culprit_config(diagnosis.culprit_node_id, visible_graph)}"
         f"\n\nGRAPH:\n{_graph_context(visible_graph)}"
     )
+    user += "\n\n" + graph_prompt.source_value_declarations(visible_graph)
+    if tool_context:
+        user += "\n\n" + tool_context
     user += "\nCONDITION EVIDENCE:\n" + json.dumps(diagnosis.condition_evidence, separators=(",", ":"))
     if redact_text is not None:
         user = redact_text(user)
