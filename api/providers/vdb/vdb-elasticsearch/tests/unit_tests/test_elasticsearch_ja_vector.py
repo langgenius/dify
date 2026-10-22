@@ -1,18 +1,18 @@
 import importlib
 import json
 import sys
-import types
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from elasticsearch import NotFoundError
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from models.dataset import Dataset
 
 
 def _build_fake_elasticsearch_modules():
-    elasticsearch = types.ModuleType("elasticsearch")
+    elasticsearch = FakeModule("elasticsearch")
 
     class ConnectionError(Exception):
         pass

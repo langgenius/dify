@@ -6,7 +6,7 @@ Vite+ provides the primary static check through `vp check`, which combines Oxfmt
 custom rules, and dead-code tooling. Edit the implementations here:
 
 - `repository.config.ts`: repository Vite+ lint, format, staged checks, and cached check task.
-- `lint.config.ts`, `eslint.mjs`, and `tsslint.config.ts`: rule configurations.
+- `lint.config.ts`, `eslint.ts`, and `tsslint.config.ts`: rule configurations.
 - `plugins/`: custom rules, their fixtures, and tests.
 - `knip.config.ts`, `a11y.config.ts`, `oxlint.unused.config.json`, and `scripts/`: targeted checks.
 - `package.json`: plugin dependencies and the tooling package's test and type-check scripts.
@@ -85,13 +85,13 @@ vp run -w lint:eslint package.json pnpm-workspace.yaml web/docs
 vp run -w lint:eslint:fix package.json pnpm-workspace.yaml web/docs
 ```
 
-Oxlint and Vite+ type-check scope is defined by `packages/tooling/lint.config.ts` `ignorePatterns`, and ESLint's scope is defined by `packages/tooling/eslint.mjs` global ignores.
+Oxlint and Vite+ type-check scope is defined by `packages/tooling/lint.config.ts` `ignorePatterns`, and ESLint's scope is defined by `packages/tooling/eslint.ts` global ignores.
 
 The primary rule baseline lives in `packages/tooling/lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. Oxlint-native rules are preferred, and compatible ESLint rules can run through Oxlint's `jsPlugins` support. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
 
 Tailwind canonical class cleanup is optional because loading the JavaScript plugin adds noticeable lint startup time. The default `vp run -w check` command does not load it. Run `vp run -w lint:tailwind` to inspect `web/` and `packages/dify-ui/`, or `vp run -w lint:tailwind:fix` to apply safe replacements. Both commands run the complete lint configuration with the additional `better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css` and a 16px root font size.
 
-The non-code baseline and its repository-wide file scope live in `packages/tooling/eslint.mjs`. ESLint checks JSON, JSONC, JSON5, YAML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
+The non-code baseline and its repository-wide file scope live in `packages/tooling/eslint.ts`. ESLint checks JSON, JSONC, JSON5, YAML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
 
 ### Type-aware Linting
 
@@ -134,7 +134,7 @@ ESLint is intentionally limited to non-code files. The remaining limitations and
 | Markdown code blocks     | ESLint validates the Markdown document, but fenced JavaScript and TypeScript blocks are not passed through the former overlapping preset. This remains deferred rather than duplicating the Oxlint rule set.     |
 | Override-scoped settings | The three Dify UI Tailwind rules are disabled with the rest of ESLint's code path. Oxlint still applies the web `react-x.additionalStateHooks` setting globally because it cannot scope settings to an override. |
 
-Suppression comments belong to exactly one linter. Use `oxlint-disable` for code rules from `packages/tooling/lint.config.ts`, and use `eslint-disable` only for non-code rules from `packages/tooling/eslint.mjs`. Oxlint deliberately sets `respectEslintDisableDirectives` to `false`, so an ESLint comment cannot hide an Oxlint finding.
+Suppression comments belong to exactly one linter. Use `oxlint-disable` for code rules from `packages/tooling/lint.config.ts`, and use `eslint-disable` only for non-code rules from `packages/tooling/eslint.ts`. Oxlint deliberately sets `respectEslintDisableDirectives` to `false`, so an ESLint comment cannot hide an Oxlint finding.
 
 ### Inline Disable Comments
 
@@ -155,6 +155,41 @@ Explain the concrete reason after `--`: which external contract, lifecycle, or r
 `dify/require-disable-directive-description` uses Oxlint's parsed directives to report missing explanations, including JSX comments. It runs at `error`; existing undescribed exceptions are tracked in the bulk-suppression baseline for incremental cleanup. Enable comments do not need a repeated explanation. This rule does not assess whether a reason is valid and does not replace review. Do not add generic descriptions just to silence it.
 
 `reportUnusedDisableDirectives` runs at `error` repository-wide. Remove an exception when the finding no longer exists. Keep both checks active: a described disable may still be unused, and a used disable may still lack a reason.
+
+### Handwritten HTTP Calls
+
+Web uses native Oxlint rules to discourage deprecated APIs and new handwritten requests:
+
+- `typescript/no-deprecated` rejects references to deprecated APIs. Legacy base/fetch
+  transport entry points carry `@deprecated`; generated `consoleClient`, `consoleQuery`,
+  and marketplace clients remain allowed, including direct calls from UI components.
+- `no-restricted-globals` and `no-restricted-properties` reject direct global
+  `fetch` / `XMLHttpRequest` references, including `window`, `globalThis`, `global`,
+  and `self` property access.
+- `no-restricted-imports` rejects new value imports from common HTTP packages
+  (including Ky, Axios, Undici and Node http/https). Type-only imports remain allowed.
+  Existing legacy-service and localStorage import/access restrictions remain active.
+
+`typescript/no-deprecated` applies throughout Web, including tests, mocks, stories,
+test infrastructure, and maintenance scripts. The raw transport and HTTP-client import
+restrictions apply only to production code. Repository-wide generated/vendor and
+declaration-file ignores still apply. There is no custom API rule or data-flow tracker.
+
+Existing findings are recorded in `oxlint-suppressions.json`. These are counts of
+references/imports, not endpoints awaiting migration: they include transport internals,
+assets, special transports, and unrelated deprecated APIs reported by `no-deprecated`.
+Prune counts when removing existing findings; do not raise them for new work.
+For a necessary new special transport, use a scoped `oxlint-disable-next-line`
+for the applicable native rule with a concrete contract reason.
+
+The simpler native checks intentionally accept gaps: for a deprecated arrow-function
+helper, current Oxlint reports `const saved = get` at assignment but does not propagate
+deprecation to later `saved()` calls. Adding calls through an existing alias,
+HTTP-client import, or XHR instance may therefore pass its existing baseline.
+Dynamic property access and indirect loading also require review. A per-file count
+cannot detect replacing one old use with another at the same count. Do not treat
+passing lint as proof that all requests use generated contracts. This rule set
+does not enforce Query ownership.
 
 ### Translation Function Types
 

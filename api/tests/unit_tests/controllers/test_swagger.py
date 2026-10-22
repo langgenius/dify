@@ -262,6 +262,36 @@ def test_agent_tts_routes_document_voice_queries_and_binary_audio(openapi_json: 
         assert _response_content_types(preview, status) == {"application/json"}
 
 
+def test_workflow_config_contracts_describe_node_defaults_and_unpublished_pipelines(
+    openapi_json: OpenAPIJSONLoader,
+) -> None:
+    from controllers.console import bp as console_bp
+
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", False))
+    schemas = payload["components"]["schemas"]
+    for resource in ("apps/{app_id}", "rag/pipelines/{pipeline_id}", "snippets/{snippet_id}"):
+        operation = payload["paths"][f"/{resource}/workflows/default-workflow-block-configs"]["get"]
+        assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
+            "$ref": "#/components/schemas/DefaultBlockConfigsResponse"
+        }
+    assert schemas["DefaultBlockConfigsResponse"]["items"] == {
+        "$ref": "#/components/schemas/DefaultBlockConfigItemResponse"
+    }
+    item = schemas["DefaultBlockConfigItemResponse"]
+    assert set(item["required"]) == {"type", "config"}
+    assert item["properties"]["type"]["type"] == "string"
+    assert item["properties"]["config"]["type"] == "object"
+
+    published = payload["paths"]["/rag/pipelines/{pipeline_id}/workflows/publish"]["get"]
+    assert published["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/RagPipelinePublishedWorkflowResponse"
+    }
+    assert schemas["RagPipelinePublishedWorkflowResponse"]["anyOf"] == [
+        {"$ref": "#/components/schemas/WorkflowResponse"},
+        {"type": "null"},
+    ]
+
+
 def test_console_segment_mutation_contracts_survive_admission(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.console import bp as console_bp
 

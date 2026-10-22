@@ -1,12 +1,12 @@
 // @vitest-environment node
 
 import { QueryClient } from '@tanstack/react-query'
+import { consoleQuery } from '@/service/console'
 
 const mocks = vi.hoisted(() => ({
   connection: vi.fn(async () => undefined),
   getQueryClient: vi.fn(),
   getSystemFeatures: vi.fn(),
-  queryKey: [['console', 'systemFeatures', 'get'], { type: 'query' }] as const,
 }))
 
 vi.mock('server-only', () => ({}))
@@ -19,20 +19,16 @@ vi.mock('@/next/server', () => ({
   connection: mocks.connection,
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryOptions: (options?: { staleTime?: 'static' }) => ({
-          queryKey: mocks.queryKey,
-          queryFn: mocks.getSystemFeatures,
-          retry: false,
-          ...options,
-        }),
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'systemFeatures.get': () => mocks.getSystemFeatures(),
+    }),
+  }
+})
 
 describe('System Features server requests', () => {
   beforeEach(() => {
@@ -54,7 +50,7 @@ describe('System Features server requests', () => {
     expect(mocks.getSystemFeatures).toHaveBeenCalledOnce()
     expect(dehydrateSystemFeatures().queries).toEqual([
       expect.objectContaining({
-        queryKey: mocks.queryKey,
+        queryKey: consoleQuery.systemFeatures.get.queryKey(),
         state: expect.objectContaining({
           data: { deployment_edition: 'CLOUD' },
           status: 'success',

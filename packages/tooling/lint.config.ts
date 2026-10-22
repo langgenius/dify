@@ -10,13 +10,286 @@ const webPackageJson = path.resolve(rootDir, 'web/package.json')
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
 const enableTailwindCanonicalClasses = process.env.TAILWIND_CANONICAL_CLASSES === 'true'
 
+const handwrittenApiMessage =
+  'Use generated consoleClient/consoleQuery APIs. New special transports need a scoped lint exception with a concrete reason.'
+const rawHttpGlobals = ['fetch', 'XMLHttpRequest'].map((name) => ({
+  name,
+  message: handwrittenApiMessage,
+}))
+const rawHttpProperties = ['window', 'globalThis', 'global', 'self'].flatMap((object) =>
+  ['fetch', 'XMLHttpRequest'].map((property) => ({
+    object,
+    property,
+    message: handwrittenApiMessage,
+  })),
+)
+const rawHttpImports = {
+  group: [
+    'axios',
+    'ky',
+    'ofetch',
+    'node-fetch',
+    'cross-fetch',
+    'isomorphic-fetch',
+    'undici',
+    'superagent',
+    'http',
+    'https',
+    'node:http',
+    'node:https',
+  ].flatMap((name) => [name, `${name}/*`]),
+  allowTypeImports: true,
+  message: handwrittenApiMessage,
+}
+const handwrittenApiScope = {
+  files: ['web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
+  excludeFiles: [
+    'web/**/__tests__/**',
+    'web/**/__mocks__/**',
+    'web/test/**',
+    'web/scripts/**',
+    'web/**/*.spec.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+    'web/**/*.test.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+    'web/**/*.stories.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+    'web/**/*.story.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+    'web/vitest.setup.ts',
+    'web/vitest.browser.setup.ts',
+  ],
+}
+
+const webRestrictedImports = [
+  'error',
+  {
+    paths: [
+      {
+        name: 'next',
+        message: 'Import Next APIs from the corresponding @/next module instead of next.',
+      },
+      {
+        name: 'ahooks',
+        importNames: ['useLocalStorageState'],
+        message: 'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
+      },
+    ],
+    patterns: [
+      {
+        group: ['next/image'],
+        message: 'Do not import next/image. Use native img tags instead.',
+      },
+      {
+        group: ['next/font', 'next/font/*'],
+        message: 'Do not import next/font. Use the project font styles instead.',
+      },
+      {
+        // next/dynamic must be imported directly for compiler-generated preload metadata.
+        group: [
+          'next/*',
+          '!next/dynamic',
+          '!next/font',
+          '!next/font/*',
+          '!next/image',
+          '!next/image/*',
+        ],
+        message: 'Import Next APIs from the corresponding @/next/* module instead of next/*.',
+      },
+      {
+        group: ['@base-ui/react', '@base-ui/react/*'],
+        message:
+          'Do not import Base UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
+      },
+      {
+        group: ['@floating-ui/*'],
+        message:
+          'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
+      },
+      {
+        group: ['@/service/base', '@/service/base/*', '**/service/base', '**/service/base/*'],
+        message:
+          'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
+      },
+      {
+        group: ['@/service/fetch', '@/service/fetch/*', '**/service/fetch', '**/service/fetch/*'],
+        message:
+          'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
+      },
+    ],
+  },
+] satisfies NonNullable<OxlintConfig['rules']>[string]
+
+const serviceRestrictedImports = [
+  'error',
+  {
+    paths: [
+      {
+        name: 'next',
+        message: 'Import Next APIs from the corresponding @/next module instead of next.',
+      },
+      {
+        name: 'ahooks',
+        importNames: ['useLocalStorageState'],
+        message: 'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
+      },
+    ],
+    patterns: [
+      {
+        group: ['next/image'],
+        message: 'Do not import next/image. Use native img tags instead.',
+      },
+      {
+        group: ['next/font', 'next/font/*'],
+        message: 'Do not import next/font. Use the project font styles instead.',
+      },
+      {
+        // next/dynamic must be imported directly for compiler-generated preload metadata.
+        group: [
+          'next/*',
+          '!next/dynamic',
+          '!next/font',
+          '!next/font/*',
+          '!next/image',
+          '!next/image/*',
+        ],
+        message: 'Import Next APIs from the corresponding @/next/* module instead of next/*.',
+      },
+      {
+        group: ['@base-ui/react', '@base-ui/react/*'],
+        message:
+          'Do not import Base UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
+      },
+      {
+        group: ['@floating-ui/*'],
+        message:
+          'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
+      },
+      {
+        group: ['@/service/base', '@/service/base/*', '**/service/base', '**/service/base/*'],
+        message:
+          'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
+      },
+      {
+        group: ['@/service/fetch', '@/service/fetch/*', '**/service/fetch', '**/service/fetch/*'],
+        message:
+          'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
+      },
+      {
+        group: ['./base', './base/*', '../base', '../base/*', '../../base', '../../base/*'],
+        message:
+          'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
+      },
+      {
+        group: ['./fetch', './fetch/*', '../fetch', '../fetch/*', '../../fetch', '../../fetch/*'],
+        message:
+          'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
+      },
+    ],
+  },
+] satisfies NonNullable<OxlintConfig['rules']>[string]
+
+const defaultRestrictedGlobals = [
+  'error',
+  {
+    message: 'Use `globalThis` instead.',
+    name: 'global',
+  },
+  {
+    message: 'Use `globalThis` instead.',
+    name: 'self',
+  },
+] satisfies NonNullable<OxlintConfig['rules']>[string]
+
+const storageRestrictedGlobals = [
+  'error',
+  {
+    name: 'localStorage',
+    message:
+      'Do not use localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
+  },
+] satisfies NonNullable<OxlintConfig['rules']>[string]
+
+const defaultRestrictedProperties = [
+  'error',
+  {
+    message: 'Use `Object.getPrototypeOf` or `Object.setPrototypeOf` instead.',
+    property: '__proto__',
+  },
+  {
+    message: 'Use `Object.defineProperty` instead.',
+    property: '__defineGetter__',
+  },
+  {
+    message: 'Use `Object.defineProperty` instead.',
+    property: '__defineSetter__',
+  },
+  {
+    message: 'Use `Object.getOwnPropertyDescriptor` instead.',
+    property: '__lookupGetter__',
+  },
+  {
+    message: 'Use `Object.getOwnPropertyDescriptor` instead.',
+    property: '__lookupSetter__',
+  },
+] satisfies NonNullable<OxlintConfig['rules']>[string]
+
+const storageRestrictedProperties = [
+  'error',
+  {
+    object: 'window',
+    property: 'localStorage',
+    message:
+      'Do not use window.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
+  },
+  {
+    object: 'globalThis',
+    property: 'localStorage',
+    message:
+      'Do not use globalThis.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
+  },
+] satisfies NonNullable<OxlintConfig['rules']>[string]
+
+const focusIndicatorOverrides = [
+  'ring-w',
+  'ring-color',
+  'ring-offset-w',
+  'ring-offset-color',
+  'outline-w',
+  'outline-color',
+  'outline-style',
+  'outline-offset',
+  'focus:inset-ring-*',
+  'focus*:inset-ring-*',
+  '*:focus:inset-ring-*',
+  '*:focus*:inset-ring-*',
+]
+
 export const stylingContractRules = {
   'shadcn/no-restyle': [
     'error',
     {
-      componentImports: ['^@langgenius/dify-ui/(tooltip|infotip|dialog|alert-dialog)$'],
+      componentImports: ['^@langgenius/dify-ui/'],
       allow: ['*'],
       contracts: [
+        {
+          pattern: '^(ScrollArea|ScrollAreaViewport)$',
+          allow: ['*'],
+          deny: [...focusIndicatorOverrides, 'ring-*', 'inset-ring-*'],
+          message:
+            '"{{className}}" duplicates or overrides the ScrollArea focus indicator. Put focus, keyboard events and accessible names on ScrollAreaViewport; ScrollArea paints the indicator above its contents. Do not add another ring or outline to either part.',
+        },
+        {
+          pattern: '^(Button|IconButton)$',
+          allow: ['*'],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" duplicates or overrides the {{component}} focus indicator. Keep its width, color and primary-button inner separator. Callers may use ring-inset to avoid clipping; a different focus owner or a box-shadow animation requires a documented local exception.',
+        },
+        {
+          pattern:
+            '^(Input|Textarea|InputGroup|InputGroupInput|NumberFieldGroup|NumberFieldInput|ComboboxInputGroup|ComboboxInput|AutocompleteInputGroup|AutocompleteInput|DropdownMenuInputGroup|DropdownMenuInput)$',
+          allow: ['*'],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" duplicates or overrides the {{component}} focus indicator. The visible field owns focus; an input inside a styled group stays bare. Use ring-inset for clipped edges. A custom composite that moves the indicator needs a documented local exception.',
+        },
         {
           pattern: '^TooltipContent$',
           allow: ['flex', 'items-center', 'gap-1', 'w-*', 'max-w-*'],
@@ -80,6 +353,16 @@ export const stylingContractRules = {
             '"{{className}}" is outside the {{component}} styling contract. The body owns the content gutter and scrolls between the header and footer; callers may lay out its content.',
         },
       ],
+    },
+  ],
+} satisfies NonNullable<OxlintConfig['rules']>
+
+export const storyStylingContractRules = {
+  'shadcn/no-restyle': [
+    'error',
+    {
+      ...stylingContractRules['shadcn/no-restyle'][1],
+      componentImports: ['^@langgenius/dify-ui/', '^\\.{1,2}(?:/|$)'],
     },
   ],
 } satisfies NonNullable<OxlintConfig['rules']>
@@ -257,7 +540,7 @@ export const lintConfig = {
     ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
     {
       name: 'dify',
-      specifier: './plugins/eslint/index.js',
+      specifier: './plugins/eslint/index.ts',
     },
     {
       name: 'eslint-react',
@@ -387,40 +670,8 @@ export const lintConfig = {
       },
     ],
     'no-regex-spaces': 'error',
-    'no-restricted-globals': [
-      'error',
-      {
-        message: 'Use `globalThis` instead.',
-        name: 'global',
-      },
-      {
-        message: 'Use `globalThis` instead.',
-        name: 'self',
-      },
-    ],
-    'no-restricted-properties': [
-      'error',
-      {
-        message: 'Use `Object.getPrototypeOf` or `Object.setPrototypeOf` instead.',
-        property: '__proto__',
-      },
-      {
-        message: 'Use `Object.defineProperty` instead.',
-        property: '__defineGetter__',
-      },
-      {
-        message: 'Use `Object.defineProperty` instead.',
-        property: '__defineSetter__',
-      },
-      {
-        message: 'Use `Object.getOwnPropertyDescriptor` instead.',
-        property: '__lookupGetter__',
-      },
-      {
-        message: 'Use `Object.getOwnPropertyDescriptor` instead.',
-        property: '__lookupSetter__',
-      },
-    ],
+    'no-restricted-globals': defaultRestrictedGlobals,
+    'no-restricted-properties': defaultRestrictedProperties,
     'no-self-assign': [
       'error',
       {
@@ -881,6 +1132,10 @@ export const lintConfig = {
       rules: stylingContractRules,
     },
     {
+      files: ['packages/dify-ui/**/*.stories.{jsx,tsx}'],
+      rules: storyStylingContractRules,
+    },
+    {
       files: ['web/**/*.stories.{js,cjs,mjs,jsx,ts,tsx}', 'web/**/*.story.{js,cjs,mjs,jsx,ts,tsx}'],
       rules: {
         'storybook/await-interactions': 'error',
@@ -940,168 +1195,13 @@ export const lintConfig = {
     {
       files: ['web/**/*.{ts,cts,mts}', 'web/**/*.tsx'],
       rules: {
-        'no-restricted-imports': [
-          'error',
-          {
-            paths: [
-              {
-                name: 'next',
-                message: 'Import Next APIs from the corresponding @/next module instead of next.',
-              },
-              {
-                name: 'ahooks',
-                importNames: ['useLocalStorageState'],
-                message:
-                  'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
-              },
-            ],
-            patterns: [
-              {
-                group: ['next/image'],
-                message: 'Do not import next/image. Use native img tags instead.',
-              },
-              {
-                group: ['next/font', 'next/font/*'],
-                message: 'Do not import next/font. Use the project font styles instead.',
-              },
-              {
-                // next/dynamic must be imported directly for compiler-generated preload metadata.
-                group: [
-                  'next/*',
-                  '!next/dynamic',
-                  '!next/font',
-                  '!next/font/*',
-                  '!next/image',
-                  '!next/image/*',
-                ],
-                message:
-                  'Import Next APIs from the corresponding @/next/* module instead of next/*.',
-              },
-              {
-                group: ['@base-ui/react', '@base-ui/react/*'],
-                message:
-                  'Do not import Base UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
-              },
-              {
-                group: ['@floating-ui/*'],
-                message:
-                  'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
-              },
-              {
-                group: [
-                  '@/service/base',
-                  '@/service/base/*',
-                  '**/service/base',
-                  '**/service/base/*',
-                ],
-                message:
-                  'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
-              },
-              {
-                group: [
-                  '@/service/fetch',
-                  '@/service/fetch/*',
-                  '**/service/fetch',
-                  '**/service/fetch/*',
-                ],
-                message:
-                  'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
-              },
-            ],
-          },
-        ],
+        'no-restricted-imports': webRestrictedImports,
       },
     },
     {
       files: ['web/service/**/*.ts', 'web/service/**/*.tsx'],
       rules: {
-        'no-restricted-imports': [
-          'error',
-          {
-            paths: [
-              {
-                name: 'next',
-                message: 'Import Next APIs from the corresponding @/next module instead of next.',
-              },
-              {
-                name: 'ahooks',
-                importNames: ['useLocalStorageState'],
-                message:
-                  'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
-              },
-            ],
-            patterns: [
-              {
-                group: ['next/image'],
-                message: 'Do not import next/image. Use native img tags instead.',
-              },
-              {
-                group: ['next/font', 'next/font/*'],
-                message: 'Do not import next/font. Use the project font styles instead.',
-              },
-              {
-                // next/dynamic must be imported directly for compiler-generated preload metadata.
-                group: [
-                  'next/*',
-                  '!next/dynamic',
-                  '!next/font',
-                  '!next/font/*',
-                  '!next/image',
-                  '!next/image/*',
-                ],
-                message:
-                  'Import Next APIs from the corresponding @/next/* module instead of next/*.',
-              },
-              {
-                group: ['@base-ui/react', '@base-ui/react/*'],
-                message:
-                  'Do not import Base UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
-              },
-              {
-                group: ['@floating-ui/*'],
-                message:
-                  'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
-              },
-              {
-                group: [
-                  '@/service/base',
-                  '@/service/base/*',
-                  '**/service/base',
-                  '**/service/base/*',
-                ],
-                message:
-                  'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
-              },
-              {
-                group: [
-                  '@/service/fetch',
-                  '@/service/fetch/*',
-                  '**/service/fetch',
-                  '**/service/fetch/*',
-                ],
-                message:
-                  'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
-              },
-              {
-                group: ['./base', './base/*', '../base', '../base/*', '../../base', '../../base/*'],
-                message:
-                  'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
-              },
-              {
-                group: [
-                  './fetch',
-                  './fetch/*',
-                  '../fetch',
-                  '../fetch/*',
-                  '../../fetch',
-                  '../../fetch/*',
-                ],
-                message:
-                  'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
-              },
-            ],
-          },
-        ],
+        'no-restricted-imports': serviceRestrictedImports,
       },
     },
     {
@@ -1116,29 +1216,8 @@ export const lintConfig = {
         'web/instrumentation-client.ts',
       ],
       rules: {
-        'no-restricted-globals': [
-          'error',
-          {
-            name: 'localStorage',
-            message:
-              'Do not use localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
-          },
-        ],
-        'no-restricted-properties': [
-          'error',
-          {
-            object: 'window',
-            property: 'localStorage',
-            message:
-              'Do not use window.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
-          },
-          {
-            object: 'globalThis',
-            property: 'localStorage',
-            message:
-              'Do not use globalThis.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
-          },
-        ],
+        'no-restricted-globals': storageRestrictedGlobals,
+        'no-restricted-properties': storageRestrictedProperties,
       },
     },
     {
@@ -1619,6 +1698,54 @@ export const lintConfig = {
         'typescript/restrict-template-expressions': 'error',
         'typescript/unbound-method': 'error',
         'no-useless-assignment': 'error',
+      },
+    },
+    // Apply after the existing Web overrides and preserve their unrelated restrictions.
+    {
+      files: ['web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
+      rules: {
+        'typescript/no-deprecated': 'error',
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      rules: {
+        'no-restricted-globals': [...defaultRestrictedGlobals, ...rawHttpGlobals],
+        'no-restricted-properties': [...defaultRestrictedProperties, ...rawHttpProperties],
+        'no-restricted-imports': [
+          'error',
+          {
+            ...webRestrictedImports[1],
+            patterns: [...webRestrictedImports[1].patterns, rawHttpImports],
+          },
+        ],
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      files: ['web/**/*.{ts,cts,mts}', 'web/**/*.tsx'],
+      excludeFiles: [
+        ...handwrittenApiScope.excludeFiles,
+        'web/**/*.bench.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+        'web/**/*.benchmark.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+        'web/instrumentation-client.ts',
+      ],
+      rules: {
+        'no-restricted-globals': [...storageRestrictedGlobals, ...rawHttpGlobals],
+        'no-restricted-properties': [...storageRestrictedProperties, ...rawHttpProperties],
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      files: ['web/service/**/*.ts', 'web/service/**/*.tsx'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            ...serviceRestrictedImports[1],
+            patterns: [...serviceRestrictedImports[1].patterns, rawHttpImports],
+          },
+        ],
       },
     },
   ],

@@ -43,9 +43,6 @@ from controllers.console.app import (
     workflow_draft_variable as workflow_draft_variable_module,
 )
 from controllers.console.app import (
-    workflow_trigger as workflow_trigger_module,
-)
-from controllers.console.app import (
     wraps as wraps_module,
 )
 from controllers.console.app.completion import ChatMessagePayload, CompletionMessagePayload
@@ -64,12 +61,10 @@ from controllers.console.app.workflow_draft_variable import (
     WorkflowDraftVariableListQuery,
     WorkflowDraftVariableUpdatePayload,
 )
-from controllers.console.app.workflow_trigger import ParserEnable, WebhookTriggerQuery
 from machinery.context import RequestContext
 from models import App, Site
 from models.account import Account, AccountStatus
 from models.engine import db
-from models.trigger import WorkflowWebhookTrigger
 from services.app_site_service import (
     AppSiteAppNotFoundError,
     AppSiteChanges,
@@ -126,7 +121,6 @@ def database_app() -> Iterator[Flask]:
 
     with app.app_context():
         Site.__table__.create(db.engine)
-        WorkflowWebhookTrigger.__table__.create(db.engine)
         yield app
 
 
@@ -601,39 +595,6 @@ class TestWorkflowDraftVariableEndpoints:
         assert captured["app_model"].id == APP_ID
         assert captured["account"].id == USER_ID
         assert captured["session"].get_bind() is db.engine
-
-
-class TestWorkflowTriggerEndpoints:
-    def test_webhook_trigger_payload(self):
-        payload = WebhookTriggerQuery(node_id="node-1")
-        assert payload.node_id == "node-1"
-
-        enable_payload = ParserEnable(trigger_id="trigger-1", enable_trigger=True)
-        assert enable_payload.enable_trigger is True
-
-    def test_webhook_trigger_api_get(
-        self,
-        database_app: Flask,
-        sqlite_session: Session,
-    ) -> None:
-        api = workflow_trigger_module.WebhookTriggerApi()
-        method = unwrap(api.get)
-        trigger = WorkflowWebhookTrigger(
-            app_id=APP_ID,
-            node_id="node-1",
-            tenant_id=TENANT_ID,
-            webhook_id="webhook-1",
-            created_by=USER_ID,
-        )
-        sqlite_session.add(trigger)
-        sqlite_session.commit()
-
-        with database_app.test_request_context("/?node_id=node-1"):
-            result = method(api, WebhookTriggerQuery(node_id="node-1"), sqlite_session, app_model=_make_app())
-
-        assert isinstance(result, dict)
-        assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(result.keys())
-        assert result["webhook_id"] == "webhook-1"
 
 
 class TestWrapsEndpoints:

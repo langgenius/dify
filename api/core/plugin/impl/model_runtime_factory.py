@@ -42,6 +42,11 @@ def create_model_type_instance(
     if model_class is None:
         raise ValueError(f"Unsupported model type: {model_type}")
 
+    from core.plugin.impl.model_runtime import PluginModelRuntime
+
+    if isinstance(runtime, PluginModelRuntime):
+        runtime.bind_provider_schema(provider_schema)
+
     return model_class(provider_schema=provider_schema, model_runtime=runtime)
 
 

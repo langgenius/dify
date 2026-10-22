@@ -12,7 +12,7 @@ import { useState } from 'react'
 import ReactFlow, { ReactFlowProvider, useEdges, useNodes } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -89,7 +89,7 @@ function createChecklistWrapper({ nodes, edges }: Graph, options: ChecklistOptio
               <ReactFlowProvider>
                 <ReactFlow nodes={nodes} edges={edges} />
                 {children}
-                <AppToastHost timeout={0} />
+                <AppToaster timeout={0} />
               </ReactFlowProvider>
             </DatasetsDetailProvider>
           </CatalogProvider>
