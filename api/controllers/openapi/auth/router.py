@@ -10,14 +10,14 @@ from werkzeug.exceptions import NotFound, Unauthorized
 from configs import dify_config
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import pipeline_for_subject
-from controllers.openapi.auth.requirements import assert_license_valid
+from controllers.openapi.auth.requirements import assert_bearer_enabled, assert_license_valid
 from controllers.openapi.auth.resource_access import authenticate_resource_token
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import subject_from_auth
 from core.db.session_factory import session_factory
 from core.logging.context import get_trace_id
 from enums import DeploymentEdition
-from libs.oauth_bearer import InvalidBearerError, assert_bearer_feature_enabled, extract_bearer, get_authenticator
+from libs.oauth_bearer import InvalidBearerError, extract_bearer, get_authenticator
 from services.auth.resource_access_token_contracts import is_resource_access_token
 
 
@@ -44,7 +44,7 @@ class AuthRouter:
             raise NotFound()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             assert_license_valid()
-        assert_bearer_feature_enabled()
+        assert_bearer_enabled()
 
         token = extract_bearer(request)
         is_resource_token = bool(token and is_resource_access_token(token))

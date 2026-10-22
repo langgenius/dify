@@ -25,6 +25,7 @@ from controllers.openapi._errors import (
     AppAccessModeUnavailable,
     AppModeMismatch,
     AppQuotaExceeded,
+    BearerAuthDisabled,
     InsufficientScope,
     InsufficientWorkspaceRole,
     LicenseInvalid,
@@ -97,6 +98,14 @@ def assert_license_valid() -> None:
     """The router's deployment-wide gate, answered before `extract_bearer`."""
     if SystemFeatureService.get_public_system_features().license.status in _DEAD_LICENSE_STATUSES:
         raise LicenseInvalid()
+
+
+def assert_bearer_enabled() -> None:
+    """The authenticator is never bound when ENABLE_OAUTH_BEARER is off, so minted
+    tokens would be unusable and guarded routes would 500.
+    """
+    if not dify_config.ENABLE_OAUTH_BEARER:
+        raise BearerAuthDisabled()
 
 
 # The routes live in `app_info`, which imports this module, so the op ids are spelled out; a test pins them.

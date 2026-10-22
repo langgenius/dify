@@ -6,6 +6,8 @@ Console account admission. The SSO branch lives in ``oauth_device_sso.py``.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from functools import wraps
 from http import HTTPStatus
 
 from flask import request
@@ -16,6 +18,7 @@ from werkzeug.exceptions import BadRequest
 from controllers.common.schema import query_params_from_model
 from controllers.console.flask_admission import console_account_admission
 from controllers.openapi import openapi_ns
+from controllers.openapi._errors import ErrorBody
 from controllers.openapi._models import (
     DeviceCodeRequest,
     DeviceCodeResponse,
@@ -27,6 +30,7 @@ from controllers.openapi._models import (
     DevicePollRequest,
     DeviceTokenResponse,
 )
+from controllers.openapi.auth.requirements import assert_bearer_enabled
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response, extract_remote_ip
 from libs.rate_limit import (
@@ -49,6 +53,15 @@ from services.oauth_device_contracts import (
     PollTooFastError,
     UnsupportedClientError,
 )
+
+
+def _bearer_enabled[**P, R](fn: Callable[P, R]) -> Callable[P, R]:
+    @wraps(fn)
+    def inner(*args: P.args, **kwargs: P.kwargs) -> R:
+        assert_bearer_enabled()
+        return fn(*args, **kwargs)
+
+    return inner
 
 
 def _validate_json[M: BaseModel](model: type[M]) -> M:
@@ -98,6 +111,12 @@ class OAuthDeviceCodeApi(Resource):
     @openapi_ns.response(
         HTTPStatus.BAD_REQUEST, "Unsupported client", openapi_ns.models[DeviceFlowErrorResponse.__name__]
     )
+    @openapi_ns.response(
+        HTTPStatus.SERVICE_UNAVAILABLE,
+        "Sign-in with access tokens is turned off on this server",
+        openapi_ns.models[ErrorBody.__name__],
+    )
+    @_bearer_enabled
     @rate_limit(LIMIT_DEVICE_CODE_PER_IP)
     def post(self):
         payload = _validate_json(DeviceCodeRequest)
@@ -164,7 +183,8 @@ class DeviceApproveApi(Resource):
     @openapi_ns.response(
         HTTPStatus.SERVICE_UNAVAILABLE, "Approval outcome unknown", openapi_ns.models[DeviceFlowErrorResponse.__name__]
     )
-    @console_account_admission(require_oauth_bearer_enabled=True)
+    @_bearer_enabled
+    @console_account_admission()
     @rate_limit(LIMIT_DEVICE_FLOW_APPROVE)
     def post(self, request_context: RequestContext):
         payload = _validate_json(DeviceMutateRequest)
@@ -190,7 +210,8 @@ class DeviceDenyApi(Resource):
     @openapi_ns.response(
         HTTPStatus.SERVICE_UNAVAILABLE, "Approval outcome unknown", openapi_ns.models[DeviceFlowErrorResponse.__name__]
     )
-    @console_account_admission(require_oauth_bearer_enabled=True)
+    @_bearer_enabled
+    @console_account_admission()
     @rate_limit(LIMIT_DEVICE_FLOW_APPROVE)
     def post(self, _request_context: RequestContext):
         payload = _validate_json(DeviceMutateRequest)

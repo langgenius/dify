@@ -6,18 +6,15 @@ import hashlib
 import json
 import logging
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from functools import wraps
 from typing import Literal, Protocol
 
 from sqlalchemy import update
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import ServiceUnavailable
 
-from configs import dify_config
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT, Scope, SubjectType, TokenType
 from libs.rate_limit import enforce_bearer_rate_limit
 from models import OAuthAccessToken
@@ -325,23 +322,6 @@ def extract_bearer(req) -> str | None:
     if scheme.lower() != "bearer" or not value:
         return None
     return value.strip()
-
-
-def assert_bearer_feature_enabled() -> None:
-    """503 if ENABLE_OAUTH_BEARER is off: the authenticator is never bound then,
-    so minted tokens would be unusable and guarded routes would 500.
-    """
-    if not dify_config.ENABLE_OAUTH_BEARER:
-        raise ServiceUnavailable("bearer_auth_disabled: set ENABLE_OAUTH_BEARER=true to enable")
-
-
-def bearer_feature_required[**P, R](fn: Callable[P, R]) -> Callable[P, R]:
-    @wraps(fn)
-    def inner(*args: P.args, **kwargs: P.kwargs) -> R:
-        assert_bearer_feature_enabled()
-        return fn(*args, **kwargs)
-
-    return inner
 
 
 # ============================================================================

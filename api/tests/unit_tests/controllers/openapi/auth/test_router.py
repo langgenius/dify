@@ -9,12 +9,12 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import NotFound, ServiceUnavailable, Unauthorized
+from werkzeug.exceptions import NotFound, Unauthorized
 
 import libs.rate_limit as rate_limit_module
 from constants.oauth_bearer import TokenType
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
-from controllers.openapi._errors import LicenseInvalid
+from controllers.openapi._errors import BearerAuthDisabled, LicenseInvalid
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
@@ -121,7 +121,22 @@ def test_a_disabled_bearer_feature_503s_before_the_bearer_is_read(
     view = _guard(_nothing)
 
     with app.test_request_context("/openapi/v1/account"):
-        with pytest.raises(ServiceUnavailable, match="bearer_auth_disabled"):
+        with pytest.raises(BearerAuthDisabled):
+            view()
+
+
+def test_a_dead_license_is_reported_before_a_disabled_bearer_feature(
+    app: Flask,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE, ENABLE_OAUTH_BEARER=False)
+    monkeypatch.setattr(FEATURES, lambda: system_features(license_status=LicenseStatus.EXPIRED))
+    monkeypatch.setattr(f"{ROUTER}.extract_bearer", never_reached)
+    view = _guard(_nothing)
+
+    with app.test_request_context("/openapi/v1/account"):
+        with pytest.raises(LicenseInvalid):
             view()
 
 

@@ -2058,7 +2058,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     # deny declare the RFC 8628-style `DeviceFlowErrorResponse` for the statuses their flow
     # errors use.
     ("post", "/oauth/device/approve"): frozenset({"200", "404", "409", "503", "default"}),
-    ("post", "/oauth/device/code"): frozenset({"200", "400", "default"}),
+    ("post", "/oauth/device/code"): frozenset({"200", "400", "503", "default"}),
     ("post", "/oauth/device/deny"): frozenset({"200", "404", "409", "503", "default"}),
     ("get", "/oauth/device/lookup"): frozenset({"200", "default"}),
     ("post", "/oauth/device/token"): frozenset({"200", "400", "default"}),

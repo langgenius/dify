@@ -3195,6 +3195,7 @@ export type PostOauthDeviceCodeData = {
 
 export type PostOauthDeviceCodeErrors = {
   400: DeviceFlowErrorResponse | ErrorBody
+  503: ErrorBody
   default: ErrorBody
 }
 
