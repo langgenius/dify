@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "vp test run",
-    "type-check": "tsc --project tsconfig.json",
+    "type-check": "tsrs --noEmit --project tsconfig.json",
     "check:images": "node check-image-resources.ts"
   },
   "dependencies": {
@@ -19,6 +19,7 @@
     "@types/node": "catalog:",
     "@types/picomatch": "catalog:",
     "@typescript/native": "catalog:",
+    "tsrs": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },

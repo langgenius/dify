@@ -34,6 +34,10 @@ trustPolicyExclude:
   - chokidar@4.0.3
   - reselect@5.1.1
   - semver@6.3.1
+  # tsrs 0.18 is published by the oxc-project GitHub Actions trusted publisher
+  # with provenance. pnpm still reports a downgrade against earlier releases of
+  # the same package name.
+  - tsrs@0.18.0-ts7.1.0-dev.20260929
 verifyDepsBeforeRun: install
 packages:
   - web
@@ -257,6 +261,7 @@ catalog:
   svgo: 4.1.0
   tailwindcss: 4.3.3
   tldts: 7.4.18
+  tsrs: 0.18.0-ts7.1.0-dev.20260929
   typescript: npm:@typescript/typescript6@6.0.2
   uglify-js: 3.19.3
   undici: 7.30.0
