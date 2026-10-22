@@ -113,6 +113,7 @@
   "fileUploader.pasteFileLinkInputPlaceholder": "Enter URL...",
   "fileUploader.pasteFileLinkInvalid": "Invalid file link",
   "fileUploader.uploadDisabled": "File upload is disabled",
+  "fileUploader.uploadNumLimit": "You can only upload up to {{count}} files",
   "fileUploader.uploadFromComputer": "Local upload",
   "fileUploader.uploadFromComputerLimit": "Upload {{type}} cannot exceed {{size}}",
   "fileUploader.uploadFromComputerReadError": "File reading failed, please try again.",
