@@ -13,7 +13,17 @@ from copy import deepcopy
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-from core.dify_builder.models import Actor, Diagnosis, Graph, MutationIntent, NodeOutput, Risk, Run
+from core.dify_builder.models import (
+    Actor,
+    Diagnosis,
+    DifyBuilderContext,
+    Graph,
+    MutationIntent,
+    NodeOutput,
+    Risk,
+    Run,
+    Session,
+)
 from services.dify_builder import diagnostic_context
 from services.dify_builder.credentials import REDACTED
 from services.dify_builder.revision import executable_graph_revision
@@ -321,6 +331,8 @@ def build_evidence(
 
 def _read_context(env: "Env", app_id: str, actor: Actor, failed_run: Run) -> tuple[Graph | None, list[NodeOutput], Run]:
     """Optional native capability; older/test ports truthfully remain unbound."""
+    if failed_run.status == "succeeded":
+        return None, failed_run.per_node, failed_run
     if isinstance(env.dify, HistoricalRunReader):
         historical, outputs, native_error = env.dify.failed_run_context(app_id, actor, failed_run.dify_run_id)
     else:
@@ -333,10 +345,162 @@ def _read_context(env: "Env", app_id: str, actor: Actor, failed_run: Run) -> tup
     return historical, outputs, replace(failed_run, error=error)
 
 
-def diagnose_failure(env: "Env", app_id: str, actor: Actor, failed_run: Run, current: Graph) -> Diagnosis:
+def _business_observations(run: Run, graph: Graph, checks: Collection[Mapping[str, object]]) -> list[dict[str, object]]:
+    """Small sanitized observations from successful producers of failed outputs.
+
+    Only the immutable verified Run supplies observations. Graph selectors and
+    upstream edges select relevant producers; neither authored schemas nor a
+    separate failed-run query can invent successful execution values.
+    """
+    nodes = {node.get("id"): node for node in graph.get("nodes", [])}
+    roots: set[str] = set()
+    paths: set[str] = set()
+    for check in checks:
+        path = check.get("path")
+        if isinstance(path, list) and path and isinstance(path[0], str):
+            paths.add(path[0])
+    for node in nodes.values():
+        if node.get("data", {}).get("type") != "end":
+            continue
+        for output in node.get("data", {}).get("outputs", []):
+            selector = output.get("value_selector", [])
+            if (
+                output.get("variable") in paths
+                and isinstance(selector, list)
+                and selector
+                and isinstance(selector[0], str)
+            ):
+                roots.add(selector[0])
+
+    def selectors(value: object) -> set[str]:
+        found: set[str] = set()
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if (
+                    key in {"value_selector", "variable_selector"}
+                    and isinstance(item, list)
+                    and item
+                    and isinstance(item[0], str)
+                ):
+                    found.add(item[0])
+                found.update(selectors(item))
+        elif isinstance(value, list):
+            for item in value:
+                found.update(selectors(item))
+        return found
+
+    relevant: set[str] = set()
+    while roots:
+        node_id = roots.pop()
+        if node_id in relevant or node_id not in nodes:
+            continue
+        relevant.add(node_id)
+        roots.update(selectors(nodes[node_id].get("data", {})) - relevant)
+        roots.update(
+            edge["source"]
+            for edge in graph.get("edges", [])
+            if edge.get("target") == node_id and isinstance(edge.get("source"), str) and edge["source"] not in relevant
+        )
+    _, safe_rows = diagnostic_context.redact_run_context(run, graph, run.per_node)
+    counts = Counter(row.node_id for row in run.per_node)
+    executed = set(run.verification.executed_node_ids) if run.verification else set()
+
+    def shape(value: object) -> dict[str, object]:
+        # At the traversal boundary retain collection cardinality, not inferred
+        # contents. In particular a Tool fallback data=[] is observably empty.
+        result: dict[str, object] = {"type": json_type(value)}
+        if isinstance(value, (list, dict, str)):
+            result["length"] = len(value)
+        return result
+
+    def preview(value: object, depth: int = 0) -> object:
+        if isinstance(value, str):
+            return {
+                "type": "string",
+                "length": len(value),
+                "preview": value[:600] if "://" not in value else "[URL withheld]",
+            }
+        if isinstance(value, dict):
+            return {
+                "type": "object",
+                "fields": {
+                    str(key): preview(item, depth + 1) if depth < 2 else shape(item)
+                    for key, item in list(value.items())[:8]
+                    if str(key).lower() not in {"files", "url", "remote_url", "reference", "storage_key", "file_key"}
+                },
+            }
+        if isinstance(value, list):
+            return {
+                "type": "array",
+                "length": len(value),
+                "items": [preview(item, depth + 1) for item in value[:2]] if depth < 2 else [],
+            }
+        return value if value is None or isinstance(value, (bool, int, float)) else {"type": type(value).__name__}
+
+    result: list[dict[str, object]] = []
+    for row in safe_rows:
+        node_type = nodes.get(row.node_id, {}).get("data", {}).get("type")
+        if (
+            row.node_id not in relevant
+            or row.node_id not in executed
+            or counts[row.node_id] != 1
+            or row.status not in {"success", "succeeded"}
+            or not row.outputs_available
+            or node_type not in {"tool", "code"}
+        ):
+            continue
+        record = {
+            "node_id": row.node_id,
+            "node_type": node_type,
+            "inputs": preview(row.inputs),
+            "outputs": preview(row.outputs),
+        }
+        if len(json.dumps(record, ensure_ascii=True).encode()) > 2000:
+            continue
+        if len(json.dumps([*result, record], ensure_ascii=True).encode()) > 8000:
+            break
+        result.append(record)
+        if len(result) == 6:
+            break
+    return result
+
+
+def _add_business_failure(
+    evidence: dict[str, Any],
+    run: Run,
+    current: Graph,
+    historical: Graph | None,
+    outputs: list[NodeOutput],
+    task: tuple[Session, DifyBuilderContext, str] | None,
+) -> None:
+    if task is None:
+        return
+    from services.dify_builder.business_acceptance import business_failure_context
+
+    session, context, revision = task
+    business = business_failure_context(
+        run, session, context, current_revision=revision, current_graph_revision=executable_graph_revision(current)
+    )
+    if business is not None:
+        evidence["business_observations"] = _business_observations(run, current, business.checks)
+        evidence["business_failure"] = diagnostic_context.redact_diagnostic_value(
+            business.model_dump(mode="json"), run, {"current": current, "historical": historical}, outputs
+        )
+
+
+def diagnose_failure(
+    env: "Env",
+    app_id: str,
+    actor: Actor,
+    failed_run: Run,
+    current: Graph,
+    *,
+    task: tuple[Session, DifyBuilderContext, str] | None = None,
+) -> Diagnosis:
     """Keep authorized native evidence local while handing only its projection on."""
     historical, outputs, raw_run = _read_context(env, app_id, actor, failed_run)
     safe_run, safe_graph, safe_outputs, evidence = build_evidence(raw_run, current, historical, outputs)
+    _add_business_failure(evidence, raw_run, current, historical, outputs, task)
     if isinstance(env.agent, EvidenceDiagnoser):
         diagnosis = env.agent.diagnose_with_evidence(safe_run, safe_graph, safe_outputs, evidence)
     else:
@@ -360,7 +524,27 @@ def repair_evidence_rejections(
     if evidence is None:
         return []  # checklist and initial Build/Edit mutations have no failed Run
     if evidence.get("failure_identity") != "bound":
-        return ["Runtime repair requires an unambiguous failed execution bound to its native historical graph"]
+        from services.dify_builder.business_acceptance import BusinessFailureContext
+
+        try:
+            business = BusinessFailureContext.model_validate(evidence.get("business_failure"))
+        except ValueError:
+            return ["Runtime repair requires an unambiguous failed execution bound to its native historical graph"]
+        if (
+            not business.builder_run_id
+            or not business.native_run_id
+            or business.graph_revision != executable_graph_revision(before)
+        ):
+            return ["Business repair requires a current verified execution and confirmed case"]
+        if before == after:
+            return ["Business repair changes nothing about the unmet confirmed case"]
+        before_types = [(node.get("id"), node.get("data", {}).get("type")) for node in before.get("nodes", [])]
+        after_types = [(node.get("id"), node.get("data", {}).get("type")) for node in after.get("nodes", [])]
+        if before_types != after_types or before.get("edges", []) != after.get("edges", []):
+            return ["Business repair must retain node identities, types and graph routing"]
+        # The projection is produced by the owned current-case reader, then
+        # reconstructed at apply. It never fabricates a failed native node.
+        # Existing IF checks below still require bound comparison semantics.
     problems = []
     if before == after and evidence.get("failed_node_type") == "if-else":
         return ["IF repair changes nothing about the failed condition"]
@@ -437,11 +621,24 @@ def repair_evidence_rejections(
 
 
 def propose_failure(
-    env: "Env", app_id: str, actor: Actor, failed_run: Run, diagnosis: Diagnosis, current: Graph
+    env: "Env",
+    app_id: str,
+    actor: Actor,
+    failed_run: Run,
+    diagnosis: Diagnosis,
+    current: Graph,
+    *,
+    task: tuple[Session, DifyBuilderContext, str] | None = None,
 ) -> tuple[list[MutationIntent], Risk]:
     """Refresh ephemeral redaction provenance at proposal time, keeping vet raw."""
     historical, outputs, raw_run = _read_context(env, app_id, actor, failed_run)
     _, safe_graph, _, evidence = build_evidence(raw_run, current, historical, outputs)
+    _add_business_failure(evidence, raw_run, current, historical, outputs, task)
+    prior_business = diagnosis.condition_evidence and diagnosis.condition_evidence.get("business_failure")
+    if prior_business and "business_failure" not in evidence:
+        # An earlier business diagnosis is not an engine-failure fallback when
+        # the confirmed task or current Run binding changed between steps.
+        return [], Risk(level="high", has_external_side_effect=False)
     diagnosis.condition_evidence = evidence
 
     def redact_text(text: str) -> str:
