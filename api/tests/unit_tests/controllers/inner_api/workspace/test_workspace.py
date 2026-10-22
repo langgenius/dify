@@ -41,6 +41,7 @@ from services.trigger.oauth_gateway import (
 )
 from services.trigger.oauth_service import TriggerOAuthService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
 from services.trigger.subscription_service import TriggerSubscriptionService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
@@ -66,9 +67,7 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
     redis.initialize(Redis())
     subscription_management = TriggerSubscriptionService(
         subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
-        get_provider=TriggerManager.get_trigger_provider,
-        subscribe=TriggerManager.subscribe_trigger,
-        unsubscribe=TriggerManager.unsubscribe_trigger,
+        providers=PluginTriggerSubscriptionGateway(),
         locks=RedisTriggerSubscriptionLocks(redis=redis),
         invalidate_cache=delete_cache_for_subscription,
     )

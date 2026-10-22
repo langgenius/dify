@@ -11,12 +11,10 @@ from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.helper.provider_encryption import ProviderConfigEncrypter, create_provider_encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import Subscription, UnsubscribeResult
-from core.trigger.errors import TriggerProviderCredentialValidationError
-from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from models.enums import PermissionEnum
 from models.provider_ids import TriggerProviderID
-from services.trigger.trigger_subscription_builder_service import TriggerSubscriber, TriggerSubscriptionProviderLookup
+from services.trigger.subscription_query_service import TriggerSubscriptionSchemas
 
 logger = logging.getLogger(__name__)
 
@@ -84,13 +82,33 @@ class TriggerSubscriptionLocks(Protocol):
     def for_subscription(self, *, tenant_id: str, subscription_id: str) -> AbstractContextManager[None]: ...
 
 
-class TriggerUnsubscriber(Protocol):
-    def __call__(
+class TriggerSubscriptionProviderGateway(Protocol):
+    def get_schemas(
+        self, *, tenant_id: str, provider_id: TriggerProviderID, credential_type: CredentialType
+    ) -> TriggerSubscriptionSchemas: ...
+
+    def validate_credentials(
+        self, *, tenant_id: str, provider_id: TriggerProviderID, user_id: str, credentials: Mapping[str, Any]
+    ) -> None: ...
+
+    def subscribe(
         self,
         *,
         tenant_id: str,
-        user_id: str,
         provider_id: TriggerProviderID,
+        user_id: str,
+        endpoint: str,
+        parameters: Mapping[str, Any],
+        credentials: Mapping[str, str],
+        credential_type: CredentialType,
+    ) -> Subscription: ...
+
+    def unsubscribe(
+        self,
+        *,
+        tenant_id: str,
+        provider_id: TriggerProviderID,
+        user_id: str,
         subscription: Subscription,
         credentials: Mapping[str, str],
         credential_type: CredentialType,
@@ -112,16 +130,12 @@ class TriggerSubscriptionService:
         self,
         *,
         subscriptions: TriggerSubscriptionStore,
-        get_provider: TriggerSubscriptionProviderLookup,
-        subscribe: TriggerSubscriber,
-        unsubscribe: TriggerUnsubscriber,
+        providers: TriggerSubscriptionProviderGateway,
         locks: TriggerSubscriptionLocks,
         invalidate_cache: TriggerSubscriptionCacheInvalidator,
     ) -> None:
         self._subscriptions = subscriptions
-        self._get_provider = get_provider
-        self._subscribe = subscribe
-        self._unsubscribe = unsubscribe
+        self._providers = providers
         self._locks = locks
         self._invalidate_cache = invalidate_cache
 
@@ -141,9 +155,11 @@ class TriggerSubscriptionService:
         credential_expires_at: int,
         expires_at: int,
     ) -> Mapping[str, str]:
-        provider = self._provider(tenant_id=tenant_id, provider_id=provider_id)
+        schemas = self._providers.get_schemas(
+            tenant_id=tenant_id, provider_id=provider_id, credential_type=credential_type
+        )
         encrypted_credentials = (
-            dict(self._credential_encrypter(tenant_id, provider, credential_type).encrypt(credentials))
+            dict(self._credential_encrypter(tenant_id, schemas, credential_type).encrypt(credentials))
             if credential_type != CredentialType.UNAUTHORIZED
             else {}
         )
@@ -156,7 +172,7 @@ class TriggerSubscriptionService:
             endpoint_id=endpoint_id,
             credential_type=credential_type,
             parameters=dict(parameters),
-            properties=dict(self._properties_encrypter(tenant_id, provider).encrypt(properties)),
+            properties=dict(self._properties_encrypter(tenant_id, schemas).encrypt(properties)),
             credentials=encrypted_credentials,
             credential_expires_at=credential_expires_at,
             expires_at=expires_at,
@@ -178,10 +194,12 @@ class TriggerSubscriptionService:
     ) -> None:
         snapshot = self._require(tenant_id=tenant_id, subscription_id=subscription_id)
         provider_id = TriggerProviderID(snapshot.provider_id)
-        provider = self._provider(tenant_id=tenant_id, provider_id=provider_id)
+        schemas = self._providers.get_schemas(
+            tenant_id=tenant_id, provider_id=provider_id, credential_type=snapshot.credential_type
+        )
         replacement = replace(snapshot, name=name if name is not None else snapshot.name)
         rename = name is not None and not any((credentials, parameters, properties))
-        property_encrypter = self._properties_encrypter(tenant_id, provider)
+        property_encrypter = self._properties_encrypter(tenant_id, schemas)
         if rename or snapshot.credential_type == CredentialType.UNAUTHORIZED:
             # Manual subscriptions only support name and properties. Empty
             # mappings retain the original rename/partial-update semantics.
@@ -197,14 +215,14 @@ class TriggerSubscriptionService:
         else:
             # TODO: Give remote unsubscribe/subscribe an idempotent operation owner;
             # the final snapshot check protects SQL, not concurrent provider side effects.
-            credential_encrypter = self._credential_encrypter(tenant_id, provider, snapshot.credential_type)
+            credential_encrypter = self._credential_encrypter(tenant_id, schemas, snapshot.credential_type)
             original_credentials = credential_encrypter.decrypt(snapshot.credentials)
             original_properties = property_encrypter.decrypt(snapshot.properties)
             try:
-                removed = self._unsubscribe(
+                removed = self._providers.unsubscribe(
                     tenant_id=tenant_id,
-                    user_id=snapshot.user_id,
                     provider_id=provider_id,
+                    user_id=snapshot.user_id,
                     subscription=self._entity(snapshot, original_properties),
                     credentials=original_credentials,
                     credential_type=snapshot.credential_type,
@@ -221,10 +239,10 @@ class TriggerSubscriptionService:
             restored_credentials = self._restore_hidden(credentials or original_credentials, original_credentials)
             new_parameters = parameters or snapshot.parameters
             try:
-                created = self._subscribe(
+                created = self._providers.subscribe(
                     tenant_id=tenant_id,
-                    user_id=snapshot.user_id,
                     provider_id=provider_id,
+                    user_id=snapshot.user_id,
                     endpoint=generate_plugin_trigger_endpoint_url(snapshot.endpoint_id),
                     parameters=new_parameters,
                     credentials=restored_credentials,
@@ -250,15 +268,17 @@ class TriggerSubscriptionService:
     def delete(self, *, tenant_id: str, subscription_id: str) -> None:
         snapshot = self._require(tenant_id=tenant_id, subscription_id=subscription_id)
         provider_id = TriggerProviderID(snapshot.provider_id)
-        provider = self._provider(tenant_id=tenant_id, provider_id=provider_id)
+        schemas = self._providers.get_schemas(
+            tenant_id=tenant_id, provider_id=provider_id, credential_type=snapshot.credential_type
+        )
         if snapshot.credential_type in {CredentialType.API_KEY, CredentialType.OAUTH2}:
             try:
-                self._unsubscribe(
+                self._providers.unsubscribe(
                     tenant_id=tenant_id,
-                    user_id=snapshot.user_id,
                     provider_id=provider_id,
+                    user_id=snapshot.user_id,
                     subscription=self._entity(snapshot, snapshot.properties),
-                    credentials=self._credential_encrypter(tenant_id, provider, snapshot.credential_type).decrypt(
+                    credentials=self._credential_encrypter(tenant_id, schemas, snapshot.credential_type).decrypt(
                         snapshot.credentials
                     ),
                     credential_type=snapshot.credential_type,
@@ -283,20 +303,18 @@ class TriggerSubscriptionService:
             raise TriggerSubscriptionNotFoundError(f"Trigger subscription {subscription_id} not found.")
         if snapshot.credential_type != CredentialType.API_KEY:
             return {"verified": True}
-        provider = self._provider(tenant_id=tenant_id, provider_id=provider_id)
-        original_credentials = self._credential_encrypter(tenant_id, provider, snapshot.credential_type).decrypt(
+        schemas = self._providers.get_schemas(
+            tenant_id=tenant_id, provider_id=provider_id, credential_type=snapshot.credential_type
+        )
+        original_credentials = self._credential_encrypter(tenant_id, schemas, snapshot.credential_type).decrypt(
             snapshot.credentials
         )
-        try:
-            provider.validate_credentials(user_id, credentials=self._restore_hidden(credentials, original_credentials))
-        except TriggerProviderCredentialValidationError as error:
-            raise TriggerSubscriptionInvalidError(
-                f"Invalid credentials for trigger provider {provider_id}: {error}"
-            ) from error
-        except Exception as error:
-            raise TriggerSubscriptionProviderError(
-                f"Failed to verify credentials for trigger provider {provider_id}."
-            ) from error
+        self._providers.validate_credentials(
+            tenant_id=tenant_id,
+            provider_id=provider_id,
+            user_id=user_id,
+            credentials=self._restore_hidden(credentials, original_credentials),
+        )
         return {"verified": True}
 
     def _require(self, *, tenant_id: str, subscription_id: str) -> TriggerSubscriptionSnapshot:
@@ -305,12 +323,6 @@ class TriggerSubscriptionService:
             raise TriggerSubscriptionNotFoundError(f"Trigger subscription {subscription_id} not found.")
         return snapshot
 
-    def _provider(self, *, tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProviderController:
-        try:
-            return self._get_provider(tenant_id=tenant_id, provider_id=provider_id)
-        except Exception as error:
-            raise TriggerSubscriptionProviderError(f"Failed to load trigger provider {provider_id}.") from error
-
     def _invalidate(self, snapshot: TriggerSubscriptionSnapshot) -> None:
         self._invalidate_cache(
             tenant_id=snapshot.tenant_id, provider_id=snapshot.provider_id, subscription_id=snapshot.id
@@ -318,19 +330,19 @@ class TriggerSubscriptionService:
 
     @staticmethod
     def _credential_encrypter(
-        tenant_id: str, provider: PluginTriggerProviderController, credential_type: CredentialType
+        tenant_id: str, schemas: TriggerSubscriptionSchemas, credential_type: CredentialType
     ) -> ProviderConfigEncrypter:
         encrypter, _ = create_provider_encrypter(
             tenant_id=tenant_id,
-            config=provider.get_credential_schema_config(credential_type),
+            config=schemas.credentials[credential_type],
             cache=NoOpProviderCredentialCache(),
         )
         return encrypter
 
     @staticmethod
-    def _properties_encrypter(tenant_id: str, provider: PluginTriggerProviderController) -> ProviderConfigEncrypter:
+    def _properties_encrypter(tenant_id: str, schemas: TriggerSubscriptionSchemas) -> ProviderConfigEncrypter:
         encrypter, _ = create_provider_encrypter(
-            tenant_id=tenant_id, config=provider.get_properties_schema(), cache=NoOpProviderCredentialCache()
+            tenant_id=tenant_id, config=schemas.properties, cache=NoOpProviderCredentialCache()
         )
         return encrypter
 
