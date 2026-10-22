@@ -1,9 +1,8 @@
 from dataclasses import asdict
-from typing import cast
-from unittest.mock import Mock
 
-from services.credentials.query import CredentialQuery, DatasourceCredentialListItem
+from services.credentials.query import DatasourceCredentialListItem
 from services.data_source.credential_metadata_service import DatasourceCredentialMetadataService
+from tests.unit_tests.credential_query_fakes import DatasourceCredentialLookup, DatasourceCredentialQuery
 
 
 def _credential(*, credential_id: str, name: str, is_default: bool) -> DatasourceCredentialListItem:
@@ -18,12 +17,13 @@ def _credential(*, credential_id: str, name: str, is_default: bool) -> Datasourc
 
 
 def test_lists_safe_metadata_and_resolves_the_concrete_default() -> None:
-    query = Mock()
-    query.list_datasources.return_value = [
-        _credential(credential_id="credential-secondary", name="Secondary", is_default=False),
-        _credential(credential_id="credential-default", name="Default", is_default=True),
-    ]
-    service = DatasourceCredentialMetadataService(credential_query=cast(CredentialQuery, query))
+    query = DatasourceCredentialQuery(
+        credentials=[
+            _credential(credential_id="credential-secondary", name="Secondary", is_default=False),
+            _credential(credential_id="credential-default", name="Default", is_default=True),
+        ]
+    )
+    service = DatasourceCredentialMetadataService(credential_query=query)
 
     credentials = service.list(tenant_id="tenant-1", plugin_id="org/plugin", provider="notion")
     default = service.resolve_default(tenant_id="tenant-1", plugin_id="org/plugin", provider="notion")
@@ -37,17 +37,16 @@ def test_lists_safe_metadata_and_resolves_the_concrete_default() -> None:
         "type": "oauth2",
         "is_default": True,
     }
-    query.list_datasources.assert_called_with(
+    assert query.lookups[-1] == DatasourceCredentialLookup(
         workspace_id="tenant-1",
-        plugin_id="org/plugin",
         provider="notion",
+        plugin_id="org/plugin",
         actor_id=None,
     )
 
 
 def test_resolve_default_returns_none_when_the_workspace_has_no_matching_credential() -> None:
-    query = Mock()
-    query.list_datasources.return_value = []
-    service = DatasourceCredentialMetadataService(credential_query=cast(CredentialQuery, query))
+    query = DatasourceCredentialQuery(credentials=[])
+    service = DatasourceCredentialMetadataService(credential_query=query)
 
     assert service.resolve_default(tenant_id="tenant-1", plugin_id="org/plugin", provider="notion") is None
