@@ -138,7 +138,8 @@ _AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS = (
     "frequency_penalty",
     "max_tokens",
 )
-_AGENT_MODEL_SETTINGS_KNOWN_KEYS = frozenset({*_AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS, "stop", "response_format"})
+# response_format uses extra_body so both plugin strings and saved native objects reach the plugin unchanged.
+_AGENT_MODEL_SETTINGS_KNOWN_KEYS = frozenset({*_AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS, "stop"})
 
 
 def _agent_model_settings(settings: Mapping[str, JsonValue]) -> dict[str, JsonValue] | None:
@@ -281,7 +282,9 @@ class AgentBackendRunRequestBuilder:
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
-                    config=(run_input.execution_context).model_dump(mode="json"),
+                    config=run_input.execution_context.model_dump(
+                        mode="json", exclude={"tracing"} if run_input.execution_context.tracing is None else set()
+                    ),
                 ),
             ]
         )
@@ -415,7 +418,9 @@ class AgentBackendRunRequestBuilder:
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
-                    config=(run_input.execution_context).model_dump(mode="json"),
+                    config=run_input.execution_context.model_dump(
+                        mode="json", exclude={"tracing"} if run_input.execution_context.tracing is None else set()
+                    ),
                 ),
             ]
         )
@@ -531,7 +536,11 @@ def redact_for_agent_backend_log(value: object) -> object:
         is_multimodal_file = value.get("type") == "image" and "filename" in value and "mime_type" in value
         for key, item in value.items():
             key_text = str(key).lower()
-            if any(part in key_text for part in _SENSITIVE_KEY_PARTS) or (is_multimodal_file and key_text == "url"):
+            if (
+                any(part in key_text for part in _SENSITIVE_KEY_PARTS)
+                or (is_multimodal_file and key_text == "url")
+                or (key_text == "tracing" and item is not None)
+            ):
                 redacted[key] = "[REDACTED]"
             else:
                 redacted[key] = redact_for_agent_backend_log(item)

@@ -1041,6 +1041,7 @@ export type SuggestedQuestionsResponse = {
 }
 
 export type SystemFeatureModel = {
+  agent_tracing_api_collection_enabled: boolean
   branding: BrandingModel
   deployment_edition: DeploymentEdition
   enable_app_deploy: boolean

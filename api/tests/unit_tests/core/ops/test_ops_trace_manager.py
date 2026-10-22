@@ -467,14 +467,20 @@ def test_message_config_lookup_uses_real_conversation_and_model_config(database:
     assert OpsTraceManager.get_app_config_through_message_id("missing") is None
 
 
-@pytest.mark.parametrize("module_name", ["dify_trace_weave", "wandb"])
-def test_provider_loader_identifies_missing_optional_dependency(
-    monkeypatch: pytest.MonkeyPatch, module_name: str
-) -> None:
-    monkeypatch.delitem(sys.modules, "dify_trace_weave.weave_trace", raising=False)
-    monkeypatch.setitem(sys.modules, module_name, None)
-    with pytest.raises(TraceProviderNotInstalledError, match=f"weave.*{module_name}") as caught:
-        module.OpsTraceProviderConfigMap()["weave"]
+@pytest.mark.parametrize("imports_cached", [False, True], ids=["cold", "warm"])
+@pytest.mark.parametrize("module_name", ["dify_trace_weave", "weave"])
+def test_provider_loader_identifies_missing_optional_dependency(module_name: str, imports_cached: bool) -> None:
+    with patch.dict(sys.modules):
+        if imports_cached:
+            module.OpsTraceProviderConfigMap()["weave"]
+        # Cached typed SDK submodules can bypass a missing top-level package.
+        # Simulate its absence consistently and restore the complete cache after.
+        for cached_name in list(sys.modules):
+            if cached_name.partition(".")[0] in {"dify_trace_weave", "weave"}:
+                del sys.modules[cached_name]
+        with patch.dict(sys.modules, {module_name: None}):
+            with pytest.raises(TraceProviderNotInstalledError, match=f"weave.*{module_name}") as caught:
+                module.OpsTraceProviderConfigMap()["weave"]
 
     cause = caught.value.__cause__
     assert isinstance(cause, ModuleNotFoundError)

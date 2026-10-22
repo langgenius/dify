@@ -1,9 +1,11 @@
 import type { CodeResponse, PollRequest, PollResult, PollSuccess } from './device-api'
 import type { Clock } from './device-flow'
+import { startMock } from '@test/fixtures/dify-mock/server'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { BaseError } from '@/errors/base'
 import { ErrorCode, ExitCode } from '@/errors/codes'
 import { isCancelled } from '@/plugins/commands/cancel'
+import { deviceApi } from './device-api'
 import {
   awaitAuthorization,
   DEFAULT_INTERVAL_MS,
@@ -11,6 +13,7 @@ import {
   POLL_RETRY_ATTEMPTS,
   POLL_RETRY_CAP_MS,
   POLL_RETRY_INITIAL_MS,
+  pollAuthorization,
   realClock,
 } from './device-flow'
 
@@ -177,4 +180,49 @@ describe('awaitAuthorization', () => {
     const clock = new FakeClock()
     await expect(awaitAuthorization(api, code, { clock })).rejects.toThrow(/old server/)
   })
+})
+
+it('does not retry device polling after cancellation during backoff', async () => {
+  const mock = await startMock({ scenario: 'server-5xx' })
+  const clock = new FakeClock()
+  clock.sleepMs = async (ms) => {
+    clock.sleeps.push(ms)
+    clock.cancelled = true
+    mock.setScenario('happy')
+  }
+  try {
+    const api = deviceApi(mock.url, { insecure: true })
+    await expect(awaitAuthorization(api, code, { clock })).rejects.toMatchObject({
+      code: ErrorCode.Unknown,
+      message: 'cancelled',
+    })
+    expect(mock.requestCount).toBe(1)
+    expect(clock.sleeps).toEqual([POLL_RETRY_INITIAL_MS])
+  } finally {
+    await mock.stop()
+  }
+})
+
+it('does not poll a resumed authorization when already cancelled', async () => {
+  const pollOnce = vi.fn().mockResolvedValue({ status: 'approved', success: successPayload })
+  const clock = new FakeClock()
+  clock.cancelled = true
+  await expect(pollAuthorization({ pollOnce }, code.device_code, { clock })).rejects.toMatchObject({
+    code: ErrorCode.Unknown,
+    message: 'cancelled',
+  })
+  expect(pollOnce).not.toHaveBeenCalled()
+})
+
+it('does not accept approval if cancellation happened while polling', async () => {
+  const clock = new FakeClock()
+  const pollOnce = async (): Promise<PollResult> => {
+    clock.cancelled = true
+    return { status: 'approved', success: successPayload }
+  }
+  await expect(awaitAuthorization({ pollOnce }, code, { clock })).rejects.toMatchObject({
+    code: ErrorCode.Unknown,
+    message: 'cancelled',
+  })
+  expect(clock.sleeps).toEqual([])
 })
