@@ -29,6 +29,28 @@ from repositories.factory import DifyAPIRepositoryFactory
 _file_access_controller = DatabaseFileAccessController()
 
 
+def _split_prompt_messages_into_turns(prompt_messages: Sequence[PromptMessage]) -> list[list[PromptMessage]]:
+    turns: list[list[PromptMessage]] = []
+    current_turn: list[PromptMessage] = []
+
+    for prompt_message in prompt_messages:
+        if prompt_message.role == PromptMessageRole.USER:
+            if current_turn:
+                turns.append(current_turn)
+            current_turn = [prompt_message]
+            continue
+
+        if current_turn:
+            current_turn.append(prompt_message)
+        else:
+            turns.append([prompt_message])
+
+    if current_turn:
+        turns.append(current_turn)
+
+    return turns
+
+
 @dataclass(frozen=True)
 class HistoryFile:
     """Persisted attachment reference; metadata and content are resolved after loading history."""
@@ -90,14 +112,24 @@ class PreparedHistory:
     prompts: tuple[HistoryPrompt, ...]
 
     def get_prompt_messages(self, *, model_instance: ModelInstance, max_token_limit: int) -> Sequence[PromptMessage]:
+        """Render history within budget, dropping oldest whole turns or all history if none fits."""
         prompt_messages = [prompt.to_prompt_message() for prompt in self.prompts]
         if not prompt_messages:
             return []
 
         curr_message_tokens = model_instance.get_llm_num_tokens(prompt_messages)
-        while curr_message_tokens > max_token_limit and len(prompt_messages) > 1:
-            prompt_messages.pop(0)
+        if curr_message_tokens <= max_token_limit:
+            return prompt_messages
+
+        # Keep each user query with its answer so pruning cannot orphan an assistant message.
+        turns = _split_prompt_messages_into_turns(prompt_messages)
+        while turns and curr_message_tokens > max_token_limit:
+            turns.pop(0)
+            prompt_messages = [prompt_message for turn in turns for prompt_message in turn]
+            if not prompt_messages:
+                return []
             curr_message_tokens = model_instance.get_llm_num_tokens(prompt_messages)
+
         return prompt_messages
 
     def get_prompt_text(
