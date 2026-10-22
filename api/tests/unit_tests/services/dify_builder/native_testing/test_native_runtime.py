@@ -1565,12 +1565,18 @@ def cancel_composition(case: ObservationOwnerCase, monkeypatch: pytest.MonkeyPat
     from models.dify_builder import DifyBuilderSession, DifyBuilderSessionCommit, DifyBuilderTestInput
     from models.model import App
     from models.workflow import Workflow
+    from services.dify_builder.native_testing import api_service, host_capacity, repository
     from services.dify_builder.native_testing import state_store as state_module
     from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner, build_native_api
     from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import SQL, Rows
     from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
 
     protect_logs(monkeypatch)
+    # This composition owns mutable SQL boundaries, not SQLAlchemy events.
+    # Dedicated SQLite native-live-stream tests retain the real notification
+    # transaction and prove commit/rollback behavior without this double.
+    for module in (api_service, host_capacity, repository):
+        monkeypatch.setattr(module, "native_observation_transaction", lambda factory, **_: factory.begin())
     original = case.context
     workflow = Workflow(
         id=original.workflow_id,

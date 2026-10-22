@@ -14,6 +14,7 @@ import {
   zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdPath,
   zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponse,
   zGetDifyBuilderSessionsBySessionIdResponse,
+  zGetDifyBuilderSessionsBySessionIdStreamHeaders,
   zGetDifyBuilderSessionsBySessionIdStreamPath,
   zGetDifyBuilderSessionsBySessionIdStreamQuery,
   zGetDifyBuilderSessionsBySessionIdStreamResponse,
@@ -331,6 +332,7 @@ export const get5 = oc
   })
   .input(
     z.object({
+      headers: zGetDifyBuilderSessionsBySessionIdStreamHeaders.optional(),
       params: zGetDifyBuilderSessionsBySessionIdStreamPath,
       query: zGetDifyBuilderSessionsBySessionIdStreamQuery.optional(),
     }),

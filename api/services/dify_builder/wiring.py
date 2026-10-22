@@ -72,6 +72,7 @@ _PROGRESS_KINDS = frozenset(
         "conversation_item_appended",
         "reasoning",
         "progress",
+        "native_state_changed",
         *_TERMINAL_KINDS,
     }
 )
@@ -224,6 +225,10 @@ def _public_session_view(view: dict[str, Any], *, include_last_command_id: bool)
         projected["diagnostics"] = view["diagnostics"]
     if view.get("decision") is not None:
         projected["decision"] = view["decision"]
+    if view.get("test_execution") is not None:
+        projected["test_execution"] = NativeTestPublicReceipt.model_validate(view["test_execution"]).model_dump(
+            mode="json"
+        )
     active_interaction = _public_active_interaction(view.get("active_interaction"))
     if active_interaction is not None:
         projected["active_interaction"] = active_interaction
@@ -450,6 +455,10 @@ def _progress_event(raw: bytes) -> tuple[str, object] | None:
         return "error", _error_event({}, "invalid Builder progress event")
 
     kind = data["kind"]
+    if kind == "native_state_changed":
+        # Internal invalidation only: receipt data is reread through the
+        # authenticated owner, never accepted from a broadcast payload.
+        return kind, {"session_id": data.get("session_id", "")}
     if kind == "workflow":
         payload = data.get("payload")
         if isinstance(payload, dict) and payload.get("event") in _IGNORED_WORKFLOW_EVENTS:
@@ -600,7 +609,8 @@ def stream_advance_frames(
     def native_frames() -> Iterator[str]:
         if native_receipts is None:
             return
-        for receipt in native_receipts():
+        receipts = native_receipts()
+        for receipt in receipts:
             public = NativeTestPublicReceipt.model_validate(receipt.model_dump(mode="json")).model_dump(mode="json")
             cursor = canonical_digest(public)
             if cursor not in native_seen:
@@ -649,7 +659,8 @@ def stream_advance_frames(
                             "command_id": command_id,
                         },
                     )
-                return
+                if native_receipts is None or subscription is None:
+                    return
             if subscription is None:
                 return
             if initial_progress is not None and initial_progress.at_version > view_dict["version"]:
@@ -671,8 +682,9 @@ def stream_advance_frames(
                 except SubscriptionClosedError:
                     return
                 if raw is None:
-                    yield from native_frames()
-                    if read_session_view is not None:
+                    # Native changes arrive on the existing bus. Idle
+                    # heartbeats must not become receipt polling in disguise.
+                    if native_receipts is None and read_session_view is not None:
                         latest = read_session_view()
                         if latest["run_status"] != "processing" or latest["interrupted"]:
                             yield _event_frame(
@@ -689,9 +701,31 @@ def stream_advance_frames(
                 if progress_event is None:
                     continue
                 kind, data = progress_event
+                if kind == "native_state_changed":
+                    if (
+                        native_receipts is None
+                        or not isinstance(data, dict)
+                        or data.get("session_id") != view_dict.get("session_id")
+                    ):
+                        continue
+                    yield from native_frames()
+                    if read_session_view is not None:
+                        latest = read_session_view()
+                        yield _event_frame(
+                            "command_finished",
+                            {
+                                **_public_session_view(latest, include_last_command_id=False),
+                                "command_id": latest.get("last_command_id", ""),
+                            },
+                        )
+                    continue
                 yield _event_frame(kind, data)
-                if kind in _TERMINAL_KINDS:
+                if kind in _TERMINAL_KINDS and not (kind == "command_finished" and native_receipts is not None):
                     return
+            if native_receipts is not None:
+                # End only the observation transport. The browser reconnects
+                # without replay; a stream lifetime is not an execution timeout.
+                return
             yield _event_frame(
                 "error",
                 {
