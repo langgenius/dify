@@ -7,6 +7,7 @@ from uuid import UUID
 from flask import request
 from pydantic import ConfigDict, Field, JsonValue, ValidationError, field_serializer
 from pydantic.json_schema import SkipJsonSchema
+from werkzeug.exceptions import NotFound
 
 from controllers.common.end_user_connections import (
     ConnectionCheckUnavailableHTTPError,
@@ -34,6 +35,7 @@ from models.model import App, EndUser
 from services.end_user_connection_identity import connection_context_from_web_passport
 from services.end_user_connections.contracts import (
     ConnectionCheckView,
+    ConnectionInput,
     ConnectionSummary,
     CreateApiKeyConnectionInput,
     ListConnectionsInput,
@@ -41,6 +43,48 @@ from services.end_user_connections.contracts import (
 )
 from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionError
+from services.end_user_connections.selections import ConnectionConfiguration
+from services.errors.conversation import ConversationNotExistsError
+
+
+class ConnectionConfigurationQuery(ConnectionInput):
+    conversation_id: UUID | None = Field(
+        default=None,
+        strict=False,
+        description=(
+            "Chatflow Conversation to read. If omitted or the Conversation has no saved choices, "
+            "return the current App user's last choices for form initialization."
+        ),
+    )
+
+
+class ConnectionConfigurationResponse(ConnectionConfiguration, ResponseModel):
+    pass
+
+
+register_response_schema_models(web_ns, ConnectionConfigurationResponse)
+
+
+@web_ns.route("/connections/configuration")
+class ConnectionConfigurationApi(WebApiResource):
+    @web_ns.doc(params=query_params_from_model(ConnectionConfigurationQuery))
+    @web_ns.doc(description="Read saved App or Conversation choices without validating or refreshing credentials.")
+    @web_ns.response(200, "Saved Connection configuration", web_ns.models[ConnectionConfigurationResponse.__name__])
+    @error_responses(ConnectionConfigurationHTTPError, ConnectionConflictHTTPError)
+    def get(self, app_model: App, end_user: EndUser):
+        try:
+            context = connection_context_from_web_passport(app=app_model, end_user=end_user)
+            query = ConnectionConfigurationQuery.model_validate(request.args.to_dict(flat=True))
+            result = application_services().connection_selections.get(
+                context, str(query.conversation_id) if query.conversation_id is not None else None
+            )
+        except ValidationError:
+            raise ValueError("Invalid connection configuration query.") from None
+        except ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.") from None
+        except ConnectionError as error:
+            _raise_error(error)
+        return dump_response(ConnectionConfigurationResponse, result)
 
 
 class EndUserConnectionCreatePayload(CreateApiKeyConnectionInput):

@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from typing import Any
+from uuid import uuid4
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
@@ -13,16 +14,16 @@ from models.model import App, AppMode, Conversation, EndUser
 from models.workflow import Workflow
 from services.end_user_connection_execution_adapters import prepare_web_connection_execution
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
-from services.end_user_connections.conversation import ConversationConnectionService
 from services.end_user_connections.execution import ConnectionExecutionService
 from services.end_user_connections.preflight import ConnectionPreflightService
+from services.end_user_connections.selections import ConnectionSelectionService
 from tests.helpers.end_user_oauth import OAuthHarness
 
 
 @dataclass
 class ConversationHarness:
     oauth: OAuthHarness
-    service: ConversationConnectionService
+    service: ConnectionSelectionService
     execution: ConnectionExecutionService
     sessions: sessionmaker[Session]
 
@@ -60,7 +61,9 @@ class ConversationHarness:
             args["conversation_id"] = conversation_id
         if connections is not None:
             args["connections"] = connections
-        result = prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args)
+        result = prepare_web_connection_execution(
+            app=app, user=user, workflow=workflow, args=args, workflow_run_id=str(uuid4())
+        )
         assert result is not None
         return result
 
@@ -80,7 +83,7 @@ def make_conversation_harness(oauth: OAuthHarness) -> ConversationHarness:
     )
     return ConversationHarness(
         oauth=oauth,
-        service=ConversationConnectionService(store=oauth.base.repository),
+        service=ConnectionSelectionService(store=oauth.base.repository),
         execution=ConnectionExecutionService(
             preflight=ConnectionPreflightService(
                 connections=oauth.base.repository, checks=oauth.base.service, requirements=requirements

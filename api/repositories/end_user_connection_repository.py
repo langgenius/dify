@@ -12,14 +12,13 @@ from constants.end_user_connections import ConnectionCredentialStatus, Connectio
 from context.connection_execution import ConnectionExecutionContext
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus
-from models.end_user_connection import EndUserConnection, SessionConnection
+from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus, EndUserType, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser
 from models.provider_ids import ToolProviderID
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
 from services.end_user_connections.contracts import ConnectionPage, ConnectionSummary, ListConnectionsInput
-from services.end_user_connections.conversation import SavedConversationConnection
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
     ConnectionMutationGuard,
@@ -41,6 +40,7 @@ from services.end_user_connections.oauth import (
     OAuthClientSnapshot,
     StoredOAuthClientConfiguration,
 )
+from services.end_user_connections.selections import SavedConnectionSelection
 from services.errors.conversation import ConversationNotExistsError
 
 
@@ -249,58 +249,100 @@ class EndUserConnectionRepository:
         )
 
     def conversation_selections(
-        self, context: WebConnectionContext, workflow_id: str, conversation_id: str
-    ) -> tuple[SavedConversationConnection, ...]:
+        self, context: WebConnectionContext, conversation_id: str
+    ) -> tuple[SavedConnectionSelection, ...]:
         with self._sessions() as session:
             app = self._require_context(session, context, lock=False)
-            self._require_workflow_scope(session, context, app, workflow_id, conversation_id)
+            self._require_conversation(session, context, app, conversation_id, lock=False)
             rows = session.scalars(
                 sa.select(SessionConnection)
                 .where(*self._conversation_selection_scope(context, conversation_id))
                 .order_by(SessionConnection.node_id)
             )
             return tuple(
-                SavedConversationConnection(row.workflow_id, row.node_id, row.provider, row.connection_id)
-                for row in rows
+                SavedConnectionSelection(row.workflow_id, row.node_id, row.provider, row.connection_id) for row in rows
             )
 
-    def save_run_conversation_selections(self, execution: ConnectionExecutionContext, conversation_id: str) -> None:
+    def app_selections(self, context: WebConnectionContext) -> tuple[SavedConnectionSelection, ...]:
+        with self._sessions() as session:
+            self._require_context(session, context, lock=False)
+            rows = session.scalars(
+                sa.select(AppConnection).where(*self._app_selection_scope(context)).order_by(AppConnection.node_id)
+            )
+            return tuple(
+                SavedConnectionSelection(row.workflow_id, row.node_id, row.provider, row.connection_id) for row in rows
+            )
+
+    @staticmethod
+    def _app_selection_scope(context: WebConnectionContext) -> tuple[sa.ColumnElement[bool], ...]:
+        return (
+            AppConnection.tenant_id == context.tenant_id,
+            AppConnection.app_id == context.app_id,
+            AppConnection.end_user_id == context.end_user_id,
+        )
+
+    def save_run_selections(
+        self,
+        execution: ConnectionExecutionContext,
+        workflow_run_id: str,
+        conversation_id: str | None,
+        *,
+        update_conversation: bool,
+    ) -> None:
         with self._sessions.begin() as session:
-            self._save_run_conversation_selections(
+            # Acceptance order is serialized under the stable App/EndUser lock.
+            # Workers and resume paths never update App defaults again.
+            context, selections = self._execution_selections(
                 session, execution, conversation_id, require_current_publication=True
             )
+            session.execute(sa.delete(AppConnection).where(*self._app_selection_scope(context)))
+            session.add_all(
+                AppConnection(
+                    tenant_id=context.tenant_id,
+                    app_id=context.app_id,
+                    end_user_id=context.end_user_id,
+                    workflow_id=item.workflow_id,
+                    node_id=item.node_id,
+                    provider=item.provider,
+                    connection_id=item.connection_id,
+                    source_run_id=workflow_run_id,
+                )
+                for item in selections
+            )
+            if update_conversation and conversation_id is not None:
+                session.execute(
+                    sa.delete(SessionConnection).where(*self._conversation_selection_scope(context, conversation_id))
+                )
+                self._insert_conversation_selections(session, context, conversation_id, selections)
 
     @classmethod
     def initialize_conversation_selections(
         cls, session: Session, execution: ConnectionExecutionContext, conversation_id: str
     ) -> None:
-        """Persist initial choices atomically with the new Conversation."""
-        cls._save_run_conversation_selections(session, execution, conversation_id, require_current_publication=False)
+        """Persist initial choices with the new Conversation, without rewriting App defaults."""
+        context, selections = cls._execution_selections(
+            session, execution, conversation_id, require_current_publication=False
+        )
+        cls._insert_conversation_selections(session, context, conversation_id, selections)
 
     @classmethod
-    def _save_run_conversation_selections(
+    def _execution_selections(
         cls,
         session: Session,
         execution: ConnectionExecutionContext,
-        conversation_id: str,
+        conversation_id: str | None,
         *,
         require_current_publication: bool,
-    ) -> None:
-        # The gate already validated these choices. Queueing can outlive the
-        # publication, so initial Conversation creation keeps the accepted version.
+    ) -> tuple[WebConnectionContext, tuple[SavedConnectionSelection, ...]]:
         context = WebConnectionContext(
             execution.tenant_id, execution.app_id, execution.end_user_id, execution.account_id
         )
         app = cls._require_context(session, context, lock=True)
         cls._require_workflow_scope(
-            session,
-            context,
-            app,
-            execution.workflow_id,
-            None,
-            require_current_publication=require_current_publication,
+            session, context, app, execution.workflow_id, None, require_current_publication=require_current_publication
         )
-        cls._require_conversation(session, context, app, conversation_id, lock=True)
+        if conversation_id is not None:
+            cls._require_conversation(session, context, app, conversation_id, lock=True)
         records = cls._access_records(
             session,
             context,
@@ -312,20 +354,15 @@ class EndUserConnectionRepository:
             record = records.get(item.connection_id) if item.connection_id is not None else None
             if record is None or record.provider != item.provider:
                 raise ConnectionConflictError()
-            selections.append(
-                SavedConversationConnection(execution.workflow_id, item.node_id, record.provider, record.id)
-            )
-        session.execute(
-            sa.delete(SessionConnection).where(*cls._conversation_selection_scope(context, conversation_id))
-        )
-        cls._insert_conversation_selections(session, context, conversation_id, tuple(selections))
+            selections.append(SavedConnectionSelection(execution.workflow_id, item.node_id, record.provider, record.id))
+        return context, tuple(selections)
 
     @staticmethod
     def _insert_conversation_selections(
         session: Session,
         context: WebConnectionContext,
         conversation_id: str,
-        selections: tuple[SavedConversationConnection, ...],
+        selections: tuple[SavedConnectionSelection, ...],
     ) -> None:
         session.add_all(
             SessionConnection(

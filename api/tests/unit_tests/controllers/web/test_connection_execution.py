@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from clients.plugin.auth_entities import CredentialCheckResult
 from controllers.common import session as controller_session
 from controllers.web import bp, wraps
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.impl.oauth import OAuthHandler
 from enums import DeploymentEdition
 from extensions import ext_application_services
@@ -22,7 +23,6 @@ from models.workflow import WorkflowRun
 from services.app_generate_service import AppGenerateService
 from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
-from services.end_user_connections.conversation import ConversationConnectionService
 from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
@@ -37,6 +37,7 @@ from services.end_user_connections.errors import (
 )
 from services.end_user_connections.execution import ConnectionExecutionService
 from services.end_user_connections.preflight import ConnectionPreflightService
+from services.end_user_connections.selections import ConnectionSelectionService
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams
 from tests.helpers.end_user_api_key import ConnectionHarness, TestProviders, make_harness, plugin_provider
@@ -170,7 +171,7 @@ def real_execution_gate(
         "application_services",
         lambda: SimpleNamespace(
             end_user_connection_execution=ConnectionExecutionService(preflight=preflight),
-            conversation_connections=ConversationConnectionService(store=harness.repository),
+            connection_selections=ConnectionSelectionService(store=harness.repository),
         ),
     )
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, PUBSUB_REDIS_CHANNEL_TYPE="streams")
@@ -284,6 +285,11 @@ def test_ready_selection_is_checked_before_serializing_the_queued_context(
     assert params.workflow_id == harness.workflow_id
     assert params.connection_context.selections[0].connection_id == connection.id
     assert "original-secret" not in enqueue.call_args.args[0]
+    with harness.sessions() as session:
+        saved = session.scalar(sa.select(AppConnection).where(AppConnection.app_id == harness.context.app_id))
+        assert saved is not None
+        assert saved.source_run_id == params.workflow_run_id
+        assert saved.connection_id == connection.id
 
 
 @pytest.mark.usefixtures("real_execution_gate")
@@ -336,3 +342,36 @@ def test_only_chatflow_omission_restores_last_conversation_choices(
         assert response.get_json()["code"] == "connection_required"
         params.assert_not_called()
     enqueue.assert_not_called()
+
+
+@pytest.mark.usefixtures("real_execution_gate")
+def test_blocking_run_uses_the_same_id_as_app_configuration(
+    client: tuple[FlaskClient, str], harness: ConnectionHarness, mocker: MockerFixture
+) -> None:
+    _, path = client
+    generator = "AdvancedChatAppGenerator" if path == "/api/chat-messages" else "WorkflowAppGenerator"
+    generate = mocker.patch(f"services.app_generate_service.{generator}.generate", return_value={"answer": "done"})
+    mocker.patch(f"services.app_generate_service.{generator}.convert_to_event_stream", side_effect=lambda value: value)
+    connection = harness.service.create_api_key(harness.context, harness.command())
+    with harness.sessions() as session:
+        app = session.get(App, harness.context.app_id)
+        user = session.get(EndUser, harness.context.end_user_id)
+        assert app is not None
+        assert user is not None
+        result = AppGenerateService.generate(
+            app_model=app,
+            user=user,
+            session=session,
+            invoke_from=InvokeFrom.WEB_APP,
+            streaming=False,
+            args={
+                "inputs": {},
+                "query": "hello",
+                "workflow_id": harness.workflow_id,
+                "connections": {"tool-1": connection.id},
+            },
+        )
+        assert result == {"answer": "done"}
+        saved = session.scalar(sa.select(AppConnection).where(AppConnection.app_id == harness.context.app_id))
+        assert saved is not None
+        assert saved.source_run_id == generate.call_args.kwargs["workflow_run_id"]

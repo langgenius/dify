@@ -19,15 +19,15 @@ from services.end_user_connection_oauth_adapters import (
 )
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
 from services.end_user_connection_runtime_adapters import get_tool_runtime
-from services.end_user_connections.conversation import ConversationConnectionService
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
 from services.end_user_connections.preflight import ConnectionPreflightService
 from services.end_user_connections.runtime import ConnectionRuntimeService
+from services.end_user_connections.selections import ConnectionSelectionService
 
 __all__ = [
-    "build_conversation_connections",
+    "build_connection_selections",
     "build_end_user_connection_oauth",
     "build_end_user_connection_preflight",
     "build_end_user_connection_runtime",
@@ -108,8 +108,8 @@ def build_end_user_connection_runtime(
     )
 
 
-def build_conversation_connections(*, database_client: sessionmaker[Session]) -> ConversationConnectionService:
-    return ConversationConnectionService(store=EndUserConnectionRepository(session_factory=database_client))
+def build_connection_selections(*, database_client: sessionmaker[Session]) -> ConnectionSelectionService:
+    return ConnectionSelectionService(store=EndUserConnectionRepository(session_factory=database_client))
 
 
 def initialize_conversation_connections(

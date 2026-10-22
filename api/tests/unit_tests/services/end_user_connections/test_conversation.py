@@ -39,9 +39,7 @@ def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.M
     monkeypatch.setattr(
         ext_application_services,
         "application_services",
-        lambda: SimpleNamespace(
-            end_user_connection_execution=harness.execution, conversation_connections=harness.service
-        ),
+        lambda: SimpleNamespace(end_user_connection_execution=harness.execution, connection_selections=harness.service),
     )
     return harness
 
@@ -285,3 +283,46 @@ def test_first_conversation_keeps_accepted_version_after_publication(harness: Co
         assert saved is not None
         assert saved.workflow_id == base.workflow_id
         assert saved.connection_id == connection.id
+
+
+def test_delayed_first_conversation_does_not_overwrite_newer_app_defaults(harness: ConversationHarness) -> None:
+    base = harness.oauth.base
+    first = base.service.create_api_key(base.context, base.command("a"))
+    second = base.service.create_api_key(base.context, base.command("b"))
+    entity = generate_entity(harness, first.id)
+    harness.run(None, {"tool-1": second.id})
+    with harness.sessions() as session:
+        conversation, _ = MessageBasedAppGenerator()._init_generate_records(entity, session=session)
+    assert harness.saved(conversation.id) == {"tool-1": first.id}
+    assert harness.service.get(base.context, None).connections == {"tool-1": second.id}
+
+
+def test_workspace_only_run_clears_old_defaults_without_preflight(harness: ConversationHarness) -> None:
+    from services.end_user_connection_execution_adapters import prepare_web_connection_execution
+
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    conversation_id = harness.create_conversation()
+    harness.run(conversation_id, {"tool-1": selected.id})
+    base.auth.calls.clear()
+    with harness.sessions.begin() as session:
+        app = session.get(App, base.context.app_id)
+        user = session.get(EndUser, base.context.end_user_id)
+        workflow = session.get(Workflow, base.workflow_id)
+        assert app is not None
+        assert user is not None
+        assert workflow is not None
+        workflow.graph = json.dumps({"nodes": [], "edges": []})
+    assert (
+        prepare_web_connection_execution(
+            app=app,
+            user=user,
+            workflow=workflow,
+            args={"conversation_id": conversation_id},
+            workflow_run_id=str(uuid4()),
+        )
+        is None
+    )
+    assert harness.service.get(base.context, None).connections == {}
+    assert harness.saved(conversation_id) == {}
+    assert base.auth.calls == []
