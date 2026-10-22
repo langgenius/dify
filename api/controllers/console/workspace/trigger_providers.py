@@ -60,7 +60,6 @@ from services.trigger.oauth_service import (
     TriggerOAuthProviderError,
 )
 from services.trigger.trigger_provider_service import TriggerProviderService
-from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
 
 logger = logging.getLogger(__name__)
@@ -242,28 +241,29 @@ class TriggerSubscriptionListApi(Resource):
 class TriggerSubscriptionBuilderCreateApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderCreatePayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Trigger subscription builder created successfully",
         console_ns.models[TriggerSubscriptionBuilderCreateResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
+    )
     @model_validate(TriggerSubscriptionBuilderCreatePayload)
-    def post(self, req_data: TriggerSubscriptionBuilderCreatePayload, tenant_id: str, user: Account, provider: str):
+    def post(
+        self, req_data: TriggerSubscriptionBuilderCreatePayload, context: RequestContext, provider: str
+    ) -> dict[str, Any]:
         """Add a new subscription instance for a trigger provider"""
 
         try:
             credential_type = CredentialType.of(req_data.credential_type)
-            subscription_builder = TriggerSubscriptionBuilderService.create_trigger_subscription_builder(
-                tenant_id=tenant_id,
-                user_id=user.id,
-                provider_id=TriggerProviderID(provider),
-                credential_type=credential_type,
+            subscription_builder = (
+                application_services().workspaces.trigger_builders.create_trigger_subscription_builder(
+                    tenant_id=context.active_workspace_id,
+                    user_id=context.account_id,
+                    provider_id=TriggerProviderID(provider),
+                    credential_type=credential_type,
+                )
             )
             return TriggerSubscriptionBuilderCreateResponse(subscription_builder=subscription_builder).model_dump(
                 mode="json"
@@ -278,22 +278,19 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
 )
 class TriggerSubscriptionBuilderGetApi(Resource):
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Trigger subscription builder retrieved successfully",
         console_ns.models[SubscriptionBuilderApiEntity.__name__],
     )
-    @setup_required
-    @login_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    def get(self, tenant_id: str, user: Account, provider: str, subscription_builder_id: str):
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
+    )
+    def get(self, context: RequestContext, provider: str, subscription_builder_id: str) -> dict[str, Any]:
         """Get a subscription instance for a trigger provider"""
-        subscription_builder = TriggerSubscriptionBuilderService.get_subscription_builder_by_id(
-            tenant_id=tenant_id,
-            user_id=user.id,
+        subscription_builder = application_services().workspaces.trigger_builders.get_subscription_builder_by_id(
+            tenant_id=context.active_workspace_id,
+            user_id=context.account_id,
             provider_id=TriggerProviderID(provider),
             subscription_builder_id=subscription_builder_id,
         )
@@ -306,33 +303,29 @@ class TriggerSubscriptionBuilderGetApi(Resource):
 class TriggerSubscriptionBuilderVerifyApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderVerifyPayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Trigger subscription builder verified successfully",
         console_ns.models[TriggerVerificationResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace())],
+    )
     @model_validate(TriggerSubscriptionBuilderVerifyPayload)
     def post(
         self,
         req_data: TriggerSubscriptionBuilderVerifyPayload,
-        tenant_id: str,
-        user: Account,
+        context: RequestContext,
         provider: str,
         subscription_builder_id: str,
-    ):
+    ) -> dict[str, Any]:
         """Verify and update a subscription instance for a trigger provider"""
 
         try:
             # Use atomic update_and_verify to prevent race conditions
-            result = TriggerSubscriptionBuilderService.update_and_verify_builder(
-                tenant_id=tenant_id,
-                user_id=user.id,
+            result = application_services().workspaces.trigger_builders.update_and_verify_builder(
+                tenant_id=context.active_workspace_id,
+                user_id=context.account_id,
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
                 subscription_builder_updater=SubscriptionBuilderUpdater(
@@ -351,41 +344,41 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
 class TriggerSubscriptionBuilderUpdateApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Trigger subscription builder updated successfully",
         console_ns.models[SubscriptionBuilderApiEntity.__name__],
     )
-    @setup_required
-    @login_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace())],
+    )
     @model_validate(TriggerSubscriptionBuilderUpdatePayload)
     def post(
         self,
         req_data: TriggerSubscriptionBuilderUpdatePayload,
-        tenant_id: str,
-        user: Account,
+        context: RequestContext,
         provider: str,
         subscription_builder_id: str,
-    ):
+    ) -> dict[str, Any]:
         """Update a subscription instance for a trigger provider"""
 
         try:
-            return TriggerSubscriptionBuilderService.update_trigger_subscription_builder(
-                tenant_id=tenant_id,
-                user_id=user.id,
-                provider_id=TriggerProviderID(provider),
-                subscription_builder_id=subscription_builder_id,
-                subscription_builder_updater=SubscriptionBuilderUpdater(
-                    name=req_data.name,
-                    parameters=req_data.parameters,
-                    properties=req_data.properties,
-                    credentials=req_data.credentials,
-                ),
-            ).model_dump(mode="json")
+            return (
+                application_services()
+                .workspaces.trigger_builders.update_trigger_subscription_builder(
+                    tenant_id=context.active_workspace_id,
+                    user_id=context.account_id,
+                    provider_id=TriggerProviderID(provider),
+                    subscription_builder_id=subscription_builder_id,
+                    subscription_builder_updater=SubscriptionBuilderUpdater(
+                        name=req_data.name,
+                        parameters=req_data.parameters,
+                        properties=req_data.properties,
+                        credentials=req_data.credentials,
+                    ),
+                )
+                .model_dump(mode="json")
+            )
         except Exception as e:
             logger.exception("Error updating provider credential", exc_info=e)
             raise
@@ -396,24 +389,21 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
 )
 class TriggerSubscriptionBuilderLogsApi(Resource):
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Trigger subscription builder logs retrieved successfully",
         console_ns.models[TriggerSubscriptionBuilderLogsResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    def get(self, tenant_id: str, user: Account, provider: str, subscription_builder_id: str):
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
+    )
+    def get(self, context: RequestContext, provider: str, subscription_builder_id: str) -> dict[str, Any]:
         """Get the request logs for a subscription instance for a trigger provider"""
 
         try:
-            logs = TriggerSubscriptionBuilderService.list_logs(
-                tenant_id=tenant_id,
-                user_id=user.id,
+            logs = application_services().workspaces.trigger_builders.list_logs(
+                tenant_id=context.active_workspace_id,
+                user_id=context.account_id,
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
             )
@@ -429,30 +419,28 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
 class TriggerSubscriptionBuilderBuildApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
     @console_ns.response(
-        200, "Trigger subscription builder built successfully", console_ns.models[SimpleResultResponse.__name__]
+        HTTPStatus.OK,
+        "Trigger subscription builder built successfully",
+        console_ns.models[SimpleResultResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
+    )
     @model_validate(TriggerSubscriptionBuilderUpdatePayload)
     def post(
         self,
         req_data: TriggerSubscriptionBuilderUpdatePayload,
-        tenant_id: str,
-        user: Account,
+        context: RequestContext,
         provider: str,
         subscription_builder_id: str,
-    ):
+    ) -> dict[str, Any]:
         """Build a subscription instance for a trigger provider"""
         try:
             # Use atomic update_and_build to prevent race conditions
-            TriggerSubscriptionBuilderService.update_and_build_builder(
-                tenant_id=tenant_id,
-                user_id=user.id,
+            application_services().workspaces.trigger_builders.update_and_build_builder(
+                tenant_id=context.active_workspace_id,
+                user_id=context.account_id,
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
                 subscription_builder_updater=SubscriptionBuilderUpdater(

@@ -50,6 +50,7 @@ from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -1167,6 +1168,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 parameter=req_data.parameter,
                 credential_id=req_data.credential_id,
                 provider_type=req_data.provider_type,
+                builders=application_services().workspaces.trigger_builders,
             )
         except PluginDaemonClientSideError as e:
             raise PluginOperationError(e.description) from e
