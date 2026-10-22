@@ -466,3 +466,86 @@ def test_parse_openapi_to_tool_bundle_request_env_matches_env_key(app: Flask):
 
     assert len(tool_bundles) == 1
     assert tool_bundles[0].server_url == "http://prod.example.com/"
+
+
+def test_parse_openapi_to_tool_bundle_path_level_parameters(app: Flask):
+    # OpenAPI 3: parameters declared on the Path Item apply to every operation
+    # under that path. An operation may override one by name and location.
+    openapi = {
+        "openapi": "3.0.0",
+        "info": {"title": "API", "version": "1.0.0"},
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/users/{user_id}": {
+                "parameters": [
+                    {"name": "user_id", "in": "path", "required": True, "schema": {"type": "string"}},
+                    {"$ref": "#/components/parameters/verbose"},
+                ],
+                "get": {
+                    "operationId": "getUser",
+                    "parameters": [{"name": "fields", "in": "query", "schema": {"type": "string"}}],
+                },
+                "delete": {
+                    "operationId": "deleteUser",
+                    "parameters": [
+                        {
+                            "name": "verbose",
+                            "in": "query",
+                            "description": "operation override",
+                            "schema": {"type": "boolean"},
+                        }
+                    ],
+                },
+            }
+        },
+        "components": {
+            "parameters": {
+                "verbose": {"name": "verbose", "in": "query", "schema": {"type": "integer"}},
+            }
+        },
+    }
+
+    warning: dict[str, Any] = {}
+    with app.test_request_context():
+        get_bundle, delete_bundle = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, warning=warning)
+
+    get_parameters = get_bundle.parameters
+    assert get_parameters is not None
+    assert [p.name for p in get_parameters] == ["user_id", "verbose", "fields"]
+    assert get_parameters[0].required is True
+    assert get_parameters[1].type == ToolParameter.ToolParameterType.NUMBER
+    assert [(p["name"], p["in"]) for p in get_bundle.openapi["parameters"]] == [
+        ("user_id", "path"),
+        ("verbose", "query"),
+        ("fields", "query"),
+    ]
+
+    delete_parameters = delete_bundle.parameters
+    assert delete_parameters is not None
+    assert [p.name for p in delete_parameters] == ["user_id", "verbose"]
+    assert delete_parameters[1].type == ToolParameter.ToolParameterType.BOOLEAN
+    assert delete_parameters[1].llm_description == "operation override"
+    assert "duplicated_parameter" not in warning
+
+
+def test_parse_swagger_to_openapi_keeps_path_level_parameters(app: Flask):
+    swagger = {
+        "swagger": "2.0",
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/users/{user_id}": {
+                "parameters": [{"name": "user_id", "in": "path", "required": True, "type": "string"}],
+                "get": {"operationId": "getUser", "summary": "Get a user", "responses": {}},
+            }
+        },
+    }
+
+    converted = ApiBasedToolSchemaParser.parse_swagger_to_openapi(swagger)
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(converted)
+
+    assert len(bundles) == 1
+    assert bundles[0].operation_id == "getUser"
+    parameters = bundles[0].parameters
+    assert parameters is not None
+    assert [p.name for p in parameters] == ["user_id"]
