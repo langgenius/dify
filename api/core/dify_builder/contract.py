@@ -176,6 +176,7 @@ class Action:
     kind: ActionKind
     next_state: str | None = None
     canvas_event: str | None = None
+    payload: dict[str, Any] = field(default_factory=dict)
 
 
 # Every real choice is an option inside one interaction card. The single
@@ -397,6 +398,7 @@ class SessionView:
     # Detected user-input language. Empty until the worker detects one.
     reply_language: str = ""
     # Bounded recent safe observations for debug export after reconnect.
+    test_execution: dict[str, Any] | None = None
     diagnostics: list[dict[str, Any]] = field(default_factory=list)
 
 

@@ -70,6 +70,7 @@ from services.dify_builder.real_call_consent_service import BuilderRealCallConse
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
 from services.dify_builder.service import DifyBuilderService
+from services.dify_builder.test_actions import BuilderTestActions
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,12 @@ def _build_repo() -> SqlDifyBuilderRepository:
 
 def _build_consent_service() -> BuilderRealCallConsentService:
     return BuilderRealCallConsentService(sessionmaker(bind=db.engine, expire_on_commit=False))
+
+
+def _build_test_actions(repo: SqlDifyBuilderRepository) -> BuilderTestActions:
+    from services.dify_builder.wiring import build_native_test_api_service
+
+    return BuilderTestActions(repo._session_factory, build_native_test_api_service)
 
 
 def _require_reserved_launch(
@@ -536,6 +543,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 lambda *a, **k: None,
                 get_app_revision_fn=lambda app_id, owner: dify.read_graph(app_id, owner)[1],
                 get_verification_identity_fn=get_verification_identity,
+                test_actions=_build_test_actions(repo),
             ).get_session_view(session_id, actor)
             progress_bus.publish(
                 session_id,

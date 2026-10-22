@@ -11,6 +11,8 @@
   "changeScope.structure": "ໂຄງສ້າງ",
   "checklistIssues": "ບັນຫາລາຍການກວດສອບ",
   "configureModel": "ກະລຸນາຕັ້ງຄ່າຕົວແບບ (Model)",
+  "copy.actions.cancelTest": "ຍົກເລີກການທົດສອບ",
+  "copy.actions.confirmTestOperation": "ຢືນຢັນການດຳເນີນການນີ້",
   "copy.actions.applyTheFix": "ນຳໃຊ້ການແກ້ໄຂ",
   "copy.actions.approveChanges": "ອະນຸມັດການປ່ຽນແປງ",
   "copy.actions.approveFix": "ອະນຸມັດການແກ້ໄຂ",

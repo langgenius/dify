@@ -11,6 +11,8 @@
   "changeScope.structure": "结构",
   "checklistIssues": "检查清单问题",
   "configureModel": "请配置模型",
+  "copy.actions.cancelTest": "取消测试",
+  "copy.actions.confirmTestOperation": "确认此操作",
   "copy.actions.applyTheFix": "应用修复",
   "copy.actions.approveChanges": "批准更改",
   "copy.actions.approveFix": "批准修复",

@@ -15,7 +15,7 @@ from contextlib import suppress
 from dataclasses import asdict, replace
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from core.dify_builder.contract import (
     CONFIRM_ACTION_ID,
@@ -54,6 +54,7 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.state import PcState, canvas_read_only, is_terminal, is_waiting, is_working
 from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.execution import canonical_digest
 from runtime_contracts.builder.presentation import BuilderText, copy_text, stored_text, text_parts
 from services.dify_builder import trace_diagnostics
 from services.dify_builder.action_policy import requires_app_revision
@@ -68,6 +69,7 @@ from services.dify_builder.application.ports import Repository
 from services.dify_builder.business_acceptance import context_publication_decision
 from services.dify_builder.receipt_snapshot import apply_receipt_snapshot
 from services.dify_builder.repair_gate import NO_REPAIR_ACTIONS, NO_REPAIR_DECISION_COPY
+from services.dify_builder.test_actions import TEST_ACTIONS, TestActionPort, parse_test_action
 
 if TYPE_CHECKING:
     from core.dify_builder.real_call_consent import ConsentReceipt
@@ -966,9 +968,11 @@ class DifyBuilderService:
         get_verification_identity_fn: Callable[[str, Actor], tuple[str, str]] | None = None,
         stamp_http_fixtures_fn: Callable[..., HttpFixtureSetV1] | None = None,
         real_call_consent: "BuilderRealCallConsentService | None" = None,
+        test_actions: TestActionPort | None = None,
     ) -> None:
         # None: this instance cannot execute confirmed Tool tests (all existing callers).
         self._real_call_consent = real_call_consent
+        self._test_actions = test_actions
         self._stamp_http_fixtures_fn = stamp_http_fixtures_fn
         self._repo = repo
         self._session_lock = session_lock
@@ -1457,7 +1461,33 @@ class DifyBuilderService:
                 s, fc, Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id)
             ),
         )
+        test_execution = None
+        receipt = None
+        if self._test_actions is not None:
+            receipt = self._test_actions.current(
+                actor=Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id),
+                session_id=s.id,
+                test_input_id=fc.test_input_ref,
+            )
+            if receipt is not None:
+                test_execution = receipt.model_dump(mode="json")
+                if receipt.status != "terminal" or receipt.outcome == "unknown":
+                    from services.dify_builder.test_actions import control_actions
+
+                    actions = control_actions(receipt)
         decision = _decision_for(st, actions)
+        if (
+            receipt is not None
+            and test_execution is not None
+            and (test_execution["status"] != "terminal" or test_execution["outcome"] == "unknown")
+        ):
+            from services.dify_builder.test_actions import test_disclosure_text
+
+            if decision is not None:
+                decision.description = test_disclosure_text(receipt)
+                decision.default_option_id = ""  # risk approval must be an explicit choice
+                for option in decision.options:
+                    option.is_default = False
         if decision is not None and fc.recovery_class:
             decision.description = _RECOVERY_DESCRIPTION[fc.recovery_class]
         checkpoint = (
@@ -1469,6 +1499,7 @@ class DifyBuilderService:
         )
         recovery_ref = recovery.recovery_ref_for(fc.recovery_class)
         return SessionView(
+            test_execution=test_execution,
             diagnostics=trace_diagnostics.from_history(
                 self._repo.list_recent_conversation(s.id, limit=24), session_id=s.id, version=s.version
             ),
@@ -1477,7 +1508,17 @@ class DifyBuilderService:
             version=s.version,
             state=str(st),
             canvas_read_only=lock_held or canvas_read_only(st),
-            run_status=RunStatus.PROCESSING if lock_held else _run_status(st, paused=fc.paused),
+            run_status=(
+                RunStatus.WAITING_CONFIRMATION
+                if receipt is not None and receipt.status == "waiting"
+                else RunStatus.PROCESSING
+                if receipt is not None and receipt.status in {"prepared", "running"}
+                else RunStatus.FAILED
+                if receipt is not None and receipt.outcome == "unknown"
+                else RunStatus.PROCESSING
+                if lock_held
+                else _run_status(st, paused=fc.paused)
+            ),
             interrupted=interrupted,
             conversation_last_seq=fc.next_seq - 1,
             entry_mode=s.entry_mode,
@@ -1515,6 +1556,23 @@ class DifyBuilderService:
         ``dispatch``; ``items`` contains rows committed synchronously before a
         worker is needed. This method never dispatches itself, so a streaming
         caller can subscribe before the advance is enqueued."""
+        if not action.command_id and action.kind in TEST_ACTIONS:
+            action.command_id = str(
+                uuid5(
+                    NAMESPACE_URL,
+                    canonical_digest(
+                        {
+                            "session": session_id,
+                            "actor": actor.account_id,
+                            "tenant": actor.tenant_id,
+                            "kind": action.kind,
+                            "payload": action.payload,
+                            "base_version": action.base_version,
+                            "base_app_revision": action.base_app_revision,
+                        }
+                    ),
+                )
+            )
         action.command_id = action.command_id or str(uuid4())
         kind = action.kind.strip() if isinstance(action.kind, str) else ""
         if not kind:
@@ -1541,6 +1599,12 @@ class DifyBuilderService:
             action.payload = {**action.payload, "text": text, "client_turn_id": client_turn_id}
 
         s, fc = self._get_authorized_session(session_id, actor)
+        if action.kind in TEST_ACTIONS:
+            return self._prepare_test_action(s, fc, actor, action)
+        if self._test_actions is not None:
+            current_test = self._test_actions.current(actor=actor, session_id=s.id, test_input_id=fc.test_input_ref)
+            if current_test is not None and (current_test.status != "terminal" or current_test.outcome == "unknown"):
+                raise BusyError("observe or finish the current test before starting another action")
         if action.kind == "message":
             client_turn_id = action.payload["client_turn_id"]
             turn_kinds = self._repo.get_conversation_turn_kinds(session_id, client_turn_id)
@@ -1643,6 +1707,76 @@ class DifyBuilderService:
             return self.get_session_view(session_id, actor), False, []
         return self._build_session_view(s, fc), True, []
 
+    @staticmethod
+    def _test_action_receipt_text(kind, receipt):
+        from runtime_contracts.builder.presentation import text_parts
+        from services.dify_builder.test_actions import control_label, test_disclosure_text
+
+        return asdict(text_parts(control_label(kind), "\n", test_disclosure_text(receipt)))
+
+    def _prepare_test_action(self, s: Session, fc: DifyBuilderContext, actor: Actor, action: Action):
+        if self._test_actions is None:
+            raise BadRequestError("native test controls unavailable")
+        self._authorize_app(s.app_id, actor, AppAccess.TEST_AND_RUN)
+        command = parse_test_action(action.kind, action.payload)
+        fingerprint = canonical_digest(
+            {
+                "kind": action.kind,
+                "payload": action.payload,
+                "base_version": action.base_version,
+                "base_app_revision": action.base_app_revision,
+            }
+        )
+        prior = self._test_actions.find_command(actor=actor, session_id=s.id, command_id=action.command_id)
+        if prior is not None:
+            if prior.get("test_action_digest") != fingerprint:
+                raise ConflictError("action identity was reused with different content")
+            return self.get_session_view(s.id, actor), False, []
+        token = self._session_lock.acquire(s.id)
+        if token is None:
+            raise BusyError("Builder is still preparing the current test")
+        try:
+            s, fc = self._get_authorized_session(s.id, actor)
+            if (fc.paused or fc.recovery_class) and command.method != "cancel":
+                raise ConflictError("resolve Builder recovery before continuing the test")
+            if action.base_version != s.version:
+                raise ConflictError("stale test action session version")
+            if self._get_app_revision(s.app_id, actor) != action.base_app_revision:
+                raise ConflictError("stale test action draft revision")
+            current = self._test_actions.current(actor=actor, session_id=s.id, test_input_id=fc.test_input_ref)
+            if current is None or current.request_id != command.request_id:
+                raise ConflictError("test request is no longer current")
+            saved_receipt = self._test_actions.execute(
+                actor=actor,
+                session_id=s.id,
+                test_input_id=fc.test_input_ref,
+                command=command,
+                idempotency_key=action.command_id,
+            )
+            # Native ownership has already committed; a crash here cannot authorize
+            # another dispatch. Repeating the same command reuses its durable key.
+            s, fc = self._get_authorized_session(s.id, actor)
+            fc.last_command_id = action.command_id
+            item = ConversationItem(
+                seq=fc.next_seq,
+                kind="decision",
+                at_version=s.version + 1,
+                payload={
+                    "text": self._test_action_receipt_text(action.kind, saved_receipt),
+                    "test_action_kind": action.kind,
+                    "test_command_id": action.command_id,
+                    "test_action_digest": fingerprint,
+                    "request_id": command.request_id,
+                },
+            )
+            fc.next_seq += 1
+            self._repo.compare_and_advance(s.id, s.version, s.current_state, fc, [item])
+            self._session_lock.release(s.id, token)
+            self._test_actions.settle(actor=actor, session_id=s.id, request_id=command.request_id)
+            return self.get_session_view(s.id, actor), False, [item]
+        finally:
+            self._session_lock.release(s.id, token)
+
     def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:
         """Port of Go ``SubmitAction``."""
         view, expect_advance, _settled_items = self._prepare_action(session_id, actor, action)
@@ -1690,7 +1824,7 @@ class DifyBuilderService:
                 asdict(view),
                 None,
                 expect_advance=False,
-                emit_command_finished_when_settled=action.kind in {"message", "update_model"},
+                emit_command_finished_when_settled=action.kind in {"message", "update_model"} | TEST_ACTIONS,
                 command_id=action.command_id,
                 initial_items=settled_items,
             )

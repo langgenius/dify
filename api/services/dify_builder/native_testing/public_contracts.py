@@ -2,7 +2,8 @@
 
 GET /dify-builder/sessions/{session_id}/native-test-input returns the current
 saved-input binding, not plaintext inputs or a permit. Prefer existing Builder
-test actions: their native requests arrive over the opt-in stream. Standalone
+test actions: current test_execution is included in session/ordinary SSE
+projections. The old opt-in native stream remains compatible. Standalone
 POST /native-tests remains a separately qualified legacy runtime capability;
 obtaining a binding does not establish equivalent confirmed-run support.
 

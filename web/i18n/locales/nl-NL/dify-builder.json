@@ -11,6 +11,8 @@
   "changeScope.structure": "structuur",
   "checklistIssues": "Problemen in de checklist",
   "configureModel": "Configureer een model",
+  "copy.actions.cancelTest": "Test annuleren",
+  "copy.actions.confirmTestOperation": "Deze bewerking bevestigen",
   "copy.actions.applyTheFix": "Correctie toepassen",
   "copy.actions.approveChanges": "Wijzigingen goedkeuren",
   "copy.actions.approveFix": "Correctie goedkeuren",

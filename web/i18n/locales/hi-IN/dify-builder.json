@@ -11,6 +11,8 @@
   "changeScope.structure": "संरचना",
   "checklistIssues": "चेकलिस्ट की समस्याएँ",
   "configureModel": "एक मॉडल कॉन्फ़िगर करें",
+  "copy.actions.cancelTest": "परीक्षण रद्द करें",
+  "copy.actions.confirmTestOperation": "इस कार्रवाई की पुष्टि करें",
   "copy.actions.applyTheFix": "सुधार लागू करें",
   "copy.actions.approveChanges": "बदलावों को मंज़ूरी दें",
   "copy.actions.approveFix": "सुधार को मंज़ूरी दें",

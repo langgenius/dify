@@ -21,7 +21,9 @@ those settle, so a recovery and fresh reservation that commit in between are
 never touched. The same owner also repairs, in a bounded pass, a reserved
 grant whose command already reached review/FAILED but whose settlement write
 failed; a session whose advance lease is live is never touched.
-No schema change, no migration.
+No schema change, no migration. Native confirmed runs additionally recover
+terminal Builder result projections from already committed execution evidence;
+this never starts or resumes a workflow and respects newer user transitions.
 
 Runs on the default worker (no ``queue=``), like the other lightweight
 ``schedule/*`` beat tasks -- NOT the ``dify_builder`` queue used by
@@ -117,7 +119,7 @@ def reconcile_interrupted_sessions() -> int:
 
 
 def reconcile_native_tests(*, limit: int = 100) -> int:
-    """V2 outbox recovery uses durable rows; ordinary v1 jobs remain unchanged."""
+    """Recover durable native outbox/cleanup and missed terminal result projections."""
     from core.dify_builder.models import Actor
     from models.dify_builder import DifyBuilderExecutionRequest
     from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
@@ -142,6 +144,7 @@ def reconcile_native_tests(*, limit: int = 100) -> int:
                 )
             )
             .distinct()
+            .order_by(DifyBuilderExecutionRequest.id.desc())
             .limit(limit)
         ).all()
     recovered = 0
@@ -158,5 +161,43 @@ def reconcile_native_tests(*, limit: int = 100) -> int:
             )
         except Exception:
             logger.warning("Dify Builder native continuation requires attention (tenant=%s)", tenant_id)
+    # Initial admission/ACK loss may have no NativeDispatch row. Recover its
+    # observed pause in this existing worker, never as a side effect of GET.
+    with _session_factory()() as session:
+        observations = session.execute(
+            select(
+                DifyBuilderExecutionRequest.tenant_id,
+                DifyBuilderExecutionRequest.actor_id,
+                DifyBuilderExecutionRequest.session_id,
+                DifyBuilderExecutionRequest.id,
+            )
+            .join(NativeInvocationState, NativeInvocationState.request_id == DifyBuilderExecutionRequest.id)
+            .where(
+                DifyBuilderExecutionRequest.context["profile"]["profile_id"].as_string()
+                == "builder-agent-confirmed-v1",
+                NativeInvocationState.parent_invocation_id.is_(None),
+                NativeInvocationState.state == "running",
+                ~select(NativeDispatch.id)
+                .where(
+                    NativeDispatch.request_id == DifyBuilderExecutionRequest.id,
+                    NativeDispatch.state.in_(("queued", "published", "claimed")),
+                )
+                .exists(),
+            )
+            .distinct()
+            .order_by(DifyBuilderExecutionRequest.id.desc())
+            .limit(limit)
+        ).all()
+    for tenant_id, actor_id, session_id, request_id in observations:
+        try:
+            actor = Actor(account_id=actor_id, tenant_id=tenant_id)
+            build_native_test_api_service(actor=actor).recover_observation(
+                actor=actor, session_id=session_id, request_id=request_id
+            )
+        except Exception:
+            logger.warning("Dify Builder native acknowledgement requires attention (request=%s)", request_id)
+    from services.dify_builder.native_testing.confirmed_agent_completion import reconcile_completed_builder_runs
+
+    recovered += reconcile_completed_builder_runs(sessions=_session_factory(), limit=limit)
     native_runtime_owner().retire_closed(sessions=_session_factory())
     return recovered

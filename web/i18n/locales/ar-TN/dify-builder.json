@@ -11,6 +11,8 @@
   "changeScope.structure": "البنية",
   "checklistIssues": "مشكلات قائمة التحقق",
   "configureModel": "قم بتكوين نموذج",
+  "copy.actions.cancelTest": "إلغاء الاختبار",
+  "copy.actions.confirmTestOperation": "تأكيد هذه العملية",
   "copy.actions.applyTheFix": "تطبيق الإصلاح",
   "copy.actions.approveChanges": "الموافقة على التغييرات",
   "copy.actions.approveFix": "الموافقة على الإصلاح",
