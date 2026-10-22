@@ -129,6 +129,10 @@ class ConnectionCheckOutcome:
     revision: int
 
 
+class ConnectionCredentialChecks(Protocol):
+    def check_connection_result(self, context: WebConnectionContext, connection_id: str) -> ConnectionCheckOutcome: ...
+
+
 class NodeConnectionState(BaseModel):
     """Effective status for one node; only connected satisfies its connection gate.
 

@@ -40,7 +40,7 @@ from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, Workfl
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from services.end_user_connection_execution_adapters import validate_connection_execution
-from services.end_user_connections.errors import ConnectionError
+from services.end_user_connections.errors import ConnectionError, ConnectionIdentityError
 
 logger = logging.getLogger(__name__)
 
@@ -578,8 +578,16 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         )
         return
 
-    if generate_entity.connection_context is not None:
+    if generate_entity.connection_context is not None or workflow_run.connection_context is not None:
         try:
+            if workflow_run.connection_context is not None:
+                try:
+                    generate_entity.connection_context = ConnectionExecutionContext.model_validate_json(
+                        workflow_run.connection_context
+                    )
+                except ValueError:
+                    raise ConnectionIdentityError() from None
+            assert generate_entity.connection_context is not None
             validate_connection_execution(
                 generate_entity.connection_context,
                 app=app_model,

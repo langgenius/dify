@@ -83,10 +83,11 @@ class ConnectionAccessRecord:
 
 @dataclass(frozen=True, slots=True)
 class ToolConnectionTarget:
-    """Effective EndUser requirement from the currently published App graph.
+    """Effective EndUser requirement from a trusted App graph.
 
-    The resolver checks App/Workflow ownership, node existence and source, follows
-    explicit reuse configuration, and resolves an installed Provider in this tenant.
+    Entry resolvers check the current publication; Runtime uses the fixed Run graph.
+    Both check App/Workflow ownership, node existence and source, follow explicit
+    reuse configuration, and resolve an installed Provider in this tenant.
     provider is canonical, not a browser-supplied alias. Independent nodes are never
     merged by Provider. A missing OAuth client means authorization is unavailable.
     """

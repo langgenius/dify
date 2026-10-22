@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from clients.plugin.auth_entities import CredentialCheckResult
 from constants.end_user_connections import ConnectionCredentialType, NodeConnectionStatus
-from services.end_user_connections.contracts import ConnectionCheckOutcome, ConnectionInput
+from services.end_user_connections.contracts import ConnectionCredentialChecks, ConnectionInput
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
     ConnectionCheckSnapshot,
@@ -114,17 +114,13 @@ class PreflightConnections(Protocol):
     ) -> None: ...
 
 
-class PreflightCredentialChecks(Protocol):
-    def check_connection_result(self, context: WebConnectionContext, connection_id: str) -> ConnectionCheckOutcome: ...
-
-
 class ConnectionPreflightService:
     def __init__(
         self,
         *,
         requirements: PreflightRequirements,
         connections: PreflightConnections,
-        checks: PreflightCredentialChecks,
+        checks: ConnectionCredentialChecks,
     ) -> None:
         self._requirements = requirements
         self._connections = connections

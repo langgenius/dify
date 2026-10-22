@@ -1197,12 +1197,14 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
     workflow_run_repo.delete_workflow_pause.assert_called_once_with(pause_entity)
 
 
+@pytest.mark.parametrize("stored_context", [False, True])
 def test_rejected_connection_resume_finishes_run_and_publishes_failure(
+    stored_context: bool,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    from context.connection_execution import ConnectionExecutionContext
+    from context.connection_execution import ConnectionExecutionContext, ExecutionConnectionSelection
     from models.workflow import WorkflowPause
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services.end_user_connections.errors import ConnectionIdentityError
@@ -1236,15 +1238,28 @@ def test_rejected_connection_resume_finishes_run_and_publishes_failure(
         conversation_id=None,
         selections=(),
     )
+    expected_context = entity.connection_context
+    if stored_context:
+        expected_context = expected_context.model_copy(
+            update={
+                "selections": (
+                    ExecutionConnectionSelection(node_id="root", provider="provider", connection_id="persisted-choice"),
+                )
+            }
+        )
+        with sqlite_session_factory.begin() as session:
+            run = session.get(WorkflowRun, "run-id")
+            assert run is not None
+            run.connection_context = expected_context.model_dump_json()
+        entity.connection_context = None
     snapshot = MagicMock()
     snapshot.get_generate_entity.return_value = entity
     snapshot.serialized_graph_runtime_state = "{}"
     monkeypatch.setattr(workflow_execute_task_module.WorkflowResumptionContext, "loads", lambda _value: snapshot)
     monkeypatch.setattr(workflow_execute_task_module.GraphRuntimeState, "from_snapshot", lambda _value: MagicMock())
     monkeypatch.setattr(workflow_execute_task_module, "_resolve_user_for_run", lambda *_args: _make_account())
-    monkeypatch.setattr(
-        workflow_execute_task_module, "validate_connection_execution", MagicMock(side_effect=ConnectionIdentityError())
-    )
+    validator = MagicMock(side_effect=ConnectionIdentityError())
+    monkeypatch.setattr(workflow_execute_task_module, "validate_connection_execution", validator)
     topic = MagicMock()
     monkeypatch.setattr(
         workflow_execute_task_module.MessageBasedAppGenerator, "get_response_topic", lambda *_args: topic
@@ -1254,6 +1269,7 @@ def test_rejected_connection_resume_finishes_run_and_publishes_failure(
     # Cleanup failure must not hide the committed failure or prevent its terminal event.
     monkeypatch.setattr(repository, "delete_workflow_pause", MagicMock(side_effect=RuntimeError("cleanup failed")))
     _resume_app_execution({"workflow_run_id": "run-id"})
+    assert validator.call_args.args[0] == expected_context
     with sqlite_session_factory() as session:
         run = session.get(WorkflowRun, "run-id")
         assert run is not None

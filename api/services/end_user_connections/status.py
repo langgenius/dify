@@ -30,7 +30,7 @@ def resolve_node_connection_state(
     record: ConnectionAccessRecord | None,
     check: ConnectionCheckSnapshot | None,
 ) -> NodeConnectionState:
-    """Evaluate the explicit selection against the current published configuration.
+    """Evaluate the explicit selection against its effective node configuration.
 
     The caller resolves the target and loads the selected row under the owner scope.
     Missing and foreign selections are indistinguishable; neither exposes another

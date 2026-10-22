@@ -363,7 +363,9 @@ class DifyNodeFactory(NodeFactory):
             ),
             conversation_id_getter=self._conversation_id,
         )
-        self._tool_runtime = DifyToolNodeRuntime(self._dify_context)
+        self._tool_runtime = DifyToolNodeRuntime(
+            self._dify_context, graph=graph_init_params.graph_config, workflow_id=graph_init_params.workflow_id
+        )
         self._http_request_file_manager = file_manager
         self._document_extractor_unstructured_api_config = UnstructuredApiConfig(
             api_url=dify_config.UNSTRUCTURED_API_URL,
