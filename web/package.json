@@ -23,7 +23,7 @@
     "and_qq >= 14.9"
   ],
   "engines": {
-    "node": "^22.22.1"
+    "node": "^22.23.4"
   },
   "scripts": {
     "analyze": "next experimental-analyze",
