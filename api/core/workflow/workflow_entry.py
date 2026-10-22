@@ -49,7 +49,14 @@ from graphon.engine.container_handler.builtin.iteration import IterationContaine
 from graphon.engine.container_handler.builtin.loop import LoopContainerHandler
 from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter, filter_engine_events
 from graphon.engine.layer import ExecutionLimitsLayer, Layer
-from graphon.engine_events import EngineEvent, GraphRunFailedEvent, NodeEvent, is_node_result_event
+from graphon.engine_events import (
+    EngineEvent,
+    GraphEdgeSkippedEvent,
+    GraphEdgeTakenEvent,
+    GraphRunFailedEvent,
+    NodeEvent,
+    is_node_result_event,
+)
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File
@@ -68,6 +75,35 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
+
+
+class _SkippedEdgeAwareResponseStreamFilter:
+    """Let skipped edges unblock response streams without rewriting their events."""
+
+    def __init__(self, response_stream_filter: ResponseStreamFilter) -> None:
+        self._response_stream_filter = response_stream_filter
+
+    def initialize(self, context: EngineEventFilterContext) -> None:
+        self._response_stream_filter.initialize(context)
+
+    def on_event(self, event: EngineEvent) -> Sequence[EngineEvent]:
+        if not isinstance(event, GraphEdgeSkippedEvent):
+            return list(self._response_stream_filter.on_event(event))
+
+        # ResponseStreamFilter tracks only taken edges. Feed it an equivalent
+        # internal traversal signal so that it can release this edge from its
+        # blocking paths, while preserving the original skipped event externally.
+        synthetic_taken_event = GraphEdgeTakenEvent(
+            frame_id=event.frame_id,
+            edge_id=event.edge_id,
+            source_node_id=event.source_node_id,
+            target_node_id=event.target_node_id,
+            source_handle=event.source_handle,
+        )
+        return [event, *self._response_stream_filter.on_event(synthetic_taken_event)]
+
+    def flush(self) -> Sequence[EngineEvent]:
+        return list(self._response_stream_filter.flush())
 
 
 def iter_dify_graph_engine_events(
@@ -91,7 +127,7 @@ def iter_dify_graph_engine_events(
         context=EngineEventFilterContext.from_engine(engine),
         filters=[
             HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository()),
-            response_stream_filter or ResponseStreamFilter(),
+            _SkippedEdgeAwareResponseStreamFilter(response_stream_filter or ResponseStreamFilter()),
         ],
     )
 
