@@ -588,8 +588,8 @@ class CheckDependenciesResponse(CheckDependenciesResult, Hinted):
 
 
 class TaskStopResponse(BaseModel):
-    """200 body for POST /apps/<id>/tasks/<task_id>:stop. The handler always returns
-    {"result": "success"}, so `result` is required (no default) — the generated contract
+    """200 body for POST /apps/<id>/runs/<run_id>:stop and POST /apps/<id>/tasks/<task_id>:stop.
+    The handlers always return {"result": "success"}, so `result` is required (no default) — the generated contract
     types it as a required `'success'` rather than an optional field."""
 
     result: Literal["success"]

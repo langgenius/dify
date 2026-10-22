@@ -20,7 +20,7 @@ from werkzeug.exceptions import NotFound
 
 from constants.oauth_bearer import TokenType
 from controllers.openapi import app_run
-from controllers.openapi._errors import AppModeMismatch
+from controllers.openapi._errors import AppModeMismatch, RunNotFound, RunNotStoppable
 from controllers.openapi._models import (
     AdvancedChatRunPayload,
     ChatRunPayload,
@@ -28,7 +28,7 @@ from controllers.openapi._models import (
     TaskStopResponse,
     WorkflowRunPayload,
 )
-from controllers.openapi.app_run import AdvancedChatRunApi, AppRunTaskStopApi, ChatRunApi, CompletionRunApi
+from controllers.openapi.app_run import AdvancedChatRunApi, AppRunStopApi, AppTaskStopApi, ChatRunApi, CompletionRunApi
 from controllers.openapi.auth.subjects import Subject, subject_from_auth
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_application_services import ApplicationServices
@@ -100,10 +100,94 @@ def test_chat_payload_normalizes_conversation_id():
     assert ChatRunPayload(inputs={}, query="hi", conversation_id=cid).conversation_id == cid
 
 
+def _stop_services(
+    monkeypatch: pytest.MonkeyPatch,
+    account_application_services: ApplicationServices,
+    sqlite_session: Session,
+    redis: _StopRedis,
+) -> None:
+    import services.app_task_service as task_module
+
+    monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_session.get_bind()))
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi.app_run"],
+        "application_services",
+        lambda: replace(account_application_services, app_tasks=AppTaskControlService(redis_client=redis)),
+    )
+
+
+def _stop_run(
+    sqlite_session: Session, mode: AppMode, *, task_id: str, status: WorkflowExecutionStatus, owner_id: str = "user-1"
+) -> WorkflowRun:
+    run = WorkflowRun(
+        id=str(uuid.uuid4()),
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        task_id=task_id,
+        type=WorkflowType.CHAT if mode == AppMode.ADVANCED_CHAT else WorkflowType.WORKFLOW,
+        version="1",
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        status=status,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=owner_id,
+    )
+    sqlite_session.add(run)
+    sqlite_session.commit()
+    return run
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_stop_run_answers_by_outcome(
+    app: Flask,
+    account_application_services: ApplicationServices,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    mode: AppMode,
+):
+    task_id = str(uuid.uuid4())
+    running = _stop_run(sqlite_session, mode, task_id=task_id, status=WorkflowExecutionStatus.RUNNING)
+    finished = _stop_run(sqlite_session, mode, task_id=str(uuid.uuid4()), status=WorkflowExecutionStatus.SUCCEEDED)
+    redis = _StopRedis()
+    _stop_services(monkeypatch, account_application_services, sqlite_session, redis)
+    ctx = _SealableContext(
+        subject=_subject(), caller=_make_account(), app=App(id="app-1", tenant_id="tenant-1", mode=mode)
+    )
+    api = AppRunStopApi()
+    with app.test_request_context("/openapi/v1/apps/app-1/runs/x:stop", method="POST"):
+        with pytest.raises(RunNotFound):
+            api.post.__handler__(api, ctx, app_id="app-1", run_id=str(uuid.uuid4()))
+        with pytest.raises(RunNotStoppable):
+            api.post.__handler__(api, ctx, app_id="app-1", run_id=finished.id)
+        assert redis.operations == []
+        assert api.post.__handler__(api, ctx, app_id="app-1", run_id=running.id) == TaskStopResponse(result="success")
+    assert redis.values[f"generate_task_stopped:{task_id}"] == b"1"
+
+
+def test_stop_run_rejects_a_non_uuid_run_id(
+    app: Flask,
+    account_application_services: ApplicationServices,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+):
+    redis = _StopRedis()
+    _stop_services(monkeypatch, account_application_services, sqlite_session, redis)
+    ctx = _SealableContext(
+        subject=_subject(),
+        caller=_make_account(),
+        app=App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW),
+    )
+    api = AppRunStopApi()
+    with app.test_request_context("/openapi/v1/apps/app-1/runs/abc:stop", method="POST"):
+        with pytest.raises(RunNotFound):
+            api.post.__handler__(api, ctx, app_id="app-1", run_id="abc")
+    assert redis.operations == []
+
+
 @pytest.mark.parametrize(
     "token_type", [TokenType.OAUTH_ACCOUNT, TokenType.OAUTH_EXTERNAL_SSO, TokenType.RESOURCE_ACCESS]
 )
-@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.COMPLETION])
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
 @pytest.mark.parametrize("owns_task", [False, True])
 def test_stop_task_enforces_resolved_caller_ownership(
     app: Flask,
@@ -114,42 +198,18 @@ def test_stop_task_enforces_resolved_caller_ownership(
     mode: AppMode,
     owns_task: bool,
 ):
-    import services.app_task_service as task_module
-
     subject = _subject(token_type)
     caller = _make_account() if subject.caller_role == CreatorUserRole.ACCOUNT else EndUser(id="user-1")
     owner_id = caller.id if owns_task else "another-user"
     task_id = str(uuid.uuid4())
     redis = _StopRedis(values={f"generate_task_belong:{task_id}": f"end-user-{owner_id}".encode()})
-    if mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
-        sqlite_session.add(
-            WorkflowRun(
-                id="run-1",
-                tenant_id="tenant-1",
-                app_id="app-1",
-                workflow_id="workflow-1",
-                task_id=task_id,
-                type=WorkflowType.CHAT if mode == AppMode.ADVANCED_CHAT else WorkflowType.WORKFLOW,
-                version="1",
-                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
-                status=WorkflowExecutionStatus.RUNNING,
-                created_by_role=CreatorUserRole.END_USER,
-                created_by=owner_id,
-            )
-        )
-        sqlite_session.commit()
-    monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_session.get_bind()))
-    monkeypatch.setattr(
-        sys.modules["controllers.openapi.app_run"],
-        "application_services",
-        lambda: replace(account_application_services, app_tasks=AppTaskControlService(redis_client=redis)),
-    )
+    _stop_services(monkeypatch, account_application_services, sqlite_session, redis)
     ctx = _SealableContext(
         subject=subject,
         caller=caller,
         app=App(id="app-1", tenant_id="tenant-1", mode=mode),
     )
-    api = AppRunTaskStopApi()
+    api = AppTaskStopApi()
     allowed = owns_task or subject.caller_role == CreatorUserRole.ACCOUNT
     with app.test_request_context(f"/openapi/v1/apps/app-1/tasks/{task_id}:stop", method="POST"):
         if allowed:
@@ -159,10 +219,28 @@ def test_stop_task_enforces_resolved_caller_ownership(
                 api.post.__handler__(api, ctx, app_id="app-1", task_id=task_id)
     if allowed:
         assert redis.values[f"generate_task_stopped:{task_id}"] == b"1"
-        assert bool(redis.commands) == (mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT))
     else:
         assert redis.operations == []
-        assert redis.commands == {}
+    assert redis.commands == {}
+
+
+@pytest.mark.parametrize(
+    ("resource", "mode", "kwargs"),
+    [
+        (AppRunStopApi, AppMode.CHAT, {"run_id": str(uuid.uuid4())}),
+        (AppRunStopApi, AppMode.COMPLETION, {"run_id": str(uuid.uuid4())}),
+        (AppTaskStopApi, AppMode.WORKFLOW, {"task_id": str(uuid.uuid4())}),
+        (AppTaskStopApi, AppMode.ADVANCED_CHAT, {"task_id": str(uuid.uuid4())}),
+    ],
+)
+def test_stop_routes_refuse_the_other_id_kind(app: Flask, resource: type, mode: AppMode, kwargs: dict[str, str]):
+    ctx = _SealableContext(
+        subject=_subject(), caller=_make_account(), app=App(id="app-1", tenant_id="tenant-1", mode=mode)
+    )
+    api = resource()
+    with app.test_request_context("/openapi/v1/apps/app-1/stop", method="POST"):
+        with pytest.raises(AppModeMismatch):
+            api.post.__handler__(api, ctx, app_id="app-1", **kwargs)
 
 
 class _SealableContext:

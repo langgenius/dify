@@ -70,28 +70,6 @@ class AppTaskControlService:
         """
         return AppQueueManager.set_stop_flag(task_id, invoke_from, user_id, redis=self._redis_client)
 
-    def stop_app_task(
-        self,
-        *,
-        tenant_id: str,
-        app_id: str,
-        task_id: str,
-        app_mode: AppMode,
-        caller_role: CreatorUserRole,
-        caller_id: str,
-    ) -> bool:
-        """Stop after app admission, restricting all end users to their own tasks."""
-        owner = (caller_role, caller_id) if caller_role == CreatorUserRole.END_USER else None
-        if app_mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
-            admitted = self.stop_workflow_task(
-                tenant_id=tenant_id, app_id=app_id, task_id=task_id, app_mode=app_mode, owner=owner
-            )
-            return admitted or owner is None
-        if owner is not None:
-            return self.stop_task(task_id, InvokeFrom.OPENAPI, caller_id)
-        set_app_task_stop_flag(task_id, redis=self._redis_client)
-        return True
-
     def stop_message_task(self, *, task_id: str, caller_role: CreatorUserRole, caller_id: str) -> bool:
         """Stop a chat, agent-chat or completion task, restricting end users to their own tasks."""
         if caller_role == CreatorUserRole.END_USER:

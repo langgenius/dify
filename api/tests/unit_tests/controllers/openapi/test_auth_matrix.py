@@ -697,6 +697,12 @@ ROUTES: tuple[Route, ...] = (
     Route(
         "app_run.stop",
         "POST",
+        "/apps/{app_id}/runs/{run_id}:stop",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
+    ),
+    Route(
+        "app_run.stop.task",
+        "POST",
         "/apps/{app_id}/tasks/{task_id}:stop",
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     ),
@@ -1440,6 +1446,7 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
         CheckWebAppAuthEnterprise(),
     ),
     "app_run.stop": _RESOURCE_RUN,
+    "app_run.stop.task": _RESOURCE_RUN,
     "files.upload": _REQ_FILES,
     "human_input_form.get": _REQ_RUN_FORM,
     "human_input_form.submit": _REQ_RUN_FORM,
@@ -2021,6 +2028,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/apps/{app_id}/human-input-forms/{form_token}"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/human-input-forms/{form_token}:submit"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}/tasks/{task_id}/events"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/runs/{run_id}:stop"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/tasks/{task_id}:stop"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/workflow:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/chat:run"): frozenset({"200", "422", "default"}),
