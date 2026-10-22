@@ -30,7 +30,7 @@ inner_api_ns = Namespace("inner_api", description="Internal API operations", pat
 def _register_controllers() -> tuple[ModuleType, ...]:
     """Load route modules after their namespace exists."""
 
-    from . import mail, runtime_credentials
+    from . import datasource_credentials, mail, runtime_credentials
     from .agent import files, knowledge, llm, runtime_usage, tools, tracing
     from .app import app, dsl, file_grants
     from .knowledge import retrieval
@@ -39,6 +39,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     from .workspace import workspace
 
     return (
+        datasource_credentials,
         mail,
         runtime_credentials,
         files,
@@ -63,6 +64,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 
 (
+    _datasource_credentials,
     _mail,
     _runtime_credentials,
     _agent_files,
@@ -97,6 +99,7 @@ __all__ = [
     "_app_app",
     "_app_dsl",
     "_app_file_grants",
+    "_datasource_credentials",
     "_knowledge_fs_background",
     "_knowledge_fs_storage",
     "_knowledge_fs_texts",
