@@ -358,7 +358,12 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const createDownloadMutation = useMutation(
     consoleQuery.workflowRunArchives.downloads.post.mutationOptions(),
   )
-  const currentTask = taskQuery.data ?? cachedTask
+  const polledTask = taskQuery.data
+  const currentTask =
+    polledTask &&
+    (!cachedTask || Date.parse(polledTask.updated_at) >= Date.parse(cachedTask.updated_at))
+      ? polledTask
+      : cachedTask
   const isPreparing = createDownloadMutation.isPending || isPreparingStatus(currentTask?.status)
   const isReady = currentTask?.status === 'ready'
   const isFailed = currentTask?.status === 'failed'
@@ -379,6 +384,13 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
         : isPreparing
           ? t(($) => $['archives.downloadHint.preparing'], { ns: 'appLog' })
           : t(($) => $['archives.downloadHint.prepare'], { ns: 'appLog' })
+  const announceDownloadResult =
+    !createDownloadMutation.isPending &&
+    !isDownloadUnavailable &&
+    (isPreparingStatus(cachedTask?.status) ||
+      isPreparingStatus(polledTask?.status) ||
+      taskQuery.isFetching) &&
+    (isReady || isFailed)
 
   const prepareDownload = () => {
     if (createDownloadMutation.isPending || isDownloadUnavailable) return
@@ -393,6 +405,15 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
       {
         onSuccess: (task) => {
           setDownloadTask(task)
+          if (task.status === 'failed') {
+            const reason = task.error?.trim()
+            toast.error(
+              reason
+                ? t(($) => $['archives.downloadHint.failedWithReason'], { ns: 'appLog', reason })
+                : t(($) => $['archives.downloadHint.failed'], { ns: 'appLog' }),
+            )
+            return
+          }
           toast.success(
             task.status === 'ready'
               ? t(($) => $['archives.action.downloadReady'], { ns: 'appLog' })
@@ -446,6 +467,9 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
       </td>
       <td className="px-2 py-3 text-center">
         <div className="flex flex-col items-center gap-2">
+          <span role="status" aria-atomic="true" className="sr-only">
+            {announceDownloadResult ? `${archiveMonth}: ${downloadHint}` : ''}
+          </span>
           <div className="flex items-center justify-center gap-1">
             <Tooltip>
               <TooltipTrigger
