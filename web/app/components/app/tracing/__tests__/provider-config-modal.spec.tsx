@@ -1,15 +1,15 @@
 import type { TraceConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type { ConfigurableTracingProvider } from '../providers'
+import type { TracingResource } from '../resource'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
-import { toast } from '@/app/notifications'
 import { httpErrorFromResponse } from '@/service/http-error'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
-import ConfigBtn from '../config-button'
-import ProviderConfigModal from '../provider-config-modal'
-import { TracingProvider } from '../type'
+import { ProviderConfigModal } from '../provider-config-modal'
+import { configurableProviders } from '../providers'
 
 const { request } = vi.hoisted(() => ({
   request:
@@ -17,230 +17,200 @@ const { request } = vi.hoisted(() => ({
 }))
 vi.mock('@/service/base', () => ({ request }))
 
-const expectRequest = async (method: string, body?: unknown) => {
+const expectRequest = async (
+  method: string,
+  body?: unknown,
+  path = '/apps/app-id/trace-config',
+) => {
   expect(request).toHaveBeenCalledOnce()
   const sent = request.mock.calls[0]![2].request
   expect(sent.method).toBe(method)
-  expect(new URL(sent.url).pathname).toMatch(/\/apps\/app-id\/trace-config$/)
+  expect(new URL(sent.url).pathname).toBe(`/console/api${path}`)
   if (body) expect(await sent.clone().json()).toEqual(body)
-  else expect(new URL(sent.url).searchParams.get('tracing_provider')).toBe(TracingProvider.langfuse)
+  else expect(new URL(sent.url).searchParams.get('tracing_provider')).toBe('langfuse')
 }
 
-vi.mock('@/app/notifications', () => ({
-  toast: vi.fn(),
-}))
-
 const validConfigs = {
-  [TracingProvider.arize]: {
+  arize: {
     api_key: 'arize-api-key',
     space_id: 'space-id',
     project: 'arize-project',
     endpoint: 'https://otlp.arize.com',
   },
-  [TracingProvider.phoenix]: {
+  phoenix: {
     api_key: 'phoenix-api-key',
     project: 'phoenix-project',
     endpoint: 'https://app.phoenix.arize.com',
   },
-  [TracingProvider.langSmith]: {
+  langsmith: {
     api_key: 'langsmith-api-key',
     project: 'langsmith-project',
     endpoint: 'https://api.smith.langchain.com',
   },
-  [TracingProvider.langfuse]: {
+  langfuse: {
     public_key: 'public-key',
     secret_key: 'secret-key',
     host: 'https://cloud.langfuse.com',
   },
-  [TracingProvider.opik]: {
+  opik: {
     api_key: 'opik-api-key',
     project: 'opik-project',
     workspace: 'default',
     url: 'https://www.comet.com/opik/api/',
   },
-  [TracingProvider.weave]: {
+  weave: {
     api_key: 'weave-api-key',
     entity: 'wandb-entity',
     project: 'weave-project',
     endpoint: 'https://trace.wandb.ai/',
     host: 'https://api.wandb.ai',
   },
-  [TracingProvider.aliyun]: {
+  aliyun: {
     app_name: 'aliyun-app',
     license_key: 'license-key',
     endpoint: 'https://tracing.arms.aliyuncs.com',
   },
-  [TracingProvider.mlflow]: {
+  mlflow: {
     tracking_uri: 'http://localhost:5000',
     experiment_id: '123',
     username: 'mlflow-user',
     password: 'mlflow-password',
   },
-  [TracingProvider.databricks]: {
+  databricks: {
     experiment_id: '123',
     host: 'https://workspace.cloud.databricks.com',
     client_id: 'client-id',
     client_secret: 'client-secret',
     personal_access_token: 'personal-access-token',
   },
-  [TracingProvider.tencent]: {
+  tencent: {
     token: 'tencent-token',
-    endpoint: 'https://your-region.cls.tencentcs.com',
-    service_name: 'dify_app',
+    endpoint: 'https://ap-guangzhou.apm.tencentcs.com:4320',
+    service_name: 'dify-app',
   },
-} satisfies Record<TracingProvider, TraceConfigPayload['tracing_config']>
+} satisfies Record<ConfigurableTracingProvider, TraceConfigPayload['tracing_config']>
 
 const invalidConfigCases: Array<{
-  provider: TracingProvider
+  provider: ConfigurableTracingProvider
   payload: TraceConfigPayload['tracing_config']
   missingField: string
 }> = [
   {
-    provider: TracingProvider.arize,
-    payload: { ...validConfigs[TracingProvider.arize], api_key: '' },
+    provider: 'arize',
+    payload: { ...validConfigs.arize, api_key: '' },
     missingField: 'API Key',
   },
   {
-    provider: TracingProvider.arize,
-    payload: { ...validConfigs[TracingProvider.arize], space_id: '' },
+    provider: 'arize',
+    payload: { ...validConfigs.arize, space_id: '' },
     missingField: 'Space ID',
   },
   {
-    provider: TracingProvider.arize,
-    payload: { ...validConfigs[TracingProvider.arize], project: '' },
+    provider: 'arize',
+    payload: { ...validConfigs.arize, project: '' },
     missingField: 'app.tracing.configProvider.project',
   },
   {
-    provider: TracingProvider.phoenix,
-    payload: { ...validConfigs[TracingProvider.phoenix], api_key: '' },
+    provider: 'phoenix',
+    payload: { ...validConfigs.phoenix, project: '' },
+    missingField: 'app.tracing.configProvider.project',
+  },
+  {
+    provider: 'langsmith',
+    payload: { ...validConfigs.langsmith, api_key: '' },
     missingField: 'API Key',
   },
   {
-    provider: TracingProvider.phoenix,
-    payload: { ...validConfigs[TracingProvider.phoenix], project: '' },
+    provider: 'langsmith',
+    payload: { ...validConfigs.langsmith, project: '' },
     missingField: 'app.tracing.configProvider.project',
   },
   {
-    provider: TracingProvider.langSmith,
-    payload: { ...validConfigs[TracingProvider.langSmith], api_key: '' },
-    missingField: 'API Key',
-  },
-  {
-    provider: TracingProvider.langSmith,
-    payload: { ...validConfigs[TracingProvider.langSmith], project: '' },
-    missingField: 'app.tracing.configProvider.project',
-  },
-  {
-    provider: TracingProvider.langfuse,
-    payload: { ...validConfigs[TracingProvider.langfuse], secret_key: '' },
+    provider: 'langfuse',
+    payload: { ...validConfigs.langfuse, secret_key: '' },
     missingField: 'app.tracing.configProvider.secretKey',
   },
   {
-    provider: TracingProvider.langfuse,
-    payload: { ...validConfigs[TracingProvider.langfuse], public_key: '' },
+    provider: 'langfuse',
+    payload: { ...validConfigs.langfuse, public_key: '' },
     missingField: 'app.tracing.configProvider.publicKey',
   },
   {
-    provider: TracingProvider.langfuse,
-    payload: { ...validConfigs[TracingProvider.langfuse], host: '' },
+    provider: 'langfuse',
+    payload: { ...validConfigs.langfuse, host: '' },
     missingField: 'Host',
   },
   {
-    provider: TracingProvider.weave,
-    payload: { ...validConfigs[TracingProvider.weave], api_key: '' },
+    provider: 'weave',
+    payload: { ...validConfigs.weave, api_key: '' },
     missingField: 'API Key',
   },
   {
-    provider: TracingProvider.weave,
-    payload: { ...validConfigs[TracingProvider.weave], project: '' },
+    provider: 'weave',
+    payload: { ...validConfigs.weave, project: '' },
     missingField: 'app.tracing.configProvider.project',
   },
   {
-    provider: TracingProvider.aliyun,
-    payload: { ...validConfigs[TracingProvider.aliyun], app_name: '' },
+    provider: 'aliyun',
+    payload: { ...validConfigs.aliyun, app_name: '' },
     missingField: 'App Name',
   },
   {
-    provider: TracingProvider.aliyun,
-    payload: { ...validConfigs[TracingProvider.aliyun], license_key: '' },
+    provider: 'aliyun',
+    payload: { ...validConfigs.aliyun, license_key: '' },
     missingField: 'License Key',
   },
   {
-    provider: TracingProvider.aliyun,
-    payload: { ...validConfigs[TracingProvider.aliyun], endpoint: '' },
+    provider: 'aliyun',
+    payload: { ...validConfigs.aliyun, endpoint: '' },
     missingField: 'Endpoint',
   },
   {
-    provider: TracingProvider.mlflow,
-    payload: { ...validConfigs[TracingProvider.mlflow], tracking_uri: '' },
+    provider: 'mlflow',
+    payload: { ...validConfigs.mlflow, tracking_uri: '' },
     missingField: 'app.tracing.configProvider.trackingUri',
   },
   {
-    provider: TracingProvider.databricks,
-    payload: { ...validConfigs[TracingProvider.databricks], experiment_id: '' },
+    provider: 'databricks',
+    payload: { ...validConfigs.databricks, experiment_id: '' },
     missingField: 'app.tracing.configProvider.experimentId',
   },
   {
-    provider: TracingProvider.databricks,
-    payload: { ...validConfigs[TracingProvider.databricks], host: '' },
+    provider: 'databricks',
+    payload: { ...validConfigs.databricks, host: '' },
     missingField: 'app.tracing.configProvider.databricksHost',
   },
   {
-    provider: TracingProvider.tencent,
-    payload: { ...validConfigs[TracingProvider.tencent], token: '' },
+    provider: 'tencent',
+    payload: { ...validConfigs.tencent, token: '' },
     missingField: 'Token',
   },
   {
-    provider: TracingProvider.tencent,
-    payload: { ...validConfigs[TracingProvider.tencent], endpoint: '' },
+    provider: 'tencent',
+    payload: { ...validConfigs.tencent, endpoint: '' },
     missingField: 'Endpoint',
   },
   {
-    provider: TracingProvider.tencent,
-    payload: { ...validConfigs[TracingProvider.tencent], service_name: '' },
+    provider: 'tencent',
+    payload: { ...validConfigs.tencent, service_name: '' },
     missingField: 'Service Name',
   },
 ]
 
-const renderConfigButton = () => {
-  return render(
-    <ConfigBtn
-      appId="app-id"
-      readOnly={false}
-      hasConfigured={false}
-      enabled={false}
-      onStatusChange={vi.fn()}
-      chosenProvider={null}
-      onChooseProvider={vi.fn()}
-      arizeConfig={null}
-      phoenixConfig={null}
-      langSmithConfig={null}
-      langFuseConfig={null}
-      opikConfig={null}
-      weaveConfig={null}
-      aliyunConfig={null}
-      mlflowConfig={null}
-      databricksConfig={null}
-      tencentConfig={null}
-      onConfigRemoved={vi.fn()}
-    >
-      Open tracing
-    </ConfigBtn>,
-    { wrapper: createQueryClientWrapper(createTestQueryClient()) },
-  )
-}
-
 const renderProviderConfigModal = ({
-  type = TracingProvider.langfuse,
+  type = 'langfuse',
   payload,
+  inUse = false,
+  resource = { kind: 'app', appId: 'app-id', mode: 'chat' },
 }: {
-  type?: TracingProvider
+  type?: ConfigurableTracingProvider
   payload?: TraceConfigPayload['tracing_config'] | null
+  inUse?: boolean
+  resource?: TracingResource
 } = {}) => {
   const callbacks = {
     onCancel: vi.fn(),
     onSaved: vi.fn(),
-    onChosen: vi.fn(),
     onRemoved: vi.fn(),
   }
 
@@ -255,12 +225,12 @@ const renderProviderConfigModal = ({
     >
       <DialogContent initialFocus={firstInputRef}>
         <ProviderConfigModal
-          appId="app-id"
+          resource={resource}
           type={type}
           payload={payload}
+          inUse={inUse}
           firstInputRef={firstInputRef}
           onSaved={callbacks.onSaved}
-          onChosen={callbacks.onChosen}
           onRemoved={callbacks.onRemoved}
         />
       </DialogContent>
@@ -273,7 +243,6 @@ const renderProviderConfigModal = ({
 
 describe('ProviderConfigModal', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     request.mockImplementation(async (_url, _init, { request: sent }) =>
       sent.method === 'DELETE'
         ? new Response(null, { status: 204 })
@@ -281,46 +250,31 @@ describe('ProviderConfigModal', () => {
     )
   })
 
-  describe('Nested Overlay Behavior', () => {
-    it('keeps the provider list open and starts a fresh draft after closing the dialog', async () => {
-      const user = userEvent.setup()
-      renderConfigButton()
-
-      await user.click(screen.getByRole('button', { name: 'Open tracing' }))
-      await waitFor(() => {
-        expect(screen.getByText('app.tracing.tracing')).toBeInTheDocument()
-      })
-
-      const configActions = screen.getAllByText('app.tracing.config')
-      await user.click(configActions[0]!)
-      await waitFor(() => {
-        expect(
-          screen.getByText('app.tracing.configProvider.titleapp.tracing.langfuse.title'),
-        ).toBeInTheDocument()
-      })
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
-
-      const host = screen.getByRole('textbox', { name: 'Host' })
-      await user.clear(host)
-      await user.type(host, 'https://draft.langfuse.com')
-      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-      await waitFor(() =>
-        expect(
-          screen.queryByRole('button', { name: 'common.operation.close' }),
-        ).not.toBeInTheDocument(),
-      )
-      expect(screen.getByText('app.tracing.tracing')).toBeInTheDocument()
-      const configButton = screen.getAllByRole('button', { name: 'app.tracing.config' })[0]!
-      await waitFor(() => expect(configButton).toHaveFocus())
-      await user.click(configButton)
-      expect(screen.getByRole('textbox', { name: 'Host' })).toHaveValue('')
-    })
-  })
-
   describe('Saving', () => {
+    it('creates an anonymous Phoenix destination without a key', async () => {
+      const user = userEvent.setup()
+      const callbacks = renderProviderConfigModal({ type: 'phoenix' })
+      await user.type(
+        screen.getByRole('textbox', { name: 'app.tracing.configProvider.project' }),
+        'local-project',
+      )
+      await user.type(screen.getByRole('textbox', { name: 'Endpoint' }), 'http://localhost:6006')
+      await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('POST', {
+        tracing_provider: 'phoenix',
+        activate: true,
+        tracing_config: {
+          api_key: '',
+          project: 'local-project',
+          endpoint: 'http://localhost:6006',
+        },
+      })
+    })
+
     it('submits a new config with Enter and chooses the provider', async () => {
       const user = userEvent.setup()
-      const callbacks = renderProviderConfigModal({ type: TracingProvider.langfuse })
+      const callbacks = renderProviderConfigModal({ type: 'langfuse' })
 
       await user.type(
         screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
@@ -335,14 +289,13 @@ describe('ProviderConfigModal', () => {
 
       await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
       await expectRequest('POST', {
-        tracing_provider: TracingProvider.langfuse,
-        tracing_config: validConfigs[TracingProvider.langfuse],
+        tracing_provider: 'langfuse',
+        tracing_config: validConfigs.langfuse,
+        activate: true,
       })
-      expect(callbacks.onChosen).toHaveBeenCalledWith(TracingProvider.langfuse)
-      expect(toast).not.toHaveBeenCalled()
     })
 
-    it.each(Object.values(TracingProvider))(
+    it.each(configurableProviders)(
       'should update valid %s config in edit mode',
       async (provider) => {
         const user = userEvent.setup()
@@ -350,6 +303,26 @@ describe('ProviderConfigModal', () => {
           type: provider,
           payload: validConfigs[provider],
         })
+
+        const credentialLabels = {
+          arize: ['API Key'],
+          phoenix: ['API Key'],
+          langsmith: ['API Key'],
+          langfuse: ['app.tracing.configProvider.secretKey'],
+          opik: ['API Key'],
+          weave: ['API Key'],
+          aliyun: ['License Key'],
+          mlflow: ['app.tracing.configProvider.password'],
+          databricks: [
+            'app.tracing.configProvider.clientSecret',
+            'app.tracing.configProvider.personalAccessToken',
+          ],
+          tencent: ['Token'],
+        } satisfies Record<ConfigurableTracingProvider, string[]>
+        for (const label of credentialLabels[provider]) {
+          const credential = screen.getByRole('textbox', { name: label })
+          expect(credential).toHaveAttribute('autocomplete', 'off')
+        }
 
         const edits = {
           arize: ['Space ID', 'space_id', 'new-space'],
@@ -362,7 +335,7 @@ describe('ProviderConfigModal', () => {
           mlflow: ['app.tracing.configProvider.experimentId', 'experiment_id', '456'],
           databricks: ['app.tracing.configProvider.experimentId', 'experiment_id', '456'],
           tencent: ['Service Name', 'service_name', 'new-service'],
-        } satisfies Record<TracingProvider, [string, string, string]>
+        } satisfies Record<ConfigurableTracingProvider, [string, string, string]>
         const [label, key, value] = edits[provider]
         const input = screen.getByRole('textbox', { name: label })
         await user.clear(input)
@@ -374,14 +347,14 @@ describe('ProviderConfigModal', () => {
           tracing_provider: provider,
           tracing_config: { ...validConfigs[provider], [key]: value },
         })
-        expect(callbacks.onChosen).not.toHaveBeenCalled()
+        expect(request).toHaveBeenCalledOnce()
       },
     )
 
     it.each([
-      [TracingProvider.langfuse, 'host', 'HTTPS://cloud.langfuse.com'],
-      [TracingProvider.langSmith, 'endpoint', 'HTTPS://api.smith.langchain.com'],
-      [TracingProvider.opik, 'url', 'HTTPS://www.comet.com/opik/api/'],
+      ['langfuse', 'host', 'HTTPS://cloud.langfuse.com'],
+      ['langsmith', 'endpoint', 'HTTPS://api.smith.langchain.com'],
+      ['opik', 'url', 'HTTPS://www.comet.com/opik/api/'],
     ] as const)('accepts case-insensitive URL schemes for %s', async (provider, key, value) => {
       const user = userEvent.setup()
       const payload = { ...validConfigs[provider], [key]: value }
@@ -395,8 +368,8 @@ describe('ProviderConfigModal', () => {
 
     it('displays nullable provider fields as empty without changing their submitted values', async () => {
       const user = userEvent.setup()
-      const payload = { ...validConfigs[TracingProvider.mlflow], username: null }
-      const callbacks = renderProviderConfigModal({ type: TracingProvider.mlflow, payload })
+      const payload = { ...validConfigs.mlflow, username: null }
+      const callbacks = renderProviderConfigModal({ type: 'mlflow', payload })
 
       expect(
         screen.getByRole('textbox', { name: 'app.tracing.configProvider.username' }),
@@ -405,7 +378,7 @@ describe('ProviderConfigModal', () => {
 
       await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
       await expectRequest('PATCH', {
-        tracing_provider: TracingProvider.mlflow,
+        tracing_provider: 'mlflow',
         tracing_config: payload,
       })
     })
@@ -423,7 +396,7 @@ describe('ProviderConfigModal', () => {
       )
       const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
       const callbacks = renderProviderConfigModal({
-        payload: validConfigs[TracingProvider.langfuse],
+        payload: validConfigs.langfuse,
       })
       const host = screen.getByRole('textbox', { name: 'Host' })
       await user.clear(host)
@@ -445,9 +418,8 @@ describe('ProviderConfigModal', () => {
         expect(host).toHaveValue('https://draft.langfuse.com')
         expect(screen.getByRole('alert')).toHaveTextContent('Config rejected')
         expect(request.mock.calls[0]![2]).toMatchObject({ silent: true })
-        expect(toast).not.toHaveBeenCalled()
         expect(callbacks.onSaved).not.toHaveBeenCalled()
-        expect(callbacks.onChosen).not.toHaveBeenCalled()
+        expect(request).toHaveBeenCalledOnce()
 
         await user.click(save)
         await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
@@ -459,19 +431,14 @@ describe('ProviderConfigModal', () => {
     })
 
     it.each([
-      [TracingProvider.langfuse, 'host', 'Host', 'ftp://cloud.langfuse.com'],
-      [TracingProvider.langSmith, 'endpoint', 'Endpoint', 'http://api.smith.langchain.com'],
-      [TracingProvider.weave, 'endpoint', 'Endpoint', 'http://trace.wandb.ai'],
-      [TracingProvider.opik, 'url', 'Url', 'https://www.comet.com/opik/'],
-      [TracingProvider.mlflow, 'experiment_id', 'app.tracing.configProvider.experimentId', '1.5'],
-      [
-        TracingProvider.databricks,
-        'experiment_id',
-        'app.tracing.configProvider.experimentId',
-        '-1',
-      ],
-      [TracingProvider.aliyun, 'license_key', 'License Key', '   '],
-      [TracingProvider.tencent, 'token', 'Token', '   '],
+      ['langfuse', 'host', 'Host', 'ftp://cloud.langfuse.com'],
+      ['langsmith', 'endpoint', 'Endpoint', 'http://api.smith.langchain.com'],
+      ['weave', 'endpoint', 'Endpoint', 'http://trace.wandb.ai'],
+      ['opik', 'url', 'Url', 'https://www.comet.com/opik/'],
+      ['mlflow', 'experiment_id', 'app.tracing.configProvider.experimentId', '1.5'],
+      ['databricks', 'experiment_id', 'app.tracing.configProvider.experimentId', '-1'],
+      ['aliyun', 'license_key', 'License Key', '   '],
+      ['tencent', 'token', 'Token', '   '],
     ] as const)(
       'validates %s %s inline before sending credentials',
       async (provider, key, label, value) => {
@@ -518,7 +485,6 @@ describe('ProviderConfigModal', () => {
         expect(field).toBeInvalid()
         expect(field).toHaveFocus()
         expect(field).toHaveAccessibleDescription()
-        expect(toast).not.toHaveBeenCalled()
       },
     )
   })
@@ -536,8 +502,8 @@ describe('ProviderConfigModal', () => {
     it('should remove an existing provider after confirmation', async () => {
       const user = userEvent.setup()
       const callbacks = renderProviderConfigModal({
-        type: TracingProvider.langfuse,
-        payload: validConfigs[TracingProvider.langfuse],
+        type: 'langfuse',
+        payload: validConfigs.langfuse,
       })
 
       await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
@@ -547,18 +513,37 @@ describe('ProviderConfigModal', () => {
         ),
       ).toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+      await user.click(
+        within(screen.getByRole('alertdialog')).getByRole('button', {
+          name: 'common.operation.remove',
+        }),
+      )
 
       await waitFor(() => expect(callbacks.onRemoved).toHaveBeenCalledOnce())
       await expectRequest('DELETE')
-      expect(toast).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      [true, 'removeConfirmContentInUse'],
+      [false, 'removeConfirmContentNotInUse'],
+    ])('describes the removal consequence when in use is %s', async (inUse, key) => {
+      const user = userEvent.setup()
+      renderProviderConfigModal({ type: 'langfuse', payload: validConfigs.langfuse, inUse })
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+
+      expect(
+        within(screen.getByRole('alertdialog')).getByText(
+          `app.tracing.configProvider.${key}:{"key":"app.tracing.langfuse.title"}`,
+        ),
+      ).toBeInTheDocument()
     })
 
     it('keeps the draft and returns focus to Remove when confirmation is canceled', async () => {
       const user = userEvent.setup()
       renderProviderConfigModal({
-        type: TracingProvider.langfuse,
-        payload: validConfigs[TracingProvider.langfuse],
+        type: 'langfuse',
+        payload: validConfigs.langfuse,
       })
 
       const host = screen.getByRole('textbox', { name: 'Host' })
@@ -579,3 +564,47 @@ describe('ProviderConfigModal', () => {
     })
   })
 })
+
+it.each(['app', 'agent'] as const)(
+  'validates Tencent service names at the shared %s configuration boundary',
+  async (kind) => {
+    request.mockImplementation(async () => Response.json({ result: 'success' }))
+    const user = userEvent.setup()
+    renderProviderConfigModal({
+      type: 'tencent',
+      resource:
+        kind === 'agent'
+          ? { kind, agentId: 'agent-1' }
+          : { kind, appId: 'app-1', mode: 'workflow' },
+    })
+    const endpoint = screen.getByRole('textbox', { name: 'Endpoint' })
+    const service = screen.getByRole('textbox', { name: 'Service Name' })
+    expect(endpoint).toHaveAttribute('placeholder', 'https://ap-guangzhou.apm.tencentcs.com:4320')
+    expect(endpoint).toHaveValue('')
+    expect(endpoint).toHaveAccessibleDescription('app.tracing.tencent.endpointHelp')
+    expect(service).toHaveAccessibleDescription('app.tracing.tencent.serviceNameHelp')
+    await user.type(screen.getByRole('textbox', { name: 'Token' }), 'synthetic-token')
+    await user.type(endpoint, 'https://ap-guangzhou.apm.tencentcs.com:4320')
+    await user.type(service, 'dify_app')
+    await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+    expect(request).not.toHaveBeenCalled()
+    expect(service).toHaveAttribute('aria-invalid', 'true')
+    await user.clear(service)
+    await user.type(service, 'dify-app')
+    await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+    await waitFor(() => expect(request).toHaveBeenCalledOnce())
+    await expectRequest(
+      'POST',
+      {
+        tracing_provider: 'tencent',
+        activate: true,
+        tracing_config: {
+          token: 'synthetic-token',
+          endpoint: 'https://ap-guangzhou.apm.tencentcs.com:4320',
+          service_name: 'dify-app',
+        },
+      },
+      kind === 'agent' ? '/agent/agent-1/trace-config' : '/apps/app-1/trace-config',
+    )
+  },
+)
