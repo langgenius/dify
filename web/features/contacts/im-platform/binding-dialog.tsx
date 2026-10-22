@@ -164,7 +164,7 @@ export function ContactImBindingDialog({
       if (saved.callbackUrl) setStep('callbacks')
       else onOpenChange(false)
     } catch {
-      clearSecrets()
+      // Preserve the draft so the user can correct the credentials and retry.
     }
   }
 

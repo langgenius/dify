@@ -106,7 +106,7 @@ export function ContactEmailConfigDialog({
       setApiKey('')
       onOpenChange(false)
     } catch {
-      setApiKey('')
+      // Preserve the draft so the user can correct the credentials and retry.
     }
   }
 
