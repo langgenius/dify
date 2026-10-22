@@ -450,6 +450,8 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     if (scenario === 'auth-expired') return unauthorized()
     if (scenario === 'forbidden')
       return errorResponse(ServerErrorCode.Forbidden, 'you may not do this', 403, FORBIDDEN_HINT)
+    if (scenario === 'blank-hint-forbidden')
+      return errorResponse(ServerErrorCode.Forbidden, 'you may not do this', 403, '')
     if (scenario === 'hinted-forbidden')
       return Response.json(
         {

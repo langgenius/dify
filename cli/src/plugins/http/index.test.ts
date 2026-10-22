@@ -4,10 +4,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { FORBIDDEN_HINT, LICENSE_INVALID_HINT, startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
+import { OPENAPI_OFF_HINT } from '@/errors/base'
 import { Context } from '@/kernel/context'
 import { catalog, CATALOG_PATH } from '@/plugins/catalog'
 import { CONFIG_FILE_NAME } from '@/plugins/config'
-import { CATALOG_OPENAPI_OFF_HINT, http, PERMISSION_DENIED_HINT } from './index'
+import { http, PERMISSION_DENIED_HINT } from './index'
 
 const SHORT_TIMEOUT_MS = 50
 
@@ -145,6 +146,16 @@ describe('http plugin', () => {
     })
   })
 
+  it('a 403 with an empty server hint still says the server refused', async () => {
+    const h = await new Context().get(http)
+    mock.setScenario('blank-hint-forbidden')
+    await expect(h.request(account)).rejects.toMatchObject({
+      code: 'access_denied',
+      message: 'you may not do this',
+      hint: PERMISSION_DENIED_HINT,
+    })
+  })
+
   it('a 403 with server hints adds no guessed hint', async () => {
     const h = await new Context().get(http)
     mock.setScenario('hinted-forbidden')
@@ -245,7 +256,7 @@ describe('http plugin', () => {
     await expect((await new Context().get(http)).request(account)).rejects.toMatchObject({
       code: 'catalog_unavailable',
       message: `failed to fetch the catalog: HTTP 404 from ${CATALOG_PATH}`,
-      hint: CATALOG_OPENAPI_OFF_HINT,
+      hint: OPENAPI_OFF_HINT,
     })
   })
 

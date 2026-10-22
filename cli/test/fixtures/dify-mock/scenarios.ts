@@ -8,6 +8,7 @@ export type Scenario =
   | 'auth-expired'
   | 'forbidden'
   | 'hinted-forbidden'
+  | 'blank-hint-forbidden'
   | 'license-invalid'
   | 'rate-limited'
   | 'server-5xx'
