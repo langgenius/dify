@@ -157,11 +157,8 @@ export function AllowlistField({
       </Button>
 
       {(currentIpStatus || currentIp) && (
-        <p
-          role={currentIpStatus ? 'status' : undefined}
-          className="flex min-h-6 shrink-0 flex-wrap items-center gap-1.5 system-xs-regular text-text-tertiary"
-        >
-          <span>
+        <p className="flex min-h-6 shrink-0 flex-wrap items-center gap-1.5 system-xs-regular text-text-tertiary">
+          <span role="status">
             {currentIpStatus === 'loading'
               ? t(($) => $['settings.ipPolicyCurrentIpLoading'], { ns: 'common' })
               : currentIpStatus === 'error'
