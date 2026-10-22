@@ -1,16 +1,24 @@
+import socket
 from dataclasses import replace
 from uuid import uuid4
 
 import pytest
+from redis import Redis
+from redis.backoff import NoBackoff
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import TimeoutError as RedisTimeoutError
+from redis.retry import Retry
 from sqlalchemy import Engine, delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from core.plugin.entities.plugin_daemon import CredentialType
+from extensions.ext_redis import RedisClientWrapper
 from models.enums import PermissionEnum
+from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
-from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
+from repositories.trigger.subscription_repository import RedisTriggerSubscriptionLocks, TriggerSubscriptionRepository
 from services.trigger.subscription_service import (
     TriggerSubscriptionChangedError,
     TriggerSubscriptionLimitError,
@@ -61,6 +69,38 @@ def _persist(session_factory: sessionmaker[Session], *snapshots: TriggerSubscrip
             )
             row.id = snapshot.id
             session.add(row)
+
+
+@pytest.mark.parametrize("scope", ["provider", "subscription"])
+def test_lock_connection_failure_prevents_repository_write(
+    repository: TriggerSubscriptionRepository, scope: str
+) -> None:
+    subscription = _snapshot()
+    # Reserve a non-listening port to exercise a real connection failure safely.
+    with socket.socket() as unavailable_endpoint:
+        unavailable_endpoint.bind(("127.0.0.1", 0))
+        with Redis(
+            host="127.0.0.1",
+            port=unavailable_endpoint.getsockname()[1],
+            socket_connect_timeout=0.1,
+            socket_timeout=0.1,
+            retry=Retry(NoBackoff(), 0),
+        ) as client:
+            redis = RedisClientWrapper()
+            redis.initialize(client)
+            locks = RedisTriggerSubscriptionLocks(redis=redis)
+            lock = (
+                locks.for_provider(
+                    tenant_id=subscription.tenant_id, provider_id=TriggerProviderID(subscription.provider_id)
+                )
+                if scope == "provider"
+                else locks.for_subscription(tenant_id=subscription.tenant_id, subscription_id=subscription.id)
+            )
+
+            with pytest.raises((RedisConnectionError, RedisTimeoutError)), lock:
+                repository.create(subscription=subscription, max_count=10)
+
+    assert repository.get(tenant_id=subscription.tenant_id, subscription_id=subscription.id) is None
 
 
 def test_create_commits_all_subscription_fields_and_get_returns_detached_snapshot(

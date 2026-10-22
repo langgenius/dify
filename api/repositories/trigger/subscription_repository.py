@@ -1,13 +1,15 @@
 """Short SQL transactions and Redis serialization for trigger subscription commands."""
 
+import logging
 import sqlite3
 from collections.abc import Generator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from copy import deepcopy
 from typing import override
 
 from psycopg2.errors import UniqueViolation
 from pymysql.err import IntegrityError as MySQLIntegrityError
+from redis.exceptions import LockError, RedisError
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -23,6 +25,8 @@ from services.trigger.subscription_service import (
     TriggerSubscriptionSnapshot,
     TriggerSubscriptionStore,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _is_name_conflict(error: IntegrityError) -> bool:
@@ -186,13 +190,23 @@ class RedisTriggerSubscriptionLocks(TriggerSubscriptionLocks):
         self._redis = redis
 
     @override
-    @contextmanager
-    def for_provider(self, *, tenant_id: str, provider_id: TriggerProviderID) -> Generator[None]:
-        with self._redis.lock(f"trigger_provider_create_lock:{tenant_id}_{provider_id}", timeout=20):
-            yield
+    def for_provider(self, *, tenant_id: str, provider_id: TriggerProviderID) -> AbstractContextManager[None]:
+        return self._hold(f"trigger_provider_create_lock:{tenant_id}_{provider_id}")
 
     @override
+    def for_subscription(self, *, tenant_id: str, subscription_id: str) -> AbstractContextManager[None]:
+        return self._hold(f"trigger_subscription_update_lock:{tenant_id}_{subscription_id}")
+
     @contextmanager
-    def for_subscription(self, *, tenant_id: str, subscription_id: str) -> Generator[None]:
-        with self._redis.lock(f"trigger_subscription_update_lock:{tenant_id}_{subscription_id}", timeout=20):
+    def _hold(self, key: str) -> Generator[None]:
+        lock = self._redis.lock(key, timeout=20)
+        if not lock.acquire():
+            raise LockError(f"Unable to acquire trigger subscription lock {key}")
+        try:
             yield
+        finally:
+            # SQL may already be committed; cleanup must not replace its outcome.
+            try:
+                lock.release()
+            except RedisError:
+                logger.exception("Failed to release trigger subscription lock %s", key)

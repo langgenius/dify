@@ -77,6 +77,8 @@ class TriggerSubscriptionStore(Protocol):
 
 
 class TriggerSubscriptionLocks(Protocol):
+    """Require acquisition before writing; release failures must not replace the write's outcome."""
+
     def for_provider(self, *, tenant_id: str, provider_id: TriggerProviderID) -> AbstractContextManager[None]: ...
 
     def for_subscription(self, *, tenant_id: str, subscription_id: str) -> AbstractContextManager[None]: ...
@@ -324,9 +326,17 @@ class TriggerSubscriptionService:
         return snapshot
 
     def _invalidate(self, snapshot: TriggerSubscriptionSnapshot) -> None:
-        self._invalidate_cache(
-            tenant_id=snapshot.tenant_id, provider_id=snapshot.provider_id, subscription_id=snapshot.id
-        )
+        try:
+            self._invalidate_cache(
+                tenant_id=snapshot.tenant_id, provider_id=snapshot.provider_id, subscription_id=snapshot.id
+            )
+        except Exception:
+            # The write is committed; reporting failure would invite unsafe retries.
+            logger.exception(
+                "Failed to invalidate cache for trigger subscription %s in workspace %s",
+                snapshot.id,
+                snapshot.tenant_id,
+            )
 
     @staticmethod
     def _credential_encrypter(
