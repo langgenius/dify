@@ -88,6 +88,7 @@ export default interface Resources {
     'personalAccessToken.excludedAccess': '{{items}} excluded because access is no longer available.'
     'personalAccessToken.expiration': 'Expiration'
     'personalAccessToken.expired': 'Expired'
+    'personalAccessToken.expiredDate': 'Expired on {{date}}'
     'personalAccessToken.expires': 'Expires'
     'personalAccessToken.howToUseIt': 'How to use it'
     'personalAccessToken.lastUsed': 'Last used'

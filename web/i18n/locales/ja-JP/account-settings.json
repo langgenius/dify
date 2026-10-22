@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "アクセスできなくなったため、{{items}}を除外しました。",
   "personalAccessToken.expiration": "有効期間",
   "personalAccessToken.expired": "期限切れ",
+  "personalAccessToken.expiredDate": "期限切れ · {{date}}",
   "personalAccessToken.expires": "有効期限",
   "personalAccessToken.howToUseIt": "使い方",
   "personalAccessToken.lastUsed": "最終使用",

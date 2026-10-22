@@ -85,6 +85,7 @@
   "personalAccessToken.excludedAccess": "{{items}} виключено, оскільки доступ більше недоступний.",
   "personalAccessToken.expiration": "Термін дії",
   "personalAccessToken.expired": "Термін минув",
+  "personalAccessToken.expiredDate": "Термін минув · {{date}}",
   "personalAccessToken.expires": "Закінчується",
   "personalAccessToken.howToUseIt": "Як використовувати",
   "personalAccessToken.lastUsed": "Останнє використання",
