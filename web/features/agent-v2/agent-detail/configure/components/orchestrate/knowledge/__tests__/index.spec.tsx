@@ -362,7 +362,7 @@ describe('KnowledgeFS composer interaction', () => {
     const user = userEvent.setup()
     setup([{ id: 'legacy', name: 'Old documents', datasetRefs: [{ id: 'dataset' }] }])
     const dialog = await open(user)
-    expect(within(dialog).queryByText(/knowledgeFs.legacy/)).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
     expect(snapshot().knowledge.sets).toHaveLength(1)
     await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
