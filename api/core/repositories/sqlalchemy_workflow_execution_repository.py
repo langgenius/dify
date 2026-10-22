@@ -215,17 +215,26 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # Create a new database session
         with self._session_factory() as session:
-            existing_model = session.get(WorkflowRun, db_model.id)
+            existing_model = session.get(WorkflowRun, db_model.id, with_for_update=True)
             if existing_model:
                 if existing_model.tenant_id != self._tenant_id or (
                     self._app_id is not None and existing_model.app_id != self._app_id
                 ):
                     raise ValueError("Unauthorized access to workflow run")
-                if (
-                    db_model.connection_context is not None
-                    and existing_model.connection_context != db_model.connection_context
-                ):
-                    raise ValueError("Workflow execution connection choices are immutable.")
+                if db_model.connection_context is not None:
+                    if (
+                        existing_model.workflow_id != db_model.workflow_id
+                        or existing_model.created_by_role != db_model.created_by_role
+                        or existing_model.created_by != db_model.created_by
+                    ):
+                        raise ValueError("Connection context does not match the workflow execution identity.")
+                    # Runs predating the column can initialize it from their validated
+                    # execution snapshot. The row lock serializes that first write.
+                    if (
+                        existing_model.connection_context is not None
+                        and existing_model.connection_context != db_model.connection_context
+                    ):
+                        raise ValueError("Workflow execution connection choices are immutable.")
                 # Preserve the original start time for pause/resume flows.
                 db_model.created_at = existing_model.created_at
 

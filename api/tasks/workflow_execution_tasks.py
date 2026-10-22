@@ -51,11 +51,16 @@ def save_workflow_execution_task(
             execution = WorkflowExecution.model_validate(execution_data)
 
             # Check if workflow run already exists
-            existing_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == execution.id_))
+            existing_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == execution.id_).with_for_update())
 
             if existing_run:
                 if existing_run.tenant_id != tenant_id or existing_run.app_id != app_id:
                     raise ValueError("Unauthorized access to workflow run")
+                if execution.connection_context is not None and (
+                    existing_run.created_by != creator_user_id
+                    or existing_run.created_by_role != CreatorUserRole(creator_user_role)
+                ):
+                    raise ValueError("Connection context does not match the workflow execution identity.")
                 # Update existing workflow run
                 _update_workflow_run_from_execution(existing_run, execution)
                 logger.debug("Updated existing workflow run: %s", execution.id_)
@@ -134,6 +139,8 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
     """
     Update a WorkflowRun database model from a WorkflowExecution domain entity.
     """
+    if execution.connection_context is not None and execution.workflow_id != workflow_run.workflow_id:
+        raise ValueError("Connection context does not match the workflow execution identity.")
     context = serialize_connection_context(
         execution.connection_context,
         tenant_id=workflow_run.tenant_id,
@@ -141,8 +148,10 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
         workflow_id=workflow_run.workflow_id,
         end_user_id=workflow_run.created_by if workflow_run.created_by_role == CreatorUserRole.END_USER else None,
     )
-    if context is not None and context != workflow_run.connection_context:
-        raise ValueError("Workflow execution connection choices are immutable.")
+    if context is not None:
+        if workflow_run.connection_context is not None and context != workflow_run.connection_context:
+            raise ValueError("Workflow execution connection choices are immutable.")
+        workflow_run.connection_context = context
     json_converter = WorkflowRuntimeTypeConverter()
     workflow_run.status = execution.status
     workflow_run.outputs = (

@@ -190,3 +190,95 @@ def test_logstore_keeps_the_same_secret_free_run_snapshot(
     assert payload["connection_context"] == execution.connection_context.model_dump_json()
     run = _dict_to_workflow_run(payload)
     assert run.connection_context == payload["connection_context"]
+
+
+def test_legacy_run_can_initialize_its_snapshot_once(
+    repository: SQLAlchemyWorkflowExecutionRepository,
+    execution: WorkflowExecution,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repository.save(LegacyExecution.model_validate(execution.model_dump(exclude={"connection_context"})))
+    execution.status = WorkflowExecutionStatus.SUCCEEDED
+    repository.save(execution)
+    with sqlite_session_factory() as session:
+        run = session.get(WorkflowRun, execution.id_)
+        assert run is not None
+        assert execution.connection_context is not None
+        assert run.connection_context == execution.connection_context.model_dump_json()
+        assert run.status == WorkflowExecutionStatus.SUCCEEDED
+    changed = execution.model_copy(
+        update={
+            "connection_context": execution.connection_context.model_copy(update={"selections": ()}),
+        }
+    )
+    with pytest.raises(ValueError, match="immutable"):
+        repository.save(changed)
+
+
+@pytest.mark.parametrize("scope", ["workflow", "creator"])
+def test_legacy_initialization_must_match_stored_run_identity(
+    repository: SQLAlchemyWorkflowExecutionRepository,
+    execution: WorkflowExecution,
+    sqlite_session_factory: sessionmaker[Session],
+    scope: str,
+) -> None:
+    repository.save(LegacyExecution.model_validate(execution.model_dump(exclude={"connection_context"})))
+    assert execution.connection_context is not None
+    if scope == "workflow":
+        incoming = execution.model_copy(
+            update={
+                "workflow_id": "foreign-workflow",
+                "connection_context": execution.connection_context.model_copy(
+                    update={"workflow_id": "foreign-workflow"}
+                ),
+            }
+        )
+    else:
+        user = EndUser(
+            tenant_id="tenant", app_id="app", type=EndUserType.BROWSER, account_id="account", session_id="other"
+        )
+        user.id = "foreign-user"
+        repository = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id="tenant",
+            app_id="app",
+            user=user,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        incoming = execution.model_copy(
+            update={
+                "connection_context": execution.connection_context.model_copy(update={"end_user_id": user.id}),
+            }
+        )
+    with pytest.raises(ValueError, match="identity"):
+        repository.save(incoming)
+    with sqlite_session_factory() as session:
+        run = session.get(WorkflowRun, execution.id_)
+        assert run is not None
+        assert run.connection_context is None
+
+
+def test_async_legacy_run_can_initialize_snapshot_and_remains_immutable(execution: WorkflowExecution) -> None:
+    legacy = execution.model_copy(update={"connection_context": None})
+    run = _create_workflow_run_from_execution(
+        legacy,
+        "tenant",
+        "app",
+        WorkflowRunTriggeredFrom.APP_RUN,
+        "user",
+        CreatorUserRole.END_USER,
+    )
+    execution.status = WorkflowExecutionStatus.SUCCEEDED
+    _update_workflow_run_from_execution(run, execution)
+    assert execution.connection_context is not None
+    assert run.connection_context == execution.connection_context.model_dump_json()
+    assert run.status == WorkflowExecutionStatus.SUCCEEDED
+    _update_workflow_run_from_execution(run, legacy)
+    assert run.connection_context == execution.connection_context.model_dump_json()
+    changed = execution.model_copy(
+        update={
+            "connection_context": execution.connection_context.model_copy(update={"selections": ()}),
+        }
+    )
+    with pytest.raises(ValueError, match="immutable"):
+        _update_workflow_run_from_execution(run, changed)
