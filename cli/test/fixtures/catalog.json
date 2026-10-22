@@ -3,6 +3,7 @@
     "describe.account": {
       "bind": {},
       "deprecated": false,
+      "effect": "read",
       "input": { "properties": {}, "required": [], "type": "object" },
       "internal": false,
       "kind": "object",
@@ -13,6 +14,7 @@
     "get.account.session": {
       "bind": { "limit": "query", "page": "query" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "limit": {
@@ -36,6 +38,7 @@
     "delete.account.session": {
       "bind": { "session_id": "path" },
       "deprecated": false,
+      "effect": "destructive",
       "input": {
         "properties": { "session_id": { "type": "string" } },
         "required": ["session_id"],
@@ -50,6 +53,7 @@
     "delete.account.current_session": {
       "bind": {},
       "deprecated": false,
+      "effect": "destructive",
       "input": { "properties": {}, "required": [], "type": "object" },
       "internal": false,
       "kind": "object",
@@ -60,6 +64,7 @@
     "restore.console_app.version": {
       "bind": { "app_id": "path", "version_id": "path" },
       "deprecated": false,
+      "effect": "destructive",
       "input": {
         "type": "object",
         "properties": { "app_id": {}, "version_id": {} },
@@ -84,6 +89,7 @@
         "workspace_id": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "examples": [
         {
           "input": { "app_id": "<app_id>", "query": "Summarise the latest release" },
@@ -188,6 +194,7 @@
         "workspace_id": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "app_id": { "type": "string" },
@@ -262,6 +269,7 @@
         "workspace_id": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "app_id": { "type": "string" },
@@ -322,6 +330,7 @@
     "check.console_app.dependency": {
       "bind": { "app_id": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": { "app_id": { "type": "string" } },
         "required": ["app_id"],
@@ -336,6 +345,7 @@
     "describe.console_app": {
       "bind": { "app_id": "path", "fields": "query" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "app_id": { "type": "string" },
@@ -353,6 +363,7 @@
     "export.console_app.dsl": {
       "bind": { "app_id": "path", "include_secret": "query", "workflow_id": "query" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "app_id": { "type": "string" },
@@ -393,6 +404,7 @@
         "yaml_url": "body"
       },
       "deprecated": false,
+      "effect": "destructive",
       "examples": [
         {
           "input": { "mode": "yaml-content", "yaml_content": "<yaml text of the app DSL>" },
@@ -487,6 +499,7 @@
     "confirm.console_app.dsl_import": {
       "bind": { "import_id": "path", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "destructive",
       "input": {
         "properties": { "import_id": { "type": "string" }, "workspace_id": { "type": "string" } },
         "required": ["import_id", "workspace_id"],
@@ -501,6 +514,7 @@
     "upload.console_app.file": {
       "bind": { "app_id": "path", "file": "file" },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "app_id": { "type": "string" },
@@ -529,6 +543,7 @@
         "workspace_id": "query"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "limit": {
@@ -580,6 +595,7 @@
         "workspace_id": "body"
       },
       "deprecated": true,
+      "effect": "write",
       "input": {
         "properties": {
           "app_id": { "type": "string" },
@@ -665,6 +681,7 @@
         "workspace_id": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "app_id": { "type": "string" },
@@ -730,6 +747,7 @@
         "run_id": "path"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "app_id": { "type": "string" },
@@ -759,6 +777,7 @@
     "describe.run.form": {
       "bind": { "app_id": "path", "form_token": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": { "app_id": { "type": "string" }, "form_token": { "type": "string" } },
         "required": ["app_id", "form_token"],
@@ -779,6 +798,7 @@
         "inputs": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "action": {
@@ -846,6 +866,7 @@
     "stop.run": {
       "bind": { "app_id": "path", "run_id": "path" },
       "deprecated": false,
+      "effect": "destructive",
       "input": {
         "properties": { "app_id": { "type": "string" }, "run_id": { "type": "string" } },
         "required": ["app_id", "run_id"],
@@ -860,6 +881,7 @@
     "stop.task": {
       "bind": { "app_id": "path", "task_id": "path" },
       "deprecated": false,
+      "effect": "destructive",
       "input": {
         "properties": { "app_id": { "type": "string" }, "task_id": { "type": "string" } },
         "required": ["app_id", "task_id"],
@@ -874,6 +896,7 @@
     "describe.workspace": {
       "bind": { "workspace_id": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": { "workspace_id": { "type": "string" } },
         "required": ["workspace_id"],
@@ -888,6 +911,7 @@
     "get.workspace": {
       "bind": { "limit": "query", "page": "query" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "limit": {
@@ -911,6 +935,7 @@
     "invite.workspace.member": {
       "bind": { "email": "body", "role": "body", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "email": { "title": "Email", "type": "string" },
@@ -929,6 +954,7 @@
     "get.workspace.member": {
       "bind": { "limit": "query", "page": "query", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "limit": {
@@ -953,6 +979,7 @@
     "delete.workspace.member": {
       "bind": { "member_id": "path", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "destructive",
       "input": {
         "properties": { "member_id": { "type": "string" }, "workspace_id": { "type": "string" } },
         "required": ["member_id", "workspace_id"],
@@ -967,6 +994,7 @@
     "set.workspace.member_role": {
       "bind": { "member_id": "path", "role": "body", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "member_id": { "type": "string" },
@@ -985,6 +1013,7 @@
     "switch.workspace": {
       "bind": { "workspace_id": "path" },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": { "workspace_id": { "type": "string" } },
         "required": ["workspace_id"],
@@ -1006,6 +1035,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": {
@@ -1034,6 +1064,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": {
@@ -1055,6 +1086,7 @@
     "test.node.workflow": {
       "bind": { "app_id": "path", "files": "body", "inputs": "body", "node_id": "path" },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": { "app_id": {}, "files": {}, "inputs": {}, "node_id": {} },
@@ -1075,6 +1107,7 @@
         "query": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": { "app_id": {}, "files": {}, "inputs": {}, "node_id": {}, "query": {} },
@@ -1095,6 +1128,7 @@
         "workspace_id": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": {
@@ -1124,6 +1158,7 @@
         "workspace_id": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": {
@@ -1147,6 +1182,7 @@
     "check.console_app.dsl": {
       "bind": { "app_id": "body", "workspace_id": "path", "yaml_content": "body" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "type": "object",
         "properties": { "app_id": {}, "workspace_id": {}, "yaml_content": {} },
@@ -1161,6 +1197,7 @@
     "check.console_app.release": {
       "bind": { "app_id": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": { "type": "object", "properties": { "app_id": {} }, "required": ["app_id"] },
       "internal": false,
       "kind": "object",
@@ -1171,6 +1208,7 @@
     "get.knowledge_base": {
       "bind": { "limit": "query", "page": "query", "query": "query", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "type": "object",
         "properties": { "limit": {}, "page": {}, "query": {}, "workspace_id": {} },
@@ -1185,6 +1223,7 @@
     "describe.service_api": {
       "bind": { "app_id": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": { "type": "object", "properties": { "app_id": {} }, "required": ["app_id"] },
       "internal": false,
       "kind": "object",
@@ -1195,6 +1234,7 @@
     "set.service_api": {
       "bind": { "app_id": "path", "enabled": "body" },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": { "app_id": {}, "enabled": {} },
@@ -1209,6 +1249,7 @@
     "describe.webapp_access": {
       "bind": { "app_id": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": { "type": "object", "properties": { "app_id": {} }, "required": ["app_id"] },
       "internal": false,
       "kind": "object",
@@ -1219,6 +1260,7 @@
     "set.webapp_access": {
       "bind": { "access_mode": "body", "app_id": "path" },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": { "access_mode": {}, "app_id": {} },
@@ -1233,6 +1275,7 @@
     "reset.webapp": {
       "bind": { "app_id": "path" },
       "deprecated": false,
+      "effect": "destructive",
       "input": { "type": "object", "properties": { "app_id": {} }, "required": ["app_id"] },
       "internal": false,
       "kind": "object",
@@ -1243,6 +1286,7 @@
     "get.node_type": {
       "bind": {},
       "deprecated": false,
+      "effect": "read",
       "input": { "type": "object", "properties": {} },
       "internal": false,
       "kind": "object",
@@ -1253,6 +1297,7 @@
     "describe.node_type": {
       "bind": { "node_type": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": { "type": "object", "properties": { "node_type": {} }, "required": ["node_type"] },
       "internal": false,
       "kind": "object",
@@ -1269,6 +1314,7 @@
         "triggered_from": "query"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "type": "object",
         "properties": {
@@ -1289,6 +1335,7 @@
     "get.run.node": {
       "bind": { "app_id": "path", "run_id": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "type": "object",
         "properties": { "app_id": {}, "run_id": {} },
@@ -1303,6 +1350,7 @@
     "publish.console_app": {
       "bind": { "app_id": "path", "marked_comment": "body", "marked_name": "body" },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": { "app_id": {}, "marked_comment": {}, "marked_name": {} },
@@ -1317,6 +1365,7 @@
     "get.console_app.version": {
       "bind": { "app_id": "path", "limit": "query", "named_only": "query", "page": "query" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "type": "object",
         "properties": { "app_id": {}, "limit": {}, "named_only": {}, "page": {} },
@@ -1344,6 +1393,7 @@
         "title": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": {
@@ -1388,6 +1438,7 @@
         "use_icon_as_answer_icon": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": {
@@ -1435,6 +1486,7 @@
         "use_icon_as_answer_icon": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": {
@@ -1481,6 +1533,7 @@
         "use_icon_as_answer_icon": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": {
@@ -1523,6 +1576,7 @@
         "title": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": {
@@ -1565,6 +1619,7 @@
         "use_icon_as_answer_icon": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": {
@@ -1595,6 +1650,7 @@
     "set.service_api.agent": {
       "bind": { "app_id": "path", "enabled": "body" },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": { "app_id": {}, "enabled": {} },
@@ -1609,6 +1665,7 @@
     "set.webapp_access.agent": {
       "bind": { "access_mode": "body", "app_id": "path" },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": { "access_mode": {}, "app_id": {} },
@@ -1629,6 +1686,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "type": "object",
         "properties": { "category": {}, "limit": {}, "page": {}, "query": {}, "workspace_id": {} },
@@ -1643,6 +1701,7 @@
     "get.plugin": {
       "bind": { "category": "query", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "type": "object",
         "properties": { "category": {}, "workspace_id": {} },
@@ -1657,6 +1716,7 @@
     "install.plugin": {
       "bind": { "identifiers": "body", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": { "identifiers": {}, "workspace_id": {} },
@@ -1671,6 +1731,7 @@
     "describe.plugin.task": {
       "bind": { "task_id": "path", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "type": "object",
         "properties": { "task_id": {}, "workspace_id": {} },
@@ -1685,6 +1746,7 @@
     "delete.plugin": {
       "bind": { "plugin_id": "path", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "destructive",
       "input": {
         "type": "object",
         "properties": { "plugin_id": {}, "workspace_id": {} },
@@ -1699,6 +1761,7 @@
     "describe.model_provider": {
       "bind": { "provider": "path", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "type": "object",
         "properties": { "provider": {}, "workspace_id": {} },
@@ -1713,6 +1776,7 @@
     "create.model_provider.credential": {
       "bind": { "credentials": "body", "name": "body", "provider": "path", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": { "credentials": {}, "name": {}, "provider": {}, "workspace_id": {} },
@@ -1734,6 +1798,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "type": "object",
         "properties": {
@@ -1762,6 +1827,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": {
@@ -1790,6 +1856,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "type": "object",
         "properties": {
@@ -1811,6 +1878,7 @@
     "describe.tool_provider": {
       "bind": { "provider": "path", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "type": "object",
         "properties": { "provider": {}, "workspace_id": {} },
@@ -1825,6 +1893,7 @@
     "create.tool_provider.credential": {
       "bind": { "credentials": "body", "name": "body", "provider": "path", "workspace_id": "path" },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "type": "object",
         "properties": { "credentials": {}, "name": {}, "provider": {}, "workspace_id": {} },

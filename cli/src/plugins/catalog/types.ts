@@ -16,13 +16,14 @@ export type CatalogOp = Readonly<{
   bind: Readonly<Record<string, string>>
   internal: boolean
   deprecated: boolean
+  effect?: string
   examples: readonly Example[]
 }>
 export type CatalogDoc = Readonly<{ ops: Readonly<Record<string, CatalogOp>> }>
 
 const EXAMPLE_SCHEMA = z.object({ title: z.string(), input: z.record(z.string(), z.unknown()) })
 
-// kind and bind values are unrestricted here: unknown kinds/binds are a forward-compat
+// kind, effect and bind values are unrestricted here: unknown kinds/binds are a forward-compat
 // contract, not a parse error.
 const CATALOG_OP_SCHEMA = z
   .object({
@@ -34,6 +35,7 @@ const CATALOG_OP_SCHEMA = z
     bind: z.record(z.string(), z.string()),
     internal: z.boolean(),
     deprecated: z.boolean(),
+    effect: z.string().optional(),
     examples: z.array(EXAMPLE_SCHEMA).default([]),
   })
   .catchall(z.unknown())

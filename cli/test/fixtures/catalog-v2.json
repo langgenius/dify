@@ -3,6 +3,7 @@
     "describe.account": {
       "bind": {},
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {},
         "required": [],
@@ -20,6 +21,7 @@
         "page": "query"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "limit": {
@@ -50,6 +52,7 @@
         "session_id": "path"
       },
       "deprecated": false,
+      "effect": "destructive",
       "input": {
         "properties": {
           "session_id": {
@@ -68,6 +71,7 @@
     "delete.account.current_session": {
       "bind": {},
       "deprecated": false,
+      "effect": "destructive",
       "input": {
         "properties": {},
         "required": [],
@@ -92,6 +96,7 @@
         "workspace_id": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "examples": [
         {
           "input": {
@@ -247,6 +252,7 @@
         "workspace_id": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "app_id": {
@@ -360,6 +366,7 @@
         "workspace_id": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "app_id": {
@@ -450,6 +457,7 @@
         "app_id": "path"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "app_id": {
@@ -471,6 +479,7 @@
         "fields": "query"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "app_id": {
@@ -498,6 +507,7 @@
         "workflow_id": "query"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "app_id": {
@@ -548,6 +558,7 @@
         "yaml_url": "body"
       },
       "deprecated": false,
+      "effect": "destructive",
       "examples": [
         {
           "input": {
@@ -713,6 +724,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "destructive",
       "input": {
         "properties": {
           "import_id": {
@@ -737,6 +749,7 @@
         "file": "file"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "app_id": {
@@ -767,6 +780,7 @@
         "workspace_id": "query"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "limit": {
@@ -837,6 +851,7 @@
         "workspace_id": "body"
       },
       "deprecated": true,
+      "effect": "write",
       "input": {
         "properties": {
           "app_id": {
@@ -971,6 +986,7 @@
         "workspace_id": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "app_id": {
@@ -1071,6 +1087,7 @@
         "run_id": "path"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "app_id": {
@@ -1107,6 +1124,7 @@
         "form_token": "path"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "app_id": {
@@ -1134,6 +1152,7 @@
         "inputs": "body"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "action": {
@@ -1219,6 +1238,7 @@
         "run_id": "path"
       },
       "deprecated": false,
+      "effect": "destructive",
       "input": {
         "properties": {
           "app_id": {
@@ -1243,6 +1263,7 @@
         "task_id": "path"
       },
       "deprecated": false,
+      "effect": "destructive",
       "input": {
         "properties": {
           "app_id": {
@@ -1266,6 +1287,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "workspace_id": {
@@ -1287,6 +1309,7 @@
         "page": "query"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "limit": {
@@ -1319,6 +1342,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "email": {
@@ -1350,6 +1374,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "read",
       "input": {
         "properties": {
           "limit": {
@@ -1384,6 +1409,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "destructive",
       "input": {
         "properties": {
           "member_id": {
@@ -1409,6 +1435,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "member_id": {
@@ -1437,6 +1464,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "write",
       "input": {
         "properties": {
           "workspace_id": {
@@ -1457,6 +1485,7 @@
         "workspace_id": "path"
       },
       "deprecated": false,
+      "effect": "read",
       "id": "not.the.op.id",
       "input": {
         "properties": {
