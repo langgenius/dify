@@ -6,7 +6,8 @@ import { hostname } from 'node:os'
 import { z } from 'zod'
 import { deviceApi } from '@/auth/device-api'
 import { awaitAuthorization, pollAuthorization, realClock } from '@/auth/device-flow'
-import { assertNotEnvLogin, revokeAndClearSession } from '@/auth/logout'
+import { installationId } from '@/auth/installation'
+import { assertNotEnvLogin, clearSession, revokeAndClearSession } from '@/auth/logout'
 import { pendingLoginStore } from '@/auth/pending-login'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
@@ -103,14 +104,9 @@ export default class Login extends Command<typeof INPUT> {
 
     const server = resolveHost({ raw: input.server, insecure: input.insecure })
     const streams = await ctx.get(io)
-    const current = await sessionService.current()
-    if (current !== null) {
-      await revokeAndClearSession(ctx, current)
-      streams.notice(`logged out ${current.email} from ${current.server}`)
-    }
-
+    const installation = await installationId(ctx)
     const api = deviceApi(server, { insecure: input.insecure })
-    const code = await api.requestCode({ device_label: hostname() })
+    const code = await api.requestCode({ device_label: hostname(), installation_id: installation })
     // Checked before it is printed: a URI difyctl would refuse to open is one the
     // operator should not be invited to paste either.
     validateVerificationURI(code.verification_uri, input.insecure)
@@ -125,6 +121,7 @@ export default class Login extends Command<typeof INPUT> {
       insecure: input.insecure,
       no_keyring: input.no_keyring,
       device_code: code.device_code,
+      installation_id: installation,
     }
     if (input.no_wait) {
       await pendingLogin.save(pending)
@@ -149,6 +146,26 @@ function loginReport(login: SavedLogin) {
     account: login.account,
     workspace_id: login.workspaceId,
   }
+}
+
+// The server revoked the previous session itself when it minted the new one: same server,
+// same subject and the same install. An install of null is not known to match.
+function rotatedByServer(previous: SavedLogin, next: SavedLogin): boolean {
+  if (previous.installationId === null) return false
+  if (previous.installationId !== next.installationId) return false
+  if (previous.server !== next.server) return false
+  if (previous.account?.id !== next.account?.id) return false
+  return previous.email === next.email
+}
+
+// Runs only once the new token is in hand, so an abandoned login keeps the old one.
+async function replacePrevious(ctx: CommandContext, next: SavedLogin): Promise<void> {
+  const previous = await (await ctx.get(session)).current()
+  if (previous === null) return
+  if (rotatedByServer(previous, next)) await clearSession(ctx, previous)
+  else await revokeAndClearSession(ctx, previous)
+  const streams = await ctx.get(io)
+  streams.notice(`logged out ${previous.email} from ${previous.server}`)
 }
 
 // `get` throws not_logged_in when the saved login's token is gone from the store.
@@ -196,8 +213,10 @@ async function finish(ctx: CommandContext, pending: Pending, success: PollSucces
     workspaceId: success.default_workspace_id ?? null,
     tokenStorage,
     insecure: pending.insecure,
+    installationId: pending.installation_id,
   }
 
+  await replacePrevious(ctx, login)
   await sessionService.save(login)
   await tokenService.write(login, success.token)
   return loginReport(login)

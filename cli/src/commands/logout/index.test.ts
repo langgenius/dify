@@ -1,8 +1,9 @@
 import type { TestWorld } from '@test/fixtures/kernel'
-import { existsSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
+import { INSTALLATION_FILE_NAME } from '@/auth/installation'
 import { PENDING_FILE_NAME } from '@/auth/pending-login'
 import { Context } from '@/kernel/context'
 import { commands } from '@/plugins/commands'
@@ -31,6 +32,28 @@ it('revokes the session on the server and clears local state', async () => {
   await expect((await new Context().get(token)).get()).rejects.toMatchObject({
     code: 'not_logged_in',
   })
+})
+
+it('keeps the installation id', async () => {
+  const w = await testContext({ login: true, argv: ['logout'] })
+  worlds.push(w)
+  const installationFile = join(w.dir, INSTALLATION_FILE_NAME)
+  writeFileSync(installationFile, 'id: kept-id-1234\n')
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(readFileSync(installationFile, 'utf8')).toBe('id: kept-id-1234\n')
+})
+
+it('treats a 401 on the revoke as already gone', async () => {
+  const w = await testContext({ login: true, argv: ['logout'] })
+  worlds.push(w)
+  w.mock.setScenario('auth-expired')
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(w.mock.lastRequest).toMatchObject({
+    method: 'DELETE',
+    path: '/openapi/v1/account/sessions/self',
+  })
+  expect(w.io.errBuf()).toBe('')
+  expect(await (await w.ctx.get(session)).current()).toBeNull()
 })
 
 it('drops a pending --no-wait login', async () => {

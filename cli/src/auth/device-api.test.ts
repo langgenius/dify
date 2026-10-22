@@ -39,6 +39,26 @@ it('maps a 404 on the code endpoint to a server_error naming the missing feature
   })
 })
 
+it('sends the installation id with the code request', async () => {
+  const mock = await startMock()
+  mocks.push(mock)
+  const api = deviceApi(mock.url, { insecure: true })
+  await api.requestCode({ device_label: 'host', installation_id: 'install-1234' })
+  expect(mock.lastDeviceCodeBody).toEqual({
+    client_id: 'difyctl',
+    device_label: 'host',
+    installation_id: 'install-1234',
+  })
+})
+
+it('leaves installation_id out when there is none', async () => {
+  const mock = await startMock()
+  mocks.push(mock)
+  const api = deviceApi(mock.url, { insecure: true })
+  await api.requestCode({ device_label: 'host' })
+  expect(mock.lastDeviceCodeBody).toEqual({ client_id: 'difyctl', device_label: 'host' })
+})
+
 it('maps a non-2xx code response to a server_error carrying the raw body', async () => {
   const mock = await startMock({ scenario: 'server-5xx' })
   mocks.push(mock)

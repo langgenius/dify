@@ -60,7 +60,7 @@ type StatusMapping = Readonly<{ code: ErrorCodeValue; hint?: string; fallbackHin
 
 const STATUS_MAPPINGS: Readonly<Record<number, StatusMapping>> = {
   [HttpStatus.Unauthorized]: { code: ErrorCode.AuthExpired, hint: LOGIN_HINT },
-  // Logging in again does not grant a permission, and `login` revokes the session first.
+  // Logging in again does not grant a permission.
   [HttpStatus.Forbidden]: { code: ErrorCode.AccessDenied, fallbackHint: PERMISSION_DENIED_HINT },
   [HttpStatus.TooManyRequests]: { code: ErrorCode.RateLimited },
 }

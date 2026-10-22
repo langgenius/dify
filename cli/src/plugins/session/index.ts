@@ -22,6 +22,7 @@ const LOGIN_SCHEMA = z.object({
     .default(null),
   workspace_id: z.string().nullable().default(null),
   insecure: z.boolean().default(false),
+  installation_id: z.string().nullable().default(null),
 })
 
 type LoginDoc = z.infer<typeof LOGIN_SCHEMA>
@@ -33,6 +34,8 @@ export type Login = Readonly<{
   workspaceId: string | null
   tokenStorage: StorageMode
   insecure: boolean
+  /** The install the server keyed this session on; null when that is not known. */
+  installationId: string | null
 }>
 
 export type SessionService = {
@@ -52,6 +55,7 @@ function loginToDoc(login: Login): LoginDoc {
     workspace_id: login.workspaceId,
     token_storage: login.tokenStorage,
     insecure: login.insecure,
+    installation_id: login.installationId,
   }
 }
 
@@ -63,6 +67,7 @@ function docToLogin(doc: LoginDoc): Login {
     workspaceId: doc.workspace_id,
     tokenStorage: doc.token_storage,
     insecure: doc.insecure,
+    installationId: doc.installation_id,
   }
 }
 
@@ -87,6 +92,7 @@ export const session = definePlugin({
           workspaceId: envWorkspaceId ?? null,
           tokenStorage: 'file',
           insecure: false,
+          installationId: null,
         }
       : null
 

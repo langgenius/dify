@@ -68,6 +68,7 @@ async function writeFileLogin(server: string): Promise<void> {
     workspaceId: FILE_WORKSPACE_ID,
     tokenStorage: 'file',
     insecure: false,
+    installationId: null,
   }
   await sessionService.save(login)
   await tokenService.write(login, FILE_LOGIN_TOKEN)

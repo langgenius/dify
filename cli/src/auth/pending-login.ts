@@ -12,6 +12,7 @@ const PENDING_SCHEMA = z.object({
   insecure: z.boolean(),
   no_keyring: z.boolean(),
   device_code: z.string(),
+  installation_id: z.string().nullable().default(null),
 })
 export type Pending = z.infer<typeof PENDING_SCHEMA>
 

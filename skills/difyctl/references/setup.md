@@ -2,7 +2,7 @@
 
 ## Log in
 
-`login` uses the device flow: it prints a URL and a code, the human approves in a browser, and difyctl stores a token. One login at a time. A new login replaces the old one, and it replaces the code the human is looking at.
+`login` uses the device flow: it prints a URL and a code, the human approves in a browser, and difyctl stores a token. One login at a time. A new login replaces the saved one. An old code the human approves after that does nothing; only the login that collects its token counts.
 
 **Check first.** Run `difyctl login --resume`. If it prints an `email`, you are logged in: skip login. If it fails with `not_logged_in`, log in.
 
