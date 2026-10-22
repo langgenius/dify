@@ -136,6 +136,22 @@ def test_listing_filters_scope_and_materializes_values(
     assert response["data"][0]["total_segments"] == 0
 
 
+def test_listing_search_is_case_insensitive_and_treats_wildcards_literally(
+    operations: SQLAlchemyDocumentOperations, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _document(id="match", name="Annual_Report.pdf"),
+                _document(id="wildcard-only", name="AnnualXReport.pdf"),
+            ]
+        )
+
+    result = operations.list_documents(REF, DocumentListFilter(search="annual_report"))
+
+    assert [document["id"] for document in result["data"]] == ["match"]
+
+
 def test_listing_hit_count_sort_and_exact_last_page(
     operations: SQLAlchemyDocumentOperations, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
