@@ -18,6 +18,7 @@ from controllers.inner_api.wraps import InnerApiUnauthorizedError
 from core.plugin.impl.oauth import OAuthHandler
 from extensions.application_services.workspace import WorkspaceServices
 from libs.external_api import register_external_error_handlers
+from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
 from services.account_errors import AccountNotFoundError
 from services.errors.workspace import (
@@ -33,6 +34,8 @@ from services.trigger.oauth_gateway import (
     TriggerOAuthBuilderGateway,
 )
 from services.trigger.oauth_service import TriggerOAuthService
+from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
 from services.workspace.contracts import CreatedWorkspace, WorkspaceMembership
 from services.workspace.provisioning_service import WorkspaceProvisioningService
 from services.workspace.service import WorkspaceQueryService, WorkspaceService
@@ -61,6 +64,11 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
         invitations=Mock(),
         identity=Mock(),
         resource_cleanup=Mock(),
+        trigger_providers=PluginTriggerProviderQuery(),
+        trigger_subscriptions=TriggerSubscriptionQueryService(
+            credentials=CredentialQueryRepository(session_factory=sqlite_session_factory),
+            schemas=PluginTriggerProviderQuery(),
+        ),
         trigger_oauth_clients=oauth_clients,
         trigger_oauth=TriggerOAuthService(
             clients=oauth_clients,
