@@ -110,6 +110,8 @@ class RunVerification:
     executed_node_ids: list[str]
     no_output_dead_branch: bool
     execution_evidence: ExecutionEvidenceSummary | None = None
+    # Content-free deterministic findings; empty means no explicit business contract.
+    business_acceptance: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(kw_only=True)
@@ -128,6 +130,8 @@ class PublicationDecision:
         "stale_revision",
         "required_output_unresolved",
         "dead_branch_without_output",
+        "business_acceptance_failed",
+        "business_acceptance_unverified",
     ]
 
 
@@ -336,6 +340,12 @@ class DifyBuilderContext:
     # source distinguishes diagnosis origin: "" (run, default) | "checklist".
     source: str = ""
     checklist_errors: list[ChecklistError] = field(default_factory=list)
+
+    # Explicit user-confirmed, task-bound test expectations; existing JSON state.
+    business_acceptance_contract: dict[str, Any] = field(default_factory=dict)
+    business_acceptance_task_id: str = ""
+    business_acceptance_case_id: str = ""
+    business_acceptance_run_refs: dict[str, str] = field(default_factory=dict)
 
     # -- Build fields (Slice 2, additive) --
     goal_text: str = ""

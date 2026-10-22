@@ -464,7 +464,7 @@ def planning_catalogue(
 def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
     if not tools:
         return ""
-    listing = "\n".join(f"- {t.id} ({t.readiness}): {t.label} — {t.meta.replace(chr(10), ' ')[:240]}" for t in tools)
+    listing = "\n".join(_discovery_line(t.id, "plugin", t) for t in tools)
     # "as a separate word": the generator pins a tool only on its id bounded by
     # non-word characters (tool_catalogue's identifier boundary), and CJK counts
     # as a word character -- "使用bowenliang123/..." never pins.
@@ -473,6 +473,13 @@ def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
         "When one of these covers a step, plan that step as a `tool` node and name the tool "
         "by its id. Installed missing_config actions may be bound now and configured before testing or "
         "publishing; never select another member's credentials. Write the id exactly as listed, "
+        "and preserve explicitly required installed actions even when setup is missing. "
+        "Promise tool parameters only when their names appear in that action's declarations. "
+        "If a requested setting is undeclared or the declarations are unknown, explain that limitation; "
+        "do not claim the tool implements it. Credential setup cannot add undeclared parameters: "
+        "an unsupported requirement remains unmet, not pending authorization or future configuration. "
+        "A separate native transformation may implement a supported "
+        "result-processing requirement, but cannot establish a tool's safety or timeout behavior. "
         "as a separate word (with a space on "
         "each side, even in Chinese or Japanese text). An `http-request` endpoint must be "
         "user-supplied or a required Start input supplied at runtime -- never invent one.\n"
@@ -655,6 +662,16 @@ def _discovery_line(rid: str, kind: str, ref: ResourceRef) -> str:
     meta = ref.meta.replace("\n", " ").strip()
     if meta:
         line += f" — {meta[:240]}"
+    if kind == "plugin":
+        # Descriptions alone do not establish parameter support. Keep public
+        # declarations separate from the capped prose so the planner cannot
+        # mistake a missing setting for an installed action capability.
+        declarations = (
+            json.dumps(ref.parameter_contract, ensure_ascii=False, sort_keys=True)
+            if ref.parameter_contract is not None
+            else "unknown"
+        )
+        line += "\n  Action parameter declarations: " + declarations
     if ref.model_contract:
         line += "\n  Model declaration: " + json.dumps(ref.model_contract, sort_keys=True)
     if ref.availability:

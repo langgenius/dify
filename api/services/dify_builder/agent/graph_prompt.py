@@ -282,3 +282,34 @@ REDACTION_RULE = (
     f"A value shown as {credentials.REDACTED} is a secret withheld from you. Never hand it back: "
     "leave that field out of your change entirely.\n"
 )
+
+
+def source_value_declarations(graph: Mapping[str, Any]) -> str:
+    """Expose Start and Code source declarations needed to bind tool inputs.
+
+    Fix otherwise sees only its culprit's config and node titles; Edit may
+    likewise have no detailed target config. A model cannot bind the actual
+    repository field or a parser's outputs from those titles. Render declaration
+    metadata only: no default/input values, Code text or arbitrary schema keys.
+    This supplies source names and types without prescribing output rewrites.
+    """
+    sources: dict[str, dict[str, Any]] = {}
+    for node in graph.get("nodes", []):
+        data = node.get("data") or {}
+        node_type = data.get("type")
+        node_id = str(node.get("id") or "")
+        if node_type == "start":
+            inputs = [
+                {key: field[key] for key in ("variable", "type", "label", "required") if key in field}
+                for field in data.get("variables", [])
+                if isinstance(field, Mapping) and field.get("variable")
+            ]
+            if inputs:
+                sources[node_id] = {"inputs": inputs}
+        elif node_type == "code" and isinstance(data.get("outputs"), Mapping):
+            outputs = {
+                str(name): spec.get("type") for name, spec in data["outputs"].items() if isinstance(spec, Mapping)
+            }
+            if outputs:
+                sources[node_id] = {"outputs": outputs}
+    return "SOURCE VALUE DECLARATIONS:\n" + json.dumps(sources, ensure_ascii=False)

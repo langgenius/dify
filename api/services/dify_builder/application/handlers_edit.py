@@ -79,6 +79,11 @@ from services.dify_builder.application.verification import (
     is_execution_policy_blocker,
     result_card,
 )
+from services.dify_builder.business_acceptance import (
+    clear_task_acceptance,
+    confirm_testdata_contract,
+    record_run_acceptance,
+)
 from services.dify_builder.execution_messages import change_scope_label
 from services.dify_builder.plan import WorkflowPlan, make_plan_card, store_plan
 from services.dify_builder.plan_failure import edit_planning_failed
@@ -112,6 +117,8 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
 
     text, ok = action_string(turn, "text")
     if ok and text:
+        if text != fc.goal_text:
+            clear_task_acceptance(fc)
         fc.goal_text = text
     # A new goal is a new repair loop: the breaker's counter must not carry
     # over from whatever the previous edit was stuck on, and neither may the
@@ -209,6 +216,7 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         previous_rules = fc.edit_rules
         fc.edit_rules = merge_known_keys(fc.edit_rules, turn.action.payload, keys)
         if fc.edit_rules != previous_rules:
+            clear_task_acceptance(fc)
             # ``last_edit_rejection`` describes the batch the engine refused,
             # and that batch is a function of the rules and the graph. Here --
             # and, besides a brand-new goal in handle_capability_check, ONLY
@@ -681,6 +689,7 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         validate_runtime_inputs(schema, inputs)
     except ValueError as exc:
         return input_gate_result(env, s, fc, schema, inputs, PcState.EDIT_AWAIT_TESTDATA, str(exc), actor=turn.actor)
+    confirm_testdata_contract(s, fc, turn.action.payload if turn.action else {}, inputs)
     ti = TestInput(
         session_id=s.id,
         source=mode or "upload",
@@ -785,6 +794,8 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
+
+    record_run_acceptance(s, fc, run, ti, graph, _hash)
 
     fc.verify_run_id = run.id
 
