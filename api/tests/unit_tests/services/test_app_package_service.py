@@ -117,3 +117,54 @@ def test_import_rejects_compressed_dsl_exceeding_legacy_byte_limit() -> None:
     source = _archive(dsl)
     with pytest.raises(RosterAgentPackageTooLargeError):
         AppPackageService().read_package(source)
+
+
+def _roster_archive(binding: dict[str, object], agent_job: dict[str, object] | None = None) -> io.BytesIO:
+    node_data = {
+        "type": "agent",
+        "version": "2",
+        "title": "Roster",
+        "agent_node_kind": "dify_agent",
+        "agent_binding": binding,
+        "agent_job": agent_job or {"workflow_prompt": "Roster job"},
+    }
+    dsl = yaml.safe_dump(
+        {
+            "kind": "app",
+            "app": {"mode": "workflow", "name": "Roster"},
+            "workflow": {"graph": {"nodes": [{"id": "node-1", "data": node_data}], "edges": []}},
+        }
+    )
+    with AppPackageService().export(dsl=dsl, name="Roster") as package:
+        return io.BytesIO(package.archive.read())
+
+
+@pytest.mark.parametrize(
+    ("binding", "agent_job"),
+    [
+        pytest.param({"binding_type": "roster_agent"}, None, id="agent-id-missing"),
+        pytest.param({"binding_type": "roster_agent", "agent_id": ""}, None, id="agent-id-empty"),
+        pytest.param(
+            {"binding_type": "roster_agent", "agent_id": "a", "package_ref": "agent_1"}, None, id="package-ref-extra"
+        ),
+        pytest.param(
+            {"binding_type": "roster_agent", "agent_id": "a"},
+            {"declared_outputs": "not-a-list"},
+            id="invalid-agent-job",
+        ),
+    ],
+)
+def test_roster_only_package_rejects_bad_references_when_accepted(
+    binding: dict[str, object], agent_job: dict[str, object] | None
+) -> None:
+    with pytest.raises(InvalidRosterAgentPackageError, match="Agent references are invalid"):
+        AppPackageService().read_package(_roster_archive(binding, agent_job), accept_roster_references=True)
+
+
+def test_non_workflow_package_is_accepted_when_roster_references_accepted() -> None:
+    dsl = yaml.safe_dump({"kind": "app", "app": {"mode": "chat", "name": "Chat"}})
+    with AppPackageService().export(dsl=dsl, name="Chat") as package:
+        prepared = AppPackageService().read_package(package.archive, accept_roster_references=True)
+    assert prepared is not None
+    assert prepared.agents == {}
+    prepared.close()

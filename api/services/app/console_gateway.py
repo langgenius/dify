@@ -301,6 +301,7 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         *,
         as_copy: bool = False,
         package: AppImportPackage | None = None,
+        preserve_agent_bindings: bool = False,
     ) -> Import:
         account = self._import_actor(context)
         with self._session_factory() as session:
@@ -316,7 +317,7 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 icon_background=params.icon_background,
                 app_id=params.app_id,
                 package=package,
-                preserve_agent_bindings=as_copy,
+                preserve_agent_bindings=preserve_agent_bindings,
                 draft_hash=params.draft_hash if isinstance(params, DraftGuardedImportParams) else None,
             )
             if result.status == ImportStatus.FAILED or (as_copy and result.status == ImportStatus.PENDING):
@@ -415,7 +416,11 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         with self._session_factory() as session:
             app = require_console_app(session, context, app_id)
         return self._packages.export_app(
-            app_model=app, include_secret=options.include_secret, workflow_id=options.workflow_id
+            app_model=app,
+            include_secret=options.include_secret,
+            workflow_id=options.workflow_id,
+            preserve_agent_bindings=options.preserve_agent_bindings,
+            version_bindings=options.version_bindings,
         )
 
     @override

@@ -201,9 +201,10 @@ class Transfers:
         *,
         as_copy: bool = False,
         package: AppImportPackage | None = None,
+        preserve_agent_bindings: bool = False,
     ) -> Import:
         assert package is None
-        self.calls.append(("import", context, params, as_copy))
+        self.calls.append(("import", context, params, as_copy, preserve_agent_bindings))
         return Import(id="import", status=self.status, app_id=self.copied_id)
 
     def export_dsl(self, context: RequestContext, app_id: str, options: AppExportOptions) -> str:
@@ -355,6 +356,7 @@ def test_copy_success_requires_materialized_app_and_enriches_permissions(ports: 
             "import",
             CONTEXT,
             AppImportParams(mode="yaml-content", yaml_content="app: example", **params.model_dump()),
+            True,
             True,
         ),
     ]
@@ -846,10 +848,12 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
             *,
             as_copy: bool = False,
             package: AppImportPackage | None = None,
+            preserve_agent_bindings: bool = False,
         ) -> Import:
             assert package is None
             assert params.name is None
             assert as_copy
+            assert preserve_agent_bindings
             return Import(id="import", status=ImportStatus.COMPLETED, app_id=app.id)
 
     service = ConsoleAppService(

@@ -142,6 +142,7 @@ class PendingData(PendingImportOwner):
     icon_background: str | None = None
     app_id: str | None = None
     draft_hash: str | None = None
+    preserve_agent_bindings: bool = False
     warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
@@ -344,6 +345,7 @@ class AppDslService:
                     icon_background=icon_background,
                     app_id=app_id,
                     draft_hash=draft_hash,
+                    preserve_agent_bindings=preserve_agent_bindings,
                     warnings=self._warnings,
                 )
                 redis_client.setex(
@@ -492,6 +494,7 @@ class AppDslService:
                 icon_background=pending_data.icon_background,
                 allow_premium_site_settings=allow_premium_site_settings,
                 draft_hash=pending_data.draft_hash,
+                preserve_agent_bindings=pending_data.preserve_agent_bindings,
             )
 
             # Delete import info from Redis
@@ -932,6 +935,7 @@ class AppDslService:
         version_id: uuid.UUID | None = None,
         resource_exporter: AgentPackageResourceExporter | None = None,
         preserve_agent_bindings: bool = False,
+        version_bindings: bool = False,
     ) -> AppDslExportData:
         """Load App and Site data, optionally retaining roster references for duplication."""
         app_mode = AppMode.value_of(app_model.mode)
@@ -956,6 +960,7 @@ class AppDslService:
                     session=session,
                     resource_exporter=resource_exporter,
                     preserve_agent_bindings=preserve_agent_bindings,
+                    version_bindings=version_bindings,
                 )
             else:
                 dependencies = cls._append_model_config_export_data(export_data, app_model, session=session)
@@ -1001,6 +1006,7 @@ class AppDslService:
         workflow_id: str | None = None,
         resource_exporter: AgentPackageResourceExporter | None = None,
         preserve_agent_bindings: bool = False,
+        version_bindings: bool = False,
     ) -> list[str]:
         """
         Append workflow export data
@@ -1014,7 +1020,9 @@ class AppDslService:
         reference_nodes: dict[str, dict[str, Any]] = {}
         if preserve_agent_bindings:
             graph = WorkflowAgentPublishService.project_draft_bindings_to_graph(
-                session=session, draft_workflow=workflow
+                session=session,
+                draft_workflow=workflow,
+                binding_version=workflow.version if version_bindings else Workflow.VERSION_DRAFT,
             )
             agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
             for binding in cls._workflow_agent_bindings(workflow=workflow, session=session):
