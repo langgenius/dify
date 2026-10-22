@@ -1,6 +1,7 @@
 import json
 from collections.abc import Mapping
 from copy import deepcopy
+from datetime import datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -8,6 +9,8 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
+from clients.plugin.auth_entities import CredentialCheckResult
+from constants.end_user_connections import ConnectionCredentialStatus
 from context.connection_execution import ConnectionExecutionContext
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import (
@@ -18,25 +21,32 @@ from core.app.entities.app_invoke_entities import (
     build_dify_run_context,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from models.end_user_connection import EndUserConnection
+from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, EndUser
-from models.workflow import Workflow
+from models.tools import ToolOAuthTenantClient
+from models.workflow import Workflow, WorkflowRun
 from services.end_user_connection_execution_adapters import (
     prepare_web_connection_execution,
     validate_connection_execution,
 )
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
 from services.end_user_connections.errors import (
+    ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
+    ConnectionConflictError,
     ConnectionIdentityError,
+    ConnectionInvalidCredentialsError,
     ConnectionNotFoundError,
+    ConnectionReauthorizationRequiredError,
+    ConnectionRequiredError,
     ConnectionWorkflowChangedError,
 )
 from services.end_user_connections.execution import (
     ConnectionExecutionService,
     ConnectionRunInput,
 )
+from services.end_user_connections.preflight import ConnectionPreflightInput, ConnectionPreflightService
 from services.errors.conversation import ConversationNotExistsError
 from tasks.app_generate.workflow_execute_task import AppExecutionParams
 from tests.helpers.end_user_api_key import make_harness
@@ -49,13 +59,19 @@ def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.M
 
 
 @pytest.fixture
-def service(harness: OAuthHarness) -> ConnectionExecutionService:
-    return ConnectionExecutionService(
+def preflight(harness: OAuthHarness) -> ConnectionPreflightService:
+    return ConnectionPreflightService(
         connections=harness.base.repository,
+        checks=harness.base.service,
         requirements=PublishedPreflightRequirements(
             workflows=harness.base.repository, providers=harness.providers, oauth=harness.gateway
         ),
     )
+
+
+@pytest.fixture
+def service(preflight: ConnectionPreflightService) -> ConnectionExecutionService:
+    return ConnectionExecutionService(preflight=preflight)
 
 
 def prepare(
@@ -72,7 +88,7 @@ def prepare(
     )
 
 
-def test_explicit_selection_is_immutable_and_does_not_check_or_copy_secrets(
+def test_explicit_selection_is_checked_without_copying_secrets(
     harness: OAuthHarness, service: ConnectionExecutionService
 ) -> None:
     first = harness.base.service.create_api_key(harness.base.context, harness.base.command())
@@ -83,14 +99,16 @@ def test_explicit_selection_is_immutable_and_does_not_check_or_copy_secrets(
     choices["tool-1"] = second.id
     assert context.selections[0].connection_id == first.id
     assert prepare(harness, service, choices).selections[0].connection_id == second.id
-    assert prepare(harness, service, {}).selections[0].connection_id is None
-    assert prepare(harness, service, {"tool-1": None}).selections[0].connection_id is None
+    with pytest.raises(ConnectionRequiredError):
+        prepare(harness, service, {})
+    with pytest.raises(ConnectionRequiredError):
+        prepare(harness, service, {"tool-1": None})
     serialized = context.model_dump_json()
     assert "original-secret" not in serialized
     assert "encrypted_credentials" not in serialized
     assert "revision" not in serialized
     assert ConnectionExecutionContext.model_validate_json(serialized) == context
-    assert harness.base.auth.calls == []
+    assert len(harness.base.auth.calls) == 2
 
 
 @pytest.mark.parametrize("foreign", [False, True])
@@ -141,10 +159,14 @@ def test_reuse_requires_root_selection_and_keeps_independent_nodes_separate(
         reused["data"].update(credential_source="reuse_node", reuse_node_id="tool-1")
         graph["nodes"].extend([independent, reused])
         workflow.graph = json.dumps(graph)
-    context = prepare(harness, service, {"tool-1": connection.id})
+    with pytest.raises(ConnectionRequiredError):
+        prepare(harness, service, {"tool-1": connection.id})
+    harness.base.auth.calls.clear()
+    context = prepare(harness, service, {"tool-1": connection.id, "independent": connection.id})
+    assert len(harness.base.auth.calls) == 1
     assert tuple(selection.node_id for selection in context.selections) == ("tool-1", "independent")
     assert context.selections[0].connection_id == connection.id
-    assert context.selections[1].connection_id is None
+    assert context.selections[1].connection_id == connection.id
     with pytest.raises(ConnectionConfigurationError):
         prepare(harness, service, {"reused": connection.id})
 
@@ -164,7 +186,8 @@ def test_protocol_mismatch_never_selects_the_requested_workflow(
 def test_async_authority_revalidated_without_rebinding_to_new_publication(
     harness: OAuthHarness, service: ConnectionExecutionService
 ) -> None:
-    context = prepare(harness, service, {})
+    connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    context = prepare(harness, service, {"tool-1": connection.id})
     with harness.base.sessions.begin() as session:
         app = session.get(App, harness.base.context.app_id)
         assert app is not None
@@ -210,7 +233,8 @@ def test_existing_conversation_must_belong_to_authenticated_user(
         session.add(conversation)
         session.flush()
         conversation_id = conversation.id
-    assert prepare(harness, service, {}, conversation_id).conversation_id == conversation_id
+    connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    assert prepare(harness, service, {"tool-1": connection.id}, conversation_id).conversation_id == conversation_id
     with harness.base.sessions.begin() as session:
         session.execute(
             sa.update(Conversation).where(Conversation.id == conversation_id).values({"from_end_user_id": str(uuid4())})
@@ -283,6 +307,7 @@ def test_entry_ignores_client_authority_fields(
     monkeypatch.setattr(
         ext_application_services, "application_services", lambda: SimpleNamespace(end_user_connection_execution=service)
     )
+    connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     with harness.base.sessions() as session:
         app = session.get(App, harness.base.context.app_id)
         assert app is not None
@@ -296,7 +321,7 @@ def test_entry_ignores_client_authority_fields(
         workflow=workflow,
         args={
             "workflow_id": workflow.id,
-            "connections": {},
+            "connections": {"tool-1": connection.id},
             "tenant_id": "foreign",
             "account_id": "foreign",
             "connection_context": {"identity": "foreign"},
@@ -343,3 +368,188 @@ def test_workspace_only_entry_checks_protocol_and_rejects_unused_selections(
             prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args)
     else:
         assert prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args) is None
+
+
+@pytest.mark.parametrize("choices", [None, {}, {"tool-1": None}])
+@pytest.mark.parametrize("saved_scope", ["app", "session"])
+def test_missing_selection_never_uses_saved_defaults(
+    harness: OAuthHarness,
+    service: ConnectionExecutionService,
+    choices: dict[str, str | None] | None,
+    saved_scope: str,
+) -> None:
+    connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    conversation_id = None
+    with harness.base.sessions.begin() as session:
+        session.add(
+            AppConnection(
+                tenant_id=harness.base.context.tenant_id,
+                app_id=harness.base.context.app_id,
+                workflow_id=harness.base.workflow_id,
+                end_user_id=harness.base.context.end_user_id,
+                node_id="tool-1",
+                provider=connection.provider,
+                connection_id=connection.id,
+                source_run_id=str(uuid4()),
+            )
+        )
+        if saved_scope == "session":
+            session.execute(
+                sa.update(App).where(App.id == harness.base.context.app_id).values(mode=AppMode.ADVANCED_CHAT)
+            )
+            conversation = Conversation(
+                app_id=harness.base.context.app_id,
+                mode=AppMode.ADVANCED_CHAT,
+                name="Chat",
+                from_source=ConversationFromSource.API,
+                from_end_user_id=harness.base.context.end_user_id,
+                from_account_id=None,
+                invoke_from=InvokeFrom.WEB_APP,
+                _inputs={},
+                is_deleted=False,
+            )
+            session.add(conversation)
+            session.flush()
+            conversation_id = conversation.id
+            session.add(
+                SessionConnection(
+                    tenant_id=harness.base.context.tenant_id,
+                    app_id=harness.base.context.app_id,
+                    workflow_id=harness.base.workflow_id,
+                    session_id=conversation_id,
+                    node_id="tool-1",
+                    provider=connection.provider,
+                    connection_id=connection.id,
+                )
+            )
+    harness.base.auth.calls.clear()
+    with pytest.raises(ConnectionRequiredError):
+        service.prepare(
+            harness.base.context,
+            ConnectionRunInput.model_validate({"workflow_id": harness.base.workflow_id, "connections": choices}),
+            workflow_id=harness.base.workflow_id,
+            conversation_id=conversation_id,
+        )
+    assert harness.base.auth.calls == []
+    with harness.base.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(WorkflowRun)) == 0
+
+
+def test_only_selected_connection_is_checked_without_saving_usage(
+    harness: OAuthHarness, service: ConnectionExecutionService
+) -> None:
+    selected = harness.base.service.create_api_key(harness.base.context, harness.base.command("selected-key"))
+    unused = harness.base.service.create_api_key(harness.base.context, harness.base.command("unused-key"))
+    before = harness.base.repository.find(harness.base.context, unused.id)
+    assert before is not None
+    harness.base.auth.calls.clear()
+    result = prepare(harness, service, {"tool-1": selected.id})
+    assert result.selections[0].connection_id == selected.id
+    assert [call[3] for call in harness.base.auth.calls] == [{"api_key": "selected-key"}]
+    after = harness.base.repository.find(harness.base.context, unused.id)
+    assert after is not None
+    assert after.access.revision == before.access.revision
+    checked = harness.base.repository.find(harness.base.context, selected.id)
+    assert checked is not None
+    assert checked.summary.last_active_at == selected.last_active_at
+    with harness.base.sessions() as session:
+        for model in (WorkflowRun, AppConnection, SessionConnection):
+            assert session.scalar(sa.select(sa.func.count()).select_from(model)) == 0
+
+
+@pytest.mark.parametrize("outcome", ["valid", "unsupported", "invalid", "temporarily_unavailable"])
+def test_gate_uses_preflight_readiness_rules(
+    harness: OAuthHarness, service: ConnectionExecutionService, outcome: str
+) -> None:
+    connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    harness.base.auth.result = CredentialCheckResult.model_validate(
+        {
+            "status": outcome,
+            "reason_code": None,
+            "retryable": False,
+            "checked_at": 1,
+        }
+    )
+    error = {
+        "invalid": ConnectionInvalidCredentialsError,
+        "temporarily_unavailable": ConnectionCheckUnavailableError,
+    }.get(outcome)
+    if error is not None:
+        with pytest.raises(error):
+            prepare(harness, service, {"tool-1": connection.id})
+    else:
+        assert prepare(harness, service, {"tool-1": connection.id}).selections[0].connection_id == connection.id
+    stored = harness.base.repository.find(harness.base.context, connection.id)
+    assert stored is not None
+    assert stored.access.credential_status == (
+        ConnectionCredentialStatus.INVALID if outcome == "invalid" else ConnectionCredentialStatus.CONNECTED
+    )
+
+
+def test_previous_preflight_success_does_not_skip_execution_check(
+    harness: OAuthHarness, service: ConnectionExecutionService, preflight: ConnectionPreflightService
+) -> None:
+    connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    command = ConnectionPreflightInput.model_validate(
+        {
+            "workflow_id": harness.base.workflow_id,
+            "connections": {"tool-1": connection.id},
+        }
+    )
+    assert preflight.check(harness.base.context, command).ready
+    harness.base.auth.calls.clear()
+    harness.base.auth.result = CredentialCheckResult(status="invalid", reason_code=None, retryable=False, checked_at=1)
+    with pytest.raises(ConnectionInvalidCredentialsError):
+        prepare(harness, service, {"tool-1": connection.id})
+    assert len(harness.base.auth.calls) == 1
+
+
+@pytest.mark.parametrize("change", ["publication", "connection"])
+def test_gate_rejects_changes_during_selected_connection_check(
+    harness: OAuthHarness, service: ConnectionExecutionService, change: str
+) -> None:
+    connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+
+    def mutate() -> None:
+        with harness.base.sessions.begin() as session:
+            if change == "publication":
+                session.execute(
+                    sa.update(App).where(App.id == harness.base.context.app_id).values({"workflow_id": str(uuid4())})
+                )
+            else:
+                session.execute(
+                    sa.update(EndUserConnection).where(EndUserConnection.id == connection.id).values(revision=2)
+                )
+
+    harness.base.auth.on_check = mutate
+    with pytest.raises(ConnectionWorkflowChangedError if change == "publication" else ConnectionConflictError):
+        prepare(harness, service, {"tool-1": connection.id})
+
+
+def test_gate_uses_existing_oauth_refresh(harness: OAuthHarness, service: ConnectionExecutionService) -> None:
+    connection = harness.finish(harness.start())
+    with harness.base.sessions.begin() as session:
+        session.execute(
+            sa.update(EndUserConnection)
+            .where(EndUserConnection.id == connection.id)
+            .values(expires_at=datetime(2000, 1, 1))
+        )
+    result = prepare(harness, service, {"tool-1": connection.id})
+    assert len(harness.handler.refreshes) == 1
+    assert result.selections[0].connection_id == connection.id
+    assert "new-access-secret" not in result.model_dump_json()
+
+
+def test_gate_rejects_changed_oauth_client(harness: OAuthHarness, service: ConnectionExecutionService) -> None:
+    connection = harness.finish(harness.start())
+    with harness.base.sessions.begin() as session:
+        session.execute(
+            sa.update(ToolOAuthTenantClient)
+            .where(ToolOAuthTenantClient.id == harness.client_id)
+            .values(encrypted_oauth_params='{"client_id":"other-client"}')
+        )
+    harness.base.auth.calls.clear()
+    with pytest.raises(ConnectionReauthorizationRequiredError):
+        prepare(harness, service, {"tool-1": connection.id})
+    assert harness.base.auth.calls == []
+    assert harness.handler.refreshes == []

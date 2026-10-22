@@ -21,6 +21,11 @@ class ConnectionNotFoundError(ConnectionError):
         super().__init__("Connection not found.")
 
 
+class ConnectionRequiredError(ConnectionError):
+    def __init__(self) -> None:
+        super().__init__("Select a connection for every required tool before running.")
+
+
 class ConnectionConfigurationError(ConnectionError):
     def __init__(self) -> None:
         super().__init__("The connection is not compatible with this tool configuration.")

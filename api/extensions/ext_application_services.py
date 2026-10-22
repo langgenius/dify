@@ -30,7 +30,6 @@ from extensions.application_services.data_sources import (
 )
 from extensions.application_services.datasets import build_dataset_dependencies
 from extensions.application_services.end_user_connections import (
-    build_end_user_connection_execution,
     build_end_user_connection_oauth,
     build_end_user_connection_preflight,
     build_end_user_connections,
@@ -543,6 +542,9 @@ def build_application_services(
         invitation_tokens=invitation_tokens,
     )
     end_user_connections = build_end_user_connections(database_client=database_client)
+    end_user_connection_preflight = build_end_user_connection_preflight(
+        database_client=database_client, connections=end_user_connections
+    )
     return ApplicationServices(
         rbac=rbac,
         accounts=account_services,
@@ -721,12 +723,9 @@ def build_application_services(
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_identity=web_identity,
-        end_user_connection_execution=build_end_user_connection_execution(database_client=database_client),
+        end_user_connection_execution=ConnectionExecutionService(preflight=end_user_connection_preflight),
         end_user_connections=end_user_connections,
-        end_user_connection_preflight=build_end_user_connection_preflight(
-            database_client=database_client,
-            connections=end_user_connections,
-        ),
+        end_user_connection_preflight=end_user_connection_preflight,
         end_user_connection_oauth=build_end_user_connection_oauth(database_client=database_client),
         web_passport=WebPassportService(
             passports=WebPassportRepository(
