@@ -15,7 +15,9 @@ async function renderPolicy(canMutate = true) {
     <ConsoleProvider>
       <button type="button">Before policy</button>
       <section aria-label="IP policy row" style={{ width: 800 }}>
-        <PolicyItem group={group} canMutate={canMutate} onView={onView} onEdit={onEdit} />
+        <div role="table" aria-label="IP policies">
+          <PolicyItem group={group} canMutate={canMutate} onView={onView} onEdit={onEdit} />
+        </div>
       </section>
     </ConsoleProvider>,
   )
