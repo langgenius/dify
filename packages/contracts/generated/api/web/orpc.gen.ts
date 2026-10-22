@@ -246,11 +246,23 @@ export const post3 = oc
     agent_not_published: { status: 400, data: zAgentNotPublishedError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_credentials_unavailable: {
+      status: 503,
+      data: zConnectionCredentialsUnavailableError,
+    },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     rate_limit_error: { status: 429, data: zRateLimitError },
+    workflow_changed: { status: 409, data: zWorkflowChangedError },
   })
 
 export const chatMessages = {
@@ -1569,6 +1581,17 @@ export const post27 = oc
   .output(zPostWorkflowsRunResponse)
   .errors({
     completion_request_error: { status: 400, data: zCompletionRequestError },
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_credentials_unavailable: {
+      status: 503,
+      data: zConnectionCredentialsUnavailableError,
+    },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_workflow_app: { status: 400, data: zNotWorkflowAppError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
@@ -1578,6 +1601,7 @@ export const post27 = oc
       status: 403,
       data: zTriggerWorkflowServiceModeUnavailableError,
     },
+    workflow_changed: { status: 409, data: zWorkflowChangedError },
   })
 
 export const run = {

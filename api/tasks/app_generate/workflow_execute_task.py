@@ -11,7 +11,9 @@ from pydantic import BaseModel, Discriminator, Field, Tag
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from context.connection_execution import ConnectionExecutionContext
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
@@ -35,7 +37,10 @@ from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from repositories.end_user_connection_repository import EndUserConnectionRepository
 from repositories.factory import DifyAPIRepositoryFactory
+from services.end_user_connection_execution_adapters import validate_connection_execution
+from services.end_user_connections.errors import ConnectionError
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +94,7 @@ class AppExecutionParams(BaseModel):
     app_mode: AppMode = AppMode.ADVANCED_CHAT
     user: User
     args: Mapping[str, Any]
+    connection_context: ConnectionExecutionContext | None = None
 
     invoke_from: InvokeFrom
     streaming: bool = True
@@ -108,6 +114,7 @@ class AppExecutionParams(BaseModel):
         call_depth: int = 0,
         root_node_id: str | None = None,
         workflow_run_id: str | None = None,
+        connection_context: ConnectionExecutionContext | None = None,
     ):
         user_params: _Account | _EndUser
         match user:
@@ -124,6 +131,7 @@ class AppExecutionParams(BaseModel):
             app_mode=AppMode.value_of(app_model.mode),
             user=user_params,
             args=args,
+            connection_context=connection_context,
             invoke_from=invoke_from,
             streaming=streaming,
             call_depth=call_depth,
@@ -210,12 +218,22 @@ class _AppRunner:
         session: Session,
     ):
         exec_params = self._exec_params
+        if exec_params.connection_context is not None:
+            validate_connection_execution(
+                exec_params.connection_context,
+                app=app,
+                user=user,
+                workflow=workflow,
+                conversation_id=exec_params.args.get("conversation_id"),
+                repository=EndUserConnectionRepository(session_factory=self._session_factory),
+            )
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
             return AdvancedChatAppGenerator().generate(
                 app_model=app,
                 workflow=workflow,
                 user=user,
                 args=exec_params.args,
+                connection_context=exec_params.connection_context,
                 invoke_from=exec_params.invoke_from,
                 streaming=exec_params.streaming,
                 workflow_run_id=exec_params.workflow_run_id,
@@ -228,6 +246,7 @@ class _AppRunner:
                 workflow=workflow,
                 user=user,
                 args=exec_params.args,
+                connection_context=exec_params.connection_context,
                 invoke_from=exec_params.invoke_from,
                 streaming=exec_params.streaming,
                 call_depth=exec_params.call_depth,
@@ -558,6 +577,45 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
             type(generate_entity),
         )
         return
+
+    if generate_entity.connection_context is not None:
+        try:
+            validate_connection_execution(
+                generate_entity.connection_context,
+                app=app_model,
+                user=user,
+                workflow=workflow,
+                conversation_id=(
+                    generate_entity.conversation_id
+                    if isinstance(generate_entity, AdvancedChatAppGenerateEntity)
+                    else None
+                ),
+                repository=EndUserConnectionRepository(session_factory=session_factory),
+            )
+        except ConnectionError as exc:
+            failed_run = workflow_run_repo.fail_workflow_pause(
+                tenant_id=workflow_run.tenant_id,
+                app_id=workflow_run.app_id,
+                workflow_run_id=workflow_run_id,
+                pause_id=pause_entity.id,
+                error=str(exc),
+            )
+            if failed_run is not None:
+                response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
+                    task_id=generate_entity.task_id, workflow_run=failed_run, creator_user=user
+                )
+                app_mode = (
+                    AppMode.ADVANCED_CHAT
+                    if isinstance(generate_entity, AdvancedChatAppGenerateEntity)
+                    else AppMode.WORKFLOW
+                )
+                topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
+                topic.publish(response.model_dump_json().encode())
+                try:
+                    workflow_run_repo.delete_workflow_pause(pause_entity)
+                except Exception:
+                    logger.exception("Failed to clean rejected workflow pause %s", pause_entity.id)
+            return
 
     # The resumed attempt reuses the paused run's task ID, so cancellation
     # signals armed against that ID before or during the pause would abort it

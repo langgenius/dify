@@ -38,6 +38,7 @@ from services.errors.app import (
     WorkflowIdFormatError,
     WorkflowNotFoundError,
 )
+from tasks.app_generate.workflow_execute_task import AppExecutionParams
 
 
 # ---------------------------------------------------------------------------
@@ -605,6 +606,41 @@ class TestGenerate(_RealSessionTest):
 
         assert result == {"result": "version"}
         get_workflow.assert_called_once_with(app, InvokeFrom.SERVICE_API, workflow_id, session=session)
+
+    @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @pytest.mark.parametrize("streaming", [False, True])
+    def test_web_protocol_id_is_not_a_version_selector(
+        self, mocker: MockerFixture, config_overrides: Callable[..., None], mode: AppMode, streaming: bool
+    ) -> None:
+        config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
+        workflow = _make_workflow()
+        get_workflow = mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+        prepare = mocker.patch("services.app_generate_service.prepare_web_connection_execution", return_value=None)
+        generator_name = "WorkflowAppGenerator" if mode == AppMode.WORKFLOW else "AdvancedChatAppGenerator"
+        generate = mocker.patch(f"services.app_generate_service.{generator_name}.generate", return_value={})
+        mocker.patch("services.app_generate_service.MessageBasedAppGenerator.retrieve_events", return_value=iter(()))
+        mocker.patch(
+            f"services.app_generate_service.{generator_name}.convert_to_event_stream", side_effect=lambda value: value
+        )
+        params = mocker.spy(AppExecutionParams, "new")
+        app = _make_app(mode)
+        requested_id = str(uuid.uuid4())
+        AppGenerateService.generate(
+            app_model=app,
+            user=_make_user(),
+            args={"inputs": {}, "workflow_id": requested_id, "connections": {}},
+            invoke_from=InvokeFrom.WEB_APP,
+            streaming=streaming,
+            session=self.session,
+        )
+        get_workflow.assert_called_once_with(app, InvokeFrom.WEB_APP, None, session=self.session)
+        assert prepare.call_args.kwargs["workflow"] is workflow
+        assert prepare.call_args.kwargs["args"]["workflow_id"] == requested_id
+        forwarded = params.call_args.kwargs if streaming else generate.call_args.kwargs
+        assert forwarded["workflow"] is workflow
+        assert "workflow_id" not in forwarded["args"]
+        assert "connections" not in forwarded["args"]
+        assert "connection_context" in forwarded
 
     # -- WORKFLOW streaming -------------------------------------------------
     def test_workflow_streaming(self, mocker: MockerFixture, config_overrides: Callable[..., None]):

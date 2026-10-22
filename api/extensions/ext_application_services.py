@@ -30,6 +30,7 @@ from extensions.application_services.data_sources import (
 )
 from extensions.application_services.datasets import build_dataset_dependencies
 from extensions.application_services.end_user_connections import (
+    build_end_user_connection_execution,
     build_end_user_connection_oauth,
     build_end_user_connection_preflight,
     build_end_user_connections,
@@ -128,6 +129,7 @@ from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
+from services.end_user_connections.execution import ConnectionExecutionService
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
 from services.end_user_connections.preflight import ConnectionPreflightService
@@ -318,6 +320,7 @@ class ApplicationServices:
     inner_mail: InnerMailService
     web_passport: WebPassportService
     web_identity: WebIdentityService
+    end_user_connection_execution: ConnectionExecutionService
     end_user_connections: ConnectionService
     end_user_connection_oauth: OAuthConnectionService
     end_user_connection_preflight: ConnectionPreflightService
@@ -718,6 +721,7 @@ def build_application_services(
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_identity=web_identity,
+        end_user_connection_execution=build_end_user_connection_execution(database_client=database_client),
         end_user_connections=end_user_connections,
         end_user_connection_preflight=build_end_user_connection_preflight(
             database_client=database_client,

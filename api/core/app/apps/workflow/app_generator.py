@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
+from context.connection_execution import ConnectionExecutionContext
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -105,6 +106,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
+        connection_context: ConnectionExecutionContext | None = None,
     ) -> Generator[Mapping[str, Any] | str]: ...
 
     @overload
@@ -123,6 +125,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
+        connection_context: ConnectionExecutionContext | None = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -141,6 +144,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
+        connection_context: ConnectionExecutionContext | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
@@ -158,6 +162,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
+        connection_context: ConnectionExecutionContext | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
@@ -210,6 +215,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 )
             # init application generate entity
             application_generate_entity = WorkflowAppGenerateEntity(
+                connection_context=connection_context,
                 task_id=str(uuid.uuid4()),
                 app_config=app_config,
                 file_upload_config=file_extra_config,

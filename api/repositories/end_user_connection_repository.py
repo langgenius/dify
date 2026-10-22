@@ -112,23 +112,25 @@ class EndUserConnectionRepository:
             return graph
 
     @staticmethod
-    def _require_preflight_scope(
-        session: Session, context: WebConnectionContext, app: App, workflow_id: str, conversation_id: str | None
+    def _require_workflow_scope(
+        session: Session,
+        context: WebConnectionContext,
+        app: App,
+        workflow_id: str,
+        conversation_id: str | None,
+        *,
+        require_current_publication: bool = True,
     ) -> None:
-        # The client pins the connection contract it saw; it cannot select an
-        # arbitrary historical workflow as the execution version.
-        if (
-            app.workflow_id != workflow_id
-            or session.scalar(
-                sa.select(Workflow.id).where(
-                    Workflow.id == workflow_id,
-                    Workflow.app_id == context.app_id,
-                    Workflow.tenant_id == context.tenant_id,
-                    Workflow.version != "draft",
-                )
+        # New requests pin the current publication. Accepted executions retain
+        # their selected workflow across queueing and pause/resume boundaries.
+        if (require_current_publication and app.workflow_id != workflow_id) or session.scalar(
+            sa.select(Workflow.id).where(
+                Workflow.id == workflow_id,
+                Workflow.app_id == context.app_id,
+                Workflow.tenant_id == context.tenant_id,
+                Workflow.version != "draft",
             )
-            is None
-        ):
+        ) is None:
             raise ConnectionWorkflowChangedError()
         if conversation_id is None:
             return
@@ -157,7 +159,7 @@ class EndUserConnectionRepository:
     ) -> Mapping[str, Any]:
         with self._sessions() as session:
             app = self._require_context(session, context, lock=False)
-            self._require_preflight_scope(session, context, app, workflow_id, conversation_id)
+            self._require_workflow_scope(session, context, app, workflow_id, conversation_id)
             workflow = session.scalar(
                 sa.select(Workflow).where(
                     Workflow.id == workflow_id,
@@ -178,7 +180,16 @@ class EndUserConnectionRepository:
     ) -> None:
         with self._sessions() as session:
             app = self._require_context(session, context, lock=False)
-            self._require_preflight_scope(session, context, app, workflow_id, conversation_id)
+            self._require_workflow_scope(session, context, app, workflow_id, conversation_id)
+
+    def validate_execution_context(
+        self, context: WebConnectionContext, workflow_id: str, conversation_id: str | None
+    ) -> None:
+        with self._sessions() as session:
+            app = self._require_context(session, context, lock=False)
+            self._require_workflow_scope(
+                session, context, app, workflow_id, conversation_id, require_current_publication=False
+            )
 
     def access_records(
         self, context: WebConnectionContext, connection_ids: frozenset[str]

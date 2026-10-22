@@ -25,6 +25,7 @@ from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
+from services.end_user_connection_execution_adapters import prepare_web_connection_execution
 from services.errors.app import (
     QuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
@@ -242,8 +243,15 @@ class AppGenerateService:
                     request_id=request_id,
                 )
             case AppMode.ADVANCED_CHAT:
-                workflow_id = args.get("workflow_id")
+                workflow_id = None if invoke_from == InvokeFrom.WEB_APP else args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                connection_context = (
+                    prepare_web_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
+                    if invoke_from == InvokeFrom.WEB_APP
+                    else None
+                )
+                if invoke_from == InvokeFrom.WEB_APP:
+                    args = {key: value for key, value in args.items() if key not in {"workflow_id", "connections"}}
 
                 if streaming:
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
@@ -251,6 +259,7 @@ class AppGenerateService:
                         payload = AppExecutionParams.new(
                             app_model=app_model,
                             workflow=workflow,
+                            connection_context=connection_context,
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
@@ -288,6 +297,7 @@ class AppGenerateService:
                         advanced_generator.generate(
                             app_model=app_model,
                             workflow=workflow,
+                            connection_context=connection_context,
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
@@ -300,14 +310,22 @@ class AppGenerateService:
                     request_id=request_id,
                 )
             case AppMode.WORKFLOW:
-                workflow_id = args.get("workflow_id")
+                workflow_id = None if invoke_from == InvokeFrom.WEB_APP else args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                connection_context = (
+                    prepare_web_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
+                    if invoke_from == InvokeFrom.WEB_APP
+                    else None
+                )
+                if invoke_from == InvokeFrom.WEB_APP:
+                    args = {key: value for key, value in args.items() if key not in {"workflow_id", "connections"}}
                 cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
                 if streaming:
                     with rate_limit_context(rate_limit, request_id):
                         payload = AppExecutionParams.new(
                             app_model=app_model,
                             workflow=workflow,
+                            connection_context=connection_context,
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
@@ -342,6 +360,7 @@ class AppGenerateService:
                         WorkflowAppGenerator().generate(
                             app_model=app_model,
                             workflow=workflow,
+                            connection_context=connection_context,
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
