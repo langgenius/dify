@@ -57,6 +57,22 @@ class ToolCredentialIssue:
     message: str
 
 
+def requires_end_user_connections(graph: Mapping[str, Any]) -> bool:
+    """Static discovery only: reuse delegates to a node that declares its source.
+
+    A declared EndUser requirement must stay visible even if its configuration
+    is incomplete; publication validation and Preflight diagnose that separately.
+    """
+    return any(
+        isinstance(node, Mapping)
+        and node.get("type") != "custom-note"
+        and isinstance(data := node.get("data"), Mapping)
+        and data.get("type") == BuiltinNodeTypes.TOOL
+        and data.get("credential_source") == "end_user"
+        for node in graph.get("nodes", [])
+    )
+
+
 def _same_tool(data: Mapping[str, Any], target_data: Mapping[str, Any]) -> bool:
     if any(data.get(field) != target_data.get(field) for field in ("provider_type", "tool_name")):
         return False

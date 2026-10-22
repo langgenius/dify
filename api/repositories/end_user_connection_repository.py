@@ -12,8 +12,8 @@ from constants.end_user_connections import ConnectionCredentialStatus, Connectio
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus
 from models.end_user_connection import EndUserConnection
-from models.enums import AppStatus, EndUserType
-from models.model import App, AppMode, EndUser
+from models.enums import AppStatus, ConversationFromSource, ConversationStatus, EndUserType, InvokeFrom
+from models.model import App, AppMode, Conversation, EndUser
 from models.provider_ids import ToolProviderID
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
@@ -39,6 +39,7 @@ from services.end_user_connections.oauth import (
     OAuthClientSnapshot,
     StoredOAuthClientConfiguration,
 )
+from services.errors.conversation import ConversationNotExistsError
 
 
 class EndUserConnectionRepository:
@@ -109,6 +110,107 @@ class EndUserConnectionRepository:
             if not isinstance(graph, dict):
                 raise ConnectionConfigurationError()
             return graph
+
+    @staticmethod
+    def _require_preflight_scope(
+        session: Session, context: WebConnectionContext, app: App, workflow_id: str, conversation_id: str | None
+    ) -> None:
+        # The client pins the connection contract it saw; it cannot select an
+        # arbitrary historical workflow as the execution version.
+        if (
+            app.workflow_id != workflow_id
+            or session.scalar(
+                sa.select(Workflow.id).where(
+                    Workflow.id == workflow_id,
+                    Workflow.app_id == context.app_id,
+                    Workflow.tenant_id == context.tenant_id,
+                    Workflow.version != "draft",
+                )
+            )
+            is None
+        ):
+            raise ConnectionWorkflowChangedError()
+        if conversation_id is None:
+            return
+        if app.mode != AppMode.ADVANCED_CHAT:
+            raise ConnectionConfigurationError()
+        if (
+            session.scalar(
+                sa.select(Conversation.id).where(
+                    Conversation.id == conversation_id,
+                    Conversation.app_id == context.app_id,
+                    Conversation.mode == AppMode.ADVANCED_CHAT,
+                    Conversation.from_source == ConversationFromSource.API,
+                    Conversation.from_end_user_id == context.end_user_id,
+                    Conversation.from_account_id.is_(None),
+                    Conversation.is_deleted.is_(False),
+                    Conversation.status == ConversationStatus.NORMAL,
+                    sa.or_(Conversation.invoke_from.is_(None), Conversation.invoke_from == InvokeFrom.WEB_APP),
+                )
+            )
+            is None
+        ):
+            raise ConversationNotExistsError()
+
+    def preflight_graph(
+        self, context: WebConnectionContext, workflow_id: str, conversation_id: str | None
+    ) -> Mapping[str, Any]:
+        with self._sessions() as session:
+            app = self._require_context(session, context, lock=False)
+            self._require_preflight_scope(session, context, app, workflow_id, conversation_id)
+            workflow = session.scalar(
+                sa.select(Workflow).where(
+                    Workflow.id == workflow_id,
+                    Workflow.app_id == context.app_id,
+                    Workflow.tenant_id == context.tenant_id,
+                    Workflow.version != "draft",
+                )
+            )
+            if workflow is None:
+                raise ConnectionWorkflowChangedError()
+            graph = workflow.graph_dict
+            if not isinstance(graph, dict):
+                raise ConnectionConfigurationError()
+            return graph
+
+    def validate_preflight_context(
+        self, context: WebConnectionContext, workflow_id: str, conversation_id: str | None
+    ) -> None:
+        with self._sessions() as session:
+            app = self._require_context(session, context, lock=False)
+            self._require_preflight_scope(session, context, app, workflow_id, conversation_id)
+
+    def access_records(
+        self, context: WebConnectionContext, connection_ids: frozenset[str]
+    ) -> Mapping[str, ConnectionAccessRecord]:
+        with self._sessions() as session:
+            self._require_context(session, context, lock=False)
+            if not connection_ids:
+                return {}
+            rows = session.scalars(
+                sa.select(EndUserConnection)
+                .options(
+                    load_only(
+                        EndUserConnection.id,
+                        EndUserConnection.tenant_id,
+                        EndUserConnection.account_id,
+                        EndUserConnection.end_user_id,
+                        EndUserConnection.provider,
+                        EndUserConnection.credential_type,
+                        EndUserConnection.status,
+                        EndUserConnection.oauth_client_source,
+                        EndUserConnection.oauth_client_configuration_id,
+                        EndUserConnection.oauth_client_id,
+                        EndUserConnection.revision,
+                    )
+                )
+                .where(
+                    EndUserConnection.tenant_id == context.tenant_id,
+                    *self._owner(context.owner),
+                    EndUserConnection.id.in_(connection_ids),
+                )
+            ).all()
+            return {row.id: self._access(row) for row in rows}
 
     def list(self, context: WebConnectionContext, query: ListConnectionsInput, after_id: str | None) -> ConnectionPage:
         with self._sessions() as session:
@@ -191,7 +293,7 @@ class EndUserConnectionRepository:
 
     def update(
         self, context: WebConnectionContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
-    ) -> ConnectionSummary:
+    ) -> StoredConnection:
         with self._sessions.begin() as session:
             self._require_context(session, context, lock=True)
             predicates = self._guard(context, guard)
@@ -222,7 +324,7 @@ class EndUserConnectionRepository:
                 row = session.scalar(sa.select(EndUserConnection).where(*predicates).with_for_update())
             if row is None:
                 raise ConnectionConflictError()
-            return self._summary(row)
+            return self._stored(row)
 
     def delete(self, context: WebConnectionContext, guard: ConnectionMutationGuard) -> None:
         with self._sessions.begin() as session:
@@ -469,8 +571,8 @@ class EndUserConnectionRepository:
             last_active_at=row.last_active_at,
         )
 
-    @classmethod
-    def _stored(cls, row: EndUserConnection) -> StoredConnection:
+    @staticmethod
+    def _access(row: EndUserConnection) -> ConnectionAccessRecord:
         client = None
         if row.credential_type == ConnectionCredentialType.OAUTH2:
             if row.oauth_client_source is None or row.oauth_client_configuration_id is None:
@@ -480,17 +582,21 @@ class EndUserConnectionRepository:
                 configuration_id=row.oauth_client_configuration_id,
                 client_id=row.oauth_client_id,
             )
+        return ConnectionAccessRecord(
+            id=row.id,
+            tenant_id=row.tenant_id,
+            owner=ConnectionOwner(account_id=row.account_id, end_user_id=row.end_user_id),
+            provider=row.provider,
+            credential_type=row.credential_type,
+            credential_status=row.status,
+            oauth_client=client,
+            revision=row.revision,
+        )
+
+    @classmethod
+    def _stored(cls, row: EndUserConnection) -> StoredConnection:
         return StoredConnection(
-            access=ConnectionAccessRecord(
-                id=row.id,
-                tenant_id=row.tenant_id,
-                owner=ConnectionOwner(account_id=row.account_id, end_user_id=row.end_user_id),
-                provider=row.provider,
-                credential_type=row.credential_type,
-                credential_status=row.status,
-                oauth_client=client,
-                revision=row.revision,
-            ),
+            access=cls._access(row),
             summary=cls._summary(row),
             encrypted_credentials=row.encrypted_credentials,
         )

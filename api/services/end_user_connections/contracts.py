@@ -11,6 +11,7 @@ workspace credential overrides through the Console entry point (SNP-970), outsid
 this Web Passport and published-workflow contract.
 """
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Protocol, Self
 from uuid import UUID
@@ -27,9 +28,12 @@ class ConnectionInput(BaseModel):
 
 
 class ConnectionTargetInput(ConnectionInput):
-    """Untrusted graph references, checked against the active published version."""
+    """Client connection contract references, checked against the current published graph."""
 
-    workflow_id: UUID = Field(strict=False)
+    workflow_id: UUID = Field(
+        strict=False,
+        description="Expected connection contract revision from Web App parameters.",
+    )
     node_id: str = Field(min_length=1, max_length=255)
 
 
@@ -115,6 +119,14 @@ class ConnectionCheckView(BaseModel):
     connection_id: str
     check: CredentialCheckResult
     credential_status: ConnectionCredentialStatus
+
+
+@dataclass(frozen=True)
+class ConnectionCheckOutcome:
+    """Internal check evidence pinned to the revision that was actually checked."""
+
+    view: ConnectionCheckView
+    revision: int
 
 
 class NodeConnectionState(BaseModel):

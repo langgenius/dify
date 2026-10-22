@@ -182,6 +182,23 @@ Stop a running completion message task.
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /connections/preflight
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndUserConnectionPreflightPayload](#enduserconnectionpreflightpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Explicit connection requirements and readiness | **application/json**: [EndUserConnectionPreflightResponse](#enduserconnectionpreflightresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[WorkflowChangedError](#workflowchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [DELETE] /connections/{connection_id}
 #### Parameters
 
@@ -791,7 +808,7 @@ Retrieve the parameters for a specific app.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Parameters](#parameters)<br> |
+| 200 | Success | **application/json**: [WebAppParametersResponse](#webappparametersresponse)<br> |
 | 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -1384,6 +1401,20 @@ OAuth authorization could not be completed. Start authorization again.
 | ---- | ---- | ----------- | -------- |
 | ConnectionOauthFailedError |  | OAuth authorization could not be completed. Start authorization again. |  |
 
+#### ConnectionPreflightRequirement
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_credential_types | [ [ConnectionCredentialType](#connectioncredentialtype) ] |  | Yes |
+| check | [CredentialCheckResult](#credentialcheckresult) |  | Yes |
+| connection_id | string |  | Yes |
+| node_id | string | Independent authorization node ID to use as the selection key. | Yes |
+| node_ids | [ string ] | The authorization node and all nodes explicitly reusing it. | Yes |
+| provider | string |  | Yes |
+| purpose | string |  | Yes |
+| status | [NodeConnectionStatus](#nodeconnectionstatus) | Effective node status; null when availability cannot be determined. | Yes |
+| title | string |  | Yes |
+
 #### ConnectionReauthorizationRequiredError
 
 The OAuth client changed or is unavailable. Start authorization again.
@@ -1495,7 +1526,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 | credentials | object |  | Yes |
 | name | string |  | Yes |
 | node_id | string |  | Yes |
-| workflow_id | string (uuid) |  | Yes |
+| workflow_id | string (uuid) | Expected connection contract revision from Web App parameters. | Yes |
 
 #### EndUserConnectionListQuery
 
@@ -1519,13 +1550,29 @@ Too many emails have been sent from this IP address recently. Please try again l
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
 | node_id | string |  | Yes |
-| workflow_id | string (uuid) |  | Yes |
+| workflow_id | string (uuid) | Expected connection contract revision from Web App parameters. | Yes |
 
 #### EndUserConnectionOAuthResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | authorization_url | string |  | Yes |
+
+#### EndUserConnectionPreflightPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connections | object | Explicit choices keyed by independent authorization node ID. Missing/null choices remain disconnected; saved choices are never inferred. | Yes |
+| conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
+| workflow_id | string (uuid) | Expected connection contract revision from Web App parameters. Must match the current published workflow; does not select an execution version. | Yes |
+
+#### EndUserConnectionPreflightResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ready | boolean |  | Yes |
+| requirements | [ [ConnectionPreflightRequirement](#connectionpreflightrequirement) ] |  | Yes |
+| workflow_id | string | Connection contract revision evaluated by this preflight. | Yes |
 
 #### EndUserConnectionResponse
 
@@ -1945,6 +1992,14 @@ Please upload your file.
 | ---- | ---- | ----------- | -------- |
 | NoFileUploadedError |  | Please upload your file. |  |
 
+#### NodeConnectionStatus
+
+The current selection's effective status for one published Tool node.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NodeConnectionStatus | string | The current selection's effective status for one published Tool node. |  |
+
 #### NotChatAppError
 
 Please check if your app mode matches the right API route.
@@ -1978,23 +2033,6 @@ Form input definition.
 | default | [StringSource](#stringsource) | Raw default-value configuration for the paragraph input. Runtime-resolved values are exposed in the surrounding `resolved_default_values` mapping. | No |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
-
-#### Parameters
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| annotation_reply | { **"enabled"**: boolean } |  | Yes |
-| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
-| more_like_this | { **"enabled"**: boolean } |  | Yes |
-| opening_statement |  |  | No |
-| retriever_resource | { **"enabled"**: boolean } |  | Yes |
-| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
-| speech_to_text | { **"enabled"**: boolean } |  | Yes |
-| suggested_questions | [ string ] |  | Yes |
-| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
-| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
-| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
-| user_input_form | [ object ] |  | Yes |
 
 #### PassportAccessTokenResponse
 
@@ -2416,6 +2454,25 @@ in form definition, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | remove_webapp_brand | boolean |  | Yes |
 | replace_webapp_logo | string |  | No |
+
+#### WebAppParametersResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| annotation_reply | { **"enabled"**: boolean } |  | Yes |
+| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
+| more_like_this | { **"enabled"**: boolean } |  | Yes |
+| opening_statement | string |  | No |
+| requires_end_user_connections | boolean | Whether this published version declares EndUser tool connections, independent of user readiness. | Yes |
+| retriever_resource | { **"enabled"**: boolean } |  | Yes |
+| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| speech_to_text | { **"enabled"**: boolean } |  | Yes |
+| suggested_questions | [ string ] |  | Yes |
+| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
+| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
+| user_input_form | [ object<br>object<br>object<br>object<br>object<br>object<br>object<br>object<br>object ] |  | Yes |
+| workflow_id | string | Connection contract revision represented by the published workflow/chatflow ID; null for other app modes. This is not an execution-version selector. | Yes |
 
 #### WebAppSiteResponse
 

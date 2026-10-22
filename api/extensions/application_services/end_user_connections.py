@@ -16,9 +16,11 @@ from services.end_user_connection_oauth_adapters import (
     RedisConnectionOAuthAttempts,
     RedisOAuthRefreshSingleFlight,
 )
+from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
+from services.end_user_connections.preflight import ConnectionPreflightService
 
 
 def build_end_user_connections(*, database_client: sessionmaker[Session]) -> ConnectionService:
@@ -58,4 +60,25 @@ def build_end_user_connection_oauth(*, database_client: sessionmaker[Session]) -
         ),
         attempts=RedisConnectionOAuthAttempts(),
         cipher=TenantConnectionCipher(),
+    )
+
+
+def build_end_user_connection_preflight(
+    *, database_client: sessionmaker[Session], connections: ConnectionService
+) -> ConnectionPreflightService:
+    repository = EndUserConnectionRepository(session_factory=database_client)
+    providers = PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
+    return ConnectionPreflightService(
+        connections=repository,
+        checks=connections,
+        requirements=PublishedPreflightRequirements(
+            workflows=repository,
+            providers=providers,
+            oauth=PluginConnectionOAuthGateway(
+                clients=repository,
+                providers=providers,
+                handler=OAuthHandler(),
+                auth=PluginCredentialAuthClient(),
+            ),
+        ),
     )

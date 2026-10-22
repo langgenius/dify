@@ -8,6 +8,7 @@ from uuid import UUID
 from clients.plugin.auth_entities import CredentialCheckResult
 from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType
 from services.end_user_connections.contracts import (
+    ConnectionCheckOutcome,
     ConnectionCheckView,
     ConnectionPage,
     ConnectionSummary,
@@ -59,7 +60,7 @@ class ConnectionStore(Protocol):
 
     def update(
         self, context: WebConnectionContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
-    ) -> ConnectionSummary:
+    ) -> StoredConnection:
         """Revalidate identity and CAS; a no-change check still verifies the guard."""
         ...
 
@@ -81,7 +82,7 @@ class ApiKeyCredentialGateway(Protocol):
 
 
 class OAuthConnectionLifecycle(Protocol):
-    def check(self, context: WebConnectionContext, record: StoredConnection) -> ConnectionCheckView: ...
+    def check(self, context: WebConnectionContext, record: StoredConnection) -> ConnectionCheckOutcome: ...
 
     def revoke_deleted(self, context: WebConnectionContext, record: StoredConnection) -> None:
         """Best effort after a successful conditional delete; never restore the record."""
@@ -149,7 +150,7 @@ class ConnectionService:
             self._require_accepted(self._credentials.check(context, record.access.provider, credentials))
             ciphertext = self._cipher.encrypt(context.tenant_id, credentials)
             status = ConnectionCredentialStatus.CONNECTED
-        return self._store.update(
+        updated = self._store.update(
             context,
             guard,
             ConnectionChanges(
@@ -159,6 +160,7 @@ class ConnectionService:
                 touch_activity=ciphertext is not None,
             ),
         )
+        return updated.summary
 
     def delete_connection(self, context: WebConnectionContext, connection_id: str) -> None:
         record = self._load(context, connection_id)
@@ -167,6 +169,9 @@ class ConnectionService:
             self._oauth.revoke_deleted(context, record)
 
     def check_connection(self, context: WebConnectionContext, connection_id: str) -> ConnectionCheckView:
+        return self.check_connection_result(context, connection_id).view
+
+    def check_connection_result(self, context: WebConnectionContext, connection_id: str) -> ConnectionCheckOutcome:
         record = self._load(context, connection_id)
         if record.access.credential_type == ConnectionCredentialType.OAUTH2:
             return self._oauth.check(context, record)
@@ -185,7 +190,12 @@ class ConnectionService:
             guard,
             ConnectionChanges(name=None, encrypted_credentials=None, credential_status=status, touch_activity=False),
         )
-        return ConnectionCheckView(connection_id=current.id, check=result, credential_status=current.credential_status)
+        return ConnectionCheckOutcome(
+            view=ConnectionCheckView(
+                connection_id=current.access.id, check=result, credential_status=current.access.credential_status
+            ),
+            revision=current.access.revision,
+        )
 
     def _load(self, context: WebConnectionContext, connection_id: str) -> StoredConnection:
         record = self._store.find(context, connection_id)

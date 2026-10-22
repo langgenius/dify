@@ -177,6 +177,18 @@ export type ConnectionOauthFailedError = ErrorResponse & {
   status: 400
 }
 
+export type ConnectionPreflightRequirement = {
+  allowed_credential_types: Array<ConnectionCredentialType>
+  check: CredentialCheckResult | null
+  connection_id: string | null
+  node_id: string
+  node_ids: Array<string>
+  provider: string
+  purpose: string
+  status: NodeConnectionStatus | null
+  title: string
+}
+
 export type ConnectionReauthorizationRequiredError = ErrorResponse & {
   code: 'connection_reauthorization_required'
   status: 409
@@ -292,6 +304,20 @@ export type EndUserConnectionOAuthPayload = {
 
 export type EndUserConnectionOAuthResponse = {
   authorization_url: string
+}
+
+export type EndUserConnectionPreflightPayload = {
+  connections: {
+    [key: string]: string | null
+  }
+  conversation_id?: string | null
+  workflow_id: string
+}
+
+export type EndUserConnectionPreflightResponse = {
+  readonly ready: boolean
+  requirements: Array<ConnectionPreflightRequirement>
+  workflow_id: string
 }
 
 export type EndUserConnectionResponse = {
@@ -603,6 +629,8 @@ export type NoFileUploadedError = ErrorResponse & {
   status: 400
 }
 
+export type NodeConnectionStatus = 'connected' | 'disconnected' | 'invalid' | 'reconnect_required'
+
 export type NotChatAppError = ErrorResponse & {
   code: 'not_chat_app'
   status: 400
@@ -622,330 +650,6 @@ export type ParagraphInputConfig = {
   default?: StringSource | null
   output_variable_name: string
   type?: 'paragraph'
-}
-
-export type Parameters = {
-  annotation_reply: {
-    enabled?: boolean
-  }
-  file_upload: {
-    allowed_file_extensions?: Array<string>
-    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
-    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
-    enabled?: boolean
-    image?: {
-      detail?: string
-      enabled?: boolean
-      number_limits?: number
-      transfer_methods?: Array<string>
-    }
-    number_limits?: number
-  }
-  more_like_this: {
-    enabled?: boolean
-  }
-  opening_statement?: string | null
-  retriever_resource: {
-    enabled?: boolean
-  }
-  sensitive_word_avoidance: {
-    enabled?: boolean
-  }
-  speech_to_text: {
-    enabled?: boolean
-  }
-  suggested_questions: Array<string>
-  suggested_questions_after_answer: {
-    enabled?: boolean
-  }
-  system_parameters: SystemParameters
-  text_to_speech: {
-    autoPlay?: string
-    enabled?: boolean
-    language?: string
-    voice?: string
-  }
-  user_input_form: Array<
-    | {
-        'text-input': {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        select: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        paragraph: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        number: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        external_data_tool: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        file: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        'file-list': {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        checkbox: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        json_object: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-  >
 }
 
 export type PassportAccessTokenResponse = {
@@ -1257,6 +961,332 @@ export type WebAppCustomConfigResponse = {
   replace_webapp_logo?: string | null
 }
 
+export type WebAppParametersResponse = {
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
+  opening_statement?: string | null
+  requires_end_user_connections: boolean
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
+  suggested_questions: Array<string>
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
+  system_parameters: SystemParameters
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<
+    | {
+        'text-input': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        select: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        paragraph: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        number: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        external_data_tool: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        file: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        'file-list': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        checkbox: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        json_object: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+  >
+  workflow_id: string | null
+}
+
 export type WebAppSiteResponse = {
   app_id: string
   can_replace_logo: boolean
@@ -1374,6 +1404,11 @@ export type WorkflowRunPayload = {
   inputs: {
     [key: string]: unknown
   }
+}
+
+export type EndUserConnectionPreflightResponseWritable = {
+  requirements: Array<ConnectionPreflightRequirement>
+  workflow_id: string
 }
 
 export type GeneratedAppResponseWritable = ShallowJsonValue
@@ -1636,6 +1671,34 @@ export type PostConnectionsOauthAuthorizationUrlResponses = {
 
 export type PostConnectionsOauthAuthorizationUrlResponse =
   PostConnectionsOauthAuthorizationUrlResponses[keyof PostConnectionsOauthAuthorizationUrlResponses]
+
+export type PostConnectionsPreflightData = {
+  body: EndUserConnectionPreflightPayload
+  path?: never
+  query?: never
+  url: '/connections/preflight'
+}
+
+export type PostConnectionsPreflightErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | WorkflowChangedError
+    | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsPreflightError =
+  PostConnectionsPreflightErrors[keyof PostConnectionsPreflightErrors]
+
+export type PostConnectionsPreflightResponses = {
+  200: EndUserConnectionPreflightResponse
+}
+
+export type PostConnectionsPreflightResponse =
+  PostConnectionsPreflightResponses[keyof PostConnectionsPreflightResponses]
 
 export type DeleteConnectionsByConnectionIdData = {
   body?: never
@@ -2409,7 +2472,7 @@ export type GetParametersErrors = {
 export type GetParametersError = GetParametersErrors[keyof GetParametersErrors]
 
 export type GetParametersResponses = {
-  200: Parameters
+  200: WebAppParametersResponse
 }
 
 export type GetParametersResponse = GetParametersResponses[keyof GetParametersResponses]
