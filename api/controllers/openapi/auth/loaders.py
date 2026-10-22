@@ -4,8 +4,9 @@ import uuid
 from enum import StrEnum
 
 from flask import request
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
+from controllers.openapi._errors import UnsupportedTokenType, WorkspaceUnavailable
 from controllers.openapi.auth.context import Caller, Context, RouteContractError
 from extensions.ext_application_services import application_services
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
@@ -62,7 +63,7 @@ def load_end_user(ctx: Context) -> EndUser:
 def _load_caller_as[C: Caller](ctx: Context, expected: type[C]) -> C:
     caller = load_caller(ctx)
     if not isinstance(caller, expected):
-        raise Forbidden("unsupported_token_type")
+        raise UnsupportedTokenType()
     return caller
 
 
@@ -108,7 +109,7 @@ def _workspace_from_app(ctx: Context) -> Tenant:
     app = load_app(ctx)
     tenant = application_services().workspaces.identity.get_workspace(str(app.tenant_id))
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
-        raise Forbidden("workspace unavailable")
+        raise WorkspaceUnavailable()
     return tenant
 
 

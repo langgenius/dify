@@ -8,9 +8,10 @@ import pytest
 from flask import Flask
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Unauthorized
 
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
+from controllers.openapi._errors import ResourceNotAuthorized, UnsupportedTokenType, WorkspaceUnavailable
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import CheckScope, CheckSubject
 from controllers.openapi.auth.resource_access import authenticate_resource_token
@@ -136,14 +137,14 @@ def test_bound_app_uses_machine_end_user_without_account(resource_fixture: Resou
 
 def test_rejects_unbound_app_before_creating_caller(resource_fixture: ResourceFixture) -> None:
     flask_app, _, _, _, end_user = resource_fixture
-    with pytest.raises(Forbidden, match="resource_not_authorized"):
+    with pytest.raises(ResourceNotAuthorized):
         call(flask_app, str(uuid4()))
     end_user.assert_not_called()
 
 
 def test_rejects_other_workspace(resource_fixture: ResourceFixture) -> None:
     flask_app, _, _, _, _ = resource_fixture
-    with pytest.raises(Forbidden, match="resource_not_authorized"):
+    with pytest.raises(WorkspaceUnavailable):
         call(flask_app, workspace_id=str(uuid4()), scope=Scope.APPS_READ)
 
 
@@ -152,7 +153,7 @@ def test_binding_revocation_is_immediate(resource_fixture: ResourceFixture, sqli
     call(flask_app, app_id)
     sqlite_session.execute(delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token_id))
     sqlite_session.commit()
-    with pytest.raises(Forbidden):
+    with pytest.raises(ResourceNotAuthorized):
         call(flask_app, app_id)
 
 
@@ -171,7 +172,7 @@ def test_disabled_app_is_rejected(resource_fixture: ResourceFixture, sqlite_sess
     assert app is not None
     app.enable_api = False
     sqlite_session.commit()
-    with pytest.raises(Forbidden):
+    with pytest.raises(ResourceNotAuthorized):
         call(flask_app, app_id)
 
 
@@ -187,7 +188,7 @@ def test_app_discovery_keeps_explicit_empty_binding_set(
 
 def test_account_only_routes_reject_resource_token(resource_fixture: ResourceFixture) -> None:
     flask_app, _, _, _, _ = resource_fixture
-    with pytest.raises(Forbidden, match="unsupported_token_type"):
+    with pytest.raises(UnsupportedTokenType):
         call(flask_app, scope=Scope.WORKSPACE_WRITE, allowed=frozenset({TokenType.OAUTH_ACCOUNT}))
 
 
@@ -204,7 +205,7 @@ def test_archived_workspace_is_rejected(resource_fixture: ResourceFixture, sqlit
     assert tenant is not None
     tenant.status = TenantStatus.ARCHIVE
     sqlite_session.commit()
-    with pytest.raises(Forbidden):
+    with pytest.raises(WorkspaceUnavailable):
         call(flask_app, app_id)
 
 
@@ -250,7 +251,7 @@ def test_other_workspace_endpoints_reject_resource_token(resource_fixture: Resou
     with flask_app.test_request_context(
         "/workspaces", headers={"Authorization": "Bearer sk-test", CATALOG_HEADER: catalog_for(flask_app)[1]}
     ):
-        with pytest.raises(Forbidden, match="unsupported_token_type"):
+        with pytest.raises(UnsupportedTokenType):
             methods[endpoint](workspace_id=tenant_id)
 
 

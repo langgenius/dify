@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException, Unauthorized
 
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
-from controllers.openapi._errors import CatalogStale, ServiceApiDisabled
+from controllers.openapi._errors import AccessModeNotAllowed, CatalogStale, ServiceApiDisabled, UnsupportedTokenType
 from controllers.openapi.auth import loaders
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import (
@@ -224,9 +224,9 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
 @pytest.mark.parametrize(
     ("requirements", "enable_api", "webapp_auth", "message"),
     [
-        ((CheckSubject(allowed=[AccountSubject]),), True, False, "unsupported_token_type"),
+        ((CheckSubject(allowed=[AccountSubject]),), True, False, UnsupportedTokenType.description),
         ((CheckAppApiEnabled(),), False, False, ServiceApiDisabled.description),
-        ((CheckAppAccess(),), True, True, "subject_not_allowed_for_access_mode"),
+        ((CheckAppAccess(),), True, True, AccessModeNotAllowed.description),
     ],
     ids=["wrong subject (FIRST)", "api disabled (EARLY)", "webapp acl (NORMAL)"],
 )

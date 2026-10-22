@@ -8,11 +8,10 @@ from typing import Any, ClassVar, assert_never, override
 from flask import current_app, request
 from flask_login import user_logged_in
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.openapi._catalog import CATALOG_HEADER, current_catalog
-from controllers.openapi._errors import CatalogStale
+from controllers.openapi._errors import CatalogStale, ExternalSsoRequiresEE
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller
 from controllers.openapi.auth.requirements import (
@@ -119,7 +118,7 @@ class _RequiresEnterprise(Requirement):
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
-            raise Forbidden("external_sso_requires_ee")
+            raise ExternalSsoRequiresEE()
 
 
 class ExternalSsoPipeline(Pipeline, serves=ExternalSsoSubject):

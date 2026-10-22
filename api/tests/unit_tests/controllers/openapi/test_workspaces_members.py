@@ -399,7 +399,7 @@ def test_invitation_permission_rejection_precedes_quota_lookup(
     )
 
     assert response.status_code == 403
-    assert ErrorBody.model_validate(response.get_json()).code == OpenApiErrorCode.FORBIDDEN
+    assert ErrorBody.model_validate(response.get_json()).code == OpenApiErrorCode.INSUFFICIENT_WORKSPACE_ROLE
     account_domain.delivery.check_invitation_quota.assert_not_called()
     account_domain.delivery.send.assert_not_called()
 

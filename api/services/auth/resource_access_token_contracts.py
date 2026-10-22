@@ -69,6 +69,14 @@ class ResourceAccessTokenForbiddenError(Exception):
     pass
 
 
+class ResourceAccessTokenWorkspaceUnavailableError(ResourceAccessTokenForbiddenError):
+    """The token's workspace is archived, or the request names another workspace."""
+
+
+class ResourceAccessTokenAppNotAuthorizedError(ResourceAccessTokenForbiddenError):
+    """The app is not bound to the token, no longer exists, or has its Service API off."""
+
+
 class ResourceAccessTokenInvalidError(Exception):
     pass
 

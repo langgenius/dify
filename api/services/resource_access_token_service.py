@@ -6,12 +6,14 @@ from constants.resource_access_token import ResourceAccessTokenResourceType
 from machinery.context import RequestContext
 from services.auth.resource_access_token_contracts import (
     ResourceAccessTokenAccess,
+    ResourceAccessTokenAppNotAuthorizedError,
     ResourceAccessTokenCreateResult,
     ResourceAccessTokenForbiddenError,
     ResourceAccessTokenGrant,
     ResourceAccessTokenInputError,
     ResourceAccessTokenResource,
     ResourceAccessTokenRow,
+    ResourceAccessTokenWorkspaceUnavailableError,
 )
 
 
@@ -88,12 +90,12 @@ class ResourceAccessTokenService:
         """None ids mean the discovery route has not selected a workspace or app."""
         access = self._tokens.access_by_id(token_id)
         if not access.workspace_active:
-            raise ResourceAccessTokenForbiddenError("workspace unavailable")
+            raise ResourceAccessTokenWorkspaceUnavailableError("workspace unavailable")
         if workspace_id and workspace_id != access.tenant_id:
-            raise ResourceAccessTokenForbiddenError("resource_not_authorized")
+            raise ResourceAccessTokenWorkspaceUnavailableError("workspace not bound to this token")
         apps = tuple(r for r in access.resources if r.type == ResourceAccessTokenResourceType.APP and r.exists)
         if app_id and not any(r.id == app_id and r.enabled for r in apps):
-            raise ResourceAccessTokenForbiddenError("resource_not_authorized")
+            raise ResourceAccessTokenAppNotAuthorizedError("resource_not_authorized")
         self._tokens.record_usage(access.tenant_id, access.token_id)
         return ResourceAccessTokenGrant(access.token_id, access.tenant_id, frozenset(r.id for r in apps))
 

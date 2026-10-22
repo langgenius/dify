@@ -5,8 +5,9 @@ from typing import Protocol, cast
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import NotFound, ServiceUnavailable
+from werkzeug.exceptions import NotFound
 
+from controllers.openapi._errors import PermittedAppsUnavailable
 from controllers.openapi._models import (
     AppDescribeQuery,
     AppDescribeResponse,
@@ -81,7 +82,7 @@ def test_external_failure_is_translated_at_http_boundary(
 
     monkeypatch.setattr(app_query_services.apps.discovery, "list_permitted_apps", unavailable)
     api = PermittedExternalAppsListApi()
-    with app.test_request_context(), pytest.raises(ServiceUnavailable, match="permitted_apps_unavailable"):
+    with app.test_request_context(), pytest.raises(PermittedAppsUnavailable):
         cast(Endpoint[PermittedExternalAppsListResponse], api.get).__handler__(
             api, query=PermittedExternalAppsListQuery()
         )

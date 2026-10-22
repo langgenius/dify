@@ -6,8 +6,9 @@ from typing import cast, override
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
+from controllers.openapi._errors import UnsupportedTokenType, WorkspaceUnavailable
 from controllers.openapi.auth import loaders
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import (
@@ -104,7 +105,7 @@ class TestLoadApp:
         persist(sqlite_session, *models)
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
 
-        with pytest.raises(Forbidden, match="workspace unavailable"):
+        with pytest.raises(WorkspaceUnavailable):
             load_workspace(ctx)
 
 
@@ -140,13 +141,13 @@ class TestWorkspaceRuleSelection:
     ) -> None:
         """Both a nonexistent app tenant and an existing workspace_id tenant are
         present; `route_has_app` must select the app-derived rule (and its
-        `Forbidden` status), never fall through to the request-derived `NotFound`
+        `WorkspaceUnavailable` 403), never fall through to the request-derived `NotFound`
         rule.
         """
         persist(sqlite_session, make_app(), make_tenant(tenant_id=OTHER_TENANT_ID))
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID, "workspace_id": OTHER_TENANT_ID})
 
-        with app.test_request_context("/test"), pytest.raises(Forbidden, match="workspace unavailable"):
+        with app.test_request_context("/test"), pytest.raises(WorkspaceUnavailable):
             load_workspace(ctx)
 
 
@@ -204,5 +205,5 @@ class TestNarrowingLoaders:
     def test_load_end_user_refuses_an_account(self, sqlite_session: Session) -> None:
         ctx = Context(cast(Subject, _StubSubject(caller=make_account())), sqlite_session, {})
 
-        with pytest.raises(Forbidden, match="unsupported_token_type"):
+        with pytest.raises(UnsupportedTokenType):
             load_end_user(ctx)
