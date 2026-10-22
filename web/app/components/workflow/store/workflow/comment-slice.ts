@@ -1,27 +1,9 @@
-import type {
-  WorkflowCommentBasic,
-  WorkflowCommentDetail,
-} from '@dify/contracts/api/console/apps/types.gen'
 import type { StateCreator } from 'zustand'
 import type { UserProfile } from '@/app/components/workflow/comment/types'
 
 export type CommentSliceShape = {
-  comments: WorkflowCommentBasic[]
-  setComments: (comments: WorkflowCommentBasic[]) => void
-  commentsLoading: boolean
-  setCommentsLoading: (loading: boolean) => void
   showResolvedComments: boolean
   setShowResolvedComments: (showResolved: boolean) => void
-  activeCommentDetail: WorkflowCommentDetail | null
-  setActiveCommentDetail: (comment: WorkflowCommentDetail | null) => void
-  activeCommentDetailLoading: boolean
-  setActiveCommentDetailLoading: (loading: boolean) => void
-  replySubmitting: boolean
-  setReplySubmitting: (loading: boolean) => void
-  replyUpdating: boolean
-  setReplyUpdating: (loading: boolean) => void
-  commentDetailCache: Record<string, WorkflowCommentDetail>
-  setCommentDetailCache: (cache: Record<string, WorkflowCommentDetail>) => void
   mentionableUsersCache: Record<string, UserProfile[]>
   setMentionableUsersCache: (appId: string, users: UserProfile[]) => void
   mentionableUsersLoading: Record<string, boolean>
@@ -29,23 +11,8 @@ export type CommentSliceShape = {
 }
 
 export const createCommentSlice: StateCreator<CommentSliceShape> = (set) => ({
-  comments: [],
-  setComments: (comments) => set({ comments }),
-  commentsLoading: false,
-  setCommentsLoading: (commentsLoading) => set({ commentsLoading }),
   showResolvedComments: false,
   setShowResolvedComments: (showResolvedComments) => set({ showResolvedComments }),
-  activeCommentDetail: null,
-  setActiveCommentDetail: (activeCommentDetail) => set({ activeCommentDetail }),
-  activeCommentDetailLoading: false,
-  setActiveCommentDetailLoading: (activeCommentDetailLoading) =>
-    set({ activeCommentDetailLoading }),
-  replySubmitting: false,
-  setReplySubmitting: (replySubmitting) => set({ replySubmitting }),
-  replyUpdating: false,
-  setReplyUpdating: (replyUpdating) => set({ replyUpdating }),
-  commentDetailCache: {},
-  setCommentDetailCache: (commentDetailCache) => set({ commentDetailCache }),
   mentionableUsersCache: {},
   setMentionableUsersCache: (appId, users) =>
     set((state) => ({

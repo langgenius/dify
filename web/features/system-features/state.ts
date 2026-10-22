@@ -13,3 +13,7 @@ const systemFeaturesAtom = atom((get) => {
 export const deploymentEditionAtom = atom((get) => {
   return get(systemFeaturesAtom).deployment_edition
 })
+
+export const collaborationEnabledAtom = atom((get) => {
+  return get(systemFeaturesAtom).enable_collaboration_mode
+})

@@ -2,6 +2,7 @@ import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/type
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Fragment } from 'react'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
@@ -27,10 +28,10 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.byAppId.workflow.comments.get': mockFetchComments,
       'apps.byAppId.workflow.comments.byCommentId.get': mockFetchComment,
       'apps.byAppId.workflow.comments.byCommentId.put': mockUpdateComment,
@@ -127,10 +128,15 @@ function renderCommentCanvas(comments = [comment]) {
   const queryClient = createConsoleQueryClient()
   seedAccountProfileQuery(queryClient, { id: 'user-1', name: 'Alice' })
   seedSystemFeatures(queryClient, { enable_collaboration_mode: true })
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+      input: { params: { app_id: 'app-1' } },
+    }),
+    { data: comments },
+  )
   return renderWorkflowFlowComponent(<CommentCanvas />, {
     queryClient,
     initialStoreState: {
-      comments,
       showUserComments: true,
       mentionableUsersCache: { 'app-1': [] },
     },

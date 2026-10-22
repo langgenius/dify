@@ -1296,6 +1296,188 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
             },
           },
+          workflow: {
+            comments: {
+              get: { queryOptions: { staleTime: 0, retry: false, refetchOnWindowFocus: false } },
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+                        input: { params: { app_id: variables.params.app_id } },
+                      }),
+                    })
+                  },
+                },
+              },
+              byCommentId: {
+                get: { queryOptions: { staleTime: 0, retry: false, refetchOnWindowFocus: false } },
+                put: {
+                  mutationOptions: {
+                    onSettled: (_data, error, variables, _result, context) => {
+                      if (error) return
+                      return Promise.all([
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+                            input: { params: { app_id: variables.params.app_id } },
+                          }),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey:
+                            consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                              input: {
+                                params: {
+                                  app_id: variables.params.app_id,
+                                  comment_id: variables.params.comment_id,
+                                },
+                              },
+                            }),
+                        }),
+                      ])
+                    },
+                  },
+                },
+                delete: {
+                  mutationOptions: {
+                    onSettled: (_data, error, variables, _result, context) => {
+                      if (error) return
+                      context.client.removeQueries({
+                        queryKey:
+                          consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                            input: { params: variables.params },
+                          }),
+                      })
+                      const listKey = consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+                        input: { params: { app_id: variables.params.app_id } },
+                      })
+                      context.client.setQueryData(listKey, (list) =>
+                        list
+                          ? {
+                              ...list,
+                              data: list.data.filter(
+                                (comment) => comment.id !== variables.params.comment_id,
+                              ),
+                            }
+                          : list,
+                      )
+                      return context.client.invalidateQueries({ queryKey: listKey })
+                    },
+                  },
+                },
+                resolve: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _result, context) => {
+                        if (error) return
+                        return Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+                              input: { params: { app_id: variables.params.app_id } },
+                            }),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                                input: {
+                                  params: {
+                                    app_id: variables.params.app_id,
+                                    comment_id: variables.params.comment_id,
+                                  },
+                                },
+                              }),
+                          }),
+                        ])
+                      },
+                    },
+                  },
+                },
+                replies: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _result, context) => {
+                        if (error) return
+                        return Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+                              input: { params: { app_id: variables.params.app_id } },
+                            }),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                                input: {
+                                  params: {
+                                    app_id: variables.params.app_id,
+                                    comment_id: variables.params.comment_id,
+                                  },
+                                },
+                              }),
+                          }),
+                        ])
+                      },
+                    },
+                  },
+                  byReplyId: {
+                    put: {
+                      mutationOptions: {
+                        onSettled: (_data, error, variables, _result, context) => {
+                          if (error) return
+                          return Promise.all([
+                            context.client.invalidateQueries({
+                              queryKey: consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+                                input: { params: { app_id: variables.params.app_id } },
+                              }),
+                            }),
+                            context.client.invalidateQueries({
+                              queryKey:
+                                consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey(
+                                  {
+                                    input: {
+                                      params: {
+                                        app_id: variables.params.app_id,
+                                        comment_id: variables.params.comment_id,
+                                      },
+                                    },
+                                  },
+                                ),
+                            }),
+                          ])
+                        },
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSettled: (_data, error, variables, _result, context) => {
+                          if (error) return
+                          return Promise.all([
+                            context.client.invalidateQueries({
+                              queryKey: consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+                                input: { params: { app_id: variables.params.app_id } },
+                              }),
+                            }),
+                            context.client.invalidateQueries({
+                              queryKey:
+                                consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey(
+                                  {
+                                    input: {
+                                      params: {
+                                        app_id: variables.params.app_id,
+                                        comment_id: variables.params.comment_id,
+                                      },
+                                    },
+                                  },
+                                ),
+                            }),
+                          ])
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           workflows: {
             publish: {
               post: {

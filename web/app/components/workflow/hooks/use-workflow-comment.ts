@@ -3,15 +3,22 @@ import type {
   WorkflowCommentDetail,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { UserProfile } from '@/app/components/workflow/comment/types'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import {
+  isCancelledError,
+  useIsMutating,
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleClient } from '@/service/console'
+import { collaborationEnabledAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
+import { commentsAtom, commentsLoadingAtom, createCommentDetailAtoms } from '../comment/state'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 
@@ -28,11 +35,20 @@ const normalizeTimestamp = (value: number | string | null | undefined): number =
   return Math.floor(Date.parse(value) / 1000)
 }
 
-const toCommentDetailPreview = (comment: WorkflowCommentBasic): WorkflowCommentDetail => ({
-  ...comment,
-  replies: [],
-  mentions: [],
-})
+const matchesCommentMutation = (
+  variables: unknown,
+  appId: string | undefined,
+  commentId?: string | null,
+) => {
+  if (!appId || !variables || typeof variables !== 'object' || !('params' in variables))
+    return false
+  const params = variables.params
+  if (!params || typeof params !== 'object' || !('app_id' in params)) return false
+  return (
+    params.app_id === appId &&
+    (commentId === undefined || ('comment_id' in params && params.comment_id === commentId))
+  )
+}
 
 export const useWorkflowComment = () => {
   const appId = useAtomValue(editorAppIdAtom)
@@ -45,20 +61,66 @@ export const useWorkflowComment = () => {
   const isCommentPlacing = useStore((s) => s.isCommentPlacing)
   const setActiveCommentId = useStore((s) => s.setActiveCommentId)
   const activeCommentId = useStore((s) => s.activeCommentId)
-  const comments = useStore((s) => s.comments)
-  const setComments = useStore((s) => s.setComments)
-  const loading = useStore((s) => s.commentsLoading)
-  const setCommentsLoading = useStore((s) => s.setCommentsLoading)
-  const activeComment = useStore((s) => s.activeCommentDetail)
-  const setActiveComment = useStore((s) => s.setActiveCommentDetail)
-  const activeCommentLoading = useStore((s) => s.activeCommentDetailLoading)
-  const setActiveCommentLoading = useStore((s) => s.setActiveCommentDetailLoading)
-  const replySubmitting = useStore((s) => s.replySubmitting)
-  const setReplySubmitting = useStore((s) => s.setReplySubmitting)
-  const replyUpdating = useStore((s) => s.replyUpdating)
-  const setReplyUpdating = useStore((s) => s.setReplyUpdating)
-  const commentDetailCache = useStore((s) => s.commentDetailCache)
-  const setCommentDetailCache = useStore((s) => s.setCommentDetailCache)
+  const queryClient = useQueryClient()
+  const comments = useAtomValue(commentsAtom)
+  const loading = useAtomValue(commentsLoadingAtom)
+  const detailAtoms = useMemo(() => createCommentDetailAtoms(activeCommentId), [activeCommentId])
+  const detail = useAtomValue(detailAtoms.data)
+  const detailLoading = useAtomValue(detailAtoms.loading)
+  const selectedComment = comments.find((comment) => comment.id === activeCommentId)
+  const activeComment = activeCommentId
+    ? (detail ?? (selectedComment ? { ...selectedComment, replies: [], mentions: [] } : null))
+    : null
+  const { mutateAsync: createComment } = useMutation(
+    consoleQuery.apps.byAppId.workflow.comments.post.mutationOptions(),
+  )
+  const { mutateAsync: updateComment } = useMutation(
+    consoleQuery.apps.byAppId.workflow.comments.byCommentId.put.mutationOptions(),
+  )
+  const { mutateAsync: deleteComment } = useMutation(
+    consoleQuery.apps.byAppId.workflow.comments.byCommentId.delete.mutationOptions(),
+  )
+  const { mutateAsync: resolveComment } = useMutation(
+    consoleQuery.apps.byAppId.workflow.comments.byCommentId.resolve.post.mutationOptions(),
+  )
+  const { mutateAsync: createReply } = useMutation(
+    consoleQuery.apps.byAppId.workflow.comments.byCommentId.replies.post.mutationOptions(),
+  )
+  const { mutateAsync: updateReply } = useMutation(
+    consoleQuery.apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.put.mutationOptions(),
+  )
+  const { mutateAsync: deleteReply } = useMutation(
+    consoleQuery.apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete.mutationOptions(),
+  )
+  const replySubmitting =
+    useIsMutating({
+      mutationKey:
+        consoleQuery.apps.byAppId.workflow.comments.byCommentId.replies.post.mutationKey(),
+      predicate: ({ state }) => matchesCommentMutation(state.variables, appId),
+    }) > 0
+  const replyUpdating =
+    useIsMutating({
+      mutationKey:
+        consoleQuery.apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.put.mutationKey(),
+      predicate: ({ state }) => matchesCommentMutation(state.variables, appId),
+    }) > 0
+  const resolving = useIsMutating({
+    mutationKey: consoleQuery.apps.byAppId.workflow.comments.byCommentId.resolve.post.mutationKey(),
+    predicate: ({ state }) =>
+      !!activeCommentId && matchesCommentMutation(state.variables, appId, activeCommentId),
+  })
+  const deleting = useIsMutating({
+    mutationKey: consoleQuery.apps.byAppId.workflow.comments.byCommentId.delete.mutationKey(),
+    predicate: ({ state }) =>
+      !!activeCommentId && matchesCommentMutation(state.variables, appId, activeCommentId),
+  })
+  const deletingReply = useIsMutating({
+    mutationKey:
+      consoleQuery.apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete.mutationKey(),
+    predicate: ({ state }) =>
+      !!activeCommentId && matchesCommentMutation(state.variables, appId, activeCommentId),
+  })
+  const activeCommentLoading = detailLoading || resolving > 0 || deleting > 0 || deletingReply > 0
   const rightPanelWidth = useStore((s) => s.rightPanelWidth)
   const nodePanelWidth = useStore((s) => s.nodePanelWidth)
   const mentionableUsers = useStore((state) =>
@@ -72,11 +134,7 @@ export const useWorkflowComment = () => {
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const { data: isCollaborationEnabled } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_collaboration_mode,
-  })
-  const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
+  const isCollaborationEnabled = useAtomValue(collaborationEnabledAtom)
   const activeCommentIdRef = useRef<string | null>(null)
   const commentFocusToRestoreRef = useRef<string | null>(null)
 
@@ -93,61 +151,46 @@ export const useWorkflowComment = () => {
     activeCommentIdRef.current = activeCommentId ?? null
   }, [activeCommentId])
 
-  useEffect(() => {
-    commentDetailCacheRef.current = commentDetailCache
-  }, [commentDetailCache])
-
   const refreshActiveComment = useCallback(
     async (commentId: string) => {
-      if (!appId) return
-
-      const detail = await consoleClient.apps.byAppId.workflow.comments.byCommentId.get({
-        params: { app_id: appId, comment_id: commentId },
-      })
-
-      commentDetailCacheRef.current = {
-        ...commentDetailCacheRef.current,
-        [commentId]: detail,
-      }
-      setCommentDetailCache(commentDetailCacheRef.current)
-      // Only apply the fetched detail if this comment is still the active one;
-      // otherwise a refresh for another comment can clobber the current selection.
-      if (activeCommentIdRef.current === commentId) setActiveComment(detail)
+      if (!appId || !isCollaborationEnabled) return
+      await queryClient.query(
+        consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryOptions({
+          input: { params: { app_id: appId, comment_id: commentId } },
+          staleTime: 0,
+        }),
+      )
     },
-    [appId, setActiveComment, setCommentDetailCache],
+    [appId, isCollaborationEnabled, queryClient],
   )
 
   const loadComments = useCallback(async () => {
     if (!appId || !isCollaborationEnabled) return
-
-    setCommentsLoading(true)
     try {
-      const response = await consoleClient.apps.byAppId.workflow.comments.get({
-        params: { app_id: appId },
-      })
-      setComments(response.data)
+      await queryClient.query(
+        consoleQuery.apps.byAppId.workflow.comments.get.queryOptions({
+          input: { params: { app_id: appId } },
+          staleTime: 0,
+        }),
+      )
     } catch (error) {
       console.error('Failed to fetch comments:', error)
-    } finally {
-      setCommentsLoading(false)
     }
-  }, [appId, isCollaborationEnabled, setComments, setCommentsLoading])
+  }, [appId, isCollaborationEnabled, queryClient])
 
-  // Setup collaboration
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
-
-    const unsubscribe = collaborationManager.onCommentsUpdate(() => {
-      loadComments()
-      if (activeCommentIdRef.current) refreshActiveComment(activeCommentIdRef.current)
+    return collaborationManager.onCommentsUpdate((update) => {
+      if (update.appId !== appId) return
+      void queryClient
+        .invalidateQueries({
+          queryKey: consoleQuery.apps.byAppId.workflow.comments.key({
+            input: { params: { app_id: appId } },
+          }),
+        })
+        .catch((error) => console.error('Failed to refresh comments:', error))
     })
-
-    return unsubscribe
-  }, [appId, isCollaborationEnabled, loadComments, refreshActiveComment])
-
-  useEffect(() => {
-    loadComments()
-  }, [loadComments])
+  }, [appId, isCollaborationEnabled, queryClient])
 
   const handleCommentSubmit = useCallback(
     async (content: string, mentionedUserIds: string[] = []) => {
@@ -166,7 +209,7 @@ export const useWorkflowComment = () => {
           y: pendingComment.pageY,
         })
 
-        const newComment = await consoleClient.apps.byAppId.workflow.comments.post({
+        const newComment = await createComment({
           params: { app_id: appId },
           body: {
             position_x: flowPosition.x,
@@ -233,12 +276,21 @@ export const useWorkflowComment = () => {
           })),
         }
 
-        setComments([...comments, composedComment])
-        commentDetailCacheRef.current = {
-          ...commentDetailCacheRef.current,
-          [newComment.id]: composedDetail,
-        }
-        setCommentDetailCache(commentDetailCacheRef.current)
+        queryClient.setQueryData(
+          consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+            input: { params: { app_id: appId } },
+          }),
+          (list) =>
+            list?.data.some((comment) => comment.id === newComment.id)
+              ? list
+              : { data: [...(list?.data ?? []), composedComment] },
+        )
+        queryClient.setQueryData(
+          consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+            input: { params: { app_id: appId, comment_id: newComment.id } },
+          }),
+          (cached) => cached ?? composedDetail,
+        )
 
         collaborationManager.emitCommentsUpdate(appId)
 
@@ -256,10 +308,9 @@ export const useWorkflowComment = () => {
       setPendingComment,
       setCommentQuickAdd,
       reactflow,
-      comments,
-      setComments,
+      createComment,
+      queryClient,
       userProfile,
-      setCommentDetailCache,
       mentionableUserById,
     ],
   )
@@ -285,9 +336,6 @@ export const useWorkflowComment = () => {
       activeCommentIdRef.current = comment.id
       setActiveCommentId(comment.id)
 
-      const cachedDetail = commentDetailCacheRef.current[comment.id]
-      setActiveComment(cachedDetail ?? toCommentDetailPreview(comment))
-
       const hasSelectedNode = reactflow.getNodes().some((node) => node.data?.selected)
       const commentPanelWidth = controlMode === ControlMode.Comment ? 420 : 0
       const fallbackPanelWidth = (hasSelectedNode ? nodePanelWidth : 0) + commentPanelWidth
@@ -306,24 +354,10 @@ export const useWorkflowComment = () => {
 
       if (!appId) return
 
-      setActiveCommentLoading(!cachedDetail)
-
       try {
-        const detail = await consoleClient.apps.byAppId.workflow.comments.byCommentId.get({
-          params: { app_id: appId, comment_id: comment.id },
-        })
-
-        commentDetailCacheRef.current = {
-          ...commentDetailCacheRef.current,
-          [comment.id]: detail,
-        }
-        setCommentDetailCache(commentDetailCacheRef.current)
-
-        if (activeCommentIdRef.current === comment.id) setActiveComment(detail)
-      } catch (e) {
-        console.warn('Failed to load workflow comment detail', e)
-      } finally {
-        if (activeCommentIdRef.current === comment.id) setActiveCommentLoading(false)
+        await refreshActiveComment(comment.id)
+      } catch (error) {
+        if (!isCancelledError(error)) console.warn('Failed to load workflow comment detail', error)
       }
     },
     [
@@ -332,87 +366,52 @@ export const useWorkflowComment = () => {
       nodePanelWidth,
       reactflow,
       rightPanelWidth,
-      setActiveComment,
       setActiveCommentId,
-      setActiveCommentLoading,
-      setCommentDetailCache,
       setPendingComment,
+      refreshActiveComment,
     ],
   )
 
   const handleCommentResolve = useCallback(
     async (commentId: string) => {
       if (!appId) return
-
-      setActiveCommentLoading(true)
       try {
-        await consoleClient.apps.byAppId.workflow.comments.byCommentId.resolve.post({
-          params: { app_id: appId, comment_id: commentId },
-        })
-
+        await resolveComment({ params: { app_id: appId, comment_id: commentId } })
         collaborationManager.emitCommentsUpdate(appId)
-
-        await refreshActiveComment(commentId)
-        await loadComments()
       } catch (error) {
         console.error('Failed to resolve comment:', error)
-      } finally {
-        setActiveCommentLoading(false)
       }
     },
-    [appId, loadComments, refreshActiveComment, setActiveCommentLoading],
+    [appId, resolveComment],
   )
 
   const handleCommentDelete = useCallback(
     async (commentId: string) => {
       if (!appId) return
-
-      setActiveCommentLoading(true)
+      const commentIndex = comments.findIndex((comment) => comment.id === commentId)
       try {
-        await consoleClient.apps.byAppId.workflow.comments.byCommentId.delete({
-          params: { app_id: appId, comment_id: commentId },
-        })
-
+        await deleteComment({ params: { app_id: appId, comment_id: commentId } })
         collaborationManager.emitCommentsUpdate(appId)
+        if (activeCommentIdRef.current !== commentId) return
 
-        const updatedCache = { ...commentDetailCacheRef.current }
-        delete updatedCache[commentId]
-        commentDetailCacheRef.current = updatedCache
-        setCommentDetailCache(updatedCache)
-
-        const currentComments = comments.filter((c) => c.id !== commentId)
-        const commentIndex = comments.findIndex((c) => c.id === commentId)
-        const fallbackTarget =
-          commentIndex >= 0 ? (comments[commentIndex + 1] ?? comments[commentIndex - 1]) : undefined
-
-        await loadComments()
-
-        if (fallbackTarget) {
-          handleCommentIconClick(fallbackTarget)
-        } else if (currentComments.length > 0) {
-          const nextComment = currentComments[0]
-          handleCommentIconClick(nextComment!)
-        } else {
-          setActiveComment(null)
+        const remaining =
+          queryClient.getQueryData(
+            consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+              input: { params: { app_id: appId } },
+            }),
+          )?.data ?? []
+        const neighbor = comments[commentIndex + 1] ?? comments[commentIndex - 1]
+        const target = remaining.find((comment) => comment.id === neighbor?.id) ?? remaining[0]
+        if (target) await handleCommentIconClick(target)
+        else {
           setActiveCommentId(null)
           activeCommentIdRef.current = null
         }
       } catch (error) {
         console.error('Failed to delete comment:', error)
-      } finally {
-        setActiveCommentLoading(false)
       }
     },
-    [
-      appId,
-      comments,
-      handleCommentIconClick,
-      loadComments,
-      setActiveComment,
-      setActiveCommentId,
-      setActiveCommentLoading,
-      setCommentDetailCache,
-    ],
+    [appId, comments, deleteComment, handleCommentIconClick, queryClient, setActiveCommentId],
   )
 
   const handleCommentPositionUpdate = useCallback(
@@ -427,54 +426,73 @@ export const useWorkflowComment = () => {
         position_y: position.y,
       }
 
-      const previousComments = comments
-      const updatedComments = comments.map((c) =>
-        c.id === commentId ? { ...c, ...nextPosition } : c,
+      const listKey = consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+        input: { params: { app_id: appId } },
+      })
+      const detailKey = consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+        input: { params: { app_id: appId, comment_id: commentId } },
+      })
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: listKey }),
+        queryClient.cancelQueries({ queryKey: detailKey }),
+      ])
+      const previousDetail = queryClient.getQueryData(detailKey)
+      queryClient.setQueryData(listKey, (list) =>
+        list
+          ? {
+              ...list,
+              data: list.data.map((comment) =>
+                comment.id === commentId ? { ...comment, ...nextPosition } : comment,
+              ),
+            }
+          : list,
       )
-      setComments(updatedComments)
-
-      const cachedDetail = commentDetailCacheRef.current[commentId]
-      const updatedDetail = cachedDetail ? { ...cachedDetail, ...nextPosition } : null
-      if (updatedDetail) {
-        commentDetailCacheRef.current = {
-          ...commentDetailCacheRef.current,
-          [commentId]: updatedDetail,
-        }
-        setCommentDetailCache(commentDetailCacheRef.current)
-
-        if (activeCommentIdRef.current === commentId) setActiveComment(updatedDetail)
-      } else if (activeComment?.id === commentId) {
-        setActiveComment({ ...activeComment, ...nextPosition })
-      }
+      queryClient.setQueryData(detailKey, (detail) =>
+        detail ? { ...detail, ...nextPosition } : detail,
+      )
 
       try {
-        await consoleClient.apps.byAppId.workflow.comments.byCommentId.put({
+        await updateComment({
           params: { app_id: appId, comment_id: commentId },
-          body: {
-            content: targetComment.content,
-            position_x: nextPosition.position_x,
-            position_y: nextPosition.position_y,
-          },
+          body: { content: targetComment.content, ...nextPosition },
         })
         collaborationManager.emitCommentsUpdate(appId)
       } catch (error) {
         console.error('Failed to update comment position:', error)
-        setComments(previousComments)
-
-        if (cachedDetail) {
-          commentDetailCacheRef.current = {
-            ...commentDetailCacheRef.current,
-            [commentId]: cachedDetail,
-          }
-          setCommentDetailCache(commentDetailCacheRef.current)
-
-          if (activeCommentIdRef.current === commentId) setActiveComment(cachedDetail)
-        } else if (activeComment?.id === commentId) {
-          setActiveComment(activeComment)
-        }
+        // A late failure must not undo a newer move or another user's edits.
+        queryClient.setQueryData(listKey, (list) =>
+          list
+            ? {
+                ...list,
+                data: list.data.map((comment) =>
+                  comment.id === commentId &&
+                  comment.position_x === position.x &&
+                  comment.position_y === position.y
+                    ? {
+                        ...comment,
+                        position_x: targetComment.position_x,
+                        position_y: targetComment.position_y,
+                      }
+                    : comment,
+                ),
+              }
+            : list,
+        )
+        queryClient.setQueryData(detailKey, (detail) =>
+          detail &&
+          previousDetail &&
+          detail.position_x === position.x &&
+          detail.position_y === position.y
+            ? {
+                ...detail,
+                position_x: previousDetail.position_x,
+                position_y: previousDetail.position_y,
+              }
+            : detail,
+        )
       }
     },
-    [activeComment, appId, comments, setComments, setCommentDetailCache, setActiveComment],
+    [appId, comments, queryClient, updateComment],
   )
 
   const handleCommentUpdate = useCallback(
@@ -484,16 +502,18 @@ export const useWorkflowComment = () => {
       if (!trimmed) return
 
       const targetComment = comments.find((c) => c.id === commentId)
-      const targetDetail =
-        commentDetailCacheRef.current[commentId] ??
-        (activeCommentIdRef.current === commentId ? activeComment : null)
+      const targetDetail = queryClient.getQueryData(
+        consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+          input: { params: { app_id: appId, comment_id: commentId } },
+        }),
+      )
       const positionX = targetDetail?.position_x ?? targetComment?.position_x
       const positionY = targetDetail?.position_y ?? targetComment?.position_y
 
       if (positionX === undefined || positionY === undefined) return
 
       try {
-        await consoleClient.apps.byAppId.workflow.comments.byCommentId.put({
+        await updateComment({
           params: { app_id: appId, comment_id: commentId },
           body: {
             content: trimmed,
@@ -504,14 +524,11 @@ export const useWorkflowComment = () => {
         })
 
         collaborationManager.emitCommentsUpdate(appId)
-
-        await refreshActiveComment(commentId)
-        await loadComments()
       } catch (error) {
         console.error('Failed to update comment:', error)
       }
     },
-    [activeComment, appId, comments, loadComments, refreshActiveComment],
+    [appId, comments, queryClient, updateComment],
   )
 
   const handleCommentReply = useCallback(
@@ -520,24 +537,18 @@ export const useWorkflowComment = () => {
       const trimmed = content.trim()
       if (!trimmed) return
 
-      setReplySubmitting(true)
       try {
-        await consoleClient.apps.byAppId.workflow.comments.byCommentId.replies.post({
+        await createReply({
           params: { app_id: appId, comment_id: commentId },
           body: { content: trimmed, mentioned_user_ids: mentionedUserIds },
         })
 
         collaborationManager.emitCommentsUpdate(appId)
-
-        await refreshActiveComment(commentId)
-        await loadComments()
       } catch (error) {
         console.error('Failed to create reply:', error)
-      } finally {
-        setReplySubmitting(false)
       }
     },
-    [appId, loadComments, refreshActiveComment, setReplySubmitting],
+    [appId, createReply],
   )
 
   const handleCommentReplyUpdate = useCallback(
@@ -551,47 +562,35 @@ export const useWorkflowComment = () => {
       const trimmed = content.trim()
       if (!trimmed) return
 
-      setReplyUpdating(true)
       try {
-        await consoleClient.apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.put({
+        await updateReply({
           params: { app_id: appId, comment_id: commentId, reply_id: replyId },
           body: { content: trimmed, mentioned_user_ids: mentionedUserIds },
         })
 
         collaborationManager.emitCommentsUpdate(appId)
-
-        await refreshActiveComment(commentId)
-        await loadComments()
       } catch (error) {
         console.error('Failed to update reply:', error)
-      } finally {
-        setReplyUpdating(false)
       }
     },
-    [appId, loadComments, refreshActiveComment, setReplyUpdating],
+    [appId, updateReply],
   )
 
   const handleCommentReplyDelete = useCallback(
     async (commentId: string, replyId: string) => {
       if (!appId) return
 
-      setActiveCommentLoading(true)
       try {
-        await consoleClient.apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete({
+        await deleteReply({
           params: { app_id: appId, comment_id: commentId, reply_id: replyId },
         })
 
         collaborationManager.emitCommentsUpdate(appId)
-
-        await refreshActiveComment(commentId)
-        await loadComments()
       } catch (error) {
         console.error('Failed to delete reply:', error)
-      } finally {
-        setActiveCommentLoading(false)
       }
     },
-    [appId, loadComments, refreshActiveComment, setActiveCommentLoading],
+    [appId, deleteReply],
   )
 
   const handleCommentNavigate = useCallback(
@@ -608,11 +607,9 @@ export const useWorkflowComment = () => {
 
   const handleActiveCommentClose = useCallback(() => {
     commentFocusToRestoreRef.current = activeCommentIdRef.current
-    setActiveComment(null)
-    setActiveCommentLoading(false)
     setActiveCommentId(null)
     activeCommentIdRef.current = null
-  }, [setActiveComment, setActiveCommentId, setActiveCommentLoading])
+  }, [setActiveCommentId])
 
   const handleCreateComment = useCallback(
     (mousePosition: { pageX: number; pageY: number; elementX: number; elementY: number }) => {
