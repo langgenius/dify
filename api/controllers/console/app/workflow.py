@@ -51,7 +51,6 @@ from controllers.console.wraps import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
@@ -69,6 +68,7 @@ from core.workflow.llm_environment_variable import (
     LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE,
     LLMEnvironmentVariable,
 )
+from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
@@ -82,7 +82,6 @@ from fields.workflow_run_fields import (
 from graphon.enums import NodeType
 from graphon.file import File
 from graphon.file import helpers as file_helpers
-from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.variables import SecretVariable, SegmentType, VariableBase
 from graphon.variables.exc import VariableError
@@ -98,6 +97,7 @@ from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.access import resolve_app_access_filter
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
@@ -429,8 +429,13 @@ class WorkflowRestoreResponse(ResponseModel):
     updated_at: int
 
 
-class DefaultBlockConfigsResponse(RootModel[list[dict[str, Any]]]):
-    root: list[dict[str, Any]]
+class DefaultBlockConfigItemResponse(ResponseModel):
+    type: str
+    config: dict[str, Any]
+
+
+class DefaultBlockConfigsResponse(RootModel[list[DefaultBlockConfigItemResponse]]):
+    pass
 
 
 class DefaultBlockConfigResponse(RootModel[dict[str, Any]]):
@@ -442,8 +447,8 @@ class HumanInputFormPreviewResponse(ResponseModel):
     node_id: str
     node_title: str
     form_content: str
-    inputs: list[dict[str, Any]] = Field(default_factory=list)
-    actions: list[dict[str, Any]] = Field(default_factory=list)
+    inputs: list[FormInputConfig] = Field(default_factory=list)
+    actions: list[UserActionConfig] = Field(default_factory=list)
     display_in_ui: bool | None = None
     form_token: str | None = None
     resolved_default_values: dict[str, Any] = Field(default_factory=dict)
@@ -659,8 +664,8 @@ class DraftWorkflowApi(Resource):
         elif "text/plain" in content_type:
             try:
                 args_model = SyncDraftWorkflowPayload.model_validate_json(request.data)
-            except ValueError:
-                raise InvalidArgumentError("Invalid JSON data")
+            except ValueError as caught_error:
+                raise InvalidArgumentError("Invalid JSON data") from caught_error
         else:
             abort(415)
 
@@ -702,10 +707,10 @@ class DraftWorkflowApi(Resource):
                 preserve_environment_variables=True,
                 graph_only=args_model.is_collaborative,
             )
-        except WorkflowHashNotEqualError:
-            raise DraftWorkflowNotSync()
+        except WorkflowHashNotEqualError as caught_error:
+            raise DraftWorkflowNotSync() from caught_error
         except VariableError as e:
-            raise InvalidArgumentError(description=str(e))
+            raise InvalidArgumentError(description=str(e)) from e
 
         return dump_response(
             SyncDraftWorkflowResponse,
@@ -757,17 +762,17 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/iteration/nodes/<string:node_id>/run")
@@ -808,15 +813,15 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run")
@@ -857,15 +862,15 @@ class WorkflowDraftRunIterationNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run")
@@ -901,15 +906,15 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run")
@@ -949,15 +954,15 @@ class WorkflowDraftRunLoopNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 class HumanInputFormPreviewPayload(BaseModel):
@@ -1024,7 +1029,7 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
             inputs=inputs,
             session=db.session(),
         )
-        return jsonable_encoder(preview)
+        return dump_response(HumanInputFormPreviewResponse, preview)
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form/run")
@@ -1092,7 +1097,7 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
             inputs=inputs,
             session=db.session(),
         )
-        return jsonable_encoder(preview)
+        return dump_response(HumanInputFormPreviewResponse, preview)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/form/run")
@@ -1206,7 +1211,7 @@ class DraftWorkflowRunApi(Resource):
 
             return helper.compact_generate_response(response)
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
@@ -1227,12 +1232,13 @@ class WorkflowTaskStopApi(Resource):
         """
         Stop workflow task
         """
-        # Stop using both mechanisms for backward compatibility
-        # Legacy stop flag mechanism (without user check)
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
-
-        # New graph engine command channel mechanism
-        GraphEngineManager(redis_client).send_stop_command(task_id)
+        AppTaskService.stop_workflow_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            task_id=task_id,
+            app_mode=AppMode.value_of(app_model.mode),
+            owner=None,
+        )
 
         return {"result": "success"}
 
@@ -1420,8 +1426,8 @@ class DefaultBlockConfigApi(Resource):
         if args.q:
             try:
                 filters = json.loads(args.q)
-            except json.JSONDecodeError:
-                raise ValueError("Invalid filters")
+            except json.JSONDecodeError as caught_error:
+                raise ValueError("Invalid filters") from caught_error
 
         # Get default block configs
         workflow_service = WorkflowService()
@@ -1673,7 +1679,7 @@ class WorkflowByIdApi(Resource):
             except DraftWorkflowDeletionError as e:
                 abort(400, description=str(e))
             except ValueError as e:
-                raise NotFound(str(e))
+                raise NotFound(str(e)) from e
 
         WorkflowAgentRetirementService.retire_unowned(
             tenant_id=app_model.tenant_id,
@@ -1780,7 +1786,7 @@ class DraftWorkflowTriggerRunApi(Resource):
                 )
             )
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except PluginInvokeError as e:
             return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400
         except Exception as e:
@@ -1866,7 +1872,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
                 files=files,
             )
             return jsonable_encoder(node_execution)
-        except Exception as e:
+        except Exception:
             logger.exception("Error running draft workflow trigger node")
             return jsonable_encoder(
                 {"status": "error", "error": "An unexpected error occurred while running the node."}
@@ -1936,7 +1942,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
             )
             return helper.compact_generate_response(response)
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except Exception:
             logger.exception("Error running draft workflow trigger run-all")
             return jsonable_encoder(

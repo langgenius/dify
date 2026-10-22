@@ -27,12 +27,12 @@ from services.app.console_service import (
     CreatorsPlatformDisabledError,
     InvalidAppExportError,
 )
+from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     AppExportOptions,
     AppListParams,
     AppPage,
     AppRecord,
-    AppTraceSettings,
     CopyAppParams,
     CreateAppParams,
     StarredAppListParams,
@@ -245,7 +245,7 @@ def test_export_closes_archive_when_send_file_fails(
         raise OSError("delivery failed")
 
     monkeypatch.setattr(controller, "send_file", fail)
-    with app.test_request_context("/"), pytest.raises(OSError):
+    with app.test_request_context("/"), pytest.raises(OSError, match="delivery failed"):
         invoke(controller.AppExportApi, controller.AppExportApi.get, app_id=APP_ID)
     assert archive.closed
 

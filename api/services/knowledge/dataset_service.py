@@ -51,6 +51,7 @@ from models.dataset import (
     DocumentSegment,
     ExternalKnowledgeBindings,
     Pipeline,
+    build_built_in_field_values,
 )
 from models.enums import (
     DatasetRuntimeMode,
@@ -475,12 +476,12 @@ class DatasetService:
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
                 )
-            except LLMBadRequestError:
+            except LLMBadRequestError as caught_error:
                 raise ValueError(
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-                )
+                ) from caught_error
             except ProviderTokenNotInitError as ex:
-                raise ValueError(f"The dataset is unavailable, due to: {ex.description}")
+                raise ValueError(f"The dataset is unavailable, due to: {ex.description}") from ex
 
     @staticmethod
     def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
@@ -492,12 +493,12 @@ class DatasetService:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=embedding_model,
             )
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
 
     @staticmethod
     def check_is_multimodal_model(tenant_id: str, model_provider: str, model: str):
@@ -514,8 +515,10 @@ class DatasetService:
             if not model_schema:
                 raise ValueError("Model schema not found")
             return bool(model_schema.features and ModelFeature.VISION in model_schema.features)
-        except LLMBadRequestError:
-            raise ValueError("No Model available. Please configure a valid provider in the Settings -> Model Provider.")
+        except LLMBadRequestError as caught_error:
+            raise ValueError(
+                "No Model available. Please configure a valid provider in the Settings -> Model Provider."
+            ) from caught_error
 
     @staticmethod
     def check_reranking_model_setting(tenant_id: str, reranking_model_provider: str, reranking_model: str):
@@ -527,12 +530,12 @@ class DatasetService:
                 model_type=ModelType.RERANK,
                 model=reranking_model,
             )
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Rerank Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
 
     @staticmethod
     def update_dataset(dataset_id, data, user, *, session: Session):
@@ -896,12 +899,12 @@ class DatasetService:
                 session,
             )
             filtered_data["collection_binding_id"] = dataset_collection_binding.id
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
 
     @staticmethod
     def _handle_embedding_model_update_when_technique_unchanged(dataset, data, filtered_data, session: Session):
@@ -979,12 +982,12 @@ class DatasetService:
             if current_provider_str != new_provider_str or data["embedding_model"] != dataset.embedding_model:
                 DatasetService._apply_new_embedding_settings(dataset, data, filtered_data, session)
                 return "update"
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
         return None
 
     @staticmethod
@@ -1165,13 +1168,13 @@ class DatasetService:
                         dataset.is_multimodal = is_multimodal
                         dataset.collection_binding_id = dataset_collection_binding.id
                         dataset.indexing_technique = IndexTechniqueType(knowledge_configuration.indexing_technique)
-                    except LLMBadRequestError:
+                    except LLMBadRequestError as caught_error:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
                             "in the Settings -> Model Provider."
-                        )
+                        ) from caught_error
                     except ProviderTokenNotInitError as ex:
-                        raise ValueError(ex.description)
+                        raise ValueError(ex.description) from ex
             else:
                 # add default plugin id to both setting sets, to make sure the plugin model provider is consistent
                 # Skip embedding model checks if not provided in the update request
@@ -1229,13 +1232,13 @@ class DatasetService:
                                         knowledge_configuration.embedding_model,
                                     )
                                     dataset.is_multimodal = is_multimodal
-                    except LLMBadRequestError:
+                    except LLMBadRequestError as caught_error:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
                             "in the Settings -> Model Provider."
-                        )
+                        ) from caught_error
                     except ProviderTokenNotInitError as ex:
-                        raise ValueError(ex.description)
+                        raise ValueError(ex.description) from ex
                 elif dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                     if dataset.keyword_number != knowledge_configuration.keyword_number:
                         dataset.keyword_number = knowledge_configuration.keyword_number
@@ -1720,7 +1723,7 @@ class DocumentService:
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
         except NoPermissionError as e:
-            raise Forbidden(str(e))
+            raise Forbidden(str(e)) from e
 
         upload_files_by_document_id = DocumentService._get_upload_files_by_document_id_for_zip_download(
             dataset_id=dataset_id,
@@ -2878,17 +2881,15 @@ class DocumentService:
             doc_language=document_language,
             need_summary=need_summary,
         )
-        doc_metadata = {}
         if dataset.built_in_field_enabled:
-            doc_metadata = {
-                BuiltInField.document_name: name,
-                BuiltInField.uploader: account.name,
-                BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.source: data_source_type,
-            }
-        if doc_metadata:
-            document.doc_metadata = doc_metadata
+            now = naive_utc_now()
+            document.doc_metadata = build_built_in_field_values(
+                document_name=name,
+                uploader=account.name,
+                upload_date=now,
+                last_update_date=now,
+                data_source_type=data_source_type,
+            )
         return document
 
     @staticmethod

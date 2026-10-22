@@ -7,7 +7,7 @@ import type { FileResponse } from '@/types/workflow'
 import { gzipSync } from 'node:zlib'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { useWebAppStore } from '@/context/web-app-context'
 import { consoleQuery } from '@/service/console'
 import {
@@ -90,7 +90,7 @@ const mockGenerationConversationName = vi.mocked(generationConversationName)
 const createWrapper = (queryClient: QueryClient) => {
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <AppToastHost />
+      <AppToaster />
       {children}
     </QueryClientProvider>
   )
@@ -647,7 +647,7 @@ describe('useEmbeddedChatbot', () => {
 
       expect(updateFeedback).toHaveBeenCalledExactlyOnceWith(
         {
-          url: '/messages/msg-123/feedbacks',
+          messageId: 'msg-123',
           body: { rating: 'like', content: undefined },
         },
         AppSourceType.webApp,

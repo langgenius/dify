@@ -585,20 +585,20 @@ class TrialAppWorkflowRunApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError as error:
             raise AppUnavailableError() from error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except (AppInvokeQuotaExceededError, InvokeRateLimitError) as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
@@ -614,7 +614,13 @@ class TrialAppWorkflowTaskStopApi(Resource):
         if trial_app.app_mode != "workflow":
             raise NotWorkflowAppError()
 
-        application_services().app_tasks.stop_workflow_task_no_user_check(task_id=task_id)
+        application_services().app_tasks.stop_workflow_task(
+            tenant_id=trial_app.tenant_id,
+            app_id=trial_app.app_id,
+            task_id=task_id,
+            app_mode=AppMode.WORKFLOW,
+            owner=None,
+        )
 
         return dump_response(SimpleResultResponse, {"result": "success"})
 
@@ -661,30 +667,30 @@ class TrialChatApi(Resource):
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
             raise UnauthorizedError("Account no longer exists.") from error
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFoundError("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
+            raise AppUnavailableError() from caught_error
         except AgentAppGeneratorError:
             raise AppUnavailableError() from None
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except (AppInvokeQuotaExceededError, InvokeRateLimitError) as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route(
@@ -700,12 +706,21 @@ class TrialChatTaskStopApi(Resource):
         if trial_app.app_mode not in {"chat", "agent-chat", "agent", "advanced-chat"}:
             raise NotChatAppError()
 
-        application_services().app_tasks.stop_task(
-            task_id=task_id,
-            invoke_from=InvokeFrom.EXPLORE,
-            user_id=request_context.account_id,
-            app_mode=AppMode.value_of(trial_app.app_mode),
-        )
+        app_mode = AppMode.value_of(trial_app.app_mode)
+        if app_mode == AppMode.ADVANCED_CHAT:
+            application_services().app_tasks.stop_workflow_task(
+                tenant_id=trial_app.tenant_id,
+                app_id=trial_app.app_id,
+                task_id=task_id,
+                app_mode=app_mode,
+                owner=(CreatorUserRole.ACCOUNT, request_context.account_id),
+            )
+        else:
+            application_services().app_tasks.stop_task(
+                task_id=task_id,
+                invoke_from=InvokeFrom.EXPLORE,
+                user_id=request_context.account_id,
+            )
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
@@ -742,23 +757,23 @@ class TrialMessageSuggestedQuestionApi(Resource):
             raise AppUnavailableError() from error
         except SuggestedQuestionsActorNotFoundError as error:
             raise UnauthorizedError("Account no longer exists.") from error
-        except MessageNotExistsError:
-            raise NotFoundError("Message not found")
-        except ConversationNotExistsError:
-            raise NotFoundError("Conversation not found")
-        except SuggestedQuestionsAfterAnswerDisabledError:
-            raise AppSuggestedQuestionsAfterAnswerDisabledError()
+        except MessageNotExistsError as caught_error:
+            raise NotFoundError("Message not found") from caught_error
+        except ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation not found") from caught_error
+        except SuggestedQuestionsAfterAnswerDisabledError as caught_error:
+            raise AppSuggestedQuestionsAfterAnswerDisabledError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except Exception:
+            raise CompletionRequestError(e.description) from e
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
         return dump_response(SuggestedQuestionsResponse, {"data": questions})
 
@@ -920,28 +935,28 @@ class TrialCompletionApi(Resource):
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
             raise UnauthorizedError("Account no longer exists.") from error
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFoundError("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
+            raise AppUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except (AppInvokeQuotaExceededError, InvokeRateLimitError) as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/trial-apps/<uuid:app_id>/site")

@@ -1,5 +1,5 @@
 import type { AvailableModelListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type { LLMNodeType } from '../../types'
 import { act, waitFor } from '@testing-library/react'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -62,7 +62,7 @@ describe('use-llm-structured-output-config', () => {
 
     const inputRef = {
       current: createPayload(),
-    } as MutableRefObject<LLMNodeType>
+    } as RefObject<LLMNodeType>
     const handleSetInputs = vi.fn((nextInputs: LLMNodeType) => {
       inputRef.current = nextInputs
     })
@@ -145,7 +145,7 @@ describe('use-llm-structured-output-config', () => {
       useLLMStructuredOutputConfig({
         id: 'llm-node',
         model: createPayload().model,
-        inputRef: { current: createPayload() } as MutableRefObject<LLMNodeType>,
+        inputRef: { current: createPayload() } as RefObject<LLMNodeType>,
         setInputs: vi.fn(),
         deleteNodeInspectorVars: vi.fn(),
       }),

@@ -19,7 +19,7 @@ requested during root SSR, so treat this response as a minimal public bootstrap 
 configuration endpoint, a feature registry, or a mirror of environment and Enterprise settings. Existing fields are
 legacy inventory and do not establish precedent for new fields.
 
-A new field is eligible only when all of the following are true:
+Apart from the explicit Agent tracing exception below, a new field is eligible only when all of the following are true:
 
 1. Both Console and Web have named production consumers for the field.
 2. Both consumers need the value before authentication and tenant/workspace bootstrap to render initial state or
@@ -44,9 +44,27 @@ Route excluded values to their actual owner:
   and failure cost explicitly.
 - Load large, slow, or page-specific data lazily through a consumer-owned query.
 
+### Agent tracing deployment discovery exception
+
+`agent_tracing_api_collection_enabled` is an explicit deployment-discovery exception to the pre-authentication
+consumer requirements above. Both public Console and Web `/system-features` responses expose the same required
+boolean from `OPS_AGENT_TRACE_ENABLED`; the authenticated Console tracing configuration and Workflow inheritance
+surfaces consume it independently of workspace, application, or provider configuration. It has no schema default:
+a missing field must not be mistaken for a confirmed disabled deployment.
+
+This field reports only the API collection gate. It grants no configuration, credential, or log access and says
+nothing about Agent runtime, worker, or provider health, export acknowledgement, or platform queryability. The
+exception does not admit other environment settings or integration toggles, or broaden this response into a
+configuration registry. Keep workspace policy and entitlements in their authenticated owners.
+
+The existing Console and Web bootstrap requests gain one boolean and no additional configuration or provider I/O.
+Their authentication, SSR request timing, and cache ownership are unchanged; consumers must retain an unknown
+state when the response is missing or fails rather than infer a disabled or healthy deployment.
+
 Every pull request that adds a System Features field must:
 
-- Name both production consumer paths and explain why they require the value before authentication.
+- Name both production consumer paths and explain why they require the value before authentication. For the named
+  Agent tracing exception, document the authenticated Console consumers and intentional shared Web exposure instead.
 - Document the root SSR request, payload, caching, and failure-mode impact.
 - Update the Pydantic owner, regenerate OpenAPI Markdown and TypeScript/Zod contracts, and update shared fixtures.
 - Add Console and Web schema regression coverage. Do not hand-edit generated contracts or add compatibility defaults.
@@ -224,6 +242,95 @@ return dump_response(WorkflowRunDetailResponse, workflow_run)
 Use manual `model_validate(...).model_dump(...)` only when the endpoint needs behavior that `dump_response(...)` does
 not provide, such as returning a non-dict payload, intentionally excluding fields, or composing a `(body, status)` tuple.
 
+## Public access-error contracts
+
+IP-policy denials must be indistinguishable from each surface's native
+authentication/not-found errors. The Gateway terminates denied requests before
+execution; Core owns the corresponding native error baselines. Keep their JSON
+bytes (sorted keys, compact separators, no trailing newline), status and
+application-owned headers aligned. Do not add policy names, internal reasons,
+`ip_access_denied`, or a policy-specific response header.
+
+| Surface | Error contract |
+| --- | --- |
+| Service API | 401 `unauthorized`, `Access token is invalid`; missing/malformed Bearer uses `Authorization header must be provided and start with 'Bearer'` |
+| OAuth OpenAPI | Its own 401 `unauthorized` / `invalid_token`, not the Service API's token message |
+| MCP | 404 JSON-RPC `-32600` / `Server Not Found`, echoing a string/number request ID or null |
+| Workflow Webhook | 404 standard Werkzeug `NotFound()` HTML without capability ID/private detail; not JSON |
+| Plugin callback | 404 JSON `{"error":"Endpoint not found"}`; not the Workflow Webhook HTML |
+| WebApp | Canonical 404 `app_not_found` / `App not found.`, with optional trusted `client_ip` |
+| HITL form / upload | Native form 404 / invalid-upload-token 403, not a WebApp error page |
+
+These errors use `Cache-Control: no-store`. JSON uses `Content-Type:
+application/json`; Workflow Webhook uses `text/html; charset=utf-8`. Service API
+401 also includes `WWW-Authenticate: Bearer realm="api"`; OpenAPI preserves its
+native challenge/extra fields. For callers: if an API key is confirmed correct,
+contact the App administrator to check whether the source IP is allowed.
+
+MCP resolves unavailable identity before validating an invocation. Its error-only
+ID parser accepts at most 64 KiB of strict UTF-8 JSON, nesting depth 64; absent,
+invalid or oversized IDs become null. Numeric lexemes retain precision. Allowed
+requests retain their existing body and protocol-validation path. Do not create
+EndUsers or execute tools just to construct a not-found response.
+
+MCP identity preflight uses a short read session that ends before body reads or
+parsing. Normal execution rechecks the same server/App/tenant identity in its
+own transaction and uses fresh ORM objects; deletion, disabling or rebinding
+during parsing must not execute against the stale identity. Construct opaque
+404 responses outside both sessions. The error ID reader reuses existing raw
+Werkzeug body-cache bytes without changing that cache, and otherwise reads at
+most the limit plus one sentinel byte; it must not use unbounded `get_data()`
+for unknown-length bodies. This error-only limit does not cap valid MCP bodies.
+
+Real dependency failures stay fail-closed errors, not a missing-policy allow.
+The Gateway can present an unresolved canonical WebApp reference as opaque404
+while still terminating the request; it must never forward it because the
+read-side miss could be replication lag. Internal audit/metrics retain the true
+policy-denied or resolution-failure reason even though the public response does
+not disclose it.
+
+### WebApp and Console 404 metadata
+
+The Web and Console blueprints add optional request-local `client_ip` metadata
+to their JSON app-not-found responses. This is transport error metadata,
+not an App property, a new endpoint, or a field in successful response DTOs.
+
+- Public WebApp errors use only `code: app_not_found`, `message: App not found.`,
+  `status: 404` and optional `client_ip`. Strip exception-specific details that
+  would reveal whether an App exists. Authenticated Console management errors
+  preserve their original code/message/extra fields.
+- A typed `app_not_found` 404 is eligible. Generic 404s are eligible only for
+  matched GET app-identity routes: Web bootstrap (`site`, `parameters`, `meta`,
+  `passport`, `login/status`, `webapp/access-mode`) and Console App/Agent,
+  installed-App detail/parameters/meta, and trial-App detail/parameters.
+- The field is a single normalized IP resolved using the configured trusted
+  proxy boundary. Do not accept a caller's query/body IP or use unverified
+  forwarding headers. If trust configuration or resolution is unavailable,
+  omit `client_ip` instead of guessing a proxy address or changing the 404 to 503.
+- These eligible errors use `Cache-Control: no-store`, because their IP metadata
+  must not be shared between callers through URL-based error caching.
+- Known unavailable/unpublished WebApp identity errors use this same404; arbitrary
+  400s, auth errors and dependency503s do not. Public login/status and access-mode
+  must validate a supplied App reference even when user authentication is disabled.
+- HITL keeps its own canonical form/token error; no App IP is attached. Ordinary
+  resource404s, unmatched routes, streams and Inner API contracts are unchanged.
+  In particular, an authenticated Console trial403 is not converted to404.
+
+For example, either an unavailable Web passport or a Gateway WebApp denial is:
+
+```json
+{
+  "code": "app_not_found",
+  "message": "App not found.",
+  "status": 404,
+  "client_ip": "203.0.113.42"
+}
+```
+
+The existing frontend error transport already accepts optional `client_ip`;
+success OpenAPI/TypeScript/Zod/oRPC contracts do not change for this enrichment.
+Add coverage at the final serialized-response boundary, including exceptions
+with their own `data`, so Flask-RESTX cannot silently discard the metadata.
 ## Error Responses
 
 Every 4xx/5xx response is documented with the surface's error body: `ErrorResponse` (`code`, `message`, `status`,

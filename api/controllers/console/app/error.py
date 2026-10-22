@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from libs.exception import BaseHTTPException
 
 
@@ -5,6 +7,18 @@ class AppNotFoundError(BaseHTTPException):
     error_code = "app_not_found"
     description = "App not found."
     code = 404
+
+
+class AppTriggerNotFoundError(BaseHTTPException):
+    error_code = "app_trigger_not_found"
+    description = "Trigger not found."
+    code = HTTPStatus.NOT_FOUND
+
+
+class WebhookTriggerNotFoundError(BaseHTTPException):
+    error_code = "webhook_trigger_not_found"
+    description = "Webhook trigger not found for this node."
+    code = HTTPStatus.NOT_FOUND
 
 
 class ProviderNotInitializeError(BaseHTTPException):
@@ -187,3 +201,9 @@ class AgentNotBoundError(BaseHTTPException):
     error_code = "agent_not_bound"
     description = "no agent is bound for this app/node"
     code = 400
+
+
+class TracingConfigConflictError(BaseHTTPException):
+    error_code = "tracing_config_conflict"
+    description = "Tracing configuration changed. Refresh and try again."
+    code = 409

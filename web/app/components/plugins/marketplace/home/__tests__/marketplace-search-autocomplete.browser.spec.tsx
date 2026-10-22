@@ -43,15 +43,19 @@ vi.mock('@/service/marketplace', async (importOriginal) => {
     ...original,
     marketplaceQuery: {
       searchAdvanced: {
-        queryOptions: ({ input }: { input: unknown }) => ({
-          queryKey: ['marketplace', 'plugins', input],
+        queryOptions: (
+          options: Parameters<typeof original.marketplaceQuery.searchAdvanced.queryOptions>[0],
+        ) => ({
+          ...original.marketplaceQuery.searchAdvanced.queryOptions(options),
           queryFn: () => ({ data: { plugins: [], total: 0 } }),
         }),
       },
       templateSearch: {
-        queryOptions: ({ input }: { input: unknown }) => ({
-          queryKey: ['marketplace', 'templates', input],
-          queryFn: () => mockTemplateSearch(input),
+        queryOptions: (
+          options: Parameters<typeof original.marketplaceQuery.templateSearch.queryOptions>[0],
+        ) => ({
+          ...original.marketplaceQuery.templateSearch.queryOptions(options),
+          queryFn: () => mockTemplateSearch(options.input),
         }),
       },
     },

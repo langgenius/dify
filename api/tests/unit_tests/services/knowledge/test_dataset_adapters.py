@@ -43,18 +43,18 @@ REF = DatasetRef("tenant", "dataset")
 
 
 def dataset(**values: object) -> Dataset:
-    return Dataset(
-        **{
-            "id": "dataset",
-            "tenant_id": "tenant",
-            "name": "Dataset",
-            "created_by": "actor",
-            "maintainer": "actor",
-            "indexing_technique": "economy",
-            "permission": "all_team_members",
-            **values,
-        }
+    row = Dataset(
+        id="dataset",
+        tenant_id="tenant",
+        name="Dataset",
+        created_by="actor",
+        maintainer="actor",
+        indexing_technique="economy",
+        permission="all_team_members",
     )
+    for key, value in values.items():
+        setattr(row, key, value)
+    return row
 
 
 def document(**values: object) -> Document:

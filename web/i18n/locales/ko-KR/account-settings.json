@@ -63,7 +63,6 @@
   "account.workspaceNamePlaceholder": "워크스페이스 이름 입력",
   "resourceAccessToken.accessibleResources": "접근 가능한 리소스",
   "resourceAccessToken.actions": "작업",
-  "resourceAccessToken.app": "앱",
   "resourceAccessToken.appCount": "{{count}} 앱",
   "resourceAccessToken.appsCount": "{{count}} 앱",
   "resourceAccessToken.appsSection": "앱",
@@ -80,7 +79,6 @@
   "resourceAccessToken.editTitle": "액세스 토큰 편집",
   "resourceAccessToken.empty": "아직 액세스 토큰이 없습니다",
   "resourceAccessToken.emptyDescription": "자동화 작업과 외부 시스템이 Difyctl로 선택한 리소스를 찾고 사용할 수 있도록 액세스 토큰을 만드세요.",
-  "resourceAccessToken.knowledge": "지식 베이스",
   "resourceAccessToken.knowledgeBasesSection": "지식 베이스",
   "resourceAccessToken.knowledgeCount": "{{count}} 지식 베이스",
   "resourceAccessToken.knowledgesCount": "{{count}} 지식 베이스",
@@ -100,6 +98,5 @@
   "resourceAccessToken.tabApps": "앱",
   "resourceAccessToken.tabKnowledgeBases": "지식 베이스",
   "resourceAccessToken.token": "토큰",
-  "resourceAccessToken.total": "총 {{total}}개",
-  "resourceAccessToken.trackingId": "추적 ID"
+  "resourceAccessToken.total": "총 {{total}}개"
 }

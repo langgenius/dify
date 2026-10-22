@@ -5,7 +5,7 @@ import type {
   SkillFileResponse,
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react'
+import type { ChangeEvent, InputEvent, KeyboardEvent } from 'react'
 import type { SkillFileMutationCoordinator } from './shared'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -667,7 +667,7 @@ export function FileEditor({
     })
   }
 
-  const handleLiveBodyEditorInput = (event: FormEvent<HTMLDivElement>) => {
+  const handleLiveBodyEditorInput = (event: InputEvent<HTMLDivElement>) => {
     const nextBody = serializeMarkdownLiveEditorNode(event.currentTarget).replace(/\u00A0/g, ' ')
     const nextCaretOffset = getMarkdownLiveEditorSelectionOffset(event.currentTarget)
     const nextContent = replaceMarkdownBody(draftContentRef.current, nextBody)

@@ -99,7 +99,7 @@ class TestAppGenerateService:
             mock_advanced_chat_generator_instance.generate.return_value = ["advanced_chat_response"]
             mock_advanced_chat_generator_instance.single_iteration_generate.return_value = ["single_iteration_response"]
             mock_advanced_chat_generator_instance.single_loop_generate.return_value = ["single_loop_response"]
-            mock_advanced_chat_generator_instance.retrieve_events.return_value = ["advanced_chat_events"]
+            mock_advanced_chat_generator.retrieve_events.return_value = ["advanced_chat_events"]
             mock_advanced_chat_generator_instance.convert_to_event_stream.return_value = ["advanced_chat_stream"]
             mock_advanced_chat_generator.convert_to_event_stream.return_value = ["advanced_chat_stream"]
 
@@ -350,10 +350,8 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify advanced chat generator was called
-        mock_external_service_dependencies["advanced_chat_generator"].return_value.retrieve_events.assert_called_once()
-        mock_external_service_dependencies[
-            "advanced_chat_generator"
-        ].return_value.convert_to_event_stream.assert_called_once()
+        mock_external_service_dependencies["advanced_chat_generator"].retrieve_events.assert_called_once()
+        mock_external_service_dependencies["advanced_chat_generator"].convert_to_event_stream.assert_called_once()
 
     def test_generate_workflow_mode_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -680,7 +678,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
 
         # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Workflow not initialized") as exc_info:
             AppGenerateService.generate(
                 app_model=app,
                 user=account,
@@ -711,7 +709,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
 
         # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Workflow not published") as exc_info:
             AppGenerateService.generate(
                 app_model=app,
                 user=account,
@@ -803,7 +801,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}}
 
         # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Invalid app mode") as exc_info:
             AppGenerateService.generate_single_iteration(
                 app_model=app,
                 user=account,
@@ -893,7 +891,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}}
 
         # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Invalid app mode") as exc_info:
             AppGenerateService.generate_single_loop(
                 app_model=app,
                 user=account,
@@ -983,7 +981,7 @@ class TestAppGenerateService:
         """
         Test getting max active requests with app-specific limit.
         """
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies, mode="completion"
         )
@@ -1003,7 +1001,7 @@ class TestAppGenerateService:
         """
         Test getting max active requests with config limit being smaller.
         """
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies, mode="completion"
         )
@@ -1024,7 +1022,7 @@ class TestAppGenerateService:
         """
         Test getting max active requests with zero limits (infinite).
         """
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies, mode="completion"
         )
@@ -1058,7 +1056,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
 
         # Execute the method under test and expect exception
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(Exception, match="Test exception") as exc_info:
             AppGenerateService.generate(
                 app_model=app,
                 user=account,

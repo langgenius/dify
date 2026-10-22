@@ -813,7 +813,7 @@ services:
 
   # The Weaviate vector store.
   weaviate:
-    image: cr.weaviate.io/semitechnologies/weaviate:1.39.2
+    image: cr.weaviate.io/semitechnologies/weaviate:1.39.13
     profiles:
       - weaviate
     restart: always

@@ -28,13 +28,31 @@ def _table_storage() -> ClickZettaVolumeStorage:
 
 
 def test_config_validation() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "1 validation error for ClickZettaVolumeConfig\\\n  Value error, "
+            "CLICKZETTA_VOLUME_USERNAME or CLICKZETTA_USERNAME is required"
+        ),
+    ):
         ClickZettaVolumeConfig(username="", password="pass", instance="instance")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "1 validation error for ClickZettaVolumeConfig\\\n  Value error, "
+            "CLICKZETTA_VOLUME_TYPE must be one of: table, user, external"
+        ),
+    ):
         ClickZettaVolumeConfig(username="user", password="pass", instance="instance", volume_type="invalid_type")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "1 validation error for ClickZettaVolumeConfig\\\n  Value error, "
+            "CLICKZETTA_VOLUME_NAME is required for external volume type"
+        ),
+    ):
         ClickZettaVolumeConfig(
             username="user",
             password="pass",

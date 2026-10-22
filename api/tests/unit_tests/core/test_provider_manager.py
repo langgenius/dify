@@ -9,7 +9,12 @@ from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core import provider_manager as provider_manager_module
-from core.entities.model_entities import DefaultModelSetting
+from core.entities.model_entities import (
+    DefaultModelSetting,
+    ModelStatus,
+    ModelWithProviderEntity,
+    SimpleModelProviderEntity,
+)
 from core.entities.provider_entities import (
     CustomConfiguration,
     CustomProviderConfiguration,
@@ -23,7 +28,7 @@ from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
 from models.base import TypeBase
 from models.provider import (
@@ -591,80 +596,6 @@ def test_get_and_decrypt_credentials_returns_empty_dict_for_malformed_config():
     assert credentials == {}
 
 
-def test_get_default_model_uses_first_available_active_model(provider_db: Session):
-    other_tenant_default = TenantDefaultModel(
-        tenant_id="other-tenant",
-        provider_name="anthropic",
-        model_name="claude",
-        model_type=ModelType.LLM,
-    )
-    provider_db.add(other_tenant_default)
-    provider_db.commit()
-    provider_configurations = Mock()
-    provider_configurations.get_models.return_value = [
-        Mock(model="gpt-3.5-turbo", provider=Mock(provider="openai")),
-        Mock(model="gpt-4", provider=Mock(provider="openai")),
-    ]
-
-    manager = _build_provider_manager()
-    with (
-        patch.object(manager, "get_configurations", return_value=provider_configurations),
-        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
-    ):
-        mock_factory_cls.return_value.get_provider_schema.return_value = Mock(
-            provider="openai",
-            label=I18nObject(en_US="OpenAI", zh_Hans="OpenAI"),
-            icon_small=I18nObject(en_US="icon_small.png", zh_Hans="icon_small.png"),
-            supported_model_types=[ModelType.LLM],
-        )
-
-        result = manager.get_default_model("tenant-id", ModelType.LLM)
-
-        assert result is not None
-        assert result.model == "gpt-3.5-turbo"
-        assert result.provider.provider == "openai"
-        provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
-        saved_default_model = provider_db.scalar(
-            select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == "tenant-id")
-        )
-        assert saved_default_model is not None
-        assert saved_default_model.model_name == "gpt-3.5-turbo"
-        assert saved_default_model.provider_name == "openai"
-        assert (
-            provider_db.scalar(select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == "other-tenant"))
-            is other_tenant_default
-        )
-
-
-def test_get_default_model_returns_none_when_no_default_or_active_models(provider_db: Session):
-    provider_db.add(
-        TenantDefaultModel(
-            tenant_id="other-tenant",
-            provider_name="anthropic",
-            model_name="claude",
-            model_type=ModelType.LLM,
-        )
-    )
-    provider_db.commit()
-    provider_configurations = Mock()
-    provider_configurations.get_models.return_value = []
-    manager = _build_provider_manager()
-
-    with (
-        patch.object(manager, "get_configurations", return_value=provider_configurations),
-        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
-    ):
-        result = manager.get_default_model("tenant-id", ModelType.LLM)
-
-    assert result is None
-    provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
-    mock_factory_cls.assert_not_called()
-    assert provider_db.scalar(select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == "tenant-id")) is None
-    assert (
-        provider_db.scalar(select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == "other-tenant")) is not None
-    )
-
-
 def test_get_default_model_uses_injected_runtime_for_existing_default_record(provider_db: Session):
     existing_default_model = TenantDefaultModel(
         tenant_id="tenant-id",
@@ -1078,11 +1009,23 @@ def test_replace_default_model_records_removes_omitted_types_only_for_current_te
     )
     provider_db.add_all([existing_default, omitted_default, other_tenant_default])
     provider_db.commit()
+    embedding_provider = _build_plugin_provider_declaration(None)
+    embedding_provider.supported_model_types = [ModelType.TEXT_EMBEDDING]
+    available_embedding_model = ModelWithProviderEntity(
+        model="text-embedding-3-small",
+        label=I18nObject(en_US="text-embedding-3-small"),
+        model_type=ModelType.TEXT_EMBEDDING,
+        fetch_from=FetchFrom.PREDEFINED_MODEL,
+        model_properties={},
+        status=ModelStatus.ACTIVE,
+        provider=SimpleModelProviderEntity(embedding_provider),
+    )
     configurations = MagicMock()
     configurations.__contains__.return_value = True
     configurations.get_models.side_effect = lambda model_type, **_kwargs: {
         ModelType.LLM: [Mock(model="gpt-4")],
         ModelType.RERANK: [Mock(model="rerank-v3")],
+        ModelType.TEXT_EMBEDDING: [available_embedding_model],
     }[model_type]
     settings = (
         []
@@ -1093,8 +1036,16 @@ def test_replace_default_model_records_removes_omitted_types_only_for_current_te
         ]
     )
 
-    with patch.object(manager, "get_configurations", return_value=configurations) as get_configurations:
+    with (
+        patch.object(manager, "get_configurations", return_value=configurations) as get_configurations,
+        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
+    ):
         manager.replace_default_model_records("tenant-id", settings)
+        provider_db.expire_all()
+        for _ in range(2):
+            assert manager.get_default_model("tenant-id", ModelType.TEXT_EMBEDDING) is None
+
+    mock_factory_cls.assert_not_called()
 
     provider_db.expire_all()
     defaults = list(provider_db.scalars(select(TenantDefaultModel)))

@@ -4,7 +4,7 @@ import type { ChatContextValue } from '../../context'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import {
@@ -106,7 +106,7 @@ describe('Operation', () => {
         wrapper: ({ children }) => (
           <QueryWrapper>
             <ChatContextProvider {...mockContextValue}>{children}</ChatContextProvider>
-            <AppToastHost timeout={0} />
+            <AppToaster timeout={0} />
           </QueryWrapper>
         ),
       },

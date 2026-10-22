@@ -39,6 +39,7 @@ from core.workflow.llm_environment_variable import (
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
+from enums import DeploymentEdition
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
@@ -75,7 +76,7 @@ from services.entities.dsl_entities import (
     make_app_dsl,
 )
 from services.entities.site_dsl import SiteDsl, apply_site_dsl
-from services.errors.app import DraftChangedError, WorkflowNotFoundError
+from services.errors.app import AppQuotaCheckError, DraftChangedError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
 from services.icon_configuration import (
@@ -157,6 +158,21 @@ class AppDslService:
         self._session = session
         self._warnings = []
 
+    @staticmethod
+    def _check_app_quota(account: Account) -> None:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return
+        tenant_id = account.current_tenant_id
+        if tenant_id is None:
+            raise ValueError("Current tenant is not set")
+        try:
+            apps = FeatureService.get_features(tenant_id, exclude_vector_space=True).apps
+        except Exception as error:
+            # A failed lookup is a server failure, not an invalid DSL or exhausted quota.
+            raise AppQuotaCheckError("Unable to check the app quota.") from error
+        if 0 < apps.limit <= apps.size:
+            raise NoPermissionError("The number of apps has reached the limit of your subscription.")
+
     def import_app(
         self,
         *,
@@ -175,7 +191,7 @@ class AppDslService:
         preserve_agent_bindings: bool = False,
         draft_hash: str | None = None,
     ) -> Import:
-        """Import an App DSL after checking Site entitlements and staging archive resources.
+        """Import an App DSL after validating applicable entitlements and staging archive resources.
 
         With ``draft_hash``, an overwrite saves only while the draft's ``draft_token`` still equals it and
         raises DraftChangedError otherwise; a pending import keeps it for the confirm.
@@ -186,8 +202,8 @@ class AppDslService:
         # Validate import mode
         try:
             mode = ImportMode(import_mode)
-        except ValueError:
-            raise ValueError(f"Invalid import_mode: {import_mode}")
+        except ValueError as caught_error:
+            raise ValueError(f"Invalid import_mode: {import_mode}") from caught_error
 
         # Get YAML content
         content: str = ""
@@ -280,6 +296,9 @@ class AppDslService:
                     status=ImportStatus.FAILED,
                     error=missing_app_section_error(original_top_level_keys),
                 )
+
+            if not app_id:
+                self._check_app_quota(account)
 
             allow_premium_site_settings = True
             if status != ImportStatus.PENDING and data.get("site") is not None:
@@ -413,7 +432,7 @@ class AppDslService:
                 error=f"Invalid YAML format: {str(e)}",
             )
 
-        except (NoPermissionError, DraftChangedError):
+        except (NoPermissionError, DraftChangedError, AppQuotaCheckError):
             raise
 
         except Exception as e:
@@ -456,6 +475,9 @@ class AppDslService:
                     status=ImportStatus.FAILED,
                     error="Import information expired or does not exist",
                 )
+            if not pending_data.app_id:
+                # Workspace usage may have changed since the pending import was staged.
+                self._check_app_quota(account)
             data = yaml.safe_load(pending_data.yaml_content)
             self._warnings = list(pending_data.warnings)
 
@@ -508,7 +530,7 @@ class AppDslService:
                 warnings=self._warnings,
             )
 
-        except (NoPermissionError, DraftChangedError):
+        except (NoPermissionError, DraftChangedError, AppQuotaCheckError):
             raise
 
         except Exception as e:
