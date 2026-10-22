@@ -1,7 +1,9 @@
 import json
 
+import pytest
 from werkzeug import Request
 from werkzeug.datastructures import Headers
+from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.test import EnvironBuilder
 
 from core.plugin.impl.oauth import OAuthHandler
@@ -73,3 +75,21 @@ def test_oauth_convert_request_to_raw_data_with_json_body() -> None:
     assert b'"code": "abc123"' in raw_request_bytes
     assert b'"state": "xyz789"' in raw_request_bytes
     assert b'"grant_type": "authorization_code"' in raw_request_bytes
+
+
+def test_get_credentials_preserves_error_wrapper_when_callback_body_exceeds_limit() -> None:
+    with Request.from_values(method="POST", data="over-limit") as request:
+        request.max_content_length = 1
+
+        with pytest.raises(ValueError, match="Error getting credentials: 413") as raised:
+            OAuthHandler().get_credentials(
+                tenant_id="tenant-id",
+                user_id="user-id",
+                plugin_id="langgenius/github",
+                provider="github",
+                redirect_uri="https://console.example.test/oauth/callback",
+                system_credentials={},
+                request=request,
+            )
+
+    assert isinstance(raised.value.__cause__, RequestEntityTooLarge)

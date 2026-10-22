@@ -1105,6 +1105,18 @@ export const zTriggerProviderErrorResponse = z.object({
 })
 
 /**
+ * TriggerOauthProviderError
+ *
+ * The trigger provider could not complete OAuth authorization.
+ */
+export const zTriggerOauthProviderError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_oauth_provider_error'),
+    status: z.literal(502),
+  }),
+)
+
+/**
  * TriggerSubscriptionVerifyPayload
  */
 export const zTriggerSubscriptionVerifyPayload = z.object({

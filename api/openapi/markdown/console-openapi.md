@@ -8482,7 +8482,7 @@ Initiate OAuth login process
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/trigger/callback
-**Handle OAuth callback for trigger provider**
+**Complete the cookie-bound flow without requiring a Console login**
 
 #### Parameters
 
@@ -8495,6 +8495,9 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to OAuth callback page |  |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[TriggerOauthContextInvalidError](#triggeroauthcontextinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerOauthProviderError](#triggeroauthprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /oauth/provider
@@ -15089,6 +15092,8 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth authorization URL generated successfully | **application/json**: [TriggerOAuthAuthorizeResponse](#triggeroauthauthorizeresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TriggerOauthClientConfigInvalidError](#triggeroauthclientconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [TriggerOauthProviderError](#triggeroauthprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}
@@ -28580,6 +28585,22 @@ The stored trigger OAuth client configuration is invalid.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TriggerOauthClientConfigInvalidError |  | The stored trigger OAuth client configuration is invalid. |  |
+
+#### TriggerOauthContextInvalidError
+
+The trigger OAuth context is missing, expired or invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthContextInvalidError |  | The trigger OAuth context is missing, expired or invalid. |  |
+
+#### TriggerOauthProviderError
+
+The trigger provider could not complete OAuth authorization.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerOauthProviderError |  | The trigger provider could not complete OAuth authorization. |  |
 
 #### TriggerProviderApiEntity
 
