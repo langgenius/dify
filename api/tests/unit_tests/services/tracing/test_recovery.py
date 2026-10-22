@@ -1044,8 +1044,7 @@ def test_workflow_recovery_requires_committed_terminal_state(
         assert app is not None
         app.created_by = owner_id
         session.add(make_account(account_id=owner_id))
-        session.add(
-            WorkflowRun(
+        trace_workflow_record = WorkflowRun(
                 id=workflow_run_id,
                 tenant_id=case.collection.run.tenant_id,
                 app_id=app.id,
@@ -1062,13 +1061,13 @@ def test_workflow_recovery_requires_committed_terminal_state(
                 else None,
                 created_by=owner_id,
                 created_by_role=CreatorUserRole.ACCOUNT,
-                created_at=case.now - timedelta(seconds=30),
                 finished_at=case.now - timedelta(seconds=10) if finished else None,
                 elapsed_time=20,
                 total_tokens=0,
                 total_steps=0,
             )
-        )
+        trace_workflow_record.created_at = case.now - timedelta(seconds=30)
+        session.add(trace_workflow_record)
     run = case.collection.repository.start(
         tenant_id=case.collection.run.tenant_id,
         app_id=case.collection.run.app_id,
