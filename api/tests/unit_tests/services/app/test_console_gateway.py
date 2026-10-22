@@ -10,10 +10,11 @@ from zipfile import ZipFile
 import pytest
 import yaml
 from blinker import Namespace
-from sqlalchemy import Engine, event, select
+from sqlalchemy import Engine, event, select, update
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.plugin.entities.plugin import PluginDependency, PluginInstallation
 from core.plugin.impl.plugin import PluginInstaller
 from enums import CloudPlan, DeploymentEdition
@@ -31,7 +32,7 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
@@ -59,6 +60,7 @@ from services.entities.dsl_entities import (
     Import,
     ImportStatus,
 )
+from services.errors.app import WorkflowNotFoundError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
@@ -528,6 +530,153 @@ def test_dsl_export_uses_owned_short_session_and_preserves_selectors(
     assert len(calls) == 1
 
 
+def _transfer_gateway(factory: sessionmaker[Session]) -> AppTransferGateway:
+    return AppTransferGateway(
+        session_factory=factory,
+        dsl_factory=AppDslService,
+        packages=AppPackageService(),
+        agent_packages=RosterAgentPackageExporter(),
+        agent_importer=RosterAgentPackageImporter(),
+        recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
+    )
+
+
+TRIGGER_GRAPH = json.dumps(
+    {
+        "nodes": [
+            {"id": "t", "data": {"type": "trigger-plugin", "plugin_id": "acme/trigger"}},
+            {"id": "bad", "data": {"type": "tool"}},
+        ],
+        "edges": [],
+    }
+)
+EMPTY_GRAPH = '{"nodes":[],"edges":[]}'
+
+
+def _seed_draft_app(
+    factory: sessionmaker[Session], mode: AppMode, *, graph: str | None = EMPTY_GRAPH
+) -> tuple[str, str, str]:
+    app_id, workspace, actor = str(uuid4()), str(uuid4()), str(uuid4())
+    with factory.begin() as session:
+        app = App(id=app_id, tenant_id=workspace, name="Example", mode=mode, enable_site=True, enable_api=True)
+        session.add(app)
+        session.flush()
+        if mode in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
+            if graph is not None:
+                session.add(
+                    Workflow(
+                        tenant_id=workspace,
+                        app_id=app_id,
+                        type=WorkflowType.WORKFLOW,
+                        version=Workflow.VERSION_DRAFT,
+                        graph=graph,
+                        features="{}",
+                        created_by=actor,
+                    )
+                )
+        elif mode == AppMode.AGENT:
+            AgentRosterService(session).create_backing_agent_for_app(
+                tenant_id=workspace,
+                account_id=actor,
+                app_id=app_id,
+                name="Example",
+                initial_soul=AgentSoulConfig(
+                    model=AgentSoulModelConfig(
+                        plugin_id="langgenius/openai",
+                        model_provider="langgenius/openai/openai",
+                        model="example",
+                    )
+                ),
+            )
+        else:
+            config = AppModelConfig(app_id=app_id, model='{"provider":"langgenius/openai/openai","name":"example"}')
+            session.add(config)
+            session.flush()
+            app.app_model_config_id = config.id
+    return app_id, workspace, actor
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.AGENT],
+)
+@pytest.mark.parametrize("remote_fails", [False, True])
+def test_draft_dependency_check_reads_the_draft_and_releases_the_connection(
+    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, mode: AppMode, remote_fails: bool
+) -> None:
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
+    app_id, workspace, actor = _seed_draft_app(factory, mode, graph=TRIGGER_GRAPH)
+    checked_out: set[object] = set()
+    calls: list[list[str]] = []
+
+    def checkout(connection: object, *_args: object) -> None:
+        checked_out.add(connection)
+
+    def checkin(connection: object, *_args: object) -> None:
+        checked_out.remove(connection)
+
+    def fetch_plugins(_self: PluginInstaller, tenant_id: str, plugin_ids: list[str]) -> list[PluginInstallation]:
+        assert tenant_id == workspace
+        assert not checked_out, "Plugin daemon I/O must run after returning the database connection"
+        calls.append(plugin_ids)
+        if remote_fails:
+            raise RuntimeError("Plugin daemon unavailable")
+        return []
+
+    monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", fetch_plugins)
+    monkeypatch.setattr(dify_config, "MARKETPLACE_ENABLED", False)
+    gateway = _transfer_gateway(factory)
+    context = RequestContext("r", None, actor, workspace)
+    expected = {AppMode.WORKFLOW: ["acme/trigger"], AppMode.ADVANCED_CHAT: ["acme/trigger"]}.get(
+        mode, ["langgenius/openai"]
+    )
+
+    event.listen(sqlite_engine, "checkout", checkout)
+    event.listen(sqlite_engine, "checkin", checkin)
+    try:
+        if remote_fails:
+            with pytest.raises(RuntimeError, match="Plugin daemon unavailable"):
+                gateway.check_draft_dependencies(context, app_id)
+        else:
+            assert gateway.check_draft_dependencies(context, app_id).unresolved_plugin_ids == expected
+        assert calls == [expected]
+        assert not checked_out
+    finally:
+        event.remove(sqlite_engine, "checkout", checkout)
+        event.remove(sqlite_engine, "checkin", checkin)
+
+
+def test_draft_dependency_check_sees_a_draft_edited_after_import(
+    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
+    app_id, workspace, actor = _seed_draft_app(factory, AppMode.WORKFLOW)
+    monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", lambda *_args: [])
+    monkeypatch.setattr(dify_config, "MARKETPLACE_ENABLED", False)
+    gateway = _transfer_gateway(factory)
+    context = RequestContext("r", None, actor, workspace)
+
+    assert gateway.check_draft_dependencies(context, app_id).unresolved_plugin_ids == []
+    with factory.begin() as session:
+        session.execute(update(Workflow).where(Workflow.app_id == app_id).values(graph=TRIGGER_GRAPH))
+    assert gateway.check_draft_dependencies(context, app_id).unresolved_plugin_ids == ["acme/trigger"]
+
+
+def test_draft_dependency_check_rejects_an_app_outside_the_workspace(sqlite_engine: Engine) -> None:
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
+    app_id, _workspace, actor = _seed_draft_app(factory, AppMode.WORKFLOW)
+    context = RequestContext("r", None, actor, str(uuid4()))
+    with pytest.raises(ConsoleAppNotFoundError):
+        _transfer_gateway(factory).check_draft_dependencies(context, app_id)
+
+
+def test_draft_dependency_check_without_a_draft_raises_workflow_not_found(sqlite_engine: Engine) -> None:
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
+    app_id, workspace, actor = _seed_draft_app(factory, AppMode.WORKFLOW, graph=None)
+    with pytest.raises(WorkflowNotFoundError):
+        _transfer_gateway(factory).check_draft_dependencies(RequestContext("r", None, actor, workspace), app_id)
+
+
 @pytest.mark.parametrize(
     "mode",
     [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.AGENT],
@@ -583,14 +732,7 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
         return []
 
     monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", fetch_plugins)
-    gateway = AppTransferGateway(
-        session_factory=factory,
-        dsl_factory=AppDslService,
-        packages=AppPackageService(),
-        agent_packages=RosterAgentPackageExporter(),
-        agent_importer=RosterAgentPackageImporter(),
-        recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
-    )
+    gateway = _transfer_gateway(factory)
     exports = AppExportService(
         apps=AppExportRepository(session_factory=factory), serialize=AppDslService.serialize_export_data
     )

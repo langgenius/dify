@@ -42,7 +42,7 @@ from services.app.console_service import (
 )
 from services.app.import_service import AppDefinitionImports
 from services.app.response_gateway import AppResponseGateway
-from services.app_dsl_service import AppDslService, initialize_imported_app_creator_access
+from services.app_dsl_service import AppDslService, DraftDependencyCheck, initialize_imported_app_creator_access
 from services.app_import_source import download_app_import_source, try_read_yaml
 from services.app_package_service import AppPackageService
 from services.app_service import AppService
@@ -388,6 +388,15 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
     @override
     def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult:
         return AppDslService.check_app_dependencies(tenant_id=context.active_workspace_id, app_id=app_id)
+
+    @override
+    def check_draft_dependencies(self, context: RequestContext, app_id: str) -> DraftDependencyCheck:
+        with self._session_factory() as session:
+            app = require_console_app(session, context, app_id)
+            prepared = self._dsl_factory(session).load_export_data(app_model=app, session=session)
+        return AppDslService.find_missing_dependencies(
+            tenant_id=prepared.tenant_id, plugin_ids=prepared.dependency_identifiers
+        )
 
     @override
     def export_dsl(self, context: RequestContext, app_id: str, options: AppExportOptions) -> str:
