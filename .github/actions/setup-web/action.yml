@@ -14,6 +14,9 @@ runs:
   steps:
     - name: Setup pnpm and Node.js
       uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+      env:
+        # pnpm/setup downloads its executable with Node fetch, which must honor runner proxies.
+        NODE_USE_ENV_PROXY: '1'
       with:
         install: false
     - name: Setup Vite+
