@@ -302,17 +302,19 @@ class TestOpsTraceEndpoints:
             lambda: SimpleNamespace(app_tracing_configs=tracing_configs),
         )
 
-        with app.test_request_context(
-            "/",
-            json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
+        with (
+            app.test_request_context(
+                "/",
+                json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
+            ),
+            pytest.raises(TracingConfigVerificationFailedError),
         ):
-            with pytest.raises(TracingConfigVerificationFailedError):
-                method(
-                    api,
-                    TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"}),
-                    _make_request_context(),
-                    uuid.UUID(APP_ID),
-                )
+            method(
+                api,
+                TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"}),
+                _make_request_context(),
+                uuid.UUID(APP_ID),
+            )
 
     def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
@@ -325,14 +327,13 @@ class TestOpsTraceEndpoints:
             lambda: SimpleNamespace(app_tracing_configs=tracing_configs),
         )
 
-        with app.test_request_context("/?tracing_provider=langfuse"):
-            with pytest.raises(TracingConfigNotFoundError):
-                method(
-                    api,
-                    TraceProviderQuery(tracing_provider="langfuse"),
-                    _make_request_context(),
-                    uuid.UUID(APP_ID),
-                )
+        with app.test_request_context("/?tracing_provider=langfuse"), pytest.raises(TracingConfigNotFoundError):
+            method(
+                api,
+                TraceProviderQuery(tracing_provider="langfuse"),
+                _make_request_context(),
+                uuid.UUID(APP_ID),
+            )
 
 
 class TestSiteEndpoints:

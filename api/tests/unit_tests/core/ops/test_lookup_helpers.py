@@ -47,9 +47,11 @@ def orm_session(sqlite_engine: Engine) -> Iterator[Session]:
     tables = [model.metadata.tables[model.__tablename__] for model in models]
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
 
-    with patch.object(type(db), "engine", new_callable=PropertyMock, return_value=sqlite_engine):
-        with Session(sqlite_engine, expire_on_commit=False) as session:
-            yield session
+    with (
+        patch.object(type(db), "engine", new_callable=PropertyMock, return_value=sqlite_engine),
+        Session(sqlite_engine, expire_on_commit=False) as session,
+    ):
+        yield session
 
 
 def _persist_app(session: Session, *, tenant_id: str, name: str = "MyApp") -> App:

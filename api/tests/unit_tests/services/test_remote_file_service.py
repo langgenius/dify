@@ -128,9 +128,11 @@ def test_fetch_info_translates_known_request_failures(
     source_error: Exception,
     service_error: type[RemoteFileError],
 ) -> None:
-    with patch("services.remote_file_service.remote_fetcher.make_request", side_effect=source_error):
-        with pytest.raises(service_error) as error_info:
-            remote_file_service.fetch_info(url=REMOTE_URL)
+    with (
+        patch("services.remote_file_service.remote_fetcher.make_request", side_effect=source_error),
+        pytest.raises(service_error) as error_info,
+    ):
+        remote_file_service.fetch_info(url=REMOTE_URL)
 
     assert error_info.value.__cause__ is source_error
 
@@ -140,9 +142,11 @@ def test_fetch_info_rejects_invalid_url_without_requesting_it(
     remote_file_service: RemoteFileService,
     url: str,
 ) -> None:
-    with patch("services.remote_file_service.remote_fetcher.make_request") as make_request:
-        with pytest.raises(RemoteFileInvalidUrlError):
-            remote_file_service.fetch_info(url=url)
+    with (
+        patch("services.remote_file_service.remote_fetcher.make_request") as make_request,
+        pytest.raises(RemoteFileInvalidUrlError),
+    ):
+        remote_file_service.fetch_info(url=url)
 
     make_request.assert_not_called()
 
@@ -150,9 +154,11 @@ def test_fetch_info_rejects_invalid_url_without_requesting_it(
 def test_fetch_info_does_not_translate_unknown_failure(remote_file_service: RemoteFileService) -> None:
     source_error = RuntimeError("database failure while resolving a signed file URL")
 
-    with patch("services.remote_file_service.remote_fetcher.make_request", side_effect=source_error):
-        with pytest.raises(RuntimeError) as error_info:
-            remote_file_service.fetch_info(url=REMOTE_URL)
+    with (
+        patch("services.remote_file_service.remote_fetcher.make_request", side_effect=source_error),
+        pytest.raises(RuntimeError) as error_info,
+    ):
+        remote_file_service.fetch_info(url=REMOTE_URL)
 
     assert error_info.value is source_error
 
@@ -175,17 +181,21 @@ def test_fetch_info_classifies_remote_status(
     request = httpx.Request("HEAD", REMOTE_URL)
     response = httpx.Response(status_code, request=request, text="upstream response must not reach the client")
 
-    with patch("services.remote_file_service.remote_fetcher.make_request", return_value=response):
-        with pytest.raises(service_error):
-            remote_file_service.fetch_info(url=REMOTE_URL)
+    with (
+        patch("services.remote_file_service.remote_fetcher.make_request", return_value=response),
+        pytest.raises(service_error),
+    ):
+        remote_file_service.fetch_info(url=REMOTE_URL)
 
 
 def test_fetch_info_rejects_invalid_content_length(remote_file_service: RemoteFileService) -> None:
     response = _response("HEAD", httpx.codes.OK, headers={"Content-Length": "not-a-number"})
 
-    with patch("services.remote_file_service.remote_fetcher.make_request", return_value=response):
-        with pytest.raises(RemoteFileInvalidResponseError) as error_info:
-            remote_file_service.fetch_info(url=REMOTE_URL)
+    with (
+        patch("services.remote_file_service.remote_fetcher.make_request", return_value=response),
+        pytest.raises(RemoteFileInvalidResponseError) as error_info,
+    ):
+        remote_file_service.fetch_info(url=REMOTE_URL)
 
     assert isinstance(error_info.value.__cause__, ValueError)
 
@@ -292,9 +302,9 @@ def test_upload_rejects_failed_content_download(
             side_effect=[head_response, content_response],
         ),
         patch("services.remote_file_service.guess_file_info_from_response", return_value=file_info),
+        pytest.raises(RemoteFileUnavailableError),
     ):
-        with pytest.raises(RemoteFileUnavailableError):
-            remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
+        remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
     upload.assert_not_called()
 
@@ -309,9 +319,9 @@ def test_upload_rejects_invalid_remote_metadata(
     with (
         patch("services.remote_file_service.remote_fetcher.make_request", return_value=response),
         patch("services.remote_file_service.guess_file_info_from_response", side_effect=metadata_error),
+        pytest.raises(RemoteFileInvalidResponseError) as error_info,
     ):
-        with pytest.raises(RemoteFileInvalidResponseError) as error_info:
-            remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
+        remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
     assert error_info.value.__cause__ is metadata_error
     upload.assert_not_called()
@@ -327,9 +337,9 @@ def test_upload_does_not_translate_unknown_metadata_failure(
     with (
         patch("services.remote_file_service.remote_fetcher.make_request", return_value=response),
         patch("services.remote_file_service.guess_file_info_from_response", side_effect=source_error),
+        pytest.raises(RuntimeError) as error_info,
     ):
-        with pytest.raises(RuntimeError) as error_info:
-            remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
+        remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
     assert error_info.value.__cause__ is source_error
     upload.assert_not_called()
@@ -345,9 +355,9 @@ def test_upload_rejects_remote_filename_with_path_separator(
     with (
         patch("services.remote_file_service.remote_fetcher.make_request", return_value=response),
         patch("services.remote_file_service.guess_file_info_from_response", return_value=file_info),
+        pytest.raises(RemoteFileInvalidResponseError),
     ):
-        with pytest.raises(RemoteFileInvalidResponseError):
-            remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
+        remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
     upload.assert_not_called()
 
@@ -365,9 +375,9 @@ def test_upload_rejects_file_that_exceeds_size_limit(
     with (
         patch("services.remote_file_service.remote_fetcher.make_request", return_value=response),
         patch("services.remote_file_service.guess_file_info_from_response", return_value=file_info),
+        pytest.raises(FileTooLargeError),
     ):
-        with pytest.raises(FileTooLargeError):
-            remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
+        remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
     size_check.assert_called_once_with(extension=".pdf", file_size=1024)
     upload.assert_not_called()

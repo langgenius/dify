@@ -119,16 +119,18 @@ def test_invoke_creates_callback_and_converts_messages(runtime: DifyToolNodeRunt
 def test_invoke_maps_plugin_errors_to_graph_errors(runtime: DifyToolNodeRuntime) -> None:
     invoke_error = PluginInvokeError('{"error_type":"RateLimit","message":"too many"}')
 
-    with patch.object(ToolEngine, "generic_invoke", side_effect=invoke_error):
-        with pytest.raises(ToolRuntimeInvocationError, match="An error occurred in the provider"):
-            list(
-                runtime.invoke(
-                    tool_runtime=ToolRuntimeHandle(raw=MagicMock()),
-                    tool_parameters={},
-                    workflow_call_depth=0,
-                    provider_name="provider",
-                )
+    with (
+        patch.object(ToolEngine, "generic_invoke", side_effect=invoke_error),
+        pytest.raises(ToolRuntimeInvocationError, match="An error occurred in the provider"),
+    ):
+        list(
+            runtime.invoke(
+                tool_runtime=ToolRuntimeHandle(raw=MagicMock()),
+                tool_parameters={},
+                workflow_call_depth=0,
+                provider_name="provider",
             )
+        )
 
 
 def test_get_usage_normalizes_dict_payload(runtime: DifyToolNodeRuntime) -> None:

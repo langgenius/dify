@@ -180,9 +180,11 @@ class TestPluginRuntimeExecution:
 
     @pytest.mark.parametrize("timeout_seconds", [0.0, -1.0])
     def test_request_timeout_override_rejects_non_positive_values(self, timeout_seconds):
-        with pytest.raises(ValueError, match="greater than zero"):
-            with use_plugin_daemon_request_timeout(timeout_seconds):
-                pass
+        with (
+            pytest.raises(ValueError, match="greater than zero"),
+            use_plugin_daemon_request_timeout(timeout_seconds),
+        ):
+            pass
 
     def test_request_connection_error(self, plugin_client, mock_config):
         """Test handling of connection errors during request."""
@@ -563,10 +565,12 @@ class TestPluginRuntimeErrorHandling:
             500, request=httpx.Request("GET", "http://127.0.0.1:5002/plugin/test-tenant/test")
         )
 
-        with patch("httpx.request", return_value=mock_response, autospec=True):
+        with (
+            patch("httpx.request", return_value=mock_response, autospec=True),
+            pytest.raises(PluginDaemonInternalServerError),
+        ):
             # Act & Assert
-            with pytest.raises(PluginDaemonInternalServerError):
-                plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
+            plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
 
     def test_empty_data_response_error(self, plugin_client, mock_config):
         """Test handling of empty data in successful response."""
@@ -997,16 +1001,18 @@ class TestPluginRuntimeEdgeCases:
         # Arrange
         mock_response = httpx.Response(200, content=b"invalid JSON")
 
-        with patch("httpx.request", return_value=mock_response, autospec=True):
-            # Act & Assert
-            with pytest.raises(
+        with (
+            patch("httpx.request", return_value=mock_response, autospec=True),
+            pytest.raises(
                 ValueError,
                 match=(
                     "Failed to parse response from plugin daemon to "
                     "PluginDaemonBasicResponse \\[bool\\], url: plugin/test\\-tenant/test"
                 ),
-            ):
-                plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
+            ),
+        ):
+            # Act & Assert
+            plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
 
     def test_invalid_response_structure(self, plugin_client, mock_config):
         """Test handling of invalid response structure."""
@@ -1014,16 +1020,18 @@ class TestPluginRuntimeEdgeCases:
         # Missing required fields in response
         mock_response = httpx.Response(200, json={"invalid": "structure"})
 
-        with patch("httpx.request", return_value=mock_response, autospec=True):
-            # Act & Assert
-            with pytest.raises(
+        with (
+            patch("httpx.request", return_value=mock_response, autospec=True),
+            pytest.raises(
                 ValueError,
                 match=(
                     "Failed to parse response from plugin daemon to "
                     "PluginDaemonBasicResponse \\[bool\\], url: plugin/test\\-tenant/test"
                 ),
-            ):
-                plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
+            ),
+        ):
+            # Act & Assert
+            plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
 
     def test_streaming_with_invalid_json_line(self, plugin_client, mock_config):
         """Test streaming with invalid JSON in one line."""
@@ -1762,10 +1770,12 @@ class TestPluginInstallerAdvanced:
         # Arrange
         mock_response = httpx.Response(404)
 
-        with patch("httpx.request", return_value=mock_response, autospec=True):
+        with (
+            patch("httpx.request", return_value=mock_response, autospec=True),
+            pytest.raises(PluginDaemonClientSideError),
+        ):
             # Act & Assert - Should raise PluginDaemonClientSideError for 404
-            with pytest.raises(PluginDaemonClientSideError):
-                installer.fetch_plugin_readme("test-tenant", "test-org/test-plugin", "en")
+            installer.fetch_plugin_readme("test-tenant", "test-org/test-plugin", "en")
 
     def test_list_plugins_with_pagination(self, installer, mock_config):
         """Test plugin listing with pagination."""

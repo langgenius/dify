@@ -158,9 +158,8 @@ class TestWorkflowHumanInputFormApi:
         handler = unwrap(api.get)
         app_model = _app()
 
-        with app.test_request_context("/form/human_input/token-1", method="GET"):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, form_token="token-1")
+        with app.test_request_context("/form/human_input/token-1", method="GET"), pytest.raises(NotFound):
+            handler(api, app_model=app_model, form_token="token-1")
 
     @pytest.mark.parametrize(
         "recipient_type",
@@ -192,9 +191,8 @@ class TestWorkflowHumanInputFormApi:
         handler = unwrap(api.get)
         app_model = _app()
 
-        with app.test_request_context("/form/human_input/token-1", method="GET"):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, form_token="token-1")
+        with app.test_request_context("/form/human_input/token-1", method="GET"), pytest.raises(NotFound):
+            handler(api, app_model=app_model, form_token="token-1")
 
         service_mock.ensure_form_active.assert_not_called()
 

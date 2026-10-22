@@ -510,9 +510,8 @@ class TestDatasetListApiPost:
         mock_validate_token.return_value = SimpleNamespace(tenant_id=tenant.id)
         mock_feature_svc.get_knowledge_rate_limit.return_value = SimpleNamespace(enabled=False)
 
-        with app.test_request_context("/datasets", method="POST", json={}):
-            with pytest.raises(UnprocessableEntity):
-                DatasetListApi().post(tenant_id=tenant.id)
+        with app.test_request_context("/datasets", method="POST", json={}), pytest.raises(UnprocessableEntity):
+            DatasetListApi().post(tenant_id=tenant.id)
 
 
 # ---------------------------------------------------------------------------

@@ -910,13 +910,15 @@ def _invoke_oauth_callback(
     ctx = {"user_id": "user-oauth", "tenant_id": "tenant-oauth", "plugin_id": "langgenius/github", "provider": "github"}
     if stored_visibility is not None:
         ctx["visibility"] = stored_visibility
-    with app.test_request_context(
-        f"/oauth/plugin/{provider}/tool/callback",
-        method="GET",
-        headers={"Cookie": "context_id=ctx-id"},
+    with (
+        app.test_request_context(
+            f"/oauth/plugin/{provider}/tool/callback",
+            method="GET",
+            headers={"Cookie": "context_id=ctx-id"},
+        ),
+        patch.object(controller_module.OAuthProxyService, "use_proxy_context", return_value=ctx),
     ):
-        with patch.object(controller_module.OAuthProxyService, "use_proxy_context", return_value=ctx):
-            return unwrap(api.get)(api, provider=provider)
+        return unwrap(api.get)(api, provider=provider)
 
 
 def test_tool_oauth_callback_rejects_replaced_package_before_dispatch(
@@ -940,9 +942,11 @@ def test_tool_oauth_callback_rejects_replaced_package_before_dispatch(
 
     monkeypatch.setattr(controller_module.OAuthHandler, "get_credentials", unexpected_dispatch)
     api = controller_module.ToolOAuthCallback()
-    with app.test_request_context("/", headers={"Cookie": "context_id=ctx-id"}):
-        with pytest.raises(Forbidden, match="Plugin changed"):
-            unwrap(api.get)(api, provider=_OAUTH_PROVIDER_PATH)
+    with (
+        app.test_request_context("/", headers={"Cookie": "context_id=ctx-id"}),
+        pytest.raises(Forbidden, match="Plugin changed"),
+    ):
+        unwrap(api.get)(api, provider=_OAUTH_PROVIDER_PATH)
 
 
 @contextmanager

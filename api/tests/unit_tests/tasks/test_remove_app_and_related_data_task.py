@@ -366,9 +366,11 @@ class TestDeleteDraftVariableOffloadData:
             "Database error"
         )
 
-        with patch("tasks.remove_app_and_related_data_task.session_factory", mock_session_factory):
-            with caplog.at_level(logging.ERROR):
-                result = _delete_draft_variable_offload_data(["file-1"])
+        with (
+            patch("tasks.remove_app_and_related_data_task.session_factory", mock_session_factory),
+            caplog.at_level(logging.ERROR),
+        ):
+            result = _delete_draft_variable_offload_data(["file-1"])
 
         assert result == 0
         assert "Error deleting draft variable offload data:" in caplog.text

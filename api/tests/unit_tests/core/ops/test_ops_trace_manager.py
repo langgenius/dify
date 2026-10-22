@@ -478,9 +478,11 @@ def test_provider_loader_identifies_missing_optional_dependency(module_name: str
         for cached_name in list(sys.modules):
             if cached_name.partition(".")[0] in {"dify_trace_weave", "weave"}:
                 del sys.modules[cached_name]
-        with patch.dict(sys.modules, {module_name: None}):
-            with pytest.raises(TraceProviderNotInstalledError, match=f"weave.*{module_name}") as caught:
-                module.OpsTraceProviderConfigMap()["weave"]
+        with (
+            patch.dict(sys.modules, {module_name: None}),
+            pytest.raises(TraceProviderNotInstalledError, match=f"weave.*{module_name}") as caught,
+        ):
+            module.OpsTraceProviderConfigMap()["weave"]
 
     cause = caught.value.__cause__
     assert isinstance(cause, ModuleNotFoundError)

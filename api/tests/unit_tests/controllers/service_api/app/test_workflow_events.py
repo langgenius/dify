@@ -89,9 +89,11 @@ class TestWorkflowEventsApi:
         app_model = _app(mode=AppMode.CHAT)
         end_user = _end_user()
 
-        with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
-            with pytest.raises(NotWorkflowAppError):
-                handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
+        with (
+            app.test_request_context("/workflow/run-1/events?user=u1", method="GET"),
+            pytest.raises(NotWorkflowAppError),
+        ):
+            handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
     def test_workflow_run_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
         _mock_repo_for_run(monkeypatch, workflow_run=None, sqlite_engine=sqlite_engine)
@@ -100,9 +102,8 @@ class TestWorkflowEventsApi:
         app_model = _app()
         end_user = _end_user()
 
-        with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
+        with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"), pytest.raises(NotFound):
+            handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
     def test_workflow_run_permission_denied(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
@@ -114,9 +115,8 @@ class TestWorkflowEventsApi:
         app_model = _app()
         end_user = _end_user()
 
-        with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
+        with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"), pytest.raises(NotFound):
+            handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
     def test_finished_run_returns_sse(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
         workflow_run = _workflow_run()

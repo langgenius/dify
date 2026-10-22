@@ -94,13 +94,15 @@ def test_rule_code_generate_maps_token_error(app: Flask, monkeypatch: pytest.Mon
 
     monkeypatch.setattr(generator_module.LLMGenerator, "generate_code", _raise)
 
-    with app.test_request_context(
-        "/console/api/rule-code-generate",
-        method="POST",
-        json={"instruction": "do it", "model_config": _model_config_payload()},
+    with (
+        app.test_request_context(
+            "/console/api/rule-code-generate",
+            method="POST",
+            json={"instruction": "do it", "model_config": _model_config_payload()},
+        ),
+        pytest.raises(ProviderNotInitializeError),
     ):
-        with pytest.raises(ProviderNotInitializeError):
-            method(api, RuleCodeGeneratePayload.model_validate(request.get_json()), "t1")
+        method(api, RuleCodeGeneratePayload.model_validate(request.get_json()), "t1")
 
 
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
@@ -292,13 +294,15 @@ def test_instruction_template_invalid_type(app: Flask) -> None:
     api = generator_module.InstructionGenerationTemplateApi()
     method = unwrap(api.post)
 
-    with app.test_request_context(
-        "/console/api/instruction-generate/template",
-        method="POST",
-        json={"type": "unknown"},
+    with (
+        app.test_request_context(
+            "/console/api/instruction-generate/template",
+            method="POST",
+            json={"type": "unknown"},
+        ),
+        pytest.raises(ValueError, match="Invalid type: unknown"),
     ):
-        with pytest.raises(ValueError, match="Invalid type: unknown"):
-            method(api, InstructionTemplatePayload.model_validate(request.get_json()))
+        method(api, InstructionTemplatePayload.model_validate(request.get_json()))
 
 
 # ─ /workflow-generate ─────────────────────────────────────────────────────────
@@ -385,13 +389,15 @@ def test_workflow_generate_maps_provider_token_error(app: Flask, monkeypatch: py
 
     _stub_workflow_service(monkeypatch, raises=ProviderTokenNotInitError("missing token"))
 
-    with app.test_request_context(
-        "/console/api/workflow-generate",
-        method="POST",
-        json=_workflow_generate_payload(),
+    with (
+        app.test_request_context(
+            "/console/api/workflow-generate",
+            method="POST",
+            json=_workflow_generate_payload(),
+        ),
+        pytest.raises(ProviderNotInitializeError),
     ):
-        with pytest.raises(ProviderNotInitializeError):
-            method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
+        method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
 
 def test_workflow_generate_maps_quota_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -403,13 +409,15 @@ def test_workflow_generate_maps_quota_error(app: Flask, monkeypatch: pytest.Monk
 
     _stub_workflow_service(monkeypatch, raises=QuotaExceededError())
 
-    with app.test_request_context(
-        "/console/api/workflow-generate",
-        method="POST",
-        json=_workflow_generate_payload(),
+    with (
+        app.test_request_context(
+            "/console/api/workflow-generate",
+            method="POST",
+            json=_workflow_generate_payload(),
+        ),
+        pytest.raises(ProviderQuotaExceededError),
     ):
-        with pytest.raises(ProviderQuotaExceededError):
-            method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
+        method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
 
 def test_workflow_generate_maps_model_not_support_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -421,13 +429,15 @@ def test_workflow_generate_maps_model_not_support_error(app: Flask, monkeypatch:
 
     _stub_workflow_service(monkeypatch, raises=ModelCurrentlyNotSupportError("not supported"))
 
-    with app.test_request_context(
-        "/console/api/workflow-generate",
-        method="POST",
-        json=_workflow_generate_payload(),
+    with (
+        app.test_request_context(
+            "/console/api/workflow-generate",
+            method="POST",
+            json=_workflow_generate_payload(),
+        ),
+        pytest.raises(ProviderModelCurrentlyNotSupportError),
     ):
-        with pytest.raises(ProviderModelCurrentlyNotSupportError):
-            method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
+        method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
 
 def test_workflow_generate_maps_invoke_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -439,13 +449,15 @@ def test_workflow_generate_maps_invoke_error(app: Flask, monkeypatch: pytest.Mon
 
     _stub_workflow_service(monkeypatch, raises=InvokeError("LLM unreachable"))
 
-    with app.test_request_context(
-        "/console/api/workflow-generate",
-        method="POST",
-        json=_workflow_generate_payload(),
+    with (
+        app.test_request_context(
+            "/console/api/workflow-generate",
+            method="POST",
+            json=_workflow_generate_payload(),
+        ),
+        pytest.raises(CompletionRequestError),
     ):
-        with pytest.raises(CompletionRequestError):
-            method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
+        method(api, WorkflowGeneratePayload.model_validate(request.get_json()), "t1")
 
 
 def test_workflow_generate_accepts_advanced_chat_mode(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

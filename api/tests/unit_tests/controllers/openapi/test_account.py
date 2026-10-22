@@ -31,9 +31,11 @@ def test_revoke_by_id_hides_a_session_the_caller_does_not_own(
     """
     api = AccountSessionByIdApi()
     _stub_account_service(monkeypatch)
-    with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
-        with pytest.raises(NotFound, match="session not found"):
-            api.delete.__handler__(api, _ctx(), session_id=session_id)
+    with (
+        app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"),
+        pytest.raises(NotFound, match="session not found"),
+    ):
+        api.delete.__handler__(api, _ctx(), session_id=session_id)
 
 
 # --- GET /account/sessions query validation. The application service is replaced

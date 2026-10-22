@@ -193,9 +193,8 @@ def test_account_only_routes_reject_resource_token(resource_fixture: ResourceFix
 
 def test_invalid_token_is_unauthorized(resource_fixture: ResourceFixture) -> None:
     flask_app, _, _, _, _ = resource_fixture
-    with flask_app.test_request_context("/"):
-        with pytest.raises(Unauthorized):
-            authenticate_resource_token("sk-invalid")
+    with flask_app.test_request_context("/"), pytest.raises(Unauthorized):
+        authenticate_resource_token("sk-invalid")
 
 
 def test_archived_workspace_is_rejected(resource_fixture: ResourceFixture, sqlite_session: Session) -> None:
@@ -247,11 +246,13 @@ def test_other_workspace_endpoints_reject_resource_token(resource_fixture: Resou
         "detail": WorkspaceByIdApi().get,
         "members": WorkspaceMembersApi().get,
     }
-    with flask_app.test_request_context(
-        "/workspaces", headers={"Authorization": "Bearer sk-test", CATALOG_HEADER: catalog_for(flask_app)[1]}
+    with (
+        flask_app.test_request_context(
+            "/workspaces", headers={"Authorization": "Bearer sk-test", CATALOG_HEADER: catalog_for(flask_app)[1]}
+        ),
+        pytest.raises(Forbidden, match="unsupported_token_type"),
     ):
-        with pytest.raises(Forbidden, match="unsupported_token_type"):
-            methods[endpoint](workspace_id=tenant_id)
+        methods[endpoint](workspace_id=tenant_id)
 
 
 def test_stop_task_rejects_other_token_owner(

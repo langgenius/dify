@@ -139,14 +139,16 @@ def test_human_input_file_upload_route_uses_unified_path() -> None:
 def test_local_upload_requires_authorization_before_reading_files(app: Flask) -> None:
     data = {"file": (BytesIO(b"content"), "sample.txt")}
 
-    with app.test_request_context(
-        "/api/human-input-forms/files",
-        method="POST",
-        data=data,
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/api/human-input-forms/files",
+            method="POST",
+            data=data,
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(InvalidUploadTokenUnauthorizedError),
     ):
-        with pytest.raises(InvalidUploadTokenUnauthorizedError):
-            HumanInputFileUploadApi().post()
+        HumanInputFileUploadApi().post()
 
 
 @pytest.mark.parametrize("separator", ["\xa0", "\x1c", "\v", "\u2003"])
@@ -155,14 +157,16 @@ def test_non_http_whitespace_cannot_bypass_gateway_upload_identity(
 ) -> None:
     service = MagicMock()
     _patch_upload_service(monkeypatch, service)
-    with app.test_request_context(
-        "/api/human-input-forms/files",
-        method="POST",
-        headers={"Authorization": f"Bearer{separator}hitl_upload_token-1"},
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/api/human-input-forms/files",
+            method="POST",
+            headers={"Authorization": f"Bearer{separator}hitl_upload_token-1"},
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(InvalidUploadTokenUnauthorizedError),
     ):
-        with pytest.raises(InvalidUploadTokenUnauthorizedError):
-            HumanInputFileUploadApi().post()
+        HumanInputFileUploadApi().post()
     service.validate_upload_token.assert_not_called()
     service.upload_local_file.assert_not_called()
     service.upload_remote_file.assert_not_called()
@@ -231,14 +235,16 @@ def test_local_upload_missing_file_raises_after_valid_token(monkeypatch: pytest.
     service.validate_upload_token.return_value = _upload_context()
     _patch_upload_service(monkeypatch, service)
 
-    with app.test_request_context(
-        "/api/human-input-forms/files",
-        method="POST",
-        headers={"Authorization": "bearer hitl_upload_token-1"},
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/api/human-input-forms/files",
+            method="POST",
+            headers={"Authorization": "bearer hitl_upload_token-1"},
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(NoFileUploadedError),
     ):
-        with pytest.raises(NoFileUploadedError):
-            HumanInputFileUploadApi().post()
+        HumanInputFileUploadApi().post()
 
     service.validate_upload_token.assert_called_once_with("hitl_upload_token-1")
 
@@ -248,15 +254,17 @@ def test_remote_upload_validates_token_before_fetching_remote_url(monkeypatch: p
     service.validate_upload_token.side_effect = InvalidUploadTokenError()
     _patch_upload_service(monkeypatch, service)
 
-    with app.test_request_context(
-        "/api/human-input-forms/files",
-        method="POST",
-        headers={"Authorization": "Bearer hitl_upload_token-1"},
-        data={"url": "https://example.com/file.txt"},
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/api/human-input-forms/files",
+            method="POST",
+            headers={"Authorization": "Bearer hitl_upload_token-1"},
+            data={"url": "https://example.com/file.txt"},
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(InvalidUploadTokenForbiddenError),
     ):
-        with pytest.raises(InvalidUploadTokenForbiddenError):
-            HumanInputFileUploadApi().post()
+        HumanInputFileUploadApi().post()
 
     service.upload_remote_file.assert_not_called()
 
@@ -307,15 +315,17 @@ def test_remote_upload_maps_remote_file_errors(
     service.upload_remote_file.side_effect = service_error
     _patch_upload_service(monkeypatch, service)
 
-    with app.test_request_context(
-        "/api/human-input-forms/files",
-        method="POST",
-        headers={"Authorization": "Bearer hitl_upload_token-1"},
-        data={"url": "https://example.com/file.txt"},
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/api/human-input-forms/files",
+            method="POST",
+            headers={"Authorization": "Bearer hitl_upload_token-1"},
+            data={"url": "https://example.com/file.txt"},
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(http_error) as raised,
     ):
-        with pytest.raises(http_error) as raised:
-            HumanInputFileUploadApi().post()
+        HumanInputFileUploadApi().post()
 
     assert raised.value.__cause__ is service_error
 
@@ -348,15 +358,17 @@ def test_upload_maps_file_service_errors(
         data = {"file": (BytesIO(b"content"), "sample.txt")}
     _patch_upload_service(monkeypatch, service)
 
-    with app.test_request_context(
-        "/api/human-input-forms/files",
-        method="POST",
-        headers={"Authorization": "Bearer hitl_upload_token-1"},
-        data=data,
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/api/human-input-forms/files",
+            method="POST",
+            headers={"Authorization": "Bearer hitl_upload_token-1"},
+            data=data,
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(http_error) as raised,
     ):
-        with pytest.raises(http_error) as raised:
-            HumanInputFileUploadApi().post()
+        HumanInputFileUploadApi().post()
 
     assert raised.value.__cause__ is service_error
     if isinstance(service_error, FileTooLargeServiceError):

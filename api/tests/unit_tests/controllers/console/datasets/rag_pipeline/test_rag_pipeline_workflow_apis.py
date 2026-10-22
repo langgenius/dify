@@ -305,9 +305,9 @@ class TestDraftWorkflowApi:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
             ),
+            pytest.raises(DraftWorkflowNotExist),
         ):
-            with pytest.raises(DraftWorkflowNotExist):
-                method(api, sqlite_session, pipeline)
+            method(api, sqlite_session, pipeline)
 
     def test_sync_hash_not_match(self, app: Flask) -> None:
         api = DraftRagPipelineApi()
@@ -325,9 +325,9 @@ class TestDraftWorkflowApi:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
             ),
+            pytest.raises(DraftWorkflowNotSync),
         ):
-            with pytest.raises(DraftWorkflowNotSync):
-                method(api, user, pipeline)
+            method(api, user, pipeline)
 
     def test_sync_invalid_text_plain(self, app: Flask) -> None:
         api = DraftRagPipelineApi()
@@ -384,9 +384,9 @@ class TestDraftWorkflowApi:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, user, pipeline, "published-workflow")
+            method(api, user, pipeline, "published-workflow")
 
     def test_restore_published_workflow_to_draft_returns_400_for_draft_source(self, app: Flask) -> None:
         api = RagPipelineDraftWorkflowRestoreApi()
@@ -406,9 +406,9 @@ class TestDraftWorkflowApi:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
             ),
+            pytest.raises(HTTPException) as exc,
         ):
-            with pytest.raises(HTTPException) as exc:
-                method(api, user, pipeline, "draft-workflow")
+            method(api, user, pipeline, "draft-workflow")
 
         assert exc.value.code == 400
         assert exc.value.description == "source workflow must be published"
@@ -449,9 +449,9 @@ class TestDraftRunNodes:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate_single_iteration",
                 side_effect=services.errors.conversation.ConversationNotExistsError(),
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, NodeRunPayload(), user, pipeline, "node")
+            method(api, NodeRunPayload(), user, pipeline, "node")
 
     def test_loop_node_success(self, app: Flask) -> None:
         api = RagPipelineDraftRunLoopNodeApi()
@@ -491,9 +491,9 @@ class TestDraftNodeRun:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
             ),
+            pytest.raises(ValueError, match="Workflow node execution not found"),
         ):
-            with pytest.raises(ValueError, match="Workflow node execution not found"):
-                method(api, NodeRunRequiredPayload(inputs={}), user, pipeline, "node")
+            method(api, NodeRunRequiredPayload(inputs={}), user, pipeline, "node")
 
 
 class TestPublishedPipelineApis:
@@ -652,9 +652,8 @@ class TestDefaultBlockConfigApi:
 
         pipeline = make_pipeline()
 
-        with app.test_request_context("/?q=bad-json"):
-            with pytest.raises(ValueError, match="Invalid filters"):
-                method(api, DefaultBlockConfigQuery(q="bad-json"), pipeline, "llm")
+        with app.test_request_context("/?q=bad-json"), pytest.raises(ValueError, match="Invalid filters"):
+            method(api, DefaultBlockConfigQuery(q="bad-json"), pipeline, "llm")
 
 
 class TestPublishedAllRagPipelineApi:
@@ -688,11 +687,8 @@ class TestPublishedAllRagPipelineApi:
         pipeline = make_pipeline()
         user = make_account(id="u1")
 
-        with (
-            app.test_request_context("/?user_id=u2"),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, WorkflowListQuery(user_id="u2"), user, pipeline)
+        with app.test_request_context("/?user_id=u2"), pytest.raises(Forbidden):
+            method(api, WorkflowListQuery(user_id="u2"), user, pipeline)
 
 
 class TestRagPipelineByIdApi:
@@ -806,9 +802,11 @@ class TestRagPipelineByIdApi:
         pipeline = make_pipeline(tenant_id="t1", workflow_id="active-workflow")
         user = make_account()
 
-        with app.test_request_context("/", method="DELETE"):
-            with pytest.raises(BadRequest, match="currently in use by pipeline"):
-                method(api, user, pipeline, "active-workflow")
+        with (
+            app.test_request_context("/", method="DELETE"),
+            pytest.raises(BadRequest, match="currently in use by pipeline"),
+        ):
+            method(api, user, pipeline, "active-workflow")
 
 
 class TestRagPipelineWorkflowLastRunApi:
@@ -851,9 +849,9 @@ class TestRagPipelineWorkflowLastRunApi:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, pipeline, "node1")
+            method(api, pipeline, "node1")
 
 
 class TestRagPipelineWorkflowRunNodeExecutionListApi:

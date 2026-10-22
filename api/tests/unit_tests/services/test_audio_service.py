@@ -893,14 +893,16 @@ class TestAudioServiceTTS:
             chunk for chunk in [TTSAudioChunk(b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data", "audio/mpeg")]
         )
 
-        with app.test_request_context("/text-to-audio", method="POST"):
-            with pytest.raises(InvokeBadRequestError, match="declared audio/mpeg, detected audio/wav"):
-                AudioService.transcript_tts(
-                    app_model=app_model,
-                    session=sqlite_session,
-                    text="Hello world",
-                    voice="en-US-Neural",
-                )
+        with (
+            app.test_request_context("/text-to-audio", method="POST"),
+            pytest.raises(InvokeBadRequestError, match="declared audio/mpeg, detected audio/wav"),
+        ):
+            AudioService.transcript_tts(
+                app_model=app_model,
+                session=sqlite_session,
+                text="Hello world",
+                voice="en-US-Neural",
+            )
 
     def test_transcript_tts_raises_error_when_text_missing(
         self,

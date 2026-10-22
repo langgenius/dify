@@ -63,12 +63,12 @@ def test_request_download_rejects_unsupported_files() -> None:
         patch("services.file_request_service.bind_file_access_scope", return_value=nullcontext()),
         patch.object(service, "_build_file", return_value=MagicMock(filename="report.pdf", mime_type=None, size=1)),
         patch.object(service._runtime, "resolve_file_uri", return_value=None),
+        pytest.raises(ValueError, match="file does not support signed download"),
     ):
-        with pytest.raises(ValueError, match="file does not support signed download"):
-            service.request_download(
-                tenant_id="tenant-1",
-                user_id="user-1",
-                user_from="account",
-                invoke_from="debugger",
-                file_mapping={"transfer_method": "unknown"},
-            )
+        service.request_download(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            user_from="account",
+            invoke_from="debugger",
+            file_mapping={"transfer_method": "unknown"},
+        )

@@ -142,13 +142,15 @@ def test_preserve_flask_contexts_restores_bindings_after_teardown(caller_value, 
             raise ValueError("teardown failed")
 
     try:
-        with pytest.raises(ValueError, match=f"{failure_stage} failed") if failure_stage else nullcontext():
-            with preserve_flask_contexts(flask_app, captured):
-                assert current_app == flask_app
-                assert test_var.get() == "captured"
-                test_var.set("body")
-                if failure_stage == "body":
-                    raise ValueError("body failed")
+        with (
+            pytest.raises(ValueError, match=f"{failure_stage} failed") if failure_stage else nullcontext(),
+            preserve_flask_contexts(flask_app, captured),
+        ):
+            assert current_app == flask_app
+            assert test_var.get() == "captured"
+            test_var.set("body")
+            if failure_stage == "body":
+                raise ValueError("body failed")
 
         assert teardown_values == ["body"]
         assert current_app == caller_app

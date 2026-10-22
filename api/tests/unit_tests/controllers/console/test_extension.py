@@ -140,9 +140,11 @@ def test_code_based_extension_get_returns_service_data(app: Flask, monkeypatch: 
 
 def test_code_based_extension_get_rejects_a_missing_module(app: Flask) -> None:
     """`module` is required, so this is what covers the decorator's rejection path."""
-    with app.test_request_context("/console/api/code-based-extension", method="GET"):
-        with pytest.raises(UnprocessableEntity):
-            CodeBasedExtensionAPI().get()
+    with (
+        app.test_request_context("/console/api/code-based-extension", method="GET"),
+        pytest.raises(UnprocessableEntity),
+    ):
+        CodeBasedExtensionAPI().get()
 
 
 class TestAPIBasedExtensionAPI:
@@ -198,9 +200,11 @@ class TestAPIBasedExtensionAPI:
         extensions_service.create_extension.side_effect = APIBasedExtensionNameConflictError()
         payload = APIBasedExtensionPayload(name="Docs API", api_endpoint="https://docs.example.com", api_key="secret")
 
-        with app.test_request_context("/console/api/api-based-extension", method="POST"):
-            with pytest.raises(ValueError, match="name must be unique"):
-                unwrap(APIBasedExtensionAPI().post)(APIBasedExtensionAPI(), payload, request_context)
+        with (
+            app.test_request_context("/console/api/api-based-extension", method="POST"),
+            pytest.raises(ValueError, match="name must be unique"),
+        ):
+            unwrap(APIBasedExtensionAPI().post)(APIBasedExtensionAPI(), payload, request_context)
 
 
 class TestAPIBasedExtensionDetailAPI:
@@ -228,9 +232,11 @@ class TestAPIBasedExtensionDetailAPI:
         extensions_service.get_extension.side_effect = APIBasedExtensionNotFoundError()
         extension_id = uuid.uuid4()
 
-        with app.test_request_context(f"/console/api/api-based-extension/{extension_id}", method="GET"):
-            with pytest.raises(ValueError, match="not found"):
-                unwrap(APIBasedExtensionDetailAPI().get)(APIBasedExtensionDetailAPI(), request_context, extension_id)
+        with (
+            app.test_request_context(f"/console/api/api-based-extension/{extension_id}", method="GET"),
+            pytest.raises(ValueError, match="not found"),
+        ):
+            unwrap(APIBasedExtensionDetailAPI().get)(APIBasedExtensionDetailAPI(), request_context, extension_id)
 
     def test_post_keeps_hidden_api_key(
         self, app: Flask, request_context: RequestContext, extensions_service: MagicMock
@@ -298,6 +304,8 @@ class TestAPIBasedExtensionDetailAPI:
         extensions_service.delete_extension.side_effect = APIBasedExtensionNotFoundError()
         extension_id = uuid.uuid4()
 
-        with app.test_request_context(f"/console/api/api-based-extension/{extension_id}", method="DELETE"):
-            with pytest.raises(ValueError, match="not found"):
-                unwrap(APIBasedExtensionDetailAPI().delete)(APIBasedExtensionDetailAPI(), request_context, extension_id)
+        with (
+            app.test_request_context(f"/console/api/api-based-extension/{extension_id}", method="DELETE"),
+            pytest.raises(ValueError, match="not found"),
+        ):
+            unwrap(APIBasedExtensionDetailAPI().delete)(APIBasedExtensionDetailAPI(), request_context, extension_id)
