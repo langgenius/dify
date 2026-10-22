@@ -11,6 +11,7 @@ from flask import Flask, current_app
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.app_config.entities import AppAdditionalFeatures, AppConfig
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueRetrieverResourcesEvent
 from core.app.entities.task_entities import MessageStreamResponse, StreamEvent, TaskStateMetadata, WorkflowTaskState
 from core.app.task_pipeline import message_cycle_manager as message_cycle_manager_module
@@ -21,7 +22,7 @@ from models import model as model_module
 from models.account import Account
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import App, Conversation, MessageAnnotation, MessageFile
+from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
 from tests.unit_tests.model_factories import make_app, make_conversation
 
 
@@ -491,6 +492,50 @@ class TestMessageCycleManagerOptimization:
         assert len(message_cycle_manager._task_state.metadata.retriever_resources) == 2
         assert message_cycle_manager._task_state.metadata.retriever_resources[0].position == 1
         assert message_cycle_manager._task_state.metadata.retriever_resources[1].position == 2
+
+    def test_handle_retriever_resources_deduplicates_within_one_event(self, message_cycle_manager):
+        message_cycle_manager._application_generate_entity.app_config = AppConfig(
+            tenant_id="tenant-1",
+            app_id="app-id",
+            app_mode=AppMode.CHAT,
+            additional_features=AppAdditionalFeatures(show_retrieve_source=True),
+        )
+        message_cycle_manager._task_state = WorkflowTaskState(metadata=TaskStateMetadata(retriever_resources=[]))
+        first = RetrievalSourceMetadata(dataset_id="d1", document_id="doc1", segment_id="segment-1")
+        duplicate = RetrievalSourceMetadata(dataset_id="d1", document_id="doc1", segment_id="segment-2")
+        same_document_in_other_dataset = RetrievalSourceMetadata(
+            dataset_id="d2", document_id="doc1", segment_id="segment-3"
+        )
+
+        message_cycle_manager.handle_retriever_resources(
+            QueueRetrieverResourcesEvent(retriever_resources=[first, duplicate, same_document_in_other_dataset])
+        )
+
+        resources = message_cycle_manager._task_state.metadata.retriever_resources
+        assert [(resource.dataset_id, resource.document_id) for resource in resources] == [
+            ("d1", "doc1"),
+            ("d2", "doc1"),
+        ]
+        assert [resource.position for resource in resources] == [1, 2]
+
+    def test_handle_retriever_resources_keeps_entries_without_document_identity(self, message_cycle_manager):
+        message_cycle_manager._application_generate_entity.app_config = AppConfig(
+            tenant_id="tenant-1",
+            app_id="app-id",
+            app_mode=AppMode.CHAT,
+            additional_features=AppAdditionalFeatures(show_retrieve_source=True),
+        )
+        message_cycle_manager._task_state = WorkflowTaskState(metadata=TaskStateMetadata(retriever_resources=[]))
+        first = RetrievalSourceMetadata(dataset_id="d1", document_id=None, segment_id="segment-1")
+        second = RetrievalSourceMetadata(dataset_id="d1", document_id=None, segment_id="segment-2")
+
+        message_cycle_manager.handle_retriever_resources(
+            QueueRetrieverResourcesEvent(retriever_resources=[first, second])
+        )
+
+        resources = message_cycle_manager._task_state.metadata.retriever_resources
+        assert resources == [first, second]
+        assert [resource.position for resource in resources] == [1, 2]
 
     def test_message_file_to_stream_response_builds_signed_url(self, message_cycle_manager, cycle_db: Session):
         """Build a stream response with a signed tool file URL.
