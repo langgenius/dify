@@ -231,6 +231,7 @@ def test_disabled_bearer_feature_blocks_code_and_account_decisions(
     )
 
     assert response.status_code == 503
+    assert response.json is not None
     assert response.json["code"] == "bearer_auth_disabled"
     assert device_service.mock_calls == []
 

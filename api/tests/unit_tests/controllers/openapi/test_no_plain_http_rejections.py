@@ -40,7 +40,7 @@ def banned_raise_lines(source: str) -> list[int]:
     ]
 
 
-def test_openapi_controllers_raise_openapi_errors_not_plain_werkzeug():
+def test_openapi_controllers_raise_openapi_errors_not_plain_werkzeug() -> None:
     root = Path(controllers.openapi.__file__).parent
     offenders = [
         f"{relative}:{line}"
@@ -74,10 +74,10 @@ CLEAN_SNIPPETS: Final = {
 
 
 @pytest.mark.parametrize("source", FLAGGED_SNIPPETS.values(), ids=FLAGGED_SNIPPETS.keys())
-def test_scanner_flags_plain_werkzeug_raises(source: str):
+def test_scanner_flags_plain_werkzeug_raises(source: str) -> None:
     assert banned_raise_lines(source) == [source.count("\n") + 1]
 
 
 @pytest.mark.parametrize("source", CLEAN_SNIPPETS.values(), ids=CLEAN_SNIPPETS.keys())
-def test_scanner_ignores_other_raises(source: str):
+def test_scanner_ignores_other_raises(source: str) -> None:
     assert banned_raise_lines(source) == []
