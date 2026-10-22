@@ -66,7 +66,7 @@ class InnerKnowledgeRetrieveRetrievalConfig(BaseModel):
 
     mode: Literal["multiple", "single"]
     top_k: int | None = Field(default=None, ge=1)
-    score_threshold: float = 0.0
+    score_threshold: float | None = None
     reranking_mode: str = "reranking_model"
     reranking_enable: bool = True
     reranking_model: InnerKnowledgeRetrieveRerankingModelConfig | None = None
