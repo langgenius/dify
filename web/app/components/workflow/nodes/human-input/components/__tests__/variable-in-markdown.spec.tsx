@@ -174,6 +174,31 @@ describe('variable-in-markdown', () => {
       )
     })
 
+    it.each([undefined, '', 'Removed option'])(
+      'should preview the first option when the default is unavailable (%s)',
+      (defaultValue) => {
+        render(
+          <Note
+            input={{
+              type: InputVarType.select,
+              output_variable_name: 'approval',
+              default_value: defaultValue,
+              option_source: {
+                type: 'constant',
+                selector: [],
+                value: ['Approved', 'Rejected'],
+              },
+            }}
+            nodeName={(nodeId) => nodeId}
+          />,
+        )
+
+        expect(screen.getByRole('combobox', { name: 'human-input-note-select' })).toHaveTextContent(
+          'Approved',
+        )
+      },
+    )
+
     it('should render upload placeholders for file inputs', () => {
       render(
         <Note
