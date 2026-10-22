@@ -3,6 +3,8 @@ import type { BuilderCopyId } from '@dify/contracts/api/console/dify-builder/typ
 import type { Resources } from '@/i18n/resources'
 
 export const builderSceneKeys = {
+  'actions.cancelTest': 'copy.actions.cancelTest',
+  'actions.confirmTestOperation': 'copy.actions.confirmTestOperation',
   'operation.modelFailed': 'copy.operation.modelFailed',
   'test.preparationFailed': 'copy.test.preparationFailed',
   'test.runtimeServiceFailed': 'copy.test.runtimeServiceFailed',

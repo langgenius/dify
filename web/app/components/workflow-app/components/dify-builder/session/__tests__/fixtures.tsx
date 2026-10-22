@@ -214,3 +214,19 @@ export const installAnimationFrameMock = () => {
     callbacks.forEach((callback) => callback(performance.now()))
   }
 }
+
+export const createNativeReceipt = (
+  overrides: Partial<NonNullable<SessionView['test_execution']>> = {},
+): NonNullable<SessionView['test_execution']> => ({
+  evidence_refs: [],
+  generation: 0,
+  native_run_id: 'run-1',
+  native_status: 'running',
+  outcome: null,
+  pending: [],
+  request_id: 'request-1',
+  status: 'running',
+  version: 1,
+  wait_reason: null,
+  ...overrides,
+})

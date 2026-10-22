@@ -29,5 +29,19 @@ export const projectSessionView = (
   next: SessionView,
 ): SessionView | null => {
   if (current?.session_id === next.session_id && next.version < current.version) return null
+  if (current?.session_id === next.session_id && next.version === current.version) {
+    const previous = current.test_execution
+    const incoming = next.test_execution
+    if (
+      previous &&
+      incoming?.request_id === previous.request_id &&
+      (incoming.generation < previous.generation ||
+        (incoming.generation === previous.generation && incoming.version < previous.version) ||
+        (incoming.generation === previous.generation &&
+          incoming.version === previous.version &&
+          (incoming.decision_public_revision ?? 0) < (previous.decision_public_revision ?? 0)))
+    )
+      return null
+  }
   return next
 }
