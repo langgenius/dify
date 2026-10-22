@@ -16,6 +16,8 @@ Streaming ops fold to `{status, text, outputs?, total_tokens?, message_id?, conv
 
 After `submit.run.form`, run its `get.run.event` hint to follow the run; repeat if it suspends again.
 
+To stop a run that is running or waiting on a form: `difyctl stop run --app-id <app_id> --run-id <run_id>`. `run_id` is in the folded result. Chat and completion replies stop with `stop task --task-id <task_id>` from the stream's events.
+
 ## Errors and exit codes
 
 Stderr envelope: `{"error":{"code","message","hint"?,"details"?,"schema"?,"http_status"?,"server"?}}`. `code` is difyctl's (`server_error` for server rejections); the server's code is `error.server.code` (e.g. `dsl_invalid`). `details`: `[{loc,msg}]`.

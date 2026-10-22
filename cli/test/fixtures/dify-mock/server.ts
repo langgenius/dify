@@ -761,6 +761,10 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     )
   })
 
+  app.post('/openapi/v1/apps/:id/runs/:runId:stop', (c) => {
+    return c.json({ result: 'success' })
+  })
+
   app.post('/openapi/v1/apps/:id/tasks/:taskId:stop', (c) => {
     return c.json({ result: 'success' })
   })
@@ -772,13 +776,13 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
         {
           summary: 'Follow the run',
           op: OpId.RunEvents,
-          input: { app_id: c.req.param('id'), task_id: 'wf-run-hitl-1', continue_on_pause: false },
+          input: { app_id: c.req.param('id'), run_id: 'wf-run-hitl-1', continue_on_pause: false },
         },
       ],
     }),
   )
 
-  app.get('/openapi/v1/apps/:id/tasks/:task_id/events', (_c) => sseResponse(hitlResumedResponse()))
+  app.get('/openapi/v1/apps/:id/runs/:run_id/events', (_c) => sseResponse(hitlResumedResponse()))
 
   app.post('/openapi/v1/oauth/device/code', (c) => {
     const scenario = getScenario()

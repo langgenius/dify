@@ -1068,7 +1068,7 @@
         "app_id": "path",
         "continue_on_pause": "query",
         "include_state_snapshot": "query",
-        "task_id": "path"
+        "run_id": "path"
       },
       "deprecated": false,
       "input": {
@@ -1088,17 +1088,17 @@
             "title": "Include State Snapshot",
             "type": "boolean"
           },
-          "task_id": {
+          "run_id": {
             "type": "string"
           }
         },
-        "required": ["app_id", "task_id"],
+        "required": ["app_id", "run_id"],
         "type": "object"
       },
       "internal": false,
       "kind": "sse",
       "method": "GET",
-      "path": "/openapi/v1/apps/{app_id}/tasks/{task_id}/events",
+      "path": "/openapi/v1/apps/{app_id}/runs/{run_id}/events",
       "summary": "Stream the events of a workflow run"
     },
     "describe.run.form": {
@@ -1214,6 +1214,30 @@
       "summary": "Submit a human-input form"
     },
     "stop.run": {
+      "bind": {
+        "app_id": "path",
+        "run_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": "string"
+          }
+        },
+        "required": ["app_id", "run_id"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/runs/{run_id}:stop",
+      "summary": "Stop a running workflow run"
+    },
+    "stop.task": {
       "bind": {
         "app_id": "path",
         "task_id": "path"

@@ -127,7 +127,7 @@ class TestOpenApiWorkflowEventsApi:
         factory_mock = self._bind_repo(monkeypatch, None)
 
         api = OpenApiWorkflowEventsApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
+        with app.test_request_context("/openapi/v1/apps/app-1/runs/wf-run-1/events"):
             with pytest.raises(NotFound):
                 api.get.__handler__(
                     api,
@@ -146,7 +146,7 @@ class TestOpenApiWorkflowEventsApi:
         self._bind_repo(monkeypatch, _make_workflow_run(app_id="other-app"))
 
         api = OpenApiWorkflowEventsApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
+        with app.test_request_context("/openapi/v1/apps/app-1/runs/wf-run-1/events"):
             with pytest.raises(NotFound):
                 api.get.__handler__(
                     api,
@@ -160,7 +160,7 @@ class TestOpenApiWorkflowEventsApi:
         self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.END_USER, created_by="eu-1"))
 
         api = OpenApiWorkflowEventsApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
+        with app.test_request_context("/openapi/v1/apps/app-1/runs/wf-run-1/events"):
             with pytest.raises(NotFound):
                 api.get.__handler__(
                     api,
@@ -176,7 +176,7 @@ class TestOpenApiWorkflowEventsApi:
         self._bind_generators(monkeypatch)
 
         api = OpenApiWorkflowEventsApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
+        with app.test_request_context("/openapi/v1/apps/app-1/runs/wf-run-1/events"):
             resp = api.get.__handler__(
                 api,
                 _context(_make_end_user(), CreatorUserRole.END_USER),
@@ -218,7 +218,7 @@ class TestOpenApiWorkflowEventsApi:
 
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         api = OpenApiWorkflowEventsApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
+        with app.test_request_context("/openapi/v1/apps/app-1/runs/wf-run-1/events"):
             resp = api.get.__handler__(api, ctx, app_id="app-1", run_id="wf-run-1", query=WorkflowEventsQuery())
             ctx.seal()
             body = "".join(resp.response)
@@ -248,7 +248,7 @@ class TestOpenApiWorkflowEventsApi:
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         api = OpenApiWorkflowEventsApi()
         query = WorkflowEventsQuery(include_state_snapshot=include_state_snapshot)
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
+        with app.test_request_context("/openapi/v1/apps/app-1/runs/wf-run-1/events"):
             resp = api.get.__handler__(api, ctx, app_id="app-1", run_id="wf-run-1", query=query)
             ctx.seal()
             body = "".join(resp.response)
@@ -267,7 +267,7 @@ class TestOpenApiWorkflowEventsApi:
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
 
         api = OpenApiWorkflowEventsApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
+        with app.test_request_context("/openapi/v1/apps/app-1/runs/wf-run-1/events"):
             resp = api.get.__handler__(
                 api,
                 _context(_make_account(), CreatorUserRole.ACCOUNT),
