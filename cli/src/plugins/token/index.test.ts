@@ -14,7 +14,6 @@ const LOGIN: Login = {
   workspaceId: null,
   tokenStorage: 'file',
   insecure: false,
-  installationId: null,
 }
 let dir: string
 beforeEach(() => {

@@ -24,8 +24,13 @@ function alreadyRevoked(err: unknown): boolean {
   return err.code === ErrorCode.AuthExpired
 }
 
-// Best-effort server-side revoke, then the local cleanup. Used by `logout`, and by
-// `login` for a previous session the server did not rotate away itself.
+// Shared by `login` (replacing the previous session once a new login succeeds)
+// and `logout` itself: best-effort server-side revoke, then unconditional local
+// cleanup of the token, the cached catalog and the session pin.
+//
+// catalog.clear() must run before session.clear(): the catalog plugin resolves
+// its cache-file path from session.current() the first time it is built, so
+// clearing the session first leaves it unable to find its own file.
 export async function revokeAndClearSession(ctx: CommandContext, login: Login): Promise<void> {
   const streams = await ctx.get(io)
   const httpService = await ctx.get(http)
@@ -34,15 +39,7 @@ export async function revokeAndClearSession(ctx: CommandContext, login: Login): 
   } catch (err) {
     if (!alreadyRevoked(err)) streams.notice(`${REVOKE_FAILED_PREFIX}${errorMessage(err)}`)
   }
-  await clearSession(ctx, login)
-}
 
-// Unconditional local cleanup of the token, the cached catalog and the session pin.
-//
-// catalog.clear() must run before session.clear(): the catalog plugin resolves
-// its cache-file path from session.current() the first time it is built, so
-// clearing the session first leaves it unable to find its own file.
-export async function clearSession(ctx: CommandContext, login: Login): Promise<void> {
   const tokenService = await ctx.get(token)
   await tokenService.remove(login)
 
