@@ -487,7 +487,12 @@ def test_plan_approval_passes_trusted_text_matching_user_supplied_trusted_text_f
 
         @override
         def build_nodes(
-            self, plan_items: list[str], resource_ids: list[str] | None = None, *, trusted_text: str = ""
+            self,
+            plan_items: list[str],
+            resource_ids: list[str] | None = None,
+            *,
+            trusted_text: str = "",
+            reply_language: str | None = None,
         ) -> BuildNodesResult:
             self.build_nodes_calls.append(trusted_text)
             return super().build_nodes(plan_items, resource_ids)
@@ -537,11 +542,20 @@ def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas() -> None:
         "nodes": [{"id": "start", "data": {"type": "start", "title": "Old", "variables": []}}],
         "edges": [],
     }
+
     # Generation produced nothing, WITH a specific reason (the real generator returns
     # e.g. "UNRESOLVED_REFERENCE: ..." / a provider error). The assistant text must carry it.
-    env.agent.build_nodes = lambda plan_items, resource_ids=None, *, trusted_text="": BuildNodesResult(  # noqa: ARG005
-        intents=[], error="UNRESOLVED_REFERENCE: Reference {#node4.x#} not declared"
-    )
+    def build_nodes(
+        plan_items: list[str],
+        resource_ids: list[str] | None = None,
+        *,
+        trusted_text: str = "",
+        reply_language: str | None = None,
+    ) -> BuildNodesResult:
+        del plan_items, resource_ids, trusted_text, reply_language
+        return BuildNodesResult(intents=[], error="UNRESOLVED_REFERENCE: Reference {#node4.x#} not declared")
+
+    env.agent.build_nodes = build_nodes
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
     fc = DifyBuilderContext(plan_items=["x"])
 
@@ -576,9 +590,20 @@ def test_plan_approval_records_diagnostics_in_backend_logs(caplog: pytest.LogCap
             "errors": [{"code": "UNRESOLVED_REFERENCE", "detail": "...", "node_id": "node2"}],
         }
     ]
-    env.agent.build_nodes = lambda plan_items, resource_ids=None, *, trusted_text="": BuildNodesResult(  # noqa: ARG005
-        intents=[], error="Reference {#node2.response#} not declared on node 'node2'", diagnostics=diag
-    )
+
+    def build_nodes(
+        plan_items: list[str],
+        resource_ids: list[str] | None = None,
+        *,
+        trusted_text: str = "",
+        reply_language: str | None = None,
+    ) -> BuildNodesResult:
+        del plan_items, resource_ids, trusted_text, reply_language
+        return BuildNodesResult(
+            intents=[], error="Reference {#node2.response#} not declared on node 'node2'", diagnostics=diag
+        )
+
+    env.agent.build_nodes = build_nodes
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
     fc = DifyBuilderContext(plan_items=["x"])
 
@@ -602,21 +627,32 @@ def test_plan_approval_deletes_pre_existing_start_on_from_scratch_build() -> Non
         "nodes": [{"id": "start", "data": {"type": "start", "title": "Old", "variables": []}}],
         "edges": [],
     }
+
     # generator returns a graph whose start id is "node1" (a document variable)
-    env.agent.build_nodes = lambda plan_items, resource_ids=None, *, trusted_text="": BuildNodesResult(  # noqa: ARG005
-        intents=[
-            MutationIntent(
-                op="create_node",
-                args={
-                    "node_type": "start",
-                    "node_id": "node1",
-                    "config": {"title": "Start", "variables": [{"variable": "document", "type": "file"}]},
-                },
-            ),
-            MutationIntent(op="create_node", args={"node_type": "end", "node_id": "node2", "config": {}}),
-            MutationIntent(op="connect", args={"from_node": "node1", "to_node": "node2"}),
-        ]
-    )
+    def build_nodes(
+        plan_items: list[str],
+        resource_ids: list[str] | None = None,
+        *,
+        trusted_text: str = "",
+        reply_language: str | None = None,
+    ) -> BuildNodesResult:
+        del plan_items, resource_ids, trusted_text, reply_language
+        return BuildNodesResult(
+            intents=[
+                MutationIntent(
+                    op="create_node",
+                    args={
+                        "node_type": "start",
+                        "node_id": "node1",
+                        "config": {"title": "Start", "variables": [{"variable": "document", "type": "file"}]},
+                    },
+                ),
+                MutationIntent(op="create_node", args={"node_type": "end", "node_id": "node2", "config": {}}),
+                MutationIntent(op="connect", args={"from_node": "node1", "to_node": "node2"}),
+            ]
+        )
+
+    env.agent.build_nodes = build_nodes
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
     fc = DifyBuilderContext(plan_items=["x"])
     handle_plan_approval(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
@@ -646,21 +682,32 @@ def test_plan_approval_survives_generator_reusing_the_deleted_placeholder_start_
         "nodes": [{"id": "start", "data": {"type": "start", "title": "Old", "variables": []}}],
         "edges": [],
     }
+
     # generator reuses the SAME id ("start") for its own start node
-    env.agent.build_nodes = lambda plan_items, resource_ids=None, *, trusted_text="": BuildNodesResult(  # noqa: ARG005
-        intents=[
-            MutationIntent(
-                op="create_node",
-                args={
-                    "node_type": "start",
-                    "node_id": "start",
-                    "config": {"title": "Start", "variables": [{"variable": "document", "type": "file"}]},
-                },
-            ),
-            MutationIntent(op="create_node", args={"node_type": "end", "node_id": "node2", "config": {}}),
-            MutationIntent(op="connect", args={"from_node": "start", "to_node": "node2"}),
-        ]
-    )
+    def build_nodes(
+        plan_items: list[str],
+        resource_ids: list[str] | None = None,
+        *,
+        trusted_text: str = "",
+        reply_language: str | None = None,
+    ) -> BuildNodesResult:
+        del plan_items, resource_ids, trusted_text, reply_language
+        return BuildNodesResult(
+            intents=[
+                MutationIntent(
+                    op="create_node",
+                    args={
+                        "node_type": "start",
+                        "node_id": "start",
+                        "config": {"title": "Start", "variables": [{"variable": "document", "type": "file"}]},
+                    },
+                ),
+                MutationIntent(op="create_node", args={"node_type": "end", "node_id": "node2", "config": {}}),
+                MutationIntent(op="connect", args={"from_node": "start", "to_node": "node2"}),
+            ]
+        )
+
+    env.agent.build_nodes = build_nodes
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
     fc = DifyBuilderContext(plan_items=["x"])
     handle_plan_approval(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
@@ -812,8 +859,10 @@ def test_test_and_repair_fail_with_no_proposed_repair_still_routes_to_gate() -> 
     env.fake_dify = FakeBuildDifyPort()
     env.fake_dify.verify_pass = False
 
-    def propose_repair(diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]:
-        _ = diagnosis, graph
+    def propose_repair(
+        diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
+    ) -> tuple[list[MutationIntent], Risk]:
+        _ = diagnosis, graph, reply_language
         return ([], Risk(level="high", reason="no fix", has_external_side_effect=False))
 
     env.agent.propose_repair = propose_repair
@@ -2592,7 +2641,9 @@ def test_breaker_fires_through_the_handler_although_diagnoses_are_reworded() -> 
             self.calls = 0
 
         @override
-        def diagnose(self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> Diagnosis:
+        def diagnose(
+            self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput], *, reply_language: str | None = None
+        ) -> Diagnosis:
             wording = wordings[min(self.calls, len(wordings) - 1)]
             self.calls += 1
             return Diagnosis(culprit_node_id="output", root_cause=wording, severity="high")
@@ -2658,7 +2709,12 @@ def _stub_agent_building(intents: list[MutationIntent]) -> StubAgent:
     class _Agent(StubAgent):
         @override
         def build_nodes(
-            self, plan_items: list[str], resource_ids: list[str] | None = None, *, trusted_text: str = ""
+            self,
+            plan_items: list[str],
+            resource_ids: list[str] | None = None,
+            *,
+            trusted_text: str = "",
+            reply_language: str | None = None,
         ) -> BuildNodesResult:
             return BuildNodesResult(intents=list(intents))
 

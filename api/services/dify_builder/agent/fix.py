@@ -141,6 +141,7 @@ def diagnose(
     on_reasoning: Callable[[str], None] | None = None,
     *,
     evidence: dict[str, Any] | None = None,
+    reply_language: str | None = None,
 ) -> Diagnosis:
     if evidence is None:
         _, _, _, evidence = condition_evidence.build_evidence(failed_run, graph, None, node_outputs)
@@ -162,7 +163,7 @@ def diagnose(
         )
         + condition_evidence.SYSTEM_RULES
         + TOOL_OUTPUT_SEMANTICS_RULES
-        + llm.json_language_instruction("root_cause")
+        + llm.json_language_instruction("root_cause", reply_language=reply_language)
     )
     failed_desc = "\n".join(
         f"- {o.node_id} ({o.title}) status={o.status} error={o.error!r} "
@@ -196,6 +197,8 @@ def diagnose_checklist(
     errors: list[ChecklistError],
     graph: Graph,
     on_reasoning: Callable[[str], None] | None = None,
+    *,
+    reply_language: str | None = None,
 ) -> Diagnosis:
     if model is None:
         return _degraded_checklist(errors)
@@ -204,7 +207,7 @@ def diagnose_checklist(
         "most important node to fix and the root cause. Reply with ONLY a JSON object: "
         '{"culprit_node_id": "<an existing node id>", "root_cause": "<concise explanation>", '
         '"severity": "low|medium|high"}.'
-    ) + llm.json_language_instruction("root_cause")
+    ) + llm.json_language_instruction("root_cause", reply_language=reply_language)
     errs = (
         "\n".join(
             f"- {e.node_id} ({e.node_type}) {e.title}: {'; '.join(e.messages)} "
@@ -365,6 +368,7 @@ def propose_repair(
     prompt_graph: Graph | None = None,
     redact_text: Callable[[str], str] | None = None,
     tool_context: str = "",
+    reply_language: str | None = None,
 ) -> tuple[list[MutationIntent], Risk]:
     if model is None:
         return _no_fix()
@@ -384,7 +388,7 @@ def propose_repair(
         )
         + condition_evidence.SYSTEM_RULES
         + TOOL_OUTPUT_SEMANTICS_RULES
-        + llm.json_language_instruction("risk.reason")
+        + llm.json_language_instruction("risk.reason", reply_language=reply_language)
     )
     visible_graph = prompt_graph if prompt_graph is not None else graph
     user = (

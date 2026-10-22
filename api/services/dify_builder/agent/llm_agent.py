@@ -92,40 +92,49 @@ class LlmBuilderAgent:
 
     # -- Fix cognition (delegated) --
     @diagnostics.cognition
-    def diagnose(self, failed_run, graph, node_outputs):
+    def diagnose(self, failed_run, graph, node_outputs, *, reply_language: str | None = None):
         return fix.diagnose(
             self.model_or_none(),
             failed_run,
             graph,
             node_outputs,
             self._reasoning_for("diagnose"),
+            reply_language=reply_language,
         )
 
     @diagnostics.cognition
-    def diagnose_with_evidence(self, failed_run, graph, node_outputs, evidence):
+    def diagnose_with_evidence(self, failed_run, graph, node_outputs, evidence, *, reply_language: str | None = None):
         return fix.diagnose(
-            self.model_or_none(), failed_run, graph, node_outputs, self._reasoning_for("diagnose"), evidence=evidence
+            self.model_or_none(),
+            failed_run,
+            graph,
+            node_outputs,
+            self._reasoning_for("diagnose"),
+            evidence=evidence,
+            reply_language=reply_language,
         )
 
     @diagnostics.cognition
-    def propose_with_evidence(self, diagnosis, graph, prompt_graph, redact_text):
+    def propose_with_evidence(self, diagnosis, graph, prompt_graph, redact_text, *, reply_language: str | None = None):
         return fix.propose_repair(
             self.model_or_none(),
             diagnosis,
             graph,
             self._reasoning_for("propose-repair"),
+            reply_language=reply_language,
             prompt_graph=prompt_graph,
             redact_text=redact_text,
             **self._tool_parameter_prompt_kwargs(prompt_graph),
         )
 
     @diagnostics.cognition
-    def diagnose_checklist(self, errors, graph):
+    def diagnose_checklist(self, errors, graph, *, reply_language: str | None = None):
         return fix.diagnose_checklist(
             self.model_or_none(),
             errors,
             graph,
             self._reasoning_for("diagnose-checklist"),
+            reply_language=reply_language,
         )
 
     def _tool_parameter_prompt_kwargs(self, graph: dict[str, Any]) -> _ToolParameterPromptKwargs:
@@ -133,12 +142,13 @@ class LlmBuilderAgent:
         return {"tool_context": context} if context else {}
 
     @diagnostics.cognition
-    def propose_repair(self, diagnosis, graph):
+    def propose_repair(self, diagnosis, graph, *, reply_language: str | None = None):
         return fix.propose_repair(
             self.model_or_none(),
             diagnosis,
             graph,
             self._reasoning_for("propose-repair"),
+            reply_language=reply_language,
             **self._tool_parameter_prompt_kwargs(graph),
         )
 
@@ -168,7 +178,9 @@ class LlmBuilderAgent:
         )
 
     @diagnostics.cognition
-    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> WorkflowPlan | None:
+    def propose_plan_v1(
+        self, requirements: dict[str, Any], *, goal_text: str, reply_language: str | None = None
+    ) -> WorkflowPlan | None:
         catalogue = build.planning_catalogue(
             self._tenant_id, account_id=self._account_id, goal_text=goal_text, requirements=requirements
         )
@@ -181,6 +193,7 @@ class LlmBuilderAgent:
             agent_source_error=catalogue.agent_source_error,
             goal_text=goal_text,
             mode=self._app_mode,
+            reply_language=reply_language,
         )
 
     @diagnostics.cognition
@@ -213,7 +226,7 @@ class LlmBuilderAgent:
         )
 
     @diagnostics.cognition
-    def build_nodes(self, plan_items, resource_ids=None, *, trusted_text=""):
+    def build_nodes(self, plan_items, resource_ids=None, *, trusted_text="", reply_language: str | None = None):
         return build.build_nodes(
             self._tenant_id,
             self._model_config,
@@ -222,6 +235,7 @@ class LlmBuilderAgent:
             trusted_text=trusted_text,
             account_id=self._account_id,
             mode=self._app_mode,
+            reply_language=reply_language,
         )
 
     @diagnostics.cognition

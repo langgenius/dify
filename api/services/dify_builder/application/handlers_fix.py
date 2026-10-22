@@ -1713,7 +1713,7 @@ def handle_checklist_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderC
     fc.checkpoint_seq = fc.next_seq
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     progress.activate("checklist-diagnose-cause")
-    diagnosis = env.agent.diagnose_checklist(fc.checklist_errors, graph)
+    diagnosis = env.agent.diagnose_checklist(fc.checklist_errors, graph, reply_language=fc.reply_language or None)
     fc.diagnosis = diagnosis
     fc.last_snapshot_hash = graph_hash
     fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)

@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Iterator
 from types import ModuleType
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -86,3 +87,25 @@ def test_plan_prompt_keeps_keys_english(monkeypatch: pytest.MonkeyPatch) -> None
     )
     assert "same language" in system.lower()
     assert "english" in system.lower()
+
+
+@pytest.mark.parametrize("operation", ["diagnose", "diagnose_checklist", "propose_repair"])
+def test_fix_prompt_uses_persisted_language_with_english_evidence(
+    monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    from core.dify_builder.models import Diagnosis, Graph, Run
+    from core.model_manager import ModelInstance
+    from services.dify_builder.agent import fix
+
+    graph: Graph = {"nodes": [], "edges": []}
+    model = create_autospec(ModelInstance, instance=True)
+    calls = {
+        "diagnose": lambda: fix.diagnose(model, Run(error="Connection refused"), graph, [], reply_language="zh-Hans"),
+        "diagnose_checklist": lambda: fix.diagnose_checklist(model, [], graph, reply_language="zh-Hans"),
+        "propose_repair": lambda: fix.propose_repair(
+            model, Diagnosis(root_cause="Connection refused"), graph, reply_language="zh-Hans"
+        ),
+    }
+    system = _system_captured(monkeypatch, fix, operation, calls[operation])
+    assert "zh-Hans" in system
+    assert "English" in system

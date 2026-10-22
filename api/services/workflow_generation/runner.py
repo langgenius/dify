@@ -534,6 +534,19 @@ def _stage_error_to_envelope_code(exc: Exception) -> str:
     return WorkflowGenerateErrorCode.MODEL_ERROR
 
 
+def _reply_language_instruction(reply_language: str | None) -> str:
+    """Apply an explicit session locale without changing standalone generation."""
+    if not reply_language:
+        return ""
+    return (
+        f"\n\nWrite human-facing plan title, description, app_name, node labels, purposes, "
+        f"input labels, and generated node title/desc in the session reply language (BCP-47: {reply_language}). "
+        "Keep JSON keys, enums, identifiers, variable names, selectors, and code unchanged. "
+        "Preserve user-supplied literal values, names, URLs, credentials, and business data. "
+        "This presentation language does not override a requested language for workflow output."
+    )
+
+
 class WorkflowGenerator:
     """
     Generates a Dify workflow graph from a natural-language instruction.
@@ -559,6 +572,7 @@ class WorkflowGenerator:
         tool_catalogue_entries: list[ToolCatalogueEntry] | None = None,
         installed_tools: set[tuple[str, str]] | None = None,
         current_graph: dict[str, Any] | None = None,
+        reply_language: str | None = None,
     ) -> WorkflowGenerateResultDict:
         """
         Run planner → node builders → postprocess and return a graph payload.
@@ -607,6 +621,7 @@ class WorkflowGenerator:
         result: WorkflowGenerateResultDict | None = None
         for event_name, payload in cls._iter_generation_events(
             model_instance=model_instance,
+            reply_language=reply_language,
             model_parameters=model_parameters,
             provider=provider,
             model_name=model_name,
@@ -643,6 +658,7 @@ class WorkflowGenerator:
         tool_catalogue_entries: list[ToolCatalogueEntry] | None = None,
         installed_tools: set[tuple[str, str]] | None = None,
         current_graph: dict[str, Any] | None = None,
+        reply_language: str | None = None,
     ) -> Iterator[tuple[str, dict[str, Any]]]:
         """
         Streaming sibling of ``generate_workflow_graph``.
@@ -656,6 +672,7 @@ class WorkflowGenerator:
         """
         yield from cls._iter_generation_events(
             model_instance=model_instance,
+            reply_language=reply_language,
             model_parameters=model_parameters,
             provider=provider,
             model_name=model_name,
@@ -685,6 +702,7 @@ class WorkflowGenerator:
         tool_catalogue_entries: list[ToolCatalogueEntry] | None = None,
         installed_tools: set[tuple[str, str]] | None = None,
         current_graph: dict[str, Any] | None = None,
+        reply_language: str | None = None,
     ) -> Iterator[tuple[str, dict[str, Any]]]:
         """
         Drive planner → node builders → postprocess and yield generation events.
@@ -715,6 +733,7 @@ class WorkflowGenerator:
             failure_fallback_message="Failed to plan workflow",
             run=lambda: cls._run_planner(
                 model_instance=model_instance,
+                reply_language=reply_language,
                 model_parameters=model_parameters,
                 mode=mode,
                 instruction=instruction,
@@ -775,6 +794,7 @@ class WorkflowGenerator:
         def build_graph() -> GraphDict:
             return cls._run_parallel_node_builders(
                 model_instance=model_instance,
+                reply_language=reply_language,
                 model_parameters=model_parameters,
                 provider=provider,
                 model_name=model_name,
@@ -815,7 +835,7 @@ class WorkflowGenerator:
             plan_nodes=plan_nodes,
             tool_catalogue_entries=full_tool_catalogue_entries,
         )
-        graph = cls._postprocess_graph(graph=graph, mode=resolved_mode)
+        graph = cls._postprocess_graph(graph=graph, mode=resolved_mode, reply_language=reply_language)
 
         # ``app_name`` / ``icon`` are planner display metadata; both default
         # to "" when the LLM omits them — the FE owns the fallback.
@@ -1169,6 +1189,7 @@ class WorkflowGenerator:
         ideal_output: str,
         tool_catalogue_text: str,
         current_graph: dict[str, Any] | None = None,
+        reply_language: str | None = None,
     ) -> PlannerResultDict:
         user_prompt = PLANNER_USER_PROMPT.format(
             mode=_planner_prompt_mode(mode),
@@ -1178,7 +1199,12 @@ class WorkflowGenerator:
             tool_catalogue_section=format_tool_catalogue_section(tool_catalogue_text),
         )
         messages = [
-            SystemPromptMessage(content=PLANNER_SYSTEM_PROMPT + "\n\n" + native_constant_output_system_rules()),
+            SystemPromptMessage(
+                content=PLANNER_SYSTEM_PROMPT
+                + "\n\n"
+                + native_constant_output_system_rules()
+                + _reply_language_instruction(reply_language)
+            ),
             UserPromptMessage(content=user_prompt),
         ]
         clamped_parameters = _clamp_for_planner(model_parameters, model_instance=model_instance)
@@ -1259,6 +1285,7 @@ class WorkflowGenerator:
         start_inputs: list[dict[str, Any]],
         node_outputs: dict[str, list[str]],
         current_graph: dict[str, Any] | None,
+        reply_language: str | None = None,
     ) -> GraphDict:
         """Build changed node configs concurrently and expand them into a graph.
 
@@ -1305,6 +1332,7 @@ class WorkflowGenerator:
                     executor.submit(
                         cls._run_node_builder,
                         model_instance=model_instance,
+                        reply_language=reply_language,
                         model_parameters=model_parameters,
                         provider=provider,
                         model_name=model_name,
@@ -1368,6 +1396,7 @@ class WorkflowGenerator:
         existing_node: dict[str, Any] | None,
         http_contract_context: HttpPlanContext | None = None,
         constant_contract_context: ConstantPlanContext | None = None,
+        reply_language: str | None = None,
     ) -> dict[str, Any]:
         """Generate only the semantic config for one normalized plan node."""
         node_id = str(target_node.get("id") or "")
@@ -1407,7 +1436,7 @@ class WorkflowGenerator:
             constant_contract_context, node_id
         )
         tool_catalogue_section += constant_user_context
-        system_prompt = get_node_builder_system_prompt(node_type)
+        system_prompt = get_node_builder_system_prompt(node_type) + _reply_language_instruction(reply_language)
         if constant_system_rules:
             system_prompt += "\n\n" + constant_system_rules
         if http_system_rules:
@@ -1696,7 +1725,9 @@ class WorkflowGenerator:
     # Postprocessing
     # ------------------------------------------------------------------
     @classmethod
-    def _postprocess_graph(cls, *, graph: GraphDict, mode: WorkflowGenerationMode) -> GraphDict:
+    def _postprocess_graph(
+        cls, *, graph: GraphDict, mode: WorkflowGenerationMode, reply_language: str | None = None
+    ) -> GraphDict:
         """Fill safe defaults and apply only deterministic graph repairs."""
 
         # Internally treat nodes/edges as untyped dicts — TypedDicts forbid the
@@ -1719,7 +1750,7 @@ class WorkflowGenerator:
         # retrieval nodes straight into an LLM but selects only one result,
         # insert a template-transform fan-in that renders every result into
         # one string and point the context at that output.
-        cls._insert_multi_retrieval_context_templates(nodes=nodes, edges=edges)
+        cls._insert_multi_retrieval_context_templates(nodes=nodes, edges=edges, reply_language=reply_language)
 
         # Container-child nodes carry their own relative positions inside the
         # parent and have a special ``type`` (custom-iteration-start /
@@ -2697,6 +2728,7 @@ class WorkflowGenerator:
         *,
         nodes: list[dict[str, Any]],
         edges: list[dict[str, Any]],
+        reply_language: str | None = None,
     ) -> None:
         """Fan multiple retrieval inputs into an LLM through one template.
 
@@ -2762,7 +2794,13 @@ class WorkflowGenerator:
                     "position": {"x": 0, "y": 0},
                     "data": {
                         "type": BuiltinNodeTypes.TEMPLATE_TRANSFORM,
-                        "title": "Combine Knowledge",
+                        "title": (
+                            " + ".join(
+                                str(nodes_by_id[node_id]["data"].get("title") or node_id) for node_id in retrieval_ids
+                            )
+                            if reply_language
+                            else "Combine Knowledge"
+                        ),
                         "variables": variables,
                         "template": "\n\n".join(sections),
                     },

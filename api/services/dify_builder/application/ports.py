@@ -69,11 +69,17 @@ __all__ = [
 class DifyBuilderAgent(Protocol):
     """The cognitive seam implemented by both LLM and fallback agents."""
 
-    def diagnose(self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> Diagnosis: ...
+    def diagnose(
+        self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput], *, reply_language: str | None = None
+    ) -> Diagnosis: ...
 
-    def diagnose_checklist(self, errors: list[ChecklistError], graph: Graph) -> Diagnosis: ...
+    def diagnose_checklist(
+        self, errors: list[ChecklistError], graph: Graph, *, reply_language: str | None = None
+    ) -> Diagnosis: ...
 
-    def propose_repair(self, diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]: ...
+    def propose_repair(
+        self, diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
+    ) -> tuple[list[MutationIntent], Risk]: ...
 
     def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs) -> Inputs: ...
 
@@ -85,7 +91,9 @@ class DifyBuilderAgent(Protocol):
     # service layer normalizes and stores it.
     def propose_app_name(self, goal_text: str, requirements: dict[str, Any]) -> str: ...
 
-    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> WorkflowPlan | None: ...
+    def propose_plan_v1(
+        self, requirements: dict[str, Any], *, goal_text: str, reply_language: str | None = None
+    ) -> WorkflowPlan | None: ...
 
     def discover_resources(
         self, plan_items: list[str], *, goal_text: str, requirements: dict[str, Any]
@@ -100,7 +108,12 @@ class DifyBuilderAgent(Protocol):
     def bind_resources(self, plan_items: list[str], resource_ids: list[str]) -> list[str]: ...
 
     def build_nodes(
-        self, plan_items: list[str], resource_ids: list[str] | None = None, *, trusted_text: str = ""
+        self,
+        plan_items: list[str],
+        resource_ids: list[str] | None = None,
+        *,
+        trusted_text: str = "",
+        reply_language: str | None = None,
     ) -> BuildNodesResult: ...
 
     def learn_from_build(

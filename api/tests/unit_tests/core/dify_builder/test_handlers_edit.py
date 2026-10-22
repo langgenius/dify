@@ -347,7 +347,10 @@ def test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate() -> None:
     env, _ = _new_env()
     env.fake_dify.verify_pass = False
 
-    def propose_repair(diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]:
+    def propose_repair(
+        diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
+    ) -> tuple[list[MutationIntent], Risk]:
+        del reply_language
         _ = diagnosis, graph
         return ([], Risk(level="high", reason="no fix", has_external_side_effect=False))
 

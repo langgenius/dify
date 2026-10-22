@@ -8009,3 +8009,33 @@ def test_generator_carries_failure_and_http_contract_to_real_code_builder(requir
     assert actual_code["code"] == code
     assert actual_code.get("error_strategy") == error_strategy
     assert actual_code["outputs"] == {"http_status": {"type": "number", "children": None}}
+
+
+@pytest.mark.parametrize(
+    ("reply_language", "expected_title"), [("zh-CN", "检索产品 + 检索政策"), (None, "Combine Knowledge")]
+)
+def test_inserted_retrieval_template_uses_existing_localized_titles(
+    reply_language: str | None, expected_title: str
+) -> None:
+    graph = cast(
+        GraphDict,
+        {
+            "nodes": [
+                {"id": "first", "data": {"type": "knowledge-retrieval", "title": "检索产品"}},
+                {"id": "second", "data": {"type": "knowledge-retrieval", "title": "检索政策"}},
+                {
+                    "id": "llm",
+                    "data": {"type": "llm", "context": {"enabled": True, "variable_selector": ["first", "result"]}},
+                },
+            ],
+            "edges": [{"source": "first", "target": "llm"}, {"source": "second", "target": "llm"}],
+        },
+    )
+    result = WorkflowGenerator._postprocess_graph(graph=graph, mode="workflow", reply_language=reply_language)
+    template = next(node for node in result["nodes"] if node["data"]["type"] == "template-transform")
+    assert template["data"]["title"] == expected_title
+    assert template["data"]["variables"] == [
+        {"variable": "knowledge_1", "value_selector": ["first", "result"]},
+        {"variable": "knowledge_2", "value_selector": ["second", "result"]},
+    ]
+    assert "## Knowledge source 1" in template["data"]["template"]

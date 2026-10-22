@@ -399,3 +399,48 @@ class TestReadyToolAllowlist:
         call = generation.generator_calls[0]
         assert call["tool_catalogue_entries"] == []
         assert call["installed_tools"] == set()
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("reply_language", [None, "zh-CN"])
+def test_session_reply_language_reaches_planner_and_node_builders(
+    generation: GenerationObservations, stream: bool, reply_language: str | None
+) -> None:
+    generate = (
+        WorkflowGeneratorService.generate_workflow_graph_stream
+        if stream
+        else WorkflowGeneratorService.generate_workflow_graph
+    )
+    result = generate(
+        tenant_id=TENANT_ID,
+        mode="workflow",
+        instruction="Return the literal value customer_id in USD",
+        model_config=_model_config(),
+        reply_language=reply_language,
+    )
+    if stream:
+        list(result)
+    assert len(generation.daemon_calls) == 3
+    for call in generation.daemon_calls:
+        request = call["data"]
+        assert isinstance(request, dict)
+        payload = request["data"]
+        assert isinstance(payload, dict)
+        messages = payload["prompt_messages"]
+        assert isinstance(messages, list)
+        system_message = messages[0]
+        assert isinstance(system_message, dict)
+        system = system_message["content"]
+        assert isinstance(system, str)
+        if reply_language:
+            assert "BCP-47: zh-CN" in system
+            assert "identifiers" in system
+            assert "code" in system
+            assert "user-supplied" in system
+        else:
+            assert "session reply language" not in system
+        user_message = messages[-1]
+        assert isinstance(user_message, dict)
+        user = user_message["content"]
+        assert isinstance(user, str)
+        assert "customer_id in USD" in user
