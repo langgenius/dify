@@ -125,8 +125,6 @@ import {
   zGetDatasetsQuery,
   zGetDatasetsResponse,
   zGetDatasetsTagsResponse,
-  zGetDatasourceCredentialsQuery,
-  zGetDatasourceCredentialsResponse,
   zGetEndUsersByEndUserIdPath,
   zGetEndUsersByEndUserIdResponse,
   zGetFilesByFileIdPreviewPath,
@@ -2350,34 +2348,11 @@ export const datasets = {
 }
 
 /**
- * List Datasource Credentials
- *
- * List datasource credential metadata for the current workspace. Credential values are never returned; use `id` as `credentialId` when creating a source connection.
- */
-export const get21 = oc
-  .route({
-    description:
-      'List datasource credential metadata for the current workspace. Credential values are never returned; use `id` as `credentialId` when creating a source connection.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getDatasourceCredentials',
-    path: '/datasource-credentials',
-    summary: 'List Datasource Credentials',
-    tags: ['Datasource Credentials'],
-  })
-  .input(z.object({ query: zGetDatasourceCredentialsQuery }))
-  .output(zGetDatasourceCredentialsResponse)
-
-export const datasourceCredentials = {
-  get: get21,
-}
-
-/**
  * Get End User Info
  *
  * Retrieve an end user by ID. Useful when other APIs return an end-user ID (e.g., `created_by` from [Upload File](/api-reference/files/upload-file)).
  */
-export const get22 = oc
+export const get21 = oc
   .route({
     description:
       'Retrieve an end user by ID. Useful when other APIs return an end-user ID (e.g., `created_by` from [Upload File](/api-reference/files/upload-file)).',
@@ -2393,7 +2368,7 @@ export const get22 = oc
   .errors({ end_user_not_found: { status: 404, data: zEndUserNotFoundError } })
 
 export const byEndUserId = {
-  get: get22,
+  get: get21,
 }
 
 export const endUsers = {
@@ -2437,7 +2412,7 @@ export const upload = {
  *
  * Preview or download uploaded files previously uploaded via the [Upload File](/api-reference/files/upload-file) API. Files can only be accessed if they belong to messages within the requesting application.
  */
-export const get23 = oc
+export const get22 = oc
   .route({
     description:
       'Preview or download uploaded files previously uploaded via the [Upload File](/api-reference/files/upload-file) API. Files can only be accessed if they belong to messages within the requesting application.',
@@ -2461,7 +2436,7 @@ export const get23 = oc
   })
 
 export const preview = {
-  get: get23,
+  get: get22,
 }
 
 export const byFileId = {
@@ -2478,7 +2453,7 @@ export const files = {
  *
  * Retrieve a paused Human Input form's contents using the `form_token` from a `human_input_required` event. Requires **WebApp** delivery.
  */
-export const get24 = oc
+export const get23 = oc
   .route({
     description:
       "Retrieve a paused Human Input form's contents using the `form_token` from a `human_input_required` event. Requires **WebApp** delivery.",
@@ -2526,7 +2501,7 @@ export const post34 = oc
   })
 
 export const byFormToken = {
-  get: get24,
+  get: get23,
   post: post34,
 }
 
@@ -2543,7 +2518,7 @@ export const form = {
  *
  * Retrieve basic information about this application, including name, description, tags, and mode.
  */
-export const get25 = oc
+export const get24 = oc
   .route({
     description:
       'Retrieve basic information about this application, including name, description, tags, and mode.',
@@ -2558,7 +2533,7 @@ export const get25 = oc
   .errors({ app_unavailable: { status: 400, data: zAppUnavailableError } })
 
 export const info = {
-  get: get25,
+  get: get24,
 }
 
 export const post35 = oc
@@ -2585,7 +2560,7 @@ export const queryStream = {
   post: post35,
 }
 
-export const get26 = oc
+export const get25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2614,10 +2589,10 @@ export const get26 = oc
   })
 
 export const backgroundTasks = {
-  get: get26,
+  get: get25,
 }
 
-export const get27 = oc
+export const get26 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2640,14 +2615,14 @@ export const get27 = oc
   })
 
 export const byJobId2 = {
-  get: get27,
+  get: get26,
 }
 
 export const bulkJobs = {
   byJobId: byJobId2,
 }
 
-export const get28 = oc
+export const get27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2670,7 +2645,7 @@ export const get28 = oc
   })
 
 export const byBatchId = {
-  get: get28,
+  get: get27,
 }
 
 export const deletionBatches = {
@@ -2709,7 +2684,7 @@ export const retry = {
   post: post36,
 }
 
-export const get29 = oc
+export const get28 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2732,7 +2707,7 @@ export const get29 = oc
   })
 
 export const byJobId3 = {
-  get: get29,
+  get: get28,
   retry,
 }
 
@@ -2740,7 +2715,7 @@ export const deletionJobs = {
   byJobId: byJobId3,
 }
 
-export const get30 = oc
+export const get29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2768,7 +2743,7 @@ export const get30 = oc
   })
 
 export const resolve = {
-  get: get30,
+  get: get29,
 }
 
 export const documentReferences = {
@@ -2844,7 +2819,7 @@ export const reindex = {
   post: post37,
 }
 
-export const get31 = oc
+export const get30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2869,10 +2844,10 @@ export const get31 = oc
   })
 
 export const outline = {
-  get: get31,
+  get: get30,
 }
 
-export const get32 = oc
+export const get31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2903,10 +2878,10 @@ export const get32 = oc
   })
 
 export const byChunkId = {
-  get: get32,
+  get: get31,
 }
 
-export const get33 = oc
+export const get32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2939,7 +2914,7 @@ export const get33 = oc
   })
 
 export const chunks = {
-  get: get33,
+  get: get32,
   byChunkId,
 }
 
@@ -2947,7 +2922,7 @@ export const byRevision = {
   chunks,
 }
 
-export const get34 = oc
+export const get33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2975,7 +2950,7 @@ export const get34 = oc
   })
 
 export const revisions = {
-  get: get34,
+  get: get33,
   byRevision,
 }
 
@@ -3009,7 +2984,7 @@ export const delete10 = oc
     knowledge_fs_upstream_unavailable: { status: 502, data: zKnowledgeFsUpstreamUnavailableError },
   })
 
-export const get35 = oc
+export const get34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3061,13 +3036,13 @@ export const patch7 = oc
 
 export const byDocumentId2 = {
   delete: delete10,
-  get: get35,
+  get: get34,
   patch: patch7,
   outline,
   revisions,
 }
 
-export const get36 = oc
+export const get35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3095,7 +3070,7 @@ export const get36 = oc
   })
 
 export const documents2 = {
-  get: get36,
+  get: get35,
   bulk,
   reindex,
   byDocumentId: byDocumentId2,
@@ -3151,7 +3126,7 @@ export const delete11 = oc
     knowledge_fs_upstream_unavailable: { status: 502, data: zKnowledgeFsUpstreamUnavailableError },
   })
 
-export const get37 = oc
+export const get36 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3175,7 +3150,7 @@ export const get37 = oc
 
 export const byJobId4 = {
   delete: delete11,
-  get: get37,
+  get: get36,
   retry: retry2,
 }
 
@@ -3183,7 +3158,7 @@ export const jobs = {
   byJobId: byJobId4,
 }
 
-export const get38 = oc
+export const get37 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3214,10 +3189,10 @@ export const get38 = oc
   })
 
 export const byTaskId3 = {
-  get: get38,
+  get: get37,
 }
 
-export const get39 = oc
+export const get38 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3246,11 +3221,11 @@ export const get39 = oc
   })
 
 export const processingTasks = {
-  get: get39,
+  get: get38,
   byTaskId: byTaskId3,
 }
 
-export const get40 = oc
+export const get39 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3275,11 +3250,11 @@ export const get40 = oc
   })
 
 export const byDocumentId3 = {
-  get: get40,
+  get: get39,
   processingTasks,
 }
 
-export const get41 = oc
+export const get40 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3307,7 +3282,7 @@ export const get41 = oc
   })
 
 export const logicalDocuments = {
-  get: get41,
+  get: get40,
   byDocumentId: byDocumentId3,
 }
 
@@ -3412,7 +3387,7 @@ export const plan = {
   post: post41,
 }
 
-export const get42 = oc
+export const get41 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3440,7 +3415,7 @@ export const get42 = oc
   })
 
 export const partials = {
-  get: get42,
+  get: get41,
 }
 
 export const post42 = oc
@@ -3495,7 +3470,7 @@ export const delete12 = oc
     knowledge_fs_upstream_unavailable: { status: 502, data: zKnowledgeFsUpstreamUnavailableError },
   })
 
-export const get43 = oc
+export const get42 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3519,12 +3494,12 @@ export const get43 = oc
 
 export const byTaskId4 = {
   delete: delete12,
-  get: get43,
+  get: get42,
   partials,
   resume,
 }
 
-export const get44 = oc
+export const get43 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3584,13 +3559,13 @@ export const post43 = oc
   })
 
 export const researchTasks = {
-  get: get44,
+  get: get43,
   post: post43,
   plan,
   byTaskId: byTaskId4,
 }
 
-export const get45 = oc
+export const get44 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3615,14 +3590,14 @@ export const get45 = oc
   })
 
 export const byMigrationId = {
-  get: get45,
+  get: get44,
 }
 
 export const migrations = {
   byMigrationId,
 }
 
-export const get46 = oc
+export const get45 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3674,7 +3649,7 @@ export const patch8 = oc
   })
 
 export const settings = {
-  get: get46,
+  get: get45,
   patch: patch8,
   migrations,
 }
@@ -3715,7 +3690,7 @@ export const byConnectionId = {
   refresh,
 }
 
-export const get47 = oc
+export const get46 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3771,12 +3746,12 @@ export const post45 = oc
   })
 
 export const sourceConnections = {
-  get: get47,
+  get: get46,
   post: post45,
   byConnectionId,
 }
 
-export const get48 = oc
+export const get47 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3798,7 +3773,7 @@ export const get48 = oc
   })
 
 export const sourceProviders = {
-  get: get48,
+  get: get47,
 }
 
 export const post46 = oc
@@ -3833,7 +3808,7 @@ export const cancel = {
   post: post46,
 }
 
-export const get49 = oc
+export const get48 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3861,7 +3836,7 @@ export const get49 = oc
   })
 
 export const pages = {
-  get: get49,
+  get: get48,
 }
 
 export const post47 = oc
@@ -3927,7 +3902,7 @@ export const selection = {
   post: post48,
 }
 
-export const get50 = oc
+export const get49 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3950,14 +3925,14 @@ export const get50 = oc
   })
 
 export const byRunId = {
-  get: get50,
+  get: get49,
   cancel,
   pages,
   retry: retry3,
   selection,
 }
 
-export const get51 = oc
+export const get50 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3984,7 +3959,7 @@ export const get51 = oc
   })
 
 export const sourceWorkflows = {
-  get: get51,
+  get: get50,
   byRunId,
 }
 
@@ -4092,7 +4067,7 @@ export const crawlPreview = {
   post: post51,
 }
 
-export const get52 = oc
+export const get51 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4120,7 +4095,7 @@ export const get52 = oc
   })
 
 export const files2 = {
-  get: get52,
+  get: get51,
 }
 
 /**
@@ -4199,7 +4174,7 @@ export const importFiles = {
   post: post53,
 }
 
-export const get53 = oc
+export const get52 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4227,7 +4202,7 @@ export const get53 = oc
   })
 
 export const pages2 = {
-  get: get53,
+  get: get52,
 }
 
 export const post54 = oc
@@ -4263,7 +4238,7 @@ export const sync = {
   post: post54,
 }
 
-export const get54 = oc
+export const get53 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4314,7 +4289,7 @@ export const put3 = oc
   })
 
 export const syncPolicy = {
-  get: get54,
+  get: get53,
   put: put3,
 }
 
@@ -4409,7 +4384,7 @@ export const delete13 = oc
     knowledge_fs_upstream_unavailable: { status: 502, data: zKnowledgeFsUpstreamUnavailableError },
   })
 
-export const get55 = oc
+export const get54 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4461,7 +4436,7 @@ export const patch9 = oc
 
 export const bySourceId = {
   delete: delete13,
-  get: get55,
+  get: get54,
   patch: patch9,
   crawl,
   crawlImport,
@@ -4476,7 +4451,7 @@ export const bySourceId = {
   workflowImports,
 }
 
-export const get56 = oc
+export const get55 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4534,12 +4509,12 @@ export const post57 = oc
   })
 
 export const sources = {
-  get: get56,
+  get: get55,
   post: post57,
   bySourceId,
 }
 
-export const get57 = oc
+export const get56 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4567,10 +4542,10 @@ export const get57 = oc
   })
 
 export const conflicts = {
-  get: get57,
+  get: get56,
 }
 
-export const get58 = oc
+export const get57 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4598,10 +4573,10 @@ export const get58 = oc
   })
 
 export const evidence = {
-  get: get58,
+  get: get57,
 }
 
-export const get59 = oc
+export const get58 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4629,10 +4604,10 @@ export const get59 = oc
   })
 
 export const missing = {
-  get: get59,
+  get: get58,
 }
 
-export const get60 = oc
+export const get59 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4655,13 +4630,13 @@ export const get60 = oc
   })
 
 export const byTraceId = {
-  get: get60,
+  get: get59,
   conflicts,
   evidence,
   missing,
 }
 
-export const get61 = oc
+export const get60 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4690,7 +4665,7 @@ export const get61 = oc
   })
 
 export const traces = {
-  get: get61,
+  get: get60,
   byTraceId,
 }
 
@@ -4756,7 +4731,7 @@ export const feedbacks2 = {
  *
  * Get next questions suggestions for the current message.
  */
-export const get62 = oc
+export const get61 = oc
   .route({
     description: 'Get next questions suggestions for the current message.',
     inputStructure: 'detailed',
@@ -4776,7 +4751,7 @@ export const get62 = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const suggested = {
-  get: get62,
+  get: get61,
 }
 
 export const byMessageId = {
@@ -4789,7 +4764,7 @@ export const byMessageId = {
  *
  * Returns historical chat records in a scrolling load format, with the first page returning the latest `limit` messages, i.e., in reverse order.
  */
-export const get63 = oc
+export const get62 = oc
   .route({
     description:
       'Returns historical chat records in a scrolling load format, with the first page returning the latest `limit` messages, i.e., in reverse order.',
@@ -4805,7 +4780,7 @@ export const get63 = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const messages = {
-  get: get63,
+  get: get62,
   byMessageId,
 }
 
@@ -4814,7 +4789,7 @@ export const messages = {
  *
  * Retrieve metadata about this application, including tool icons and other configuration details.
  */
-export const get64 = oc
+export const get63 = oc
   .route({
     description:
       'Retrieve metadata about this application, including tool icons and other configuration details.',
@@ -4829,7 +4804,7 @@ export const get64 = oc
   .errors({ app_unavailable: { status: 400, data: zAppUnavailableError } })
 
 export const meta = {
-  get: get64,
+  get: get63,
 }
 
 /**
@@ -4837,7 +4812,7 @@ export const meta = {
  *
  * Retrieve the application's input form configuration, including feature switches, input parameter names, types, and default values.
  */
-export const get65 = oc
+export const get64 = oc
   .route({
     description:
       "Retrieve the application's input form configuration, including feature switches, input parameter names, types, and default values.",
@@ -4855,7 +4830,7 @@ export const get65 = oc
   })
 
 export const parameters = {
-  get: get65,
+  get: get64,
 }
 
 /**
@@ -4863,7 +4838,7 @@ export const parameters = {
  *
  * Retrieve the WebApp settings of this application, including site configuration, theme, and customization options.
  */
-export const get66 = oc
+export const get65 = oc
   .route({
     description:
       'Retrieve the WebApp settings of this application, including site configuration, theme, and customization options.',
@@ -4877,7 +4852,7 @@ export const get66 = oc
   .output(zGetSiteResponse)
 
 export const site = {
-  get: get66,
+  get: get65,
 }
 
 /**
@@ -4914,7 +4889,7 @@ export const textToAudio = {
  *
  * Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE connection. For runs that have already finished, the stream emits a single `workflow_finished` event and closes.
  */
-export const get67 = oc
+export const get66 = oc
   .route({
     description:
       'Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE connection. For runs that have already finished, the stream emits a single `workflow_finished` event and closes.',
@@ -4935,7 +4910,7 @@ export const get67 = oc
   .errors({ not_workflow_app: { status: 400, data: zNotWorkflowAppError } })
 
 export const events = {
-  get: get67,
+  get: get66,
 }
 
 export const byWorkflowRunId = {
@@ -4951,7 +4926,7 @@ export const workflow = {
  *
  * Retrieve paginated workflow execution logs with filtering options.
  */
-export const get68 = oc
+export const get67 = oc
   .route({
     description: 'Retrieve paginated workflow execution logs with filtering options.',
     inputStructure: 'detailed',
@@ -4965,7 +4940,7 @@ export const get68 = oc
   .output(zGetWorkflowsLogsResponse)
 
 export const logs = {
-  get: get68,
+  get: get67,
 }
 
 /**
@@ -4973,7 +4948,7 @@ export const logs = {
  *
  * Retrieve the current execution results of a workflow task based on the workflow execution ID.
  */
-export const get69 = oc
+export const get68 = oc
   .route({
     description:
       'Retrieve the current execution results of a workflow task based on the workflow execution ID.',
@@ -4989,7 +4964,7 @@ export const get69 = oc
   .errors({ not_workflow_app: { status: 400, data: zNotWorkflowAppError } })
 
 export const byWorkflowRunId2 = {
-  get: get69,
+  get: get68,
 }
 
 /**
@@ -5123,7 +5098,7 @@ export const workflows = {
  *
  * Retrieve the list of available models by type. Primarily used to query `text-embedding` and `rerank` models for knowledge base configuration.
  */
-export const get70 = oc
+export const get69 = oc
   .route({
     description:
       'Retrieve the list of available models by type. Primarily used to query `text-embedding` and `rerank` models for knowledge base configuration.',
@@ -5138,7 +5113,7 @@ export const get70 = oc
   .output(zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse)
 
 export const byModelType = {
-  get: get70,
+  get: get69,
 }
 
 export const modelTypes = {
@@ -5166,7 +5141,6 @@ export const contract = {
   completionMessages,
   conversations,
   datasets,
-  datasourceCredentials,
   endUsers,
   files,
   form,

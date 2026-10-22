@@ -8,12 +8,14 @@ import pytest
 from flask import Flask
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 from werkzeug.routing.rules import Rule
 
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from libs.oauth_bearer import AuthContext, TokenType
+from services.knowledge_fs.feature_service import KnowledgeFSFeatures
 from services.knowledge_fs.product_dto import KnowledgeFSListQuery
 from tests.unit_tests.controllers.knowledge_fs_controller_fakes import (
     FakeComponent,
@@ -336,11 +338,33 @@ def test_knowledge_fs_facade_uses_the_configured_runtime(monkeypatch: pytest.Mon
     session_maker = object()
     facade = FakeComponent()
     get_runtime = Recorder(FakeRuntime(facade=facade))
+    monkeypatch.setattr(
+        module,
+        "get_knowledge_fs_features",
+        lambda: KnowledgeFSFeatures(enabled=True, upload_enabled=False, agent_enabled=False),
+    )
     monkeypatch.setattr(module.session_factory, "get_session_maker", lambda: session_maker)
     monkeypatch.setattr(module, "get_knowledge_fs_runtime", get_runtime)
 
     assert module._knowledge_fs_facade() is facade
     assert get_runtime.calls == [invocation(session_maker)]
+
+
+def test_knowledge_fs_facade_does_not_start_runtime_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    from controllers.openapi import knowledge_fs as module
+
+    get_runtime = Recorder(None)
+    monkeypatch.setattr(
+        module,
+        "get_knowledge_fs_features",
+        lambda: KnowledgeFSFeatures(enabled=False, upload_enabled=False, agent_enabled=False),
+    )
+    monkeypatch.setattr(module, "get_knowledge_fs_runtime", get_runtime)
+
+    with pytest.raises(NotFound):
+        module._knowledge_fs_facade()
+
+    assert get_runtime.calls == []
 
 
 def test_knowledge_fs_error_adapter_uses_stable_domain_errors() -> None:

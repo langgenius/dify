@@ -8,6 +8,7 @@ All operations are read-only, require an OAuth account bearer with workspace
 read scope, and re-check the knowledge-space tenant boundary in the product
 facade.  Deliberately indistinguishable space/path misses share one 404 code so
 callers cannot use this surface to enumerate hidden resources.
+Commands are unavailable when the server-side KnowledgeFS feature is disabled.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from typing import Literal
 
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
+from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.openapi import openapi_ns
@@ -40,6 +42,7 @@ from core.db.session_factory import session_factory
 from fields.base import ResponseModel
 from libs.oauth_bearer import Scope
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_fs.product_authorization import KnowledgeFSProductNotFoundError
 from services.knowledge_fs.product_dto import (
     KNOWLEDGE_FS_PATH_PATTERN,
@@ -425,6 +428,8 @@ register_response_schema_models(
 
 
 def _knowledge_fs_facade() -> KnowledgeFSDataFacade:
+    if not get_knowledge_fs_features().enabled:
+        raise NotFound()
     return get_knowledge_fs_runtime(session_factory.get_session_maker()).facade
 
 

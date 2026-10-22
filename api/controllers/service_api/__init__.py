@@ -60,7 +60,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     from .dataset.rag_pipeline import rag_pipeline_workflow
     from .end_user import end_user
     from .knowledge_fs import resources as knowledge_fs_resources
-    from .workspace import datasource_credentials, models
+    from .workspace import models
 
     return (
         index,
@@ -84,7 +84,6 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         rag_pipeline_workflow,
         end_user,
         knowledge_fs_resources,
-        datasource_credentials,
         models,
     )
 
@@ -111,7 +110,6 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     rag_pipeline_workflow,
     end_user,
     knowledge_fs_resources,
-    datasource_credentials,
     models,
 ) = _register_controllers()
 
@@ -122,7 +120,6 @@ __all__ = [
     "completion",
     "conversation",
     "dataset",
-    "datasource_credentials",
     "document",
     "end_user",
     "file",
