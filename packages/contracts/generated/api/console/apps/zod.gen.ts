@@ -995,6 +995,18 @@ export const zWorkflowTriggerResponse = z.object({
 })
 
 /**
+ * AppTriggerNotFoundError
+ *
+ * Trigger not found.
+ */
+export const zAppTriggerNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_trigger_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * WorkflowTriggerListResponse
  */
 export const zWorkflowTriggerListResponse = z.object({
@@ -1383,6 +1395,18 @@ export const zWebhookTriggerResponse = z.object({
   webhook_id: z.string(),
   webhook_url: z.string(),
 })
+
+/**
+ * WebhookTriggerNotFoundError
+ *
+ * Webhook trigger not found for this node.
+ */
+export const zWebhookTriggerNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('webhook_trigger_not_found'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * WorkflowUpdatePayload
