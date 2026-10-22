@@ -6,6 +6,7 @@ import { callOptionsSchema } from '@/call/flags'
 import SkillsInstall from '@/commands/install/skills/index'
 import { parseCatalog } from '@/plugins/catalog'
 import { RESERVED_FLAGS } from '@/plugins/ops'
+import { parseHints } from '@/protocol/hint'
 import { colorScheme } from '@/sys/io/color'
 import { commandRow } from './describe'
 import { commandExamples, exampleLine, hintLine } from './examples'
@@ -319,4 +320,36 @@ it('a hint without input prints the bare command', () => {
   expect(
     hintLine({ summary: 's', op: 'describe.account' }, OPS['describe.account'], RESERVED),
   ).toBe('difyctl describe account')
+})
+
+function setLine(input: Record<string, unknown>): string {
+  return hintLine({ summary: 's', op: 'set.service_api', input }, OPS['set.service_api'], RESERVED)
+}
+
+it('edge values print as one safe shell word each', () => {
+  expect(setLine({ a: '' })).toBe("difyctl set service_api --a ''")
+  expect(setLine({ a: '$HOME' })).toBe("difyctl set service_api --a '$HOME'")
+  expect(setLine({ a: 3 })).toBe('difyctl set service_api --a 3')
+  expect(setLine({ a: false })).toBe('difyctl set service_api --a=false')
+  expect(setLine({ a: { b: 1 } })).toBe(`difyctl set service_api --a '{"b":1}'`)
+})
+
+it('a real value that looks like a placeholder is quoted, a null one is not', () => {
+  expect(setLine({ a: '<x>' })).toBe("difyctl set service_api --a '<x>'")
+  expect(setLine({ a: null })).toBe('difyctl set service_api --a <a>')
+})
+
+it('a field name that is not a safe flag sends the whole input through --input', () => {
+  expect(setLine({ 'a b': 1 })).toBe(`difyctl set service_api --input '{"a b":1}'`)
+  expect(setLine({ '--x': 1 })).toBe(`difyctl set service_api --input '{"--x":1}'`)
+  expect(setLine({ 'a;b': 1 })).toBe(`difyctl set service_api --input '{"a;b":1}'`)
+})
+
+it('a hint whose input was not an object prints the bare command', () => {
+  const [array, text] = parseHints([
+    { summary: 's', op: 'set.service_api', input: ['a'] },
+    { summary: 's', op: 'set.service_api', input: 'abc' },
+  ])
+  for (const hint of [array, text])
+    expect(hintLine(hint!, OPS['set.service_api'], RESERVED)).toBe('difyctl set service_api')
 })
