@@ -4,7 +4,7 @@
 
 `--input '{"a":1}'`, `--input @file.json` or `--input @-` (stdin) sends the whole body; field flags merge over it. A dotted id is a command with the dots as spaces: `run.console_app.workflow` is `difyctl run console_app workflow`.
 
-Run an app with the op for its mode: `run console_app workflow`, `run console_app chat`, `run console_app advanced_chat`, `run console_app completion`. First `difyctl describe console_app --app-id <id> --json` and read `input_schema`; that is the shape of `inputs`. Local files go under `files`, keyed by the app's file variable name (`{"files":{"doc":"./r.pdf"}}` or a list of paths); files for the run itself under `attachments`; URLs straight into `inputs`.
+The command word is the app's `mode` with `-` as `_`: `mode: advanced-chat` runs as `run console_app advanced_chat`. Run an app with the op for its mode: `run console_app workflow`, `run console_app chat`, `run console_app advanced_chat`, `run console_app completion`. First `difyctl describe console_app --app-id <id> --json` and read `input_schema`; that is the shape of `inputs`. Local files go under `files`, keyed by the app's file variable name (`{"files":{"doc":"./r.pdf"}}` or a list of paths); files for the run itself under `attachments`; URLs straight into `inputs`.
 
 ## difyctl-only flags
 
@@ -18,8 +18,15 @@ After `submit.run.form`, run its `get.run.event` hint to follow the run; repeat 
 
 ## Errors and exit codes
 
-Stderr envelope: `{"error":{"code","message","hint"?,"details"?,"schema"?,"http_status"?,"server"?}}`. `code` is difyctl's (`server_error` for server rejections); the server's code is `error.server.code` (e.g. `dsl_invalid`). `details`: `[{loc,msg}]`.
+Stderr envelope: `{"error":{"code","message","hint"?,"details"?,"schema"?,"http_status"?,"server"?}}`. `code` is difyctl's: `auth_expired` (401), `access_denied` (403), `rate_limited` (429), `server_error` for any other server rejection. The server's code is `error.server.code` (e.g. `dsl_invalid`). `details`: `[{loc,msg}]`. A 429 may carry `retry_after`, in seconds.
 
 Exit: 2 bad input caught locally (incl. near-miss command); 1 server rejection or other failure; 4 not logged in (incl. unknown word while logged out), 401, 403 (a domain `error.server.code` such as `webapp_public_access_disabled`, `service_api_disabled` or `plugin_install_forbidden` is not a login problem: read the code and its hint); 6 catalog unavailable or `unknown_op`; 7 rate limited.
+
+When a command fails:
+
+- Exit 7: wait `error.retry_after` seconds (5 if absent), then retry once. Exit 7 again: stop and tell the human.
+- `network_connection` that says "timed out": the server is slow. Run the `hint` (`difyctl set config http.timeout <ms>`), then retry once.
+- Exit 6 `catalog_unavailable` with "HTTP 404": OpenAPI is off on that server. Tell the human to ask its admin to set `OPENAPI_ENABLED=true`. Don't retry.
+- A 403 or 503 whose hint names an admin or owner: stop and tell the human what it says. Logging in again does not help.
 
 PowerShell: use `--input @file.json`, and `$env:VAR='v'; difyctl ...`.

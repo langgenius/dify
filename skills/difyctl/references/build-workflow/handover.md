@@ -1,6 +1,6 @@
 # Hand-over phase
 
-Start when every slice in `plan.md` is ticked. `<mode>` is `workflow` or `advanced_chat`.
+Start when every slice in `plan.md` is ticked. `<mode_word>` is `workflow` or `advanced_chat`.
 
 1. Run every acceptance case in the spec on the draft. Report pass or fail per requirement and per case, with your reasoning for each `judged` case.
 2. Check the release, after the acceptance run so `tested` covers the current draft:
@@ -23,7 +23,7 @@ Start when every slice in `plan.md` is ticked. `<mode>` is `workflow` or `advanc
    - Web app. When it stays on, give the human the `url` from the result.
 
      ```bash
-     difyctl set webapp <mode> --app-id <app_id> --enabled --json
+     difyctl set webapp <mode_word> --app-id <app_id> --enabled --json
      ```
 
    - Service API (needs an admin). Warn the human first what turning it off costs (see Limits in `build-workflow.md`), and note the app id. If the human wants it off, record that and turn it off after the smoke test in step 6: `difyctl run` fails with `service_api_disabled` while it is off.
@@ -41,7 +41,7 @@ Start when every slice in `plan.md` is ticked. `<mode>` is `workflow` or `advanc
 6. Smoke test the live app with one acceptance case. Chatflow also takes `--query "<message>"`.
 
    ```bash
-   difyctl run console_app <mode> --app-id <app_id> --inputs '{"<var>": "<value>"}' --json
+   difyctl run console_app <mode_word> --app-id <app_id> --inputs '{"<var>": "<value>"}' --json
    ```
 
    Then, if the human chose to turn the Service API off in step 5, turn it off now with `--enabled=false`.
