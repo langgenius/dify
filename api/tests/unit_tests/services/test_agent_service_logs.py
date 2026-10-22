@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from models import Account
 from services import agent_service
@@ -38,15 +39,14 @@ def test_legacy_tool_log_without_provider_metadata_uses_configured_tool_or_blank
     message.provider_response_latency = 0.1
     message.answer_tokens = 1
     message.message_tokens = 1
-    message.message_files_with_session.return_value = []
+    message.message_files_with_session.return_value = list[object]()
 
     conversation = SimpleNamespace(from_end_user_id=None, from_account_id="account-id")
-    session = MagicMock()
-    session.scalar.side_effect = [conversation, message, "Executor"]
+    scalar_values = iter([conversation, message, "Executor"])
 
     app_config = MagicMock()
     app_config.agent_mode_dict = {"strategy": "react"}
-    app_config.to_dict.return_value = {}
+    app_config.to_dict.return_value = dict[str, object]()
     app = MagicMock()
     app.id = "app-id"
     app.tenant_id = "tenant-id"
@@ -59,7 +59,9 @@ def test_legacy_tool_log_without_provider_metadata_uses_configured_tool_or_blank
     get_tool_icon = MagicMock(return_value="icon-url")
     monkeypatch.setattr(agent_service.ToolManager, "get_tool_icon", get_tool_icon)
 
-    result = agent_service.AgentService.get_agent_logs(app, "conversation-id", "message-id", session)
+    with Session() as session:
+        monkeypatch.setattr(session, "scalar", lambda _: next(scalar_values))
+        result = agent_service.AgentService.get_agent_logs(app, "conversation-id", "message-id", session)
 
     assert result["iterations"][0]["tool_calls"][0]["tool_icon"] == ("icon-url" if tool_still_configured else "")
     if tool_still_configured:

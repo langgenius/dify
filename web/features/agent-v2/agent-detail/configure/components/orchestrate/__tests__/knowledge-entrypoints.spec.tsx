@@ -46,7 +46,13 @@ const classicBinding = {
   datasetRefs: [{ id: 'dataset-1', name: 'Docs' }],
 }
 
-function setup({ enabled = true, workflow = false, readOnly = false, configured = false, classic = false } = {}) {
+function setup({
+  enabled = true,
+  workflow = false,
+  readOnly = false,
+  configured = false,
+  classic = false,
+} = {}) {
   const queryClient = createConsoleQueryClient()
   const options = consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
     input: (pageParam) => ({ query: { limit: 50, page: pageParam } }),
