@@ -127,7 +127,7 @@ from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
-from services.end_user_connections.api_key import ApiKeyConnectionService
+from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
@@ -316,7 +316,7 @@ class ApplicationServices:
     inner_mail: InnerMailService
     web_passport: WebPassportService
     web_identity: WebIdentityService
-    end_user_connections: ApiKeyConnectionService
+    end_user_connections: ConnectionService
     end_user_connection_oauth: OAuthConnectionService
     tags: TagApplicationService
     workflow_statistics: WorkflowStatisticQueryService

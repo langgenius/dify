@@ -360,6 +360,10 @@ export const post7 = oc
       data: zConnectionCredentialsUnavailableError,
     },
     connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
   })

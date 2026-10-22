@@ -5,8 +5,8 @@ from threading import Barrier
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from services.end_user_connections.api_key import ConnectionChanges
 from services.end_user_connections.errors import ConnectionConflictError
+from services.end_user_connections.management import ConnectionChanges
 from services.end_user_connections.policy import connection_mutation_guard
 from tests.helpers.end_user_api_key import make_harness
 

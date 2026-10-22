@@ -1,4 +1,4 @@
-"""Web management of personal API-key Connections."""
+"""Web management of personal API-key and OAuth Connections."""
 
 from datetime import datetime
 from typing import Any
@@ -15,6 +15,7 @@ from controllers.common.end_user_connections import (
     ConnectionCredentialsHTTPError,
     ConnectionLoginRequiredError,
     ConnectionNotFoundHTTPError,
+    ConnectionReauthorizationHTTPError,
     ConnectionSecretUnavailableHTTPError,
     ConnectionWorkflowChangedHTTPError,
 )
@@ -174,7 +175,7 @@ class EndUserConnectionApi(WebApiResource):
             _raise_error(error)
         return dump_response(EndUserConnectionResponse, result)
 
-    @web_ns.response(204, "API-key connection deleted")
+    @web_ns.response(204, "Connection deleted")
     @error_responses(
         ConnectionLoginRequiredError,
         ConnectionConfigurationHTTPError,
@@ -198,6 +199,7 @@ class EndUserConnectionCheckApi(WebApiResource):
         ConnectionConfigurationHTTPError,
         ConnectionNotFoundHTTPError,
         ConnectionConflictHTTPError,
+        ConnectionReauthorizationHTTPError,
         ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableHTTPError,
     )

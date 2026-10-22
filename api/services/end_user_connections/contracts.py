@@ -213,7 +213,9 @@ class ConnectionManagement(Protocol):
         """Refresh expired OAuth server-side before checking when possible.
 
         Unsupported and temporarily unavailable checks never persist invalidity.
-        Checking does not extend last_active_at or select a replacement Connection.
+        An expired grant with unsupported refresh is invalid; transient refresh
+        failures preserve its state. Checking, including automatic token refresh,
+        does not extend last_active_at or select a replacement Connection.
         """
         ...
 

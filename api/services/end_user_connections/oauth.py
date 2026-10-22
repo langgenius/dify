@@ -9,7 +9,6 @@ from typing import Any, Protocol
 from urllib.parse import parse_qs, urlsplit
 
 from constants.end_user_connections import ConnectionCredentialType, OAuthClientSource
-from services.end_user_connections.api_key import ConnectionCipher, StoredConnection
 from services.end_user_connections.contracts import (
     ConnectionOAuthStart,
     ConnectionSummary,
@@ -25,6 +24,7 @@ from services.end_user_connections.errors import (
     ConnectionOAuthError,
     ConnectionReauthorizationRequiredError,
 )
+from services.end_user_connections.management import ConnectionCipher, StoredConnection
 from services.end_user_connections.policy import (
     connection_mutation_guard,
     require_creation_target,
