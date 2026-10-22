@@ -822,6 +822,44 @@ def test_projection_keeps_newest_entries_when_trimming_to_the_budget(monkeypatch
     assert total <= 74
 
 
+def test_projection_announces_the_truncation_when_one_entry_exceeds_the_budget(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """A single entry too big for the budget is replaced by the notice, not kept."""
+    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 200, raising=False)
+    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 500, raising=False)
+    projection = _projection()
+    projection.observe(_stream_event(
+        "part_delta",
+        index=0,
+        delta={"part_delta_kind": "thinking", "content_delta": "x" * 900},
+    ))
+
+    entries = projection.entries()
+
+    assert [entry.label for entry in entries] == ["Agent process truncated"]
+    assert entries[0].data == {"truncated": True}
+
+
+def test_projection_keeps_the_notice_only_when_every_entry_exceeds_the_budget(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Both entries being over budget still ends with the notice and no payload."""
+    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 200, raising=False)
+    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 500, raising=False)
+    projection = _projection()
+    for index in range(2):
+        projection.observe(_stream_event(
+            "function_tool_call",
+            index=index,
+            part={"tool_name": "shell_run", "tool_call_id": f"tc-{index}", "args": {"n": "x" * 500}},
+        ))
+
+    entries = projection.entries()
+
+    assert [entry.label for entry in entries] == ["Agent process truncated"]
+
+
 def test_projection_skips_output_tool_calls_and_non_mapping_payloads():
     projection = _projection()
     projection.observe(AgentBackendStreamInternalEvent(
