@@ -35,7 +35,6 @@ const ConversationOpener = ({
   const handleOpenOpeningModal = useCallback(() => {
     /* v8 ignore next -- guarded path is not reachable in tests with a real disabled button because click is prevented at DOM level. @preserve */
     if (disabled) return
-    const { features, setFeatures } = featuresStore!.getState()
     setShowOpeningModal({
       payload: {
         ...opening,
@@ -44,6 +43,7 @@ const ConversationOpener = ({
         onAutoAddPromptVariable,
       },
       onSaveCallback: (newOpening) => {
+        const { features, setFeatures } = featuresStore!.getState()
         const newFeatures = produce(features, (draft) => {
           draft.opening = newOpening
         })
@@ -62,6 +62,7 @@ const ConversationOpener = ({
     opening,
     promptVariables,
     setShowOpeningModal,
+    workflowVariables,
   ])
 
   const handleChange = useCallback(

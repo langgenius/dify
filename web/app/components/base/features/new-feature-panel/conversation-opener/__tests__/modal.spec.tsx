@@ -61,19 +61,31 @@ describe('OpeningSettingModal', () => {
     })
   })
 
-  it.each(['', '   '])('prevents saving an empty opener (%j)', async (opening_statement) => {
+  it.each(['', '   '])(
+    'prevents saving an empty opener without questions (%j)',
+    async (opening_statement) => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      render(
+        <OpeningSettingModal
+          data={{ ...defaultData, opening_statement, suggested_questions: ['', '   '] }}
+          onSave={onSave}
+          onCancel={vi.fn()}
+        />,
+      )
+      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+      await save(user)
+      expect(onSave).not.toHaveBeenCalled()
+    },
+  )
+
+  it('saves suggested questions without an opener', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
-    render(
-      <OpeningSettingModal
-        data={{ ...defaultData, opening_statement }}
-        onSave={onSave}
-        onCancel={vi.fn()}
-      />,
-    )
-    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+    const data = { ...defaultData, opening_statement: '' }
+    render(<OpeningSettingModal data={data} onSave={onSave} onCancel={vi.fn()} />)
     await save(user)
-    expect(onSave).not.toHaveBeenCalled()
+    expect(onSave).toHaveBeenCalledExactlyOnceWith(data)
   })
 
   it.each([[], undefined])(
@@ -210,12 +222,12 @@ describe('OpeningSettingModal', () => {
     })
   })
 
-  it('does not save if the opener becomes empty while variable confirmation is open', async () => {
+  it('does not save if the opener becomes empty without questions while variable confirmation is open', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
     const view = render(
       <OpeningSettingModal
-        data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
+        data={{ ...defaultData, opening_statement: 'Hello {{name}}', suggested_questions: [] }}
         onSave={onSave}
         onCancel={vi.fn()}
       />,
@@ -224,7 +236,7 @@ describe('OpeningSettingModal', () => {
     expect(screen.getByText('appDebug.autoAddVar')).toBeInTheDocument()
     view.rerender(
       <OpeningSettingModal
-        data={{ ...defaultData, opening_statement: '   ' }}
+        data={{ ...defaultData, opening_statement: '   ', suggested_questions: [] }}
         onSave={onSave}
         onCancel={vi.fn()}
       />,

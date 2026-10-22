@@ -99,7 +99,9 @@ export const buildInitialFeatures = (
       fileUploadConfig: fileUploadConfigResponse,
     },
     opening: {
-      enabled: !!features.opening_statement,
+      enabled:
+        !!features.opening_statement?.trim() ||
+        !!features.suggested_questions?.some((question) => question.trim()),
       opening_statement: features.opening_statement,
       suggested_questions: features.suggested_questions,
     },

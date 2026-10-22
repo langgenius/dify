@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from io import BytesIO
@@ -910,6 +911,69 @@ def test_chat_dsl_import_preserves_valid_feature_fields(sqlite_session: Session)
     assert persisted is not None
     assert persisted.suggested_questions_after_answer_dict == model_config["suggested_questions_after_answer"]
     assert persisted.text_to_speech_dict == model_config["text_to_speech"]
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+@pytest.mark.parametrize("enabled", [True, False])
+def test_export_dsl_keeps_file_upload_settings_over_legacy_image_config(
+    mode: AppMode, enabled: bool, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    file_upload = {
+        "enabled": enabled,
+        "number_limits": 10,
+        "allowed_file_types": ["image"],
+        "allowed_file_extensions": [".png"],
+        "allowed_file_upload_methods": ["local_file"],
+    }
+    workflow = _workflow(graph={"nodes": [], "edges": []})
+    workflow.features = json.dumps({"file_upload": {**file_upload, "image": {"enabled": True}}})
+    workflow_service_class = Mock()
+    workflow_service_class.get_draft_workflow.return_value = workflow
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", workflow_service_class)
+    monkeypatch.setattr(
+        "services.app_dsl_service.DependenciesAnalysisService.generate_dependencies", Mock(return_value=[])
+    )
+    monkeypatch.setattr(App, "site_with_session", Mock(return_value=None))
+
+    exported = yaml.safe_load(AppDslService.export_dsl(_app(mode=mode), session=unbound_session))
+
+    assert exported["workflow"]["features"]["file_upload"] == file_upload
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_workflow_dsl_round_trip_preserves_feature_settings(
+    mode: AppMode, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    features = {
+        "opening_statement": "",
+        "suggested_questions": ["What can you do?"],
+        "suggested_questions_after_answer": {"enabled": True, "prompt": "Suggest follow-ups"},
+        "speech_to_text": {"enabled": True},
+        "text_to_speech": {"enabled": True, "language": "en-US", "voice": "alloy", "autoPlay": "enabled"},
+        "retriever_resource": {"enabled": True},
+        "sensitive_word_avoidance": {"enabled": True, "type": "keywords", "config": {"keywords": "blocked"}},
+        "file_upload": {"enabled": True, "number_limits": 10, "allowed_file_upload_methods": ["local_file"]},
+    }
+    workflow = _workflow(graph={"nodes": [], "edges": []})
+    workflow.features = json.dumps(features)
+    imported_workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-2")),
+    )
+    workflow_service_class = Mock(return_value=imported_workflow_service)
+    workflow_service_class.get_draft_workflow.return_value = workflow
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", workflow_service_class)
+    monkeypatch.setattr(
+        "services.app_dsl_service.DependenciesAnalysisService.generate_dependencies", Mock(return_value=[])
+    )
+    monkeypatch.setattr(App, "site_with_session", Mock(return_value=None))
+
+    exported = yaml.safe_load(AppDslService.export_dsl(_app(mode=mode), session=unbound_session))
+    importer = AppDslService(session=cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock())))
+    importer._create_or_update_app(app=_app(mode=mode), data=exported, account=Mock(id="account-1"))
+
+    assert exported["workflow"]["features"] == features
+    assert imported_workflow_service.sync_draft_workflow.call_args.kwargs["features"] == features
 
 
 def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: pytest.MonkeyPatch) -> None:

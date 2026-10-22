@@ -89,6 +89,21 @@ describe('ModerationSettingModal', () => {
     expect(onCancel).toHaveBeenCalled()
   })
 
+  it('keeps the current provider configuration when it is selected again', async () => {
+    const user = userEvent.setup()
+    const save = vi.fn()
+    await renderModal(
+      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={save} />,
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: 'appDebug.feature.moderation.modal.provider.keywords' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(save).toHaveBeenCalledExactlyOnceWith(defaultData)
+  })
+
   it('should show error when saving without inputs or outputs enabled', async () => {
     const user = userEvent.setup()
     const data: ModerationConfig = {

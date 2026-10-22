@@ -1,7 +1,8 @@
 import type { Features, OnFeaturesChange } from '../../../types'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { FeaturesProvider } from '../../../context'
+import { FeaturesContext, FeaturesProvider } from '../../../context'
+import { createFeaturesStore } from '../../../store'
 import ConversationOpener from '../index'
 
 const mockSetShowOpeningModal = vi.fn()
@@ -122,6 +123,37 @@ describe('ConversationOpener', () => {
     await user.hover(document.body)
     expect(screen.getByText('Updated')).toBeInTheDocument()
     expect(onChange).toHaveBeenCalledOnce()
+  })
+
+  it('preserves other feature changes made while the modal is open', async () => {
+    const user = userEvent.setup()
+    const store = createFeaturesStore()
+    store.getState().setFeatures({
+      ...store.getState().features,
+      opening: { enabled: true, opening_statement: 'Hello' },
+    })
+    render(
+      <FeaturesContext value={store}>
+        <ConversationOpener />
+      </FeaturesContext>,
+    )
+
+    await user.hover(screen.getByText(/feature\.conversationOpener\.title/))
+    screen.getByRole('button', { name: /openingStatement\.writeOpener/ }).focus()
+    await user.keyboard('{Enter}')
+    act(() =>
+      store.getState().setFeatures({
+        ...store.getState().features,
+        file: { enabled: true, number_limits: 10 },
+      }),
+    )
+    const updated = { enabled: true, opening_statement: 'Updated' }
+    act(() => mockSetShowOpeningModal.mock.calls[0]![0].onSaveCallback(updated))
+
+    expect(store.getState().features).toMatchObject({
+      opening: updated,
+      file: { enabled: true, number_limits: 10 },
+    })
   })
 
   it('should invoke onCancelCallback', async () => {
