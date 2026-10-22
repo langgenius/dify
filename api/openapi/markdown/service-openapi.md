@@ -1724,6 +1724,7 @@ Enable or disable built-in metadata fields for the knowledge base.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Built-in metadata field toggled successfully. | **application/json**: [DatasetMetadataActionResponse](#datasetmetadataactionresponse)<br> |
+| 400 | Invalid action | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
