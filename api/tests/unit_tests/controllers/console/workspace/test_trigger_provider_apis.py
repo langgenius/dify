@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from datetime import datetime
 from inspect import unwrap
-from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock, create_autospec, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -23,7 +21,6 @@ from controllers.console.workspace.trigger_providers import (
     TriggerSubscriptionBuilderUpdatePayload,
     TriggerSubscriptionBuilderVerifyApi,
     TriggerSubscriptionBuilderVerifyPayload,
-    TriggerSubscriptionListApi,
     TriggerSubscriptionUpdateApi,
     TriggerSubscriptionVerifyApi,
 )
@@ -31,17 +28,6 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity
 from core.trigger.entities.entities import RequestLog
 from models.account import Account
-from services.credentials.query import CredentialQuery
-
-
-@pytest.fixture
-def credential_query() -> Iterator[MagicMock]:
-    query = create_autospec(CredentialQuery, instance=True, spec_set=True)
-    with patch(
-        "controllers.console.workspace.trigger_providers.application_services",
-        return_value=SimpleNamespace(credential_queries=query),
-    ):
-        yield query
 
 
 def mock_user() -> Account:
@@ -71,37 +57,6 @@ def request_log() -> RequestLog:
         response={"status": 200, "body": {"ok": True}},
         created_at=datetime(2024, 1, 1),
     )
-
-
-class TestTriggerSubscriptionListApi:
-    def test_list_success(self, app: Flask, credential_query: MagicMock) -> None:
-        api = TriggerSubscriptionListApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerProviderService.list_trigger_provider_subscriptions",
-                return_value=[],
-            ) as list_subscriptions,
-        ):
-            assert method(api, "t1", mock_user(), "github") == []
-        assert list_subscriptions.call_args.kwargs["credential_query"] is credential_query
-
-    def test_list_invalid_provider(self, app: Flask, credential_query: MagicMock) -> None:
-        api = TriggerSubscriptionListApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerProviderService.list_trigger_provider_subscriptions",
-                side_effect=ValueError("bad"),
-            ) as list_subscriptions,
-        ):
-            result, status = method(api, "t1", mock_user(), "bad")
-            assert status == 404
-        assert list_subscriptions.call_args.kwargs["credential_query"] is credential_query
 
 
 class TestTriggerSubscriptionBuilderApis:

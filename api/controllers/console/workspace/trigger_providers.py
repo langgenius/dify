@@ -207,33 +207,30 @@ class TriggerProviderInfoApi(Resource):
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/subscriptions/list")
 class TriggerSubscriptionListApi(Resource):
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Trigger subscriptions retrieved successfully",
         console_ns.models[TriggerProviderSubscriptionListResponse.__name__],
     )
-    @console_ns.response(404, "Trigger provider not found", console_ns.models[TriggerProviderErrorResponse.__name__])
-    @setup_required
-    @login_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    def get(self, tenant_id: str, user: Account, provider: str):
+    @console_ns.response(
+        HTTPStatus.NOT_FOUND, "Trigger provider not found", console_ns.models[TriggerProviderErrorResponse.__name__]
+    )
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
+    )
+    def get(self, context: RequestContext, provider: str) -> list[dict[str, Any]] | tuple[dict[str, Any], HTTPStatus]:
         """List all trigger subscriptions for the current tenant's provider"""
 
         try:
-            return dump_response(
-                TriggerProviderSubscriptionListResponse,
-                TriggerProviderService.list_trigger_provider_subscriptions(
-                    tenant_id=tenant_id,
+            return TriggerProviderSubscriptionListResponse(
+                application_services().workspaces.trigger_subscriptions.list(
+                    tenant_id=context.active_workspace_id,
+                    account_id=context.account_id,
                     provider_id=TriggerProviderID(provider),
-                    user=user,
-                    credential_query=application_services().credential_queries,
                 ),
-            )
+            ).model_dump(mode="json")
         except ValueError as e:
-            return TriggerProviderErrorResponse(error=str(e)).model_dump(mode="json"), 404
+            return TriggerProviderErrorResponse(error=str(e)).model_dump(mode="json"), HTTPStatus.NOT_FOUND
         except Exception as e:
             logger.exception("Error listing trigger providers", exc_info=e)
             raise

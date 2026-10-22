@@ -2,13 +2,7 @@ import logging
 import time as _time
 import uuid
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypedDict
-
-from services.credentials.query import CredentialQuery
-from services.plugin.dispatch_identity import PluginOAuthClientConfig
-
-if TYPE_CHECKING:
-    from models.account import Account
+from typing import Any, TypedDict
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -21,7 +15,6 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.plugin.plugin_service import PluginService
 from core.tools.utils.system_encryption import decrypt_system_params
-from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import Subscription as TriggerSubscriptionEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
@@ -39,6 +32,7 @@ from models.trigger import (
     TriggerOAuthTenantClient,
     TriggerSubscription,
 )
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 
 logger = logging.getLogger(__name__)
 
@@ -54,57 +48,6 @@ class TriggerProviderService:
     # Trigger provider
     ##########################
     __MAX_TRIGGER_PROVIDER_COUNT__ = 10
-
-    @classmethod
-    def list_trigger_provider_subscriptions(
-        cls,
-        tenant_id: str,
-        provider_id: TriggerProviderID,
-        user: "Account | None" = None,
-        *,
-        credential_query: CredentialQuery,
-    ) -> list[TriggerProviderSubscriptionApiEntity]:
-        """List all trigger subscriptions for the current tenant, filtered by visibility."""
-        subscriptions = [
-            TriggerProviderSubscriptionApiEntity(
-                id=row.id,
-                name=row.name,
-                provider=row.provider,
-                credential_type=row.credential_type,
-                credentials=dict(row.credentials),
-                endpoint=generate_plugin_trigger_endpoint_url(row.endpoint_id),
-                parameters=dict(row.parameters),
-                properties=dict(row.properties),
-                workflows_in_use=row.workflows_in_use,
-            )
-            for row in credential_query.list_trigger_subscriptions(
-                workspace_id=tenant_id, provider=str(provider_id), actor_id=user.id if user else None
-            )
-        ]
-        if not subscriptions:
-            return []
-
-        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
-        for subscription in subscriptions:
-            credential_encrypter, _ = create_trigger_provider_encrypter_for_subscription(
-                tenant_id=tenant_id,
-                controller=provider_controller,
-                subscription=subscription,
-            )
-            subscription.credentials = dict(
-                credential_encrypter.mask_credentials(dict(credential_encrypter.decrypt(subscription.credentials)))
-            )
-            properties_encrypter, _ = create_trigger_provider_encrypter_for_properties(
-                tenant_id=tenant_id,
-                controller=provider_controller,
-                subscription=subscription,
-            )
-            subscription.properties = dict(
-                properties_encrypter.mask_credentials(dict(properties_encrypter.decrypt(subscription.properties)))
-            )
-            subscription.parameters = dict(subscription.parameters)
-
-        return subscriptions
 
     @classmethod
     def add_trigger_subscription(
