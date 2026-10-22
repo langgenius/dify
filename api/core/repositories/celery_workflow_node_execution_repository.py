@@ -223,6 +223,25 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 execution_ids.append(execution.id)
 
     @override
+    def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        """Persist offloaded node execution data synchronously and refresh the cache.
+
+        ``WorkflowNodeExecutionRepository`` declares this method and the workflow
+        persistence layer calls it on every node completion
+        (``core/app/workflow/layers/persistence.py``), so the Celery backend must
+        implement it too. The SQLAlchemy repository mutates the domain model in
+        place (``set_truncated_inputs`` / ``set_truncated_outputs`` / ...), so the
+        cached instance is refreshed afterwards to keep reads consistent.
+        """
+
+        self._sql_repository.save_execution_data(execution)
+        self._execution_cache[execution.id] = execution
+        if execution.workflow_execution_id:
+            execution_ids = self._workflow_execution_mapping.setdefault(execution.workflow_execution_id, [])
+            if execution.id not in execution_ids:
+                execution_ids.append(execution.id)
+
+    @override
     def get_by_workflow_execution(
         self,
         workflow_execution_id: str,
