@@ -11,7 +11,7 @@ import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { Context } from '@/kernel/context'
 import { commands } from '@/plugins/commands'
-import { session } from '@/plugins/session'
+import { LOGIN_FILE_NAME, session } from '@/plugins/session'
 import { token } from '@/plugins/token'
 
 const worlds: TestWorld[] = []
@@ -103,6 +103,8 @@ it('falls back to the external-SSO subject email when there is no account', asyn
   const login = await (await w.ctx.get(session)).current()
   expect(login?.email).toBe('sso@dify.ai')
   expect(login?.account).toBeNull()
+  expect(login?.sessionId).toBe('tok-sso-1')
+  expect(readFileSync(join(w.dir, LOGIN_FILE_NAME), 'utf8')).toContain('session_id: tok-sso-1')
 })
 
 it('resume with no pending login reports the saved login', async () => {

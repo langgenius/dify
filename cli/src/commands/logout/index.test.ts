@@ -7,7 +7,7 @@ import { INSTALLATION_FILE_NAME } from '@/auth/installation'
 import { PENDING_FILE_NAME } from '@/auth/pending-login'
 import { Context } from '@/kernel/context'
 import { commands } from '@/plugins/commands'
-import { session } from '@/plugins/session'
+import { LOGIN_FILE_NAME, session } from '@/plugins/session'
 import { token } from '@/plugins/token'
 
 const worlds: TestWorld[] = []
@@ -24,7 +24,11 @@ it('revokes the session on the server and clears local state', async () => {
   const w = await testContext({ login: true, argv: ['logout'] })
   worlds.push(w)
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(JSON.parse(w.io.outBuf())).toEqual({ logged_out: true, server: w.mock.url })
+  expect(JSON.parse(w.io.outBuf())).toEqual({
+    logged_out: true,
+    server: w.mock.url,
+    revoked: true,
+  })
   expect(w.io.errBuf()).toBe('')
 
   expect(await (await w.ctx.get(session)).current()).toBeNull()
@@ -53,6 +57,7 @@ it('treats a 401 on the revoke as already gone', async () => {
     path: '/openapi/v1/account/sessions/self',
   })
   expect(w.io.errBuf()).toBe('')
+  expect(JSON.parse(w.io.outBuf())).toMatchObject({ revoked: true })
   expect(await (await w.ctx.get(session)).current()).toBeNull()
 })
 
@@ -80,6 +85,9 @@ it('still clears local state and reports a failed server revoke', async () => {
   w.mock.setScenario('server-5xx')
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(w.io.errBuf()).toMatch(/^server revoke failed:/)
+  expect(JSON.parse(w.io.outBuf())).toMatchObject({ logged_out: true, revoked: false })
+  expect(JSON.parse(w.io.outBuf()).revoke_error).toEqual(expect.any(String))
+  expect(w.io.errBuf()).toContain('delete account session --session-id tok-1')
 
   expect(await (await w.ctx.get(session)).current()).toBeNull()
   expect(catalogFiles(w.dir)).toEqual([])
@@ -106,4 +114,26 @@ it('refuses under an env login without dropping a pending interactive login', as
     code: 'usage_invalid_flag',
   })
   expect(existsSync(pendingFile)).toBe(true)
+})
+
+it('points to the session list when the login has no session id', async () => {
+  const w = await testContext({ login: true, argv: ['logout'] })
+  worlds.push(w)
+  const sessionService = await w.ctx.get(session)
+  await sessionService.save({ ...(await sessionService.require()), sessionId: null })
+  w.mock.setScenario('server-5xx')
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(w.io.outBuf())).toMatchObject({ revoked: false })
+  expect(w.io.errBuf()).toContain('difyctl get account session, then delete account session')
+})
+
+it('logs out a login.yml saved without a session id', async () => {
+  const w = await testContext({ login: true, argv: ['logout'] })
+  worlds.push(w)
+  const file = join(w.dir, LOGIN_FILE_NAME)
+  writeFileSync(file, readFileSync(file, 'utf8').replace(/^session_id:.*\n/m, ''))
+  expect(readFileSync(file, 'utf8')).not.toContain('session_id')
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(w.io.outBuf())).toMatchObject({ revoked: true })
+  expect(w.io.errBuf()).toBe('')
 })

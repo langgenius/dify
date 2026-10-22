@@ -20,6 +20,7 @@ const LOGIN: Login = {
   workspaceId: null,
   tokenStorage: 'file',
   insecure: false,
+  sessionId: null,
 }
 let dir: string
 beforeEach(() => {

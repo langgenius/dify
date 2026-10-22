@@ -211,6 +211,7 @@ async function finish(ctx: CommandContext, pending: Pending, success: PollSucces
     workspaceId: success.default_workspace_id ?? null,
     tokenStorage,
     insecure: pending.insecure,
+    sessionId: success.token_id ?? null,
   }
 
   await replacePrevious(ctx)

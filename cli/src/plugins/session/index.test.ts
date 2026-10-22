@@ -15,6 +15,7 @@ const LOGIN: Login = {
   workspaceId: 'ws-1',
   tokenStorage: 'file',
   insecure: false,
+  sessionId: 'tok-1',
 }
 let dir: string
 beforeEach(() => {
@@ -98,6 +99,7 @@ it('reads a login.yml with only its identity, defaulting the rest and ignoring u
     workspaceId: null,
     tokenStorage: 'file',
     insecure: false,
+    sessionId: null,
   })
   expect(streams.errBuf()).toMatch(/ignoring the invalid value of insecure\n$/)
 })
@@ -106,4 +108,18 @@ it('saves only the current shape', async () => {
   const { load } = withLoginFile('future_key: x\n')
   await (await load()).save(LOGIN)
   expect(readFileSync(join(dir, LOGIN_FILE_NAME), 'utf8')).not.toContain('future_key')
+})
+
+it('reads a login.yml without session_id as a null session id', async () => {
+  const { streams, load } = withLoginFile(
+    'server: https://d.example\nemail: me@x\ntoken_storage: file\n',
+  )
+  expect((await (await load()).current())?.sessionId).toBeNull()
+  expect(streams.errBuf()).toBe('')
+})
+
+it('round-trips the session id through login.yml', async () => {
+  const { load } = withLoginFile('future_key: x\n')
+  await (await load()).save(LOGIN)
+  expect(readFileSync(join(dir, LOGIN_FILE_NAME), 'utf8')).toContain('session_id: tok-1')
 })

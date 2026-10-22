@@ -37,6 +37,7 @@ export type TestWorldOptions = {
 const TEMP_PREFIX = 'difyctl-world-'
 const FILE_EMAIL = 'me@x'
 const FILE_WORKSPACE_ID = 'ws-1'
+const FILE_SESSION_ID = 'tok-1'
 const FILE_LOGIN_TOKEN = 'dfoa_file'
 const ENV_LOGIN_TOKEN = 'dfoa_env'
 
@@ -68,6 +69,7 @@ async function writeFileLogin(server: string): Promise<void> {
     workspaceId: FILE_WORKSPACE_ID,
     tokenStorage: 'file',
     insecure: false,
+    sessionId: FILE_SESSION_ID,
   }
   await sessionService.save(login)
   await tokenService.write(login, FILE_LOGIN_TOKEN)
