@@ -299,9 +299,9 @@ function ArchivedLogsUpgradeBanner() {
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs sm:flex-row sm:items-center sm:justify-between">
       <div className="space-y-1 text-text-primary-on-surface">
-        <div className="title-xl-semi-bold">
+        <h4 className="title-xl-semi-bold">
           {t(($) => $['archives.upgradeTip.title'], { ns: 'appLog' })}
-        </div>
+        </h4>
         <div className="system-sm-regular">
           {t(($) => $['archives.upgradeTip.description'], { ns: 'appLog' })}
         </div>

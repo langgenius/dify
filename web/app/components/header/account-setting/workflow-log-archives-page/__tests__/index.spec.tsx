@@ -820,6 +820,12 @@ describe('WorkflowLogArchivesPage', () => {
       plan = 'sandbox'
       renderPage()
 
+      expect(
+        screen.getByRole('heading', {
+          level: 4,
+          name: 'appLog.archives.upgradeTip.title',
+        }),
+      ).toBeInTheDocument()
       expect(screen.queryByRole('table')).not.toBeInTheDocument()
       expect(archiveRequests.list).not.toHaveBeenCalled()
       await user.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }))
