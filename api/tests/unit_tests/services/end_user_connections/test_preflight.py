@@ -65,10 +65,10 @@ def add_node(harness: OAuthHarness, *, reuse: bool) -> None:
         workflow.graph = json.dumps(graph)
 
 
-def test_initial_inspection_discovers_version_without_credentials_or_run(
+def test_empty_selection_checks_explicit_version_without_credentials_or_run(
     harness: OAuthHarness, service: ConnectionPreflightService
 ) -> None:
-    result = service.check(harness.base.context, ConnectionPreflightInput(connections={}))
+    result = service.check(harness.base.context, command(harness, {}))
     assert result.workflow_id == harness.base.workflow_id
     assert not result.ready
     assert result.requirements[0].status == NodeConnectionStatus.DISCONNECTED
@@ -268,7 +268,9 @@ def test_existing_chatflow_session_is_validated_even_with_empty_selections(
     payload = command(harness, {}).model_copy(update={"conversation_id": uuid4()})
     with pytest.raises(ConversationNotExistsError):
         service.check(harness.base.context, payload)
-    payload = ConnectionPreflightInput.model_validate({"conversation_id": conversation_id, "connections": {}})
+    payload = ConnectionPreflightInput.model_validate(
+        {"workflow_id": harness.base.workflow_id, "conversation_id": conversation_id, "connections": {}}
+    )
     assert not service.check(harness.base.context, payload).ready
     with harness.base.sessions.begin() as session:
         session.execute(
@@ -309,14 +311,14 @@ def test_guest_can_inspect_requirements_without_enabling_connection_creation(
             sa.update(EndUser).where(EndUser.id == harness.base.context.end_user_id).values(account_id=None)
         )
     guest = replace(harness.base.context, account_id=None)
-    assert not service.check(guest, ConnectionPreflightInput(connections={})).ready
+    assert not service.check(guest, command(harness, {})).ready
 
 
 def test_plain_workflow_rejects_unowned_session_uuid(
     harness: OAuthHarness, service: ConnectionPreflightService
 ) -> None:
     with pytest.raises(ConnectionConfigurationError):
-        service.check(harness.base.context, ConnectionPreflightInput(connections={}, conversation_id=uuid4()))
+        service.check(harness.base.context, command(harness, {}).model_copy(update={"conversation_id": uuid4()}))
 
 
 def test_replacement_after_check_completion_cannot_reuse_old_validation(
@@ -350,7 +352,7 @@ def test_workspace_only_graph_requires_no_personal_connections(
         graph["nodes"][0]["data"].pop("end_user_auth")
         graph["nodes"][0]["data"]["credential_source"] = "workspace"
         workflow.graph = json.dumps(graph)
-    result = service.check(harness.base.context, ConnectionPreflightInput(connections={}))
+    result = service.check(harness.base.context, command(harness, {}))
     assert result.ready
     assert result.requirements == ()
     assert harness.base.auth.calls == []

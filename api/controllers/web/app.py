@@ -21,6 +21,7 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.passport import PassportService
@@ -57,10 +58,17 @@ class AppMetaResponse(BaseModel):
     )
 
 
+class WebAppParametersResponse(Parameters, ResponseModel):
+    workflow_id: str | None = Field(description="Published workflow/chatflow version; null for other app modes.")
+    requires_end_user_connections: bool = Field(
+        description="Whether this published version declares EndUser tool connections, independent of user readiness.",
+    )
+
+
 register_schema_models(web_ns, AppAccessModeQuery, AppPermissionQuery)
 register_response_schema_models(
     web_ns,
-    Parameters,
+    WebAppParametersResponse,
     AppMetaResponse,
     AccessModeResponse,
     BooleanResultResponse,
@@ -83,17 +91,17 @@ class AppParameterApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[Parameters.__name__])
+    @web_ns.response(200, "Success", web_ns.models[WebAppParametersResponse.__name__])
     def get(self, app_model: App, end_user: EndUser):
         """Retrieve app parameters."""
         try:
-            parameters = application_services().app_definitions.get_public_parameters(app_model.id)
+            parameters = application_services().app_definitions.get_web_parameters(app_model.id, app_model.tenant_id)
         except AppDefinitionNotPublishedError:
             raise AgentNotPublishedError() from None
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
 
-        return dump_response(Parameters, parameters)
+        return dump_response(WebAppParametersResponse, parameters)
 
 
 @web_ns.route("/meta")

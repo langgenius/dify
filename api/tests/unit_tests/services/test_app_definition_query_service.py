@@ -169,3 +169,38 @@ def test_get_site_configuration_rejects_missing_site() -> None:
 
     with pytest.raises(AppDefinitionUnavailableError, match="Site not found"):
         service.get_site_configuration("app-1")
+
+
+def test_web_parameters_include_version_and_requirements_without_changing_public_parameters() -> None:
+    service, definitions = _service()
+    parameters = AppParameterConfig(features_dict={"opening_statement": "Hello"}, user_input_form=[])
+    definitions.get_web_parameter_config.return_value = module.WebAppParameterConfig(
+        parameters=parameters,
+        workflow_id="published-version",
+        requires_end_user_connections=True,
+    )
+    definitions.get_published_parameter_config.return_value = parameters
+    result = service.get_web_parameters("app-1", "tenant-1")
+    assert result["workflow_id"] == "published-version"
+    assert result["requires_end_user_connections"] is True
+    assert result["opening_statement"] == "Hello"
+    definitions.get_web_parameter_config.assert_called_once_with("app-1", "tenant-1")
+    public = service.get_public_parameters("app-1")
+    assert "workflow_id" not in public
+    assert "requires_end_user_connections" not in public
+
+
+@pytest.mark.parametrize(
+    ("source_error", "expected_error"),
+    [
+        (AgentAppNotPublishedError("unpublished"), AppDefinitionNotPublishedError),
+        (AgentAppGeneratorError("missing"), AppDefinitionUnavailableError),
+    ],
+)
+def test_web_parameters_preserve_agent_publication_errors(
+    source_error: Exception, expected_error: type[Exception]
+) -> None:
+    service, definitions = _service()
+    definitions.get_web_parameter_config.side_effect = source_error
+    with pytest.raises(expected_error):
+        service.get_web_parameters("app-1", "tenant-1")

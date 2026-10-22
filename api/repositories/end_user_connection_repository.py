@@ -172,15 +172,11 @@ class EndUserConnectionRepository:
             return graph
 
     def validate_preflight_context(
-        self, context: WebConnectionContext, workflow_id: str | None, conversation_id: str | None
-    ) -> str:
+        self, context: WebConnectionContext, workflow_id: str, conversation_id: str | None
+    ) -> None:
         with self._sessions() as session:
             app = self._require_context(session, context, lock=False)
-            selected_version = workflow_id if workflow_id is not None else app.workflow_id
-            if selected_version is None:
-                raise ConnectionWorkflowChangedError()
-            self._require_preflight_scope(session, context, app, selected_version, conversation_id)
-            return selected_version
+            self._require_preflight_scope(session, context, app, workflow_id, conversation_id)
 
     def access_records(
         self, context: WebConnectionContext, connection_ids: frozenset[str]

@@ -808,7 +808,7 @@ Retrieve the parameters for a specific app.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Parameters](#parameters)<br> |
+| 200 | Success | **application/json**: [WebAppParametersResponse](#webappparametersresponse)<br> |
 | 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -1564,7 +1564,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 | ---- | ---- | ----------- | -------- |
 | connections | object | Explicit choices keyed by independent authorization node ID. Missing/null choices remain disconnected; saved choices are never inferred. | Yes |
 | conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
-| workflow_id | string | Published version. Required for nonempty selections; omit for an initial empty inspection. | No |
+| workflow_id | string (uuid) | Published workflow version returned by Web App parameters. | Yes |
 
 #### EndUserConnectionPreflightResponse
 
@@ -2034,23 +2034,6 @@ Form input definition.
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
-#### Parameters
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| annotation_reply | { **"enabled"**: boolean } |  | Yes |
-| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
-| more_like_this | { **"enabled"**: boolean } |  | Yes |
-| opening_statement |  |  | No |
-| retriever_resource | { **"enabled"**: boolean } |  | Yes |
-| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
-| speech_to_text | { **"enabled"**: boolean } |  | Yes |
-| suggested_questions | [ string ] |  | Yes |
-| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
-| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
-| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
-| user_input_form | [ object ] |  | Yes |
-
 #### PassportAccessTokenResponse
 
 | Name | Type | Description | Required |
@@ -2471,6 +2454,25 @@ in form definition, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | remove_webapp_brand | boolean |  | Yes |
 | replace_webapp_logo | string |  | No |
+
+#### WebAppParametersResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| annotation_reply | { **"enabled"**: boolean } |  | Yes |
+| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
+| more_like_this | { **"enabled"**: boolean } |  | Yes |
+| opening_statement | string |  | No |
+| requires_end_user_connections | boolean | Whether this published version declares EndUser tool connections, independent of user readiness. | Yes |
+| retriever_resource | { **"enabled"**: boolean } |  | Yes |
+| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| speech_to_text | { **"enabled"**: boolean } |  | Yes |
+| suggested_questions | [ string ] |  | Yes |
+| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
+| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
+| user_input_form | [ object<br>object<br>object<br>object<br>object<br>object<br>object<br>object<br>object ] |  | Yes |
+| workflow_id | string | Published workflow/chatflow version; null for other app modes. | Yes |
 
 #### WebAppSiteResponse
 

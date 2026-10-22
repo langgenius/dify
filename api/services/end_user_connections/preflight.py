@@ -3,10 +3,10 @@
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Annotated, Protocol, Self
+from typing import Annotated, Protocol
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from clients.plugin.auth_entities import CredentialCheckResult
 from constants.end_user_connections import ConnectionCredentialType, NodeConnectionStatus
@@ -33,21 +33,7 @@ NodeId = Annotated[str, Field(min_length=1, max_length=255)]
 
 
 class ConnectionPreflightInput(ConnectionInput):
-    model_config = ConfigDict(
-        json_schema_extra={
-            "anyOf": [
-                {"properties": {"connections": {"type": "object", "maxProperties": 0}}},
-                {"required": ["workflow_id"], "properties": {"workflow_id": {"type": "string", "format": "uuid"}}},
-            ],
-        }
-    )
-    # An empty initial inspection discovers the current published version.
-    # Explicit node selections must pin the version the user was shown.
-    workflow_id: UUID | None = Field(
-        default=None,
-        strict=False,
-        description="Published version. Required for nonempty selections; omit for an initial empty inspection.",
-    )
+    workflow_id: UUID = Field(strict=False, description="Published workflow version returned by Web App parameters.")
     # Only existing Chatflow Conversations have an authoritative business Session.
     # None checks a new conversation or a plain Workflow's App/user context.
     conversation_id: UUID | None = Field(
@@ -61,12 +47,6 @@ class ConnectionPreflightInput(ConnectionInput):
             "Missing/null choices remain disconnected; saved choices are never inferred."
         ),
     )
-
-    @model_validator(mode="after")
-    def require_selection_version(self) -> Self:
-        if self.connections and self.workflow_id is None:
-            raise ValueError("Explicit selections require a workflow version.")
-        return self
 
 
 @dataclass(frozen=True)
@@ -124,8 +104,8 @@ class PreflightConnections(Protocol):
     ) -> Mapping[str, ConnectionAccessRecord]: ...
 
     def validate_preflight_context(
-        self, context: WebConnectionContext, workflow_id: str | None, conversation_id: str | None
-    ) -> str: ...
+        self, context: WebConnectionContext, workflow_id: str, conversation_id: str | None
+    ) -> None: ...
 
 
 class PreflightCredentialChecks(Protocol):
@@ -146,11 +126,8 @@ class ConnectionPreflightService:
 
     def check(self, context: WebConnectionContext, command: ConnectionPreflightInput) -> ConnectionPreflightView:
         conversation_id = str(command.conversation_id) if command.conversation_id is not None else None
-        workflow_id = self._connections.validate_preflight_context(
-            context,
-            str(command.workflow_id) if command.workflow_id is not None else None,
-            conversation_id,
-        )
+        workflow_id = str(command.workflow_id)
+        self._connections.validate_preflight_context(context, workflow_id, conversation_id)
         selections = {key: str(value) if value is not None else None for key, value in command.connections.items()}
         ids = frozenset(value for value in selections.values() if value is not None)
         records = self._connections.access_records(context, ids)

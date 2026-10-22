@@ -9,8 +9,11 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session, sessionmaker
 
 from clients.plugin.auth_entities import CredentialCheckResult
+from controllers.web import app as app_controller
 from controllers.web import bp, connection_preflight, wraps
 from models.model import App, AppMode, EndUser
+from repositories.app_definition_query_repository import AppDefinitionQueryRepository
+from services.app_definition_query_service import AppDefinitionQueryService
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
 from services.end_user_connections.preflight import ConnectionPreflightService
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
@@ -42,6 +45,11 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
     monkeypatch.setattr(
         connection_preflight, "application_services", lambda: SimpleNamespace(end_user_connection_preflight=service)
     )
+    definitions = AppDefinitionQueryService(
+        definitions=AppDefinitionQueryRepository(session_factory=harness.base.sessions),
+        builtin_icon_url_prefix="",
+    )
+    monkeypatch.setattr(app_controller, "application_services", lambda: SimpleNamespace(app_definitions=definitions))
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.register_blueprint(bp)
@@ -49,8 +57,14 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
         yield client
 
 
-def test_bootstrap_and_explicit_selection_response(client: FlaskClient, harness: OAuthHarness) -> None:
-    response = client.post("/api/connections/preflight", json={"connections": {}})
+def test_explicit_version_and_selection_response(client: FlaskClient, harness: OAuthHarness) -> None:
+    parameters = client.get("/api/parameters")
+    assert parameters.status_code == 200
+    version = parameters.get_json()["workflow_id"]
+    assert version == harness.base.workflow_id
+    assert parameters.get_json()["requires_end_user_connections"] is True
+    assert harness.base.auth.calls == []
+    response = client.post("/api/connections/preflight", json={"workflow_id": version, "connections": {}})
     assert response.status_code == 200
     data = response.get_json()
     assert data["workflow_id"] == harness.base.workflow_id
@@ -105,7 +119,10 @@ def test_stale_workflow_is_documented_conflict(client: FlaskClient, harness: OAu
 def test_foreign_or_missing_chatflow_session_is_not_found(client: FlaskClient, harness: OAuthHarness) -> None:
     with harness.base.sessions.begin() as session:
         session.execute(sa.update(App).where(App.id == harness.base.context.app_id).values(mode=AppMode.ADVANCED_CHAT))
-    response = client.post("/api/connections/preflight", json={"conversation_id": str(uuid4()), "connections": {}})
+    response = client.post(
+        "/api/connections/preflight",
+        json={"workflow_id": harness.base.workflow_id, "conversation_id": str(uuid4()), "connections": {}},
+    )
     assert response.status_code == 404
     assert response.get_json()["code"] == "not_found"
 
@@ -115,7 +132,9 @@ def test_guest_can_discover_requirements(client: FlaskClient, harness: OAuthHarn
         session.execute(
             sa.update(EndUser).where(EndUser.id == harness.base.context.end_user_id).values(account_id=None)
         )
-    response = client.post("/api/connections/preflight", json={"connections": {}})
+    response = client.post(
+        "/api/connections/preflight", json={"workflow_id": harness.base.workflow_id, "connections": {}}
+    )
     assert response.status_code == 200
     assert response.get_json()["ready"] is False
 
@@ -123,14 +142,16 @@ def test_guest_can_discover_requirements(client: FlaskClient, harness: OAuthHarn
 @pytest.mark.parametrize(
     ("payload", "valid"),
     [
-        ({"connections": {}}, True),
+        ({"connections": {}}, False),
+        ({"connections": {}, "workflow_id": str(uuid4())}, True),
+        ({"connections": {}, "workflow_id": None}, False),
         ({"connections": {"tool-1": None}}, False),
         ({"connections": {"tool-1": str(uuid4())}, "workflow_id": None}, False),
         ({"connections": {"tool-1": str(uuid4())}, "workflow_id": str(uuid4())}, True),
         ({}, False),
     ],
 )
-def test_request_schema_requires_a_version_for_explicit_choices(payload: dict[str, object], valid: bool) -> None:
+def test_request_schema_always_requires_a_version(payload: dict[str, object], valid: bool) -> None:
     from jsonschema import Draft202012Validator
 
     schema = connection_preflight.EndUserConnectionPreflightPayload.model_json_schema()
