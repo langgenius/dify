@@ -95,6 +95,5 @@ class ConnectionExecutionService:
             end_user_id=identity.end_user_id,
             account_id=identity.account_id,
             workflow_id=workflow_id,
-            conversation_id=conversation_id,
             selections=tuple(selections),
         )

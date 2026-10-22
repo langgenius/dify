@@ -1,6 +1,6 @@
 """Secret-free references shared by execution, queueing and pause/resume boundaries."""
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class ExecutionConnectionSelection(BaseModel):
@@ -23,6 +23,12 @@ class ConnectionExecutionContext(BaseModel):
     end_user_id: str
     account_id: str | None
     workflow_id: str
-    # None until a Chatflow Conversation exists, or for a plain Workflow.
-    conversation_id: str | None
     selections: tuple[ExecutionConnectionSelection, ...]
+
+    @model_validator(mode="before")
+    @classmethod
+    def discard_legacy_conversation_id(cls, value: object) -> object:
+        # Queued and paused executions may still contain the former duplicate.
+        if isinstance(value, dict) and "conversation_id" in value:
+            return {key: item for key, item in value.items() if key != "conversation_id"}
+        return value

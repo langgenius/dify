@@ -73,7 +73,6 @@ def context(harness: OAuthHarness, selections: dict[str, str]) -> DifyRunContext
             end_user_id=identity.end_user_id,
             account_id=identity.account_id,
             workflow_id=harness.base.workflow_id,
-            conversation_id=None,
             selections=tuple(
                 ExecutionConnectionSelection(node_id=key, provider=PROVIDER, connection_id=value)
                 for key, value in selections.items()

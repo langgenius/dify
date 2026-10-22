@@ -30,7 +30,6 @@ def execution() -> WorkflowExecution:
         end_user_id="user",
         account_id="account",
         workflow_id="workflow",
-        conversation_id=None,
         selections=(
             ExecutionConnectionSelection(node_id="root", provider="vendor/tool/tool", connection_id="connection"),
         ),

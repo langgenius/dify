@@ -73,7 +73,7 @@ def get_tool_runtime(
                 raise ConnectionIdentityError()
             identity = WebConnectionContext(context.tenant_id, context.app_id, context.end_user_id, context.account_id)
             repository = EndUserConnectionRepository(session_factory=session_factory.get_session_maker())
-            repository.validate_execution_context(identity, workflow_id, context.conversation_id)
+            repository.validate_execution_context(identity, workflow_id, conversation_id=None)
             selections = [selection for selection in context.selections if selection.node_id == root_id]
             if len(selections) != 1 or selections[0].connection_id is None:
                 raise ConnectionRequiredError()

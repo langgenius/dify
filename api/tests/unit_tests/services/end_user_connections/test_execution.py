@@ -233,19 +233,44 @@ def test_existing_conversation_must_belong_to_authenticated_user(
         session.add(conversation)
         session.flush()
         conversation_id = conversation.id
+        app = session.get(App, harness.base.context.app_id)
+        user = session.get(EndUser, harness.base.context.end_user_id)
+        workflow = session.get(Workflow, harness.base.workflow_id)
+        assert app is not None
+        assert user is not None
+        assert workflow is not None
     connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
-    assert prepare(harness, service, {"tool-1": connection.id}, conversation_id).conversation_id == conversation_id
+    context = prepare(harness, service, {"tool-1": connection.id}, conversation_id)
+    assert "conversation_id" not in context.model_dump()
+    validate_connection_execution(
+        context,
+        app=app,
+        user=user,
+        workflow=workflow,
+        conversation_id=conversation_id,
+        repository=harness.base.repository,
+    )
     with harness.base.sessions.begin() as session:
         session.execute(
             sa.update(Conversation).where(Conversation.id == conversation_id).values({"from_end_user_id": str(uuid4())})
         )
     with pytest.raises(ConversationNotExistsError):
         prepare(harness, service, {}, conversation_id)
+    with pytest.raises(ConversationNotExistsError):
+        validate_connection_execution(
+            context,
+            app=app,
+            user=user,
+            workflow=workflow,
+            conversation_id=conversation_id,
+            repository=harness.base.repository,
+        )
 
 
 @pytest.mark.parametrize("chatflow", [False, True])
+@pytest.mark.parametrize("legacy_snapshot", [False, True])
 def test_queue_pause_and_runtime_context_preserve_the_same_selection(
-    harness: OAuthHarness, service: ConnectionExecutionService, chatflow: bool
+    harness: OAuthHarness, service: ConnectionExecutionService, chatflow: bool, legacy_snapshot: bool
 ) -> None:
     connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     context = prepare(harness, service, {"tool-1": connection.id})
@@ -256,9 +281,23 @@ def test_queue_pause_and_runtime_context_preserve_the_same_selection(
         assert user is not None
         workflow = session.get(Workflow, harness.base.workflow_id)
         assert workflow is not None
-    params = AppExecutionParams.new(app, workflow, user, {"inputs": {}}, InvokeFrom.WEB_APP, connection_context=context)
-    restored = AppExecutionParams.model_validate_json(params.model_dump_json())
+    conversation_id = str(uuid4()) if chatflow else None
+    params = AppExecutionParams.new(
+        app,
+        workflow,
+        user,
+        {"inputs": {}, "conversation_id": conversation_id},
+        InvokeFrom.WEB_APP,
+        connection_context=context,
+    )
+    queue_payload = json.loads(params.model_dump_json())
+    if legacy_snapshot:
+        queue_payload["connection_context"]["conversation_id"] = conversation_id
+    restored = AppExecutionParams.model_validate_json(json.dumps(queue_payload))
     assert restored.connection_context == context
+    assert restored.connection_context is not None
+    assert "conversation_id" not in restored.connection_context.model_dump()
+    assert restored.args["conversation_id"] == conversation_id
     entity_args: dict[str, object] = {
         "app_config": WorkflowUIBasedAppConfig(
             tenant_id=app.tenant_id,
@@ -276,7 +315,9 @@ def test_queue_pause_and_runtime_context_preserve_the_same_selection(
     }
 
     entity = (
-        AdvancedChatAppGenerateEntity.model_validate({**entity_args, "query": "hello", "conversation_id": None})
+        AdvancedChatAppGenerateEntity.model_validate(
+            {**entity_args, "query": "hello", "conversation_id": conversation_id}
+        )
         if chatflow
         else WorkflowAppGenerateEntity.model_validate({**entity_args, "workflow_execution_id": params.workflow_run_id})
     )
@@ -286,7 +327,13 @@ def test_queue_pause_and_runtime_context_preserve_the_same_selection(
             "serialized_graph_runtime_state": "{}",
         }
     )
-    resumed = WorkflowResumptionContext.loads(paused.dumps()).get_generate_entity()
+    pause_payload = json.loads(paused.dumps())
+    if legacy_snapshot:
+        pause_payload["generate_entity"]["entity"]["connection_context"]["conversation_id"] = conversation_id
+    resumed = WorkflowResumptionContext.loads(json.dumps(pause_payload)).get_generate_entity()
+    if chatflow:
+        assert isinstance(resumed, AdvancedChatAppGenerateEntity)
+        assert resumed.conversation_id == conversation_id
     runtime = build_dify_run_context(
         tenant_id=app.tenant_id,
         app_id=app.id,

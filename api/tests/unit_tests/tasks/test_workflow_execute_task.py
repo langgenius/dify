@@ -1235,7 +1235,6 @@ def test_rejected_connection_resume_finishes_run_and_publishes_failure(
         end_user_id="end-user-id",
         account_id="account-id",
         workflow_id="wf-id",
-        conversation_id=None,
         selections=(),
     )
     expected_context = entity.connection_context
