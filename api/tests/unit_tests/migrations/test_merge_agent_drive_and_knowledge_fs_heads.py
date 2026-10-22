@@ -20,7 +20,7 @@ def test_merge_migration_produces_a_single_head() -> None:
 
     assert migration.revision == "c4d8e2f7a1b6"
     assert migration.down_revision == ("89919253ca7a", "e6b4a2c9d731")
-    assert ScriptDirectory(str(_MIGRATION_PATH.parents[1])).get_heads() == ["e4c8a2d6f913"]
+    assert ScriptDirectory(str(_MIGRATION_PATH.parents[1])).get_heads() == ["b9d3f7a5c102"]
 
 
 def test_workflow_pause_merge_joins_knowledge_fs_and_main_heads() -> None:
@@ -34,13 +34,7 @@ def test_workflow_pause_merge_joins_knowledge_fs_and_main_heads() -> None:
 def test_workflow_tool_caller_merge_joins_knowledge_fs_and_main_heads() -> None:
     merge = ScriptDirectory(str(_MIGRATION_PATH.parents[1])).get_revision("d7b9e1f3a5c2")
     assert merge is not None
-    assert merge.down_revision == ("36036059b930", "a8c3e7f4b912")
-
-
-def test_tracing_merge_joins_main_and_knowledge_fs_heads() -> None:
-    merge = ScriptDirectory(str(_MIGRATION_PATH.parents[1])).get_revision("e4c8a2d6f913")
-    assert merge is not None
-    assert merge.down_revision == ("d6b9e2f1a407", "b9d3f7a5c102")
+    assert merge.down_revision == ("36036059b930", "d6b9e2f1a407")
 
 
 def test_clean_legacy_agent_soul_files_keeps_main_parent() -> None:
@@ -74,7 +68,7 @@ def test_upgrade_from_main_head_applies_knowledge_fs_chain_before_token_bindings
 
     assert pending[0] == "a4e7c2f91b30"
     assert pending.index("e6b4a2c9d731") < pending.index("c4d8e2f7a1b6") < pending.index("9a4e7d1c2b60")
-    assert pending[-5:] == ["d7b9e1f3a5c2", "3edd6cd27f54", "a8c2e6f4b901", "b9d3f7a5c102", "e4c8a2d6f913"]
+    assert pending[-4:] == ["d7b9e1f3a5c2", "3edd6cd27f54", "a8c2e6f4b901", "b9d3f7a5c102"]
 
 
 def test_branch_deployed_databases_keep_knowledge_fs_chain_applied() -> None:
