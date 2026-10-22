@@ -16,7 +16,7 @@ from constants.oauth_bearer import Scope
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Example, Kind, endpoint, op_of
+from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
 from controllers.openapi._errors import (
     DraftNotFound,
     EnvVariableNotFound,
@@ -269,6 +269,7 @@ class AppVersionRestoreApi(Resource):
     @endpoint(
         op="restore.console_app.version",
         kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
         summary="Copy a published version into the draft; publish again to make it live",
         examples=(
             Example(title="Restore an older version", input={"app_id": "<app_id>", "version_id": "<version_id>"}),

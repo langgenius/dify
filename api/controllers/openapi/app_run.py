@@ -24,7 +24,7 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
-from controllers.openapi._contract import Example, Kind, endpoint
+from controllers.openapi._contract import Effect, Example, Kind, endpoint
 from controllers.openapi._errors import AppModeMismatch, RunNotFound, RunNotStoppable
 from controllers.openapi._files import end_read_transaction, materialize, merge_files
 from controllers.openapi._hints import attach_stream_hints
@@ -448,6 +448,7 @@ class AppRunStopApi(Resource):
     @endpoint(
         op="stop.run",
         kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
         summary="Stop a running or paused run of a workflow or advanced-chat app",
         examples=(Example(title="Stop a run", input={"app_id": "<app_id>", "run_id": "<run_id>"}),),
         requirements=_RUN_GUARDS,
@@ -475,6 +476,7 @@ class AppTaskStopApi(Resource):
     @endpoint(
         op="stop.task",
         kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
         summary=(
             "Stop a streaming reply of a chat, agent-chat or completion app; "
             "`task_id` is the stream's task_id. An unknown task id is accepted"

@@ -11,7 +11,7 @@ from constants.oauth_bearer import Scope
 from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import _app_settings as settings
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Example, Kind, endpoint
+from controllers.openapi._contract import Effect, Example, Kind, endpoint
 from controllers.openapi._models import (
     AdvancedChatWebApp,
     AdvancedChatWebAppPatch,
@@ -234,6 +234,7 @@ class AgentWebAppResetApi(Resource):
     @endpoint(
         op="reset.webapp.agent",
         kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
         summary="Rotate an agent app's web app URL; the old URL stops working",
         examples=(_RESET_EXAMPLE,),
         requirements=account_settings_guards(
@@ -284,6 +285,7 @@ class WebAppResetApi(Resource):
     @endpoint(
         op="reset.webapp",
         kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
         summary="Rotate an app's web app URL; the old URL stops working (agent apps: reset.webapp.agent)",
         examples=(_RESET_EXAMPLE,),
         requirements=account_settings_guards(

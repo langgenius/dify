@@ -3,6 +3,7 @@
 import hashlib
 import re
 from collections.abc import Iterator
+from typing import Final
 
 import pytest
 from flask import Flask
@@ -125,6 +126,36 @@ def test_every_op_carries_its_declared_effect_or_its_method_default(app: Flask, 
         default = Effect.for_method(verb)
         assert spec.catalog.effect != default, f"{spec.catalog.op} declares its method's default effect"
         assert ops[spec.catalog.op]["effect"] == (spec.catalog.effect or default).value
+
+
+# Every op whose effect differs from its HTTP method. Adding one is a reviewed change.
+_DECLARED_EFFECTS: Final = {
+    "reset.webapp": Effect.DESTRUCTIVE,
+    "reset.webapp.agent": Effect.DESTRUCTIVE,
+    "restore.console_app.version": Effect.DESTRUCTIVE,
+    "import.console_app.dsl": Effect.DESTRUCTIVE,
+    "confirm.console_app.dsl_import": Effect.DESTRUCTIVE,
+    "stop.run": Effect.DESTRUCTIVE,
+    "stop.task": Effect.DESTRUCTIVE,
+    "check.console_app.dsl": Effect.READ,
+}
+
+
+def test_declared_effects_are_exactly_the_reviewed_overrides(app: Flask) -> None:
+    declared = {
+        spec.catalog.op: spec.catalog.effect
+        for _, _, fn in iter_handlers(app)
+        if (spec := spec_of(fn)) is not None and spec.catalog.effect is not None
+    }
+    assert declared == _DECLARED_EFFECTS
+
+
+def test_declared_effects_reach_the_catalog_rows(ops: dict[str, CatalogOp]) -> None:
+    for op, effect in _DECLARED_EFFECTS.items():
+        if op in ops:
+            assert ops[op]["effect"] == effect.value
+    assert ops["stop.run"]["effect"] == "destructive"
+    assert ops["check.console_app.dsl"]["effect"] == "read"
 
 
 def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, CatalogOp]) -> None:
