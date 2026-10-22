@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { page, userEvent } from 'vite-plus/test/browser'
+import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   Select,
@@ -120,51 +120,6 @@ describe('Select wrappers', () => {
   })
 
   describe('SelectTrigger', () => {
-    it('should retain focus without reopening when a custom trigger becomes disabled', async () => {
-      const triggerRef = React.createRef<HTMLButtonElement>()
-      const onOpenChange = vi.fn()
-      const select = (disabled: boolean) => (
-        <Select disabled={disabled} defaultValue="seattle" onOpenChange={onOpenChange}>
-          <SelectTrigger
-            ref={triggerRef}
-            aria-label="City"
-            focusableWhenDisabled
-            render={(props, state) => (
-              <button {...props}>{state.open ? 'Close cities' : 'Choose city'}</button>
-            )}
-          />
-          <SelectContent>
-            <SelectItem value="seattle">
-              <SelectItemText>Seattle</SelectItemText>
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      )
-      const screen = await render(select(false))
-      const trigger = screen.getByRole('combobox', { name: 'City' })
-
-      await trigger.click()
-      await expect.element(screen.getByRole('option', { name: 'Seattle' })).toBeVisible()
-      await expect.element(trigger).toHaveTextContent('Close cities')
-      await userEvent.keyboard('{Escape}')
-      await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')
-
-      await screen.rerender(select(true))
-      await expect.element(trigger).toHaveAttribute('aria-disabled', 'true')
-      triggerRef.current?.blur()
-      await expect.element(trigger).not.toHaveFocus()
-      triggerRef.current?.focus()
-      await expect.element(trigger).toHaveFocus()
-      onOpenChange.mockClear()
-
-      await userEvent.keyboard('{Enter} {ArrowDown}')
-
-      await expect.element(trigger).toHaveFocus()
-      await expect.element(trigger).toHaveTextContent('Choose city')
-      await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')
-      expect(onOpenChange).not.toHaveBeenCalled()
-    })
-
     it('should use SelectLabel as the trigger accessible name', async () => {
       const screen = await renderWithSafeViewport(
         <Select defaultValue="seattle">

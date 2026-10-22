@@ -4,7 +4,6 @@ import type { ComponentRenderFn, HTMLProps } from '@base-ui/react/types'
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
 import type { Placement } from '../internal/placement'
-import { Button as BaseButton } from '@base-ui/react/button'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -99,43 +98,15 @@ const selectTriggerVariants = cva(
 type SelectSize = NonNullable<VariantProps<typeof selectTriggerVariants>['size']>
 type SelectTriggerProps = BaseSelect.Trigger.Props & {
   size?: SelectSize
-  /** Retains programmatic focus while disabled without changing trigger appearance. */
-  focusableWhenDisabled?: boolean
 }
 
-function SelectTrigger({
-  className,
-  children,
-  size,
-  focusableWhenDisabled,
-  nativeButton,
-  render,
-  ...props
-}: SelectTriggerProps) {
+function SelectTrigger({ className, children, size, ...props }: SelectTriggerProps) {
   return (
     <BaseSelect.Trigger
       className={(state) =>
         cn(selectTriggerVariants({ size, className: resolveClassName(className, state) }))
       }
       {...props}
-      nativeButton={nativeButton}
-      render={
-        focusableWhenDisabled
-          ? (triggerProps, state) => (
-              <BaseButton
-                {...triggerProps}
-                nativeButton={nativeButton}
-                disabled={state.disabled}
-                focusableWhenDisabled
-                render={
-                  typeof render === 'function'
-                    ? (buttonProps) => render(buttonProps, state)
-                    : render
-                }
-              />
-            )
-          : render
-      }
     >
       <span className="min-w-0 grow truncate">{children}</span>
       <BaseSelect.Icon className="shrink-0 text-text-quaternary group-data-readonly/select-trigger:hidden group-[:hover:not([data-disabled])]/select-trigger:text-text-secondary data-popup-open:text-text-secondary">

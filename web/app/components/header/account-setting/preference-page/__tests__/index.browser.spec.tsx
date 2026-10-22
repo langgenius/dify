@@ -90,57 +90,111 @@ async function renderPreferencesSettings({ width = 1280, timezone = 'Asia/Shangh
 }
 
 it.each(['Time Zone', 'Display Language'])(
-  'keeps keyboard focus on %s through saving and refetching without accepting another change',
+  'keeps %s and the other profile picker in keyboard order while a save is read-only',
   async (field) => {
-    // Native disabled triggers lost popup return focus in Chromium; happy-dom retained it.
+    // Chromium exposes lost popup return focus and disabled controls skipped by native Tab.
     const { screen, queryClient, profile } = await renderPreferencesSettings()
     const save = createDeferred<GetAccountProfileResponse>()
     const refetch = createDeferred<GetAccountProfileResponse>()
     profileRequests.update.mockReturnValue(save.promise)
     profileRequests.get.mockReturnValue(refetch.promise)
+    const appearance = screen.getByRole('combobox', { name: 'Appearance', exact: true })
+    const language = screen.getByRole('combobox', { name: 'Display Language', exact: true })
+    const timezone = screen.getByRole('combobox', { name: 'Time Zone', exact: true })
+    const trigger = field === 'Time Zone' ? timezone : language
 
-    try {
-      const trigger = screen.getByRole('combobox', { name: field, exact: true })
+    async function expectProfileTabOrder(startingField: string) {
+      if (startingField === 'Display Language') {
+        await userEvent.tab()
+        await expect.element(timezone).toHaveFocus()
+      }
+      await userEvent.tab({ shift: true })
+      await expect.element(language).toHaveFocus()
+      await userEvent.tab({ shift: true })
+      await expect.element(appearance).toHaveFocus()
+      await userEvent.tab()
+      await expect.element(language).toHaveFocus()
+      await userEvent.tab()
+      await expect.element(timezone).toHaveFocus()
+    }
+
+    async function choosePreference(timezoneQuery = 'Niue') {
       await trigger.click()
       if (field === 'Time Zone') {
         const search = screen.getByRole('combobox', { name: 'Search cities or time zones...' })
-        await search.fill('Niue')
-        await expect.element(screen.getByRole('option', { name: /Niue Time/ })).toBeVisible()
+        await search.fill(timezoneQuery)
+        await expect
+          .element(screen.getByRole('option', { name: new RegExp(timezoneQuery) }))
+          .toBeVisible()
         await userEvent.keyboard('{ArrowDown}')
         await expect.element(search).toHaveAttribute('aria-activedescendant')
       } else {
         await expect.element(screen.getByRole('listbox')).toBeVisible()
+        await expect.element(screen.getByRole('option', { selected: true })).toHaveFocus()
         await userEvent.keyboard('{End}')
         await expect.element(screen.getByRole('option').last()).toHaveFocus()
       }
       await userEvent.keyboard('{Enter}')
-
       await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')
+    }
+
+    try {
+      const savedLanguage = language.element().textContent
+      const savedTimezone = timezone.element().textContent
+      await choosePreference()
       await expect.element(trigger).toHaveFocus()
-      await expect.element(trigger).toHaveAttribute('aria-disabled', 'true')
+      await expect.element(language).toHaveAttribute('aria-readonly', 'true')
+      await expect.element(timezone).toHaveAttribute('aria-readonly', 'true')
       await expect.poll(() => profileRequests.update.mock.calls.length).toBe(1)
-      await userEvent.keyboard('{Enter} {ArrowDown}')
-      await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')
-      expect(profileRequests.update).toHaveBeenCalledOnce()
+      await expectProfileTabOrder(field)
 
-      const updatedProfile = { ...profile, ...profileRequests.update.mock.calls[0]?.[0].body }
-      save.resolve(updatedProfile)
-      await expect.poll(() => profileRequests.get.mock.calls.length).toBe(1)
-      await expect.element(trigger).toHaveFocus()
-      await expect.element(trigger).toHaveAttribute('aria-disabled', 'true')
+      // Both popup implementations remain browsable, but neither may commit a second value.
+      for (const picker of [timezone, language]) {
+        await picker.click()
+        await expect.element(picker).toHaveAttribute('aria-expanded', 'true')
+        const option =
+          picker === timezone
+            ? screen.getByRole('option', {
+                name: timezones.find((item) => item.value === 'Pacific/Midway')!.name,
+              })
+            : screen.getByRole('option').last()
+        await expect.element(option).toBeVisible()
+        await option.click()
+        expect(profileRequests.update).toHaveBeenCalledOnce()
+        expect(language.element().textContent).toBe(savedLanguage)
+        expect(timezone.element().textContent).toBe(savedTimezone)
+        await userEvent.keyboard('{Escape}')
+        await expect.element(picker).toHaveAttribute('aria-expanded', 'false')
+        await expect.element(picker).toHaveFocus()
+      }
 
-      refetch.resolve(updatedProfile)
-      await expect.element(trigger).toHaveAttribute('aria-disabled', 'false')
+      if (field === 'Time Zone') {
+        const updatedProfile = { ...profile, ...profileRequests.update.mock.calls[0]?.[0].body }
+        save.resolve(updatedProfile)
+        await expect.poll(() => profileRequests.get.mock.calls.length).toBe(1)
+        await expect.element(language).toHaveAttribute('aria-readonly', 'true')
+        await expect.element(timezone).toHaveAttribute('aria-readonly', 'true')
+        await expectProfileTabOrder('Display Language')
+        refetch.resolve(updatedProfile)
+        await expect
+          .element(timezone)
+          .toHaveTextContent(timezones.find((item) => item.value === 'Pacific/Niue')!.name)
+      } else {
+        save.reject(new Error('Unable to save language'))
+      }
+      await expect.element(language).not.toHaveAttribute('aria-readonly')
+      await expect.element(timezone).not.toHaveAttribute('aria-readonly')
+
+      // Successful saves and failed saves both unlock the next edit.
+      profileRequests.update.mockImplementation(async ({ body }) => ({ ...profile, ...body }))
+      profileRequests.get.mockImplementation(async () => ({
+        ...profile,
+        ...profileRequests.update.mock.calls.at(-1)?.[0].body,
+      }))
+      await choosePreference('Midway')
+      await expect.poll(() => profileRequests.update.mock.calls.length).toBe(2)
       await expect.element(trigger).toHaveFocus()
-      await userEvent.tab({ shift: true })
-      await expect
-        .element(
-          screen.getByRole('combobox', {
-            name: field === 'Time Zone' ? 'Display Language' : 'Appearance',
-            exact: true,
-          }),
-        )
-        .toHaveFocus()
+      await expect.element(trigger).not.toHaveAttribute('aria-readonly')
     } finally {
       await screen.unmount()
       queryClient.clear()

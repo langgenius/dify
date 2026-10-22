@@ -3,7 +3,6 @@
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
 import type { Placement } from '../internal/placement'
-import { Button as BaseButton } from '@base-ui/react/button'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -102,43 +101,15 @@ const comboboxItemClassName = [
   'data-disabled:cursor-not-allowed data-disabled:opacity-30 data-disabled:hover:bg-transparent data-disabled:hover:text-text-secondary',
 ]
 
-type ComboboxTriggerProps = BaseCombobox.Trigger.Props & {
-  /** Retains programmatic focus while disabled without changing trigger appearance. */
-  focusableWhenDisabled?: boolean
-}
+type ComboboxTriggerProps = BaseCombobox.Trigger.Props
 
 // Owns the focus indicator only. The caller owns the appearance, directly or through `render`.
-function ComboboxTrigger({
-  className,
-  type = 'button',
-  focusableWhenDisabled,
-  nativeButton,
-  render,
-  ...props
-}: ComboboxTriggerProps) {
+function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTriggerProps) {
   return (
     <BaseCombobox.Trigger
       type={type}
       className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
-      nativeButton={nativeButton}
-      render={
-        focusableWhenDisabled
-          ? (triggerProps, state) => (
-              <BaseButton
-                {...triggerProps}
-                nativeButton={nativeButton}
-                disabled={state.disabled}
-                focusableWhenDisabled
-                render={
-                  typeof render === 'function'
-                    ? (buttonProps) => render(buttonProps, state)
-                    : render
-                }
-              />
-            )
-          : render
-      }
     />
   )
 }
