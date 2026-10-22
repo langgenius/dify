@@ -22,8 +22,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from celery.exceptions import Retry
-
-from flask import Flask
 from sqlalchemy import Engine, event, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
