@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "Не вдалося оновити полотно робочого процесу. {{reason}}",
   "cardCategory.checks": "Перевірки",
   "cardCategory.form": "Форма",
   "cardCategory.plan": "План",
@@ -272,6 +273,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "Ні",
   "copy.values.yes": "Так",
+  "creationStartFailed": "Не вдалося запустити App Builder. {{reason}}",
   "emptyBuildTitle": "Тут поки нічого немає",
   "emptyDescription": "Розкажіть, що ви хочете створити — спочатку я покажу план. Створення почнеться лише після вашого схвалення.",
   "exportDebugLog": "Експортувати журнал налагодження",

@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "Não foi possível atualizar a tela do fluxo de trabalho. {{reason}}",
   "cardCategory.checks": "Verificações",
   "cardCategory.form": "Formulário",
   "cardCategory.plan": "Plano",
@@ -272,6 +273,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "Não",
   "copy.values.yes": "Sim",
+  "creationStartFailed": "Não foi possível iniciar o App Builder. {{reason}}",
   "emptyBuildTitle": "Ainda não há nada aqui",
   "emptyDescription": "Diga o que você quer criar — primeiro vou mostrar um plano. Nada será criado até você aprovar.",
   "exportDebugLog": "Exportar log de depuração",

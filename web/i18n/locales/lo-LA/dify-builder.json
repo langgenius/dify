@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "ບໍ່ສາມາດໂຫຼດພື້ນທີ່ເຮັດວຽກຂອງເວີກໂຟລໃໝ່ໄດ້. {{reason}}",
   "cardCategory.checks": "ການກວດສອບ",
   "cardCategory.form": "ແບບຟອມ",
   "cardCategory.plan": "ແຜນ",
@@ -272,6 +273,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "ບໍ່",
   "copy.values.yes": "ແມ່ນ",
+  "creationStartFailed": "ບໍ່ສາມາດເລີ່ມ App Builder ໄດ້. {{reason}}",
   "emptyBuildTitle": "ຍັງບໍ່ມີຫຍັງຢູ່ທີ່ນີ້",
   "emptyDescription": "ບອກຂ້ອຍວ່າທ່ານຕ້ອງການສ້າງຫຍັງ — ຂ້ອຍຈະສະແດງແຜນໃຫ້ທ່ານເບິ່ງກ່ອນ. ຈະບໍ່ມີການສ້າງຫຍັງຈົນກວ່າທ່ານຈະອະນຸມັດ.",
   "exportDebugLog": "ສົ່ງອອກບັນທຶກການດີບັກ",

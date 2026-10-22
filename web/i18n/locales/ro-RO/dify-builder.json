@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "Nu s-a putut reîmprospăta zona fluxului de lucru. {{reason}}",
   "cardCategory.checks": "Verificări",
   "cardCategory.form": "Formular",
   "cardCategory.plan": "Plan",
@@ -272,6 +273,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "Nu",
   "copy.values.yes": "Da",
+  "creationStartFailed": "Nu s-a putut porni App Builder. {{reason}}",
   "emptyBuildTitle": "Încă nu este nimic aici",
   "emptyDescription": "Spune-mi ce vrei să creezi — îți voi arăta mai întâi un plan. Nu se creează nimic până nu îți dai acordul.",
   "exportDebugLog": "Exportă jurnalul de depanare",

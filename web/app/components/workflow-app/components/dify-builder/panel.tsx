@@ -122,7 +122,6 @@ const DifyBuilderPanelContent = () => {
                     size="small"
                     variant="secondary"
                     loading={conversationLoading}
-                    disabled={conversationLoading}
                     onClick={() => void handleLoadOlderConversation()}
                   >
                     {t(($) => $['operation.more'], { ns: 'common' })}

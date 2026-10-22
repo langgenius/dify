@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "بازآوری بوم گردش کار انجام نشد. {{reason}}",
   "cardCategory.checks": "بررسی‌ها",
   "cardCategory.form": "فرم",
   "cardCategory.plan": "برنامه",
@@ -272,6 +273,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "خیر",
   "copy.values.yes": "بله",
+  "creationStartFailed": "راه‌اندازی App Builder انجام نشد. {{reason}}",
   "emptyBuildTitle": "هنوز چیزی اینجا نیست",
   "emptyDescription": "بگویید چه چیزی می‌خواهید بسازید — ابتدا یک طرح به شما نشان می‌دهم. تا زمانی که تأیید نکنید، چیزی ساخته نمی‌شود.",
   "exportDebugLog": "خروجی گرفتن از گزارش اشکال‌زدایی",

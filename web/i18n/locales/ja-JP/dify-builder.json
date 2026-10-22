@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "ワークフローのキャンバスを更新できませんでした。{{reason}}",
   "cardCategory.checks": "チェック",
   "cardCategory.form": "フォーム",
   "cardCategory.plan": "プラン",
@@ -272,6 +273,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "いいえ",
   "copy.values.yes": "はい",
+  "creationStartFailed": "App Builder を起動できませんでした。{{reason}}",
   "emptyBuildTitle": "まだ何もありません",
   "emptyDescription": "構築したいものを教えてください。まずはプランをお見せします。承認するまで構築は始まりません。",
   "exportDebugLog": "デバッグログをエクスポート",

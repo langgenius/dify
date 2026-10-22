@@ -33,6 +33,7 @@ export type WorkflowDraftSliceShape = {
   markWorkflowDraftSaved: (revision: number) => void
   invalidateWorkflowDraftSync: () => number
   hasWorkflowDraftConflict: boolean
+  workflowDraftConflictId: number
   setWorkflowDraftConflict: (conflicted: boolean) => void
   isSyncingWorkflowDraft: boolean
   setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft: boolean) => void
@@ -79,9 +80,14 @@ export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (
         workflowDraftSavedRevision: Math.max(state.workflowDraftSavedRevision, revision),
       })),
     hasWorkflowDraftConflict: false,
+    workflowDraftConflictId: 0,
     setWorkflowDraftConflict: (hasWorkflowDraftConflict) => {
+      const newConflict = hasWorkflowDraftConflict && !get().hasWorkflowDraftConflict
       if (hasWorkflowDraftConflict) get().invalidateWorkflowDraftSync()
-      set({ hasWorkflowDraftConflict })
+      set({
+        hasWorkflowDraftConflict,
+        workflowDraftConflictId: get().workflowDraftConflictId + (newConflict ? 1 : 0),
+      })
     },
     invalidateWorkflowDraftSync: () => {
       debouncedFn.cancel()

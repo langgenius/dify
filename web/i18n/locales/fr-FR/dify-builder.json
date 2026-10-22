@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "Impossible d’actualiser le canevas du workflow. {{reason}}",
   "cardCategory.checks": "Vérifications",
   "cardCategory.form": "Formulaire",
   "cardCategory.plan": "Plan",
@@ -272,6 +273,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "Non",
   "copy.values.yes": "Oui",
+  "creationStartFailed": "Impossible de démarrer App Builder. {{reason}}",
   "emptyBuildTitle": "Rien ici pour le moment",
   "emptyDescription": "Dites-moi ce que vous voulez créer — je vous présenterai d’abord un plan. Rien ne sera créé sans votre approbation.",
   "exportDebugLog": "Exporter le journal de débogage",

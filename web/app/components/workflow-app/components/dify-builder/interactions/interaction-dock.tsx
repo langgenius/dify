@@ -1,13 +1,24 @@
 import type { ReactNode } from 'react'
-import type { DifyBuilderActiveInteraction, DifyBuilderDecision, SessionView } from '../types'
+import type {
+  DifyBuilderActionPayloadChange,
+  DifyBuilderActionValidityChange,
+  DifyBuilderActiveInteraction,
+  DifyBuilderDecision,
+  SessionView,
+} from '../types'
 import type { InteractionResponseCopy } from './optimistic-response'
 import { Button } from '@langgenius/dify-ui/button'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useAtomValue } from 'jotai'
-import { useId, useState } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormCard } from '../conversation/form-card'
+import {
+  getFormActionPayload,
+  initialFormValues,
+  prepareFormValues,
+} from '../conversation/form-values'
 import { ResourceCard } from '../conversation/resource-card'
 import { useBuilderText } from '../copy/use-builder-text'
 import { difyBuilderSessionViewAtom } from '../session/state'
@@ -185,15 +196,33 @@ const FormInteraction = ({
   const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const formId = useId()
   const actionId = activeInteraction.action_id
-  const [payload, setPayload] = useState<Record<string, unknown>>(() =>
-    getDefaultActionPayload(actionId, activeInteraction),
-  )
-  const [valid, setValid] = useState(false)
   const [pending, setPending] = useState(false)
   const card = activeInteraction.card
   const { renderText } = useBuilderText()
+  const submissionRef = useRef<{ payload: Record<string, unknown>; valid: boolean } | null>(null)
+  if (submissionRef.current === null) {
+    const fields = card.payload.fields ?? []
+    const prepared = prepareFormValues(fields, initialFormValues(fields, card.payload.values))
+    submissionRef.current = {
+      payload: getFormActionPayload(actionId, fields, prepared.preparedValues),
+      valid: prepared.valid,
+    }
+  }
 
-  const handleSubmit = async () => {
+  const handlePayloadChange = useCallback<DifyBuilderActionPayloadChange>(
+    (changedActionId, nextPayload) => {
+      if (changedActionId === actionId) submissionRef.current!.payload = nextPayload
+    },
+    [actionId],
+  )
+  const handleValidityChange = useCallback<DifyBuilderActionValidityChange>(
+    (changedActionId, nextValid) => {
+      if (changedActionId === actionId) submissionRef.current!.valid = nextValid
+    },
+    [actionId],
+  )
+  const handleSubmit = useCallback(async () => {
+    const { payload, valid } = submissionRef.current!
     if (busy || pending || !valid) return
     setPending(true)
     try {
@@ -201,7 +230,7 @@ const FormInteraction = ({
     } finally {
       setPending(false)
     }
-  }
+  }, [actionId, busy, pending, submitInteraction])
 
   return (
     <InteractionDockShell
@@ -230,13 +259,9 @@ const FormInteraction = ({
         item={card}
         busy={busy || pending}
         formId={formId}
-        onActionPayloadChange={(changedActionId, nextPayload) => {
-          if (changedActionId === actionId) setPayload(nextPayload)
-        }}
-        onActionValidityChange={(changedActionId, nextValid) => {
-          if (changedActionId === actionId) setValid(nextValid)
-        }}
-        onSubmit={() => void handleSubmit()}
+        onActionPayloadChange={handlePayloadChange}
+        onActionValidityChange={handleValidityChange}
+        onSubmit={handleSubmit}
       />
     </InteractionDockShell>
   )

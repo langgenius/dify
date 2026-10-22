@@ -59,7 +59,7 @@ type CommonHooksFnMap = {
   syncWorkflowDraftWhenPageClose: () => void
   handleRefreshWorkflowDraft: (
     notUpdateCanvas?: boolean,
-    options?: { preserveViewport?: boolean },
+    options?: { background?: boolean; preserveViewport?: boolean },
   ) => void
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void

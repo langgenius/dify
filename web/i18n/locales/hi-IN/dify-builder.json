@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "वर्कफ़्लो कैनवास रीफ़्रेश नहीं हो सका। {{reason}}",
   "cardCategory.checks": "जाँच",
   "cardCategory.form": "फ़ॉर्म",
   "cardCategory.plan": "योजना",
@@ -272,6 +273,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "नहीं",
   "copy.values.yes": "हाँ",
+  "creationStartFailed": "App Builder शुरू नहीं हो सका। {{reason}}",
   "emptyBuildTitle": "अभी यहाँ कुछ नहीं है",
   "emptyDescription": "बताएँ कि आप क्या बनाना चाहते हैं — पहले मैं आपको एक योजना दिखाऊँगा। आपकी मंज़ूरी के बिना कुछ भी नहीं बनाया जाएगा।",
   "exportDebugLog": "डीबग लॉग निर्यात करें",

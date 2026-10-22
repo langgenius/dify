@@ -1,5 +1,6 @@
 import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ReactNode } from 'react'
+import type { WorkflowDraftRefreshResult } from '../../hooks/use-workflow-refresh-draft'
 import type { SessionView } from '../dify-builder/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -25,7 +26,7 @@ const mocks = vi.hoisted(() => ({
   syncWorkflowDraft: vi.fn(async () => ({ hash: 'saved-hash', updated_at: 1 })),
   create: vi.fn(),
   conversation: vi.fn(),
-  refreshDraft: vi.fn(async () => true),
+  refreshDraft: vi.fn(async (): Promise<WorkflowDraftRefreshResult> => 'refreshed'),
   getNodes: () => [{ id: 'start-placeholder', data: { type: 'start-placeholder' } }],
   getEdges: () => [],
 }))
@@ -191,7 +192,7 @@ describe('Workflow creation with App Builder', () => {
     })
     mocks.refreshDraft.mockImplementation(async () => {
       workflowStore.getState().setWorkflowDraftSyncPhase('idle')
-      return true
+      return 'refreshed'
     })
     mocks.conversation.mockResolvedValue({
       data: [],

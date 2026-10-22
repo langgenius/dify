@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "Het workflowcanvas kon niet worden vernieuwd. {{reason}}",
   "cardCategory.checks": "Controles",
   "cardCategory.form": "Formulier",
   "cardCategory.plan": "Plan",
@@ -272,6 +273,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "Nee",
   "copy.values.yes": "Ja",
+  "creationStartFailed": "App Builder kon niet worden gestart. {{reason}}",
   "emptyBuildTitle": "Hier is nog niets",
   "emptyDescription": "Vertel me wat u wilt bouwen — ik laat u eerst een plan zien. Er wordt pas iets gebouwd als u het goedkeurt.",
   "exportDebugLog": "Debuglogboek exporteren",

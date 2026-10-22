@@ -1,5 +1,6 @@
 {
   "buttonTooltip": "App Builder",
+  "canvasRefreshFailed": "İş axını kətanını yeniləmək mümkün olmadı. {{reason}}",
   "cardCategory.checks": "Yoxlamalar",
   "cardCategory.form": "Forma",
   "cardCategory.plan": "Plan",
@@ -272,6 +273,7 @@
   "copy.values.empty": "—",
   "copy.values.no": "Xeyr",
   "copy.values.yes": "Bəli",
+  "creationStartFailed": "App Builder-i başlatmaq mümkün olmadı. {{reason}}",
   "emptyBuildTitle": "Hələ burada heç nə yoxdur",
   "emptyDescription": "Nə yaratmaq istədiyinizi mənə deyin — əvvəlcə sizə bir plan göstərəcəyəm. Siz təsdiqləyənədək heç nə yaradılmayacaq.",
   "exportDebugLog": "Sazlama jurnalını ixrac et",
