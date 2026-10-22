@@ -7,7 +7,7 @@ import re
 import tempfile
 import zipfile
 import zlib
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from typing import Any, BinaryIO, Literal, Self, cast
 
@@ -18,8 +18,8 @@ from core.db.session_factory import session_factory
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from models.agent import WorkflowAgentBindingType
 from models.agent_config_entities import WorkflowNodeJobConfig
-from models.model import App
-from services.agent.dsl_entities import AgentPackage
+from models.model import App, AppMode
+from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY, AgentPackage
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.package_resource_importer import AgentPackageResourceImporter
@@ -114,7 +114,7 @@ class PreparedAppPackage(PreparedPackageArchive):
 class AppPackageService(RosterAgentPackageReader):
     """Reuse the bounded ZIP reader; Apps retain DSL import semantics."""
 
-    def read_package(self, source: BinaryIO) -> PreparedAppPackage | None:
+    def read_package(self, source: BinaryIO, *, accept_roster_references: bool = False) -> PreparedAppPackage | None:
         """Validate an App archive, or rewind a Roster package for its importer."""
         spool = cast(BinaryIO, tempfile.SpooledTemporaryFile(max_size=16 * 1024 * 1024, mode="w+b"))  # noqa: SIM115
         try:
@@ -145,7 +145,7 @@ class AppPackageService(RosterAgentPackageReader):
                     not in {"workflow", "advanced-chat", "chat", "completion", "agent-chat", "channel", "rag-pipeline"}
                 ):
                     raise InvalidRosterAgentPackageError("App package DSL is invalid")
-                agents = self._validate_agents(app_data, manifest)
+                agents = self._validate_agents(app_data, manifest, accept_roster_references=accept_roster_references)
                 site_data = app_data.get("site")
                 if site_data is not None:
                     try:
@@ -197,19 +197,32 @@ class AppPackageService(RosterAgentPackageReader):
         finally:
             source.seek(0)
 
-    @staticmethod
-    def _validate_agents(data: dict[str, Any], manifest: AppPackageManifest) -> dict[str, AgentPackage]:
+    @classmethod
+    def _validate_agents(
+        cls, data: dict[str, Any], manifest: AppPackageManifest, *, accept_roster_references: bool
+    ) -> dict[str, AgentPackage]:
+        agent_modes = {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}
         if not manifest.agent_resources:
-            return {}
+            if not accept_roster_references:
+                return {}
+            if data["app"]["mode"] not in agent_modes:
+                return {}
         try:
-            if data["app"]["mode"] not in {"workflow", "advanced-chat"}:
+            if data["app"]["mode"] not in agent_modes:
                 raise ValueError("Agent resources require a workflow App")
-            agents = {ref: AgentPackage.model_validate(value) for ref, value in data["agent_packages"].items()}
+            packages = (data.get("agent_packages") or {}) if accept_roster_references else data["agent_packages"]
+            agents = {ref: AgentPackage.model_validate(value) for ref, value in packages.items()}
             references: set[str] = set()
             for _, node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(data["workflow"]["graph"]):
                 binding = node_data["agent_binding"]
-                WorkflowAgentBindingType(binding["binding_type"])
-                reference = binding["package_ref"]
+                binding_type = WorkflowAgentBindingType(binding["binding_type"])
+                if accept_roster_references:
+                    if cls._is_roster_reference(binding_type, binding):
+                        cls._validate_roster_reference(binding, node_data)
+                        continue
+                    if binding.get("agent_id") is not None:
+                        raise ValueError("Agent binding cannot be both packaged and a roster reference")
+                reference = binding[AGENT_PACKAGE_REF_KEY]
                 if not isinstance(reference, str):
                     raise ValueError("Agent package reference must be a string")
                 references.add(reference)
@@ -222,8 +235,29 @@ class AppPackageService(RosterAgentPackageReader):
         except (KeyError, TypeError, AttributeError, ValueError) as exc:
             raise InvalidRosterAgentPackageError("App package Agent references are invalid") from exc
 
+    @staticmethod
+    def _is_roster_reference(binding_type: WorkflowAgentBindingType, binding: Mapping[str, Any]) -> bool:
+        if binding_type != WorkflowAgentBindingType.ROSTER_AGENT:
+            return False
+        return AGENT_PACKAGE_REF_KEY not in binding
+
+    @staticmethod
+    def _validate_roster_reference(binding: Mapping[str, Any], node_data: Mapping[str, Any]) -> None:
+        agent_id = binding.get("agent_id")
+        if not isinstance(agent_id, str):
+            raise ValueError("Roster Agent reference requires an agent id")
+        if not agent_id:
+            raise ValueError("Roster Agent reference requires an agent id")
+        WorkflowNodeJobConfig.model_validate(node_data.get("agent_job") or {})
+
     def export_app(
-        self, *, app_model: App, include_secret: bool = False, workflow_id: str | None = None
+        self,
+        *,
+        app_model: App,
+        include_secret: bool = False,
+        workflow_id: str | None = None,
+        preserve_agent_bindings: bool = False,
+        version_bindings: bool = False,
     ) -> RosterAgentPackageExport:
         from services.app_dsl_service import AppDslService
 
@@ -235,6 +269,8 @@ class AppPackageService(RosterAgentPackageReader):
                 include_secret=include_secret,
                 workflow_id=workflow_id,
                 resource_exporter=resources,
+                preserve_agent_bindings=preserve_agent_bindings,
+                version_bindings=version_bindings,
             )
             resources.collect_icon(session=session, tenant_id=app_model.tenant_id, metadata=prepared.data["app"])
             if isinstance(prepared.data.get("site"), dict):
@@ -244,10 +280,20 @@ class AppPackageService(RosterAgentPackageReader):
             prepared.data["agent_packages"] = {
                 ref: package.model_dump(mode="json") for ref, package in resources.packages.items()
             }
-        return self.export(dsl=AppDslService.serialize_export_data(prepared), name=app_model.name, resources=resources)
+        return self.export(
+            dsl=AppDslService.serialize_export_data(prepared),
+            name=app_model.name,
+            resources=resources,
+            accept_roster_references=preserve_agent_bindings,
+        )
 
     def export(
-        self, *, dsl: str, name: str, resources: AgentPackageResourceExporter | None = None
+        self,
+        *,
+        dsl: str,
+        name: str,
+        resources: AgentPackageResourceExporter | None = None,
+        accept_roster_references: bool = False,
     ) -> RosterAgentPackageExport:
         payload = dsl.encode("utf-8")
         if len(payload) > DSL_MAX_SIZE:
@@ -275,7 +321,7 @@ class AppPackageService(RosterAgentPackageReader):
             size = archive.tell()
             archive.seek(0)
             # Validate exported containers against the same limits as imports.
-            validated = self.read_package(archive)
+            validated = self.read_package(archive, accept_roster_references=accept_roster_references)
             if validated is None:
                 raise InvalidRosterAgentPackageError("Expected an App package")
             validated.close()

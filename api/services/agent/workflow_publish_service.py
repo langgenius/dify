@@ -60,7 +60,9 @@ class WorkflowAgentPublishService:
     _AGENT_OUTPUT_ROUTES_KEY = "agent_output_routes"
 
     @classmethod
-    def project_draft_bindings_to_graph(cls, *, session: Session, draft_workflow: Workflow) -> dict[str, Any]:
+    def project_draft_bindings_to_graph(
+        cls, *, session: Session, draft_workflow: Workflow, binding_version: str = Workflow.VERSION_DRAFT
+    ) -> dict[str, Any]:
         """Return draft graph with persisted Agent binding fields projected into node data.
 
         Workflow draft graph is the front-end's editing source of truth, while
@@ -78,7 +80,7 @@ class WorkflowAgentPublishService:
                 WorkflowAgentNodeBinding.tenant_id == draft_workflow.tenant_id,
                 WorkflowAgentNodeBinding.app_id == draft_workflow.app_id,
                 WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
-                WorkflowAgentNodeBinding.workflow_version == cls._DRAFT_WORKFLOW_VERSION,
+                WorkflowAgentNodeBinding.workflow_version == binding_version,
                 WorkflowAgentNodeBinding.node_id.in_(list(agent_nodes.keys())),
             )
         ).all()

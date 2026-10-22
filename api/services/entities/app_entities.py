@@ -207,6 +207,7 @@ class AppExportOptions:
     workflow_id: str | None = None
     version_id: UUID | None = None
     preserve_agent_bindings: bool = False
+    version_bindings: bool = False
 
 
 @dataclass(frozen=True, slots=True)
