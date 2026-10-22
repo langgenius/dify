@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from core.agent.entities import AgentEntity, AgentToolEntity
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -369,10 +369,21 @@ class BaseAgentRunner(AppRunner):
             if isinstance(prompt_message, SystemPromptMessage):
                 result.append(prompt_message)
 
+        # Load only the columns used to rebuild history. Message.message stores the full prompt of each turn,
+        # earlier history included, so loading it makes memory grow quadratically with conversation length.
         messages = (
             (
                 session.execute(
                     select(Message)
+                    .options(
+                        load_only(
+                            Message.id,
+                            Message.conversation_id,
+                            Message.parent_message_id,
+                            Message.query,
+                            Message.answer,
+                        )
+                    )
                     .where(Message.conversation_id == self.message.conversation_id)
                     .order_by(Message.created_at.desc())
                 )
