@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import Image from 'next/image'
 import { useQueryState } from 'nuqs'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
@@ -65,6 +65,7 @@ function IpPoliciesListSkeleton() {
 
 export default function IpPoliciesPage() {
   const { t } = useTranslation(['common', 'deployments'])
+  const titleId = useId()
   const queryClient = useQueryClient()
   const { plan } = useAtomValue(currentWorkspaceAtom)
   const canReadPolicies = useAtomValue(canReadNetworkAccessAtom)
@@ -163,7 +164,7 @@ export default function IpPoliciesPage() {
     <div className="flex flex-col gap-4">
       <div className="flex min-h-15 items-start justify-between gap-4 py-2">
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="title-2xl-semi-bold text-text-primary">
+          <h2 id={titleId} className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['settings.ipPolicies'], { ns: 'common' })}
           </h2>
           <p className="system-sm-regular text-text-tertiary">
@@ -217,23 +218,28 @@ export default function IpPoliciesPage() {
       )}
 
       {!isPending && groups.length > 0 && (
-        <div className="min-w-0">
+        <div role="table" aria-labelledby={titleId} className="min-w-0">
           <div
+            role="row"
             className={`${policyRowClassName} border-b border-divider-subtle py-2 system-xs-medium-uppercase text-text-tertiary`}
           >
-            <div className={policyNameColClassName}>
+            <div role="columnheader" className={policyNameColClassName}>
               {t(($) => $['settings.ipPolicyColumnName'], { ns: 'common' })}
             </div>
-            <div className={policyIpEntriesColClassName}>
+            <div role="columnheader" className={policyIpEntriesColClassName}>
               {t(($) => $['settings.ipPolicyColumnIpEntries'], { ns: 'common' })}
             </div>
-            <div className={policyUsedByColClassName}>
+            <div role="columnheader" className={policyUsedByColClassName}>
               {t(($) => $['settings.ipPolicyColumnUsedBy'], { ns: 'common' })}
             </div>
-            <div className={policyUpdatedColClassName}>
+            <div role="columnheader" className={policyUpdatedColClassName}>
               {t(($) => $['settings.ipPolicyColumnUpdatedAt'], { ns: 'common' })}
             </div>
-            <div className={policyActionsColClassName} />
+            <div role="columnheader" className={policyActionsColClassName}>
+              <span className="sr-only">
+                {t(($) => $['operation.moreActions'], { ns: 'common' })}
+              </span>
+            </div>
           </div>
           {groups.map((group) => (
             <PolicyItem
