@@ -19,21 +19,31 @@ from controllers.openapi._models import (
     AppDslExportResponse,
     AppDslImportPayload,
     AppDslImportResponse,
+    CheckDependenciesResponse,
     DslCheckPayload,
     DslCheckResponse,
     Hint,
 )
-from controllers.openapi.app_dsl import AppDslCheckApi, AppDslExportApi, AppDslImportApi, AppDslImportConfirmApi
+from controllers.openapi.app_dsl import (
+    AppDslCheckApi,
+    AppDslCheckDependenciesApi,
+    AppDslExportApi,
+    AppDslImportApi,
+    AppDslImportConfirmApi,
+)
 from controllers.openapi.auth.spec import EndpointSpec
+from controllers.openapi.plugins import PluginInstallApi
+from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from libs.external_api import ExternalApi
 from machinery.context import AppRequestContext, RequestContext
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
+from services.app.console_service import ConsoleAppNotFoundError
 from services.app.export_service import AppExportService
 from services.app_dsl_service import AppDslService
 from services.entities.app_entities import AppExportOptions
-from services.entities.dsl_entities import DraftGuardedImportParams, Import, ImportStatus
+from services.entities.dsl_entities import DraftDependencyCheck, DraftGuardedImportParams, Import, ImportStatus
 from services.errors.app import (
     AppDiscoveryNotFoundError,
     DraftChangedError,
@@ -58,6 +68,12 @@ class _ExportView(Protocol):
     """Same stand-in, typed for the export endpoint's response."""
 
     __handler__: Callable[..., tuple[AppDslExportResponse, int]]
+
+
+class _CheckDependenciesView(Protocol):
+    """Same stand-in, typed for the dependency check endpoint's response."""
+
+    __handler__: Callable[..., tuple[CheckDependenciesResponse, int]]
 
 
 @pytest.mark.parametrize(
@@ -567,3 +583,66 @@ def test_export_errors_have_canonical_http_responses(
 
     assert response.status_code == status
     assert (response.get_json()["code"], response.get_json()["status"]) == (error_code, status)
+
+
+_DEPENDENCY_APP_ID = "6f1c2a52-0d43-4f7e-9a3b-1c2d3e4f5a6b"
+
+
+def _check_dependencies(app: Flask, app_id: str) -> tuple[CheckDependenciesResponse, int]:
+    api = AppDslCheckDependenciesApi()
+    with app.test_request_context(f"/openapi/v1/apps/{app_id}/dependencies:check"):
+        return cast(_CheckDependenciesView, api.get).__handler__(api, _CONTEXT, app_id)
+
+
+def test_dependency_check_returns_unresolved_ids_and_an_install_hint(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result = DraftDependencyCheck(
+        leaked_dependencies=[
+            PluginDependency(
+                type=PluginDependencyType.Marketplace,
+                value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier="acme/search:1.2.0@abc"),
+            )
+        ],
+        unresolved_plugin_ids=["corp/private"],
+    )
+    monkeypatch.setattr(app_query_services.apps.imports, "check_dependencies", lambda *_args: result)
+
+    response, status = _check_dependencies(app, _DEPENDENCY_APP_ID)
+
+    assert status == 200
+    assert response.unresolved_plugin_ids == ["corp/private"]
+    assert response.hints[0].op == op_of(PluginInstallApi.post)
+    assert response.hints[0].input["identifiers"] == ["acme/search:1.2.0@abc"]
+
+
+def test_dependency_check_without_missing_marketplace_plugins_has_no_hint(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result = DraftDependencyCheck(unresolved_plugin_ids=["corp/private"])
+    monkeypatch.setattr(app_query_services.apps.imports, "check_dependencies", lambda *_args: result)
+
+    response, _status = _check_dependencies(app, _DEPENDENCY_APP_ID)
+
+    assert response.unresolved_plugin_ids == ["corp/private"]
+    assert response.hints == []
+
+
+@pytest.mark.parametrize(
+    ("raised", "expected"),
+    [(ConsoleAppNotFoundError("x"), NotFound), (WorkflowNotFoundError("x"), DraftNotFound)],
+)
+def test_dependency_check_maps_missing_app_and_draft(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    raised: Exception,
+    expected: type[Exception],
+) -> None:
+    def check_dependencies(*_args: object) -> DraftDependencyCheck:
+        raise raised
+
+    monkeypatch.setattr(app_query_services.apps.imports, "check_dependencies", check_dependencies)
+
+    with pytest.raises(expected):
+        _check_dependencies(app, _DEPENDENCY_APP_ID)
