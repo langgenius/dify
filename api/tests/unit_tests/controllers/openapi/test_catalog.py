@@ -22,7 +22,7 @@ from controllers.openapi._catalog import (
 )
 from controllers.openapi._errors import OpenApiErrorCode
 from controllers.openapi._models import Hinted
-from controllers.openapi.auth.spec import EndpointSpec, Kind, spec_of
+from controllers.openapi.auth.spec import Effect, EndpointSpec, Kind, spec_of
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 OP_ID_RE = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$")
@@ -97,9 +97,51 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
     assert streaming == per_mode | draft | {"get.run.event"}
 
 
+@pytest.mark.parametrize(
+    ("method", "effect"),
+    [
+        ("GET", Effect.READ),
+        ("POST", Effect.WRITE),
+        ("PUT", Effect.WRITE),
+        ("PATCH", Effect.WRITE),
+        ("DELETE", Effect.DESTRUCTIVE),
+        ("delete", Effect.DESTRUCTIVE),
+    ],
+)
+def test_effect_for_method(method: str, effect: Effect) -> None:
+    assert Effect.for_method(method) is effect
+
+
+def test_effect_for_an_unknown_method_raises() -> None:
+    with pytest.raises(ValueError, match="BREW"):
+        Effect.for_method("BREW")
+
+
+def test_every_op_carries_its_declared_effect_or_its_method_default(app: Flask, ops: dict[str, CatalogOp]) -> None:
+    for _, verb, fn in iter_handlers(app):
+        spec = spec_of(fn)
+        if spec is None or spec.catalog.op not in ops:
+            continue
+        default = Effect.for_method(verb)
+        assert spec.catalog.effect != default, f"{spec.catalog.op} declares its method's default effect"
+        assert ops[spec.catalog.op]["effect"] == (spec.catalog.effect or default).value
+
+
 def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, CatalogOp]) -> None:
     chat = ops["run.console_app.chat"]
-    assert set(chat) == {"summary", "method", "path", "kind", "input", "bind", "internal", "deprecated", "examples"}
+    assert set(chat) == {
+        "summary",
+        "method",
+        "path",
+        "kind",
+        "effect",
+        "input",
+        "bind",
+        "internal",
+        "deprecated",
+        "examples",
+    }
+    assert chat["effect"] == "write"
     assert (chat["method"], chat["path"], chat["kind"]) == (
         "POST",
         "/openapi/v1/apps/{app_id}/chat:run",
