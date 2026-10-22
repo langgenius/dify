@@ -34,10 +34,9 @@ export type DifyBuilderRuntime = {
   setShowPanel: (show: boolean) => void
 }
 
-const isTerminalStatus = (status?: string) => status === 'complete' || status === 'failed'
 const isActiveStatus = (status?: string) => status === 'processing'
 const canContinueConversation = (status?: string) =>
-  status === 'waiting_input' || status === 'waiting_confirmation'
+  status === 'complete' || status === 'waiting_input' || status === 'waiting_confirmation'
 
 export const difyBuilderRuntimeAtom = atom<DifyBuilderRuntime | null>(null)
 export const difyBuilderAppIdAtom = atom((get) => get(difyBuilderRuntimeAtom)?.appId)
@@ -152,6 +151,17 @@ export const difyBuilderSessionModelAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.model ?? null,
 )
 export const difyBuilderRunActiveAtom = atom((get) => isActiveStatus(get(difyBuilderRunStatusAtom)))
+export const difyBuilderTestExecutionAtom = atom(
+  (get) => get(difyBuilderSessionViewAtom)?.test_execution,
+)
+export const difyBuilderNativeCancelAtom = atom((get) => {
+  const view = get(difyBuilderSessionViewAtom)
+  return view?.run_status === 'processing' &&
+    view.test_execution &&
+    view.test_execution.status !== 'terminal'
+    ? view.actions?.find((action) => action.id === 'cancel_test')
+    : undefined
+})
 export const difyBuilderInteractionBusyAtom = atom(
   (get) =>
     get(difyBuilderStartFixMutationAtom).isPending ||
@@ -171,7 +181,12 @@ export const difyBuilderCanComposeAtom = atom((get) => {
   const view = get(difyBuilderSessionViewAtom)
   if (view?.decision || view?.active_interaction) return false
   if (view?.recovery || view?.app_revision?.conflicted) return false
-  return !view || isTerminalStatus(view.run_status) || canContinueConversation(view.run_status)
+  if (
+    view?.test_execution?.outcome === 'unknown' ||
+    view?.test_execution?.cancellation?.status === 'cancelling'
+  )
+    return false
+  return !view || canContinueConversation(view.run_status)
 })
 export const difyBuilderCanSendDraftAtom = atom(
   (get) => get(difyBuilderCanComposeAtom) && Boolean(get(difyBuilderDraftAtom).trim()),
@@ -250,7 +265,7 @@ const startDifyBuilderPromptAtom = atom(
       return false
 
     runtime.setShowPanel(true)
-    if (view && !isTerminalStatus(view.run_status)) {
+    if (view) {
       if (!canContinueConversation(view.run_status)) return false
       if (!set(prepareDifyBuilderSessionAtom)) return false
       return runtime.session.sendMessage(prompt)
@@ -293,7 +308,7 @@ export const difyBuilderSendDraftAtom = atom(null, async (get, set, model: Sessi
   if (!model || !prompt || !get(difyBuilderCanComposeAtom)) return false
 
   const view = get(difyBuilderSessionViewAtom)
-  const isNewSession = !view || isTerminalStatus(view.run_status)
+  const isNewSession = !view
   set(difyBuilderDraftAtom, '')
   const started = await set(startDifyBuilderPromptAtom, { model, text: prompt })
   if (!started && isNewSession && !get(difyBuilderDraftAtom)) set(difyBuilderDraftAtom, draft)
@@ -363,7 +378,7 @@ export const difyBuilderSelectModelAtom = atom(null, async (get, set, model: Ses
     set(difyBuilderSessionErrorCodeAtom, null)
     set(difyBuilderSessionLastErrorAtom, '')
   }
-  if (!view || isTerminalStatus(view.run_status)) return true
+  if (!view || view.run_status === 'failed') return true
 
   const updated = await runtime.session.updateModel(model)
   if (!updated) set(difyBuilderSelectedModelAtom, get(difyBuilderSessionViewAtom)?.model ?? null)
@@ -380,17 +395,20 @@ export const difyBuilderSubmitActionAtom = atom(
     copy: InteractionResponseCopy,
   ) => {
     const runtime = get(difyBuilderRuntimeAtom)
+    const selectedActionId =
+      actionId === 'confirm' && typeof payload.option_id === 'string' ? payload.option_id : actionId
+    const nativeCancel =
+      selectedActionId === 'cancel_test' &&
+      get(difyBuilderSessionViewAtom)?.actions?.some((action) => action.id === 'cancel_test')
     if (
       !runtime?.enabled ||
       !runtime.canEdit ||
-      get(difyBuilderInteractionBusyAtom) ||
-      !get(difyBuilderCanvasReadyAtom)
+      get(difyBuilderSessionBusyAtom) ||
+      (!nativeCancel && (get(difyBuilderInteractionBusyAtom) || !get(difyBuilderCanvasReadyAtom)))
     )
       return false
 
     set(difyBuilderLocalErrorAtom, '')
-    const selectedActionId =
-      actionId === 'confirm' && typeof payload.option_id === 'string' ? payload.option_id : actionId
     let actionPayload = payload
     if (selectedActionId === 'recheck') {
       if (!get(difyBuilderRecheckReadyAtom)) return false

@@ -13,7 +13,8 @@ import type {
   SessionView,
 } from '../types'
 import type { SessionCommandOptions, SessionRunEvents, SessionStreamOutcome } from './types'
-import { useSetAtom, useStore } from 'jotai'
+import { QueryObserver } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom, useStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -37,12 +38,7 @@ import {
   streamErrorMessage,
   UNEXPECTED_EOF_ERROR,
 } from './errors'
-import {
-  hasConversationRange,
-  isCompletedView,
-  mergeConversation,
-  projectSessionView,
-} from './projection'
+import { hasConversationRange, mergeConversation, projectSessionView } from './projection'
 import {
   difyBuilderActiveCommandAtom,
   difyBuilderActiveSessionIdAtom,
@@ -78,6 +74,12 @@ export function useDifyBuilderSessionController(
   runEvents?: SessionRunEvents,
 ): DifyBuilderSessionController {
   const store = useStore()
+  const observedView = useAtomValue(difyBuilderSessionViewAtom)
+  const commandBusy = useAtomValue(difyBuilderSessionBusyAtom)
+  // Keep the observer owner through terminal history hydration. The query's
+  // interval stops at terminal; changing the effect identity would abort it.
+  const observedSessionId = observedView?.test_execution ? observedView.session_id : null
+  const observedRequestId = observedView?.test_execution?.request_id
   const setActiveSessionId = useSetAtom(difyBuilderActiveSessionIdAtom)
   const setActiveCommand = useSetAtom(difyBuilderActiveCommandAtom)
   const setConversation = useSetAtom(difyBuilderConversationAtom)
@@ -96,6 +98,7 @@ export function useDifyBuilderSessionController(
     | Pick<DifyBuilderCanvasEventData, 'at_version' | 'operation_id' | 'revision' | 'session_id'>
     | undefined
   >(undefined)
+  const pendingActionRef = useRef<{ signature: string; id: string } | null>(null)
   const pendingMessageRef = useRef<{ sessionId: string; text: string; turnId: string } | null>(null)
   const pendingRetestRef = useRef<{
     sessionId: string
@@ -137,11 +140,8 @@ export function useDifyBuilderSessionController(
           canvasCursor.at_version <= projected.version)
       )
         canvasCursorRef.current = undefined
-      if (isCompletedView(projected)) {
-        setActiveSessionId((sessionId) => (sessionId === projected.session_id ? null : sessionId))
-      } else {
-        setActiveSessionId(projected.session_id)
-      }
+      // A finished task is still the current, recoverable conversation.
+      setActiveSessionId(projected.session_id)
       return true
     },
     [setActiveSessionId, setView, store],
@@ -603,12 +603,80 @@ export function useDifyBuilderSessionController(
     [applySessionView, consumeStream, setActiveCommand, syncConversation],
   )
 
+  // Native continuations outlive the short Action command. Query owns periodic
+  // reads; this bridge keeps the existing session/history owner authoritative.
+  useEffect(() => {
+    if (!observedSessionId || commandBusy) return
+    const receipt = store.get(difyBuilderSessionViewAtom)?.test_execution
+    if (
+      !receipt ||
+      (receipt.status === 'terminal' && receipt.cancellation?.status !== 'cancelling')
+    )
+      return
+    const controller = new AbortController()
+    const observer = new QueryObserver(
+      store.get(queryClientAtom),
+      consoleQuery.difyBuilder.sessions.bySessionId.get.queryOptions({
+        input: { params: { session_id: observedSessionId } },
+        retry: false,
+        staleTime: 0,
+        refetchInterval: (query) => {
+          const current = query.state.data?.test_execution
+          return !query.state.error &&
+            current &&
+            (current.status !== 'terminal' || current.cancellation?.status === 'cancelling')
+            ? 2000
+            : false
+        },
+        refetchOnWindowFocus: false,
+      }),
+    )
+    let appliedAt = -1
+    const unsubscribe = observer.subscribe((result) => {
+      if (result.isError) {
+        void requestErrorMessage(result.error).then((message) => {
+          if (!controller.signal.aborted) setLastError(message)
+        })
+        return
+      }
+      if (!result.data || result.dataUpdatedAt === appliedAt || controller.signal.aborted) return
+      appliedAt = result.dataUpdatedAt
+      if (!applySessionView(result.data)) return
+      traceRef.current.append({
+        dir: 'in',
+        kind: 'session_snapshot',
+        payload: result.data,
+        version: result.data.version,
+      })
+      void syncConversation(observedSessionId, result.data.conversation_last_seq, controller).catch(
+        async (error: unknown) => {
+          const message = await requestErrorMessage(error)
+          if (!controller.signal.aborted) setLastError(message)
+        },
+      )
+    })
+    return () => {
+      controller.abort()
+      unsubscribe()
+      observer.destroy()
+    }
+  }, [
+    applySessionView,
+    commandBusy,
+    observedRequestId,
+    observedSessionId,
+    setLastError,
+    store,
+    syncConversation,
+  ])
+
   const runCommand = useCallback(
     async ({
       openStream,
       knownSessionId,
       expectTerminalEvent,
       startsSession = false,
+      prepareDraft = true,
       trace,
     }: SessionCommandOptions) => {
       const startingView = store.get(difyBuilderSessionViewAtom)
@@ -626,7 +694,7 @@ export function useDifyBuilderSessionController(
       abortRef.current = controller
       // Preparation takes the draft barrier synchronously, before the busy
       // projection makes the canvas read-only. It also drains in-flight saves.
-      const preparation = prepareCommand?.(true, controller.signal)
+      const preparation = prepareDraft ? prepareCommand?.(true, controller.signal) : undefined
       setIsBusy(true)
       setLastError('')
       store.set(difyBuilderSessionErrorCodeAtom, null)
@@ -1066,22 +1134,56 @@ export function useDifyBuilderSessionController(
     ) => {
       const view = store.get(difyBuilderSessionViewAtom)
       if (!view || store.get(difyBuilderSessionBusyAtom)) return false
+      const selectedId = actionId === 'confirm' ? payload.option_id : actionId
+      const nativeControl =
+        typeof selectedId === 'string' &&
+        ['confirm_test_operation', 'deny_test_operation', 'resume_test', 'cancel_test'].includes(
+          selectedId,
+        )
+      const selectedAction = view.actions?.find((action) => action.id === selectedId)
+      if (nativeControl && !selectedAction) return false
+      // Preserve explicit targets from the originating card: stale targets must
+      // reach the backend guard rather than silently binding to a newer request.
+      const actionPayload = { ...selectedAction?.payload, ...payload }
+      let clientActionId: string | undefined
+      if (nativeControl) {
+        const signature = JSON.stringify([
+          view.session_id,
+          view.version,
+          view.app_revision?.current,
+          actionId,
+          actionPayload,
+          receiptSnapshot,
+        ])
+        if (pendingActionRef.current?.signature !== signature)
+          pendingActionRef.current = { signature, id: globalThis.crypto.randomUUID() }
+        clientActionId = pendingActionRef.current.id
+      }
       const succeeded = await runCommand({
         knownSessionId: view.session_id,
+        // These control an already admitted immutable attempt; do not save or
+        // rewrite the canvas while approving, cancelling or resuming it.
+        prepareDraft: !nativeControl,
         expectTerminalEvent: actionId !== 'update_model',
         openStream: (signal) =>
           runSessionAction(
             view.session_id,
             actionId,
-            payload,
+            actionPayload,
             view.version,
             view.app_revision?.current ?? '',
             signal,
             receiptSnapshot,
+            clientActionId,
           ),
         trace: {
           kind: 'action',
-          payload: { action_id: actionId, payload, base_version: view.version },
+          payload: {
+            action_id: actionId,
+            payload: actionPayload,
+            base_version: view.version,
+            client_action_id: clientActionId,
+          },
         },
       })
       // Also handles a refresh that completed before this command promise resumed.

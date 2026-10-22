@@ -4,6 +4,7 @@ import type { ConversationItem, SessionView } from '../types'
 import { QueryClient } from '@tanstack/react-query'
 import { createStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import { createNativeReceipt } from '../session/__tests__/fixtures'
 import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
@@ -96,6 +97,84 @@ const createRuntime = (runAction: DifyBuilderRuntime['session']['runAction']) =>
   }) satisfies DifyBuilderRuntime
 
 describe('Dify Builder store', () => {
+  it('continues the completed conversation instead of creating a new session', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderSessionViewAtom, createSessionView({ canvas_read_only: false }))
+    store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 1 })
+    const history: ConversationItem[] = [
+      {
+        seq: 0,
+        at_version: 1,
+        kind: 'user',
+        payload: { text: 'Original goal', turn_id: 'original-turn' },
+      },
+    ]
+    store.set(difyBuilderConversationAtom, history)
+    expect(
+      await store.set(difyBuilderStartPromptAtom, {
+        text: 'Test with new input',
+        model: builderModel,
+      }),
+    ).toBe(true)
+    expect(runtime.session.sendMessage).toHaveBeenCalledWith('Test with new input')
+    expect(runtime.session.startBuild).not.toHaveBeenCalled()
+    expect(runtime.session.startEdit).not.toHaveBeenCalled()
+    expect(store.get(difyBuilderConversationAtom)).toEqual(history)
+  })
+
+  it('does not silently replace a failed conversation', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({ run_status: 'failed', canvas_read_only: false }),
+    )
+    store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 1 })
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+    expect(
+      await store.set(difyBuilderStartPromptAtom, { text: 'Try again', model: builderModel }),
+    ).toBe(false)
+    expect(runtime.session.startBuild).not.toHaveBeenCalled()
+    expect(runtime.session.startEdit).not.toHaveBeenCalled()
+  })
+
+  it('allows the advertised native cancel while execution is active but blocks other actions', async () => {
+    const store = createStore()
+    const runAction = vi.fn(async () => true)
+    store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        run_status: 'processing',
+        phase: 'test',
+        test_execution: createNativeReceipt(),
+        actions: [
+          {
+            id: 'cancel_test',
+            label: 'Cancel test',
+            kind: 'destructive',
+            payload: { request_id: 'request-1' },
+          },
+        ],
+      }),
+    )
+    expect(await store.set(difyBuilderSubmitActionAtom, 'publish', {}, englishResponseCopy)).toBe(
+      false,
+    )
+    expect(
+      await store.set(
+        difyBuilderSubmitActionAtom,
+        'cancel_test',
+        { request_id: 'request-1' },
+        englishResponseCopy,
+      ),
+    ).toBe(true)
+    expect(runAction).toHaveBeenCalledWith('cancel_test', { request_id: 'request-1' })
+  })
+
   it.each(['provide_testdata', 'start_test', 'publish'])(
     'blocks %s until the current canvas version has been applied',
     async (actionId) => {

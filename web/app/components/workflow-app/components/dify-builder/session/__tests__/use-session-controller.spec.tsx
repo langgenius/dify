@@ -24,6 +24,7 @@ import {
   conversationItemEvent,
   conversationPage,
   createControlledEventStream,
+  createNativeReceipt,
   createSessionView,
   renderSessionHook,
   stateEvent,
@@ -58,6 +59,169 @@ vi.mock('@/service/console', async (importOriginal) => ({
 }))
 
 describe('useDifyBuilderSessionController lifecycle', () => {
+  it('keeps a completed conversation pointer and restores durable history', async () => {
+    const completed = createSessionView({
+      run_status: 'complete',
+      canvas_read_only: false,
+      conversation_last_seq: 0,
+    })
+    clientMocks.get.mockResolvedValue(completed)
+    clientMocks.conversation.mockResolvedValue(
+      conversationPage([
+        {
+          seq: 0,
+          at_version: 1,
+          kind: 'user',
+          payload: { text: 'Original request', turn_id: 'original-turn' },
+        },
+      ]),
+    )
+    const { result, store } = renderSessionHook()
+    await act(async () => {
+      expect(await result.current.restore('session-1')).toBe(true)
+    })
+    expect(store.get(difyBuilderActiveSessionIdAtom)).toBe('session-1')
+    expect(store.get(difyBuilderConversationAtom)[0]?.payload).toMatchObject({
+      text: 'Original request',
+    })
+    expect(clientMocks.create).not.toHaveBeenCalled()
+  })
+
+  it('binds native choices and keeps command identity after a lost response', async () => {
+    const payload = {
+      request_id: 'request-1',
+      pending_operation_id: 'pending-1',
+      pending_version: 2,
+      scope_digest: 'a'.repeat(64),
+    }
+    const waiting = createSessionView({
+      run_status: 'waiting_confirmation',
+      canvas_read_only: false,
+      actions: [{ id: 'confirm_test_operation', label: 'Approve', kind: 'primary', payload }],
+    })
+    const prepare = vi.fn(async () => {})
+    const { result, store } = renderSessionHook(prepare)
+    store.set(difyBuilderActiveSessionIdAtom, 'session-1')
+    store.set(difyBuilderSessionViewAtom, waiting)
+    clientMocks.get.mockResolvedValue(waiting)
+    clientMocks.action
+      .mockRejectedValueOnce(new Error('response lost'))
+      .mockResolvedValueOnce(streamOf(stateEvent(waiting)))
+    await act(async () => {
+      await result.current.runAction('confirm', { option_id: 'confirm_test_operation' })
+    })
+    await act(async () => {
+      await result.current.runAction('confirm', { option_id: 'confirm_test_operation' })
+    })
+    const first = clientMocks.action.mock.calls[0]?.[0].body
+    const second = clientMocks.action.mock.calls[1]?.[0].body
+    expect(prepare).not.toHaveBeenCalled()
+    expect(first.payload).toEqual({ option_id: 'confirm_test_operation', ...payload })
+    expect(first.client_action_id).toEqual(expect.any(String))
+    expect(second.client_action_id).toBe(first.client_action_id)
+  })
+
+  it('observes a native continuation through read-only session GET without replaying an action', async () => {
+    const terminal = createSessionView({
+      run_status: 'complete',
+      canvas_read_only: false,
+      test_execution: createNativeReceipt({ status: 'terminal', outcome: 'succeeded', version: 2 }),
+    })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(terminal), {
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    try {
+      const { store } = renderSessionHook()
+      act(() => {
+        store.set(difyBuilderActiveSessionIdAtom, 'session-1')
+        store.set(
+          difyBuilderSessionViewAtom,
+          createSessionView({ test_execution: createNativeReceipt() }),
+        )
+      })
+      await waitFor(() =>
+        expect(store.get(difyBuilderSessionViewAtom)?.test_execution?.outcome).toBe('succeeded'),
+      )
+      expect(fetchMock).toHaveBeenCalledOnce()
+      expect(clientMocks.action).not.toHaveBeenCalled()
+      expect(clientMocks.create).not.toHaveBeenCalled()
+    } finally {
+      fetchMock.mockRestore()
+    }
+  })
+
+  it('rejects an older receipt arriving at the same Builder version', async () => {
+    const { result, store } = renderSessionHook()
+    store.set(difyBuilderActiveSessionIdAtom, 'session-1')
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        run_status: 'complete',
+        test_execution: createNativeReceipt({
+          status: 'terminal',
+          outcome: 'succeeded',
+          version: 4,
+        }),
+      }),
+    )
+    clientMocks.get.mockResolvedValue(
+      createSessionView({
+        run_status: 'complete',
+        test_execution: createNativeReceipt({ status: 'terminal', outcome: 'unknown', version: 2 }),
+      }),
+    )
+    await act(async () => {
+      await result.current.refresh()
+    })
+    expect(store.get(difyBuilderSessionViewAtom)?.test_execution?.outcome).toBe('succeeded')
+  })
+
+  it('finishes loading native terminal history even when its response arrives after the receipt', async () => {
+    let resolveHistory!: (page: ReturnType<typeof conversationPage>) => void
+    const history = new Promise<ReturnType<typeof conversationPage>>((resolve) => {
+      resolveHistory = resolve
+    })
+    const terminal = createSessionView({
+      run_status: 'complete',
+      conversation_last_seq: 0,
+      test_execution: createNativeReceipt({ status: 'terminal', outcome: 'succeeded', version: 2 }),
+    })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(terminal), {
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    clientMocks.conversation.mockReturnValue(history)
+    try {
+      const { store } = renderSessionHook()
+      act(() => {
+        store.set(difyBuilderActiveSessionIdAtom, 'session-1')
+        store.set(
+          difyBuilderSessionViewAtom,
+          createSessionView({ test_execution: createNativeReceipt() }),
+        )
+      })
+      await waitFor(() => expect(clientMocks.conversation).toHaveBeenCalled())
+      await act(async () => {
+        resolveHistory(
+          conversationPage([
+            { seq: 0, at_version: 1, kind: 'notice', payload: { text: 'Final native result' } },
+          ]),
+        )
+        await history
+      })
+      await waitFor(() =>
+        expect(store.get(difyBuilderConversationAtom)[0]?.payload).toMatchObject({
+          text: 'Final native result',
+        }),
+      )
+    } finally {
+      fetchMock.mockRestore()
+    }
+  })
+
   beforeEach(() => {
     vi.resetAllMocks()
     clientMocks.conversation.mockResolvedValue(conversationPage())
