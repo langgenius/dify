@@ -1,13 +1,17 @@
 """Only owned bytes behind a native Tool output can prove a DOCX expectation."""
 
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from io import BytesIO
+from typing import NoReturn, TypedDict
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
 from docx import Document
+from docx.oxml.document import CT_Document
 
-from core.dify_builder.models import NodeOutput
+from core.dify_builder.models import Graph, NodeOutput, Run
 from core.workflow.file_reference import build_file_reference
+from services.dify_builder.native_docx_evidence import FileAcceptance, StoredToolFile, validate_native_docx
 from tests.unit_tests.services.dify_builder.test_business_acceptance import GRAPH, observation
 
 FILE_ID = "b50c9ac2-93f9-4bec-82e4-ac4068fb2bf8"
@@ -33,7 +37,7 @@ ROOT_RELATIONSHIPS = (
 )
 
 
-def docx(parts=None):
+def docx(parts: Mapping[str, bytes] | None = None) -> bytes:
     buf = BytesIO()
     if parts is None:
         document = Document()
@@ -46,7 +50,7 @@ def docx(parts=None):
     return buf.getvalue()
 
 
-def native_file(**changes):
+def native_file(**changes: object) -> dict[str, object]:
     return {
         "dify_model_identity": "__dify__file__",
         "transfer_method": "tool_file",
@@ -60,33 +64,61 @@ def native_file(**changes):
     }
 
 
-def assess(value=None, blob=None, row_changes=None, **changes):
-    from services.dify_builder.native_docx_evidence import StoredToolFile, validate_native_docx
+class FileRowChanges(TypedDict, total=False):
+    id: str
+    tenant_id: str
+    file_key: str
+    size: int
 
+
+def assess(
+    value: object = None,
+    blob: bytes | None = None,
+    row_changes: FileRowChanges | None = None,
+    *,
+    run: Run | None = None,
+    native_graph: Graph | None = None,
+    lookup_file: Callable[[str, str], StoredToolFile | None] | None = None,
+    load_stream: Callable[[str], Iterable[bytes]] | None = None,
+    max_file_bytes: int = 10 * 1024 * 1024,
+    max_uncompressed_bytes: int = 20 * 1024 * 1024,
+) -> tuple[FileAcceptance, list[tuple[str, ...]]]:
     value = native_file() if value is None else value
     blob = docx() if blob is None else blob
-    run, _ = observation({"files": [value]})
-    run.per_node[0] = NodeOutput(
+    observed_run, _ = observation({"files": [value]})
+    observed_run.per_node[0] = NodeOutput(
         node_id="json", status="succeeded", outputs={"files": [native_file()]}, outputs_available=True
     )
-    calls = []
+    calls: list[tuple[str, ...]] = []
+    row_changes = row_changes or {}
 
-    def lookup(tenant_id, file_id):
+    def lookup(tenant_id: str, file_id: str) -> StoredToolFile:
         calls.append(("lookup", tenant_id, file_id))
         return StoredToolFile(
-            **({"id": FILE_ID, "tenant_id": TENANT, "file_key": KEY, "size": len(blob)} | (row_changes or {}))
+            id=row_changes.get("id", FILE_ID),
+            tenant_id=row_changes.get("tenant_id", TENANT),
+            file_key=row_changes.get("file_key", KEY),
+            size=row_changes.get("size", len(blob)),
         )
 
-    def read(key):
+    def read(key: str) -> Iterator[bytes]:
         calls.append(("read", key))
         yield blob
 
-    options = {"tenant_id": TENANT, "run": run, "native_graph": GRAPH, "lookup_file": lookup, "load_stream": read}
-    result = validate_native_docx(value, **(options | changes))
+    result = validate_native_docx(
+        value,
+        tenant_id=TENANT,
+        run=observed_run if run is None else run,
+        native_graph=GRAPH if native_graph is None else native_graph,
+        lookup_file=lookup if lookup_file is None else lookup_file,
+        load_stream=read if load_stream is None else load_stream,
+        max_file_bytes=max_file_bytes,
+        max_uncompressed_bytes=max_uncompressed_bytes,
+    )
     return result, calls
 
 
-def test_actual_small_docx_zip_from_native_tool_file_passes():
+def test_actual_small_docx_zip_from_native_tool_file_passes() -> None:
     result, calls = assess()
     assert result.state == "passed"
     assert result.reason == "docx_bytes_validated"
@@ -106,25 +138,25 @@ def test_actual_small_docx_zip_from_native_tool_file_passes():
         native_file(reference="dify-file-ref:W10="),
     ],
 )
-def test_filename_url_remote_or_conflicting_identity_never_reads_storage(value):
+def test_filename_url_remote_or_conflicting_identity_never_reads_storage(value: object) -> None:
     result, calls = assess(value)
     assert result.state == "unverified"
     assert calls == []
 
 
-def test_wrong_tenant_row_never_reads_storage():
+def test_wrong_tenant_row_never_reads_storage() -> None:
     result, calls = assess(row_changes={"tenant_id": "foreign"})
     assert result.state == "unverified"
     assert calls == [("lookup", TENANT, FILE_ID)]
 
 
-def test_storage_key_is_taken_only_from_owned_database_row():
+def test_storage_key_is_taken_only_from_owned_database_row() -> None:
     result, calls = assess(native_file(reference=build_file_reference(record_id=FILE_ID, storage_key="other/key")))
     assert result.state == "unverified"
     assert calls == [("lookup", TENANT, FILE_ID)]
 
 
-def test_unrelated_or_failed_tool_output_cannot_prove_terminal_file():
+def test_unrelated_or_failed_tool_output_cannot_prove_terminal_file() -> None:
     run, _ = observation({"files": [native_file()]})
     run.per_node[0] = NodeOutput(
         node_id="json", status="failed", outputs={"files": [native_file()]}, outputs_available=True
@@ -146,21 +178,21 @@ def test_unrelated_or_failed_tool_output_cannot_prove_terminal_file():
         ),
     ],
 )
-def test_readable_invalid_docx_bytes_fail_even_with_docx_filename(blob):
+def test_readable_invalid_docx_bytes_fail_even_with_docx_filename(blob: bytes) -> None:
     result, _ = assess(blob=blob)
     assert result.state == "failed"
 
 
-def test_declared_size_limit_prevents_storage_read():
+def test_declared_size_limit_prevents_storage_read() -> None:
     result, calls = assess(row_changes={"size": 99999}, max_file_bytes=1000)
     assert result.state == "unverified"
     assert calls == [("lookup", TENANT, FILE_ID)]
 
 
-def test_stream_is_bounded_and_closed_when_actual_bytes_exceed_limit():
-    events = []
+def test_stream_is_bounded_and_closed_when_actual_bytes_exceed_limit() -> None:
+    events: list[str] = []
 
-    def read(_key):
+    def read(_key: str) -> Iterator[bytes]:
         try:
             events.append("first")
             yield b"x" * 1001
@@ -174,21 +206,21 @@ def test_stream_is_bounded_and_closed_when_actual_bytes_exceed_limit():
     assert events == ["first", "closed"]
 
 
-def test_plain_iterable_stream_needs_no_close_method():
+def test_plain_iterable_stream_needs_no_close_method() -> None:
     blob = docx()
     result, _ = assess(blob=blob, load_stream=lambda _key: [blob])
     assert result.state == "passed"
 
 
-def test_non_generator_closeable_stream_releases_owner_on_completion():
-    events = []
+def test_non_generator_closeable_stream_releases_owner_on_completion() -> None:
+    events: list[str] = []
     blob = docx()
 
     class OwnedByteStream:
-        def __iter__(self):
+        def __iter__(self) -> Iterator[bytes]:
             yield blob
 
-        def close(self):
+        def close(self) -> None:
             events.append("closed")
 
     result, _ = assess(blob=blob, load_stream=lambda _key: OwnedByteStream())
@@ -196,7 +228,7 @@ def test_non_generator_closeable_stream_releases_owner_on_completion():
     assert events == ["closed"]
 
 
-def test_zip_uncompressed_size_bound_is_checked_before_expansion():
+def test_zip_uncompressed_size_bound_is_checked_before_expansion() -> None:
     result, _ = assess(
         blob=docx({"[Content_Types].xml": CONTENT_TYPES, "word/document.xml": DOCUMENT, "large": b"x" * 20000}),
         max_uncompressed_bytes=1000,
@@ -205,16 +237,15 @@ def test_zip_uncompressed_size_bound_is_checked_before_expansion():
 
 
 @pytest.mark.parametrize("owner", ["lookup", "read"])
-def test_unavailable_database_or_storage_bytes_remain_unverified(owner):
-    def unavailable(*_args):
+def test_unavailable_database_or_storage_bytes_remain_unverified(owner: str) -> None:
+    def unavailable(*_args: object) -> NoReturn:
         raise OSError("unavailable")
 
-    changes = {"lookup_file": unavailable} if owner == "lookup" else {"load_stream": unavailable}
-    result, _ = assess(**changes)
+    result, _ = assess(lookup_file=unavailable) if owner == "lookup" else assess(load_stream=unavailable)
     assert result.state == "unverified"
 
 
-def test_file_list_passes_only_when_a_real_docx_was_validated():
+def test_file_list_passes_only_when_a_real_docx_was_validated() -> None:
     result, _ = assess([native_file()])
     assert result.state == "passed"
     result, calls = assess([])
@@ -222,8 +253,8 @@ def test_file_list_passes_only_when_a_real_docx_was_validated():
     assert calls == []
 
 
-def test_actual_sql_lookup_scopes_tool_file_to_tenant(monkeypatch):
-    from sqlalchemy import create_engine
+def test_actual_sql_lookup_scopes_tool_file_to_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
+    from sqlalchemy import Table, create_engine
     from sqlalchemy.orm import sessionmaker
 
     from core.db.session_factory import session_factory
@@ -231,7 +262,9 @@ def test_actual_sql_lookup_scopes_tool_file_to_tenant(monkeypatch):
     from services.dify_builder.native_docx_evidence import lookup_owned_tool_file
 
     engine = create_engine("sqlite://")
-    ToolFile.__table__.create(engine)
+    table = ToolFile.__table__
+    assert isinstance(table, Table)
+    table.create(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     owner = "cff96ac1-a314-4b94-80da-06c43ea0365e"
     with factory() as sql:
@@ -256,7 +289,9 @@ def test_actual_sql_lookup_scopes_tool_file_to_tenant(monkeypatch):
 
 
 @pytest.mark.parametrize("owner", ["lookup", "read"])
-def test_file_annotation_lookup_or_read_error_preserves_completed_run(monkeypatch, owner):
+def test_file_annotation_lookup_or_read_error_preserves_completed_run(
+    monkeypatch: pytest.MonkeyPatch, owner: str
+) -> None:
     from core.dify_builder.models import DifyBuilderContext, EntryMode, Session
     from core.dify_builder.state import PcState
     from extensions.ext_storage import storage
@@ -288,7 +323,7 @@ def test_file_annotation_lookup_or_read_error_preserves_completed_run(monkeypatc
         ti.inputs,
     )
 
-    def unavailable(*_args):
+    def unavailable(*_args: object) -> NoReturn:
         raise OSError("Storage owner unavailable")
 
     if owner == "lookup":
@@ -302,24 +337,28 @@ def test_file_annotation_lookup_or_read_error_preserves_completed_run(monkeypatc
         monkeypatch.setattr(storage, "load_stream", unavailable)
     record_run_acceptance(s, context, run, ti, GRAPH, "rev")
     assert run.status == "succeeded"
+    assert run.verification is not None
     assert run.verification.business_acceptance["state"] == "unverified"
     assert context.verify_run_id == run.id
     repo = InMemoryRepository()
     repo.save_run(s.id, run)
-    assert repo.get_run(run.id).verification.terminal_outputs == {"document": [value]}
+    saved_run = repo.get_run(run.id)
+    assert saved_run is not None
+    assert saved_run.verification is not None
+    assert saved_run.verification.terminal_outputs == {"document": [value]}
 
 
-def test_file_lookup_requires_the_graph_bound_to_immutable_native_run():
+def test_file_lookup_requires_the_graph_bound_to_immutable_native_run() -> None:
     from copy import deepcopy
 
-    changed = deepcopy(GRAPH)
+    changed: Graph = deepcopy(GRAPH)
     changed["nodes"][0]["data"]["tool_name"] = "another-tool"
     result, calls = assess(native_graph=changed)
     assert result.state == "unverified"
     assert calls == []
 
 
-def test_missing_root_document_relationship_cannot_prove_docx():
+def test_missing_root_document_relationship_cannot_prove_docx() -> None:
     blob = docx({"[Content_Types].xml": CONTENT_TYPES, "word/document.xml": DOCUMENT})
     result, _ = assess(blob=blob)
     assert result.state == "failed"
@@ -342,13 +381,13 @@ def test_missing_root_document_relationship_cannot_prove_docx():
         b'Target="../word/document.xml"/></Relationships>',
     ],
 )
-def test_invalid_or_external_root_relationship_cannot_prove_docx(relationships):
+def test_invalid_or_external_root_relationship_cannot_prove_docx(relationships: bytes) -> None:
     blob = docx({"[Content_Types].xml": CONTENT_TYPES, "word/document.xml": DOCUMENT, "_rels/.rels": relationships})
     assert assess(blob=blob)[0].state == "failed"
 
 
 @pytest.mark.parametrize("target", [b"missing.xml", b"%2e%2e/word/document.xml", b"word/document.xml#fragment"])
-def test_root_relationship_requires_existing_safe_package_part(target):
+def test_root_relationship_requires_existing_safe_package_part(target: bytes) -> None:
     blob = docx(
         {
             "[Content_Types].xml": CONTENT_TYPES,
@@ -359,14 +398,14 @@ def test_root_relationship_requires_existing_safe_package_part(target):
     assert assess(blob=blob)[0].state == "failed"
 
 
-def test_duplicate_office_document_relationship_is_not_a_verified_docx():
+def test_duplicate_office_document_relationship_is_not_a_verified_docx() -> None:
     extra = ROOT_RELATIONSHIPS.split(b">", 1)[1].removesuffix(b"</Relationships>").replace(b"rId1", b"rId2")
     relationships = ROOT_RELATIONSHIPS.replace(b"</Relationships>", extra + b"</Relationships>")
     blob = docx({"[Content_Types].xml": CONTENT_TYPES, "word/document.xml": DOCUMENT, "_rels/.rels": relationships})
     assert assess(blob=blob)[0].state == "failed"
 
 
-def test_main_part_must_have_the_docx_content_type_declaration():
+def test_main_part_must_have_the_docx_content_type_declaration() -> None:
     blob = docx(
         {
             "[Content_Types].xml": CONTENT_TYPES.replace(b"document.main+xml", b"template.main+xml"),
@@ -377,7 +416,7 @@ def test_main_part_must_have_the_docx_content_type_declaration():
     assert assess(blob=blob)[0].state == "failed"
 
 
-def test_internal_root_relationship_resolves_a_declared_readable_main_part():
+def test_internal_root_relationship_resolves_a_declared_readable_main_part() -> None:
     blob = docx(
         {
             "[Content_Types].xml": CONTENT_TYPES.replace(b"/word/document.xml", b"/report.xml"),
@@ -385,11 +424,13 @@ def test_internal_root_relationship_resolves_a_declared_readable_main_part():
             "_rels/.rels": ROOT_RELATIONSHIPS.replace(b"word/document.xml", b"/report.xml"),
         }
     )
-    assert Document(BytesIO(blob)).element.body is not None
+    element = Document(BytesIO(blob)).element
+    assert isinstance(element, CT_Document)
+    assert element.body is not None
     assert assess(blob=blob)[0].state == "passed"
 
 
-def test_root_relationship_xml_has_the_same_read_bound_as_document_xml():
+def test_root_relationship_xml_has_the_same_read_bound_as_document_xml() -> None:
     blob = docx(
         {
             "[Content_Types].xml": CONTENT_TYPES,
@@ -402,7 +443,7 @@ def test_root_relationship_xml_has_the_same_read_bound_as_document_xml():
     assert result.reason == "docx_xml_limit"
 
 
-def test_conflicting_main_part_content_types_do_not_prove_docx():
+def test_conflicting_main_part_content_types_do_not_prove_docx() -> None:
     duplicate = b'<Override PartName="/word/document.xml" ContentType="text/plain"/>'
     blob = docx(
         {
