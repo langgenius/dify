@@ -24,6 +24,7 @@ from core.app.app_config.features.suggested_questions_after_answer.manager impor
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
 from core.file import remote_fetcher
 from core.helper import marketplace
+from core.plugin.entities.marketplace import MarketplacePluginDeclaration
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from core.plugin.impl.plugin import PluginInstaller
 from core.rbac import RBACPermission, RBACResourceScope
@@ -57,6 +58,7 @@ from models import Account, App, AppMode
 from models.agent import AgentScope, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
+from models.provider_ids import ToolProviderID
 from models.workflow import Workflow
 from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
@@ -579,10 +581,10 @@ class AppDslService:
             return DraftDependencyCheck()
 
         installed = {p.plugin_id for p in PluginInstaller().fetch_plugin_installation_by_ids(tenant_id, ids)}
-        hardcoded = {f"langgenius/{p.entity.identity.name}" for p in ToolManager.list_hardcoded_providers()}
+        hardcoded = {ToolProviderID(p.entity.identity.name).plugin_id for p in ToolManager.list_hardcoded_providers()}
         missing = [i for i in ids if i not in installed and i not in hardcoded]
 
-        manifests = {}
+        manifests: dict[str, MarketplacePluginDeclaration] = {}
         if missing and dify_config.MARKETPLACE_ENABLED:
             manifests = {m.plugin_id: m for m in marketplace.batch_fetch_plugin_manifests(missing)}
 
@@ -1229,6 +1231,8 @@ class AppDslService:
                 typ = node_data.get("type")
                 match typ:
                     case BuiltinNodeTypes.TOOL:
+                        if not DependenciesAnalysisService.is_plugin_backed_tool(node_data.get("provider_type")):
+                            continue
                         tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
                             node_data.get("plugin_id")
@@ -1330,6 +1334,8 @@ class AppDslService:
             agent_configs = model_config.get("agent_mode", {})
             if agent_configs:
                 for agent_config in agent_configs.get("tools", []):
+                    if not DependenciesAnalysisService.is_plugin_backed_tool(agent_config.get("provider_type")):
+                        continue
                     dependencies.append(
                         DependenciesAnalysisService.analyze_tool_dependency(agent_config.get("provider_id"))
                     )

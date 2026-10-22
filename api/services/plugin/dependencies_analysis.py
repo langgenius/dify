@@ -9,6 +9,7 @@ from configs import dify_config
 from core.helper import marketplace
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType, PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
+from core.tools.entities.tool_entities import ToolProviderType
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
 from models.provider_ids import GenericProviderID, ModelProviderID, ToolProviderID
@@ -23,6 +24,11 @@ class DependenciesAnalysisService:
         if re.fullmatch(r"[a-z0-9_-]+/[a-z0-9_-]+", provider):
             return provider
         return cls.analyze_tool_dependency(provider)
+
+    @staticmethod
+    def is_plugin_backed_tool(provider_type: object) -> bool:
+        """Only builtin and plugin tools come from plugins; api, workflow and mcp providers do not."""
+        return provider_type in (None, ToolProviderType.BUILT_IN, ToolProviderType.PLUGIN)
 
     @classmethod
     def extract_external_node_dependencies(cls, node_data: Mapping[str, Any]) -> list[str]:
@@ -62,7 +68,7 @@ class DependenciesAnalysisService:
                 if not isinstance(tool, Mapping):
                     continue
                 provider_type = tool.get("provider_type", tool.get("type"))
-                if provider_type not in (None, "builtin", "plugin"):
+                if not cls.is_plugin_backed_tool(provider_type):
                     continue
                 plugin_id = tool.get("plugin_id")
                 if isinstance(plugin_id, str) and plugin_id:

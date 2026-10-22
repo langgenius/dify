@@ -3,9 +3,8 @@
 from typing import Protocol
 
 from machinery.context import RequestContext
-from services.app_dsl_service import DraftDependencyCheck
 from services.entities.account_entities import AccountSnapshot
-from services.entities.dsl_entities import AppImportParams, Import
+from services.entities.dsl_entities import AppImportParams, DraftDependencyCheck, Import
 
 
 class ImportAccounts(Protocol):

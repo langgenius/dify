@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Protocol, cast
 from uuid import uuid4
 
+import httpx
 import pytest
 import yaml
 from flask import Flask, request
@@ -13,7 +14,15 @@ from werkzeug.exceptions import BadRequest, NotFound
 from controllers.common.errors import ForbiddenError, NotFoundError
 from controllers.openapi import app_dsl
 from controllers.openapi._contract import op_of
-from controllers.openapi._errors import DraftChanged, DraftNotFound, DslInvalid, OpenApiErrorFormatter, VersionNotFound
+from controllers.openapi._errors import (
+    DraftChanged,
+    DraftNotFound,
+    DslInvalid,
+    MarketplaceUnavailable,
+    OpenApiErrorFormatter,
+    PluginServiceUnavailable,
+    VersionNotFound,
+)
 from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
@@ -34,6 +43,7 @@ from controllers.openapi.app_dsl import (
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.plugins import PluginInstallApi
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
+from core.plugin.impl.exc import PluginDaemonInternalError
 from libs.external_api import ExternalApi
 from machinery.context import AppRequestContext, RequestContext
 from models.model import App, AppMode
@@ -626,6 +636,29 @@ def test_dependency_check_without_missing_marketplace_plugins_has_no_hint(
 
     assert response.unresolved_plugin_ids == ["corp/private"]
     assert response.hints == []
+
+
+@pytest.mark.parametrize(
+    ("raised", "expected"),
+    [
+        (httpx.ConnectError("marketplace down"), MarketplaceUnavailable),
+        (PluginDaemonInternalError("daemon down"), PluginServiceUnavailable),
+    ],
+)
+def test_dependency_check_maps_marketplace_and_daemon_failures(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    raised: Exception,
+    expected: type[Exception],
+) -> None:
+    def check_dependencies(*_args: object) -> DraftDependencyCheck:
+        raise raised
+
+    monkeypatch.setattr(app_query_services.apps.imports, "check_dependencies", check_dependencies)
+
+    with pytest.raises(expected):
+        _check_dependencies(app, _DEPENDENCY_APP_ID)
 
 
 @pytest.mark.parametrize(
