@@ -581,12 +581,22 @@ class WorkflowAgentProcessProjection:
     def _guard_budget(self) -> None:
         """Evict oldest entries first, then reserve one notice entry."""
         budget = dify_config.WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE
-        while self._bytes_used > budget and len(self._entries) > 1:
-            dropped = self._entries.pop(0)
-            self._bytes_used -= self._entry_bytes(dropped)
-        if self._bytes_used <= budget:
-            return
-        notice = AgentLogEvent(
+        notice = None
+        while self._entries and self._bytes_used > budget:
+            if len(self._entries) == 1:
+                # A single unruly entry would still overflow the budget once kept
+                # beside the notice, so drop it and announce the truncation.
+                self._entries.pop()
+                notice = self._notice_entry()
+                break
+            self._entries.pop(0)
+            self._bytes_used = sum(self._entry_bytes(entry) for entry in self._entries)
+        if notice is not None:
+            self._entries.insert(0, notice)
+            self._bytes_used = sum(self._entry_bytes(entry) for entry in self._entries)
+
+    def _notice_entry(self) -> AgentLogEvent:
+        return AgentLogEvent(
             message_id=f"{self._node_execution_id}-0",
             label=self._TRUNCATION_NOTICE,
             node_execution_id=self._node_execution_id,
@@ -597,8 +607,6 @@ class WorkflowAgentProcessProjection:
             metadata={},
             node_id=self._node_id,
         )
-        self._entries.insert(0, notice)
-        self._bytes_used = sum(self._entry_bytes(entry) for entry in self._entries)
 
     def _refresh_byte_count(self) -> None:
         self._bytes_used = sum(self._entry_bytes(entry) for entry in self._entries)

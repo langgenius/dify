@@ -1,4 +1,3 @@
-import json
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -39,7 +38,7 @@ from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
-from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
+from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter, WorkflowAgentProcessProjection
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
@@ -404,6 +403,10 @@ def _drain_event_stream(node: DifyAgentNode):
         process_data={"workflow_agent_binding_id": "binding-1"},
         metadata={"agent_backend": {}},
         stream_text=False,
+        process_projection=WorkflowAgentProcessProjection(
+            node_id="agent-node",
+            node_execution_id="execution-1",
+        ),
     )
     while True:
         try:
@@ -528,7 +531,7 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
 def test_agent_node_run_records_process_entries_for_a_successful_run():
     result = cast(
         StreamCompletedEvent,
-        list(_node(agent_backend_client=PlainTextOutputBackendClient())._run())[0],
+        list(_node(agent_backend_client=AgentMessageDeltaBackendClient())._run())[0],
     ).node_run_result
 
     entries = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
@@ -860,37 +863,71 @@ def test_agent_node_run_maps_failed_agent_backend_run_to_node_result():
 
 
 def test_agent_node_a_retry_replaces_the_process_entries_of_the_failed_attempt():
-    """A retried run keeps one attempt's entries, not the concatenation of all attempts."""
+    """A retried run keeps only the winning attempt's entries, not both attempts'."""
 
-    class RetryingOutputBackendClient(FileOutputBackendClient):
-        """First attempt returns a wrong-typed summary, second attempt succeeds."""
+    class RetryingProcessBackendClient(FakeAgentBackendRunClient):
+        """First attempt returns a wrong-typed summary; the retry succeeds."""
+
+        attempts = 0
 
         def __init__(self) -> None:
-            super().__init__(output_payload={"summary": 7})
-            self._attempt = 0
+            super().__init__(scenario=FakeAgentBackendScenario.SUCCESS)
+            self.output_payload: dict[str, object] = {"summary": 7}
 
-        def create_run(self, request):  # type: ignore[override]
-            self._attempt += 1
-            if self._attempt > 1:
+        def _events(self, run_id: str):
+            from dify_agent.protocol.snapshot import SessionSnapshot
+
+            from clients.agent_backend.fake_client import _FIXED_TIME
+
+            type(self).attempts += 1
+            if type(self).attempts > 1:
                 self.output_payload = {"summary": "Recovered summary"}
-            return super().create_run(request)
+            return (
+                RunStartedEvent(id="1-0", run_id=run_id, created_at=_FIXED_TIME),
+                PydanticAIStreamRunEvent(
+                    id="2-0",
+                    run_id=run_id,
+                    created_at=_FIXED_TIME,
+                    data=PartDeltaEvent(
+                        index=0,
+                        delta=TextPartDelta(content_delta=f"attempt {type(self).attempts}"),
+                    ),
+                    agent_message_delta=f"attempt {type(self).attempts}",
+                ),
+                RunSucceededEvent(
+                    id="3-0",
+                    run_id=run_id,
+                    created_at=_FIXED_TIME,
+                    data=RunSucceededEventData(
+                        output=self.output_payload,
+                        session_snapshot=SessionSnapshot(layers={}),
+                    ),
+                ),
+            )
 
-    client = RetryingOutputBackendClient()
-    node = _node(
-        declared_outputs=[{"name": "summary", "type": DeclaredOutputType.STRING}],
-        error_strategy=ErrorStrategy.DEFAULT_VALUE,
-        agent_backend_client=client,
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "declared_outputs": [
+                {
+                    "name": "summary",
+                    "type": "string",
+                    "failure_strategy": {"retry": {"enabled": True, "max_retries": 1}},
+                }
+            ],
+        }
     )
+    client = RetryingProcessBackendClient()
+    node = _node(binding_resolver=resolver, agent_backend_client=client)
 
     events = list(node._run())
 
     result = cast(StreamCompletedEvent, events[-1]).node_run_result
     entries = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert client.create_calls == 2
     assert result.metadata["attempt"] == 1
-    assert len({entry.message_id for entry in entries}) == len(entries)
-    assert all("tc-0" not in json.dumps(entry.data, ensure_ascii=False, default=str) for entry in entries)
+    assert client.attempts == 2
+    assert [entry.data.get("answer") for entry in entries] == ["attempt 2"]
 
 
 def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot():
