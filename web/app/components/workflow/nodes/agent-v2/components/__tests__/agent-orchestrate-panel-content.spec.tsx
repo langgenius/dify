@@ -621,6 +621,12 @@ describe('Inline Agent configure workspace', () => {
   )
 
   it('keeps restart disabled when the existing debug conversation has no messages', async () => {
+    const history = createDeferred<{
+      data: MessageDetailResponse[]
+      has_more: boolean
+      limit: number
+    }>()
+    api.history.mockReturnValue(history.promise)
     renderWorkspace({
       composer: createComposer({
         debug_conversation_id: 'empty-conversation',
@@ -628,6 +634,16 @@ describe('Inline Agent configure workspace', () => {
         debug_conversation_message_count: 0,
       }),
     })
+    // Restart depends on the composer metadata, independently of chat-history readiness.
+    expect(await screen.findByRole('button', { name: `${prefix}.preview.restart` })).toBeDisabled()
+    expect(api.history).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1' },
+      query: { conversation_id: 'empty-conversation' },
+    })
+    expect(
+      screen.queryByRole('textbox', { name: `${prefix}.build.inputPlaceholder` }),
+    ).not.toBeInTheDocument()
+    await act(async () => history.resolve({ data: [], has_more: false, limit: 20 }))
     await screen.findByRole('textbox', { name: `${prefix}.build.inputPlaceholder` })
     expect(restartButton()).toBeDisabled()
   })
