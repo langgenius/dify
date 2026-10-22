@@ -91,9 +91,8 @@ const InputField: React.FC<InputFieldProps> = ({
     return new Set(unavailableVariableNames.map((name) => name.trim()).filter(Boolean))
   }, [unavailableVariableNames])
   const variableNameError = useMemo(() => {
-    const name = tempPayload.output_variable_name.trim()
-    if (!name) return null
-    if (name.includes(' ')) return 'variableNameInvalid'
+    const name = tempPayload.output_variable_name
+    if (!name.trim()) return null
     if (!/^[a-z_]\w{0,29}$/i.test(name)) return 'variableNameInvalid'
     if (unavailableVariableNameSet.has(name)) return 'variableNameDuplicated'
     return null
