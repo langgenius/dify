@@ -442,7 +442,9 @@ class WorkflowAgentProcessProjection:
         data = event.data
         if not isinstance(data, Mapping):
             return
-        event_kind = data.get("event_kind")
+        # The adapter carries the kind on the event itself; `data` holds only the
+        # payload (index, part, delta), so reading it from the payload matches nothing.
+        event_kind = event.event_kind or data.get("event_kind")
         if event_kind == "part_delta":
             self._observe_part_delta(data)
         elif event_kind == "part_start":

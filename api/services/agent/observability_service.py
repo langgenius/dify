@@ -828,9 +828,10 @@ class AgentObservabilityService:
     def _workflow_agent_thoughts(cls, entries: list[Any]) -> list[dict[str, Any]]:
         """Map persisted ``AgentLogEvent`` entries onto the shared AgentThought shape.
 
-        The renderer treats a thought without a tool as internal and skips it, so a
-        recorded reasoning segment is carried in ``answer`` — the field it reads for
-        model text — beside the ``thought`` copy kept for callers that render thoughts.
+        Reasoning and model text are text segments, not tools: the renderer reads
+        ``answer`` for the model text it shows and treats a thought without a tool as
+        internal, so a reasoning segment is carried in ``answer`` as well as
+        ``thought``. Only the remaining labels name a tool.
         """
         thoughts: list[dict[str, Any]] = []
         for position, entry in enumerate(entries, start=1):
@@ -839,7 +840,8 @@ class AgentObservabilityService:
             data = cls._mapping_value(entry, "data")
             label = entry.get("label") or ""
             is_thinking = label == "Thinking"
-            tool = "" if is_thinking else label
+            is_message = label == "Message"
+            tool = "" if is_thinking or is_message else label
             thought_text = data.get("thought")
             answer_text = data.get("answer")
             if answer_text is None and isinstance(thought_text, str) and is_thinking:
