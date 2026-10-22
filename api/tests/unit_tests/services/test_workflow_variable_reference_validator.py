@@ -219,26 +219,27 @@ class TestValidateVariableReferences:
         }
         assert validate_variable_references(graph) == []
 
-    def test_template_reference_is_detected(self) -> None:
+    @pytest.mark.parametrize("producer_id", ["a", "input-check"])
+    def test_template_reference_is_detected(self, producer_id: str) -> None:
         """A reference expressed as a {{#node.field#}} template is detected."""
         b = _node("b", "llm", "B")
-        _node_data(b)["prompt"] = "Use {{#a.text#}} here"
+        _node_data(b)["prompt"] = f"Use {{{{#{producer_id}.text#}}}} here"
         graph = {
             "nodes": [
                 _node("start", "start"),
                 _node("router", "if-else", "Router"),
-                _node("a", "tool", "A"),
+                _node(producer_id, "tool", "A"),
                 b,
             ],
             "edges": [
                 _edge("start", "router"),
-                _edge("router", "a", "true"),
+                _edge("router", producer_id, "true"),
                 _edge("router", "b", "false"),
             ],
         }
         issues = validate_variable_references(graph)
         assert len(issues) == 1
-        assert issues[0].referenced_node_id == "a"
+        assert issues[0].referenced_node_id == producer_id
 
     def test_variable_typed_parameter_reference_is_detected(self) -> None:
         """A {type: variable} parameter selector is detected."""

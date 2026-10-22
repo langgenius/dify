@@ -221,7 +221,10 @@ class TestWorkflowVariablesConfigManagerConvertRag:
         # Assert
         assert result == [{"validated": mock_workflow.rag_pipeline_variables[0]}]
 
-    def test_string_pattern_removes_variable(self, mock_workflow: Workflow, mock_rag_entity: MagicMock) -> None:
+    @pytest.mark.parametrize("source_node_id", ["parent", "input-check"])
+    def test_string_pattern_removes_variable(
+        self, mock_workflow: Workflow, mock_rag_entity: MagicMock, source_node_id: str
+    ) -> None:
         # Arrange
         mock_workflow.rag_pipeline_variables = [
             _rag_variable("var1", "node1"),
@@ -233,7 +236,7 @@ class TestWorkflowVariablesConfigManagerConvertRag:
                 "nodes": [
                     {
                         "id": "node1",
-                        "data": {"datasource_parameters": {"param1": {"value": "{{#parent.var1#}}"}}},
+                        "data": {"datasource_parameters": {"param1": {"value": f"{{{{#{source_node_id}.var1#}}}}"}}},
                     }
                 ]
             }

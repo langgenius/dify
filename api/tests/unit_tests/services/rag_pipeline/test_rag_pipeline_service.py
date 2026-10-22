@@ -675,8 +675,9 @@ def test_publish_workflow_rejects_missing_llm_environment_reference(
 # --- run_datasource_workflow_node ---
 
 
+@pytest.mark.parametrize("source_node_id", ["start", "input-check"])
 def test_run_datasource_workflow_node_website_crawl(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext, source_node_id: str
 ) -> None:
     from core.datasource.entities.datasource_entities import DatasourceProviderType
 
@@ -693,7 +694,7 @@ def test_run_datasource_workflow_node_website_crawl(
                         "plugin_id": "p-1",
                         "provider_name": "firecrawl",
                         "datasource_name": "website_crawl",
-                        "datasource_parameters": {"url": {"value": "{{#start.url#}}"}},
+                        "datasource_parameters": {"url": {"value": f"{{{{#{source_node_id}.url#}}}}"}},
                     },
                 }
             ]
@@ -749,6 +750,7 @@ def test_run_datasource_workflow_node_website_crawl(
     assert events[0]["completed"] == 2
     assert events[1]["data"] == [{"title": "test"}]
     assert events[1]["total"] == 10
+    assert mock_runtime.get_website_crawl.call_args.kwargs["datasource_parameters"] == {"url": "https://example.com"}
     assert events[1]["completed"] == 10
 
 
@@ -877,13 +879,21 @@ def test_handle_node_run_result_success(
 # --- get_first_step_parameters / get_second_step_parameters ---
 
 
+@pytest.mark.parametrize("source_node_id", ["start", "input-check"])
 def test_get_first_step_parameters_success(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext, source_node_id: str
 ) -> None:
     # 1. Setup mock workflow
     pipeline = _make_pipeline()
     workflow = _make_workflow(
-        graph={"nodes": [{"id": "node-1", "data": {"datasource_parameters": {"url": {"value": "{{#start.url#}}"}}}}]},
+        graph={
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "data": {"datasource_parameters": {"url": {"value": f"{{{{#{source_node_id}.url#}}}}"}}},
+                }
+            ]
+        },
         rag_pipeline_variables=[_rag_variable("url")],
     )
     mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
@@ -1482,8 +1492,9 @@ def test_get_first_step_parameters_raises_when_datasource_node_missing(
         rag_pipeline_service.service.get_first_step_parameters(_make_pipeline(), "missing-node")
 
 
+@pytest.mark.parametrize("source_node_id", ["start", "input-check"])
 def test_get_second_step_parameters_handles_string_and_list_variable_references(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext, source_node_id: str
 ) -> None:
     workflow = _make_workflow(
         rag_pipeline_variables=[
@@ -1497,7 +1508,7 @@ def test_get_second_step_parameters_handles_string_and_list_variable_references(
                     "id": "node-1",
                     "data": {
                         "datasource_parameters": {
-                            "u": {"value": "{{#start.url#}}"},
+                            "u": {"value": f"{{{{#{source_node_id}.url#}}}}"},
                             "b": {"value": ["start", "bucket"]},
                         }
                     },
@@ -2597,8 +2608,9 @@ def test_get_datasource_plugins_handles_empty_datasource_data_and_non_published(
     assert len(result) == 1
 
 
+@pytest.mark.parametrize("source_node_id", ["start", "input-check"])
 def test_get_datasource_plugins_extracts_user_inputs_and_credentials(
-    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext, source_node_id: str
 ) -> None:
     dataset = _make_dataset()
     pipeline = _make_pipeline(workflow_id="wf-1")
@@ -2614,7 +2626,7 @@ def test_get_datasource_plugins_extracts_user_inputs_and_credentials(
                         "provider_type": "online_document",
                         "title": "Datasource",
                         "datasource_parameters": {
-                            "a": {"value": "{{#start.v1#}}"},
+                            "a": {"value": f"{{{{#{source_node_id}.v1#}}}}"},
                             "b": {"value": ["x", "v2"]},
                         },
                     },

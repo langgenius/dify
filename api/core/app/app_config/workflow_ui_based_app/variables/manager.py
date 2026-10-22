@@ -74,7 +74,7 @@ class WorkflowVariablesConfigManager:
 
             for _, value in datasource_parameters.items():
                 if value.get("value") and isinstance(value.get("value"), str):
-                    pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                    pattern = r"\{\{#([a-zA-Z0-9_-]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
                     match = re.match(pattern, value["value"])
                     if match:
                         full_path = match.group(1)

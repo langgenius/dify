@@ -710,7 +710,7 @@ class RagPipelineService:
                         variables_map[key] = param_value
                     case str():
                         # handle string type parameter value, check if it contains variable reference pattern
-                        pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                        pattern = r"\{\{#([a-zA-Z0-9_-]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
                         match_result = re.match(pattern, param_value)
                         if match_result:
                             # extract variable path and try to get value from user inputs
@@ -1157,7 +1157,7 @@ class RagPipelineService:
 
         for _, value in datasource_parameters.items():
             if value.get("value") and isinstance(value.get("value"), str):
-                pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                pattern = r"\{\{#([a-zA-Z0-9_-]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
                 match = re.match(pattern, value["value"])
                 if match:
                     full_path = match.group(1)
@@ -1201,7 +1201,7 @@ class RagPipelineService:
 
             for _, value in datasource_parameters.items():
                 if value.get("value") and isinstance(value.get("value"), str):
-                    pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                    pattern = r"\{\{#([a-zA-Z0-9_-]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
                     match = re.match(pattern, value["value"])
                     if match:
                         full_path = match.group(1)
@@ -1606,7 +1606,7 @@ class RagPipelineService:
 
                 for _, value in datasource_parameters.items():
                     if value.get("value") and isinstance(value.get("value"), str):
-                        pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                        pattern = r"\{\{#([a-zA-Z0-9_-]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
                         match = re.match(pattern, value["value"])
                         if match:
                             full_path = match.group(1)
