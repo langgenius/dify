@@ -46,10 +46,7 @@ import {
   useAgentWorkingDirectoryPanel,
 } from '@/features/agent-v2/agent-detail/configure/components/preview/hook/use-working-directory-panel'
 import { AgentConfigureRightPanelChat } from '@/features/agent-v2/agent-detail/configure/components/preview/right-panel-chat'
-import {
-  AgentConfigurePreviewSurface,
-  AgentConfigureWorkspace,
-} from '@/features/agent-v2/agent-detail/configure/components/workspace'
+import { AgentConfigurePreviewSurface } from '@/features/agent-v2/agent-detail/configure/components/preview/surface'
 import {
   agentConfigureConversationIdsAtom,
   agentConfigureRightPanelModeAtom,
@@ -58,16 +55,14 @@ import {
   setAgentConfigureConversationIdAtom,
   workflowInlineAgentConfigureScopedAtoms,
 } from '@/features/agent-v2/agent-detail/configure/state'
-import {
-  useAgentConfigureBuildDraftActions,
-  useAgentConfigureBuildDraftData,
-} from '@/features/agent-v2/agent-detail/configure/use-agent-configure-build-draft'
+import { useAgentConfigureBuildDraftData } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-build-draft'
 import { useAgentConfigureSessionController } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-session-controller'
 import {
   trackAgentBuildModeRun,
   trackAgentPreviewModeRun,
   useInlineAgentScope,
 } from '@/features/agent-v2/analytics'
+import { useAgentBuildDraftRefresh } from '@/features/agent-v2/build-draft-refresh'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
@@ -85,7 +80,6 @@ type WorkflowInlineAgentConfigureWorkspaceProps = {
   resource?: Extract<EditorResource, { kind: 'app' | 'snippet' }>
   inlineComposerState?: WorkflowAgentComposerResponse
   nodeId: string
-  onClose?: () => void
   onSaved?: (binding: AgentComposerBindingResponse) => void
   onSaveInlineToRoster?: () => void
   open: boolean
@@ -135,7 +129,6 @@ export function WorkflowRosterAgentOrchestratePanelContent(
     >
       <WorkflowRosterAgentOrchestratePanelContentInner
         agentId={agentId}
-        agentSoulConfig={initialAgentSoulConfig}
         composerState={composerState}
       />
     </AgentComposerProvider>
@@ -144,11 +137,9 @@ export function WorkflowRosterAgentOrchestratePanelContent(
 
 function WorkflowRosterAgentOrchestratePanelContentInner({
   agentId,
-  agentSoulConfig,
   composerState,
 }: {
   agentId: string
-  agentSoulConfig: AgentSoulConfig
   composerState?: {
     agent?: {
       name?: string | null
@@ -160,7 +151,6 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
   return (
     <AgentOrchestratePanel
       agentId={agentId}
-      agentSoulConfig={agentSoulConfig}
       agentName={composerState?.agent?.name}
       currentModel={currentModel}
       readOnly
@@ -168,7 +158,6 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
       showPublishBar={false}
       className="h-full max-w-none min-w-0 flex-none rounded-none border-0"
       onSelectModel={setConfigureModel}
-      onOpenVersions={() => undefined}
     />
   )
 }
@@ -273,7 +262,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   resource,
   inlineComposerState,
   nodeId,
-  onClose,
   onSaved,
   onSaveInlineToRoster,
   open,
@@ -471,26 +459,10 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     () => resetSessionController(resetBuildChatState),
     [resetBuildChatState, resetSessionController],
   )
-  const buildDraftActions = useAgentConfigureBuildDraftActions({
-    agentId,
-    buildDraftAgentSoulConfig: buildDraft.agentSoulConfig,
-    isActive: buildDraft.isActive,
-    normalAgentSoulConfig: agentSoulConfig,
-    rebaseComposerDraft: rebaseComposerDraftFromSoulConfig,
+  const { cancelBuildDraftRefresh, refreshBuildDraftAfterBuildChat } = useAgentBuildDraftRefresh({
     refetchBuildDraft: buildDraft.refetch,
-    refetchComposer: async () => ({
-      data: {
-        agent_soul: agentSoulConfig,
-      },
-    }),
-    resetBuildChatSession: resetBuildSession,
-    saveDraft: async () => {
-      await waitForPendingPreviewDraftSave()
-      await saveDraft()
-    },
-    setSoulSourceOverride: buildDraft.setSoulSourceOverride,
+    rebaseComposerDraft: rebaseComposerDraftFromSoulConfig,
   })
-  const { cancelBuildDraftRefresh } = buildDraftActions
   const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
     input: {
       params: {
@@ -661,15 +633,12 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   }
 
   return (
-    <AgentConfigureWorkspace
-      className="h-full min-w-0 flex-1 overflow-hidden rounded-[inherit]"
-      rightPanelContainerClassName="min-w-0 flex-1 overflow-hidden"
-      leftPanel={
+    <>
+      <section className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden rounded-[inherit] bg-background-body p-1">
         <AgentOrchestratePanel
           agentId={agentId}
           appId={appId}
           nodeId={nodeId}
-          agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={composerState?.agent?.name}
           currentModel={currentModel}
           readOnly={buildDraft.isActive}
@@ -698,17 +667,15 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               <WorkflowInlineAgentConfigureMoreAction onSaveInlineToRoster={onSaveInlineToRoster} />
             ) : undefined
           }
-          className="min-w-0"
+          className="max-w-140 min-w-0 flex-[0_0_min(41.08280255%,560px)]"
           onSelectModel={setConfigureModel}
-          onOpenVersions={() => undefined}
         />
-      }
-      rightPanel={
         <AgentConfigurePreviewSurface
           className="min-w-0 flex-1"
           background={<AgentBuildPanelBackground visible={rightPanelMode === 'build'} />}
           header={
             <AgentPreviewHeader
+              className="pr-18.5 max-sm:pr-14"
               mode={rightPanelMode}
               previewEnabled={previewEnabled}
               isChatFeaturesOpen={false}
@@ -719,16 +686,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               refreshDisabled={isRestartCurrentChatDisabled}
               showWorkingDirectoryAction={showWorkingDirectoryAction}
               showChatFeaturesAction={false}
-              trailingAction={
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  aria-label={t(($) => $['operation.close'])}
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </button>
-              }
             />
           }
           chat={
@@ -750,9 +707,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
                   conversationId: completedConversationId,
                   queryClient,
                 })
-                buildDraftActions.refreshBuildDraftAfterBuildChat(() =>
-                  finishBuildAction(buildCallbackGeneration),
-                )
+                refreshBuildDraftAfterBuildChat(() => finishBuildAction(buildCallbackGeneration))
               }}
               onConversationIdChange={(mode, conversationId) => {
                 if (mode === 'build' && !isBuildCallbackCurrent(buildCallbackGeneration)) return
@@ -780,19 +735,15 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
             />
           }
         />
-      }
-      sidePanels={
-        <>
-          {workingDirectoryPanel.panel}
-          <AgentConfigureClearSessionConfirmDialog
-            open={showSwitchToPreviewConfirm}
-            title={tAgent(($) => $['agentDetail.configure.switchToPreviewConfirm.title'])}
-            onOpenChange={setShowSwitchToPreviewConfirm}
-            onConfirm={confirmSwitchToPreview}
-          />
-        </>
-      }
-    />
+      </section>
+      {workingDirectoryPanel.panel}
+      <AgentConfigureClearSessionConfirmDialog
+        open={showSwitchToPreviewConfirm}
+        title={tAgent(($) => $['agentDetail.configure.switchToPreviewConfirm.title'])}
+        onOpenChange={setShowSwitchToPreviewConfirm}
+        onConfirm={confirmSwitchToPreview}
+      />
+    </>
   )
 }
 

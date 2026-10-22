@@ -4,6 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -301,7 +302,7 @@ function AgentRosterInlineConfigureDialog({
   trigger: ReactElement
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation(['workflow', 'workflowAgent'])
+  const { t } = useTranslation(['workflow', 'workflowAgent', 'common'])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
@@ -314,6 +315,16 @@ function AgentRosterInlineConfigureDialog({
         <Suspense fallback={<InlineAgentLoading />}>
           {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
         </Suspense>
+        <div className="absolute top-3 right-5 flex items-center max-sm:right-3">
+          <span aria-hidden className="mx-3 h-3.5 w-px bg-divider-regular max-sm:hidden" />
+          <DialogClose
+            render={
+              <IconButton size="lg" aria-label={t(($) => $['operation.close'], { ns: 'common' })}>
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
+        </div>
       </DialogContent>
     </Dialog>
   )

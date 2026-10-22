@@ -13,10 +13,11 @@ import type {
 } from '@/features/agent-v2/agent-composer/form-state'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import isEqual from 'fast-deep-equal'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
+import { useAgentBuildDraftRefresh } from '@/features/agent-v2/build-draft-refresh'
 import { consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
 import { usePrepareAgentBuildDraftBeforeRun } from './use-agent-build-draft-run'
@@ -277,7 +278,7 @@ export function useAgentConfigureBuildDraftActions({
   isActive: boolean
   normalAgentSoulConfig?: AgentSoulConfig
   rebaseComposerDraft: (agentSoulConfig?: AgentSoulConfig) => void
-  refetchBuildDraft: () => Promise<unknown>
+  refetchBuildDraft: () => Promise<{ data?: { agent_soul?: AgentSoulConfig } }>
   refetchComposer: () => Promise<unknown>
   resetBuildChatSession: () => Promise<void>
   saveDraft: () => Promise<void>
@@ -286,8 +287,6 @@ export function useAgentConfigureBuildDraftActions({
 }) {
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
-  const buildDraftRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const buildDraftRefreshGenerationRef = useRef(0)
   const forceCheckoutBeforeNextBuildRunRef = useRef(false)
   const [isApplyingBuildDraftWorkflow, setIsApplyingBuildDraftWorkflow] = useState(false)
   const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
@@ -325,13 +324,10 @@ export function useAgentConfigureBuildDraftActions({
       setSoulSourceOverride,
     })
 
-  const cancelBuildDraftRefresh = useCallback(() => {
-    buildDraftRefreshGenerationRef.current += 1
-    if (!buildDraftRefreshTimerRef.current) return
-
-    clearTimeout(buildDraftRefreshTimerRef.current)
-    buildDraftRefreshTimerRef.current = null
-  }, [])
+  const { cancelBuildDraftRefresh, refreshBuildDraftAfterBuildChat } = useAgentBuildDraftRefresh({
+    refetchBuildDraft,
+    rebaseComposerDraft,
+  })
 
   const prepareBuildDraftRun = useCallback(async () => {
     cancelBuildDraftRefresh()
@@ -366,28 +362,6 @@ export function useAgentConfigureBuildDraftActions({
       return false
     }
   }, [cancelBuildDraftRefresh, resetBuildChatSession, setSoulSourceOverride, tCommon])
-
-  const refreshBuildDraftAfterBuildChat = useCallback(
-    (onRefreshed?: () => void) => {
-      cancelBuildDraftRefresh()
-      const refreshGeneration = buildDraftRefreshGenerationRef.current
-
-      buildDraftRefreshTimerRef.current = setTimeout(async () => {
-        buildDraftRefreshTimerRef.current = null
-        try {
-          const result = await refetchBuildDraft()
-          if (refreshGeneration !== buildDraftRefreshGenerationRef.current) return
-
-          const agentSoulConfig = getAgentSoulConfigFromRefetchResult(result)
-          if (agentSoulConfig) rebaseComposerDraft(agentSoulConfig)
-        } catch {
-        } finally {
-          if (refreshGeneration === buildDraftRefreshGenerationRef.current) onRefreshed?.()
-        }
-      }, 1000)
-    },
-    [cancelBuildDraftRefresh, rebaseComposerDraft, refetchBuildDraft],
-  )
 
   const exitBuildDraftMode = useCallback(
     async (shouldRefetchComposer: boolean) => {
@@ -461,12 +435,6 @@ export function useAgentConfigureBuildDraftActions({
       return false
     }
   }
-
-  useEffect(() => {
-    return () => {
-      cancelBuildDraftRefresh()
-    }
-  }, [cancelBuildDraftRefresh])
 
   return {
     applyBuildDraft,

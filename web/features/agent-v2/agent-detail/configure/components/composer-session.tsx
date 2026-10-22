@@ -50,8 +50,8 @@ import {
   useAgentWorkingDirectoryPanel,
 } from './preview/hook/use-working-directory-panel'
 import { AgentConfigureRightPanelChat } from './preview/right-panel-chat'
+import { AgentConfigurePreviewSurface } from './preview/surface'
 import { AgentPreviewVersionsPanel } from './preview/versions-panel'
-import { AgentConfigurePreviewSurface, AgentConfigureWorkspace } from './workspace'
 
 export function AgentConfigureComposerScope({
   agentId,
@@ -469,15 +469,14 @@ function AgentConfigurePageComposerContent({
   }
 
   return (
-    <AgentConfigureWorkspace
-      aria-busy={agentQuery.isFetching || isEnteringBuildMode}
-      className="h-full min-w-0 flex-1 overflow-hidden max-xl:flex-col max-xl:overflow-y-auto"
-      rightPanelContainerClassName="min-w-105 flex-1 overflow-hidden max-xl:w-full max-xl:min-w-0 max-xl:flex-none max-xl:flex-col max-xl:overflow-visible"
-      leftPanel={
+    <>
+      <section
+        aria-busy={agentQuery.isFetching || isEnteringBuildMode}
+        className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden bg-background-body p-1 max-xl:flex-col max-xl:overflow-y-auto"
+      >
         <AgentOrchestratePanel
-          className="max-xl:h-100 max-xl:w-full max-xl:max-w-none max-xl:min-w-0 max-xl:flex-none"
+          className="max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] max-xl:h-100 max-xl:w-full max-xl:max-w-none max-xl:min-w-0 max-xl:flex-none"
           agentId={agentId}
-          agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={agentQuery.data?.name}
           currentModel={currentModel}
           isPublishing={isPublishing}
@@ -521,106 +520,104 @@ function AgentConfigurePageComposerContent({
             onComposerRebase()
           }}
         />
-      }
-      rightPanel={
-        <AgentConfigurePreviewSurface
-          className="min-w-105 flex-1 max-xl:h-100 max-xl:w-full max-xl:min-w-0 max-xl:flex-none"
-          background={<AgentBuildPanelBackground visible={rightPanelChatMode === 'build'} />}
-          header={
-            <AgentPreviewHeader
-              mode={rightPanelChatMode}
-              previewEnabled={previewEnabled}
-              buildEnabled={capabilities.canBuild}
-              showChatFeaturesAction={capabilities.canEdit}
-              isChatFeaturesOpen={showChatFeatures}
-              onModeChange={changeRightPanelMode}
-              onToggleChatFeatures={() => setShowChatFeatures((open) => !open)}
-              onOpenWorkingDirectory={() => {
-                setShowPreviewVersions(false)
-                workingDirectoryPanel.openWorkingDirectory()
-              }}
-              onRefresh={restartCurrentChat}
-              refreshDisabled={isRestartCurrentChatDisabled}
-              showWorkingDirectoryAction={capabilities.canBuild && showWorkingDirectoryAction}
-            />
-          }
-          chat={
-            !(rightPanelMode === 'build'
-              ? capabilities.canBuild
-              : previewEnabled) ? null : buildDraft.isPending ? (
-              <LoadingPlaceholder className="h-full" />
-            ) : (
-              <AgentConfigureRightPanelChat
-                agentId={agentId}
-                answerActionPosition="below"
-                agentName={agentQuery.data?.name}
-                agentSoulConfig={buildDraft.agentSoulConfig}
-                clearChatList={clearChatByMode[rightPanelChatMode]}
-                controllerRef={rightPanelChatControllerRef}
-                conversationIds={conversationIds}
-                disabled={isEnteringBuildMode}
+        <div className="flex min-w-105 flex-1 gap-1 overflow-hidden max-xl:w-full max-xl:min-w-0 max-xl:flex-none max-xl:flex-col max-xl:overflow-visible">
+          <AgentConfigurePreviewSurface
+            className="min-w-105 flex-1 max-xl:h-100 max-xl:w-full max-xl:min-w-0 max-xl:flex-none"
+            background={<AgentBuildPanelBackground visible={rightPanelChatMode === 'build'} />}
+            header={
+              <AgentPreviewHeader
                 mode={rightPanelChatMode}
-                speechToTextDraftType={
-                  rightPanelChatMode === 'build' && buildDraft.isActive ? 'debug_build' : 'draft'
-                }
-                onClearChatListChange={(clearChatList) => {
-                  setClearChatByMode((current) => ({
-                    ...current,
-                    [rightPanelChatMode]: clearChatList,
-                  }))
+                previewEnabled={previewEnabled}
+                buildEnabled={capabilities.canBuild}
+                showChatFeaturesAction={capabilities.canEdit}
+                isChatFeaturesOpen={showChatFeatures}
+                onModeChange={changeRightPanelMode}
+                onToggleChatFeatures={() => setShowChatFeatures((open) => !open)}
+                onOpenWorkingDirectory={() => {
+                  setShowPreviewVersions(false)
+                  workingDirectoryPanel.openWorkingDirectory()
                 }}
-                onConversationComplete={(mode, completedConversationId) => {
-                  if (mode !== 'build' || !isBuildCallbackCurrent(buildCallbackGeneration)) return
-
-                  setCompletedBuildConversationId(completedConversationId)
-                  invalidateAgentWorkingDirectoryFiles({
-                    conversationId: completedConversationId,
-                    queryClient,
-                  })
-                  buildDraftActions.refreshBuildDraftAfterBuildChat(() =>
-                    finishBuildAction(buildCallbackGeneration),
-                  )
-                }}
-                onConversationIdChange={(mode, conversationId) => {
-                  if (mode === 'build' && !isBuildCallbackCurrent(buildCallbackGeneration)) return
-                  setConversationId({ mode, conversationId })
-                }}
-                onBeforeSpeechToText={
-                  rightPanelChatMode === 'build' ? saveDraftBeforeBuildRun : saveDraft
-                }
-                onSaveDraftBeforeRun={
-                  rightPanelChatMode === 'build'
-                    ? async () => {
-                        if (!currentModel?.provider || !currentModel.model) {
-                          toast.error(
-                            tCommon(($) => $['modelProvider.selectModel'], { ns: 'modelProvider' }),
-                          )
-                          throw new Error('Agent model is required.')
-                        }
-
-                        const preparedBuildDraft = await runBuildPreparation({
-                          generation: buildCallbackGeneration,
-                          markBuildChatStarted: true,
-                          prepare: buildDraftActions.prepareBuildDraftBeforeRun,
-                        })
-                        trackAgentBuildModeRun(AgentScope.Global)
-                        return preparedBuildDraft
-                      }
-                    : async () => {
-                        await saveDraft()
-                        trackAgentPreviewModeRun(AgentScope.Global)
-                      }
-                }
-                onSendInterrupted={() => {
-                  if (rightPanelChatMode === 'build') finishBuildAction(buildCallbackGeneration)
-                }}
+                onRefresh={restartCurrentChat}
+                refreshDisabled={isRestartCurrentChatDisabled}
+                showWorkingDirectoryAction={capabilities.canBuild && showWorkingDirectoryAction}
               />
-            )
-          }
-        />
-      }
-      sidePanels={
-        <>
+            }
+            chat={
+              !(rightPanelMode === 'build'
+                ? capabilities.canBuild
+                : previewEnabled) ? null : buildDraft.isPending ? (
+                <LoadingPlaceholder className="h-full" />
+              ) : (
+                <AgentConfigureRightPanelChat
+                  agentId={agentId}
+                  answerActionPosition="below"
+                  agentName={agentQuery.data?.name}
+                  agentSoulConfig={buildDraft.agentSoulConfig}
+                  clearChatList={clearChatByMode[rightPanelChatMode]}
+                  controllerRef={rightPanelChatControllerRef}
+                  conversationIds={conversationIds}
+                  disabled={isEnteringBuildMode}
+                  mode={rightPanelChatMode}
+                  speechToTextDraftType={
+                    rightPanelChatMode === 'build' && buildDraft.isActive ? 'debug_build' : 'draft'
+                  }
+                  onClearChatListChange={(clearChatList) => {
+                    setClearChatByMode((current) => ({
+                      ...current,
+                      [rightPanelChatMode]: clearChatList,
+                    }))
+                  }}
+                  onConversationComplete={(mode, completedConversationId) => {
+                    if (mode !== 'build' || !isBuildCallbackCurrent(buildCallbackGeneration)) return
+
+                    setCompletedBuildConversationId(completedConversationId)
+                    invalidateAgentWorkingDirectoryFiles({
+                      conversationId: completedConversationId,
+                      queryClient,
+                    })
+                    buildDraftActions.refreshBuildDraftAfterBuildChat(() =>
+                      finishBuildAction(buildCallbackGeneration),
+                    )
+                  }}
+                  onConversationIdChange={(mode, conversationId) => {
+                    if (mode === 'build' && !isBuildCallbackCurrent(buildCallbackGeneration)) return
+                    setConversationId({ mode, conversationId })
+                  }}
+                  onBeforeSpeechToText={
+                    rightPanelChatMode === 'build' ? saveDraftBeforeBuildRun : saveDraft
+                  }
+                  onSaveDraftBeforeRun={
+                    rightPanelChatMode === 'build'
+                      ? async () => {
+                          if (!currentModel?.provider || !currentModel.model) {
+                            toast.error(
+                              tCommon(($) => $['modelProvider.selectModel'], {
+                                ns: 'modelProvider',
+                              }),
+                            )
+                            throw new Error('Agent model is required.')
+                          }
+
+                          const preparedBuildDraft = await runBuildPreparation({
+                            generation: buildCallbackGeneration,
+                            markBuildChatStarted: true,
+                            prepare: buildDraftActions.prepareBuildDraftBeforeRun,
+                          })
+                          trackAgentBuildModeRun(AgentScope.Global)
+                          return preparedBuildDraft
+                        }
+                      : async () => {
+                          await saveDraft()
+                          trackAgentPreviewModeRun(AgentScope.Global)
+                        }
+                  }
+                  onSendInterrupted={() => {
+                    if (rightPanelChatMode === 'build') finishBuildAction(buildCallbackGeneration)
+                  }}
+                />
+              )
+            }
+          />
           {capabilities.canReleaseAndVersion && showPreviewVersions && (
             <AgentPreviewVersionsPanel
               agentId={agentId}
@@ -645,21 +642,21 @@ function AgentConfigurePageComposerContent({
               onClose={() => setShowPreviewVersions(false)}
             />
           )}
-          {capabilities.canBuild && workingDirectoryPanel.panel}
-          <AgentChatFeaturesPanel
-            show={capabilities.canEdit && showChatFeatures}
-            appFeatures={buildDraft.agentSoulConfig?.app_features}
-            disabled={isChatFeaturesReadOnly}
-            onClose={() => setShowChatFeatures(false)}
-          />
-          <AgentConfigureClearSessionConfirmDialog
-            open={capabilities.canBuild && showSwitchToPreviewConfirm}
-            title={t(($) => $['agentDetail.configure.switchToPreviewConfirm.title'])}
-            onOpenChange={setShowSwitchToPreviewConfirm}
-            onConfirm={confirmSwitchToPreview}
-          />
-        </>
-      }
-    />
+        </div>
+      </section>
+      {capabilities.canBuild && workingDirectoryPanel.panel}
+      <AgentChatFeaturesPanel
+        show={capabilities.canEdit && showChatFeatures}
+        appFeatures={buildDraft.agentSoulConfig?.app_features}
+        disabled={isChatFeaturesReadOnly}
+        onClose={() => setShowChatFeatures(false)}
+      />
+      <AgentConfigureClearSessionConfirmDialog
+        open={capabilities.canBuild && showSwitchToPreviewConfirm}
+        title={t(($) => $['agentDetail.configure.switchToPreviewConfirm.title'])}
+        onOpenChange={setShowSwitchToPreviewConfirm}
+        onConfirm={confirmSwitchToPreview}
+      />
+    </>
   )
 }

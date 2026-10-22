@@ -120,7 +120,7 @@ export function AgentPreviewHeader({
   refreshDisabled,
   showWorkingDirectoryAction = false,
   showChatFeaturesAction = true,
-  trailingAction,
+  className,
 }: {
   mode: AgentConfigureRightPanelMode
   previewEnabled: boolean
@@ -133,7 +133,7 @@ export function AgentPreviewHeader({
   refreshDisabled?: boolean
   showWorkingDirectoryAction?: boolean
   showChatFeaturesAction?: boolean
-  trailingAction?: ReactNode
+  className?: string
 }) {
   const { t } = useTranslation(['agentV2'])
   const docLink = useDocLink()
@@ -158,7 +158,12 @@ export function AgentPreviewHeader({
   )
 
   return (
-    <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2 max-sm:h-auto max-sm:flex-wrap max-sm:gap-1 max-sm:px-2">
+    <div
+      className={cn(
+        'relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2 max-sm:h-auto max-sm:flex-wrap max-sm:gap-1 max-sm:px-2',
+        className,
+      )}
+    >
       <div className="flex min-w-0 flex-1 items-center gap-2 max-sm:w-full max-sm:flex-none">
         <SegmentedControl<AgentConfigureRightPanelMode>
           value={mode}
@@ -259,12 +264,6 @@ export function AgentPreviewHeader({
                 {t(($) => $['agentDetail.configure.preview.chatFeatures'])}
               </span>
             </button>
-          </>
-        )}
-        {trailingAction != null && (
-          <>
-            <SegmentedControlDivider className="mx-3 max-sm:hidden" />
-            {trailingAction}
           </>
         )}
       </div>

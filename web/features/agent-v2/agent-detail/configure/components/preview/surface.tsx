@@ -3,34 +3,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 
-type AgentConfigureWorkspaceProps = {
-  'aria-busy'?: boolean
-  className?: string
-  leftPanel: ReactNode
-  rightPanel: ReactNode
-  rightPanelContainerClassName?: string
-  sidePanels?: ReactNode
-}
-
-export function AgentConfigureWorkspace({
-  'aria-busy': ariaBusy,
-  className,
-  leftPanel,
-  rightPanel,
-  rightPanelContainerClassName,
-  sidePanels,
-}: AgentConfigureWorkspaceProps) {
-  return (
-    <section aria-busy={ariaBusy} className={cn('flex gap-1 bg-background-body p-1', className)}>
-      {leftPanel}
-      <div className={cn('flex gap-1', rightPanelContainerClassName)}>
-        {rightPanel}
-        {sidePanels}
-      </div>
-    </section>
-  )
-}
-
 type AgentConfigurePreviewSurfaceProps = {
   background?: ReactNode
   chat: ReactNode

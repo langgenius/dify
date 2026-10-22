@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitForElementToBeRemoved, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef } from 'react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -35,6 +35,31 @@ function renderDetailRosterField(
 }
 
 describe('AgentRosterField', () => {
+  it('keeps the inline dialog close control available before its workspace loads', async () => {
+    const user = userEvent.setup()
+    function Harness() {
+      const portalContainerRef = useRef<HTMLDivElement>(null)
+      return (
+        <div ref={portalContainerRef}>
+          <AgentRosterField
+            agent={{ id: 'inline-agent', name: 'Inline Agent' }}
+            isInlineSetup
+            portalContainerRef={portalContainerRef}
+            onChange={vi.fn()}
+          />
+        </div>
+      )
+    }
+    render(<Harness />)
+    await user.click(
+      screen.getByRole('button', { name: /^workflowAgent\.nodes\.agent\.roster\.openPanel/ }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Inline Agent' })
+    const closed = waitForElementToBeRemoved(dialog)
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+    await closed
+  })
+
   it('copies the roster agent from its detail panel', async () => {
     const user = userEvent.setup()
     const { onMakeCopy } = renderDetailRosterField()
