@@ -1,6 +1,8 @@
 """Delete document indexes between bounded database transactions."""
 
+import logging
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import ExitStack
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -10,9 +12,12 @@ from core.rag.datasource.keyword.jieba.jieba import Jieba
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
-from models.dataset import ChildChunk, Dataset, DocumentSegment, DocumentSegmentSummary
+from models.dataset import ChildChunk, Dataset, DocumentSegment, DocumentSegmentSummary, SegmentAttachmentBinding
+from models.model import UploadFile
 from repositories.knowledge.dataset_read_repository import get_dataset_keyword_table
 from repositories.knowledge.keyword_table_repository import persist_keyword_table
+
+logger = logging.getLogger(__name__)
 
 
 def clean_document_indexes(
@@ -118,3 +123,110 @@ def clean_document_indexes(
                 )
             )
     return tenant_id
+
+
+# Bounds both the number of attachment locks held at once and the size of each IN clause.
+ATTACHMENT_RELEASE_BATCH_SIZE = 100
+
+
+def release_document_attachments(
+    *,
+    dataset_id: str,
+    document_ids: Sequence[str],
+    new_session: Callable[[], Session],
+    delete_file: Callable[[str], None],
+) -> None:
+    """Release the segment attachments bound to documents that are being deleted.
+
+    Attachments are discovered through their bindings, not through segments, so a retry
+    still finds them after the segment rows are gone.
+
+    One ``UploadFile`` can be bound to segments of several documents and datasets, so two
+    scopes are decided separately. Its vector lives in this dataset's collection and is
+    removed once no other binding in this dataset remains; the file row is shared and is
+    removed only once no other binding anywhere remains.
+
+    Each attachment is locked while its remaining references are counted and released, so
+    concurrent deletions of documents sharing it cannot each see the other's binding and
+    both keep it. Vectors go before bindings: if the vector deletion fails, the bindings
+    are still there for the next attempt.
+
+    Attachments are processed in batches, and each batch's blobs are deleted through
+    ``delete_file`` as soon as that batch commits. Once its rows are gone nothing can
+    rediscover those blobs, so they must not wait on a later batch that may still fail.
+    A blob that cannot be deleted is logged and skipped, as elsewhere in document cleanup.
+    """
+    if not document_ids:
+        return
+    with new_session() as session:
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id))
+        if dataset is None:
+            return
+        tenant_id = dataset.tenant_id
+        attachment_ids = sorted(
+            set(
+                session.scalars(
+                    select(SegmentAttachmentBinding.attachment_id).where(
+                        SegmentAttachmentBinding.tenant_id == tenant_id,
+                        SegmentAttachmentBinding.dataset_id == dataset_id,
+                        SegmentAttachmentBinding.document_id.in_(document_ids),
+                    )
+                ).all()
+            )
+        )
+        high_quality = dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
+        vector_type = Vector.resolve_vector_type(dataset, session=session) if high_quality and attachment_ids else None
+        session.expunge(dataset)
+
+    for start in range(0, len(attachment_ids), ATTACHMENT_RELEASE_BATCH_SIZE):
+        batch = attachment_ids[start : start + ATTACHMENT_RELEASE_BATCH_SIZE]
+        with ExitStack() as locks:
+            # Ids are sorted, so every caller acquires in the same order and cannot deadlock.
+            for attachment_id in batch:
+                locks.enter_context(redis_client.lock(f"segment_attachment_release_lock_{attachment_id}", timeout=600))
+
+            # Counted under the lock: a concurrent release of another document either already
+            # committed its binding deletion, which this count sees, or has not started yet.
+            with new_session() as session:
+                remaining_bindings = session.execute(
+                    select(SegmentAttachmentBinding.attachment_id, SegmentAttachmentBinding.dataset_id).where(
+                        SegmentAttachmentBinding.attachment_id.in_(batch),
+                        SegmentAttachmentBinding.document_id.not_in(document_ids),
+                    )
+                ).all()
+            bound_in_dataset = {
+                attachment_id for attachment_id, bound_dataset in remaining_bindings if bound_dataset == dataset_id
+            }
+            bound_anywhere = {attachment_id for attachment_id, _ in remaining_bindings}
+            vector_orphan_ids = [attachment_id for attachment_id in batch if attachment_id not in bound_in_dataset]
+            file_orphan_ids = [attachment_id for attachment_id in batch if attachment_id not in bound_anywhere]
+
+            # Attachment vectors are written under doc_id == UploadFile.id, which no segment,
+            # child chunk or summary row points at.
+            if high_quality and vector_orphan_ids:
+                Vector(dataset, session=None, vector_type=vector_type).delete_by_ids(vector_orphan_ids)
+
+            storage_keys: Sequence[str] = []
+            with new_session() as session, session.begin():
+                if file_orphan_ids:
+                    storage_keys = session.scalars(
+                        select(UploadFile.key).where(UploadFile.id.in_(file_orphan_ids))
+                    ).all()
+                # Bindings go before the rows they point at.
+                session.execute(
+                    delete(SegmentAttachmentBinding).where(
+                        SegmentAttachmentBinding.tenant_id == tenant_id,
+                        SegmentAttachmentBinding.dataset_id == dataset_id,
+                        SegmentAttachmentBinding.document_id.in_(document_ids),
+                        SegmentAttachmentBinding.attachment_id.in_(batch),
+                    )
+                )
+                if file_orphan_ids:
+                    session.execute(delete(UploadFile).where(UploadFile.id.in_(file_orphan_ids)))
+
+        # Committed: these rows are gone, so their blobs go now rather than after later batches.
+        for storage_key in storage_keys:
+            try:
+                delete_file(storage_key)
+            except Exception:
+                logger.exception("Failed to delete segment attachment file, key: %s", storage_key)

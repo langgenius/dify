@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from unittest.mock import patch
 
@@ -132,3 +133,80 @@ def test_cleans_segment_attachment_bindings_and_files(cleanup_rows: tuple[str, s
     assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
     assert sqlite_session.get(UploadFile, attachment_id) is None
     storage_delete.assert_called_once_with(attachment_key)
+
+
+def test_failed_attachment_release_is_picked_up_by_a_later_run(
+    cleanup_rows: tuple[str, str, str],
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A failed release must stay discoverable after Step 5 has already removed the segments."""
+    dataset_id, document_id, tenant_id = cleanup_rows
+    segment = sqlite_session.query(DocumentSegment).filter_by(document_id=document_id).one()
+    attachment = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="attachments/retry.png",
+        name="retry.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=segment.created_by,
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    sqlite_session.add(attachment)
+    sqlite_session.flush()
+    binding = SegmentAttachmentBinding(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=document_id,
+        segment_id=segment.id,
+        attachment_id=attachment.id,
+    )
+    sqlite_session.add(binding)
+    sqlite_session.commit()
+    attachment_id, binding_id, segment_id = attachment.id, binding.id, segment.id
+
+    release = task_module.release_document_attachments
+    attempts: list[int] = []
+
+    def fail_once(
+        *,
+        dataset_id: str,
+        document_ids: Sequence[str],
+        new_session: Callable[[], Session],
+        delete_file: Callable[[str], None],
+    ) -> None:
+        attempts.append(len(attempts))
+        if len(attempts) == 1:
+            raise RuntimeError("attachment release failed")
+        release(dataset_id=dataset_id, document_ids=document_ids, new_session=new_session, delete_file=delete_file)
+
+    monkeypatch.setattr(task_module, "release_document_attachments", fail_once)
+
+    def run() -> None:
+        batch_clean_document_task(document_ids=[document_id], dataset_id=dataset_id, doc_form="paragraph", file_ids=[])
+
+    with (
+        patch("tasks.batch_clean_document_task.get_image_upload_file_ids", return_value=[]),
+        patch("tasks.batch_clean_document_task.clean_document_indexes"),
+        patch("tasks.batch_clean_document_task.schedule_billing_vector_space_refresh"),
+        patch("tasks.batch_clean_document_task.storage.delete") as storage_delete,
+        caplog.at_level("ERROR"),
+    ):
+        run()
+        sqlite_session.expire_all()
+        assert "Failed to release segment attachments" in caplog.text
+        assert sqlite_session.get(DocumentSegment, segment_id) is None
+        assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is not None
+        storage_delete.assert_not_called()
+
+        run()
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+    assert sqlite_session.get(UploadFile, attachment_id) is None
+    storage_delete.assert_called_once_with("attachments/retry.png")

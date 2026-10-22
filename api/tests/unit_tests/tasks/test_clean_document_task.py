@@ -6,13 +6,15 @@ starts from the production incident shape: the caller has already deleted the
 """
 
 import uuid
-from unittest.mock import patch
+from datetime import UTC, datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import tasks.clean_document_task as clean_document_task_module
+from extensions.storage.storage_type import StorageType
 from models.dataset import (
     Dataset,
     DatasetMetadataBinding,
@@ -20,7 +22,7 @@ from models.dataset import (
     DocumentSegment,
     SegmentAttachmentBinding,
 )
-from models.enums import DataSourceType
+from models.enums import CreatorUserRole, DataSourceType
 from models.model import UploadFile
 from tasks.clean_document_task import clean_document_task
 from tests.unit_tests.model_factories import make_document
@@ -312,3 +314,122 @@ class TestVectorCleanupResilience:
             survivor_segment_id=survivor_segment_id,
         )
         schedule_refresh.assert_not_called()
+
+
+def _persist_attachment(
+    session: Session, *, document_id: str, dataset_id: str, tenant_id: str, key: str
+) -> tuple[str, str, str]:
+    """Persist a dataset, one segment and one attachment bound to it; return their ids."""
+    created_by = str(uuid.uuid4())
+    session.add(
+        Dataset(
+            id=dataset_id,
+            tenant_id=tenant_id,
+            name="Attachment dataset",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            created_by=created_by,
+        )
+    )
+    segment = _segment(
+        segment_id=str(uuid.uuid4()),
+        document_id=document_id,
+        dataset_id=dataset_id,
+        tenant_id=tenant_id,
+        created_by=created_by,
+    )
+    attachment = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=key,
+        name=key.rsplit("/", maxsplit=1)[-1],
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=created_by,
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    session.add_all([segment, attachment])
+    session.flush()
+    binding = SegmentAttachmentBinding(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=document_id,
+        segment_id=segment.id,
+        attachment_id=attachment.id,
+    )
+    session.add(binding)
+    session.commit()
+    return segment.id, attachment.id, binding.id
+
+
+class TestSegmentAttachmentRelease:
+    """Attachments are released through their bindings and survive a failed attempt."""
+
+    def test_orphan_attachment_is_released_with_the_document(
+        self,
+        document_id: str,
+        dataset_id: str,
+        tenant_id: str,
+        sqlite_session: Session,
+        bind_task_sessions: None,
+        mock_storage: MagicMock,
+        mock_index_cleanup: MagicMock,
+    ) -> None:
+        _, attachment_id, binding_id = _persist_attachment(
+            sqlite_session,
+            document_id=document_id,
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            key="attachments/orphan.png",
+        )
+
+        clean_document_task(document_id=document_id, dataset_id=dataset_id, doc_form="paragraph", file_id=None)
+
+        sqlite_session.expire_all()
+        assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+        assert sqlite_session.get(UploadFile, attachment_id) is None
+        mock_storage.delete.assert_any_call("attachments/orphan.png")
+
+    def test_failed_release_leaves_bindings_for_a_later_run(
+        self,
+        document_id: str,
+        dataset_id: str,
+        tenant_id: str,
+        sqlite_session: Session,
+        bind_task_sessions: None,
+        mock_storage: MagicMock,
+        mock_index_cleanup: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        segment_id, attachment_id, binding_id = _persist_attachment(
+            sqlite_session,
+            document_id=document_id,
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            key="attachments/retry.png",
+        )
+
+        with (
+            patch(
+                "tasks.clean_document_task.release_document_attachments",
+                side_effect=RuntimeError("attachment release failed"),
+            ),
+            caplog.at_level("ERROR"),
+        ):
+            clean_document_task(document_id=document_id, dataset_id=dataset_id, doc_form="paragraph", file_id=None)
+
+        assert "Failed to release segment attachments" in caplog.text
+        sqlite_session.expire_all()
+        # The rest of the cleanup still ran, and the binding is still there to be found again.
+        assert sqlite_session.get(DocumentSegment, segment_id) is None
+        assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is not None
+        assert sqlite_session.get(UploadFile, attachment_id) is not None
+
+        clean_document_task(document_id=document_id, dataset_id=dataset_id, doc_form="paragraph", file_id=None)
+
+        sqlite_session.expire_all()
+        assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+        assert sqlite_session.get(UploadFile, attachment_id) is None
+        mock_storage.delete.assert_any_call("attachments/retry.png")
