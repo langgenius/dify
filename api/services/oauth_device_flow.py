@@ -16,6 +16,9 @@ import secrets
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
+from typing import ClassVar
+
+from pydantic import ConfigDict, TypeAdapter, ValidationError, model_validator
 
 from services.oauth_device_contracts import (
     DEVICE_FLOW_TTL_SECONDS,
@@ -113,6 +116,8 @@ _LEGACY_APPROVAL_FIELDS = ("subject_email", "account_id", "subject_issuer", "min
 class DeviceFlowState:
     """Ephemeral device state; approved payload is consumed exactly once."""
 
+    __pydantic_config__: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
     user_code: str
     client_id: str
     device_label: str
@@ -128,14 +133,19 @@ class DeviceFlowState:
 
     @classmethod
     def from_json(cls, raw: str) -> DeviceFlowState:
-        data = json.loads(raw)
+        return _device_flow_state_adapter.validate_json(raw)
+
+    @model_validator(mode="before")
+    @classmethod
+    def remove_legacy_approval_fields(cls, data: object) -> object:
         # Device codes live for at most 15 minutes, but tolerate state written
         # by the previous schema during a rolling deployment.
-        for field_name in _LEGACY_APPROVAL_FIELDS:
-            data.pop(field_name, None)
-        if "status" in data:
-            data["status"] = DeviceFlowStatus(data["status"])
-        return cls(**data)
+        if isinstance(data, dict):
+            return {key: value for key, value in data.items() if key not in _LEGACY_APPROVAL_FIELDS}
+        return data
+
+
+_device_flow_state_adapter = TypeAdapter(DeviceFlowState)
 
 
 def _random_device_code() -> str:
@@ -208,8 +218,9 @@ class DeviceFlowRedis:
         text_ = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
         try:
             return DeviceFlowState.from_json(text_)
-        except (ValueError, KeyError):
-            logger.exception("device_flow: corrupt state for %s", device_code)
+        except ValidationError:
+            # Validation errors can contain the plaintext token in poll_payload.
+            logger.warning("device_flow: corrupt state for %s", device_code)
             return None
 
     def approve(
@@ -267,8 +278,9 @@ class DeviceFlowRedis:
         text_ = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
         try:
             state = DeviceFlowState.from_json(text_)
-        except (ValueError, KeyError):
-            logger.exception("device_flow: corrupt state on consume %s", device_code)
+        except ValidationError:
+            # Validation errors can contain the plaintext token in poll_payload.
+            logger.warning("device_flow: corrupt state on consume %s", device_code)
             return None
         try:
             self._redis.delete(USER_CODE_KEY_FMT.format(code=state.user_code))

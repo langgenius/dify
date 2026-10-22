@@ -2,6 +2,8 @@ import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
+import pytest
+
 from services.oauth_device_contracts import ApprovalTransitionConfirmation, DeviceFlowStatus, PollPayload
 from services.oauth_device_flow import DeviceFlowRedis, DeviceFlowState
 
@@ -190,3 +192,49 @@ def test_state_reader_tolerates_legacy_approval_fields() -> None:
     state = DeviceFlowState.from_json(json.dumps(legacy))
 
     assert state.status is DeviceFlowStatus.PENDING
+
+
+@pytest.mark.parametrize("read_method", ["load_by_device_code", "consume_on_poll"])
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "{",
+        "null",
+        "[]",
+        "{}",
+        '{"user_code":"ABCD-EFGH","client_id":"difyctl","device_label":"CLI","status":"unknown"}',
+        '{"user_code":123,"client_id":"difyctl","device_label":"CLI","status":"pending"}',
+        '{"user_code":"ABCD-EFGH","client_id":"difyctl","device_label":"CLI","status":"pending","unexpected":"value"}',
+        '{"user_code":"ABCD-EFGH","client_id":"difyctl","device_label":"CLI","status":"approved",'
+        '"poll_payload":{"token":"secret-token"}}',
+    ],
+)
+def test_corrupt_state_is_unavailable(read_method: str, payload: str, caplog: pytest.LogCaptureFixture) -> None:
+    redis = _Redis(response=payload)
+    store = DeviceFlowRedis(redis)
+
+    assert getattr(store, read_method)("device-1") is None
+    assert redis.deleted == []
+    assert "secret-token" not in caplog.text
+
+
+def test_approved_state_round_trip_preserves_poll_payload() -> None:
+    payload: PollPayload = {
+        "token": "secret-token",
+        "expires_at": "2030-01-01T00:00:00+00:00",
+        "subject_type": "account",
+        "account": {"id": "account-1"},
+        "workspaces": [{"id": "workspace-1", "current": True}],
+        "default_workspace_id": "workspace-1",
+        "token_id": "token-1",
+        "subject_email": "user@example.com",
+    }
+    state = DeviceFlowState(
+        user_code="ABCD-EFGH",
+        client_id="difyctl",
+        device_label="CLI",
+        status=DeviceFlowStatus.APPROVED,
+        poll_payload=payload,
+    )
+
+    assert DeviceFlowState.from_json(state.to_json()) == state
