@@ -22,6 +22,7 @@ it('clamps a past HTTP date to 0', () => {
   expect(retryAfterSeconds('Thu, 22 Oct 2026 09:00:00 GMT', NOW_MS)).toBe(0)
 })
 
+// Only IMF-fixdate is read: RFC 850 and asctime dates are obsolete forms.
 it('omits values it cannot trust', () => {
   for (const bad of [
     '-5',
@@ -34,6 +35,8 @@ it('omits values it cannot trust', () => {
     '99999999999999999999',
     'Thu, 99 Oct 2026 10:00:30 GMT',
     '2026-10-22T10:00:30Z',
+    'Sunday, 06-Nov-94 08:49:37 GMT',
+    'Sun Nov  6 08:49:37 1994',
     null,
   ])
     expect(retryAfterSeconds(bad, NOW_MS)).toBeUndefined()
