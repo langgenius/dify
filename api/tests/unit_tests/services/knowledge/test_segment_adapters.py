@@ -727,10 +727,8 @@ def test_delete_segment_with_legacy_scalar_keywords(
         document = session.get(Document, "document-1")
         assert document is not None
         assert document.word_count == 0
-    if enabled:
-        assert probe.tasks == [("delete", (["index-1"], "dataset-1", "document-1", ["segment-1"], []))]
-    else:
-        assert probe.tasks == []
+    expected_index_node_ids: list[str] = ["index-1"] if enabled else []
+    assert probe.tasks == [("delete", (expected_index_node_ids, "dataset-1", "document-1", ["segment-1"], []))]
 
 
 @pytest.mark.parametrize("keywords", ["legacy-scalar", 42, {"invalid": "object"}, [{"invalid": "item"}]])

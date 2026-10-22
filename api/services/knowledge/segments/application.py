@@ -819,11 +819,11 @@ class SegmentMutationService:
             raise ValueError("Segment is deleting.")
         if segment.enabled:
             self._indexing_state.mark_segment_indexing(segment_ref.segment_id, deleting=True)
-            self._index.delete(
-                segment_ref.document,
-                (segment,),
-                self._children(segment_ref),
-            )
+        self._index.delete(
+            segment_ref.document,
+            (segment,),
+            self._children(segment_ref),
+        )
         self._store.delete_segments(segment_ref.document, (segment_ref.segment_id,))
 
     def create_child_chunk(self, segment_ref: SegmentRef, *, content: str, actor_id: str) -> ChildChunkRecord:
