@@ -98,7 +98,10 @@ describe('http plugin', () => {
     mock.setScenario('auth-expired')
     await expect(h.request(account)).rejects.toMatchObject({ code: 'auth_expired' })
     mock.setScenario('rate-limited')
-    await expect(h.request(account)).rejects.toMatchObject({ code: 'rate_limited' })
+    await expect(h.request(account)).rejects.toMatchObject({
+      code: 'rate_limited',
+      retryAfter: 1,
+    })
   })
 
   it('a 401 says to log in again', async () => {

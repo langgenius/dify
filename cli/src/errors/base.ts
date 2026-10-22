@@ -33,6 +33,7 @@ export type ErrorEnvelope = {
     http_status?: number
     method?: string
     url?: string
+    retry_after?: number
     raw_response?: string
     server?: ServerErrorBody
   }
@@ -143,6 +144,7 @@ type HttpClientErrorOptions = BaseErrorOptions & {
   readonly url?: string
   readonly rawResponse?: string
   readonly serverError?: ServerErrorBody
+  readonly retryAfter?: number
 }
 
 export class HttpClientError extends BaseError {
@@ -151,6 +153,7 @@ export class HttpClientError extends BaseError {
   readonly url?: string
   readonly rawResponse?: string
   readonly serverError?: ServerErrorBody
+  readonly retryAfter?: number
 
   constructor(opts: HttpClientErrorOptions) {
     super(opts)
@@ -159,6 +162,7 @@ export class HttpClientError extends BaseError {
     this.url = opts.url
     this.rawResponse = opts.rawResponse
     this.serverError = opts.serverError
+    this.retryAfter = opts.retryAfter
   }
 
   override toEnvelope(): ErrorEnvelope {
@@ -166,6 +170,7 @@ export class HttpClientError extends BaseError {
     if (this.httpStatus !== undefined) envelope.error.http_status = this.httpStatus
     if (this.method !== undefined) envelope.error.method = this.method
     if (this.url !== undefined) envelope.error.url = this.url
+    if (this.retryAfter !== undefined) envelope.error.retry_after = this.retryAfter
     if (this.rawResponse !== undefined) envelope.error.raw_response = this.rawResponse
     if (this.serverError !== undefined) envelope.error.server = this.serverError
     // One details[] surface for both client- and server-authored rejections: the
@@ -183,6 +188,7 @@ export class HttpClientError extends BaseError {
       url: this.url,
       rawResponse: this.rawResponse,
       serverError: this.serverError,
+      retryAfter: this.retryAfter,
     }
   }
 

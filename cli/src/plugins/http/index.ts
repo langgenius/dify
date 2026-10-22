@@ -8,6 +8,7 @@ import { definePlugin } from '@/kernel/plugin'
 import { networkErrorMessage } from '@/net/cause'
 import { buildFetchInit } from '@/net/fetch-init'
 import { proxyDispatcher } from '@/net/proxy'
+import { retryAfterSeconds } from '@/net/retry-after'
 import { catalog, CATALOG_HEADER, CATALOG_PATH, fingerprintOf } from '@/plugins/catalog'
 import { config } from '@/plugins/config'
 import { env } from '@/plugins/env'
@@ -216,6 +217,10 @@ export const http = definePlugin({
         url: url.toString(),
         rawResponse,
         serverError,
+        retryAfter:
+          res.status === HttpStatus.TooManyRequests
+            ? retryAfterSeconds(res.headers.get('retry-after'), Date.now())
+            : undefined,
       })
     }
 

@@ -48,6 +48,7 @@ export function renderEnvelope(
     lines.push(nextLine(h, style, opts.nextCommands?.[i]))
   if (e.method !== undefined && e.url !== undefined) lines.push(`request: ${e.method} ${e.url}`)
   if (e.http_status !== undefined) lines.push(`http_status: ${e.http_status}`)
+  if (e.retry_after !== undefined) lines.push(`retry_after: ${e.retry_after}s`)
   if (opts.verbose && e.raw_response) lines.push(`raw_response: ${redactBearer(e.raw_response)}`)
   return lines.join('\n')
 }

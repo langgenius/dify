@@ -138,3 +138,19 @@ describe('error envelope', () => {
     expect(envelope.error).not.toHaveProperty('url')
   })
 })
+
+describe('retry_after', () => {
+  it('is written to the envelope when set', () => {
+    const err = new HttpClientError({
+      code: ErrorCode.RateLimited,
+      message: 'slow down',
+      retryAfter: 3,
+    })
+    expect(err.toEnvelope().error.retry_after).toBe(3)
+  })
+
+  it('is absent from the envelope when unset', () => {
+    const err = new HttpClientError({ code: ErrorCode.RateLimited, message: 'slow down' })
+    expect(err.toEnvelope().error).not.toHaveProperty('retry_after')
+  })
+})

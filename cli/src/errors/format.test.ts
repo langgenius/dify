@@ -92,3 +92,19 @@ it('prints the given command for each next line', () => {
     'next: difyctl set service_api --app-id a --enabled — Turn it on',
   ])
 })
+
+it('prints retry_after right after http_status', () => {
+  const text = renderEnvelope(
+    {
+      error: {
+        code: 'rate_limited',
+        message: 'slow down',
+        http_status: 429,
+        retry_after: 3,
+      },
+    },
+    plain,
+    { verbose: false },
+  )
+  expect(text.split('\n').slice(-2)).toEqual(['http_status: 429', 'retry_after: 3s'])
+})
