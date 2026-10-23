@@ -381,7 +381,9 @@ it('keeps a settled empty announcement during background refresh', async () => {
 })
 
 it('clears search in the URL and restores the unfiltered catalog', async () => {
-  api.apps.mockImplementation(async ({ query } = {}) => page(query?.name ? [] : apps))
+  api.apps.mockImplementation(async ({ query }: Parameters<typeof api.apps>[0] = {}) =>
+    page(query?.name ? [] : apps),
+  )
   const { user, onUrlUpdate } = await setup('?keywords=missing')
   await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
   expect(search()).toHaveValue('')
