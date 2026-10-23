@@ -7,7 +7,7 @@ from core.dify_builder.models import DifyBuilderContext, Session
 from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.state import PcState
 from runtime_contracts.builder.copy_ids import BuilderCopyId
-from runtime_contracts.builder.presentation import copy_text
+from runtime_contracts.builder.presentation import BuilderText, copy_text
 from services.dify_builder.application.handlers_fix import append_assistant, append_card, build_form_fields
 from services.dify_builder.application.runner import Env, StepResult
 from services.dify_builder.execution_messages import cognition_failure_message
@@ -19,6 +19,8 @@ def edit_planning_failed(
     context: DifyBuilderContext,
     progress: ProgressReporter,
     step_id: str,
+    *,
+    guidance: BuilderText | None = None,
 ) -> StepResult:
     """Keep the waiting state; reoffer submitted rules when that gate owns a form."""
     progress.fail_step(step_id)
@@ -53,7 +55,9 @@ def edit_planning_failed(
         env,
         session,
         context,
-        cognition_failure_message(
+        guidance
+        if guidance is not None
+        else cognition_failure_message(
             env.diagnostics,
             copy_text(BuilderCopyId.REPLIES_BUILDER_COULDN_T_PRODUCE_A_USABLE),
             reply_language=context.reply_language,

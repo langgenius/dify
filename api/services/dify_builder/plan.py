@@ -26,6 +26,13 @@ class WorkflowPlan:
     items: list[str]
 
 
+class EditPlanNotActionableError(RuntimeError):
+    """An Edit goal has no approvable change; never a stored/public plan."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+
+
 def parse_plan_response(data: object) -> WorkflowPlan:
     """Decode the complete proposal; failures never quote source or generated prose."""
     if not isinstance(data, dict):
