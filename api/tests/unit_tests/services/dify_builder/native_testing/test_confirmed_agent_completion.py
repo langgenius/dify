@@ -2101,3 +2101,68 @@ def test_paused_initial_ack_without_dispatch_is_selected_for_worker_recovery(
     monkeypatch.setattr(wiring, "native_runtime_owner", lambda: SimpleNamespace(retire_closed=lambda **_: None))
     task.reconcile_native_tests()
     assert calls == [owner.request_id]
+
+
+@pytest.mark.parametrize("mode", ["build", "edit"])
+@pytest.mark.parametrize(("expected", "acceptance"), [("actual output", "passed"), ("required output", "failed")])
+def test_resumed_terminal_run_records_current_business_acceptance_on_original_attempt(
+    completed: CompletedOwner, mode: str, expected: str, acceptance: str
+) -> None:
+    """A resumed run must retain the same explicit output oracle as an ordinary test."""
+    from services.dify_builder.business_acceptance import current_source_digest
+    from services.dify_builder.serde import context_to_dict
+
+    owner = completed
+    if mode == "edit":
+        _edit_attempt(owner)
+    session, context = owner.repo.get_session(owner.session.id)
+    context.business_acceptance_task_id = "original-task"
+    context.business_acceptance_case_id = "summary"
+    context.business_acceptance_contract = {
+        "task_id": "original-task",
+        "source_digest": current_source_digest(context),
+        "confirmed": True,
+        "cases": [
+            {
+                "id": "summary",
+                "inputs": {"contract_text": "synthetic"},
+                "checks": [{"path": ["summary"], "operator": "equals", "expected": expected}],
+            }
+        ],
+    }
+    # The contract belongs to the original admitted context, before control-only commits.
+    with owner.factory.begin() as sql:
+        commit = sql.scalar(
+            select(DifyBuilderSessionCommit).where(
+                DifyBuilderSessionCommit.session_id == owner.session.id,
+                DifyBuilderSessionCommit.version == session.version,
+            )
+        )
+        assert commit is not None
+        commit.context = context_to_dict(context)
+    observe(owner)
+    run = owner.repo.get_run(owner.verify_id)
+    assert run.verification is not None
+    assert run.verification.business_acceptance.get("state") == acceptance
+    assert run.verification.business_acceptance.get("run_id") == owner.verify_id
+    assert run.verification.business_acceptance.get("native_run_id") == owner.native_id
+    session, context = owner.repo.get_session(owner.session.id)
+    assert context.business_acceptance_run_refs == {"summary": owner.verify_id}
+    assert session.current_state == (
+        PcState.BUILD_REVIEW
+        if mode == "build" and acceptance == "passed"
+        else PcState.EDIT_REVIEW
+        if mode == "edit" and acceptance == "passed"
+        else PcState.BUILD_AWAIT_REPAIR
+        if mode == "build"
+        else PcState.EDIT_AWAIT_REPAIR
+    )
+    cards = [
+        item
+        for item in owner.repo.list_conversation_page(owner.session.id, limit=20).data
+        if item.kind == "test_result"
+    ]
+    assert len(cards) == 1
+    assert cards[0].payload["business_acceptance_state"] == acceptance
+    observe(owner)
+    assert owner.repo.get_session(owner.session.id)[0].version == session.version
