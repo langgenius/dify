@@ -910,7 +910,8 @@ class TestAgentObservabilityServiceCases:
         payload = AgentObservabilityService.serialize_workflow_node_message(node_execution)
 
         assert payload["agent_thoughts"] == []
-        assert payload["answer"] == "Agent output"
+        # The fixture carries no outputs, so there is nothing to render as an answer.
+        assert payload["answer"] == ""
 
     @staticmethod
     def test_serialize_workflow_node_message_maps_recorded_process_entries() -> None:

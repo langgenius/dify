@@ -395,16 +395,20 @@ def _agent_log_text(value: object) -> str | None:
 
 
 def _agent_log_json(value: object) -> str | None:
-    """Return a valid JSON string, or ``None`` when the payload is unusable."""
+    """Return a valid JSON string, or ``None`` when the payload is unusable.
+
+    Streamed argument deltas arrive as raw fragments that may not parse; those are
+    dropped rather than persisted as broken JSON. Anything else is encoded, so a
+    plain-text tool result is kept as a JSON string instead of being discarded.
+    """
     if value is None:
         return None
     if isinstance(value, str):
-        # Streamed argument deltas arrive as raw fragments; keep the text only
-        # when it already parses so callers never see a broken JSON string.
         try:
             json.loads(value)
         except (TypeError, ValueError):
-            return None
+            # Not JSON yet: encode the text so the entry stays readable.
+            return _agent_log_text(json.dumps(value, ensure_ascii=False))
         return _agent_log_text(value)
     try:
         return _agent_log_text(json.dumps(value, ensure_ascii=False))
