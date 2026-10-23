@@ -23,6 +23,7 @@ const MainNavLink = ({ item, pathname, children }: MainNavLinkProps) => {
   return (
     <Link
       href={item.href === '/apps' ? appsHref : item.href}
+      scroll={false}
       aria-current={activated ? 'page' : undefined}
       title={item.label}
       className={cn(

@@ -3643,11 +3643,6 @@
       "count": 1
     }
   },
-  "web/app/components/main-nav/__tests__/responsive-main-nav.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 2
-    }
-  },
   "web/app/components/main-nav/components/workspace-switcher.tsx": {
     "jsx-a11y/no-autofocus": {
       "count": 1
