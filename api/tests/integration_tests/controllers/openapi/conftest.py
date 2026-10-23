@@ -1,6 +1,10 @@
 """Shared fixtures for /openapi/v1/* integration tests."""
 
 from __future__ import annotations
+from enums.account import TenantAccountRole
+from models.enums import AppStatus
+from models import AppMode
+from models import TenantStatus
 
 import hashlib
 import uuid
@@ -35,12 +39,12 @@ def disable_enterprise(monkeypatch: pytest.MonkeyPatch):
 @pytest.fixture
 def workspace_account(flask_app: Flask) -> Generator[tuple[Account, Tenant, TenantAccountJoin]]:
     with flask_app.app_context():
-        tenant = Tenant(name="t1", status="normal")
+        tenant = Tenant(name="t1", status=TenantStatus.NORMAL)
         account = Account(email="u@example.com", name="u")
         db.session.add_all([tenant, account])
         db.session.commit()
         account.status = AccountStatus.ACTIVE
-        join = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role="owner")
+        join = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER)
         db.session.add(join)
         db.session.commit()
         yield account, tenant, join
@@ -54,7 +58,7 @@ def workspace_account(flask_app: Flask) -> Generator[tuple[Account, Tenant, Tena
 def app_in_workspace(flask_app: Flask, workspace_account) -> Generator[App]:
     _, tenant, _ = workspace_account
     with flask_app.app_context():
-        app = App(tenant_id=tenant.id, name="a", mode="chat", status="normal", enable_site=True, enable_api=True)
+        app = App(tenant_id=tenant.id, name="a", mode=AppMode.CHAT, status=AppStatus.NORMAL, enable_site=True, enable_api=True)
         db.session.add(app)
         db.session.commit()
         yield app

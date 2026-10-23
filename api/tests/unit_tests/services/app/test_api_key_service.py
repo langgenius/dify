@@ -1,3 +1,4 @@
+from models.enums import ApiTokenType
 from dataclasses import dataclass, field
 
 import pytest
@@ -223,7 +224,7 @@ def test_hidden_workflow_app_keys_remain_inaccessible(
             backing_app_id="app",
         )
     )
-    sqlite_session.add(ApiToken(id="hidden-key", tenant_id="tenant", app_id="app", type="app", token="secret"))
+    sqlite_session.add(ApiToken(id="hidden-key", tenant_id="tenant", app_id="app", type=ApiTokenType.APP, token="secret"))
     sqlite_session.commit()
     context = RequestContext("request", None, "actor", "tenant")
     invoke = {
