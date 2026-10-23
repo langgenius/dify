@@ -383,6 +383,32 @@ const tailwindCanonicalClassesOverride = {
   },
 } satisfies NonNullable<OxlintConfig['overrides']>[number]
 
+// Web's existing violations use the per-file suppression baseline; Dify UI is fully migrated.
+const tailwindLogicalPropertiesOverride = {
+  files: [
+    'web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+    'packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+  ],
+  rules: {
+    'better-tailwindcss/enforce-logical-properties': [
+      'error',
+      {
+        ignore: [
+          // Block-axis and sizing classes do not depend on writing direction;
+          // keep their physical names (`pt`, `h-4`) instead of `pbs`, `block-4`.
+          '(?:^|[:!])-?(?:pt|pb|mt|mb|scroll-pt|scroll-pb|scroll-mt|scroll-mb|top|bottom|border-t|border-b|w|h|size|min-w|min-h|max-w|max-h)(?:-|$)',
+          // Direction variants and Base UI swipe directions name the physical side on purpose.
+          '(?:^|:)(?:rtl|ltr):',
+          'swipe-direction=(?:left|right)\\]:',
+          // Half-width offsets paired with physical horizontal translations must stay
+          // physical to remain centered under `dir="rtl"`.
+          '(?:^|[:!])-?(?:left|right)-1/2$',
+        ],
+      },
+    ],
+  },
+} satisfies NonNullable<OxlintConfig['overrides']>[number]
+
 // Oxlint's default handler lists omit pointer and touch activation.
 const jsxInteractionHandlers = [
   'onClick',
@@ -537,7 +563,7 @@ export const lintConfig = {
     '@shadcn/lint',
     '@tanstack/eslint-plugin-query',
     'eslint-plugin-antfu',
-    ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
+    'eslint-plugin-better-tailwindcss',
     {
       name: 'dify',
       specifier: './plugins/eslint/index.ts',
@@ -570,15 +596,11 @@ export const lintConfig = {
     typeCheck: true,
   },
   settings: {
-    ...(enableTailwindCanonicalClasses
-      ? {
-          'better-tailwindcss': {
-            cwd: path.resolve(rootDir, 'web'),
-            entryPoint: 'app/styles/globals.css',
-            rootFontSize: 16,
-          },
-        }
-      : {}),
+    'better-tailwindcss': {
+      cwd: path.resolve(rootDir, 'web'),
+      entryPoint: 'app/styles/globals.css',
+      rootFontSize: 16,
+    },
     'react-x': {
       additionalStateHooks: '/^use\\w*State(?:s)?|useAtom$/u',
     },
@@ -883,6 +905,7 @@ export const lintConfig = {
   },
   overrides: [
     ...(enableTailwindCanonicalClasses ? [tailwindCanonicalClassesOverride] : []),
+    tailwindLogicalPropertiesOverride,
     {
       files: ['**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
       rules: {

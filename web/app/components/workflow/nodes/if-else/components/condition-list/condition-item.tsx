@@ -454,7 +454,7 @@ const ConditionItem = ({
               value={selectedSelectOption?.value ?? null}
               onValueChange={(value) => value && handleUpdateConditionValue(value)}
             >
-              <SelectTrigger className="h-8 rounded-t-none border-0 pl-2 text-xs hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal">
+              <SelectTrigger className="h-8 rounded-t-none border-0 ps-2 text-xs hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal">
                 {selectedSelectOption?.name ?? t(($) => $['placeholder.select'], { ns: 'common' })}
               </SelectTrigger>
               <SelectContent>

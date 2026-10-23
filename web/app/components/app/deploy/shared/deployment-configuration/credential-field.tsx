@@ -83,7 +83,7 @@ export function CredentialField({
           id={inputId}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : undefined}
-          className="pl-2"
+          className="ps-2"
         >
           <span className="flex min-w-0 items-center gap-1.5">
             <StatusDot />

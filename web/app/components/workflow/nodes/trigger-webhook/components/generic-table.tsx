@@ -153,7 +153,7 @@ const renderSelectCell = (
       <SelectTrigger
         size="small"
         className={cn(
-          'h-6 w-full min-w-0 rounded-none bg-transparent py-0 pr-6 pl-0 text-text-secondary',
+          'h-6 w-full min-w-0 rounded-none bg-transparent py-0 ps-0 pe-6 text-text-secondary',
           'hover:bg-transparent focus-visible:bg-transparent',
         )}
       >

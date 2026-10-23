@@ -89,7 +89,18 @@ Oxlint and Vite+ type-check scope is defined by `packages/tooling/lint.config.ts
 
 The primary rule baseline lives in `packages/tooling/lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. Oxlint-native rules are preferred, and compatible ESLint rules can run through Oxlint's `jsPlugins` support. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
 
-Tailwind canonical class cleanup is optional because loading the JavaScript plugin adds noticeable lint startup time. The default `vp run -w check` command does not load it. Run `vp run -w lint:tailwind` to inspect `web/` and `packages/dify-ui/`, or `vp run -w lint:tailwind:fix` to apply safe replacements. Both commands run the complete lint configuration with the additional `better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css` and a 16px root font size.
+The Tailwind plugin always loads. `better-tailwindcss/enforce-logical-properties` enforces
+logical inline-direction classes in Web and Dify UI; block-axis, sizing, explicit direction,
+physical swipe, and centering exceptions remain physical. Dify UI is migrated without a baseline;
+existing Web findings use the per-file bulk suppressions described below.
+
+Migrate with scoped `vp lint --fix <paths>` and `vp fmt <paths>`. Autofix also rewrites suppressed
+classes, so review caller overrides and the suppression diff. CSS modules, inline styles, and
+dynamic classes need separate review.
+
+Canonical-class cleanup remains optional: `vp run -w lint:tailwind` and
+`vp run -w lint:tailwind:fix` additionally enable `better-tailwindcss/enforce-canonical-classes`
+at warning level, using `web/app/styles/globals.css` and a 16px root font size.
 
 The non-code baseline and its repository-wide file scope live in `packages/tooling/eslint.ts`. ESLint checks JSON, JSONC, JSON5, YAML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
 

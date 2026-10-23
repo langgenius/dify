@@ -229,7 +229,7 @@ export const Collaborators: Story = {
               aria-label="View 4 collaborators"
               variant="secondary"
               size={null}
-              className="rounded-2xl bg-components-panel-bg-blur py-1 pr-1.5 pl-1 inset-ring-components-panel-border hover:bg-components-panel-bg hover:inset-ring-components-panel-border data-popup-open:bg-components-panel-bg"
+              className="rounded-2xl bg-components-panel-bg-blur py-1 ps-1 pe-1.5 inset-ring-components-panel-border hover:bg-components-panel-bg hover:inset-ring-components-panel-border data-popup-open:bg-components-panel-bg"
             >
               <span aria-hidden="true" className="inline-flex items-center gap-px">
                 <AvatarGroup size="sm">

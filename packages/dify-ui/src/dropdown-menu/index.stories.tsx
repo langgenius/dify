@@ -597,7 +597,7 @@ export const Filterable: Story = {
       story: { autoplay: false },
       description: {
         story:
-          'Filtering is a Base UI preview feature. Opening with a click or the keyboard focuses the input; opening on hover does not, so the on-screen keyboard stays hidden. Arrow keys move the highlight while the input keeps focus, Enter runs the highlighted action, Tab closes the menu, and Shift+Tab returns focus to the trigger. Groups without matches hide, and the empty state announces when nothing matches. Place the separator between groups inside the later group so it hides with the groups before it. A submenu trigger matches like an item; a submenu stays unfiltered unless its `DropdownMenuSub` is wrapped in its own `DropdownMenuFilterProvider` with its own input, as "Share with" is. The right arrow opens a submenu and focuses its input when it has one, the left arrow closes it from an empty input and returns focus to the parent input, and each level keeps its own query. Pass `autoHighlight` to highlight the first match while typing.',
+          'Filtering is a Base UI preview feature. Opening with a click or the keyboard focuses the input; opening on hover does not, so the on-screen keyboard stays hidden. Arrow keys move the highlight while the input keeps focus, Enter runs the highlighted action, Tab closes the menu, and Shift+Tab returns focus to the trigger. Groups without matches hide, and the empty state announces when nothing matches. Place the separator between groups inside the later group so it hides with the groups before it. A submenu trigger matches like an item; a submenu stays unfiltered unless its `DropdownMenuSub` is wrapped in its own `DropdownMenuFilterProvider` with its own input, as "Share with" is. In LTR, the right arrow opens a submenu and focuses its input when it has one, the left arrow closes it from an empty input and returns focus to the parent input, and each level keeps its own query. RTL reverses these horizontal keys. Pass `autoHighlight` to highlight the first match while typing.',
       },
     },
   },
@@ -609,6 +609,9 @@ export const Filterable: Story = {
 
     await userEvent.click(trigger)
     const input = await body.findByRole('searchbox', { name: 'Filter actions' })
+    const isRtl = getComputedStyle(input).direction === 'rtl'
+    const openSubmenuKey = isRtl ? '{ArrowLeft}' : '{ArrowRight}'
+    const closeSubmenuKey = isRtl ? '{ArrowRight}' : '{ArrowLeft}'
     await waitFor(async () => {
       await expect(input).toHaveFocus()
     })
@@ -644,12 +647,12 @@ export const Filterable: Story = {
         'data-highlighted',
       )
     })
-    await userEvent.keyboard('{ArrowRight}')
+    await userEvent.keyboard(openSubmenuKey)
     const personalSpace = await body.findByRole('menuitem', { name: 'Personal space' })
     await waitFor(async () => {
       await expect(personalSpace).toHaveFocus()
     })
-    await userEvent.keyboard('{ArrowLeft}')
+    await userEvent.keyboard(closeSubmenuKey)
     await waitFor(async () => {
       await expect(body.queryByRole('menuitem', { name: 'Team space' })).not.toBeInTheDocument()
     })
@@ -663,13 +666,13 @@ export const Filterable: Story = {
         'data-highlighted',
       )
     })
-    await userEvent.keyboard('{ArrowRight}')
+    await userEvent.keyboard(openSubmenuKey)
     const submenuInput = await body.findByRole('searchbox', { name: 'Filter teams' })
     await waitFor(async () => {
       await expect(submenuInput).toHaveFocus()
     })
-    // The left arrow closes the submenu only from an empty input; with text it moves the caret.
-    await userEvent.keyboard('{ArrowLeft}')
+    // The closing arrow key dismisses the submenu only from an empty input; with text it moves the caret.
+    await userEvent.keyboard(closeSubmenuKey)
     await waitFor(async () => {
       await expect(body.queryByRole('searchbox', { name: 'Filter teams' })).not.toBeInTheDocument()
     })
@@ -677,7 +680,7 @@ export const Filterable: Story = {
       await expect(input).toHaveFocus()
     })
     await expect(input).toHaveValue('share')
-    await userEvent.keyboard('{ArrowRight}')
+    await userEvent.keyboard(openSubmenuKey)
     const reopenedSubmenuInput = await body.findByRole('searchbox', { name: 'Filter teams' })
     await waitFor(async () => {
       await expect(reopenedSubmenuInput).toHaveFocus()

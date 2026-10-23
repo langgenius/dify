@@ -53,6 +53,14 @@ stylesheet:
 @source not '../../../packages/dify-ui/src/**/*.stories.{ts,tsx}';
 ```
 
+## Writing direction
+
+Use logical inline-direction utilities for spacing, offsets, borders, corners, and alignment.
+Caller overrides must use the same family: `cn` does not merge `pl-*` with `ps-*`.
+
+Keep block-axis and sizing utilities unchanged. Preserve physical directions for swipe geometry
+and transform-based centering; explain deliberate physical exceptions with a scoped lint directive.
+
 ## Border radius
 
 Check the actual radius value in Figma before choosing a `rounded-*` class; matching token names

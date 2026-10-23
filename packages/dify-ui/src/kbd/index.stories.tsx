@@ -161,7 +161,7 @@ export const InTooltip: Story = {
       <TooltipTrigger
         render={
           <IconButton aria-label="Collapse sidebar" size="lg" variant="secondary">
-            <span aria-hidden className="i-ri-sidebar-fold-line size-4" />
+            <span aria-hidden className="i-ri-sidebar-fold-line size-4 [&:dir(rtl)]:-scale-x-100" />
           </IconButton>
         }
       />
