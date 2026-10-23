@@ -418,11 +418,6 @@ class FileUploadPayload(BaseModel):
 class DeviceCodeRequest(BaseModel):
     client_id: str
     device_label: str
-    installation_id: str | None = Field(
-        default=None,
-        pattern=r"^[A-Za-z0-9-]{8,64}$",
-        description="Stable id of the CLI install; logins from the same install replace each other",
-    )
 
 
 class DevicePollRequest(BaseModel):

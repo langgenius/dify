@@ -32,7 +32,7 @@ _APPROVALS: list[DeviceApprovalRecord] = [
 @pytest.mark.parametrize("approval", _APPROVALS, ids=["account", "external"])
 def test_approval_record_is_stored_without_a_token_and_claimed_once(approval: DeviceApprovalRecord) -> None:
     store = DeviceFlowRedis(redis_client)
-    device_code, user_code, _ = store.start("difyctl", "CLI", "abcd1234", "127.0.0.1")
+    device_code, user_code, _ = store.start("difyctl", "CLI", "127.0.0.1")
 
     try:
         store.approve(device_code, "approve-1", approval)
@@ -52,7 +52,6 @@ def test_approval_record_is_stored_without_a_token_and_claimed_once(approval: De
         assert stored is not None
         assert stored.status is DeviceFlowStatus.APPROVED
         assert stored.approval == approval
-        assert stored.installation_id == "abcd1234"
         assert store.confirm_approval(device_code, "approve-1") is ApprovalTransitionConfirmation.PUBLISHED
         assert store.confirm_approval(device_code, "approve-2") is ApprovalTransitionConfirmation.NOT_PUBLISHED
 
@@ -79,7 +78,7 @@ def test_approval_record_is_stored_without_a_token_and_claimed_once(approval: De
 
 def test_denied_state_has_no_approval_and_is_consumed_once() -> None:
     store = DeviceFlowRedis(redis_client)
-    device_code, user_code, _ = store.start("difyctl", "CLI", None, "127.0.0.1")
+    device_code, user_code, _ = store.start("difyctl", "CLI", "127.0.0.1")
     try:
         store.deny(device_code, "deny-1")
         store.deny(device_code, "deny-1")

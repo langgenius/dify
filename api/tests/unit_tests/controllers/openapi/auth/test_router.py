@@ -205,7 +205,6 @@ def _expired_row() -> OAuthAccessToken:
         subject_email="account@example.com",
         client_id="openapi-client",
         device_label="laptop",
-        device_key="laptop",
         prefix=TokenType.OAUTH_ACCOUNT.prefix,
         expires_at=datetime.now(UTC) - timedelta(seconds=1),
         subject_issuer="dify:account",

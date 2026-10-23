@@ -103,7 +103,6 @@ def test_device_code_serializes_authorization_and_passes_request_origin(
     device_service.start.assert_called_once_with(
         client_id="difyctl",
         device_label="laptop",
-        installation_id=None,
         created_ip="192.0.2.10",
         request_origin="https://api.example/",
     )

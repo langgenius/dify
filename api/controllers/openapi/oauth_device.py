@@ -102,7 +102,6 @@ class OAuthDeviceCodeApi(Resource):
             authorization = application_services().oauth_device.start(
                 client_id=payload.client_id,
                 device_label=payload.device_label,
-                installation_id=payload.installation_id,
                 created_ip=extract_remote_ip(request),
                 request_origin=request.host_url,
             )

@@ -66,7 +66,6 @@ def _approved_state() -> DeviceFlowState:
         user_code="ABCD-EFGH",
         client_id="difyctl",
         device_label="CLI",
-        installation_id=None,
         status=DeviceFlowStatus.APPROVED,
         token_id="transition:approve-1",
         approval=_APPROVAL,
@@ -160,7 +159,6 @@ def test_transition_marker_does_not_add_a_top_level_state_field() -> None:
         user_code="ABCD-EFGH",
         client_id="difyctl",
         device_label="CLI",
-        installation_id=None,
         status=DeviceFlowStatus.APPROVED,
         token_id="transition:approve-1",
         approval=_APPROVAL,
@@ -175,7 +173,6 @@ def test_transition_marker_does_not_add_a_top_level_state_field() -> None:
         "created_ip",
         "last_poll_at",
         "poll_payload",
-        "installation_id",
         "approval",
     }
 

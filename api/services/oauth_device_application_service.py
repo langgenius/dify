@@ -60,7 +60,6 @@ from services.oauth_device_contracts import (
     SlowDownDecision,
     StateNotFoundError,
     UnsupportedClientError,
-    device_key_for,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,13 +69,7 @@ _SSO_COMPLETE_PATH = "/openapi/v1/oauth/device/sso-complete"
 
 
 class DeviceFlowStore(Protocol):
-    def start(
-        self,
-        client_id: str,
-        device_label: str,
-        installation_id: str | None,
-        created_ip: str,
-    ) -> tuple[str, str, int]: ...
+    def start(self, client_id: str, device_label: str, created_ip: str) -> tuple[str, str, int]: ...
 
     def load_by_user_code(self, user_code: str) -> tuple[str, DeviceFlowStateView] | None: ...
 
@@ -119,7 +112,6 @@ class OAuthDeviceTokenIssuer(Protocol):
         workspace_id: str,
         client_id: str,
         device_label: str,
-        device_key: str,
     ) -> IssuedOAuthToken: ...
 
     def issue_external_token(
@@ -129,7 +121,6 @@ class OAuthDeviceTokenIssuer(Protocol):
         subject_issuer: str,
         client_id: str,
         device_label: str,
-        device_key: str,
     ) -> IssuedOAuthToken: ...
 
 
@@ -227,19 +218,13 @@ class OAuthDeviceApplicationService:
         *,
         client_id: str,
         device_label: str,
-        installation_id: str | None,
         created_ip: str,
         request_origin: str,
     ) -> DeviceAuthorization:
         if client_id not in self._settings.known_client_ids:
             raise UnsupportedClientError
 
-        device_code, user_code, expires_in = self._store.start(
-            client_id=client_id,
-            device_label=device_label,
-            installation_id=installation_id,
-            created_ip=created_ip,
-        )
+        device_code, user_code, expires_in = self._store.start(client_id, device_label, created_ip)
         base_url = self._settings.verification_base_url or request_origin
         return DeviceAuthorization(
             device_code=device_code,
@@ -273,12 +258,11 @@ class OAuthDeviceApplicationService:
         approval: DeviceApprovalRecord,
         poll_ip: str,
     ) -> PollPayload:
-        device_key = device_key_for(installation_id=state.installation_id, device_label=state.device_label)
         guard_id = self._rotation_guard_id(
             subject_email=approval.subject_email,
             subject_issuer=approval.subject_issuer,
             client_id=state.client_id,
-            device_key=device_key,
+            device_label=state.device_label,
         )
         owner_id = secrets.token_urlsafe(16)
         if not self._store.try_acquire_approval(guard_id, owner_id, _APPROVE_GUARD_TTL_SECONDS):
@@ -294,7 +278,7 @@ class OAuthDeviceApplicationService:
                 logger.error("device_flow: consumed state for %s has no approval", device_code)
                 raise ExpiredTokenError
             try:
-                poll_payload = claimed_approval.mint(self._minter, claimed, device_key)
+                poll_payload = claimed_approval.mint(self._minter, claimed)
             except AccessDeniedError:
                 raise
             except Exception:
@@ -564,9 +548,9 @@ class OAuthDeviceApplicationService:
         subject_email: str,
         subject_issuer: str,
         client_id: str,
-        device_key: str,
+        device_label: str,
     ) -> str:
-        identity = "\0".join((subject_email, subject_issuer, client_id, device_key))
+        identity = "\0".join((subject_email, subject_issuer, client_id, device_label))
         return sha256(identity.encode()).hexdigest()
 
     def _release_approval_nonce(self, nonce: str, reservation_id: str) -> None:
@@ -709,7 +693,6 @@ class _ApprovalTokenMinter:
         self,
         state: DeviceFlowStateView,
         approval: AccountApprovalRecord,
-        device_key: str,
     ) -> PollPayload:
         workspace_id = approval.workspace_id
         account = self._accounts.get(approval.account_id)
@@ -723,7 +706,6 @@ class _ApprovalTokenMinter:
             workspace_id=workspace_id,
             client_id=state.client_id,
             device_label=state.device_label,
-            device_key=device_key,
         )
         return self._build_account_poll_payload(account, workspace_id, workspaces, mint)
 
@@ -731,7 +713,6 @@ class _ApprovalTokenMinter:
         self,
         state: DeviceFlowStateView,
         approval: ExternalApprovalRecord,
-        device_key: str,
     ) -> PollPayload:
         if self._accounts.has_active_email(approval.subject_email):
             raise AccessDeniedError
@@ -741,7 +722,6 @@ class _ApprovalTokenMinter:
             subject_issuer=approval.subject_issuer,
             client_id=state.client_id,
             device_label=state.device_label,
-            device_key=device_key,
         )
         return {
             "token": mint.token,

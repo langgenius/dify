@@ -11,9 +11,6 @@ from .base import TypeBase
 from .enums import PermissionEnum
 from .types import AdjustedJSON, EnumText, LongText, StringUUID
 
-# Longest utf8mb4 index prefix MySQL allows on a VARCHAR (767 bytes / 4).
-_MYSQL_INDEX_PREFIX_LENGTH = 191
-
 
 class DatasourceOauthParamConfig(TypeBase):
     __tablename__ = "datasource_oauth_params"
@@ -98,33 +95,14 @@ class OAuthAccessToken(TypeBase):
     """Device-flow bearer. account_id NOT NULL ⇒ dfoa_ (Dify account,
     subject_issuer = "dify:account" sentinel); account_id NULL +
     subject_issuer = verified IdP issuer ⇒ dfoe_ (external SSO, EE-only).
-    subject_issuer is non-NULL for all rows the app writes — both dialects
-    treat NULLs as distinct in unique indices, so the device key would
-    otherwise never collide. Unique on (subject_email, subject_issuer,
-    client_id, device_key, active_guard); active_guard is 1 while
-    revoked_at IS NULL and NULL after, so revoked history never collides
-    on either dialect. device_key identifies the CLI install a login
-    rotates; device_label is only the display name.
+    subject_issuer is non-NULL for all rows the app writes — Postgres
+    treats NULLs as distinct in unique indices, so the partial unique
+    index on (subject_email, subject_issuer, client_id, device_label)
+    WHERE revoked_at IS NULL would otherwise fail to rotate in place.
     """
 
     __tablename__ = "oauth_access_tokens"
-    __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="oauth_access_tokens_pkey"),
-        sa.Index(
-            "uq_oauth_active_per_device_key",
-            "subject_email",
-            "subject_issuer",
-            "client_id",
-            "device_key",
-            "active_guard",
-            unique=True,
-            mysql_length={
-                "subject_email": _MYSQL_INDEX_PREFIX_LENGTH,
-                "subject_issuer": _MYSQL_INDEX_PREFIX_LENGTH,
-                "device_key": _MYSQL_INDEX_PREFIX_LENGTH,
-            },
-        ),
-    )
+    __table_args__ = (sa.PrimaryKeyConstraint("id", name="oauth_access_tokens_pkey"),)
 
     id: Mapped[str] = mapped_column(
         StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
@@ -136,8 +114,6 @@ class OAuthAccessToken(TypeBase):
     subject_email: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     client_id: Mapped[str] = mapped_column(sa.String(64), nullable=False)
     device_label: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    # Nullable for rows written by API pods older than this column; new writes always set it.
-    device_key: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     prefix: Mapped[str] = mapped_column(sa.String(8), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     subject_issuer: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)
@@ -145,12 +121,6 @@ class OAuthAccessToken(TypeBase):
     token_hash: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None)
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
     revoked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
-    active_guard: Mapped[int | None] = mapped_column(
-        sa.SmallInteger,
-        sa.Computed("CASE WHEN revoked_at IS NULL THEN 1 ELSE NULL END"),
-        nullable=True,
-        init=False,
-    )
 
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False

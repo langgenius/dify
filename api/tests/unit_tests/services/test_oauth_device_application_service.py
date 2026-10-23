@@ -56,7 +56,6 @@ class FakeState:
     user_code: str = "ABCD-EFGH"
     client_id: str = "difyctl"
     device_label: str = "CLI"
-    installation_id: str | None = None
     status: DeviceFlowStatus = DeviceFlowStatus.PENDING
     token_id: str | None = None
     created_ip: str = "127.0.0.1"
@@ -79,12 +78,9 @@ class FakeStore:
     remaining: int | None = 900
     acquired: list[tuple[str, str, int]] = field(default_factory=list)
     released: list[tuple[str, str]] = field(default_factory=list)
-    started: list[tuple[str, str, str | None, str]] = field(default_factory=list)
 
-    def start(
-        self, client_id: str, device_label: str, installation_id: str | None, created_ip: str
-    ) -> tuple[str, str, int]:
-        self.started.append((client_id, device_label, installation_id, created_ip))
+    def start(self, client_id: str, device_label: str, created_ip: str) -> tuple[str, str, int]:
+        _ = (client_id, device_label, created_ip)
         return "device-1", "ABCD-EFGH", 900
 
     def load_by_user_code(self, user_code: str) -> tuple[str, DeviceFlowStateView] | None:
@@ -191,9 +187,8 @@ class FakeTokens:
         workspace_id: str,
         client_id: str,
         device_label: str,
-        device_key: str,
     ) -> IssuedOAuthToken:
-        _ = (account, workspace_id, client_id, device_label, device_key)
+        _ = (account, workspace_id, client_id, device_label)
         self.account_issues += 1
         return self.account_token
 
@@ -204,9 +199,8 @@ class FakeTokens:
         subject_issuer: str,
         client_id: str,
         device_label: str,
-        device_key: str,
     ) -> IssuedOAuthToken:
-        _ = (subject_email, subject_issuer, client_id, device_label, device_key)
+        _ = (subject_email, subject_issuer, client_id, device_label)
         self.external_issues += 1
         return self.external_token
 
@@ -399,7 +393,6 @@ def test_start_rejects_unknown_client_before_writing_state() -> None:
         harness.service.start(
             client_id="unknown",
             device_label="CLI",
-            installation_id=None,
             created_ip="127.0.0.1",
             request_origin="https://api.example",
         )
@@ -511,11 +504,7 @@ def test_start_returns_device_codes_with_configured_or_request_origin(base_url: 
     harness = _harness(settings=FakeSettings(verification_base_url=base_url))
 
     result = harness.service.start(
-        client_id="difyctl",
-        device_label="CLI",
-        installation_id="abcd1234",
-        created_ip="127.0.0.1",
-        request_origin="https://request.example/",
+        client_id="difyctl", device_label="CLI", created_ip="127.0.0.1", request_origin="https://request.example/"
     )
 
     assert result.device_code == "device-1"
@@ -523,7 +512,6 @@ def test_start_returns_device_codes_with_configured_or_request_origin(base_url: 
     assert result.verification_uri == (base_url or "https://request.example/") + "device"
     assert result.expires_in == 900
     assert result.interval == 5
-    assert harness.store.started == [("difyctl", "CLI", "abcd1234", "127.0.0.1")]
 
 
 @pytest.mark.parametrize(

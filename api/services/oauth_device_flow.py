@@ -4,9 +4,8 @@ Deployment contract: the CAS writer must not run alongside the pre-CAS
 GET/SETEX writer. Old approve and deny operations can overwrite a terminal
 state from this implementation because they do not participate in the same
 transition protocol. Approved states now carry an approval record instead of a
-minted token, and every state carries ``installation_id``. Older workers cannot
-parse either, and an older poller deletes the state before it fails to parse
-it, so the login is lost. Drain API workers running an older version before
+minted token. Older workers cannot parse it, and an older poller deletes the
+state before it fails to parse it, so the login is lost. Drain API workers running an older version before
 deploying this one. This reader still accepts states written by older workers,
 so pending device codes and already-minted approvals survive that restart.
 """
@@ -168,7 +167,6 @@ class DeviceFlowState:
     user_code: str
     client_id: str
     device_label: str
-    installation_id: str | None
     status: DeviceFlowStatus
     token_id: str | None = None
     created_at: str = ""
@@ -188,8 +186,6 @@ class DeviceFlowState:
         # by the previous schema during a rolling deployment.
         for field_name in _LEGACY_APPROVAL_FIELDS:
             data.pop(field_name, None)
-        # States written before installation ids existed have no such field.
-        data.setdefault("installation_id", None)
         if "status" in data:
             data["status"] = DeviceFlowStatus(data["status"])
         if data.get("approval") is not None:
@@ -220,20 +216,13 @@ class DeviceFlowRedis:
         self._transition_script = redis_client.register_script(_TRANSITION_LUA)
         self._release_guard_script = redis_client.register_script(_RELEASE_GUARD_LUA)
 
-    def start(
-        self,
-        client_id: str,
-        device_label: str,
-        installation_id: str | None,
-        created_ip: str,
-    ) -> tuple[str, str, int]:
+    def start(self, client_id: str, device_label: str, created_ip: str) -> tuple[str, str, int]:
         device_code = _random_device_code()
         user_code = self._claim_user_code(device_code)
         state = DeviceFlowState(
             user_code=user_code,
             client_id=client_id,
             device_label=device_label,
-            installation_id=installation_id,
             status=DeviceFlowStatus.PENDING,
             created_at=datetime.now(UTC).isoformat(),
             created_ip=created_ip,

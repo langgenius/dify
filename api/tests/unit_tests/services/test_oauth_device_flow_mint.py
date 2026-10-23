@@ -42,11 +42,7 @@ def test_the_issuer_follows_the_subject_binding(token_type: TokenType) -> None:
             created_at=datetime.now(UTC),
         )
         issued = gateway.issue_account_token(
-            account=account,
-            workspace_id="workspace-1",
-            client_id="client",
-            device_label="device",
-            device_key="install:abcd1234",
+            account=account, workspace_id="workspace-1", client_id="client", device_label="device"
         )
         expected_issuer = ACCOUNT_ISSUER_SENTINEL
         expected_account = account.id
@@ -56,7 +52,6 @@ def test_the_issuer_follows_the_subject_binding(token_type: TokenType) -> None:
             subject_issuer="https://idp.example.com",
             client_id="client",
             device_label="device",
-            device_key="install:abcd1234",
         )
         expected_issuer = "https://idp.example.com"
         expected_account = None
@@ -65,8 +60,6 @@ def test_the_issuer_follows_the_subject_binding(token_type: TokenType) -> None:
     written = tokens.rotate_token.call_args.args[0]
     assert written.subject_issuer == expected_issuer
     assert written.account_id == expected_account
-    assert written.device_label == "device"
-    assert written.device_key == "install:abcd1234"
     assert written.prefix == token_type.prefix
     assert TokenType.for_token(issued.token) is token_type
     assert written.token_hash == sha256_hex(issued.token)
@@ -81,11 +74,7 @@ def test_external_issuer_is_required_before_persistence(issuer: str) -> None:
 
     with pytest.raises(ValueError, match="subject_issuer"):
         gateway.issue_external_token(
-            subject_email="who@example.com",
-            subject_issuer=issuer,
-            client_id="client",
-            device_label="device",
-            device_key="device",
+            subject_email="who@example.com", subject_issuer=issuer, client_id="client", device_label="device"
         )
 
     tokens.rotate_token.assert_not_called()

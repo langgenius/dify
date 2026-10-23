@@ -14,15 +14,6 @@ DEFAULT_POLL_INTERVAL_SECONDS = 5
 # a non-null issuer so the active-token uniqueness key remains stable.
 ACCOUNT_ISSUER_SENTINEL = "dify:account"
 
-INSTALL_KEY_PREFIX = "install:"
-
-
-def device_key_for(*, installation_id: str | None, device_label: str) -> str:
-    """Rotation key for a device; CLIs that send no installation id rotate on their label."""
-    if installation_id is None:
-        return device_label
-    return INSTALL_KEY_PREFIX + installation_id
-
 
 class DeviceFlowStatus(StrEnum):
     PENDING = "pending"
@@ -58,13 +49,9 @@ class PollPayload(TypedDict):
 class DeviceApprovalMinter(Protocol):
     """Mints the token for each kind of approval record."""
 
-    def mint_account(
-        self, state: "DeviceFlowStateView", approval: "AccountApprovalRecord", device_key: str
-    ) -> PollPayload: ...
+    def mint_account(self, state: "DeviceFlowStateView", approval: "AccountApprovalRecord") -> PollPayload: ...
 
-    def mint_external(
-        self, state: "DeviceFlowStateView", approval: "ExternalApprovalRecord", device_key: str
-    ) -> PollPayload: ...
+    def mint_external(self, state: "DeviceFlowStateView", approval: "ExternalApprovalRecord") -> PollPayload: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,8 +62,8 @@ class AccountApprovalRecord:
     subject_issuer: str
     subject_type: Literal[SubjectType.ACCOUNT] = field(default=SubjectType.ACCOUNT, init=False)
 
-    def mint(self, minter: DeviceApprovalMinter, state: "DeviceFlowStateView", device_key: str) -> PollPayload:
-        return minter.mint_account(state, self, device_key)
+    def mint(self, minter: DeviceApprovalMinter, state: "DeviceFlowStateView") -> PollPayload:
+        return minter.mint_account(state, self)
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,8 +74,8 @@ class ExternalApprovalRecord:
     account_id: None = field(default=None, init=False)
     workspace_id: None = field(default=None, init=False)
 
-    def mint(self, minter: DeviceApprovalMinter, state: "DeviceFlowStateView", device_key: str) -> PollPayload:
-        return minter.mint_external(state, self, device_key)
+    def mint(self, minter: DeviceApprovalMinter, state: "DeviceFlowStateView") -> PollPayload:
+        return minter.mint_external(state, self)
 
 
 # Who approved a device code; the token is minted from it on the first successful poll.
@@ -149,7 +136,6 @@ class OAuthDeviceTokenWrite:
     account_id: str | None
     client_id: str
     device_label: str
-    device_key: str
     prefix: str
     token_hash: str
     expires_at: datetime
@@ -223,7 +209,6 @@ class DeviceFlowStateView(Protocol):
     user_code: str
     client_id: str
     device_label: str
-    installation_id: str | None
     status: DeviceFlowStatus
     token_id: str | None
     created_ip: str
