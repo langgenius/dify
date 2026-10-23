@@ -22,6 +22,7 @@
   "devDependencies": {
     "@dify/tooling": "workspace:*",
     "@iconify-json/heroicons": "catalog:",
+    "@iconify-json/logos": "catalog:",
     "@iconify-json/ri": "catalog:",
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",

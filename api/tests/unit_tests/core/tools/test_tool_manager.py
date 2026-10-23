@@ -249,12 +249,15 @@ def _reset_tool_manager_state():
     old_hardcoded = ToolManager._hardcoded_providers.copy()
     old_loaded = ToolManager._builtin_providers_loaded
     old_labels = ToolManager._builtin_tools_labels.copy()
+    old_external = ToolManager._external_hardcoded_provider_classes
+    ToolManager._external_hardcoded_provider_classes = []
     try:
         yield
     finally:
         ToolManager._hardcoded_providers = old_hardcoded
         ToolManager._builtin_providers_loaded = old_loaded
         ToolManager._builtin_tools_labels = old_labels
+        ToolManager._external_hardcoded_provider_classes = old_external
 
 
 def test_get_hardcoded_provider_loads_cache_when_empty():
@@ -894,6 +897,7 @@ def test_get_tool_runtime_from_plugin_only_uses_form_parameters():
 
 def test_hardcoded_provider_icon_success():
     provider = SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(icon="icon.svg")))
+    provider.provider_directory = "/providers/time"
     with patch.object(ToolManager, "get_hardcoded_provider", return_value=provider):
         with patch("core.tools.tool_manager.path.exists", return_value=True):
             with patch("core.tools.tool_manager.mimetypes.guess_type", return_value=("image/svg+xml", None)):
@@ -904,6 +908,7 @@ def test_hardcoded_provider_icon_success():
 
 def test_hardcoded_provider_icon_missing_raises():
     provider = SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(icon="icon.svg")))
+    provider.provider_directory = "/providers/time"
     with patch.object(ToolManager, "get_hardcoded_provider", return_value=provider):
         with patch("core.tools.tool_manager.path.exists", return_value=False):
             with pytest.raises(ToolProviderNotFoundError, match="icon not found"):
@@ -945,6 +950,51 @@ def test_list_hardcoded_providers_internal_loader():
     assert ToolManager._hardcoded_providers["good"] is good_provider
     assert ToolManager._builtin_tools_labels["tool-a"] == "A"
     assert ToolManager._builtin_providers_loaded is True
+
+
+@dataclass(frozen=True)
+class _ExternalIdentity:
+    name: str
+    label: str = ""
+
+
+@dataclass(frozen=True)
+class _ExternalEntity:
+    identity: _ExternalIdentity
+
+
+@dataclass(frozen=True)
+class _ExternalTool:
+    entity: _ExternalEntity
+
+
+class _ExternalProvider:
+    created = 0
+    entity = _ExternalEntity(_ExternalIdentity("external"))
+
+    def __init__(self) -> None:
+        type(self).created += 1
+
+    def get_tools(self) -> list[_ExternalTool]:
+        return [_ExternalTool(_ExternalEntity(_ExternalIdentity("external-tool", "External")))]
+
+
+def test_registered_external_provider_classes_join_hardcoded_providers():
+    ToolManager._builtin_providers_loaded = True
+
+    ToolManager.register_hardcoded_provider_class(_ExternalProvider)
+    ToolManager.register_hardcoded_provider_class(_ExternalProvider)
+    assert ToolManager._builtin_providers_loaded is False
+
+    with patch("core.tools.tool_manager.listdir", return_value=[]):
+        ToolManager._hardcoded_providers = {}
+        ToolManager._builtin_tools_labels = {}
+        providers = list(ToolManager._list_hardcoded_providers())
+
+    assert [type(provider) for provider in providers] == [_ExternalProvider]
+    assert _ExternalProvider.created == 1
+    assert ToolManager._hardcoded_providers["external"] is providers[0]
+    assert ToolManager._builtin_tools_labels["external-tool"] == "External"
 
 
 def test_get_tool_label_loads_cache_and_handles_missing():

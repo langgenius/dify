@@ -6,6 +6,16 @@ import { createDeferred } from '@/test/deferred'
 import { downloadUrl } from '@/utils/download'
 import Popup from '../popup'
 
+const navigationMock = vi.hoisted(() => ({
+  push: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => navigationMock,
+}))
+
+const resolveDocumentReference = vi.hoisted(() => vi.fn())
+
 vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
@@ -46,6 +56,9 @@ const openPopup = async (user: ReturnType<typeof userEvent.setup>, name = 'repor
 }
 
 beforeEach(() => {
+  vi.clearAllMocks()
+  resolveDocumentReference.mockReset()
+  resolveDocumentReference.mockResolvedValue({ document_id: 'logical-document-1', revision: 2 })
   mockDownloadDocument.mockResolvedValue({ url: 'https://example.com/file.pdf' })
 })
 
@@ -191,6 +204,66 @@ it('shows each citation alongside its segment position and document provenance',
   expect(within(sources[1]!).queryByTestId('progress-trigger-content')).not.toBeInTheDocument()
 })
 
+it('opens a versioned KnowledgeFS citation without resolving its asset', async () => {
+  const user = userEvent.setup()
+  render(
+    <Popup
+      showHitInfo
+      data={makeData({
+        dataSourceType: 'knowledge_fs',
+        sources: [
+          makeSource({
+            data_source_type: 'knowledge_fs',
+            dataset_id: 'space-1',
+            document_asset_id: 'asset-1',
+            document_id: 'logical-document-1',
+            document_revision: 3,
+            document_version: 1,
+            segment_id: 'node-1',
+          }),
+        ],
+      })}
+    />,
+  )
+  await openPopup(user)
+  expect(screen.getByRole('link', { name: /linkToDataset/ })).toHaveAttribute(
+    'href',
+    '/datasets/new/space-1/documents/logical-document-1?revision=3&chunk=node-1',
+  )
+  expect(resolveDocumentReference).not.toHaveBeenCalled()
+})
+
+it('resolves a historical KnowledgeFS asset through document revisions', async () => {
+  const user = userEvent.setup()
+  render(
+    <Popup
+      showHitInfo
+      data={makeData({
+        dataSourceType: 'knowledge_fs',
+        sources: [
+          makeSource({
+            data_source_type: 'knowledge_fs',
+            dataset_id: 'space-1',
+            document_asset_id: 'asset-1',
+            document_id: 'asset-1',
+            document_version: 1,
+            segment_id: 'node-1',
+          }),
+        ],
+      })}
+    />,
+  )
+  await openPopup(user)
+  await user.click(screen.getByRole('button', { name: /linkToDataset/ }))
+  expect(resolveDocumentReference).toHaveBeenCalledExactlyOnceWith({
+    params: { control_space_id: 'space-1' },
+    query: { document_asset_id: 'asset-1', document_asset_version: 1 },
+  })
+  expect(navigationMock.push).toHaveBeenCalledWith(
+    '/datasets/new/space-1/documents/logical-document-1?revision=2&chunk=node-1',
+  )
+})
+
 it('keeps retrieval diagnostics out of citations shown to end users', async () => {
   const user = userEvent.setup()
   render(<Popup data={makeData()} />)
@@ -203,9 +276,14 @@ it('keeps retrieval diagnostics out of citations shown to end users', async () =
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'knowledgeFs.spaces.byControlSpaceId.documentReferences.resolve.get':
+        resolveDocumentReference,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'datasets.byDatasetId.documents.byDocumentId.download.get': (input) =>
         mockDownloadDocument(input),

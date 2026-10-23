@@ -29,7 +29,7 @@ class BuiltinToolProviderController(ToolProviderController[ToolProviderEntity, B
 
         # load provider yaml
         provider = self.__class__.__module__.split(".")[-1]
-        yaml_path = path.join(path.dirname(path.realpath(__file__)), "providers", provider, f"{provider}.yaml")
+        yaml_path = path.join(self.provider_directory, f"{provider}.yaml")
         try:
             provider_yaml = load_yaml_file_cached(yaml_path)
         except Exception as e:
@@ -62,9 +62,18 @@ class BuiltinToolProviderController(ToolProviderController[ToolProviderEntity, B
 
         self._load_tools()
 
+    @property
+    def provider_directory(self) -> str:
+        """Directory holding the provider yaml, ``_assets`` and ``tools``.
+
+        Providers registered from outside ``core`` override this with their own package directory.
+        """
+        return path.join(path.dirname(path.realpath(__file__)), "providers", self.__class__.__module__.split(".")[-1])
+
     def _load_tools(self):
         provider = self.entity.identity.name
-        tool_path = path.join(path.dirname(path.realpath(__file__)), "providers", provider, "tools")
+        tool_path = path.join(self.provider_directory, "tools")
+        tool_module_prefix = self.__class__.__module__.rsplit(".", 1)[0]
         # get all the yaml files in the tool path
         tool_files = list(filter(lambda x: x.endswith(".yaml") and not x.startswith("__"), listdir(tool_path)))
         tools = []
@@ -75,15 +84,8 @@ class BuiltinToolProviderController(ToolProviderController[ToolProviderEntity, B
 
             # get tool class, import the module
             assistant_tool_class: type = load_single_subclass_from_source(
-                module_name=f"core.tools.builtin_tool.providers.{provider}.tools.{tool_name}",
-                script_path=path.join(
-                    path.dirname(path.realpath(__file__)),
-                    "builtin_tool",
-                    "providers",
-                    provider,
-                    "tools",
-                    f"{tool_name}.py",
-                ),
+                module_name=f"{tool_module_prefix}.tools.{tool_name}",
+                script_path=path.join(tool_path, f"{tool_name}.py"),
                 parent_type=BuiltinTool,
             )
             tool["identity"]["provider"] = provider

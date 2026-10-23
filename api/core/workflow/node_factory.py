@@ -40,6 +40,7 @@ from core.workflow.node_runtime import (
     DifyToolFileManager,
     DifyToolNodeRuntime,
     build_dify_llm_file_saver,
+    build_knowledge_fs_node_dependencies,
 )
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.plugin_strategy_adapter import (
@@ -77,6 +78,10 @@ from graphon.nodes.question_classifier.entities import QuestionClassifierNodeDat
 from graphon.nodes.tool.entities import ToolProviderType
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
+from services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter import (
+    KnowledgeFSAutomaticMetadataFilterExtractor,
+)
+from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
@@ -128,6 +133,7 @@ def register_nodes() -> None:
     """Import production node modules so they self-register with ``Node``."""
     _import_node_package("graphon.nodes")
     _import_node_package("core.workflow.nodes")
+    _import_node_package("services.knowledge_fs.knowledge_retrieval_v2")
 
 
 def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]]]:
@@ -536,6 +542,13 @@ class DifyNodeFactory(NodeFactory):
                 "runtime": self._tool_runtime,
             },
             BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
+            KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE: lambda: {
+                **build_knowledge_fs_node_dependencies(),
+                "metadata_filter_extractor": KnowledgeFSAutomaticMetadataFilterExtractor(
+                    credentials_provider=self._llm_credentials_provider,
+                    model_factory=self._llm_model_factory,
+                ),
+            },
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)

@@ -48,7 +48,7 @@ hears; membership runs EARLY and scope NORMAL, so it hears membership.
 
 Routes that declare the same requirement tuple answer every case the same way,
 so `MATRIX` runs the cases on one representative per tuple and `DECLARED` pins
-which tuple each of the 25 routes carries. A route that changes its tuple fails
+which tuple each route carries. A route that changes its tuple fails
 the wiring test; a tuple that changes its answers fails its representative's rows.
 """
 
@@ -251,6 +251,48 @@ ADMIT_NO_MOUNT = Expect(
 _RUN_TRAITS = frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE})
 
 ROUTES: tuple[Route, ...] = (
+    Route(
+        "knowledge_fs.ls",
+        "GET",
+        "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:ls",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "knowledge_fs.tree",
+        "GET",
+        "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:tree",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "knowledge_fs.grep",
+        "GET",
+        "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:grep",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "knowledge_fs.find",
+        "GET",
+        "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:find",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "knowledge_fs.diff",
+        "POST",
+        "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:diff",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "knowledge_fs.cat",
+        "GET",
+        "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:cat",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "knowledge_fs.stat",
+        "GET",
+        "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:stat",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
     Route("describe.account", "GET", "/account", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("account.sessions.revoke_self", "DELETE", "/account/sessions/self", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("get.account.session", "GET", "/account/sessions", frozenset({Trait.ACCOUNT_PRIMARY})),
@@ -1262,6 +1304,13 @@ def _settings_req(
 _RESOURCE_RUN = (CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)), *_REQ_RUN[1:])
 
 DECLARED: dict[str, tuple[Requirement, ...]] = {
+    "knowledge_fs.ls": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "knowledge_fs.tree": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "knowledge_fs.grep": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "knowledge_fs.find": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "knowledge_fs.diff": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "knowledge_fs.cat": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "knowledge_fs.stat": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "describe.account": _REQ_ACCOUNT_FULL,
     "account.sessions.revoke_self": _REQ_ACCOUNT_FULL,
     "get.account.session": _REQ_ACCOUNT_FULL,
@@ -1966,6 +2015,27 @@ ERROR_DEFAULT_RESPONSE: dict[str, object] = {
 `ExternalApi` adds to every other operation."""
 
 EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
+    ("get", "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:ls"): frozenset(
+        {"200", "400", "401", "403", "404", "409", "413", "422", "503", "default"}
+    ),
+    ("get", "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:tree"): frozenset(
+        {"200", "400", "401", "403", "404", "409", "413", "422", "503", "default"}
+    ),
+    ("get", "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:grep"): frozenset(
+        {"200", "400", "401", "403", "404", "409", "413", "422", "503", "default"}
+    ),
+    ("get", "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:find"): frozenset(
+        {"200", "400", "401", "403", "404", "409", "413", "422", "503", "default"}
+    ),
+    ("post", "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:diff"): frozenset(
+        {"200", "400", "401", "403", "404", "409", "413", "422", "503", "default"}
+    ),
+    ("get", "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:cat"): frozenset(
+        {"200", "400", "401", "403", "404", "409", "413", "422", "503", "default"}
+    ),
+    ("get", "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:stat"): frozenset(
+        {"200", "400", "401", "403", "404", "409", "413", "422", "503", "default"}
+    ),
     ("get", "/_catalog"): frozenset({"200", "default"}),
     ("get", "/workspaces/{workspace_id}/marketplace/plugins"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/plugins"): frozenset({"200", "422", "default"}),

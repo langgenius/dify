@@ -7,15 +7,16 @@ import {
   DropdownMenuRadioItemIndicator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 type MetadataFilterSelectorProps = {
+  allowedModes?: readonly MetadataFilteringModeEnum[]
   value?: MetadataFilteringModeEnum
   onSelect: (value: MetadataFilteringModeEnum) => void
 }
 const MetadataFilterSelector = ({
+  allowedModes,
   value = MetadataFilteringModeEnum.disabled,
   onSelect,
 }: MetadataFilterSelectorProps) => {
@@ -50,7 +51,11 @@ const MetadataFilterSelector = ({
     },
   ]
 
-  const selectedOption = options.find((option) => option.key === value)!
+  const visibleOptions = allowedModes
+    ? options.filter((option) => allowedModes.includes(option.key))
+    : options
+  const selectedOption =
+    visibleOptions.find((option) => option.key === value) ?? visibleOptions[0] ?? options[0]!
 
   return (
     <DropdownMenu>
@@ -58,11 +63,11 @@ const MetadataFilterSelector = ({
         render={<Button variant="secondary" size="small" onClick={(e) => e.stopPropagation()} />}
       >
         {selectedOption.value}
-        <RiArrowDownSLine className="size-3.5" />
+        <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-70 p-1">
         <DropdownMenuRadioGroup value={value} onValueChange={onSelect}>
-          {options.map((option) => (
+          {visibleOptions.map((option) => (
             <DropdownMenuRadioItem
               key={option.key}
               value={option.key}

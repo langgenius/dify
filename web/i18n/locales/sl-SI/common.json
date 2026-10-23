@@ -168,6 +168,7 @@
   "operation.deSelectAll": "Odberi vse",
   "operation.decreaseValue": "Zmanjšaj vrednost",
   "operation.delete": "Izbriši",
+  "operation.deleteConfirmTitle": "Izbrisati?",
   "operation.download": "Prenesi",
   "operation.downloadFailed": "Prenos ni uspel. Prosim, poskusite znova pozneje.",
   "operation.downloadSuccess": "Prenos končan.",

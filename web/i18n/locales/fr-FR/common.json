@@ -168,6 +168,7 @@
   "operation.deSelectAll": "Désélectionner tout",
   "operation.decreaseValue": "Diminuer la valeur",
   "operation.delete": "Supprimer",
+  "operation.deleteConfirmTitle": "Supprimer ?",
   "operation.download": "Télécharger",
   "operation.downloadFailed": "Échec du téléchargement. Veuillez réessayer plus tard.",
   "operation.downloadSuccess": "Téléchargement terminé.",

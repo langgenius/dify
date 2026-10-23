@@ -548,13 +548,10 @@ class TestConversationService:
         sqlite_session.add(conversation)
         sqlite_session.commit()
 
-        app_model = _app()
-        end_user = _end_user()
-
         result = ConversationService.rename(
-            app_model=app_model,
+            app_model=App(id="app-1"),
             conversation_id=conversation_id,
-            user=end_user,
+            user=_end_user(),
             name="New Name",
             auto_generate=False,
             session=sqlite_session,

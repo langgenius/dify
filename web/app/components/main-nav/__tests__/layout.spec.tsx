@@ -162,6 +162,25 @@ describe('MainNavLayout', () => {
     },
   )
 
+  it('ignores a retained legacy detail sidebar on New Knowledge routes', () => {
+    ;(usePathname as Mock).mockReturnValue('/datasets/new/knowledge-1/sources')
+
+    render(
+      <MainNavLayout
+        initialDetailSidebarMode="expand"
+        detailSidebar={<aside aria-label="Legacy dataset sidebar">Legacy dataset sidebar</aside>}
+      >
+        <div>new knowledge detail</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('complementary', { name: 'Legacy dataset sidebar' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveTextContent('new knowledge detail')
+  })
+
   it('hides the global main nav on a skill detail route', () => {
     ;(usePathname as Mock).mockReturnValue('/skills/skill-1')
 
@@ -214,6 +233,7 @@ describe('MainNavLayout', () => {
     '/datasets/create',
     '/datasets/create-from-pipeline',
     '/datasets/connect',
+    '/datasets/new/create',
     '/deployments/create',
   ])('keeps the global main nav on collection and creation route %s', (pathname) => {
     ;(usePathname as Mock).mockReturnValue(pathname)

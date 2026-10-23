@@ -26,6 +26,7 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from models.workflow import Workflow
+from services.dataset_knowledge_fs_upgrade_file_lease import reserve_upgrade_file_cleanup
 from services.dataset_storage_cleanup_service import cleanup_dataset_crawl_cache
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
@@ -195,7 +196,15 @@ def _delete_documents(session: Session, dataset_id: str) -> None:
                 data_source_info = document.data_source_info_dict
                 if data_source_info and "upload_file_id" in data_source_info:
                     file_ids.append(data_source_info["upload_file_id"])
-        _delete_upload_files(session, file_ids)
+        # Active KnowledgeFS upgrades still read these sources; their leases record the cleanup instead.
+        leased_file_ids = reserve_upgrade_file_cleanup(session, file_ids)
+        if leased_file_ids:
+            logger.info(
+                "Keep %d source files while KnowledgeFS upgrade leases are active, dataset_id=%s",
+                len(leased_file_ids),
+                dataset_id,
+            )
+        _delete_upload_files(session, [file_id for file_id in file_ids if file_id not in leased_file_ids])
         session.execute(delete(Document).where(Document.id.in_([document.id for document in documents])))
         session.commit()
 
