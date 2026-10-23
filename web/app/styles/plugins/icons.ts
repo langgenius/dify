@@ -9,7 +9,7 @@ import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
 
 export default iconsPlugin({
   collections: {
-    ...getIconCollections(['heroicons', 'ri']),
+    ...getIconCollections(['heroicons', 'logos', 'ri']),
     'custom-public': customPublicIcons,
     'custom-vender': customVenderIcons,
   },

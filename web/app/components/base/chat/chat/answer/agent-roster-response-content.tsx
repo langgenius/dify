@@ -8,6 +8,7 @@ import { useLocale } from '#i18n'
 import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
 import { getPluginLanguage, renderI18nObject } from '@/i18n/metadata'
+import { resolveKnowledgeCitationLinks } from './knowledge-citation-links'
 
 type AgentRosterResponseContentProps = {
   item: ChatItem
@@ -326,7 +327,10 @@ function AgentActivityDisclosure({
         <div className="flex w-full max-w-full min-w-0 flex-col gap-1 overflow-hidden">
           {entries.map((entry) =>
             entry.type === 'message' ? (
-              <ResponseMessage key={entry.key} content={entry.content} />
+              <ResponseMessage
+                key={entry.key}
+                content={resolveKnowledgeCitationLinks(entry.content, item.citation)}
+              />
             ) : (
               <AgentActivityItem key={entry.key} thought={entry.thought} responding={responding} />
             ),
@@ -381,7 +385,10 @@ export function AgentRosterResponseContent({
         />
       )}
       {standaloneMessages.map((message) => (
-        <ResponseMessage key={message.key} content={message.content} />
+        <ResponseMessage
+          key={message.key}
+          content={resolveKnowledgeCitationLinks(message.content, item.citation)}
+        />
       ))}
     </div>
   )

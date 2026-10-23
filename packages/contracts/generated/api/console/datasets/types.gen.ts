@@ -96,12 +96,14 @@ export type ApiKeyList = {
 
 export type DatasetApiKeyCreatePayload = {
   dataset_ids?: Array<string>
+  knowledge_space_ids?: Array<string>
 }
 
 export type ApiKeyItem = {
   created_at?: number | null
   dataset_ids?: Array<string>
   id: string
+  knowledge_space_ids?: Array<string>
   last_used_at?: number | null
   token: string
   type: string
@@ -278,6 +280,10 @@ export type ModelCurrentlyNotSupportError = ErrorResponse & {
 export type ProviderQuotaExceededError = ErrorResponse & {
   code: 'provider_quota_exceeded'
   status: 400
+}
+
+export type KnowledgeFsUpgradeJobListResponse = {
+  data: Array<KnowledgeFsUpgradeJobResponse>
 }
 
 export type DatasetMetadataBuiltInFieldsResponse = {
@@ -632,6 +638,34 @@ export type CompletionRequestError = ErrorResponse & {
   status: 400
 }
 
+export type KnowledgeFsUpgradeDiscoveryResponse = {
+  block_reason?: KnowledgeFsUpgradeBlockReason | null
+  can_retry: boolean
+  can_upgrade: boolean
+  job?: KnowledgeFsUpgradeJobResponse | null
+}
+
+export type KnowledgeFsUpgradeJobResponse = {
+  completed_at?: string | null
+  completed_documents: number
+  completed_sources: number
+  id: string
+  last_error_code?: string | null
+  last_error_message?: string | null
+  new_control_space_id?: string | null
+  old_dataset_id: string
+  snapshot_at: string
+  stage: KnowledgeFsUpgradeStage
+  status: KnowledgeFsUpgradeJobStatus
+  total_documents: number
+  total_sources: number
+}
+
+export type KnowledgeFsUpgradeRetryResponse = {
+  id: string
+  status?: 'queued'
+}
+
 export type DatasetMetadataListResponse = {
   built_in_field_enabled: boolean
   doc_metadata: Array<DatasetMetadataListItemResponse>
@@ -708,6 +742,7 @@ export type DatasetListItemResponse = {
   is_multimodal: boolean
   is_published: boolean
   keyword_number?: number | null
+  knowledge_fs_upgrade: KnowledgeFsUpgradeDiscoveryResponse
   maintainer?: string | null
   name: string
   partial_member_list: Array<string>
@@ -1004,6 +1039,24 @@ export type HitTestingRecord = {
   tsne_position: unknown | null
 }
 
+export type KnowledgeFsUpgradeBlockReason =
+  | 'already_upgraded'
+  | 'feature_disabled'
+  | 'retry_required'
+  | 'unsupported_dataset_provider'
+  | 'upgrade_in_progress'
+
+export type KnowledgeFsUpgradeStage =
+  | 'completed'
+  | 'creating_sources'
+  | 'finalizing'
+  | 'migrating_access'
+  | 'submitting_documents'
+  | 'validating'
+  | 'waiting_for_space'
+
+export type KnowledgeFsUpgradeJobStatus = 'failed' | 'queued' | 'running' | 'succeeded'
+
 export type DatasetMetadataListItemResponse = {
   count?: number
   id: string
@@ -1162,7 +1215,7 @@ export type HitTestingSegment = {
   word_count: number
 }
 
-export type CreatorUserRole = 'account' | 'end_user'
+export type CreatorUserRole = 'account' | 'dataset_api_key' | 'end_user'
 
 export type DatasetQueryContentResponse = {
   content: string
@@ -1296,6 +1349,7 @@ export type GetDatasetsData = {
   body?: never
   path?: never
   query?: {
+    creator_ids?: Array<string>
     ids?: Array<string>
     include_all?: boolean
     keyword?: string
@@ -1662,6 +1716,27 @@ export type PostDatasetsInitResponses = {
 }
 
 export type PostDatasetsInitResponse = PostDatasetsInitResponses[keyof PostDatasetsInitResponses]
+
+export type GetDatasetsKnowledgeFsUpgradeJobsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/datasets/knowledge-fs-upgrade-jobs'
+}
+
+export type GetDatasetsKnowledgeFsUpgradeJobsErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsKnowledgeFsUpgradeJobsError =
+  GetDatasetsKnowledgeFsUpgradeJobsErrors[keyof GetDatasetsKnowledgeFsUpgradeJobsErrors]
+
+export type GetDatasetsKnowledgeFsUpgradeJobsResponses = {
+  200: KnowledgeFsUpgradeJobListResponse
+}
+
+export type GetDatasetsKnowledgeFsUpgradeJobsResponse =
+  GetDatasetsKnowledgeFsUpgradeJobsResponses[keyof GetDatasetsKnowledgeFsUpgradeJobsResponses]
 
 export type GetDatasetsMetadataBuiltInData = {
   body?: never
@@ -2918,6 +2993,103 @@ export type GetDatasetsByDatasetIdIndexingStatusResponses = {
 
 export type GetDatasetsByDatasetIdIndexingStatusResponse =
   GetDatasetsByDatasetIdIndexingStatusResponses[keyof GetDatasetsByDatasetIdIndexingStatusResponses]
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/knowledge-fs-upgrades'
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesError =
+  GetDatasetsByDatasetIdKnowledgeFsUpgradesErrors[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesErrors]
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses = {
+  200: KnowledgeFsUpgradeDiscoveryResponse
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesResponse =
+  GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses]
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesData = {
+  body?: never
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/knowledge-fs-upgrades'
+}
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesErrors = {
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesError =
+  PostDatasetsByDatasetIdKnowledgeFsUpgradesErrors[keyof PostDatasetsByDatasetIdKnowledgeFsUpgradesErrors]
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesResponses = {
+  202: KnowledgeFsUpgradeJobResponse
+}
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesResponse =
+  PostDatasetsByDatasetIdKnowledgeFsUpgradesResponses[keyof PostDatasetsByDatasetIdKnowledgeFsUpgradesResponses]
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}'
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdError =
+  GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdErrors[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdErrors]
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponses = {
+  200: KnowledgeFsUpgradeJobResponse
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse =
+  GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponses[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponses]
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}'
+}
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdErrors = {
+  default: ErrorResponse
+}
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdError =
+  PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdErrors[keyof PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdErrors]
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponses = {
+  202: KnowledgeFsUpgradeRetryResponse
+}
+
+export type PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse =
+  PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponses[keyof PostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponses]
 
 export type GetDatasetsByDatasetIdMetadataData = {
   body?: never

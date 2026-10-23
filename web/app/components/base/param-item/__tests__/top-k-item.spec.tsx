@@ -53,3 +53,10 @@ it.each([
   await user.type(input, '9')
   expect(onChange).not.toHaveBeenCalled()
 })
+
+it('allows a feature-specific maximum', () => {
+  render(<TopKItem enable value={2} max={100} onChange={vi.fn()} />)
+  expect(
+    screen.getByLabelText('appDebug.datasetConfig.top_k', { selector: 'input[type="range"]' }),
+  ).toHaveAttribute('max', '100')
+})

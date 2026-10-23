@@ -21,6 +21,7 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveBrowseFilesRequest,
     OnlineDriveBrowseFilesResponse,
     OnlineDriveDownloadFileRequest,
+    OnlineDriveDownloadMessage,
     OnlineDriveFile,
     OnlineDriveFileBucket,
     WebsiteCrawlMessage,
@@ -29,6 +30,129 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolLabelEnum
+
+
+def test_online_drive_remote_metadata_survives_runtime_serialization():
+    response = OnlineDriveBrowseFilesResponse.model_validate(
+        {
+            "result": [
+                {
+                    "files": [
+                        {
+                            "id": "file-1",
+                            "name": "a.pdf",
+                            "size": 10,
+                            "type": "file",
+                            "remote_metadata": {
+                                "version_id": "900719925474099312345",
+                                "etag": '"opaque-2"',
+                                "checksum": {"algorithm": "sha256", "value": "A" * 64},
+                                "modified_time": "2026-09-09T00:00:00Z",
+                                "credentials": "must not pass through",
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+    )
+    remote = response.model_dump()["result"][0]["files"][0]["remote_metadata"]
+    assert remote == {
+        "version_id": "900719925474099312345",
+        "etag": '"opaque-2"',
+        "checksum": {"algorithm": "sha256", "value": "a" * 64},
+        "modified_time": "2026-09-09T00:00:00Z",
+    }
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        None,
+        [],
+        "bad",
+        {"version_id": "null"},
+        {"etag": 'W/"weak"'},
+        {"etag": "bad\nheader"},
+        {"etag": "x" * 1025},
+        {"checksum": []},
+        {"checksum": {"algorithm": "md5", "value": "a" * 31}},
+        {"checksum": {"algorithm": "sha256", "value": "not-hex".ljust(64, "x")}},
+        {"modified_time": "2026-13-09T00:00:00Z"},
+    ],
+)
+def test_online_drive_optional_metadata_does_not_break_legacy_files(metadata):
+    file = OnlineDriveFile.model_validate(
+        {
+            "id": "f1",
+            "name": "a.pdf",
+            "size": 10,
+            "type": "file",
+            "remote_metadata": metadata,
+        }
+    )
+    assert file.remote_metadata is None
+    assert file.id == "f1"
+
+
+def test_online_drive_remote_metadata_keeps_valid_hints_when_siblings_are_invalid():
+    file = OnlineDriveFile.model_validate(
+        {
+            "id": "f1",
+            "name": "a.pdf",
+            "size": 10,
+            "type": "file",
+            "remote_metadata": {
+                "version_id": "v2",
+                "etag": 'W/"weak"',
+                "checksum": {"algorithm": "sha256", "value": "bad"},
+                "modified_time": "not-a-time",
+            },
+        }
+    )
+
+    assert file.remote_metadata == {"version_id": "v2"}
+
+
+def test_online_drive_download_receipt_uses_the_same_bounded_wire_contract():
+    message = OnlineDriveDownloadMessage.model_validate(
+        {
+            "type": "blob",
+            "message": {"blob": "YQ=="},
+            "meta": {
+                "file_name": "a.pdf",
+                "remote_metadata": {
+                    "version_id": "download-v2",
+                    "etag": '"opaque"',
+                    "checksum": {"algorithm": "md5", "value": "A" * 32},
+                    "modified_time": "invalid",
+                    "credentials": "must not pass through",
+                },
+            },
+        }
+    )
+
+    assert message.meta == {
+        "file_name": "a.pdf",
+        "remote_metadata": {
+            "version_id": "download-v2",
+            "etag": '"opaque"',
+            "checksum": {"algorithm": "md5", "value": "a" * 32},
+        },
+    }
+
+
+def test_generic_datasource_message_does_not_apply_online_drive_metadata_contract():
+    metadata = {"custom": "online-document-value", "credentials": "opaque-to-the-generic-model"}
+    message = DatasourceMessage.model_validate(
+        {
+            "type": "text",
+            "message": {"text": "online document content"},
+            "meta": {"remote_metadata": metadata},
+        }
+    )
+
+    assert message.meta == {"remote_metadata": metadata}
 
 
 def test_datasource_provider_type():

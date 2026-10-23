@@ -1,12 +1,15 @@
+import asyncio
 import json
 from typing import Any, cast
 
+import httpx
 import pytest
 from dify_agent.adapters.llm.model import _get_stop_sequences, _map_model_settings_to_parameters
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
 from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig
+from dify_agent.layers.knowledge_fs import DifyKnowledgeFsLayerConfig
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.shell import DifyShellEnvVarConfig, DifyShellLayerConfig
 from dify_agent.layers.user_prompt import DifyUserPromptDownloadConfig, DifyUserPromptImageConfig
@@ -16,6 +19,8 @@ from dify_agent.protocol import (
     DIFY_AGENT_OUTPUT_LAYER_ID,
     CreateRunRequest,
 )
+from dify_agent.runtime.context import Services
+from dify_agent.runtime.modules import create_modules, load_modules
 from pydantic import JsonValue, ValidationError
 
 from clients.agent_backend import (
@@ -553,3 +558,63 @@ def test_agent_app_request_builder_adds_knowledge_layer_when_configured() -> Non
     assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
     knowledge_config = DifyKnowledgeBaseLayerConfig.model_validate(layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config)
     assert knowledge_config.sets[0].dataset_ids == ["dataset-1", "dataset-2"]
+
+
+@pytest.mark.parametrize("mode", ["agent_app", "workflow"])
+def test_knowledge_fs_requires_shell_and_can_coexist_with_classic_knowledge(mode: str) -> None:
+    config = DifyKnowledgeFsLayerConfig.model_validate(
+        {"spaces": [{"id": "docs", "name": "Docs", "control_space_id": "00000000-0000-4000-8000-000000000001"}]}
+    )
+    run_input = _agent_app_input() if mode == "agent_app" else _run_input()
+    run_input.knowledge_fs = config
+    builder = AgentBackendRunRequestBuilder()
+
+    def build() -> CreateRunRequest:
+        if isinstance(run_input, AgentBackendAgentAppRunInput):
+            return builder.build_for_agent_app(run_input)
+        return builder.build_for_workflow_node(run_input)
+
+    with pytest.raises(ValueError, match="requires shell"):
+        build()
+    run_input.include_shell = True
+    layers = {layer.name: layer for layer in build().composition.layers}
+    knowledge_fs = DifyKnowledgeFsLayerConfig.model_validate(layers["knowledge_fs"].config)
+    assert knowledge_fs == config
+    assert knowledge_fs.execution_context == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    assert knowledge_fs.shell == DIFY_SHELL_LAYER_ID
+    assert DIFY_KNOWLEDGE_BASE_LAYER_ID not in layers
+    assert not any("search" in layer.name or "retriev" in layer.name for layer in layers.values())
+    run_input.knowledge = DifyKnowledgeBaseLayerConfig.model_validate(
+        {
+            "sets": [
+                {
+                    "id": "legacy",
+                    "name": "Legacy",
+                    "datasets": [{"id": "dataset-1"}],
+                    "query": {"mode": "generated_query"},
+                    "retrieval": {"mode": "multiple", "top_k": 2},
+                }
+            ]
+        }
+    )
+    mixed_layers = {layer.name: layer for layer in build().composition.layers}
+    assert DIFY_KNOWLEDGE_BASE_LAYER_ID in mixed_layers
+    assert "knowledge_fs" in mixed_layers
+    classic_config = DifyKnowledgeBaseLayerConfig.model_validate(mixed_layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config)
+    knowledge_fs_config = DifyKnowledgeFsLayerConfig.model_validate(mixed_layers["knowledge_fs"].config)
+    assert classic_config.sets[0].id == "legacy"
+    assert knowledge_fs_config.spaces[0].id == "docs"
+    run_input.execution_context.app_id = "app-1"
+    client = httpx.AsyncClient()
+    try:
+        services = Services(
+            plugin_daemon_http_client=client,
+            dify_api_http_client=client,
+            runtime_backend_profile=cast(Any, object()),
+            knowledge_session_store=cast(Any, object()),
+        )
+        modules = create_modules(load_modules(build(), services, "mixed-knowledge-run"))
+        assert DIFY_KNOWLEDGE_BASE_LAYER_ID in modules
+        assert "knowledge_fs" in modules
+    finally:
+        asyncio.run(client.aclose())

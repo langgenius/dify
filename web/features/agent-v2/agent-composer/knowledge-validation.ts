@@ -11,6 +11,8 @@ export type KnowledgeValidationIssueCode =
   | 'single_model_required'
   | 'metadata_model_required'
   | 'metadata_conditions_required'
+  | 'space_unavailable'
+  | 'binding_invalid'
 
 type KnowledgeValidationField = 'name' | 'datasets' | 'query' | 'retrieval' | 'metadata'
 
@@ -40,6 +42,10 @@ export const useKnowledgeValidationMessage = () => {
 
   return (issueCode?: KnowledgeValidationIssueCode) => {
     switch (issueCode) {
+      case 'space_unavailable':
+        return t(($) => $['agentDetail.configure.knowledgeFs.unavailable'])
+      case 'binding_invalid':
+        return t(($) => $['agentDetail.configure.knowledgeFs.invalid'])
       case 'name_required':
         return tCommon(($) => $['errorMsg.fieldRequired'], {
           field: t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.nameLabel']),
@@ -92,6 +98,7 @@ export const validateKnowledgeRetrievals = (
   const byId: KnowledgeValidationResult['byId'] = {}
   const issues: KnowledgeValidationIssue[] = []
   const nameCounts = new Map<string, number>()
+  const spaceCount = retrievals.filter((item) => item.controlSpaceId).length
 
   retrievals.forEach((item) => {
     const normalizedName = getNormalizedKnowledgeName(item)
@@ -123,6 +130,26 @@ export const validateKnowledgeRetrievals = (
         code: 'name_duplicate',
         field: 'name',
       })
+    }
+
+    if (item.controlSpaceId) {
+      if (item.isMissing)
+        pushIssue({ itemId: item.id, code: 'space_unavailable', field: 'datasets' })
+      if (
+        spaceCount > 10 ||
+        setName.length > 120 ||
+        /[\u0000-\u001F\u007F]/u.test(setName) ||
+        (item.description?.length ?? 0) > 2000 ||
+        !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(item.controlSpaceId) ||
+        retrievals.some(
+          (other) =>
+            other.id !== item.id &&
+            (other.controlSpaceId === item.controlSpaceId ||
+              other.id.toLowerCase() === normalizedName),
+        )
+      )
+        pushIssue({ itemId: item.id, code: 'binding_invalid', field: 'datasets' })
+      return
     }
 
     if (!getKnowledgeDatasetCount(item)) {

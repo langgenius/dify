@@ -761,11 +761,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/markdown-blocks/think-block.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/app/components/base/markdown-blocks/video-block.tsx": {
     "typescript/no-explicit-any": {
       "count": 5
@@ -1410,14 +1405,6 @@
     }
   },
   "web/app/components/datasets/hit-testing/components/result-item.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/list/dataset-card/components/operations-dropdown.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -3536,9 +3523,6 @@
     }
   },
   "web/service/fetch.spec.ts": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    },
     "typescript/no-deprecated": {
       "count": 12
     }
@@ -3766,11 +3750,6 @@
   },
   "web/utils/mcp.ts": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/utils/page-leave-guard.ts": {
-    "typescript/no-deprecated": {
       "count": 1
     }
   },

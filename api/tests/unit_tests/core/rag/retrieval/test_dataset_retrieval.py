@@ -55,7 +55,7 @@ from models.dataset import (
     SegmentAttachmentBinding,
 )
 from models.dataset import Document as DatasetDocument
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
 
 # ==================== Helper Functions ====================
 
@@ -3649,8 +3649,8 @@ class TestKnowledgeRetrievalRegression:
         """
         Repro test for current bug:
         reranking runs after `with flask_app.app_context():` exits.
-        The outer thread entry point catches exceptions from the traced retrieval method
-        and stores them in `thread_exceptions`.
+        `_multiple_retrieve_thread` catches exceptions and stores them into `thread_exceptions`,
+        so we must assert from that list (not from an outer try/except).
         """
         dataset_retrieval = DatasetRetrieval()
         flask_app = Flask(__name__)
@@ -3704,6 +3704,7 @@ class TestKnowledgeRetrievalRegression:
         # output list from _multiple_retrieve_thread
         all_documents: list[Document] = []
 
+        # The safe wrapper collects exceptions raised after tracing.
         thread_exceptions: list[Exception] = []
 
         def target():
@@ -3743,6 +3744,7 @@ class TestKnowledgeRetrievalRegression:
         # Ensure reranking branch was actually executed
         assert called["init"] >= 1, "DataPostProcessor was never constructed; reranking branch may not have run."
 
+        # Current buggy code should record an exception (not raise it)
         assert not thread_exceptions, thread_exceptions
 
     def test_run_retriever_thread_provides_session_to_retriever(self):
@@ -4258,10 +4260,10 @@ class TestDatasetRetrievalAdditionalHelpers:
                 tenant_id=tenant_id,
                 dataset_id=dataset_id,
                 position=1,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType("upload_file"),
                 batch="batch-1",
                 name="document",
-                created_from="api",
+                created_from=DocumentCreatedFrom("api"),
                 created_by=user_id,
                 indexing_status="completed",
                 enabled=True,
@@ -4386,10 +4388,10 @@ class TestDatasetRetrievalAdditionalHelpers:
                 tenant_id=tenant_id,
                 dataset_id=internal_id,
                 position=1,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType("upload_file"),
                 batch="batch-1",
                 name="available document",
-                created_from="api",
+                created_from=DocumentCreatedFrom("api"),
                 created_by=creator_id,
                 indexing_status="completed",
                 enabled=True,
@@ -4810,10 +4812,10 @@ class TestRetrieveCoverage:
             tenant_id=tenant_id,
             dataset_id=dataset_id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType("upload_file"),
             batch="batch-1",
             name="Document One",
-            created_from="api",
+            created_from=DocumentCreatedFrom("api"),
             created_by=creator_id,
             indexing_status="completed",
             enabled=True,
@@ -5325,7 +5327,7 @@ class TestSingleAndMultipleRetrieveCoverage:
         ]
         app = Flask(__name__)
 
-        def failing_thread(**kwargs):
+        def failing_thread(**_kwargs):
             raise RuntimeError("thread boom")
 
         with app.app_context():
@@ -5391,10 +5393,10 @@ class TestInternalHooksCoverage:
                 tenant_id=tenant_id,
                 dataset_id=dataset_id,
                 position=position,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType("upload_file"),
                 batch="batch-1",
                 name=f"document-{position}",
-                created_from="api",
+                created_from=DocumentCreatedFrom("api"),
                 created_by=creator_id,
                 indexing_status="completed",
                 enabled=True,
@@ -5745,10 +5747,10 @@ class TestInternalHooksCoverage:
                     tenant_id=tenant_id,
                     dataset_id=available_id,
                     position=position,
-                    data_source_type="upload_file",
+                    data_source_type=DataSourceType("upload_file"),
                     batch="batch-1",
                     name=f"document-{position}",
-                    created_from="api",
+                    created_from=DocumentCreatedFrom("api"),
                     created_by=creator_id,
                     indexing_status="completed",
                     enabled=True,

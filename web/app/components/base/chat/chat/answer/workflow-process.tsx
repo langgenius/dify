@@ -5,6 +5,7 @@ import { use, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
+import { localizeKnowledgeRetrievalV2Error } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/error-message'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 
@@ -35,6 +36,10 @@ const WorkflowProcessItem = ({
     data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
   const paused = data.status === WorkflowRunningStatus.Paused
   const latestNode = data.tracing[data.tracing.length - 1]
+  const localizeError = (error?: string) =>
+    localizeKnowledgeRetrievalV2Error(error, (key) => t(($) => $[key], { ns: 'workflow' }))
+  const localizedError = localizeError(data.error)
+  const localizedLatestNodeError = localizeError(latestNode?.error)
   const fallbackTitle = t(($) => $['common.workflowProcess'], { ns: 'workflow' })
   const statusLabel = running
     ? t(($) => $['common.workflowProcessRunning'], { ns: 'workflow' })
@@ -46,7 +51,7 @@ const WorkflowProcessItem = ({
           ? t(($) => $['common.workflowProcessPaused'], { ns: 'workflow' })
           : undefined
   const collapsedTitle = failed
-    ? data.error || latestNode?.error || latestNode?.title || fallbackTitle
+    ? localizedError || localizedLatestNodeError || latestNode?.title || fallbackTitle
     : latestNode?.title || fallbackTitle
 
   useEffect(() => {
@@ -132,7 +137,7 @@ const WorkflowProcessItem = ({
               role="alert"
               className="mb-1.5 rounded-lg border-[0.5px] border-state-destructive-border bg-state-destructive-hover px-2 py-1.5 system-xs-regular text-text-destructive"
             >
-              {data.error}
+              {localizedError}
             </div>
           )}
           {data.tracing.length > 0 && (

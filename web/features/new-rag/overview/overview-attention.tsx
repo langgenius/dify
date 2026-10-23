@@ -1,0 +1,278 @@
+'use client'
+
+import type { KnowledgeFsOverviewAttentionResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValueRawSync } from 'jotai'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Link from '@/next/link'
+import {
+  newKnowledgeDetailPath,
+  newKnowledgeDocumentsPath,
+  newKnowledgeRetrievalTestPath,
+  newKnowledgeSettingsPath,
+} from '../routes'
+import { EmptyInline, OverviewErrorInline, Panel, Skeleton } from './overview-panel'
+import {
+  overviewAttentionDataAtom,
+  overviewAttentionErrorAtom,
+  overviewAttentionPendingAtom,
+  overviewFailedFirstSourceTaskAtom,
+  overviewKnowledgeSpaceIdAtom,
+  overviewShowEmptyModulesAtom,
+} from './state'
+
+const ATTENTION_PAGE_SIZE = 4
+
+function attentionPresentation(
+  issue: KnowledgeFsOverviewAttentionResponse,
+  t: ReturnType<typeof useTranslation<['knowledgeSpace', 'knowledgeOverview']>>['t'],
+): { description?: string; title: string } {
+  const evidenceCodes = new Set(issue.evidence.map(({ code }) => code))
+  if (issue.rule_id === 'stale-source')
+    return {
+      description: t(($) => $['overview.attention.staleSource.description'], {
+        ns: 'knowledgeOverview',
+      }),
+      title: t(($) => $['overview.attention.staleSource.title'], { ns: 'knowledgeOverview' }),
+    }
+  if (issue.rule_id === 'failed-document')
+    return {
+      description: t(($) => $['overview.attention.failedDocument.description'], {
+        ns: 'knowledgeOverview',
+      }),
+      title: t(($) => $['overview.attention.failedDocument.title'], { ns: 'knowledgeOverview' }),
+    }
+  if (issue.rule_id === 'low-quality-query')
+    return {
+      description: t(($) => $['overview.attention.lowQualityQuery.description'], {
+        ns: 'knowledgeOverview',
+      }),
+      title: t(($) => $['overview.attention.lowQualityQuery.title'], { ns: 'knowledgeOverview' }),
+    }
+  if (issue.rule_id === 'model-readiness') {
+    const reasons: string[] = []
+    if (
+      evidenceCodes.has('MODEL_EMBEDDING_PROFILE_MISSING') ||
+      evidenceCodes.has('MODEL_RETRIEVAL_PROFILE_MISSING')
+    )
+      reasons.push(t(($) => $['overview.attention.modelReadiness.profilesMissing']))
+    if (evidenceCodes.has('MODEL_PUBLICATION_BINDING_MISSING'))
+      reasons.push(t(($) => $['overview.attention.modelReadiness.bindingMissing']))
+    return {
+      description:
+        reasons.join(' ') || t(($) => $['overview.attention.modelReadiness.description']),
+      title: t(($) => $['overview.attention.modelReadiness.title']),
+    }
+  }
+
+  return { title: issue.title }
+}
+
+export function AttentionPanel() {
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeOverview'])
+  const { t: tCommon } = useTranslation(['common'])
+  const attention = useAtomValueRawSync(overviewAttentionDataAtom)
+  const empty = useAtomValueRawSync(overviewShowEmptyModulesAtom)
+  const failedTask = useAtomValueRawSync(overviewFailedFirstSourceTaskAtom)
+  const error = useAtomValueRawSync(overviewAttentionErrorAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
+  const loading = useAtomValueRawSync(overviewAttentionPendingAtom)
+  const [issuePage, setIssuePage] = useState(0)
+  // Dify owns product authorization; ignore responses cached or served by an older backend that
+  // still contain the retired KnowledgeFS-local permission readiness rule.
+  const actionableAttention = attention.filter((issue) => issue.rule_id !== 'permission-readiness')
+  // A confirmed upload failure must not briefly become "all good" while attention is refreshing.
+  // Keep this as task evidence, not a synthetic server issue with invented lifecycle fields.
+  const failedUpload =
+    empty &&
+    failedTask &&
+    (failedTask.operation === 'document_upload' || failedTask.operation === 'document_processing')
+  const issuePageCount = Math.max(1, Math.ceil(actionableAttention.length / ATTENTION_PAGE_SIZE))
+  const activeIssuePage = Math.min(issuePage, issuePageCount - 1)
+  const visibleIssues = actionableAttention.slice(
+    activeIssuePage * ATTENTION_PAGE_SIZE,
+    activeIssuePage * ATTENTION_PAGE_SIZE + ATTENTION_PAGE_SIZE,
+  )
+  const issueAction = (issue: KnowledgeFsOverviewAttentionResponse) => {
+    if (issue.action.kind === 'review-models')
+      return {
+        href: newKnowledgeSettingsPath(knowledgeSpaceId),
+        label: t(($) => $['overview.attention.action.configureModels'], {
+          ns: 'knowledgeSpace',
+        }),
+      }
+    if (issue.action.resource_type === 'failed-query' || issue.rule_id === 'low-quality-query')
+      return {
+        href: newKnowledgeRetrievalTestPath(knowledgeSpaceId),
+        label: t(($) => $['overview.reviewConflict'], { ns: 'knowledgeOverview' }),
+      }
+    if (issue.action.resource_type === 'source')
+      return {
+        href: newKnowledgeDetailPath(knowledgeSpaceId),
+        label: t(($) => $['overview.fixSource'], { ns: 'knowledgeOverview' }),
+      }
+    return {
+      href: newKnowledgeDocumentsPath(knowledgeSpaceId),
+      label: t(($) => $['overview.viewDocuments'], { ns: 'knowledgeOverview' }),
+    }
+  }
+
+  if (error)
+    return (
+      <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
+        <h2 className="system-xl-medium text-text-secondary">
+          {t(($) => $['overview.needsAttention'], { ns: 'knowledgeOverview' })}
+        </h2>
+        <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
+          <OverviewErrorInline />
+        </Panel>
+      </section>
+    )
+
+  if (empty && !loading && !actionableAttention.length && !failedUpload)
+    return (
+      <section className="flex h-66.75 min-w-0 flex-col gap-2 pt-6">
+        <h2 className="system-xl-medium text-text-secondary">
+          {t(($) => $['overview.needsAttention'], { ns: 'knowledgeOverview' })}
+        </h2>
+        <Panel className="flex h-52.75 border border-components-panel-border p-4 shadow-none">
+          <EmptyInline
+            positive
+            icon="i-ri-thumb-up-line"
+            title={t(($) => $['overview.noIssues'], { ns: 'knowledgeOverview' })}
+            description={t(($) => $['overview.noIssuesDescription'], { ns: 'knowledgeOverview' })}
+          />
+        </Panel>
+      </section>
+    )
+
+  return (
+    <section className="flex h-93.25 min-w-0 flex-col gap-2 pt-6">
+      <div className="flex h-6 items-center">
+        <h2 className="system-xl-medium text-text-secondary">
+          {t(($) => $['overview.needsAttention'], { ns: 'knowledgeOverview' })}
+        </h2>
+      </div>
+      <Panel className="flex h-79.25 flex-col overflow-hidden border border-divider-subtle px-4 pt-3 pb-1 shadow-none">
+        {loading ? (
+          <div>
+            {[
+              ['attention-1', 100],
+              ['attention-2', 100],
+              ['attention-3', 100],
+              ['attention-4', 100],
+            ].map(([key, width]) => (
+              <div key={key} className="flex h-16 items-center">
+                <Skeleton className="h-3.5" style={{ width: `${width}%` }} />
+              </div>
+            ))}
+          </div>
+        ) : actionableAttention.length ? (
+          <>
+            <ul className="min-h-0 flex-1 overflow-hidden">
+              {visibleIssues.map((issue) => {
+                const presentation = attentionPresentation(issue, t)
+                const action = issueAction(issue)
+                return (
+                  <li key={issue.issue_key} className="flex h-16 min-w-0 items-center gap-4">
+                    <span
+                      className={cn(
+                        'shrink-0 rounded-md px-2 py-0.5 system-xs-medium',
+                        issue.severity === 'critical'
+                          ? 'bg-state-destructive-hover text-text-destructive'
+                          : issue.severity === 'warning'
+                            ? 'bg-state-warning-hover text-text-warning'
+                            : 'bg-background-section text-text-tertiary',
+                      )}
+                    >
+                      {issue.severity === 'critical'
+                        ? t(($) => $['overview.blocker'], { ns: 'knowledgeOverview' })
+                        : issue.severity === 'warning'
+                          ? t(($) => $['overview.serious'], { ns: 'knowledgeOverview' })
+                          : t(($) => $['overview.review'], { ns: 'knowledgeOverview' })}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate system-sm-medium text-text-primary">
+                        {presentation.title}
+                      </p>
+                      {presentation.description && (
+                        <p className="mt-0.5 line-clamp-2 body-xs-regular text-text-tertiary">
+                          {presentation.description}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      render={<Link href={action.href} />}
+                      nativeButton={false}
+                      size="small"
+                      tone={issue.severity === 'critical' ? 'destructive' : 'default'}
+                      variant={issue.severity === 'critical' ? 'primary' : 'secondary'}
+                      className={cn(
+                        issue.severity === 'critical' &&
+                          'border-[#ff4d14] bg-[#ff4d14] hover:border-[#e64210] hover:bg-[#e64210]',
+                      )}
+                    >
+                      {action.label}
+                    </Button>
+                  </li>
+                )
+              })}
+            </ul>
+            <div className="flex h-11 shrink-0 items-end justify-end border-t border-divider-subtle pb-1">
+              <div className="flex h-8 items-center rounded-lg border border-divider-subtle p-0.5">
+                <button
+                  type="button"
+                  aria-label={tCommon(($) => $['pagination.previous'])}
+                  className="flex size-7 items-center justify-center rounded-md text-text-quaternary"
+                  disabled={activeIssuePage === 0}
+                  onClick={() => setIssuePage(Math.max(0, activeIssuePage - 1))}
+                >
+                  <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+                </button>
+                <span className="px-2 system-xs-medium text-text-secondary">
+                  {activeIssuePage + 1} / {issuePageCount}
+                </span>
+                <button
+                  type="button"
+                  aria-label={tCommon(($) => $['pagination.next'])}
+                  className="flex size-7 items-center justify-center rounded-md text-text-quaternary"
+                  disabled={activeIssuePage >= issuePageCount - 1}
+                  onClick={() => setIssuePage(Math.min(issuePageCount - 1, activeIssuePage + 1))}
+                >
+                  <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
+                </button>
+              </div>
+            </div>
+          </>
+        ) : failedUpload ? (
+          <div className="flex flex-1 flex-col items-start justify-center gap-3 p-4">
+            <p className="system-sm-medium text-text-destructive">
+              {t(($) => $['overview.attention.failedDocument.title'], { ns: 'knowledgeOverview' })}
+            </p>
+            <p className="body-xs-regular text-text-tertiary">
+              {t(($) => $['overview.attention.failedDocument.description'], {
+                ns: 'knowledgeOverview',
+              })}
+            </p>
+            <Button
+              render={<Link href={newKnowledgeDocumentsPath(knowledgeSpaceId)} />}
+              nativeButton={false}
+              size="small"
+              variant="secondary"
+            >
+              {t(($) => $['overview.viewDocuments'], { ns: 'knowledgeOverview' })}
+            </Button>
+          </div>
+        ) : (
+          <EmptyInline
+            icon="i-ri-checkbox-circle-line"
+            title={t(($) => $['overview.noIssues'], { ns: 'knowledgeOverview' })}
+            description={t(($) => $['overview.noIssuesDescription'], { ns: 'knowledgeOverview' })}
+          />
+        )}
+      </Panel>
+    </section>
+  )
+}

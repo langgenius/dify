@@ -1056,6 +1056,7 @@ export type AgentSoulHumanConfig = {
 
 export type AgentSoulKnowledgeConfig = {
   sets?: Array<AgentKnowledgeSetConfig>
+  spaces?: Array<AgentKnowledgeSpaceConfig>
 }
 
 export type AgentSoulMemoryConfig = {
@@ -1213,6 +1214,14 @@ export type AgentKnowledgeSetConfig = {
   name: string
   query: AgentKnowledgeQueryConfig
   retrieval: AgentKnowledgeRetrievalConfig
+}
+
+export type AgentKnowledgeSpaceConfig = {
+  control_space_id: string
+  description?: string | null
+  id: string
+  is_missing?: boolean
+  name: string
 }
 
 export type AgentMemoryArtifactConfig = {

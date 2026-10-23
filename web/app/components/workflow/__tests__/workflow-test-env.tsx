@@ -77,7 +77,12 @@ import ReactFlow, { ReactFlowProvider, useStoreApi } from 'reactflow'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
-import { seedAppDetail, seedAppDslVersion, seedSystemFeatures } from '@/test/console/query-data'
+import {
+  seedAppDetail,
+  seedAppDslVersion,
+  seedKnowledgeFsFeatures,
+  seedSystemFeatures,
+} from '@/test/console/query-data'
 import { render, renderHook } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { WorkflowContext } from '../context'
@@ -187,6 +192,8 @@ function createWorkflowWrapper(
       },
     })
   if (!externalQueryClient) seedSystemFeatures(queryClient)
+  // The node catalog reads KnowledgeFS availability; keep it unavailable unless a suite seeds it.
+  if (!externalQueryClient) seedKnowledgeFsFeatures(queryClient)
   if (!externalQueryClient) seedAppDslVersion(queryClient)
   if (!externalQueryClient) seedAccountProfileQuery(queryClient)
   if (resource.kind === 'app') {

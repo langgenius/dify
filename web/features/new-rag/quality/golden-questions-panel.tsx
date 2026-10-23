@@ -1,0 +1,552 @@
+'use client'
+
+import type { KnowledgeFsGoldenQuestionResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { GoldenQuestionDraft, GoldenQuestionEvidenceOption } from './types'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useId, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
+import { GoldenQuestionDialog } from './golden-question-dialog'
+import { GoldenQuestionImportDialog } from './golden-question-import-dialog'
+import {
+  emptyGoldenQuestionDraft,
+  formatQualityUpdatedAt,
+  goldenQuestionPayload,
+  goldenQuestionQueriesKey,
+  qualityPageSize,
+  visibleQualityTags,
+} from './quality-model'
+import { QualityRowMenuTrigger } from './quality-row-menu-trigger'
+
+type GoldenQuestionsPanelProps = {
+  actionSlot: HTMLDivElement | null
+}
+
+type GoldenQuestionDialogState =
+  | { mode: 'create'; value: GoldenQuestionDraft }
+  | {
+      evidenceOptions: GoldenQuestionEvidenceOption[]
+      id: string
+      mode: 'edit'
+      value: GoldenQuestionDraft
+    }
+
+function GoldenStatus({
+  status,
+  reason,
+}: {
+  status: KnowledgeFsGoldenQuestionResponse['status']
+  reason: KnowledgeFsGoldenQuestionResponse['status_reason']
+}) {
+  const { t } = useTranslation(['knowledgeQuality'])
+  const labelId = useId()
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <span
+        id={labelId}
+        className={cn(
+          'inline-flex w-fit items-center rounded-md px-1.5 py-0.5 system-2xs-medium-uppercase',
+          status === 'active' && 'bg-state-success-hover text-text-success',
+          (status === 'draft' || status === 'paused') && 'bg-state-warning-hover text-text-warning',
+          status === 'stale' && 'bg-state-destructive-hover text-text-destructive',
+        )}
+      >
+        {t(($) => $[`qualityPage.goldenStatus.${status}`], { ns: 'knowledgeQuality' })}
+      </span>
+      {reason && (
+        <Infotip>
+          <InfotipTrigger aria-labelledby={labelId} />
+          <InfotipContent aria-labelledby={labelId} className="max-w-72">
+            {t(($) => $[`qualityPage.goldenStatusReason.${reason}`], { ns: 'knowledgeQuality' })}
+          </InfotipContent>
+        </Infotip>
+      )}
+    </div>
+  )
+}
+
+function GoldenAnnotation({ annotation }: { annotation: string }) {
+  if (!annotation.trim()) return <span className="system-xs-regular text-text-tertiary">—</span>
+  return (
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        delay={300}
+        closeDelay={200}
+        render={
+          <button
+            type="button"
+            className="block w-fit max-w-full min-w-0 truncate text-left system-xs-regular text-text-secondary"
+          >
+            {annotation}
+          </button>
+        }
+      />
+      <PopoverContent side="top" className="max-w-67 px-3 py-2">
+        <p className="system-xs-regular wrap-break-word text-text-tertiary">{annotation}</p>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function GoldenQuestionEditorDialog({
+  onOpenChange,
+  open,
+  session,
+}: {
+  onOpenChange: (open: boolean) => void
+  open: boolean
+  session?: GoldenQuestionDialogState
+}) {
+  const { t } = useTranslation(['dataset', 'knowledgeQuality'])
+  const { space } = useKnowledgeSpace()
+  const knowledgeSpaceId = space.control_space_id
+  const queryClient = useQueryClient()
+  const [error, setError] = useState<string>()
+  const [submitting, setSubmitting] = useState(false)
+  const createMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions(),
+  )
+  const updateMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.patch.mutationOptions(),
+  )
+
+  const close = () => {
+    setError(undefined)
+    onOpenChange(false)
+  }
+  const submit = async (draft: GoldenQuestionDraft) => {
+    if (!session) return
+    setError(undefined)
+    setSubmitting(true)
+    try {
+      if (session.mode === 'edit') {
+        await updateMutation.mutateAsync({
+          body: goldenQuestionPayload(draft),
+          params: { control_space_id: knowledgeSpaceId, question_id: session.id },
+        })
+        toast.success(t(($) => $['qualityPage.updatedToast'], { ns: 'knowledgeQuality' }))
+      } else {
+        await createMutation.mutateAsync({
+          body: goldenQuestionPayload(draft),
+          params: { control_space_id: knowledgeSpaceId },
+        })
+        toast.success(t(($) => $['qualityPage.createdToast'], { ns: 'knowledgeQuality' }))
+      }
+      await queryClient.invalidateQueries({
+        queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
+      })
+      close()
+    } catch {
+      setError(t(($) => $.unknownError, { ns: 'dataset' }))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <GoldenQuestionDialog
+      evidenceOptions={session?.mode === 'edit' ? session.evidenceOptions : []}
+      error={error}
+      initialValue={session?.value ?? emptyGoldenQuestionDraft}
+      knowledgeSpaceId={knowledgeSpaceId}
+      mode={session?.mode ?? 'create'}
+      open={open}
+      pending={submitting || createMutation.isPending || updateMutation.isPending}
+      sessionKey={session?.mode === 'edit' ? session.id : 'create'}
+      onOpenChange={(open) => {
+        if (!open && !submitting) close()
+      }}
+      onSubmit={submit}
+    />
+  )
+}
+
+export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) {
+  const { i18n, t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeQuality'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { space } = useKnowledgeSpace()
+  const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
+  const knowledgeSpaceId = space.control_space_id
+  const queryClient = useQueryClient()
+  const [selected, setSelected] = useState<Set<string>>(() => new Set())
+  const [deleteIds, setDeleteIds] = useState<Set<string>>()
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [dialog, setDialog] = useState<GoldenQuestionDialogState>()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const queryOptions =
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.infiniteOptions({
+      input: (pageParam) => ({
+        params: { control_space_id: knowledgeSpaceId },
+        query: {
+          limit: qualityPageSize,
+          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+        },
+      }),
+      getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+      initialPageParam: null as string | null,
+    })
+  const query = useInfiniteQuery(queryOptions)
+  const deleteMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(),
+  )
+  const items = query.data?.pages.flatMap((page) => page.data) ?? []
+  const allSelected = items.length > 0 && selected.size === items.length
+  const partiallySelected = selected.size > 0 && !allSelected
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: goldenQuestionQueriesKey(knowledgeSpaceId) })
+  const openCreate = () => {
+    setDialog({
+      mode: 'create',
+      value: emptyGoldenQuestionDraft,
+    })
+    setDialogOpen(true)
+  }
+  const openEdit = async (item: KnowledgeFsGoldenQuestionResponse) => {
+    const expectedEvidenceIds = item.expected_evidence_ids ?? []
+    const value: GoldenQuestionDraft = {
+      annotation: item.annotation,
+      expectedEvidenceIds,
+      matchPolicy: item.match_policy ?? 'all',
+      question: item.question,
+      tags: item.tags,
+    }
+    setDialog({ evidenceOptions: [], id: item.id, mode: 'edit', value })
+    setDialogOpen(true)
+    if (expectedEvidenceIds.length === 0) return
+    const evidenceOptions =
+      await consoleClient.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.evidenceMatches
+        .post({
+          body: { node_ids: expectedEvidenceIds },
+          params: { control_space_id: knowledgeSpaceId },
+        })
+        .catch(() => undefined)
+    setDialog((current) => {
+      if (current?.mode !== 'edit' || current.id !== item.id) return current
+      return { ...current, evidenceOptions: evidenceOptions?.candidates ?? [] }
+    })
+  }
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set(items.map((item) => item.id)))
+  const toggleOne = (id: string) =>
+    setSelected((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
+  const deleteGolden = async (ids: Set<string>): Promise<boolean> => {
+    setDeleteSubmitting(true)
+    try {
+      const results = await Promise.allSettled(
+        [...ids].map((questionId) =>
+          deleteMutation
+            .mutateAsync({
+              params: { control_space_id: knowledgeSpaceId, question_id: questionId },
+            })
+            .then(() => questionId),
+        ),
+      )
+      const deletedIds = new Set(
+        results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),
+      )
+      const failedIds = new Set([...ids].filter((id) => !deletedIds.has(id)))
+      setSelected((current) => new Set([...current].filter((id) => !deletedIds.has(id))))
+      await invalidate().catch(() => undefined)
+      if (failedIds.size > 0) {
+        setDeleteIds(failedIds)
+        toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
+        return false
+      }
+      toast.success(
+        t(($) => $['qualityPage.deletedToast'], { ns: 'knowledgeQuality', count: ids.size }),
+      )
+      setDeleteIds(undefined)
+      return true
+    } catch {
+      toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
+      return false
+    } finally {
+      setDeleteSubmitting(false)
+    }
+  }
+
+  return (
+    <>
+      {actionSlot &&
+        canEdit &&
+        items.length > 0 &&
+        createPortal(
+          <>
+            <Button className="gap-1" onClick={() => setImportOpen(true)}>
+              <span aria-hidden className="i-ri-download-line size-4" />
+              {t(($) => $['qualityPage.importCsv'], { ns: 'knowledgeQuality' })}
+            </Button>
+            <Button variant="primary" className="gap-1" onClick={openCreate}>
+              <span aria-hidden className="i-ri-add-line size-4" />
+              {t(($) => $['qualityPage.addGolden'], { ns: 'knowledgeQuality' })}
+            </Button>
+          </>,
+          actionSlot,
+        )}
+
+      {query.isLoading ? (
+        <div className="flex min-h-105 items-center justify-center">
+          <LoadingPlaceholder />
+        </div>
+      ) : query.isError ? (
+        <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">
+          <span aria-hidden className="i-ri-error-warning-line size-8 text-text-warning" />
+          <p role="alert" className="system-sm-medium text-text-primary">
+            {t(($) => $.unknownError, { ns: 'dataset' })}
+          </p>
+          <Button onClick={() => void query.refetch()}>
+            {t(($) => $.retry, { ns: 'dataset' })}
+          </Button>
+        </div>
+      ) : items.length ? (
+        <div className="mt-2.5 w-full overflow-x-auto pt-3">
+          <table
+            aria-label={t(($) => $['qualityPage.goldenTab'], { ns: 'knowledgeQuality' })}
+            className="w-full min-w-195 table-fixed border-collapse text-left"
+          >
+            <colgroup>
+              <col className="w-7" />
+              <col className="w-[30%]" />
+              <col className="w-25.5" />
+              <col />
+              <col className="w-[22%]" />
+              <col className="w-[13%]" />
+              <col className="w-8" />
+            </colgroup>
+            <thead>
+              <tr className="h-9 text-[11px] leading-4 font-medium text-text-tertiary">
+                <td className="pr-3 align-middle">
+                  <Checkbox
+                    aria-label={t(($) => $['qualityPage.selectAll'], { ns: 'knowledgeQuality' })}
+                    checked={allSelected}
+                    disabled={!canEdit}
+                    indeterminate={partiallySelected}
+                    onCheckedChange={toggleAll}
+                  />
+                </td>
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}
+                </th>
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.statusLabel'], { ns: 'knowledgeQuality' })}
+                </th>
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.tags'], { ns: 'knowledgeQuality' })}
+                </th>
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.annotation'], { ns: 'knowledgeQuality' })}
+                </th>
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.updated'], { ns: 'knowledgeQuality' })}
+                </th>
+                <td />
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id} className="h-12 border-t border-divider-subtle">
+                  <td className="pr-3 align-middle">
+                    <Checkbox
+                      aria-label={t(($) => $['qualityPage.selectQuestion'], {
+                        ns: 'knowledgeQuality',
+                        question: item.question,
+                      })}
+                      checked={selected.has(item.id)}
+                      disabled={!canEdit}
+                      onCheckedChange={() => toggleOne(item.id)}
+                    />
+                  </td>
+                  <th
+                    scope="row"
+                    className="truncate pr-3 text-left system-sm-medium text-text-primary"
+                  >
+                    {item.question ?? ''}
+                  </th>
+                  <td className="pr-3">
+                    <GoldenStatus
+                      reason={item.status_reason}
+                      status={
+                        item.status ??
+                        ((item.expected_evidence_ids?.length ?? 0) > 0 ? 'active' : 'draft')
+                      }
+                    />
+                  </td>
+                  <td className="pr-3">
+                    <div className="flex min-w-0 gap-1 overflow-hidden">
+                      {visibleQualityTags(item.tags).map((tag) => (
+                        <Badge key={tag} size="xs" variant="dimm" className="max-w-full min-w-0">
+                          <span className="min-w-0 truncate system-2xs-medium normal-case">
+                            {tag}
+                          </span>
+                        </Badge>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="pr-3">
+                    <GoldenAnnotation annotation={item.annotation} />
+                  </td>
+                  <td className="pr-3 system-xs-regular text-text-secondary">
+                    {formatQualityUpdatedAt(item.updated_at, i18n.language)}
+                  </td>
+                  <td>
+                    {canEdit && (
+                      <DropdownMenu modal={false}>
+                        <QualityRowMenuTrigger
+                          label={t(($) => $['qualityPage.questionActions'], {
+                            ns: 'knowledgeQuality',
+                            question: item.question,
+                          })}
+                        />
+                        <DropdownMenuContent className="w-50">
+                          <DropdownMenuItem
+                            className="gap-2 px-3"
+                            onClick={() => void openEdit(item)}
+                          >
+                            <span aria-hidden className="i-ri-edit-line size-4" />
+                            {t(($) => $['qualityPage.edit'], { ns: 'knowledgeQuality' })}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            className="gap-2 px-3"
+                            onClick={() => setDeleteIds(new Set([item.id]))}
+                          >
+                            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                            {t(($) => $['qualityPage.delete'], { ns: 'knowledgeQuality' })}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {query.hasNextPage && (
+            <div className="flex min-w-195 justify-center border-t border-divider-subtle py-4">
+              <Button loading={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>
+                {t(($) => $.loadMore)}
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="mt-2.5 flex h-140 flex-col items-center justify-center text-center">
+          <span aria-hidden className="i-ri-thumb-up-line size-7 text-text-tertiary" />
+          <h2 className="mt-3 system-md-semibold text-text-primary">
+            {t(($) => $['qualityPage.goldenEmptyTitle'], { ns: 'knowledgeQuality' })}
+          </h2>
+          <p className="mt-1 max-w-lg system-xs-regular text-text-tertiary">
+            {t(($) => $['qualityPage.goldenEmptyDescription'], { ns: 'knowledgeQuality' })}
+          </p>
+          {canEdit && (
+            <div className="mt-4 flex gap-2">
+              <Button className="gap-1" onClick={() => setImportOpen(true)}>
+                <span aria-hidden className="i-ri-download-line size-4" />
+                {t(($) => $['qualityPage.importCsv'], { ns: 'knowledgeQuality' })}
+              </Button>
+              <Button variant="primary" className="gap-1" onClick={openCreate}>
+                <span aria-hidden className="i-ri-add-line size-4" />
+                {t(($) => $['qualityPage.addGolden'], { ns: 'knowledgeQuality' })}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {canEdit && selected.size > 0 && (
+        <div className="fixed bottom-6 left-[calc(50%+var(--new-rag-sidebar-width)/2)] flex h-12 -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg px-3 shadow-xl">
+          <span className="system-sm-medium text-text-primary">
+            {t(($) => $['qualityPage.selectedCount'], {
+              ns: 'knowledgeQuality',
+              count: selected.size,
+            })}
+          </span>
+          <span aria-hidden className="h-5 w-px bg-divider-regular" />
+          <Button
+            variant="secondary"
+            tone="destructive"
+            onClick={() => setDeleteIds(new Set(selected))}
+          >
+            {t(($) => $['qualityPage.deleteEllipsis'], { ns: 'knowledgeQuality' })}
+          </Button>
+          <button
+            type="button"
+            aria-label={t(($) => $['qualityPage.clearSelection'], { ns: 'knowledgeQuality' })}
+            className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            onClick={() => setSelected(new Set())}
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </button>
+        </div>
+      )}
+
+      <GoldenQuestionEditorDialog open={dialogOpen} session={dialog} onOpenChange={setDialogOpen} />
+      <GoldenQuestionImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      <AlertDialog
+        open={Boolean(deleteIds)}
+        onOpenChange={(open) => {
+          if (!open && !deleteSubmitting) setDeleteIds(undefined)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tCommon(($) => $['operation.deleteConfirmTitle'])}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tCommon(($) => $['operation.confirmAction'])}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton variant="secondary" disabled={deleteSubmitting}>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              tone="destructive"
+              loading={deleteSubmitting}
+              onClick={() => {
+                if (deleteIds) void deleteGolden(deleteIds)
+              }}
+            >
+              {tCommon(($) => $['operation.delete'])}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
