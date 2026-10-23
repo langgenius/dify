@@ -264,7 +264,14 @@ jobs:
                   "test_authenticated_enabled_rbac_bound_agent_app_is_not_plain_app": 2,
               },
           }
-
+          EXPECTED["test_builder_task_controls"] = {
+              "test_stop_commits_before_old_worker_actual_draft_write": 2,
+              "test_old_worker_draft_commit_before_stop_is_retained": 2,
+              "test_resumed_generation_rejects_old_worker_even_at_current_revision": 2,
+              "test_late_worker_session_cas_cannot_overwrite_durable_stop": 1,
+              "test_control_receipt_replay_survives_resume_without_new_commit": 1,
+              "test_simultaneous_same_stop_identity_commits_one_durable_projection": 1,
+          }
 
           class ImmediateFailureReport:
               def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:
@@ -335,6 +342,7 @@ jobs:
                   "api/tests/test_containers_integration_tests/services/test_workflow_empty_draft.py",
                   "api/tests/test_containers_integration_tests/core/workflow/test_builder_confirmed_tool_native.py",
                   "api/tests/test_containers_integration_tests/core/workflow/test_builder_agent_terminal_scan.py",
+                  "api/tests/test_containers_integration_tests/core/workflow/test_builder_task_controls.py",
                   f"--junitxml={JUNIT}",
               ],
               plugins=[ImmediateFailureReport()],
@@ -517,6 +525,8 @@ jobs:
           ]
           # PR44527: continuous native observations and commit notifications.
           FILES += ["api/tests/unit_tests/services/dify_builder/test_native_live_stream.py"]
+          # ENG-1321: independent task controls must run with the execution owners.
+          FILES += ["api/tests/unit_tests/services/dify_builder/test_task_controls.py"]
           SELECTED_GUARDS = [
               "api/tests/unit_tests/core/dify_builder/test_handlers_edit.py::test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate",
               "api/tests/unit_tests/controllers/console/app/test_workflow.py::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
@@ -1845,6 +1855,44 @@ jobs:
           a4_expected['tests.unit_tests.services.dify_builder.test_native_live_stream'].update({
               'test_resumed_cancelled_parent_session_history_and_sse_stay_readonly': 1,
           })
+          a4_expected['tests.unit_tests.services.dify_builder.test_task_controls'] = {
+              'test_stop_during_advance_preserves_checkpoint_and_fences_generation': 1,
+              'test_stop_accepts_progress_but_old_stop_cannot_pause_resumed_generation': 1,
+              'test_resume_enqueue_failure_is_retryable_without_duplicate_command': 1,
+              'test_stop_replay_returns_durable_original_projection_after_resume': 1,
+              'test_blocked_provider_late_result_cannot_be_consumed': 1,
+              'test_continuation_delivery_is_claimed_once_and_old_finally_keeps_new_owner': 1,
+              'test_stopped_generation_rejects_sql_mutation_even_with_unchanged_app_revision': 1,
+              'test_internal_continuation_cannot_enter_through_public_action': 1,
+              'test_native_stop_settlement_is_truthful_and_unknown_never_resumes': 3,
+              'test_resume_preserves_goal_inputs_checkpoint_and_passes_complete_dsl_to_cognition': 1,
+              'test_pending_stop_get_reconciles_terminal_evidence_without_cancelling_again': 1,
+              'test_resume_rejects_autosave_between_dsl_read_and_reservation': 1,
+              'test_retest_after_resume_mints_new_input_and_builder_run_without_consent': 1,
+              'test_stop_captures_late_old_generation_lease_and_resume_keeps_new_owner': 1,
+              'test_stale_queued_action_cannot_bind_to_new_resumed_generation': 1,
+              'test_actual_action_stream_closes_on_stop_of_blocked_command': 1,
+              'test_actual_wired_command_stream_reads_after_request_context_teardown': 1,
+              'test_legacy_flag_only_pause_resumes_through_dsl_owner': 1,
+              'test_direct_native_admission_rejects_stopped_task_without_worker_context': 1,
+              'test_resume_response_receipt_cannot_invalidate_running_worker_cas': 1,
+          }
+          task_control_transport_expected = {
+              'test_task_control_routes_delegate_fixed_operation_and_return_session_json': 2,
+              'test_task_control_invalid_payload_never_calls_service': 20,
+              'test_task_control_domain_errors_raise_standard_http_errors': 8,
+              'test_task_control_served_json_preserves_trusted_actor_and_no_request_sql': 2,
+              'test_task_control_served_errors_follow_console_contract': 6,
+              'test_task_control_requires_authentication_before_service': 2,
+          }
+          for function, count in task_control_transport_expected.items():
+              actual = sum(
+                  classname.removeprefix('api.') == 'tests.unit_tests.controllers.console.test_dify_builder_routes'
+                  and name.split('[', 1)[0] == function
+                  for classname, name in identities
+              )
+              if actual != count:
+                  problems.append(f'Task control transport inventory mismatch {function}: {actual} != {count}')
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:
@@ -2933,6 +2981,14 @@ jobs:
           new_expected.setdefault('tests.unit_tests.services.dify_builder.native_testing.test_node_inputs', {}).update({'test_expired_context_read_for_settlement_preserves_cancelled_and_owner_refusals': 1})
           new_expected['tests.unit_tests.services.dify_builder.native_testing.test_agent_associations']['test_expired_projection_keeps_agent_checkpoint_proof_without_writes'] = 1
           new_expected['tests.unit_tests.services.dify_builder.native_testing.test_agent_associations']['test_cancellation_metadata_read_ignores_only_expiry'] = 5
+          # ENG-1321: saved retries/effect admission must respect the durable Task pause.
+          files += ['api/tests/unit_tests/services/dify_builder/native_testing/test_task_stop_admission.py']
+          new_expected['tests.unit_tests.services.dify_builder.native_testing.test_task_stop_admission'] = {
+              'test_saved_unlaunched_start_retry_cannot_enqueue_after_task_stop': 1,
+              'test_effect_dispatch_claim_is_fenced_after_task_stop_before_native_cancel': 1,
+              'test_host_capacity_claim_cannot_bypass_paused_task_as_settlement': 1,
+              'test_task_stop_still_allows_native_cancellation_and_evidence_settlement': 1,
+          }
           new_actual = {module: Counter() for module in new_expected}
           expected = {path.removeprefix("api/").removesuffix(".py").replace("/", ".") for path in files}
           expected = physical_owner_baseline_expected | set(new_expected)
