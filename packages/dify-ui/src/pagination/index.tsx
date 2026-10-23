@@ -1,6 +1,7 @@
 'use client'
 
 import { Button as BaseButton } from '@base-ui/react/button'
+import { useIsoLayoutEffect } from '@base-ui/utils/useIsoLayoutEffect'
 import * as React from 'react'
 import { cn } from '../cn'
 import { iconButtonVariants } from '../icon-button'
@@ -312,7 +313,7 @@ function PaginationPageJump({
   const restoreSummaryFocusRef = React.useRef(false)
   const mergedSummaryRef = useMergedRefs(summaryButtonRef, ref)
 
-  React.useLayoutEffect(() => {
+  useIsoLayoutEffect(() => {
     if (editing || !restoreSummaryFocusRef.current) return
 
     restoreSummaryFocusRef.current = false

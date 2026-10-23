@@ -1,4 +1,5 @@
 import type { DayPickerProps, NavProps } from '@daypicker/react'
+import { useIsoLayoutEffect } from '@base-ui/utils/useIsoLayoutEffect'
 import { TZDate } from '@date-fns/tz'
 import { DayButton, DayFlag, DayPicker, SelectionState, UI } from '@daypicker/react'
 import * as React from 'react'
@@ -134,7 +135,7 @@ function CalendarGrid({
   const selected = value ? toCalendarDate(value) : undefined
   const calendarRef = React.useRef<HTMLDivElement>(null)
   const restoreSelectionFocusRef = React.useRef(false)
-  React.useLayoutEffect(() => {
+  useIsoLayoutEffect(() => {
     if (!restoreSelectionFocusRef.current) return
     restoreSelectionFocusRef.current = false
     // DayPicker keys day buttons by both date and display month, so outside-day selection remounts them.
