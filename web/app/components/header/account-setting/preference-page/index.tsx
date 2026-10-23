@@ -75,7 +75,7 @@ export default function PreferencePage() {
         await Promise.all([
           profileMutationOptions.onSuccess?.(data, variables, onMutateResult, context),
           language
-            ? setLocaleOnClient(language, false).then(
+            ? setLocaleOnClient(language).then(
                 () => router.refresh(),
                 (error: unknown) => {
                   toast.error(

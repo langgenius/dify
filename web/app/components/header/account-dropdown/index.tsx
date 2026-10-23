@@ -84,7 +84,7 @@ function AppearanceSubmenu() {
           label={t(($) => $['account.appearanceLabel'], { ns: 'accountSettings' })}
         />
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent side="right" sideOffset={6} className="max-h-90 w-34.75 px-1">
+      <DropdownMenuSubContent sideOffset={6} className="max-h-90 w-34.75 px-1">
         <DropdownMenuRadioGroup<Theme>
           value={currentTheme}
           onValueChange={(nextTheme) => setTheme(nextTheme)}
@@ -150,7 +150,7 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
               </div>
               {isEducationAccount && (
                 <PremiumBadge size="s" color="blue" className="shrink-0 px-2!">
-                  <span aria-hidden className="mr-1 i-ri-graduation-cap-fill h-3 w-3" />
+                  <span aria-hidden className="me-1 i-ri-graduation-cap-fill size-3" />
                   <span className="system-2xs-medium">EDU</span>
                 </PremiumBadge>
               )}

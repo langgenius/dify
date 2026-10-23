@@ -1,11 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 
-const menuLabelClassName = 'min-w-0 grow truncate px-1 text-text-secondary system-md-regular'
-const menuLeadingIconClassName = 'size-4 shrink-0 text-text-tertiary'
-
-const menuTrailingIconClassName = 'size-[14px] shrink-0 text-text-tertiary'
-
 type MenuItemContentProps = {
   iconClassName: string
   label: ReactNode
@@ -17,8 +12,11 @@ export function MenuItemContent({ iconClassName, label, trailing }: MenuItemCont
 
   return (
     <>
-      <span aria-hidden className={cn(menuLeadingIconClassName, iconClassName)} />
-      <div className={menuLabelClassName} title={labelTitle}>
+      <span aria-hidden className={cn('size-4 shrink-0 text-text-tertiary', iconClassName)} />
+      <div
+        className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary"
+        title={labelTitle}
+      >
         {label}
       </div>
       {trailing}
@@ -27,5 +25,10 @@ export function MenuItemContent({ iconClassName, label, trailing }: MenuItemCont
 }
 
 export function ExternalLinkIndicator() {
-  return <span aria-hidden className={cn('i-ri-arrow-right-up-line', menuTrailingIconClassName)} />
+  return (
+    <span
+      aria-hidden
+      className="i-ri-arrow-right-up-line size-3.5 shrink-0 text-text-tertiary [&:dir(rtl)]:-scale-x-100"
+    />
+  )
 }

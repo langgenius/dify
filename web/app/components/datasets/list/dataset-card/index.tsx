@@ -102,7 +102,7 @@ const DatasetCard = ({
   // The entry's hit area stretches over the card. Tags, footer details, and operations are
   // positioned later in the card, so they stay independent controls above that area.
   const entryClassName =
-    "block rounded-t-xl text-left outline-hidden before:absolute before:inset-0 before:rounded-xl before:content-['']"
+    "block rounded-t-xl text-start outline-hidden before:absolute before:inset-0 before:rounded-xl before:content-['']"
 
   return (
     <li

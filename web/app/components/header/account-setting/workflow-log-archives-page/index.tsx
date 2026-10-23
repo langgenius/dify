@@ -523,10 +523,15 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
             {isCurrentWorkspaceOwner && (
               <AlertDialog
                 open={deleteDialogOpen}
-                onOpenChange={(open) => {
-                  if (deleteArchiveMutation.isPending) return
-                  if (open) deleteArchiveMutation.reset()
+                onOpenChange={(open, details) => {
+                  if (deleteArchiveMutation.isPending) {
+                    details.cancel()
+                    return
+                  }
                   setDeleteDialogOpen(open)
+                }}
+                onOpenChangeComplete={(open) => {
+                  if (!open) deleteArchiveMutation.reset()
                 }}
               >
                 <AlertDialogTrigger

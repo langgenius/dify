@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import { useQueryState } from 'nuqs'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   settingsQueryParamName,
@@ -9,6 +10,7 @@ import {
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import AccountDropdown from '../index'
 
 vi.mock('@/service/use-common', () => ({ useLogout: () => ({ mutate: vi.fn() }) }))
 vi.mock('next-themes', () => ({
@@ -49,6 +51,54 @@ async function renderAccount() {
     </ConsoleProvider>,
   )
 }
+
+it.each(['ltr', 'rtl'] as const)(
+  'opens the appearance submenu toward the reading direction in %s',
+  async (direction) => {
+    await page.viewport(1280, 800)
+    const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
+      accountProfile: { name: 'Current User', email: 'current@example.com' },
+      features: { education: { enabled: false } },
+    })
+    const { wrapper: NuqsProvider } = createNuqsTestWrapper()
+    const previousDirection = document.documentElement.dir
+    document.documentElement.dir = direction
+    try {
+      const screen = await render(
+        <DirectionProvider direction={direction}>
+          <ConsoleProvider>
+            <NuqsProvider>
+              <div style={{ marginInline: 'auto', paddingTop: 300, width: 240 }}>
+                <AccountDropdown
+                  trigger={({ ariaLabel }) => <button aria-label={ariaLabel}>Account</button>}
+                />
+              </div>
+            </NuqsProvider>
+          </ConsoleProvider>
+        </DirectionProvider>,
+      )
+      await screen.getByRole('button', { name: 'accountSettings.account.account' }).click()
+      const appearance = screen.getByRole('menuitem', {
+        name: 'accountSettings.account.appearanceLabel',
+      })
+      await appearance.click()
+      const submenu = screen.getByRole('menu', { name: 'accountSettings.account.appearanceLabel' })
+      await expect.element(submenu).toBeVisible()
+      // Leave room on both sides so collision fallback cannot hide a fixed-side override.
+      await expect
+        .poll(() => {
+          const triggerBounds = appearance.element().getBoundingClientRect()
+          const submenuBounds = submenu.element().getBoundingClientRect()
+          return direction === 'rtl'
+            ? submenuBounds.right <= triggerBounds.left
+            : submenuBounds.left >= triggerBounds.right
+        })
+        .toBe(true)
+    } finally {
+      document.documentElement.dir = previousDirection
+    }
+  },
+)
 
 // Chromium supplies the native focus-visible heuristic after menu focus restoration.
 it.each(['outside', 'Escape'])(
