@@ -100,3 +100,37 @@ def test_shell_assessment_uses_configured_assets_and_actual_script() -> None:
     assert seen[0]["parameters"] == {"script": "dify-agent files pull proof.json"}
     assert result.account_label is None
     assert result.destructive is False
+
+
+@pytest.mark.parametrize("destructive", [False, True])
+def test_shell_reasoning_receives_owner_scope_and_preserves_unknown_risk_and_model_verdict(
+    destructive: bool,
+) -> None:
+    from services.dify_builder.native_testing.agent_operations import AgentShellCapability
+
+    seen: list[dict[str, JsonValue]] = []
+    scope: dict[str, JsonValue] = {
+        "initial_working_directory": "request_owned_agent_workspace",
+        "may_contain_cloned_files": True,
+        "filesystem_confinement_guaranteed": False,
+    }
+    result = assess_call(
+        goal="Materialize configured synthetic assets in this run workspace; preserve user artifacts.",
+        task={"workflow_prompt": "Permit controlled configured-asset copies; never delete or replace user documents."},
+        tool=AgentShellCapability(
+            "config_pull", "workspace-shell", "Configured synthetic assets", execution_context=scope
+        ),
+        target={"shell": "shell", "kind": "skill"},
+        parameters={"script": "dify-agent config skills pull --json proof"},
+        reason=lambda facts: (
+            seen.append(facts)
+            or {
+                "risk_notice": "May overwrite the asset copy; archive contents and path behavior remain uncertain.",
+                "destructive": destructive,
+            }
+        ),
+    )
+    assert seen[0]["execution_context"] == scope
+    assert result.destructive is destructive
+    assert "uncertain" in result.risk_notice
+    assert result.parameters_summary == {"script": "dify-agent config skills pull --json proof"}

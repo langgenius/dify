@@ -1440,7 +1440,7 @@ jobs:
            'tests.unit_tests.core.repositories.test_sqlalchemy_workflow_node_execution_repository': {'test_resume_history_includes_paused_nodes_without_changing_default_reads': 4},
            'tests.unit_tests.core.workflow.nodes.agent_v2.test_dify_tools_builder': {'test_native_layers_without_an_injected_preparer_fail_closed': 1,
                                                                                      'test_ordinary_layers_do_not_use_an_injected_native_preparer': 1},
-           'tests.unit_tests.services.dify_builder.native_testing.test_agent_risk_assessor': {'test_shell_assessment_uses_configured_assets_and_actual_script': 1},
+           'tests.unit_tests.services.dify_builder.native_testing.test_agent_risk_assessor': {'test_shell_assessment_uses_configured_assets_and_actual_script': 1, 'test_shell_reasoning_receives_owner_scope_and_preserves_unknown_risk_and_model_verdict': 2},
            'tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_commands': {'test_public_pause_read_refreshes_callback_and_preserves_only_live_owned_resume': 16},
            'tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion': {'test_edit_terminal_failure_or_decline_preserves_edit_family_without_execution': 2,
                                                                                                      'test_edit_terminal_projection_refuses_stale_unknown_or_wrong_task_family': 5,
