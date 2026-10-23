@@ -23,7 +23,12 @@ from sqlalchemy.sql.elements import (
 )
 
 from core.dify_builder.models import Actor
-from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderTestInput
+from models.dify_builder import (
+    DifyBuilderExecutionRequest,
+    DifyBuilderSession,
+    DifyBuilderSessionCommit,
+    DifyBuilderTestInput,
+)
 from models.dify_builder_native_tests import (
     NativeContinuation,
     NativeDispatch,
@@ -161,7 +166,7 @@ class SQL:
         selected: list[object] = []
         for row in rows:
             name = description["name"]
-            if name in {"invocation_id", "id", "request_id"}:
+            if name in {"invocation_id", "id", "request_id", "context"}:
                 state = inspect(row, raiseerr=False)
                 if isinstance(state, InstanceState):
                     selected.append(state.attrs[name].value)
@@ -176,6 +181,8 @@ class SQL:
     def scalar[T](self, query: Select[tuple[T]]) -> T | None:
         if query.column_descriptions[0]["entity"] is App and query._for_update_arg is not None:
             self.events.append("app")
+        if query.column_descriptions[0]["entity"] is DifyBuilderSession and query._for_update_arg is not None:
+            self.events.append("session")
         rows = self.scalars(query)
         return rows[0] if rows else None
 
@@ -310,6 +317,27 @@ def case(monkeypatch: pytest.MonkeyPatch) -> HostCapacityCase:
         execution_mode="native",
     )
     rows: dict[type, Sequence[object]] = {
+        DifyBuilderSession: [
+            DifyBuilderSession(
+                id="session",
+                tenant_id="tenant",
+                owner_account_id="actor",
+                app_id="app",
+                version=1,
+                current_state="build.review",
+                entry_mode="build",
+            )
+        ],
+        DifyBuilderSessionCommit: [
+            DifyBuilderSessionCommit(
+                id="initial",
+                session_id="session",
+                version=1,
+                state="build.review",
+                actor="actor",
+                context={"paused": False},
+            )
+        ],
         NativeInvocationState: [state],
         DifyBuilderExecutionRequest: [request],
         NativeTestScope: [scope],
@@ -478,12 +506,19 @@ class OnceVerifier:
         self.used = True
 
 
-def test_capacity_commits_initial_claim_after_private_io_and_app_then_request(case: HostCapacityCase) -> None:
+def test_capacity_commits_initial_claim_after_private_io_and_app_then_request(
+    case: HostCapacityCase,
+) -> None:
     from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
 
     owner = NativeHostCapacity(case.lifecycle, cleanup_verifier=OnceVerifier(case.events))
     assert owner.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
-    assert case.events.index("private") < case.events.index("app") < case.events.index("request")
+    assert (
+        case.events.index("private")
+        < case.events.index("session")
+        < case.events.index("app")
+        < case.events.index("request")
+    )
     assert case.events[-1] == "commit"
     assert not owner.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
 

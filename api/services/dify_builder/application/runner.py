@@ -356,6 +356,9 @@ class Runner:
         if context.test_input_ref:
             context.retained_test_input_ref = context.test_input_ref
         context.last_command_id = self._env.command_id
+        receipt = context.task_control.get("receipt", {})
+        if settled and receipt.get("id") == self._env.command_id and receipt.get("enqueue") == "running":
+            receipt["enqueue"] = "settled"
         new_version = self._env.repo.compare_and_advance(
             session.id,
             session.version,
