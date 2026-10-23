@@ -1,4 +1,5 @@
 import { readFileSync, statSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, relative, resolve } from 'node:path'
 import { compileRuntime, runtimeConfigFile } from './transform.js'
 
@@ -16,6 +17,7 @@ type Compiled = {
 }
 
 const cache = new Map<string, Compiled>()
+const namespaceFile = createRequire(import.meta.url).resolve('@dify/openapi-inference/namespace')
 
 /** Namespace modules use an empty resource so bundlers don't retain a spec copy per module. */
 export default function openapiLoader(this: LoaderContext, content: string): string {
@@ -29,13 +31,14 @@ export default function openapiLoader(this: LoaderContext, content: string): str
   const runtimeModule = config
     ? `./${relative(dirname(this.resourcePath), config).replaceAll('\\', '/')}`
     : undefined
-  const key = JSON.stringify([fileName, runtimeModule])
+  const namespaceResource = `./${relative(dirname(this.resourcePath), namespaceFile).replaceAll('\\', '/')}`
+  const namespace = `${namespaceResource}?openapi-document=${encodeURIComponent(fileName)}`
+  const key = JSON.stringify([fileName, runtimeModule, namespaceResource])
   const stat = statSync(fileName)
   const version = `${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}`
   let compiled = cache.get(key)
   if (!compiled || compiled.version !== version || (!document && compiled.content !== content)) {
     const source = document ? readFileSync(fileName, 'utf8') : content
-    const namespace = `@dify/openapi-inference/namespace?openapi-document=${encodeURIComponent(fileName)}`
     compiled = {
       version,
       content: source,

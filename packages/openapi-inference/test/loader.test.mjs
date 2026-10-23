@@ -29,7 +29,10 @@ test('loader namespaces use a tiny resource and invalidate when the source docum
     writeFileSync(runtime, 'export default {};')
     const entry = loader.call(context, JSON.stringify(spec))
     const apiModule = JSON.parse(entry.match(/export \* as api from (.+);/)[1])
-    assert(apiModule.startsWith('@dify/openapi-inference/namespace?'))
+    assert.equal(
+      resolve(dirname(file), apiModule.split('?')[0]),
+      join(root, 'dist/tooling/openapi-namespace.js'),
+    )
     const query = new URLSearchParams(apiModule.slice(apiModule.indexOf('?')))
     assert.equal(query.get('openapi-document'), file)
     assert.equal(query.get('openapi-router'), '[]')
