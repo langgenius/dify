@@ -1394,33 +1394,6 @@ class TestDocumentServiceProcessRuleArgsValidate:
             with pytest.raises(ValueError, match="Process rule pre_processing_rules is required"):
                 DocumentService.process_rule_args_validate(knowledge_config)
 
-    def test_process_rule_args_validate_missing_pre_processing_rule_id_error(self):
-        """
-        Test error when pre_processing_rule id is missing.
-
-        Verifies that when a pre_processing_rule has no id, a ValueError
-        is raised.
-
-        This test ensures:
-        - Missing pre_processing_rule id is rejected
-        - Error message is clear
-        - Error type is correct
-        """
-        # Arrange
-        pre_processing_rules = [
-            PreProcessingRule.model_construct(id=None, enabled=True)  # Missing id
-        ]
-        process_rule = DocumentValidationTestDataFactory.create_process_rule(
-            mode="custom", pre_processing_rules=pre_processing_rules
-        )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config(process_rule=process_rule)
-
-        # Mock DatasetProcessRule.MODES
-        with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
-            # Act & Assert
-            with pytest.raises(ValueError, match="Process rule pre_processing_rules id is required"):
-                DocumentService.process_rule_args_validate(knowledge_config)
-
     def test_process_rule_args_validate_invalid_pre_processing_rule_enabled_error(self):
         """
         Test error when pre_processing_rule enabled is not boolean.

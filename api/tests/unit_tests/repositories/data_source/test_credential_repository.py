@@ -540,3 +540,29 @@ def test_get_for_stored_document_rejects_deleted_or_different_stored_credential(
         )
         is None
     )
+
+
+def test_get_for_stored_document_rejects_malformed_stored_source_info(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repository = SQLAlchemyDatasourceCredentialRepository(session_factory=sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        credential = _provider()
+        session.add(credential)
+        session.flush()
+        dataset, document = _notion_source(workspace_id="workspace-1", credential_id=credential.id)
+        document.data_source_info = "{not-json"
+        session.add_all([dataset, document])
+        credential_id = credential.id
+
+    assert (
+        repository.get_for_stored_document(
+            workspace_id="workspace-1",
+            dataset_id="dataset-1",
+            document_id="document-1",
+            credential_id=credential_id,
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
+        )
+        is None
+    )
