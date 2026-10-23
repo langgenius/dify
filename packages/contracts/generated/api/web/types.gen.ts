@@ -1762,6 +1762,7 @@ export type PostFormHumanInputByFormTokenData = {
 
 export type PostFormHumanInputByFormTokenErrors = {
   400: InvalidFormDataError | ErrorResponse
+  403: ErrorResponse
   404: ErrorResponse
   412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
   429: WebFormRateLimitExceededError | ErrorResponse
@@ -1788,6 +1789,7 @@ export type PostFormHumanInputByFormTokenUploadTokenData = {
 }
 
 export type PostFormHumanInputByFormTokenUploadTokenErrors = {
+  403: ErrorResponse
   404: ErrorResponse
   412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
   429: WebFormRateLimitExceededError | ErrorResponse
