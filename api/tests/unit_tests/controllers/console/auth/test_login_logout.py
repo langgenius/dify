@@ -7,11 +7,14 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Never
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
+from controllers.console import bp as console_bp
 from controllers.console import wraps
 from controllers.console.auth import login
 from controllers.console.auth.error import (
@@ -38,8 +41,16 @@ from controllers.console.error import (
     SeatsLimitExceeded,
     WorkspacesLimitExceeded,
 )
+from dify_app import DifyApp
 from enums import DeploymentEdition
+from extensions import ext_login
+from extensions.ext_redis import RedisClientWrapper
+from libs.passport import PassportService
+from models.account import Account, AccountStatus
+from repositories.account.repository import SQLAlchemyAccountRepository
 from services import account_errors
+from services.account.adapters import AccountIdentityGateway
+from services.account.login_adapters import RedisAccountSessionGateway, SQLAlchemyAccountRefreshPreparationGateway
 from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import (
     EmailCodeLoginCommand,
@@ -48,6 +59,7 @@ from services.entities.account_login_entities import (
     PasswordLoginCommand,
     PasswordLoginResult,
 )
+from tests.unit_tests.services.account.test_login_service import Dependencies
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
 TOKENS = AccountSessionTokens(access_token="access-token", refresh_token="refresh-token", csrf_token="csrf-token")
@@ -60,7 +72,7 @@ class FakeAuthenticationService:
     email_code_send_commands: list[EmailCodeSendCommand] = field(default_factory=list)
     email_code_login_commands: list[EmailCodeLoginCommand] = field(default_factory=list)
     reset_arguments: list[tuple[str, str | None, str]] = field(default_factory=list)
-    logout_account_ids: list[str] = field(default_factory=list)
+    logout_refresh_tokens: list[str] = field(default_factory=list)
     refresh_tokens: list[str] = field(default_factory=list)
     refresh_modes: list[LoginMode] = field(default_factory=list)
     workspace_found: bool = True
@@ -77,8 +89,8 @@ class FakeAuthenticationService:
             workspace_found=self.workspace_found,
         )
 
-    def logout(self, account_id: str) -> None:
-        self.logout_account_ids.append(account_id)
+    def logout(self, *, refresh_token: str) -> None:
+        self.logout_refresh_tokens.append(refresh_token)
 
     def send_reset_password_email(self, *, email: str, language: str | None, ip_address: str) -> str:
         self.reset_arguments.append((email, language, ip_address))
@@ -268,7 +280,7 @@ def test_email_code_login_decodes_code_and_serializes_tokens(
     ]
 
 
-def test_logout_uses_optional_current_account(
+def test_logout_revokes_cookie_and_clears_framework_identity(
     app: Flask,
     service: FakeAuthenticationService,
     monkeypatch: pytest.MonkeyPatch,
@@ -281,11 +293,12 @@ def test_logout_uses_optional_current_account(
         lambda: (SimpleNamespace(id="account-1"), "workspace-1"),
     )
 
+    monkeypatch.setattr(login, "extract_refresh_token", lambda _request: "refresh-token")
     with app.test_request_context("/logout", method="POST"):
         response = login.LogoutApi().post()
 
     assert response.json == {"result": "success"}
-    assert service.logout_account_ids == ["account-1"]
+    assert service.logout_refresh_tokens == ["refresh-token"]
     assert logout_calls == [True]
 
 
@@ -302,7 +315,7 @@ def test_logout_clears_cookies_without_current_account(
         response = login.LogoutApi().post()
 
     assert response.json == {"result": "success"}
-    assert service.logout_account_ids == []
+    assert service.logout_refresh_tokens == []
     assert logout_calls == []
     cookies = response.headers.getlist("Set-Cookie")
     assert any("access_token=" in cookie for cookie in cookies)
@@ -524,3 +537,91 @@ def test_login_mode_contract_preserves_optional_refresh_body(config_overrides: C
         "OAuthLoginQuery",
     ):
         assert schemas[schema]["properties"]["mode"]["default"] == "console"
+
+
+@pytest.mark.parametrize("expired_access", [False, True])
+def test_logout_revokes_workspace_less_account_session_even_with_expired_access(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    expired_access: bool,
+) -> None:
+    config_overrides(
+        SECRET_KEY="account-session-test-key-with-32-bytes",
+        CONSOLE_WEB_URL="https://console.example.com",
+        CONSOLE_API_URL="https://console.example.com",
+        COOKIE_DOMAIN="",
+        REDIS_KEY_PREFIX="session-test",
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
+    )
+    redis, commands = redis_transport
+    records: dict[str, bytes] = {}
+
+    def execute(command: str, *args: object, **kwargs: object) -> object:
+        del kwargs
+        key = str(args[0])
+        if command == "SETEX":
+            records[key] = str(args[2]).encode()
+            return True
+        if command == "GET":
+            return records.get(key)
+        if command == "DEL":
+            return int(records.pop(key, None) is not None)
+        if command == "EVAL":
+            key, expected = str(args[2]), str(args[3]).encode()
+            assert key.startswith("session-test:account_refresh_token:")
+            if records.get(key) == expected:
+                return int(records.pop(key, None) is not None)
+            return 0
+        raise AssertionError(command)
+
+    commands.side_effect = execute
+    account = Account(name="Consumer", email="consumer@example.com", status=AccountStatus.UNINITIALIZED)
+    sqlite_session.add(account)
+    sqlite_session.commit()
+    accounts = SQLAlchemyAccountRepository(sqlite_session_factory)
+    identity = AccountIdentityGateway(accounts=accounts, redis=redis)
+    sessions = RedisAccountSessionGateway(redis=redis)
+    authentication = Dependencies().service()
+    monkeypatch.setattr(authentication, "_sessions", sessions)
+    monkeypatch.setattr(
+        authentication, "_refresh_preparation", SQLAlchemyAccountRefreshPreparationGateway(accounts=accounts)
+    )
+    app = DifyApp("account-session")
+    app.register_blueprint(console_bp)
+    ext_login.init_app(app)
+    ext_login.bind_account_loader(app, identity.load_user)
+    monkeypatch.setattr(ext_login.session_factory, "create_session", sqlite_session_factory)
+    monkeypatch.setattr(
+        login, "application_services", lambda: SimpleNamespace(accounts=SimpleNamespace(authentication=authentication))
+    )
+    monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
+    assert identity.load_user(account.id) is None
+    initial = sessions.issue(account.id)
+    tokens = authentication.refresh(initial.refresh_token, mode=LoginMode.END_USER)
+    client = app.test_client()
+    access = (
+        PassportService().issue({"user_id": account.id, "sub": "Console API Passport", "exp": 1})
+        if expired_access
+        else tokens.access_token
+    )
+    client.set_cookie("__Host-access_token", access, domain="console.example.com", secure=True)
+    client.set_cookie("__Host-refresh_token", tokens.refresh_token, domain="console.example.com", secure=True)
+    client.set_cookie("__Host-csrf_token", tokens.csrf_token, domain="console.example.com", secure=True)
+    # A later login must survive revocation of the older refresh token.
+    later = sessions.issue(account.id)
+    response = client.post("/console/api/logout", base_url="https://console.example.com")
+    assert response.status_code == 200
+    for cookie in ("__Host-access_token", "__Host-refresh_token", "__Host-csrf_token"):
+        assert client.get_cookie(cookie, domain="console.example.com") is None
+    with pytest.raises(account_errors.InvalidRefreshTokenError):
+        authentication.refresh(tokens.refresh_token, mode=LoginMode.END_USER)
+    assert sessions.resolve_refresh_token(later.refresh_token) == account.id
+    assert records[f"session-test:account_refresh_token:{account.id}"] == later.refresh_token.encode()
+    authentication.logout(refresh_token=tokens.refresh_token)
+    authentication.logout(refresh_token=later.refresh_token)
+    assert sessions.resolve_refresh_token(later.refresh_token) is None
+    assert f"session-test:account_refresh_token:{account.id}" not in records
+    assert client.post("/console/api/logout", base_url="https://console.example.com").status_code == 200

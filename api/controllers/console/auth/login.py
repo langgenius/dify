@@ -254,9 +254,10 @@ class LogoutApi(Resource):
     @setup_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self):
+        if refresh_token := extract_refresh_token(request):
+            application_services().accounts.authentication.logout(refresh_token=refresh_token)
         account, _ = current_account_with_tenant_optional()
         if account is not None:
-            application_services().accounts.authentication.logout(account.id)
             flask_login.logout_user()
 
         response = make_response(dump_response(SimpleResultResponse, {"result": "success"}))

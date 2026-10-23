@@ -161,8 +161,8 @@ class FakeSessions:
         self.issued.append(account_id)
         return TOKENS
 
-    def revoke(self, account_id: str) -> None:
-        self.revoked.append(account_id)
+    def revoke(self, refresh_token: str) -> None:
+        self.revoked.append(refresh_token)
 
     def resolve_refresh_token(self, refresh_token: str) -> str | None:
         assert refresh_token == "old-refresh"
@@ -948,9 +948,9 @@ def test_logout_and_refresh_delegate_to_session_gateway() -> None:
     dependencies = Dependencies()
     service = dependencies.service()
 
-    service.logout("account-1")
+    service.logout(refresh_token="old-refresh")
 
-    assert dependencies.sessions.revoked == ["account-1"]
+    assert dependencies.sessions.revoked == ["old-refresh"]
     assert service.refresh("old-refresh") == TOKENS
     assert dependencies.refresh_preparation.account_ids == ["account-1"]
     assert dependencies.sessions.rotations == [("old-refresh", "account-1")]

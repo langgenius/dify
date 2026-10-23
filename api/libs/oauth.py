@@ -4,7 +4,7 @@ import json
 import logging
 import urllib.parse
 from dataclasses import dataclass
-from typing import NotRequired, TypedDict, override
+from typing import Literal, NotRequired, TypedDict, override
 
 import httpx
 from itsdangerous import BadData, URLSafeTimedSerializer
@@ -39,32 +39,31 @@ class OAuthState(TypedDict, total=False):
     redirect_url: str
 
 
-END_USER_OAUTH_STATE_PREFIX = "end_user."
-END_USER_OAUTH_STATE_MAX_AGE = 600
+ACCOUNT_OAUTH_STATE_PREFIX = "account_oauth."
+ACCOUNT_OAUTH_STATE_MAX_AGE = 600
 
 
-class EndUserOAuthState(BaseModel):
+class AccountOAuthState(BaseModel):
+    mode: Literal["console", "end_user"]
     provider: str
     nonce: str
     context: OAuthState
 
 
-def encode_end_user_oauth_state(state: EndUserOAuthState) -> str:
-    serializer = URLSafeTimedSerializer(dify_config.SECRET_KEY, salt="end-user-oauth-login")
-    return END_USER_OAUTH_STATE_PREFIX + serializer.dumps(state.model_dump())
+def encode_account_oauth_state(state: AccountOAuthState) -> str:
+    serializer = URLSafeTimedSerializer(dify_config.SECRET_KEY, salt="account-oauth-login")
+    return ACCOUNT_OAUTH_STATE_PREFIX + serializer.dumps(state.model_dump())
 
 
-def decode_end_user_oauth_state(state: str) -> EndUserOAuthState:
-    if not state.startswith(END_USER_OAUTH_STATE_PREFIX):
-        raise ValueError("Invalid End User OAuth state.")
-    serializer = URLSafeTimedSerializer(dify_config.SECRET_KEY, salt="end-user-oauth-login")
+def decode_account_oauth_state(state: str) -> AccountOAuthState:
+    if not state.startswith(ACCOUNT_OAUTH_STATE_PREFIX):
+        raise ValueError("Invalid Account OAuth state.")
+    serializer = URLSafeTimedSerializer(dify_config.SECRET_KEY, salt="account-oauth-login")
     try:
-        payload = serializer.loads(
-            state.removeprefix(END_USER_OAUTH_STATE_PREFIX), max_age=END_USER_OAUTH_STATE_MAX_AGE
-        )
-        return EndUserOAuthState.model_validate(payload)
+        payload = serializer.loads(state.removeprefix(ACCOUNT_OAUTH_STATE_PREFIX), max_age=ACCOUNT_OAUTH_STATE_MAX_AGE)
+        return AccountOAuthState.model_validate(payload)
     except (BadData, ValidationError) as exc:
-        raise ValueError("Invalid or expired End User OAuth state.") from exc
+        raise ValueError("Invalid or expired Account OAuth state.") from exc
 
 
 class GitHubEmailRecord(TypedDict, total=False):

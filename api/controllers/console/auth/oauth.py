@@ -19,12 +19,12 @@ from fields.base import ResponseModel
 from libs.helper import dump_response, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
 from libs.oauth import (
-    END_USER_OAUTH_STATE_MAX_AGE,
-    END_USER_OAUTH_STATE_PREFIX,
-    EndUserOAuthState,
-    decode_end_user_oauth_state,
+    ACCOUNT_OAUTH_STATE_MAX_AGE,
+    ACCOUNT_OAUTH_STATE_PREFIX,
+    AccountOAuthState,
+    decode_account_oauth_state,
     decode_oauth_state,
-    encode_end_user_oauth_state,
+    encode_account_oauth_state,
 )
 from libs.token import (
     is_secure,
@@ -136,8 +136,8 @@ def _end_user_return_target(redirect_url: str | None) -> str:
     return target
 
 
-def _end_user_state_cookie(provider: str) -> str:
-    return f"end_user_oauth_{provider}"
+def _oauth_state_cookie(provider: str, nonce: str) -> str:
+    return f"account_oauth_{provider}_{nonce}"
 
 
 def _safe_console_redirect_target(redirect_url: str | None) -> str:
@@ -194,18 +194,22 @@ class OAuthLogin(Resource):
     @model_validate(OAuthLoginQuery)
     def get(self, req_data: OAuthLoginQuery, provider: str):
         require_login_mode(req_data.mode, invite_token=req_data.invite_token)
-        state = None
-        nonce = None
         redirect_url = req_data.redirect_url or None
         if req_data.mode == LoginMode.END_USER:
             redirect_url = _end_user_return_target(redirect_url)
-            nonce = secrets.token_urlsafe(32)
-            context = {"redirect_url": redirect_url}
-            if timezone := _validated_timezone(req_data.timezone):
-                context["timezone"] = timezone
-            if language := _validated_language(req_data.language):
-                context["language"] = language
-            state = encode_end_user_oauth_state(EndUserOAuthState(provider=provider, nonce=nonce, context=context))
+        nonce = secrets.token_urlsafe(32)
+        context = {}
+        if redirect_url:
+            context["redirect_url"] = redirect_url
+        if req_data.invite_token:
+            context["invite_token"] = req_data.invite_token
+        if timezone := _validated_timezone(req_data.timezone):
+            context["timezone"] = timezone
+        if language := _validated_language(req_data.language):
+            context["language"] = language
+        state = encode_account_oauth_state(
+            AccountOAuthState(mode=req_data.mode.value, provider=provider, nonce=nonce, context=context)
+        )
         try:
             auth_url = application_services().accounts.oauth.start_authorization(
                 provider,
@@ -222,17 +226,14 @@ class OAuthLogin(Resource):
             return dump_response(OAuthErrorResponse, {"error": "Invalid provider"}), 400
         response = redirect(auth_url)
         response.headers["Cache-Control"] = "no-store"
-        if nonce is not None:
-            response.set_cookie(
-                _end_user_state_cookie(provider),
-                nonce,
-                httponly=True,
-                secure=is_secure(),
-                samesite="Lax",
-                max_age=END_USER_OAUTH_STATE_MAX_AGE,
-            )
-        else:
-            response.delete_cookie(_end_user_state_cookie(provider))
+        response.set_cookie(
+            _oauth_state_cookie(provider, nonce),
+            nonce,
+            httponly=True,
+            secure=is_secure(),
+            samesite="Lax",
+            max_age=ACCOUNT_OAUTH_STATE_MAX_AGE,
+        )
         return response
 
 
@@ -249,14 +250,19 @@ class OAuthCallback(Resource):
     @model_validate(OAuthCallbackQuery)
     def get(self, req_data: OAuthCallbackQuery, provider: str):
         mode = LoginMode.CONSOLE
-        nonce = request.cookies.get(_end_user_state_cookie(provider))
-        if nonce is not None or (req_data.state or "").startswith(END_USER_OAUTH_STATE_PREFIX):
-            state = decode_end_user_oauth_state(req_data.state or "")
+        state_cookie = None
+        if (req_data.state or "").startswith(ACCOUNT_OAUTH_STATE_PREFIX):
+            state = decode_account_oauth_state(req_data.state or "")
+            state_cookie = _oauth_state_cookie(provider, state.nonce)
+            nonce = request.cookies.get(state_cookie)
             if state.provider != provider or not nonce or not secrets.compare_digest(state.nonce, nonce):
-                raise ValueError("End User OAuth state does not match this browser.")
-            mode = LoginMode.END_USER
+                raise ValueError("OAuth state does not match this browser.")
+            mode = LoginMode(state.mode)
             oauth_state = state.context
         else:
+            # Do not downgrade an active protected attempt to the legacy Console flow.
+            if any(name.startswith(f"account_oauth_{provider}_") for name in request.cookies):
+                raise ValueError("Missing or invalid OAuth state.")
             oauth_state = decode_oauth_state(req_data.state)
         require_login_mode(mode, invite_token=oauth_state.get("invite_token"))
         requested_redirect = oauth_state.get("redirect_url")
@@ -272,9 +278,10 @@ class OAuthCallback(Resource):
                 query = f"{target.query}&" if target.query else ""
                 query += urllib.parse.urlencode({"message": message})
                 response = redirect(urllib.parse.urlunsplit(target._replace(query=query)))
-                response.delete_cookie(_end_user_state_cookie(provider))
             else:
                 response = _signin_redirect(message, **return_params, **params)
+            if state_cookie is not None:
+                response.delete_cookie(state_cookie)
             return response
 
         try:
@@ -322,6 +329,6 @@ class OAuthCallback(Resource):
 
         target_url = _oauth_callback_target(result, requested_redirect, mode)
         response = _redirect_with_console_session(result.tokens, target_url)
-        if mode == LoginMode.END_USER:
-            response.delete_cookie(_end_user_state_cookie(provider))
+        if state_cookie is not None:
+            response.delete_cookie(state_cookie)
         return response

@@ -74,7 +74,7 @@ class HumanVerificationGateway(Protocol):
 class AccountSessionGateway(Protocol):
     def issue(self, account_id: str) -> AccountSessionTokens: ...
 
-    def revoke(self, account_id: str) -> None: ...
+    def revoke(self, refresh_token: str) -> None: ...
 
     def resolve_refresh_token(self, refresh_token: str) -> str | None: ...
 
@@ -237,8 +237,8 @@ class ConsoleAuthenticationService:
         self._security.reset_login_failures(normalized_email)
         return PasswordLoginResult(tokens=tokens, workspace_found=True if command.mode == LoginMode.CONSOLE else None)
 
-    def logout(self, account_id: str) -> None:
-        self._sessions.revoke(account_id)
+    def logout(self, *, refresh_token: str) -> None:
+        self._sessions.revoke(refresh_token)
 
     def send_reset_password_email(self, *, email: str, language: str | None, ip_address: str) -> str:
         normalized_email = email.lower()

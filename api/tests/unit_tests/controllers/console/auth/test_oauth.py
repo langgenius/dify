@@ -12,7 +12,7 @@ from controllers.console import wraps as console_wraps
 from controllers.console.auth import oauth as oauth_controller
 from controllers.console.auth.oauth import OAuthCallback, OAuthLogin
 from enums import DeploymentEdition
-from libs.oauth import EndUserOAuthState, encode_end_user_oauth_state, encode_oauth_state
+from libs.oauth import AccountOAuthState, decode_account_oauth_state, encode_account_oauth_state, encode_oauth_state
 from services.account_errors import (
     InvalidOAuthProviderError,
     OAuthIdentityLockUnavailableError,
@@ -88,6 +88,16 @@ def test_login_parses_input_and_delegates_to_application_service(
 
     assert response.status_code == 302
     assert response.headers["Location"] == "https://provider.example/authorize"
+    protected_state = service.authorization_calls[0][1].state
+    assert protected_state is not None
+    decoded = decode_account_oauth_state(protected_state)
+    assert decoded.mode == "console"
+    assert decoded.context == {
+        "invite_token": "invite",
+        "timezone": "Asia/Shanghai",
+        "language": "zh-Hans",
+        "redirect_url": "/apps",
+    }
     assert service.authorization_calls == [
         (
             "github",
@@ -96,6 +106,7 @@ def test_login_parses_input_and_delegates_to_application_service(
                 timezone="Asia/Shanghai",
                 language="zh-Hans",
                 redirect_url="/apps",
+                state=protected_state,
             ),
         )
     ]
@@ -305,8 +316,8 @@ def test_oauth_admission_rejects_disabled_social_login(
 
 
 def _end_user_state(target: str) -> str:
-    return encode_end_user_oauth_state(
-        EndUserOAuthState(provider="github", nonce="browser-nonce", context={"redirect_url": target})
+    return encode_account_oauth_state(
+        AccountOAuthState(mode="end_user", provider="github", nonce="browser-nonce", context={"redirect_url": target})
     )
 
 
@@ -318,13 +329,13 @@ def test_end_user_oauth_rejects_unbound_or_modified_state(
     service = FakeOAuthService()
     _install_service(monkeypatch, service)
     state = _end_user_state("https://apps.example.com/chatbot/app-code")
-    headers: dict[str, str] = {"Cookie": "end_user_oauth_github=browser-nonce"}
+    headers: dict[str, str] = {"Cookie": "account_oauth_github_browser-nonce=browser-nonce"}
     if failure == "tampered":
         state += "invalid"
     elif failure == "missing_cookie":
         headers = {}
     elif failure == "wrong_cookie":
-        headers = {"Cookie": "end_user_oauth_github=other-browser"}
+        headers = {"Cookie": "account_oauth_github_browser-nonce=other-browser"}
     elif failure == "missing_state":
         state = ""
     provider = "google" if failure == "wrong_provider" else "github"
@@ -352,7 +363,7 @@ def test_end_user_oauth_rechecks_feature_flag_at_callback(
         app.test_request_context(
             "/oauth/authorize/github",
             query_string={"code": "code-1", "state": state},
-            headers={"Cookie": "end_user_oauth_github=browser-nonce"},
+            headers={"Cookie": "account_oauth_github_browser-nonce=browser-nonce"},
         ),
         pytest.raises(Forbidden),
     ):
@@ -373,7 +384,7 @@ def test_callback_retry_keeps_end_user_mode_and_web_app_return_target(
     with app.test_request_context(
         "/oauth/authorize/github",
         query_string={"code": "code-1", "state": state},
-        headers={"Cookie": "end_user_oauth_github=browser-nonce"},
+        headers={"Cookie": "account_oauth_github_browser-nonce=browser-nonce"},
     ):
         response = OAuthCallback().get("github")
     destination = urlsplit(response.headers["Location"])

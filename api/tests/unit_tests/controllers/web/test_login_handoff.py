@@ -19,6 +19,7 @@ from controllers.console.auth import login as console_login
 from controllers.web import bp as web_bp
 from controllers.web import passport
 from extensions.ext_redis import RedisClientWrapper
+from libs.oauth import decode_account_oauth_state
 from libs.passport import PassportService
 from repositories.web_passport_repository import WebPassportRepository
 from services.web_login_handoff import WebLoginHandoffService, WebLoginTarget
@@ -225,9 +226,11 @@ def test_oauth_returns_through_webapp_signin_with_pkce_handoff(
     assert response.status_code == 302
     cookies = SimpleCookie()
     cookies.load(response.headers["Set-Cookie"])
-    assert cookies["end_user_oauth_github"]["httponly"]
-    assert cookies["end_user_oauth_github"]["samesite"] == "Lax"
     state = service.authorization_calls[0][1].state
+    assert state is not None
+    nonce = decode_account_oauth_state(state).nonce
+    assert cookies[f"account_oauth_github_{nonce}"]["httponly"]
+    assert cookies[f"account_oauth_github_{nonce}"]["samesite"] == "Lax"
     response = client.get(
         "/console/api/oauth/authorize/github",
         base_url="https://console.example.com",
@@ -284,3 +287,55 @@ def test_handoff_storage_failure_has_documented_retryable_error(handoff: SimpleN
         )
     assert response.status_code == 503
     assert response.json["code"] == "web_login_unavailable"
+
+
+@pytest.mark.parametrize("modes", [("end_user", "end_user"), ("console", "end_user"), ("end_user", "console")])
+@pytest.mark.parametrize("reverse_callbacks", [False, True])
+def test_concurrent_oauth_attempts_keep_separate_state_and_share_account_session(
+    handoff: SimpleNamespace, monkeypatch: pytest.MonkeyPatch, modes: tuple[str, str], reverse_callbacks: bool
+) -> None:
+    from controllers.console.auth import oauth
+    from services.entities.account_entities import AccountSessionTokens
+    from services.entities.account_oauth_entities import OAuthSignInResult
+    from tests.unit_tests.controllers.console.auth.test_oauth import FakeOAuthService
+
+    apply_config_overrides(monkeypatch, ENABLE_SOCIAL_OAUTH_LOGIN=True)
+    service = FakeOAuthService(
+        callback_result=OAuthSignInResult(
+            tokens=AccountSessionTokens(handoff.login, "refresh", "csrf"), oauth_new_user=False
+        )
+    )
+    handoff.services.accounts = SimpleNamespace(oauth=service)
+    monkeypatch.setattr(oauth, "application_services", lambda: handoff.services)
+    client = handoff.app.test_client()
+    attempts: list[tuple[str, str, str]] = []
+    for index, mode in enumerate(modes):
+        target = f"https://console.example.com/signin?mode=end_user&attempt={index}" if mode == "end_user" else "/apps"
+        response = client.get(
+            "/console/api/oauth/login/github",
+            base_url="https://console.example.com",
+            query_string={"mode": mode, "redirect_url": target},
+        )
+        assert response.status_code == 302
+        state = service.authorization_calls[-1][1].state
+        assert state is not None
+        cookie = f"account_oauth_github_{decode_account_oauth_state(state).nonce}"
+        attempts.append((state, cookie, target))
+    assert attempts[0][1] != attempts[1][1]
+    for _, cookie, _ in attempts:
+        assert client.get_cookie(cookie, domain="console.example.com") is not None
+    order = [1, 0] if reverse_callbacks else [0, 1]
+    for position, index in enumerate(order):
+        state, cookie, target = attempts[index]
+        response = client.get(
+            "/console/api/oauth/authorize/github",
+            base_url="https://console.example.com",
+            query_string={"code": f"code-{index}", "state": state},
+        )
+        assert response.status_code == 302
+        assert response.headers["Location"] == (target if modes[index] == "end_user" else "/apps?oauth_new_user=false")
+        assert service.callback_calls[-1].mode == modes[index]
+        assert client.get_cookie(cookie, domain="console.example.com") is None
+        assert client.get_cookie("__Host-access_token", domain="console.example.com").value == handoff.login
+        if position == 0:
+            assert client.get_cookie(attempts[order[1]][1], domain="console.example.com") is not None

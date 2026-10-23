@@ -282,7 +282,7 @@ def test_session_gateway_resolves_rotates_and_revokes_refresh_tokens(
     redis_transport: tuple[RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     redis, commands = redis_transport
-    commands.side_effect = [b"account-1", 1, 1, b"stored-refresh", 1, 1]
+    commands.side_effect = [b"account-1", 1, 1, b"account-1", 1, 1]
     gateway = adapters.RedisAccountSessionGateway(redis=redis)
     monkeypatch.setattr(
         gateway,
@@ -294,14 +294,16 @@ def test_session_gateway_resolves_rotates_and_revokes_refresh_tokens(
 
     assert gateway.resolve_refresh_token("refresh") == "account-1"
     assert gateway.rotate(refresh_token="refresh", account_id="account-1").refresh_token == "new-refresh"
-    gateway.revoke("account-1")
+    gateway.revoke("stored-refresh")
 
     deleted_keys = [call.args[1] for call in commands.call_args_list if call.args[0] == "DEL"]
     assert deleted_keys == [
         "refresh_token:refresh",
-        "account_refresh_token:account-1",
         "refresh_token:stored-refresh",
-        "account_refresh_token:account-1",
+    ]
+    assert [call.args[3:] for call in commands.call_args_list if call.args[0] == "EVAL"] == [
+        ("account_refresh_token:account-1", "refresh"),
+        ("account_refresh_token:account-1", "stored-refresh"),
     ]
     assert commands.call_count == 6
 

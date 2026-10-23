@@ -5,13 +5,13 @@ import pytest
 from itsdangerous import TimestampSigner
 
 from libs.oauth import (
-    EndUserOAuthState,
+    AccountOAuthState,
     GitHubOAuth,
     GoogleOAuth,
     OAuth,
-    decode_end_user_oauth_state,
+    decode_account_oauth_state,
     decode_oauth_state,
-    encode_end_user_oauth_state,
+    encode_account_oauth_state,
     encode_oauth_state,
 )
 
@@ -52,23 +52,23 @@ def test_oauth_state_returns_empty_payload_for_invalid_state() -> None:
     assert decode_oauth_state("invalid-state") == {}
 
 
-def test_end_user_oauth_state_is_signed_and_expires(
+def test_account_oauth_state_is_signed_and_expires(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
 ) -> None:
     config_overrides(SECRET_KEY="end-user-state-test-key")
     now = 1000
     monkeypatch.setattr(TimestampSigner, "get_timestamp", lambda _self: now)
-    original = EndUserOAuthState(
-        provider="github", nonce="nonce", context={"redirect_url": "/chatbot/code?q=a%26b#result"}
+    original = AccountOAuthState(
+        mode="end_user", provider="github", nonce="nonce", context={"redirect_url": "/chatbot/code?q=a%26b#result"}
     )
-    state = encode_end_user_oauth_state(original)
-    assert decode_end_user_oauth_state(state) == original
+    state = encode_account_oauth_state(original)
+    assert decode_account_oauth_state(state) == original
     with pytest.raises(ValueError, match="Invalid or expired"):
-        decode_end_user_oauth_state(state + "tampered")
+        decode_account_oauth_state(state + "tampered")
     now += 601
     with pytest.raises(ValueError, match="Invalid or expired"):
-        decode_end_user_oauth_state(state)
+        decode_account_oauth_state(state)
 
 
 @pytest.mark.parametrize("provider", [GitHubOAuth, GoogleOAuth])
