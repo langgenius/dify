@@ -21,6 +21,7 @@ from graphon.model_runtime.entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from graphon.model_runtime.entities.model_entities import AIModelEntity
 from models.model import App, AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
@@ -52,7 +53,7 @@ class HistoryPrompt:
     tenant_id: str | None
     image_detail: ImagePromptMessageContent.DETAIL
 
-    def to_prompt_message(self) -> PromptMessage:
+    def to_prompt_message(self, *, model_schema: AIModelEntity | None = None) -> PromptMessage:
         contents: list[PromptMessageContentUnionTypes] = []
         if self.files and self.tenant_id is not None:
             for reference in self.files:
@@ -69,7 +70,15 @@ class HistoryPrompt:
                     tenant_id=self.tenant_id,
                     access_controller=_file_access_controller,
                 )
-                contents.append(file_manager.to_prompt_message_content(file, image_detail_config=self.image_detail))
+                content = file_manager.to_prompt_message_content(file, image_detail_config=self.image_detail)
+                if model_schema is not None and not model_schema.supports_prompt_content_type(content.type):
+                    # The model cannot consume this content type natively (e.g. a document replayed
+                    # from an earlier turn into a text/vision-only model). Keep the conversational
+                    # context as text instead of sending a part the provider rejects with a 400
+                    # (issue #41059).
+                    contents.append(TextPromptMessageContent(data=f"[Unsupported file type: {file.type.value}]"))
+                    continue
+                contents.append(content)
 
         if contents:
             contents.append(TextPromptMessageContent(data=self.text))
@@ -90,7 +99,12 @@ class PreparedHistory:
     prompts: tuple[HistoryPrompt, ...]
 
     def get_prompt_messages(self, *, model_instance: ModelInstance, max_token_limit: int) -> Sequence[PromptMessage]:
-        prompt_messages = [prompt.to_prompt_message() for prompt in self.prompts]
+        try:
+            model_schema = model_instance.get_model_schema()
+        except ValueError:
+            # Schema unresolved: keep the previous send-anyway behavior.
+            model_schema = None
+        prompt_messages = [prompt.to_prompt_message(model_schema=model_schema) for prompt in self.prompts]
         if not prompt_messages:
             return []
 
