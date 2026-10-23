@@ -3328,11 +3328,6 @@
       "count": 1
     }
   },
-  "web/app/components/header/account-setting/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    }
-  },
   "web/app/components/header/account-setting/ip-policies-page/policy-item.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -3361,11 +3356,6 @@
   "web/app/components/header/account-setting/members-page/transfer-ownership-modal/member-selector.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/app/components/header/account-setting/menu-dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/__tests__/hooks.spec.ts": {
