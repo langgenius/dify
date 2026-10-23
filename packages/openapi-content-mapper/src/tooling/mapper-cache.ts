@@ -103,5 +103,5 @@ export function mapperTransform() {
     ),
   )
   const owner = process.getuid?.() ?? process.env.USERNAME ?? 'user'
-  return createCachedTransform(join(tmpdir(), `dify-openapi-inference-${owner}`), revision)
+  return createCachedTransform(join(tmpdir(), `dify-openapi-content-mapper-${owner}`), revision)
 }

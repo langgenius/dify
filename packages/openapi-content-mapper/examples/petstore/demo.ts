@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
 import { createServer } from 'node:http'
-import { ApiError, createClient } from '@dify/openapi-inference'
+import { ApiError, createClient } from '@dify/openapi-content-mapper'
 import { api as jsonApi } from './pets.openapi'
 import { api } from './pets.openapi.yaml'
 

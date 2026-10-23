@@ -24,16 +24,16 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Test SDK types, runtime and Vite integration
-        run: pnpm --filter @dify/openapi-inference test
+        run: pnpm --filter @dify/openapi-content-mapper test
 
       - name: Verify the packed SDK in an independent npm project
-        run: pnpm --filter @dify/openapi-inference test:package
+        run: pnpm --filter @dify/openapi-content-mapper test:package
 
       - name: Test Next.js adapters and tree-shaking
-        run: pnpm --filter @dify/openapi-inference test:next
+        run: pnpm --filter @dify/openapi-content-mapper test:next
 
       - name: Verify the production console bundle
-        run: pnpm --filter @dify/openapi-inference exec node --test integration/knowledge-fs-console.test.mjs
+        run: pnpm --filter @dify/openapi-content-mapper exec node --test integration/knowledge-fs-console.test.mjs
 
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})

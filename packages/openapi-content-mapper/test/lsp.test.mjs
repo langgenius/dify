@@ -49,7 +49,7 @@ test('native TS 7.1 LSP: operation completions, hover, definition into YAML, liv
       processId: process.pid,
       rootUri: pathToFileURL(root).href,
       initializationOptions: { runExternalCode: true },
-      workspaceFolders: [{ uri: pathToFileURL(root).href, name: 'openapi-inference' }],
+      workspaceFolders: [{ uri: pathToFileURL(root).href, name: 'openapi-content-mapper' }],
       capabilities: {
         general: { positionEncodings: ['utf-16'] },
         textDocument: { hover: { contentFormat: ['plaintext'] } },

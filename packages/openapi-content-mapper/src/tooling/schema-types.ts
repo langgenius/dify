@@ -93,7 +93,7 @@ export function schemaTypes(root: unknown): string {
   }
   declarations.push(
     'type ReadonlyDocument<T> = { readonly [K in keyof T]: T[K] extends object ? ReadonlyDocument<T[K]> : T[K] };',
-    'type Document = import("@dify/openapi-inference").SchemaDocument<ReadonlyDocument<typeof document>, {',
+    'type Document = import("@dify/openapi-content-mapper").SchemaDocument<ReadonlyDocument<typeof document>, {',
   )
   for (const json of [false, true]) {
     declarations.push(`${json ? 'json' : 'default'}: {`)

@@ -17,7 +17,7 @@ test('document configuration types context for both the API and query namespaces
     {
       'pets.yaml': yaml,
       'pets.yaml.config.ts': `
-import type { RuntimeConfig } from '@dify/openapi-inference';
+import type { RuntimeConfig } from '@dify/openapi-content-mapper';
 export type Context = { silent?: boolean };
 const runtime: RuntimeConfig<Context> = {
   queryKeyPrefix: ['console'],

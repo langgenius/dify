@@ -147,8 +147,8 @@ paths:
     await writeFile(
       join(directory, 'pets.yaml.config.ts'),
       `
-import type { RuntimeConfig } from '@dify/openapi-inference';
-import { createClient } from '@dify/openapi-inference';
+import type { RuntimeConfig } from '@dify/openapi-content-mapper';
+import { createClient } from '@dify/openapi-content-mapper';
 export type Context = { name?: string };
 const runtime: RuntimeConfig<Context> = {
   queryKeyPrefix: ['pets'],
@@ -204,7 +204,7 @@ import * as document from './pets.yaml';
 assert.deepEqual(Object.keys(document), ['api', 'query']);
 assert.deepEqual(await document.api.pets.byPetId.get({params: {petId: 1}}, {context: {name: 'packed'}}), {name: 'packed'});
 assert.deepEqual(document.query.key(), [['pets'], {}]);
-assert.equal(typeof (await import('@dify/openapi-inference/loader')).default, 'function');
+assert.equal(typeof (await import('@dify/openapi-content-mapper/loader')).default, 'function');
 `,
     )
     await run(process.execPath, ['--import', `${manifest.name}/register`, 'runtime.mjs'], directory)
@@ -220,7 +220,7 @@ export const getPet = (input) => api.pets.byPetId.get(input);
       `
 import assert from 'node:assert/strict';
 import { build } from 'vite';
-import { openapi } from '@dify/openapi-inference/vite';
+import { openapi } from '@dify/openapi-content-mapper/vite';
 const result = await build({
   configFile: false, logLevel: 'silent', plugins: [openapi()],
   build: { write: false, lib: {entry: './entry.mjs', formats: ['es']} },

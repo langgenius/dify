@@ -17,7 +17,9 @@ type Compiled = {
 }
 
 const cache = new Map<string, Compiled>()
-const namespaceFile = createRequire(import.meta.url).resolve('@dify/openapi-inference/namespace')
+const namespaceFile = createRequire(import.meta.url).resolve(
+  '@dify/openapi-content-mapper/namespace',
+)
 
 /** Namespace modules use an empty resource so bundlers don't retain a spec copy per module. */
 export default function openapiLoader(this: LoaderContext): string {

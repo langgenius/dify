@@ -1,4 +1,4 @@
-# @dify/openapi-inference
+# @dify/openapi-content-mapper
 
 Import OpenAPI documents as typed, tree-shakable API calls and TanStack Query helpers using **TypeScript 7.1 Content Mappers**. No generated SDK source or declaration files need to be committed.
 
@@ -21,11 +21,11 @@ Import OpenAPI documents as typed, tree-shakable API calls and TanStack Query he
 After the beta is published:
 
 ```sh
-npm install @dify/openapi-inference@beta
+npm install @dify/openapi-content-mapper@beta
 npm install --save-dev typescript@7.1.0-beta vite@8.3.5
 ```
 
-Before publication, install a locally packed release candidate with `npm install /path/to/dify-openapi-inference-0.1.0-beta.0.tgz`. See [Development and release] for packaging and verification.
+Before publication, install a locally packed release candidate with `npm install /path/to/dify-openapi-content-mapper-0.1.0-beta.0.tgz`. See [Development and release] for packaging and verification.
 
 Create `pets.openapi.yaml`:
 
@@ -73,7 +73,7 @@ Configure `tsconfig.json`:
   },
   "contentMappers": [
     {
-      "package": "@dify/openapi-inference",
+      "package": "@dify/openapi-content-mapper",
       "extensions": [".yaml", ".yml", ".openapi"]
     }
   ]
@@ -83,7 +83,7 @@ Configure `tsconfig.json`:
 Configure `vite.config.ts`:
 
 ```ts
-import { openapi } from '@dify/openapi-inference/vite'
+import { openapi } from '@dify/openapi-content-mapper/vite'
 import { defineConfig } from 'vite'
 
 export default defineConfig({ plugins: [openapi()] })
@@ -109,7 +109,7 @@ For VS Code, install Microsoft's TypeScript 7 extension (`TypeScriptTeam.native-
 
 ### Compiler cache
 
-Successful mapper results are cached in the current user's temporary directory under `dify-openapi-inference-<user>`, retaining up to 64 documents. Content, implementation and configuration-sidecar presence changes invalidate the cache; sidecar contents are checked by TypeScript. The cache can be deleted safely. Corrupt entries or unavailable storage fall back to transformation, and no cache files are shipped to the browser.
+Successful mapper results are cached in the current user's temporary directory under `dify-openapi-content-mapper-<user>`, retaining up to 64 documents. Content, implementation and configuration-sidecar presence changes invalidate the cache; sidecar contents are checked by TypeScript. The cache can be deleted safely. Corrupt entries or unavailable storage fall back to transformation, and no cache files are shipped to the browser.
 
 ### Existing JSON files
 
@@ -128,7 +128,7 @@ Documents export only `api` and `query`; operation IDs are not exports. `/pets/{
 The first argument contains `params`, `query`, `headers`, `cookie`, `body` and `contentType` as declared by the specification. The optional second argument accepts `client`, `signal`, additional transport `headers`, `credentials` and document `context`.
 
 ```ts
-import { createClient } from '@dify/openapi-inference'
+import { createClient } from '@dify/openapi-content-mapper'
 import { api } from './pets.openapi.yaml'
 
 const transport = createClient({
@@ -154,8 +154,8 @@ With one request media type, `contentType` can be omitted. With multiple media t
 Place `pets.openapi.yaml.config.ts` next to `pets.openapi.yaml`:
 
 ```ts
-import type { RuntimeConfig } from '@dify/openapi-inference'
-import { createClient } from '@dify/openapi-inference'
+import type { RuntimeConfig } from '@dify/openapi-content-mapper'
+import { createClient } from '@dify/openapi-content-mapper'
 
 export type Context = { token?: string }
 
@@ -191,7 +191,7 @@ This package consumes OpenAPI directly and prunes statically used operations whi
 ### Node.js
 
 ```sh
-node --import @dify/openapi-inference/register app.ts
+node --import @dify/openapi-content-mapper/register app.ts
 ```
 
 The hook loads YAML and `.openapi` files; Node's native TypeScript support loads configuration sidecars. Native execution does not replace the separate type check.
@@ -202,7 +202,7 @@ For `pets.openapi` linked to `pets.json`, configure `next.config.mjs`:
 
 ```js
 const loader = {
-  loader: '@dify/openapi-inference/loader',
+  loader: '@dify/openapi-content-mapper/loader',
   // Optional; relative to the resolved specification, not this config file.
   options: { runtime: './pets.openapi.config.ts' },
 }
@@ -240,11 +240,11 @@ This is not a drop-in replacement for all oRPC Links, interceptors, typed error 
 From the repository root, build and verify the package:
 
 ```sh
-pnpm --filter @dify/openapi-inference build
-pnpm --filter @dify/openapi-inference type-check
-pnpm --filter @dify/openapi-inference test
-OPENAPI_PACKAGE_TARBALL=/tmp/dify-openapi-inference.tgz \
-  pnpm --filter @dify/openapi-inference test:package
+pnpm --filter @dify/openapi-content-mapper build
+pnpm --filter @dify/openapi-content-mapper type-check
+pnpm --filter @dify/openapi-content-mapper test
+OPENAPI_PACKAGE_TARBALL=/tmp/dify-openapi-content-mapper.tgz \
+  pnpm --filter @dify/openapi-content-mapper test:package
 ```
 
 The independent package check packs and installs the tarball outside the monorepo, then exercises its declarations, compiler mapper, Node runtime and official Vite adapter. It requires network access and performs no publication. Full application and Next.js builds run in CI.
@@ -254,7 +254,7 @@ Update the package version and [CHANGELOG] together before release. Use pnpm to 
 A maintainer with npm access can publish the same verified artifact after confirming its name, version, license and registry:
 
 ```sh
-npm publish /tmp/dify-openapi-inference.tgz --access public --tag beta
+npm publish /tmp/dify-openapi-content-mapper.tgz --access public --tag beta
 ```
 
 The default tag is `beta`. Publication is manual; merging changes or creating a Dify release does not publish the package. Verify new compiler versions before changing the supported TS 7.1 beta protocol.

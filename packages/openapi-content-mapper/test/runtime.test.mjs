@@ -39,7 +39,7 @@ test('document sidecar automatically binds only API and query exports in Node', 
     await writeFile(
       `${file}.config.ts`,
       `
-import { createClient } from '@dify/openapi-inference';
+import { createClient } from '@dify/openapi-content-mapper';
 export type Context = { user?: string };
 export default {
   queryKeyPrefix: ['app'],

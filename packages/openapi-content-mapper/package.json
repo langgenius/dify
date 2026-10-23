@@ -1,5 +1,5 @@
 {
-  "name": "@dify/openapi-inference",
+  "name": "@dify/openapi-content-mapper",
   "version": "0.1.0-beta.0",
   "description": "Typed OpenAPI imports with TypeScript 7.1 Content Mappers, tree-shakable API calls and query helpers.",
   "keywords": [
@@ -12,7 +12,7 @@
     "typescript",
     "vite"
   ],
-  "homepage": "https://github.com/langgenius/dify/tree/main/packages/openapi-inference#readme",
+  "homepage": "https://github.com/langgenius/dify/tree/main/packages/openapi-content-mapper#readme",
   "bugs": {
     "url": "https://github.com/langgenius/dify/issues"
   },
@@ -20,7 +20,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/langgenius/dify.git",
-    "directory": "packages/openapi-inference"
+    "directory": "packages/openapi-content-mapper"
   },
   "files": [
     "CHANGELOG.md",

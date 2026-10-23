@@ -23,7 +23,7 @@
   "exclude": ["node_modules"],
   "contentMappers": [
     {
-      "package": "@dify/openapi-inference",
+      "package": "@dify/openapi-content-mapper",
       "extensions": [".openapi"]
     }
   ]

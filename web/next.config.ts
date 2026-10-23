@@ -3,7 +3,7 @@ import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { env } from './env'
 
 const openapiLoader = {
-  loader: '@dify/openapi-inference/loader',
+  loader: '@dify/openapi-content-mapper/loader',
   options: { runtime: '../../../web/service/console/console.openapi.config.ts' },
 }
 

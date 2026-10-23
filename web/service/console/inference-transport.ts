@@ -1,6 +1,6 @@
-import type { HttpClient } from '@dify/openapi-inference'
+import type { HttpClient } from '@dify/openapi-content-mapper'
 import type { ConsoleClientContext } from './index'
-import { createClient } from '@dify/openapi-inference'
+import { createClient } from '@dify/openapi-content-mapper'
 import { API_PREFIX } from '@/config'
 // oxlint-disable-next-line no-restricted-imports -- The inference pilot shares console auth refresh, CSRF and error handling.
 import { request } from '../base'

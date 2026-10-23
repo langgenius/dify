@@ -43,7 +43,7 @@
     "@amplitude/plugin-session-replay-browser": "catalog:",
     "@base-ui/react": "catalog:",
     "@daypicker/react": "catalog:",
-    "@dify/openapi-inference": "workspace:*",
+    "@dify/openapi-content-mapper": "workspace:*",
     "@floating-ui/react": "catalog:",
     "@formatjs/intl-localematcher": "catalog:",
     "@heroicons/react": "catalog:",

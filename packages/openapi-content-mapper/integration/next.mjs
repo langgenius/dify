@@ -35,7 +35,7 @@ for (const bundler of ['turbopack', 'webpack']) {
       await writeFile(
         join(dir, 'next.config.mjs'),
         `
-const loader = { loader: '@dify/openapi-inference/loader', options: { runtime: ${JSON.stringify(relative(specDir, join(dir, 'runtime.js')))} } };
+const loader = { loader: '@dify/openapi-content-mapper/loader', options: { runtime: ${JSON.stringify(relative(specDir, join(dir, 'runtime.js')))} } };
 export default {
   experimental: { cpus: 2 },
   turbopack: { root: ${JSON.stringify(repository)}, rules: { '*spec.json': { loaders: [loader], as: '*.js' }, '*openapi-namespace.js': { loaders: [loader], as: '*.js' } } },
@@ -60,7 +60,7 @@ export default {
       await writeFile(
         join(dir, 'runtime.js'),
         `
-import { createClient } from '@dify/openapi-inference';
+import { createClient } from '@dify/openapi-content-mapper';
 export default {
   queryKeyPrefix: ['bound'],
   createClient: ({ context }) => createClient({ baseUrl: 'https://bound.test', fetch: async url => Response.json({ value: String(url) + ':' + context.user }) }),

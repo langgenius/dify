@@ -1,4 +1,4 @@
-import type { RuntimeConfig } from '@dify/openapi-inference'
+import type { RuntimeConfig } from '@dify/openapi-content-mapper'
 import type { ConsoleClientContext } from './index'
 import { reportClientError } from '../client-error'
 import { createConsoleInferenceTransport } from './inference-transport'

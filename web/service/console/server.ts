@@ -1,7 +1,7 @@
 import type { ClientLink } from '@orpc/client'
 import type { AnyContractRouter } from '@orpc/contract'
 import type { ConsoleClientContext } from './index'
-import { createClient } from '@dify/openapi-inference'
+import { createClient } from '@dify/openapi-content-mapper'
 import { onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { cache } from 'react'

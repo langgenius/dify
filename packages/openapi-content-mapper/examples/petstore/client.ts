@@ -1,4 +1,4 @@
-import { createClient } from '@dify/openapi-inference'
+import { createClient } from '@dify/openapi-content-mapper'
 import { api } from './pets.openapi.yaml'
 
 export const client = createClient({ baseUrl: 'http://127.0.0.1:4317' })

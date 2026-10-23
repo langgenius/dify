@@ -130,9 +130,9 @@ export function transformSpec(content: string, fileName: string): Transform {
     emitRouter(router)
     text += ';\n'
     text +=
-      'export declare const api: import("@dify/openapi-inference").RpcRouter<Document, Routes, Context>;\n'
+      'export declare const api: import("@dify/openapi-content-mapper").RpcRouter<Document, Routes, Context>;\n'
     text +=
-      'export declare const query: import("@dify/openapi-inference").RpcQueryRouter<Document, Routes, Context>;\n'
+      'export declare const query: import("@dify/openapi-content-mapper").RpcQueryRouter<Document, Routes, Context>;\n'
     return { text, extension: '.ts', mappings }
   } catch (error) {
     const position =

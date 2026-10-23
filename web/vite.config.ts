@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { openapi } from '@dify/openapi-inference/vite'
+import { openapi } from '@dify/openapi-content-mapper/vite'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'

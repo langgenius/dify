@@ -77,8 +77,8 @@ export function routerModule(
     node = child
   }
   let text = query
-    ? 'import { createQueryOperation, createQueryKey } from "@dify/openapi-inference/query-runtime";\n'
-    : 'import { invokeRpcOperation } from "@dify/openapi-inference/runtime";\n'
+    ? 'import { createQueryOperation, createQueryKey } from "@dify/openapi-content-mapper/query-runtime";\n'
+    : 'import { invokeRpcOperation } from "@dify/openapi-content-mapper/runtime";\n'
   if (runtimeModule) text += `import runtime from ${JSON.stringify(runtimeModule)};\n`
   const runtime = runtimeModule ? ', runtime' : ''
   if (query)

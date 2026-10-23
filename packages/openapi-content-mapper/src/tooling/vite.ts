@@ -17,7 +17,7 @@ export function openapi(
   const realPaths = new Map<string, string>()
   let root = process.cwd()
   return {
-    name: 'openapi-inference',
+    name: 'openapi-content-mapper',
     enforce: 'pre',
     configResolved(config) {
       root = config.root
