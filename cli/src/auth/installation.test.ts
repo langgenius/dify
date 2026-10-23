@@ -6,28 +6,29 @@ import { afterEach, expect, it } from 'vite-plus/test'
 import { Context } from '@/kernel/context'
 import { INSTALLATION_FILE_NAME, INSTALLATION_ID_PATTERN, installationId } from './installation'
 
-type PatternSchema = Readonly<{ pattern?: string }>
-type OpenApiDocument = Readonly<{
-  components: {
-    schemas: { DeviceCodeRequest: { properties: { installation_id: { anyOf: PatternSchema[] } } } }
-  }
-}>
+const SCHEMA_START = 'export const zDeviceCodeRequest = '
+const SCHEMA_END = '\n})'
 
-// The server's DeviceCodeRequest pattern, as the generated OpenAPI contract publishes it.
+// The server's DeviceCodeRequest pattern, from the tracked generated zod contract. The CLI does not
+// depend on @dify/contracts, and tsc rejects a relative import from outside the package.
 function serverInstallationIdPattern(): RegExp {
-  const contract = JSON.parse(
-    readFileSync(
-      new URL('../../../packages/contracts/openapi/openapi-openapi.json', import.meta.url),
-      'utf8',
-    ),
-  ) as OpenApiDocument
-  const { anyOf } = contract.components.schemas.DeviceCodeRequest.properties.installation_id
-  const pattern = anyOf.find((schema) => schema.pattern !== undefined)?.pattern
-  if (pattern === undefined) throw new Error('DeviceCodeRequest.installation_id has no pattern')
+  const source = readFileSync(
+    new URL('../../../packages/contracts/generated/api/openapi/zod.gen.ts', import.meta.url),
+    'utf8',
+  )
+  const start = source.indexOf(SCHEMA_START)
+  if (start < 0) throw new Error('zod contract has no zDeviceCodeRequest')
+  const schema = source.slice(start, source.indexOf(SCHEMA_END, start))
+  const pattern = /installation_id: z\s*\.string\(\)\s*\.regex\(\/(.+)\/\)/.exec(schema)?.[1]
+  if (pattern === undefined) throw new Error('zDeviceCodeRequest.installation_id has no regex')
   return new RegExp(pattern)
 }
 
 const SERVER_ID_PATTERN = serverInstallationIdPattern()
+
+function serverAccepts(id: string): boolean {
+  return SERVER_ID_PATTERN.test(id)
+}
 
 const worlds: TestWorld[] = []
 afterEach(async () => {
@@ -43,7 +44,7 @@ async function world(): Promise<TestWorld> {
 it('creates one installation id and keeps it', async () => {
   const w = await world()
   const first = await installationId(w.ctx)
-  expect(first).toMatch(SERVER_ID_PATTERN)
+  expect(serverAccepts(first)).toBe(true)
   expect(await installationId(w.ctx)).toBe(first)
   expect(await installationId(new Context())).toBe(first)
   expect(readFileSync(join(w.dir, INSTALLATION_FILE_NAME), 'utf8')).toBe(`id: ${first}\n`)
@@ -52,7 +53,7 @@ it('creates one installation id and keeps it', async () => {
 it('generates an id the server accepts', async () => {
   const w = await world()
   const id = await installationId(w.ctx)
-  expect(id).toMatch(SERVER_ID_PATTERN)
+  expect(serverAccepts(id)).toBe(true)
   expect(id).toMatch(INSTALLATION_ID_PATTERN)
 })
 
@@ -66,14 +67,14 @@ it('accepts exactly the ids the server accepts', () => {
     'x y-1234',
     'ab_cdefgh',
   ])
-    expect(INSTALLATION_ID_PATTERN.test(id)).toBe(SERVER_ID_PATTERN.test(id))
+    expect(INSTALLATION_ID_PATTERN.test(id)).toBe(serverAccepts(id))
 })
 
 it('replaces an invalid stored id instead of sending it', async () => {
   const w = await world()
   writeFileSync(join(w.dir, INSTALLATION_FILE_NAME), 'id: "x y"\n')
   const id = await installationId(w.ctx)
-  expect(id).toMatch(SERVER_ID_PATTERN)
+  expect(serverAccepts(id)).toBe(true)
   expect(readFileSync(join(w.dir, INSTALLATION_FILE_NAME), 'utf8')).toBe(`id: ${id}\n`)
 })
 
@@ -86,7 +87,7 @@ it.each([
   const w = await world()
   writeFileSync(join(w.dir, INSTALLATION_FILE_NAME), content)
   const id = await installationId(w.ctx)
-  expect(id).toMatch(SERVER_ID_PATTERN)
+  expect(serverAccepts(id)).toBe(true)
   expect(await installationId(w.ctx)).toBe(id)
 })
 
