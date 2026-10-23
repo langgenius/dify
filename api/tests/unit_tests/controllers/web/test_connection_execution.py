@@ -1,4 +1,5 @@
 from collections.abc import Callable, Iterator, Mapping
+from dataclasses import replace
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -22,6 +23,7 @@ from services.app_generate_service import AppGenerateService
 from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
 from services.end_user_connections.errors import (
+    ConnectionAccountRequiredError,
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
     ConnectionConflictError,
@@ -75,6 +77,7 @@ def client(
 @pytest.mark.parametrize(
     ("error", "status", "code"),
     [
+        (ConnectionAccountRequiredError(), 401, "end_user_login_required"),
         (ConnectionConfigurationError(), 400, "connection_configuration_invalid"),
         (ConnectionConflictError(), 409, "connection_conflict"),
         (ConnectionInvalidCredentialsError(), 400, "connection_credentials_invalid"),
@@ -180,6 +183,7 @@ def real_execution_gate(
 @pytest.mark.parametrize(
     ("selection", "status", "code"),
     [
+        ("anonymous", 401, "end_user_login_required"),
         ("omitted", 400, "connection_required"),
         ("empty", 400, "connection_required"),
         ("null", 400, "connection_required"),
@@ -198,8 +202,16 @@ def test_real_gate_rejects_before_run_creation_or_enqueue(
     selection: str,
     status: int,
     code: str,
+    config_overrides: Callable[..., None],
 ) -> None:
+    if selection == "anonymous":
+        config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=True)
+        with harness.sessions.begin() as session:
+            session.execute(sa.update(EndUser).where(EndUser.id == harness.context.end_user_id).values(account_id=None))
+        harness.context = replace(harness.context, account_id=None)
     connection = harness.service.create_api_key(harness.context, harness.command())
+    if selection == "anonymous":
+        config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
     harness.auth.calls.clear()
     if selection in {"invalid", "temporarily_unavailable"}:
         harness.auth.result = CredentialCheckResult.model_validate(

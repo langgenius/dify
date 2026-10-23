@@ -39,7 +39,6 @@ from services.end_user_connections.contracts import (
     ListConnectionsInput,
     UpdateConnectionInput,
 )
-from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionError
 
 
@@ -86,15 +85,6 @@ class EndUserConnectionCheckResponse(ConnectionCheckView, ResponseModel):
     pass
 
 
-def _context(app: App, end_user: EndUser) -> WebConnectionContext:
-    context = connection_context_from_web_passport(app=app, end_user=end_user)
-    # SNP-976 owns the deployment-level anonymous-connection gate. Until then,
-    # a browser Guest identity alone does not authorize personal credential APIs.
-    if context.account_id is None:
-        raise ConnectionLoginRequiredError()
-    return context
-
-
 register_schema_models(
     web_ns, EndUserConnectionCreatePayload, EndUserConnectionUpdatePayload, EndUserConnectionListQuery
 )
@@ -110,7 +100,7 @@ class EndUserConnectionListApi(WebApiResource):
     @error_responses(ConnectionLoginRequiredError, ConnectionConfigurationHTTPError)
     def get(self, app_model: App, end_user: EndUser):
         try:
-            context = _context(app_model, end_user)
+            context = connection_context_from_web_passport(app=app_model, end_user=end_user)
             query = EndUserConnectionListQuery.model_validate(request.args.to_dict(flat=True))
             result = application_services().end_user_connections.list_connections(context, query)
         except ValidationError:
@@ -131,7 +121,7 @@ class EndUserConnectionListApi(WebApiResource):
     )
     def post(self, app_model: App, end_user: EndUser):
         try:
-            context = _context(app_model, end_user)
+            context = connection_context_from_web_passport(app=app_model, end_user=end_user)
             payload = EndUserConnectionCreatePayload.model_validate(web_ns.payload or {})
             result = application_services().end_user_connections.create_api_key(context, payload)
         except ValidationError:
@@ -147,7 +137,7 @@ class EndUserConnectionApi(WebApiResource):
     @error_responses(ConnectionLoginRequiredError, ConnectionConfigurationHTTPError, ConnectionNotFoundHTTPError)
     def get(self, app_model: App, end_user: EndUser, connection_id: UUID):
         try:
-            context = _context(app_model, end_user)
+            context = connection_context_from_web_passport(app=app_model, end_user=end_user)
             result = application_services().end_user_connections.get_connection(context, str(connection_id))
         except ConnectionError as error:
             _raise_error(error)
@@ -166,7 +156,7 @@ class EndUserConnectionApi(WebApiResource):
     )
     def patch(self, app_model: App, end_user: EndUser, connection_id: UUID):
         try:
-            context = _context(app_model, end_user)
+            context = connection_context_from_web_passport(app=app_model, end_user=end_user)
             payload = EndUserConnectionUpdatePayload.model_validate(web_ns.payload or {})
             result = application_services().end_user_connections.update_connection(context, str(connection_id), payload)
         except ValidationError:
@@ -184,7 +174,7 @@ class EndUserConnectionApi(WebApiResource):
     )
     def delete(self, app_model: App, end_user: EndUser, connection_id: UUID):
         try:
-            context = _context(app_model, end_user)
+            context = connection_context_from_web_passport(app=app_model, end_user=end_user)
             application_services().end_user_connections.delete_connection(context, str(connection_id))
         except ConnectionError as error:
             _raise_error(error)
@@ -205,7 +195,7 @@ class EndUserConnectionCheckApi(WebApiResource):
     )
     def post(self, app_model: App, end_user: EndUser, connection_id: UUID):
         try:
-            context = _context(app_model, end_user)
+            context = connection_context_from_web_passport(app=app_model, end_user=end_user)
             result = application_services().end_user_connections.check_connection(context, str(connection_id))
         except ConnectionError as error:
             _raise_error(error)

@@ -1,4 +1,5 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from dataclasses import replace
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -41,8 +42,26 @@ def client(harness: ConnectionHarness, monkeypatch: pytest.MonkeyPatch) -> Itera
         yield client
 
 
-def test_http_api_key_management_round_trip(client: FlaskClient, harness: ConnectionHarness) -> None:
+@pytest.mark.parametrize("anonymous", [False, True])
+@pytest.mark.parametrize("allow_anonymous", [False, True])
+def test_http_api_key_management_round_trip(
+    client: FlaskClient,
+    harness: ConnectionHarness,
+    config_overrides: Callable[..., None],
+    anonymous: bool,
+    allow_anonymous: bool,
+) -> None:
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=allow_anonymous)
+    if anonymous:
+        with harness.sessions.begin() as session:
+            session.execute(sa.update(EndUser).where(EndUser.id == harness.context.end_user_id).values(account_id=None))
+        harness.context = replace(harness.context, account_id=None)
     response = client.post("/api/connections", json=harness.command().model_dump(mode="json"))
+    if anonymous and not allow_anonymous:
+        assert response.status_code == 401
+        assert response.get_json()["code"] == "end_user_login_required"
+        assert harness.auth.calls == []
+        return
     assert response.status_code == 201
     data = response.get_json()
     assert data["credential_status"] == "connected"
@@ -103,15 +122,30 @@ def test_foreign_and_missing_ids_return_same_not_found(client: FlaskClient, harn
     assert denied.get_json() == missing.get_json()
 
 
-def test_guest_entry_does_not_implicitly_enable_anonymous_connections(
-    client: FlaskClient, harness: ConnectionHarness
+def test_disabling_anonymous_connections_blocks_existing_guest_management(
+    client: FlaskClient, harness: ConnectionHarness, config_overrides: Callable[..., None]
 ) -> None:
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=True)
     with harness.sessions.begin() as session:
         session.execute(sa.update(EndUser).where(EndUser.id == harness.context.end_user_id).values(account_id=None))
-    response = client.post("/api/connections", json=harness.command().model_dump(mode="json"))
-    assert response.status_code == 401
-    assert response.get_json()["code"] == "end_user_login_required"
+    created = client.post("/api/connections", json=harness.command().model_dump(mode="json"))
+    assert created.status_code == 201
+    connection_id = created.get_json()["id"]
+    harness.auth.calls.clear()
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
+    for method, path, payload in [
+        ("GET", "/api/connections", None),
+        ("GET", f"/api/connections/{connection_id}", None),
+        ("PATCH", f"/api/connections/{connection_id}", {"credentials": {"api_key": "replacement"}}),
+        ("POST", f"/api/connections/{connection_id}/check", None),
+        ("DELETE", f"/api/connections/{connection_id}", None),
+    ]:
+        response = client.open(path, method=method, json=payload)
+        assert response.status_code == 401
+        assert response.get_json()["code"] == "end_user_login_required"
     assert harness.auth.calls == []
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=True)
+    assert client.get(f"/api/connections/{connection_id}").status_code == 200
 
 
 def test_stale_workflow_request_is_rejected_before_plugin_calls(

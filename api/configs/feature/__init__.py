@@ -1044,7 +1044,8 @@ class AuthConfig(BaseSettings):
 
     END_USER_AUTH_ALLOW_ANONYMOUS: bool = Field(
         default=False,
-        description="Allow anonymous EndUser authentication. Defaults to true in Community and false in "
+        description="Allow Guest identities to manage and use personal Connections. Does not control Web App entry. "
+        "Defaults to true in Community and false in "
         "Cloud/Enterprise when unset; explicit deployment settings take precedence.",
     )
 

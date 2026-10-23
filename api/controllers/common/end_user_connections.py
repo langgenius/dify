@@ -6,6 +6,7 @@ from werkzeug.exceptions import Unauthorized
 
 from libs.exception import BaseHTTPException
 from services.end_user_connections.errors import (
+    ConnectionAccountRequiredError,
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
     ConnectionConflictError,
@@ -24,7 +25,7 @@ from services.end_user_connections.errors import (
 class ConnectionLoginRequiredError(BaseHTTPException):
     code = 401
     error_code = "end_user_login_required"
-    description = "Sign in to manage personal connections."
+    description = "Sign in to use personal connections."
 
 
 class ConnectionNotFoundHTTPError(BaseHTTPException):
@@ -91,6 +92,7 @@ def raise_connection_error(error: ConnectionError) -> NoReturn:
     if isinstance(error, ConnectionIdentityError):
         raise Unauthorized(str(error)) from None
     errors: dict[type[ConnectionError], type[BaseHTTPException]] = {
+        ConnectionAccountRequiredError: ConnectionLoginRequiredError,
         ConnectionOAuthError: ConnectionOAuthHTTPError,
         ConnectionReauthorizationRequiredError: ConnectionReauthorizationHTTPError,
         ConnectionNotFoundError: ConnectionNotFoundHTTPError,
