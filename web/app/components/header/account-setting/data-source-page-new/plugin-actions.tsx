@@ -148,7 +148,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
                 className="relative h-5 overflow-visible rounded-[5px] border border-divider-deep px-1.5 system-xs-medium text-text-tertiary"
               >
                 {hasNewVersion && (
-                  <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
+                  <span className="absolute -inset-e-0.5 -top-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
                 )}
                 <span>{displayVersion}</span>
                 {canUpdatePlugin && isFromMarketplace && !loadingVersions && (
