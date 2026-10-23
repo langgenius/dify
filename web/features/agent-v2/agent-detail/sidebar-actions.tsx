@@ -2,11 +2,7 @@
 
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentFormSource } from '@/features/agent-v2/roster/components/agent-form'
-import {
-  AlertDialog,
-  AlertDialogContent,
-  createAlertDialogHandle,
-} from '@langgenius/dify-ui/alert-dialog'
+import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,7 +33,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
   const { t: tApp } = useTranslation(['app'])
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
-  const [deleteDialog] = useState(() => createAlertDialogHandle())
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const deletion = useMutation(
     consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
   )
@@ -127,7 +123,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
               className="gap-2"
               onClick={() => {
                 deletion.reset()
-                deleteDialog.open(null)
+                setIsDeleteOpen(true)
               }}
             >
               <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
@@ -148,10 +144,10 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
       )}
       {capabilities.canDelete && (
         <AlertDialog
-          handle={deleteDialog}
+          open={isDeleteOpen}
           onOpenChange={(open, details) => {
-            if (!open && deletion.isPending && details.reason !== 'imperative-action')
-              details.cancel()
+            if (!open && deletion.isPending) details.cancel()
+            else setIsDeleteOpen(open)
           }}
         >
           <AlertDialogContent>
@@ -165,7 +161,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
                   { params: { agent_id: agent.id } },
                   {
                     onSuccess: () => {
-                      deleteDialog.close()
+                      setIsDeleteOpen(false)
                       router.replace('/agents')
                     },
                   },

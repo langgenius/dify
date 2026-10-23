@@ -1,11 +1,7 @@
 'use client'
 
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import {
-  AlertDialog,
-  AlertDialogContent,
-  createAlertDialogHandle,
-} from '@langgenius/dify-ui/alert-dialog'
+import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +27,7 @@ export function KnowledgeSpaceActions({
 }) {
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
-  const [deleteDialog] = useState(() => createAlertDialogHandle())
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const canEdit = knowledgeSpace.permission_keys.includes('knowledge_space_edit')
   const canDelete = knowledgeSpace.permission_keys.includes('knowledge_space_delete')
   const name = knowledgeSpace.technical_summary?.name ?? knowledgeSpace.control_space_id
@@ -41,7 +37,7 @@ export function KnowledgeSpaceActions({
       context: { silent: true },
       onSuccess: () => {
         // The card leaves the list once it refreshes; that removal is the success feedback.
-        deleteDialog.close()
+        setDeleteOpen(false)
         void queryClient.invalidateQueries({
           queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
         })
@@ -89,7 +85,7 @@ export function KnowledgeSpaceActions({
                     variant="destructive"
                     onClick={() => {
                       deleteMutation.reset()
-                      deleteDialog.open(null)
+                      setDeleteOpen(true)
                     }}
                   >
                     <span aria-hidden className="mr-1 i-ri-delete-bin-line size-4" />
@@ -103,10 +99,10 @@ export function KnowledgeSpaceActions({
       </div>
 
       <AlertDialog
-        handle={deleteDialog}
+        open={deleteOpen}
         onOpenChange={(open, details) => {
-          if (!open && deleteMutation.isPending && details.reason !== 'imperative-action')
-            details.cancel()
+          if (!open && deleteMutation.isPending) details.cancel()
+          else setDeleteOpen(open)
         }}
       >
         <AlertDialogContent>

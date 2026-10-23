@@ -8,11 +8,7 @@ import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { MouseEvent, ReactElement } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
-import {
-  AlertDialog,
-  AlertDialogContent,
-  createAlertDialogHandle,
-} from '@langgenius/dify-ui/alert-dialog'
+import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ContextMenu,
@@ -281,8 +277,9 @@ export function AppCardInteractions({
     consoleQuery.apps.byAppId.put.mutationOptions({ context: { silent: true } }),
   )
   const editNameRef = useRef<HTMLInputElement>(null)
-  const [activeDialog, setActiveDialog] = useState<'duplicate' | 'edit' | 'switch' | null>(null)
-  const [deleteDialog] = useState(() => createAlertDialogHandle())
+  const [activeDialog, setActiveDialog] = useState<
+    'delete' | 'duplicate' | 'edit' | 'switch' | null
+  >(null)
   const operationsMenu = useStepByStepTourControlledDropdown({
     allowTriggerCloseWhileControlled: false,
     controlledOpen: stepByStepTourActionMenuOpen,
@@ -340,9 +337,9 @@ export function AppCardInteractions({
   const handleShowDeleteConfirm = useCallback(() => {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
-      deleteDialog.open(null)
+      setActiveDialog('delete')
     })
-  }, [deleteDialog, setIsOperationsMenuOpen])
+  }, [setIsOperationsMenuOpen])
 
   const handleOpenAccessConfig = useCallback(() => {
     setIsOperationsMenuOpen(false)
@@ -611,10 +608,10 @@ export function AppCardInteractions({
         />
       )}
       <AlertDialog
-        handle={deleteDialog}
+        open={activeDialog === 'delete'}
         onOpenChange={(open, details) => {
-          if (!open && deletion.isPending && details.reason !== 'imperative-action')
-            details.cancel()
+          if (!open && deletion.isPending) details.cancel()
+          else if (!open) setActiveDialog(null)
         }}
         onOpenChangeComplete={(open) => {
           if (!open) deletion.reset()
@@ -634,7 +631,7 @@ export function AppCardInteractions({
               deletion.mutate(
                 { params: { app_id: app.id } },
                 {
-                  onSuccess: () => deleteDialog.close(),
+                  onSuccess: () => setActiveDialog(null),
                 },
               )
             }}
