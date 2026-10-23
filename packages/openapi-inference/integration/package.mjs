@@ -102,13 +102,10 @@ test('packed SDK installs and works outside the workspace with npm and official 
         )
     const packedFiles = await files(installed)
     assert(packedFiles.includes('README.md'))
-    assert(packedFiles.includes('docs/orpc-comparison.md'))
     assert(packedFiles.includes('CHANGELOG.md'))
     for (const file of packedFiles)
       assert(
-        /^(?:dist\/.*\.(?:js|d\.ts)|package\.json|README\.md|LICENSE|CHANGELOG\.md|docs\/(?:orpc-comparison|releasing)\.md)$/.test(
-          file,
-        ),
+        /^(?:dist\/.*\.(?:js|d\.ts)|package\.json|README\.md|LICENSE|CHANGELOG\.md)$/.test(file),
         `Unexpected packaged file: ${file}`,
       )
     for (const target of Object.values(packed.exports)) {

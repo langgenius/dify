@@ -25,7 +25,7 @@ npm install @dify/openapi-inference@beta
 npm install --save-dev typescript@7.1.0-beta vite@8.3.5
 ```
 
-Before publication, install a locally packed release candidate with `npm install /path/to/dify-openapi-inference-0.1.0-beta.0.tgz`. See [release preparation] for the packaging and independent-consumer checks.
+Before publication, install a locally packed release candidate with `npm install /path/to/dify-openapi-inference-0.1.0-beta.0.tgz`. See [Development and release] for packaging and verification.
 
 Create `pets.openapi.yaml`:
 
@@ -107,13 +107,9 @@ Run `npx tsc --runExternalCode --noEmit`. The compiler supplies types; the Vite 
 
 For VS Code, install Microsoft's TypeScript 7 extension (`TypeScriptTeam.native-preview`), select the workspace TypeScript 7.1 compiler, trust the workspace and enable content mappers. Open a consuming `.ts` file so the language server discovers its config.
 
-### Type-checking performance
+### Compiler cache
 
-API and query signatures are resolved as routes are accessed. The mapper emits a literal type declaration instead of making the compiler check a full specification object initializer. The virtual document retains fields used by inference, inline schemas and structural reference targets; referenced schemas use type aliases without a second raw copy. Identical JSON and non-JSON aliases share their definition. The complete source is still validated. The compiler still needs to load the virtual document, so runtime tree-shaking does not imply zero type-checking cost for unused operations.
-
-Successful mapper transforms are cached across compiler processes in the current user's system temporary directory, under `dify-openapi-inference-<user>`. The cache retains up to 64 documents, replacing each document's previous revision. Document content, logical filename, mapper implementation, YAML package metadata and configuration-sidecar presence participate in invalidation. Sidecar contents remain normal TypeScript imports and are checked by the compiler. Sidecar presence is rechecked when the compiler requests a transform.
-
-Cache hits verify the serialized result checksum and send it directly to the compiler, without reparsing the mappings or loading the YAML transformer. Framed input is assembled once per request. The cache can be deleted safely. Invalid entries or unavailable cache storage fall back to transformation; diagnostics are not cached. No cache files are written beside the imported document or shipped to the browser.
+Successful mapper results are cached in the current user's temporary directory under `dify-openapi-inference-<user>`, retaining up to 64 documents. Content, implementation and configuration-sidecar presence changes invalidate the cache; sidecar contents are checked by TypeScript. The cache can be deleted safely. Corrupt entries or unavailable storage fall back to transformation, and no cache files are shipped to the browser.
 
 ### Existing JSON files
 
@@ -127,7 +123,7 @@ Import `./pets.openapi`. On platforms where symlinks are unavailable, use a regu
 
 ## API and transport
 
-Documents export only `api` and `query`; operation IDs are not exports. `/pets/{petId}` becomes `pets.byPetId`, hyphenated segments become camelCase and HTTP methods are leaf functions. Colon actions such as `/chat:run` become `chat.run`. Unresolvable member collisions fail during compilation.
+Documents export only `api` and `query`; operation IDs are not exports. `/pets/{petId}` becomes `pets.byPetId`, hyphenated segments become camelCase and HTTP methods are leaf functions. Colon actions such as `/chat:run` become `chat.run`. `key` is reserved as a route segment for query helpers. Unresolvable member collisions fail during compilation.
 
 The first argument contains `params`, `query`, `headers`, `cookie`, `body` and `contentType` as declared by the specification. The optional second argument accepts `client`, `signal`, additional transport `headers`, `credentials` and document `context`.
 
@@ -184,13 +180,11 @@ Import `query` directly for `queryOptions`, `mutationOptions`, `queryKey` and na
 export { api as apiClient, query as apiQuery } from './pets.openapi.yaml'
 ```
 
-Static calls retain only used operations. Dynamic indexing, enumeration or passing whole namespaces to opaque functions can retain other operations. The runtime does not bundle response schemas or the YAML parser. Tests verify that adding 1,000 unused operations does not increase a static consumer's bundle.
+Static calls retain only used operations. Dynamic indexing, enumeration or passing whole namespaces to opaque functions can retain other operations. The runtime does not bundle response schemas or the YAML parser.
 
 ### Comparison with oRPC
 
 This package consumes OpenAPI directly and prunes statically used operations while keeping oRPC-shaped calls and reusing its TanStack Query helpers. It requires the TS 7.1 beta toolchain and does not replace oRPC's full Link, interceptor or defined-error capabilities.
-
-In an isolated KnowledgeFS metadata benchmark, API-only output was 2.38 KB gzip, compared with 57.40 KB for the current generated oRPC contract group and 10.08 KB for a pre-minified single-operation oRPC contract. oRPC supports contract minification; these results do not imply that oRPC cannot tree-shake. They do not measure Dify's page load. See the [oRPC comparison] for all measurements, methodology, behavior differences and tradeoffs.
 
 ## Other runtime adapters
 
@@ -239,18 +233,36 @@ The loader uses a tiny shared resource for child namespaces so the full specific
 
 External references, Swagger 2, URL-encoded forms, advanced parameter serialization, nested multipart file dictionaries and YAML aliases are unsupported. Inline schema inference has a 24-step fallback; local referenced schemas use recursive aliases. Unsupported request serialization fails explicitly. Missing or inaccurate OpenAPI declarations cannot be repaired by inference.
 
-This is not a drop-in replacement for all oRPC Links, interceptors, typed error maps or application-specific query policies. Browser Fetch governs cookie headers. For the complete supported scope and Dify-specific verification, see the [repository guide].
+This is not a drop-in replacement for all oRPC Links, interceptors, typed error maps or application-specific query policies. Browser Fetch governs cookie headers. Supported schema features include required/optional properties, enum/const, arrays and dictionaries, `oneOf`, `anyOf`, `allOf`, and nullable types.
 
 ## Development and release
 
-See [release preparation] and [CHANGELOG]. The independent package check installs a real tarball outside this monorepo and exercises its types, Node runtime and official Vite adapter. It performs no registry publication.
+From the repository root, build and verify the package:
+
+```sh
+pnpm --filter @dify/openapi-inference build
+pnpm --filter @dify/openapi-inference type-check
+pnpm --filter @dify/openapi-inference test
+OPENAPI_PACKAGE_TARBALL=/tmp/dify-openapi-inference.tgz \
+  pnpm --filter @dify/openapi-inference test:package
+```
+
+The independent package check packs and installs the tarball outside the monorepo, then exercises its declarations, compiler mapper, Node runtime and official Vite adapter. It requires network access and performs no publication. Full application and Next.js builds run in CI.
+
+Update the package version and [CHANGELOG] together before release. Use pnpm to pack: it resolves workspace `catalog:` dependencies, while `prepack` cleans and rebuilds `dist`. The package contains compiled ESM/declarations, README, changelog and license; consumers do not build it during installation.
+
+A maintainer with npm access can publish the same verified artifact after confirming its name, version, license and registry:
+
+```sh
+npm publish /tmp/dify-openapi-inference.tgz --access public --tag beta
+```
+
+The default tag is `beta`. Publication is manual; merging changes or creating a Dify release does not publish the package. Verify new compiler versions before changing the supported TS 7.1 beta protocol.
 
 ## License
 
 This package retains the repository's modified Apache 2.0 terms, including its additional conditions. See [LICENSE]; it is not licensed under unmodified Apache-2.0 or MIT.
 
 [CHANGELOG]: CHANGELOG.md
+[Development and release]: #development-and-release
 [LICENSE]: LICENSE
-[oRPC comparison]: docs/orpc-comparison.md
-[release preparation]: docs/releasing.md
-[repository guide]: https://github.com/langgenius/dify/blob/main/packages/openapi-inference/docs/repository.md
