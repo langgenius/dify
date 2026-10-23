@@ -214,8 +214,8 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: Wo
         workflow_execution_id="execution-id",
         task_id="task-id",
         stream=True,
-        extras={"capture_agent_evaluation_trace": True},
         call_depth=4,
+        extras={"capture_agent_evaluation_trace": True},
     )
 
     workflow = Workflow(
@@ -265,3 +265,4 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: Wo
     assert add_inputs.call_args.kwargs["aliases"] == ("legacy-start",)
     assert init_graph.call_args.kwargs["capture_agent_evaluation_trace"] is True
     assert init_graph.call_args.kwargs["call_depth"] == 4
+    assert init_graph.call_args.kwargs["capture_agent_evaluation_trace"] is True

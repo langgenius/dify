@@ -408,6 +408,16 @@ it('disables configuring a workflow tool without tool.manage', async () => {
   expect(screen.getByRole('button', { name: /navigation.common.workflowAsTool/ })).toBeDisabled()
 })
 
+it('hides the workflow tool action for workflows with human input', async () => {
+  const user = userEvent.setup()
+  renderPublisher({ app: { mode: 'workflow' }, props: { hasHumanInputNode: true } })
+  await user.click(trigger())
+  await screen.findByText('Release 5')
+  expect(
+    screen.queryByRole('button', { name: /navigation.common.workflowAsTool/ }),
+  ).not.toBeInTheDocument()
+})
+
 it('keeps failed publish and restore actions available for retry', async () => {
   const user = userEvent.setup()
   const onPublish = vi

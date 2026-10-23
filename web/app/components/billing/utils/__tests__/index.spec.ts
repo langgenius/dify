@@ -61,29 +61,14 @@ describe('billing utils', () => {
     })
 
     it.each(['professional', 'team'] as const)('allows the %s cloud plan', (planType) => {
-      expect(
-        canAccessSnippetsAndEvaluation({
-          deploymentEdition: 'CLOUD',
-          planType,
-        }),
-      ).toBe(true)
+      expect(canAccessSnippetsAndEvaluation({ deploymentEdition: 'CLOUD', planType })).toBe(true)
     })
 
-    it('blocks the sandbox cloud plan', () => {
+    it('blocks sandbox and missing cloud plans', () => {
       expect(
-        canAccessSnippetsAndEvaluation({
-          deploymentEdition: 'CLOUD',
-          planType: 'sandbox',
-        }),
+        canAccessSnippetsAndEvaluation({ deploymentEdition: 'CLOUD', planType: 'sandbox' }),
       ).toBe(false)
-    })
-
-    it('blocks cloud access while subscription data is absent', () => {
-      expect(
-        canAccessSnippetsAndEvaluation({
-          deploymentEdition: 'CLOUD',
-        }),
-      ).toBe(false)
+      expect(canAccessSnippetsAndEvaluation({ deploymentEdition: 'CLOUD' })).toBe(false)
     })
   })
 })

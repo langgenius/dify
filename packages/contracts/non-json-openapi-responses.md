@@ -6,24 +6,24 @@ The current Flask-RESTX generator still emits these response entries under `appl
 
 ## Binary And Audio
 
-| Spec    | Method | Path                                                                    | Runtime response                               | Schema                |
-| ------- | ------ | ----------------------------------------------------------------------- | ---------------------------------------------- | --------------------- |
-| console | POST   | `/apps/{app_id}/text-to-audio`                                          | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
-| console | POST   | `/installed-apps/{installed_app_id}/text-to-audio`                      | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
-| console | POST   | `/trial-apps/{app_id}/text-to-audio`                                    | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
-| web     | POST   | `/text-to-audio`                                                        | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
-| service | POST   | `/text-to-audio`                                                        | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
-| console | POST   | `/datasets/{dataset_id}/documents/download-zip`                         | `application/zip` attachment                   | `BinaryFileResponse`  |
-| console | POST   | `/datasets/{dataset_id}/evaluation/template/download`                   | XLSX attachment                                | `BinaryFileResponse`  |
-| console | POST   | `/{evaluate_target_type}/{evaluate_target_id}/dataset-template/download` | XLSX attachment                               | `BinaryFileResponse`  |
-| service | POST   | `/datasets/{dataset_id}/documents/download-zip`                         | `application/zip` attachment                   | `BinaryFileResponse`  |
-| service | GET    | `/files/{file_id}/preview`                                              | Original file MIME type, optionally attachment | `BinaryFileResponse`  |
-| console | GET    | `/workspaces/current/plugin/icon`                                       | Plugin asset MIME type                         | `BinaryFileResponse`  |
-| console | GET    | `/workspaces/current/plugin/asset`                                      | `application/octet-stream`                     | `BinaryFileResponse`  |
-| console | GET    | `/workspaces/current/skills/{skill_id}/files/content`                   | Skill file MIME type, optionally attachment    | `BinaryFileResponse`  |
-| console | GET    | `/workspaces/current/tool-provider/builtin/{provider}/icon`             | Tool icon MIME type                            | `BinaryFileResponse`  |
-| console | GET    | `/workspaces/current/trigger-provider/{provider}/icon`                  | Trigger icon response                          | `BinaryFileResponse`  |
-| console | GET    | `/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}` | Model provider icon MIME type                  | `BinaryFileResponse`  |
+| Spec    | Method | Path                                                                     | Runtime response                               | Schema                |
+| ------- | ------ | ------------------------------------------------------------------------ | ---------------------------------------------- | --------------------- |
+| console | POST   | `/apps/{app_id}/text-to-audio`                                           | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
+| console | POST   | `/installed-apps/{installed_app_id}/text-to-audio`                       | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
+| console | POST   | `/trial-apps/{app_id}/text-to-audio`                                     | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
+| web     | POST   | `/text-to-audio`                                                         | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
+| service | POST   | `/text-to-audio`                                                         | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
+| console | POST   | `/datasets/{dataset_id}/documents/download-zip`                          | `application/zip` attachment                   | `BinaryFileResponse`  |
+| console | POST   | `/datasets/{dataset_id}/evaluation/template/download`                    | XLSX attachment                                | `BinaryFileResponse`  |
+| console | POST   | `/{evaluate_target_type}/{evaluate_target_id}/dataset-template/download` | XLSX attachment                                | `BinaryFileResponse`  |
+| service | POST   | `/datasets/{dataset_id}/documents/download-zip`                          | `application/zip` attachment                   | `BinaryFileResponse`  |
+| service | GET    | `/files/{file_id}/preview`                                               | Original file MIME type, optionally attachment | `BinaryFileResponse`  |
+| console | GET    | `/workspaces/current/plugin/icon`                                        | Plugin asset MIME type                         | `BinaryFileResponse`  |
+| console | GET    | `/workspaces/current/plugin/asset`                                       | `application/octet-stream`                     | `BinaryFileResponse`  |
+| console | GET    | `/workspaces/current/skills/{skill_id}/files/content`                    | Skill file MIME type, optionally attachment    | `BinaryFileResponse`  |
+| console | GET    | `/workspaces/current/tool-provider/builtin/{provider}/icon`              | Tool icon MIME type                            | `BinaryFileResponse`  |
+| console | GET    | `/workspaces/current/trigger-provider/{provider}/icon`                   | Trigger icon response                          | `BinaryFileResponse`  |
+| console | GET    | `/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}`  | Model provider icon MIME type                  | `BinaryFileResponse`  |
 
 ## Text File Exports
 

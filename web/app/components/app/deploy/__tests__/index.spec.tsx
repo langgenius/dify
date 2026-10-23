@@ -289,6 +289,7 @@ function environmentDeployment({
   versionsBehind?: number
 }): EnvironmentDeployment {
   return {
+    deployment_id: `deployment-${id}`,
     access,
     deployment: {
       current_version: currentVersion,
@@ -416,6 +417,7 @@ const ACTION_MATRIX_CASES: Array<{
     ],
     name: 'undeployed',
     row: {
+      deployment_id: 'deployment-undeployed',
       access: { enable_api: false, enable_site: false },
       environment: {
         description: '',

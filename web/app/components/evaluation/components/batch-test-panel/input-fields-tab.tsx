@@ -17,7 +17,7 @@ const InputFieldsTab = ({
   isPanelReady,
   isRunnable,
 }: InputFieldsTabProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const actions = useInputFieldsActions({
     resourceType,
     resourceId,

@@ -7,7 +7,7 @@ type InputFieldsRequirementsProps = {
 }
 
 const InputFieldsRequirements = ({ inputFields, isLoading }: InputFieldsRequirementsProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
 
   return (
     <div>

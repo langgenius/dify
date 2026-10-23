@@ -1,6 +1,8 @@
 import json
 import unittest.mock
 from copy import deepcopy
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker

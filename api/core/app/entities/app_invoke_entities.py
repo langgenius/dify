@@ -104,8 +104,8 @@ class DifyRunContext(BaseModel):
     app_type: CreditUsageAppType | None = None
     created_by: CreditUsageCreatedBy | None = None
     trace_session_id: str | None = None
-    capture_agent_evaluation_trace: bool = False
     workflow_tool_invocation_id: str | None = None
+    capture_agent_evaluation_trace: bool = False
 
     @field_validator("created_by", mode="before")
     @classmethod

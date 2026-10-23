@@ -28,7 +28,7 @@ export const useMetricSelectorData = ({
   resourceType,
   resourceId,
 }: UseMetricSelectorDataOptions): UseMetricSelectorDataResult => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const metrics = useEvaluationResource(resourceType, resourceId).metrics
   const addBuiltinMetric = useEvaluationStore((state) => state.addBuiltinMetric)
   const removeMetric = useEvaluationStore((state) => state.removeMetric)

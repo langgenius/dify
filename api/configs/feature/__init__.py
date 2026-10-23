@@ -1488,12 +1488,12 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
-    ENABLE_EVALUATION_RUN_RECONCILER: bool = Field(
-        description="Enable periodic recovery of running evaluations whose heartbeat lease has expired",
-        default=True,
-    )
     ENABLE_APPLICATION_TRACE_RECONCILE_TASK: bool = Field(
         description="Enable periodic application trace recovery and retention cleanup when Agent tracing is enabled",
+        default=True,
+    )
+    ENABLE_EVALUATION_RUN_RECONCILER: bool = Field(
+        description="Enable periodic recovery of running evaluations whose heartbeat lease has expired",
         default=True,
     )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
@@ -1780,10 +1780,6 @@ class EvaluationConfig(BaseSettings):
     EVALUATION_FRAMEWORK: Literal["ragas", "deepeval", "none"] = Field(
         description="Evaluation framework to use.",
         default="none",
-    )
-    EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED: bool = Field(
-        description="Whether Knowledge Retrieval v2 workflow nodes can be selected for evaluation.",
-        default=False,
     )
     EVALUATION_MAX_CONCURRENT_RUNS: PositiveInt = Field(
         description="Maximum active evaluation runs per tenant.",

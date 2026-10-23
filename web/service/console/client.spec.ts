@@ -1763,6 +1763,7 @@ describe('consoleQuery App Deploy cache behavior', () => {
       })
       const params = { app_id: 'app-1', environment_id: 'staging' }
       const staging = {
+        deployment_id: 'deployment-staging',
         environment: {
           id: 'staging',
           display_name: 'Staging',
@@ -1771,7 +1772,11 @@ describe('consoleQuery App Deploy cache behavior', () => {
         },
         access: { enable_api: true, enable_site: true },
       }
-      const production = { ...staging, environment: { ...staging.environment, id: 'production' } }
+      const production = {
+        ...staging,
+        deployment_id: 'deployment-production',
+        environment: { ...staging.environment, id: 'production' },
+      }
       const deployments = consoleQuery.enterprise.appDeploy.deploymentService
       const list = deployments.listEnvironmentDeployments.queryOptions({
         input: { params: { app_id: params.app_id } },

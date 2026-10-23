@@ -10,7 +10,7 @@ import AddConditionSelect from './add-condition-select'
 import ConditionGroup from './condition-group'
 
 const ConditionsSection = ({ resourceType, resourceId }: EvaluationResourceProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const resource = useEvaluationResource(resourceType, resourceId)
   const conditionMetricOptions = useMemo(
     () => buildConditionMetricOptions(resource.metrics),

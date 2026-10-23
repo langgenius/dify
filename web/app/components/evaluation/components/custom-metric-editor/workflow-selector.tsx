@@ -34,8 +34,8 @@ const isSelectedWorkflow = (workflow: AvailableEvaluationWorkflow, value: string
   workflow.app_id === value
 
 const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSelectorProps) => {
-  const { t } = useTranslation('evaluation')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['evaluation'])
+  const { t: tCommon } = useTranslation(['common'])
   const [isOpen, setIsOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const deferredSearchText = useDeferredValue(searchText)
@@ -127,7 +127,8 @@ const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSel
       />
 
       <PopoverContent
-        placement="bottom-start"
+        side="bottom"
+        align="start"
         sideOffset={4}
         className="w-[360px] overflow-hidden p-0"
       >
@@ -142,7 +143,7 @@ const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSel
             </div>
           ) : !workflows.length ? (
             <div className="flex h-[120px] items-center justify-center system-sm-regular text-text-tertiary">
-              {t(($) => $.noData, { ns: 'common' })}
+              {tCommon(($) => $.noData)}
             </div>
           ) : (
             <ScrollArea className="relative max-h-[240px] overflow-hidden">

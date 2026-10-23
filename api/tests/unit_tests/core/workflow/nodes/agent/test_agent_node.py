@@ -109,7 +109,7 @@ def test_run_continues_when_tool_snapshot_capture_fails(caplog: pytest.LogCaptur
             },
             call_depth=0,
         ),
-        runtime_state=RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0),
+        runtime_state=RuntimeState(workflow_id="workflow-id", variable_pool=VariablePool(), start_at=0),
         strategy_resolver=strategy_resolver,
         presentation_provider=presentation_provider,
         runtime_support=runtime_support,

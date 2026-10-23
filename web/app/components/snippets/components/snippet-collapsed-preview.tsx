@@ -19,7 +19,7 @@ export function SnippetCollapsedPreview({
   isPublished?: boolean
   evaluationEnabled: boolean
 }) {
-  const { t } = useTranslation(['evaluation', 'snippet'])
+  const { t } = useTranslation(['snippet', 'evaluation'])
   const orchestrateLabel = t(($) => $.sectionOrchestrate, { ns: 'snippet' })
   const evaluationLabel = t(($) => $.title, { ns: 'evaluation' })
 
@@ -56,8 +56,8 @@ export function SnippetCollapsedPreview({
             <span
               aria-hidden
               className={cn(
-                section === 'evaluation' ? 'i-ri-flask-fill' : 'i-ri-node-tree',
                 'size-4.5 shrink-0',
+                section === 'evaluation' ? 'i-ri-flask-line' : 'i-ri-node-tree',
               )}
             />
           </div>

@@ -174,7 +174,7 @@ def run_evaluation(task: Task, run_data_dict: dict[str, Any]) -> None:
             if not retry_scheduled:
                 logger.info("Evaluation run %s became terminal before retry", run_data.evaluation_run_id)
                 return
-            raise retry_signal
+            raise retry_signal from exc
 
 
 def _renew_evaluation_run_heartbeat(lease: EvaluationRunLease) -> bool:
@@ -1504,7 +1504,7 @@ def _build_missing_result_errors(
     target_errors: Sequence[str | None] | None = None,
 ) -> dict[int, str]:
     errors: dict[int, str] = {}
-    for position, (item, node_results) in enumerate(zip(input_list, node_run_result_mapping_list)):
+    for position, (item, node_results) in enumerate(zip(input_list, node_run_result_mapping_list, strict=False)):
         target_error = target_errors[position] if target_errors and position < len(target_errors) else None
         errors[item.index] = (
             f"Target execution failed: {target_error}"

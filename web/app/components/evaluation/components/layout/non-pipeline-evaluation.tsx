@@ -14,8 +14,8 @@ const NonPipelineEvaluation = ({
   resourceType,
   resourceId,
 }: NonPipelineEvaluationResourceProps) => {
-  const { t } = useTranslation('evaluation')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['evaluation'])
+  const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
 
   return (

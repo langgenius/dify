@@ -109,7 +109,7 @@ function renderAccessPoints({
       id: 'app-1',
       mode,
       site: createAppSiteFixture(),
-      workflow: published ? { id: 'published-workflow' } : null,
+      workflow: published ? { id: 'published-workflow', type: 'workflow' } : null,
     }),
   )
   renderWithConsoleQuery(

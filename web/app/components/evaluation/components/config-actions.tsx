@@ -14,8 +14,8 @@ import {
 import { buildEvaluationConfigPayload } from '../store-utils'
 
 const EvaluationConfigActions = ({ resourceType, resourceId }: EvaluationResourceProps) => {
-  const { t } = useTranslation('evaluation')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['evaluation'])
+  const { t: tCommon } = useTranslation(['common'])
   const resource = useEvaluationResource(resourceType, resourceId)
   const isDirty = useIsEvaluationConfigDirty(resourceType, resourceId)
   const resetResourceConfig = useEvaluationStore((state) => state.resetResourceConfig)

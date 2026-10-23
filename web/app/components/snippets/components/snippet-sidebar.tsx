@@ -49,7 +49,7 @@ export const SnippetSidebarContent = ({
   onFieldsChange,
   className,
 }: SnippetSidebarContentProps) => {
-  const { t } = useTranslation(['appDebug', 'common', 'evaluation', 'snippet'])
+  const { t } = useTranslation(['appDebug', 'common', 'snippet', 'evaluation'])
   const [isShowAddVarModal, setIsShowAddVarModal] = useState(false)
   const workflowInputVars = useMemo(() => fields.map(toWorkflowInputVar), [fields])
 

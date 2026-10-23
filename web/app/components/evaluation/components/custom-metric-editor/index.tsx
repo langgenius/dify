@@ -80,7 +80,7 @@ const CustomMetricEditorCard = ({
   resourceId,
   metric,
 }: CustomMetricEditorCardProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const setCustomMetricWorkflow = useEvaluationStore((state) => state.setCustomMetricWorkflow)
   const syncCustomMetricMappings = useEvaluationStore((state) => state.syncCustomMetricMappings)
   const syncCustomMetricOutputs = useEvaluationStore((state) => state.syncCustomMetricOutputs)

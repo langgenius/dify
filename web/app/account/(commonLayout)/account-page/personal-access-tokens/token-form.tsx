@@ -5,7 +5,7 @@ import type {
   PersonalAccessTokenResponse,
   PersonalAccessTokenWorkspaceResponse,
 } from '@dify/contracts/api/console/account/types.gen'
-import type { FormEvent } from 'react'
+import type { SyntheticEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -107,7 +107,7 @@ export default function TokenForm({
   const validScope =
     (resourceMode !== 'selected' || resources.length > 0) &&
     (workspaceMode !== 'selected' || workspaces.length > 0)
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!name.trim() || !validScope || editExpired) return
     const body: PersonalAccessTokenCreatePayload = {

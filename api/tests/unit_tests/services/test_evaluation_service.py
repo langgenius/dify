@@ -25,9 +25,12 @@ from core.evaluation.entities.evaluation_entity import (
 from core.evaluation.entities.judgment_entity import JudgmentCondition, JudgmentConfig
 from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
+from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
+from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant
-from models.agent import Agent
+from models.agent import Agent, AgentScope, AgentSource
+from models.enums import CreatorUserRole, ExecutionOffLoadType
 from models.evaluation import (
     EvaluationConfiguration,
     EvaluationRun,
@@ -36,15 +39,37 @@ from models.evaluation import (
     EvaluationRunStatus,
 )
 from models.model import App, AppMode
-from models.workflow import WorkflowKind, WorkflowType
+from models.workflow import (
+    WorkflowKind,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowType,
+)
 from services.errors.evaluation import EvaluationDatasetInvalidError
 from services.evaluation_service import EvaluationService
+from services.variable_truncator import VariableTruncator
 from tests.unit_tests.model_factories import make_upload_file
 
 
 @pytest.fixture(autouse=True)
 def stub_evaluation_model_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(EvaluationService, "_validate_evaluation_model", MagicMock())
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_expected_output.side_effect = lambda metric: metric == "context_recall"
+    evaluation_instance.metric_requires_expected_tool_calls.return_value = False
+    evaluation_instance.metric_requires_embeddings.side_effect = lambda metric: metric == "answer_relevancy"
+    monkeypatch.setattr(EvaluationManager, "get_evaluation_instance", MagicMock(return_value=evaluation_instance))
+
+
+def _agent() -> Agent:
+    return Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Research Agent",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+    )
 
 
 def test_generated_template_uses_provided_column_names() -> None:
@@ -367,7 +392,7 @@ def test_task_completion_generates_optional_success_criteria_columns() -> None:
 
 def test_agent_custom_evaluator_adds_referenced_dataset_columns() -> None:
     columns = EvaluationService.get_dataset_column_names(
-        Agent(id="agent-1", tenant_id="tenant-1", name="Research Agent"),
+        _agent(),
         "agents",
         EvaluationConfigData(
             customized_metrics=CustomizedMetrics(
@@ -407,7 +432,7 @@ def test_agent_custom_evaluator_reuses_native_success_criteria_column(
     )
 
     columns = EvaluationService.get_dataset_column_names(
-        Agent(id="agent-1", tenant_id="tenant-1", name="Research Agent"),
+        _agent(),
         "agents",
         EvaluationConfigData(
             default_metrics=[
@@ -730,7 +755,7 @@ def test_agent_default_metrics_are_scoped_to_the_agent(monkeypatch: pytest.Monke
             ]
         ),
     )
-    agent = Agent(id="agent-1", tenant_id="tenant-1", name="Research Agent")
+    agent = _agent()
 
     metrics = EvaluationService.get_default_metrics_with_nodes_for_published_target(
         agent,
@@ -780,36 +805,7 @@ def test_agent_node_discovery_scopes_agent_v2_to_native_metrics() -> None:
     }
 
 
-def test_knowledge_retrieval_v2_node_discovery_is_hidden_by_default(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        "services.evaluation_service.dify_config.EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED",
-        False,
-    )
-    workflow = SimpleNamespace(
-        walk_nodes=lambda: iter(
-            [
-                ("retrieval-v1", {"type": "knowledge-retrieval", "title": "Legacy Retrieval"}),
-                ("retrieval-v2", {"type": "knowledge-retrieval-v2", "title": "Knowledge Retrieval V2"}),
-            ]
-        )
-    )
-
-    nodes = EvaluationService._nodes_for_metrics_from_workflow(workflow, ["context_precision"])
-
-    assert nodes == {
-        "context_precision": [{"node_id": "retrieval-v1", "type": "knowledge-retrieval", "title": "Legacy Retrieval"}]
-    }
-
-
-def test_knowledge_retrieval_v2_node_discovery_uses_retrieval_metrics_when_enabled(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        "services.evaluation_service.dify_config.EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED",
-        True,
-    )
+def test_knowledge_retrieval_v2_node_discovery_uses_retrieval_metrics() -> None:
     workflow = SimpleNamespace(
         walk_nodes=lambda: iter(
             [
@@ -827,6 +823,92 @@ def test_knowledge_retrieval_v2_node_discovery_uses_retrieval_metrics_when_enabl
             {"node_id": "retrieval-v2", "type": "knowledge-retrieval-v2", "title": "Knowledge Retrieval V2"},
         ]
     }
+
+
+def test_knowledge_retrieval_v2_evaluation_scores_full_offloaded_results(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    full_items = [{"content": f"passage {index}"} for index in range(21)]
+    full_query = "question: " + "x" * 6000
+    truncator = VariableTruncator(string_length_limit=5000, array_element_limit=20, max_size_bytes=6000)
+    preview_inputs, inputs_truncated = truncator.truncate_variable_mapping({"query": full_query})
+    preview_outputs, outputs_truncated = truncator.truncate_variable_mapping({"result": full_items})
+    assert inputs_truncated
+    assert outputs_truncated
+    input_file = make_upload_file(key="workflow/retrieval-v2-input.json")
+    output_file = make_upload_file(key="workflow/retrieval-v2-output.json")
+    execution = WorkflowNodeExecutionModel(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        workflow_run_id="run-1",
+        index=1,
+        predecessor_node_id=None,
+        node_execution_id="node-execution-1",
+        node_id="retrieval-v2",
+        node_type="knowledge-retrieval-v2",
+        title="Knowledge Retrieval V2",
+        inputs=json.dumps(preview_inputs),
+        process_data=None,
+        outputs=json.dumps(preview_outputs),
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=0,
+        execution_metadata=None,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        finished_at=None,
+    )
+    sqlite_session.add_all([input_file, output_file, execution])
+    sqlite_session.flush()
+    sqlite_session.add_all(
+        [
+            WorkflowNodeExecutionOffload(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                node_execution_id=execution.id,
+                type_=ExecutionOffLoadType.INPUTS,
+                file_id=input_file.id,
+            ),
+            WorkflowNodeExecutionOffload(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                node_execution_id=execution.id,
+                type_=ExecutionOffLoadType.OUTPUTS,
+                file_id=output_file.id,
+            ),
+        ]
+    )
+    sqlite_session.commit()
+    storage_payloads = {
+        input_file.key: json.dumps({"query": full_query}),
+        output_file.key: json.dumps({"result": full_items}),
+    }
+    storage_load = MagicMock(side_effect=lambda key: storage_payloads[key])
+    monkeypatch.setattr("extensions.ext_storage.storage.load", storage_load)
+
+    node_results = EvaluationService._query_node_run_results(sqlite_session, "tenant-1", "app-1", "run-1")
+    evaluation_instance = MagicMock()
+    RetrievalEvaluationRunner(evaluation_instance).evaluate_metrics(
+        node_run_result_list=[node_results["retrieval-v2"]],
+        default_metric=DefaultMetric(
+            metric="context_precision",
+            node_info_list=[
+                NodeInfo(node_id="retrieval-v2", type="knowledge-retrieval-v2", title="Knowledge Retrieval V2")
+            ],
+        ),
+        model_provider="provider",
+        model_name="model",
+        tenant_id="tenant-1",
+    )
+
+    evaluated_item = evaluation_instance.evaluate_retrieval.call_args.args[0][0]
+    assert evaluated_item.inputs == {"query": full_query}
+    assert evaluated_item.context == [item["content"] for item in full_items]
+    assert storage_load.call_count == 2
+    storage_load.assert_any_call(input_file.key)
+    storage_load.assert_any_call(output_file.key)
 
 
 def test_validate_config_requires_default_embedding_for_embedding_metrics(
@@ -1006,15 +1088,13 @@ def test_validate_workflow_retrieval_metric_preserves_node_scope(monkeypatch: py
     )
 
 
-def test_validate_workflow_rejects_knowledge_retrieval_v2_when_disabled(
+def test_validate_workflow_accepts_knowledge_retrieval_v2(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(
-        "services.evaluation_service.dify_config.EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED",
-        False,
-    )
     evaluation_instance = MagicMock()
     evaluation_instance.metric_requires_embeddings.return_value = False
+    supported_metrics = MagicMock(return_value=["context_precision"])
+    monkeypatch.setattr(EvaluationService, "get_supported_metrics", supported_metrics)
     monkeypatch.setattr(
         "services.evaluation_service.EvaluationManager.get_evaluation_instance",
         MagicMock(return_value=evaluation_instance),
@@ -1039,14 +1119,14 @@ def test_validate_workflow_rejects_knowledge_retrieval_v2_when_disabled(
         ],
     )
 
-    with pytest.raises(ValueError, match="knowledge-retrieval-v2.*disabled"):
-        EvaluationService.validate_evaluation_config(
-            session=session,
-            tenant_id="tenant-1",
-            target_type="apps",
-            target_id="app-1",
-            data=config,
-        )
+    EvaluationService.validate_evaluation_config(
+        session=session,
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        data=config,
+    )
+    supported_metrics.assert_called_once_with(EvaluationCategory.RETRIEVAL)
 
 
 def test_validate_knowledge_base_config_rejects_customized_evaluator() -> None:
@@ -1427,17 +1507,17 @@ def test_stop_workflow_tasks_sends_graph_commands_when_queue_stop_flags_fail(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stop_flag = MagicMock(side_effect=RuntimeError("redis flag failed"))
-    graph_manager = MagicMock()
+    send_abort = MagicMock()
     monkeypatch.setattr(
         "core.app.apps.base_app_queue_manager.AppQueueManager.set_stop_flag_no_user_check",
         stop_flag,
     )
-    monkeypatch.setattr("graphon.graph_engine.manager.GraphEngineManager", MagicMock(return_value=graph_manager))
+    monkeypatch.setattr("core.app.apps.execution_coordinator.send_abort_command", send_abort)
 
     EvaluationService._stop_workflow_tasks("run-1", 1)
 
     assert stop_flag.call_count == 2
-    assert graph_manager.send_stop_command.call_count == 2
+    assert send_abort.call_count == 2
 
 
 def test_stage_target_cleanup_removes_target_rows_and_preserves_evaluator_defaults(sqlite_session) -> None:

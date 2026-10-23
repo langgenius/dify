@@ -40,8 +40,8 @@ const UploadRunPopover = ({
   onClearUploadedFile,
   onRun,
 }: UploadRunPopoverProps) => {
-  const { t } = useTranslation('evaluation')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['evaluation'])
+  const { t: tCommon } = useTranslation(['common'])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewFields = inputFields
   const booleanExampleValue = t(($) => $['conditions.boolean.true'])
@@ -66,7 +66,8 @@ const UploadRunPopover = ({
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         sideOffset={8}
         className="w-[402px] overflow-hidden rounded-lg border border-components-panel-border p-0 shadow-[0px_20px_24px_-4px_rgba(9,9,11,0.08),0px_8px_8px_-4px_rgba(9,9,11,0.03)]"
       >

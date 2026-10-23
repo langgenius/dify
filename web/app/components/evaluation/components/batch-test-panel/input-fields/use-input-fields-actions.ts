@@ -32,7 +32,7 @@ export const useInputFieldsActions = ({
   isRunnable,
   templateFileName,
 }: UseInputFieldsActionsParams) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const resource = useEvaluationResource(resourceType, resourceId)
   const setBatchTab = useEvaluationStore((state) => state.setBatchTab)
   const setSelectedRunId = useEvaluationStore((state) => state.setSelectedRunId)

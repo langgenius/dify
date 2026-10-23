@@ -18,7 +18,7 @@ type SelectorMetricSectionProps = {
     metric: MetricSelectorSection['metric'],
     nodeInfo: MetricSelectorSection['visibleNodes'][number],
   ) => void
-  t: TFunction<'evaluation'>
+  t: TFunction<['evaluation']>
 }
 
 const SelectorMetricSection = ({

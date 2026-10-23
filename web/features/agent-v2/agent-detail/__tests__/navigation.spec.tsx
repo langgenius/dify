@@ -41,6 +41,7 @@ vi.mock('@/app/components/app-sidebar/nav-link', () => ({
   default: ({ disabled, href, name }: { disabled?: boolean; href: string; name: string }) =>
     disabled ? <button disabled>{name}</button> : <a href={href}>{name}</a>,
 }))
+
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -74,10 +75,7 @@ const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}) =>
 
 function renderAgentDetailSection(expand = true) {
   const { queryClient, wrapper } = createConsoleQueryWrapper({
-    systemFeatures: {
-      deployment_edition: mocks.deploymentEdition,
-      rbac_enabled: true,
-    },
+    systemFeatures: { deployment_edition: mocks.deploymentEdition, rbac_enabled: true },
   })
   queryClient.setQueryData(
     consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),

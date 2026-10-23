@@ -584,13 +584,10 @@ class TestWorkflowAppGeneratorGenerate:
             )
         execute.assert_not_called()
 
-    def test_generate_forwards_agent_evaluation_trace(self, generation):
+    def test_generate_marks_agent_evaluation_trace(self, generation):
         generator, app, workflow, user, execute = generation
         workflow.graph = json.dumps(
-            {
-                "nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}],
-                "edges": [],
-            }
+            {"nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}], "edges": []}
         )
 
         result = generator.generate(
@@ -598,15 +595,15 @@ class TestWorkflowAppGeneratorGenerate:
             workflow=workflow,
             user=user,
             args={"inputs": {}},
-            invoke_from=InvokeFrom.WEB_APP,
+            invoke_from=InvokeFrom.SERVICE_API,
             streaming=False,
             capture_agent_evaluation_trace=True,
         )
 
         assert result == {"ok": True}
-        generate_entity = execute.call_args.kwargs["application_generate_entity"]
-        assert isinstance(generate_entity, WorkflowAppGenerateEntity)
-        assert generate_entity.extras["capture_agent_evaluation_trace"] is True
+        generated = execute.call_args.kwargs["application_generate_entity"]
+        assert isinstance(generated, WorkflowAppGenerateEntity)
+        assert generated.extras["capture_agent_evaluation_trace"] is True
 
 
 class TestWorkflowAppGeneratorResume:

@@ -14,7 +14,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
 
-import services
 from configs import dify_config
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import AgentId, DatasetId, PlainApp, RBACCheck, Workspace, enforce_rbac_checks
@@ -56,6 +55,7 @@ from models.evaluation import EvaluationConfiguration, EvaluationRun, Evaluation
 from models.model import AppMode
 from models.snippet import CustomizedSnippet
 from models.workflow import WorkflowKind, WorkflowType
+from services.errors.base import NoPermissionError
 from services.errors.evaluation import (
     EvaluationDatasetInvalidError,
     EvaluationFrameworkNotConfiguredError,
@@ -383,7 +383,7 @@ def _get_accessible_dataset(
     if not dify_config.RBAC_ENABLED:
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as exc:
+        except NoPermissionError as exc:
             raise Forbidden(str(exc)) from exc
     return dataset
 

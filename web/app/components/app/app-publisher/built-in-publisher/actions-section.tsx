@@ -1,3 +1,4 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppPublisherProps } from '../types'
 import type { WorkflowKind } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -8,7 +9,6 @@ import WorkflowToolAction from '../workflow-tool-action'
 
 type PublisherActionsSectionProps = Pick<
   AppPublisherProps,
-  | 'hasHumanInputNode'
   | 'hasTriggerNode'
   | 'onConvertWorkflowKind'
   | 'onPublishEvaluation'
@@ -17,6 +17,7 @@ type PublisherActionsSectionProps = Pick<
   | 'workflowKindChangePending'
   | 'workflowToolAvailable'
 > & {
+  appDetail?: Pick<AppDetailWithSite, 'mode' | 'workflow_kind'>
   appId: string
   appURL: string
   canViewAccessPoint: boolean
@@ -26,6 +27,7 @@ type PublisherActionsSectionProps = Pick<
   marketplaceActionDisabled?: boolean
   publishingToMarketplace?: boolean
   published?: boolean
+  isPublishing?: boolean
   showDeployAction?: boolean
   showMarketplaceAction?: boolean
   showRunConfig?: boolean
@@ -39,6 +41,7 @@ type PublisherActionsSectionProps = Pick<
 }
 
 export function PublisherActionsSection({
+  appDetail,
   appId,
   appURL,
   canViewAccessPoint,
@@ -51,6 +54,7 @@ export function PublisherActionsSection({
   onPublishEvaluation,
   publishedAt,
   published = false,
+  isPublishing = false,
   publishingToMarketplace = false,
   showDeployAction = false,
   showMarketplaceAction = false,
@@ -61,7 +65,6 @@ export function PublisherActionsSection({
   workflowToolIsLoading,
   workflowToolMessage,
   workflowToolOutdated = false,
-  workflowKind,
   workflowKindChangePending = false,
   onConfigureWorkflowTool,
   onPublishToMarketplace,
@@ -73,10 +76,10 @@ export function PublisherActionsSection({
   const navigationDisabled = !hasPublishedVersion
   const workflowToolDisabled =
     !hasPublishedVersion || !workflowToolAvailable || (toolPublished && workflowToolIsLoading)
-  const isEvaluationWorkflow = workflowKind === 'evaluation'
+  const isEvaluationWorkflow = appDetail?.workflow_kind === 'evaluation'
   const evaluationTargetKind: WorkflowKind = isEvaluationWorkflow ? 'standard' : 'evaluation'
   const showEvaluationWorkflowAction =
-    appMode === 'workflow' &&
+    appDetail?.mode === 'workflow' &&
     (hasPublishedVersion ? Boolean(onConvertWorkflowKind) : Boolean(onPublishEvaluation))
   const evaluationWorkflowActionLabel = !hasPublishedVersion
     ? t(($) => $['common.publishAsEvaluationWorkflow'], { ns: 'workflow' })
@@ -85,8 +88,7 @@ export function PublisherActionsSection({
       : t(($) => $['common.switchToEvaluationWorkflow'], { ns: 'workflow' })
 
   const handleEvaluationWorkflowAction = () => {
-    if (workflowKindChangePending || published) return
-
+    if (workflowKindChangePending || isPublishing || published) return
     const action = hasPublishedVersion
       ? onConvertWorkflowKind?.(evaluationTargetKind)
       : onPublishEvaluation?.()
@@ -98,7 +100,7 @@ export function PublisherActionsSection({
       {showEvaluationWorkflowAction && (
         <>
           <SuggestedAction
-            disabled={workflowKindChangePending || published}
+            disabled={workflowKindChangePending || isPublishing || published}
             endIcon={
               workflowKindChangePending ? (
                 <span aria-hidden className="i-ri-loader-2-line size-3.5 animate-spin" />

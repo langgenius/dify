@@ -9,7 +9,7 @@ import UploadRunPopover from '../batch-test-panel/input-fields/upload-run-popove
 import { useInputFieldsActions } from '../batch-test-panel/input-fields/use-input-fields-actions'
 
 const PipelineBatchActions = ({ resourceType, resourceId }: EvaluationResourceProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const resource = useEvaluationResource(resourceType, resourceId)
   const isConfigReady =
     !!resource.judgeModelId && resource.metrics.some((metric) => metric.kind === 'builtin')

@@ -325,10 +325,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 inputs=inputs,
                 process_data=process_data,
                 metadata=metadata,
-                evaluation_trace_collector=evaluation_trace_collector,
                 stream_text=not custom_outputs
                 and not node_job.output_routes.enabled
                 and self.error_strategy != ErrorStrategy.DEFAULT_VALUE,
+                evaluation_trace_collector=evaluation_trace_collector,
             )
             if metadata.get("knowledge_fs_sources"):
                 yield RunRetrieverResourceEvent(retriever_resources=metadata["knowledge_fs_sources"], context="")
@@ -465,8 +465,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
-        evaluation_trace_collector: AgentV2TraceCollector | None = None,
         stream_text: bool,
+        evaluation_trace_collector: AgentV2TraceCollector | None = None,
     ) -> Generator[
         StreamChunkEvent,
         None,
@@ -498,8 +498,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             inputs=inputs,
             process_data=process_data,
             metadata=metadata,
-            evaluation_trace_collector=evaluation_trace_collector,
             stream_text=stream_text,
+            evaluation_trace_collector=evaluation_trace_collector,
         )
         if stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
             yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
@@ -512,8 +512,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
-        evaluation_trace_collector: AgentV2TraceCollector | None,
         stream_text: bool,
+        evaluation_trace_collector: AgentV2TraceCollector | None = None,
     ) -> Generator[
         StreamChunkEvent,
         None,

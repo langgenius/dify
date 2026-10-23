@@ -11,7 +11,7 @@ import InputFieldsTab from './input-fields-tab'
 const BATCH_TABS: BatchTestTab[] = ['input-fields', 'history']
 
 const BatchTestPanel = ({ resourceType, resourceId }: EvaluationResourceProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const tabLabels: Record<BatchTestTab, string> = {
     'input-fields': t(($) => $['batch.tabs.input-fields']),
     history: t(($) => $['batch.tabs.history']),

@@ -793,6 +793,8 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             graph=draft_workflow.graph_dict,
         )
+        if workflow_kind == WorkflowKind.EVALUATION:
+            self._validate_evaluation_workflow_nodes(draft_workflow)
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 

@@ -4671,6 +4671,8 @@ Convert the active published workflow between standard and evaluation kinds
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow kind converted successfully | **application/json**: [WorkflowKindConvertResponse](#workflowkindconvertresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/default-workflow-block-configs
 **Get default block config**
@@ -5593,6 +5595,8 @@ Publish the draft as a reusable evaluation workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs
 Snapshot of every node's declared outputs for a published workflow run.
@@ -7218,6 +7222,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /datasets/{dataset_id}/evaluation
 #### Parameters
@@ -7237,6 +7242,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/evaluation/files/{file_id}
 #### Parameters
@@ -7251,6 +7257,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation file | **application/json**: [EvaluationFileResponse](#evaluationfileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/evaluation/logs
 #### Parameters
@@ -7266,6 +7273,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation runs | **application/json**: [EvaluationRunPaginationResponse](#evaluationrunpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/evaluation/metrics
 #### Parameters
@@ -7279,6 +7287,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Retrieval evaluation metrics | **application/json**: [EvaluationMetricsResponse](#evaluationmetricsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/evaluation/run
 #### Parameters
@@ -7298,6 +7307,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/evaluation/runs/{run_id}
 #### Parameters
@@ -7314,6 +7324,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run detail | **application/json**: [EvaluationRunDetailResponse](#evaluationrundetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/evaluation/runs/{run_id}/cancel
 #### Parameters
@@ -7328,6 +7339,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run cancelled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/evaluation/runs/{run_id}/retry
 #### Parameters
@@ -7342,6 +7354,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/evaluation/template/download
 #### Parameters
@@ -7355,6 +7368,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Knowledge base evaluation template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/external-hit-testing
 Test external knowledge retrieval for dataset
@@ -7806,6 +7820,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Available evaluation metrics | **application/json**: [EvaluationAvailableMetricsResponse](#evaluationavailablemetricsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /explore/apps
 #### Parameters
@@ -14553,6 +14568,7 @@ Get list of available agent providers
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Available evaluation workflows | **application/json**: [AvailableEvaluationWorkflowPaginationResponse](#availableevaluationworkflowpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/customized-snippets
 **List customized snippets with pagination and search**
@@ -14976,6 +14992,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Associated evaluation targets | **application/json**: [EvaluationAssociatedTargetListResponse](#evaluationassociatedtargetlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/members
 #### Parameters
@@ -18434,6 +18451,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation dataset template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation
 #### Parameters
@@ -18448,6 +18466,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /{evaluate_target_type}/{evaluate_target_id}/evaluation
 #### Parameters
@@ -18468,6 +18487,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/default-metrics
 #### Parameters
@@ -18482,6 +18502,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Default metrics | **application/json**: [EvaluationDefaultMetricsResponse](#evaluationdefaultmetricsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/files/{file_id}
 #### Parameters
@@ -18497,6 +18518,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation file | **application/json**: [EvaluationFileResponse](#evaluationfileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/logs
 #### Parameters
@@ -18513,6 +18535,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation runs | **application/json**: [EvaluationRunPaginationResponse](#evaluationrunpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/metrics
 #### Parameters
@@ -18527,6 +18550,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation metrics | **application/json**: [EvaluationMetricsResponse](#evaluationmetricsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/node-info
 #### Parameters
@@ -18547,6 +18571,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation node info | **application/json**: [EvaluationNodeInfoResponse](#evaluationnodeinforesponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/run
 #### Parameters
@@ -18567,6 +18592,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}
 #### Parameters
@@ -18584,6 +18610,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run detail | **application/json**: [EvaluationRunDetailResponse](#evaluationrundetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/cancel
 #### Parameters
@@ -18599,6 +18626,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run cancelled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/retry
 #### Parameters
@@ -18614,6 +18642,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/template-columns
 #### Parameters
@@ -18634,6 +18663,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation template columns | **application/json**: [EvaluationTemplateColumnsResponse](#evaluationtemplatecolumnsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -25497,6 +25527,29 @@ declaration of an endpoint group
 | data | [ [DocumentStatusResponse](#documentstatusresponse) ] |  | Yes |
 | total | integer |  | Yes |
 
+#### ErrorMessageResponse
+
+Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | Yes |
+
+#### ErrorResponse
+
+Documented non-2xx body emitted by ``register_external_error_handlers``.
+
+``params`` and ``details`` appear only on the errors that set them. The schema
+stays open because ``HTTPException.data`` may carry extra keys.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| details | object |  | No |
+| message | string |  | Yes |
+| params | string |  | No |
+| status | integer |  | Yes |
+
 #### EvaluationAssociatedTargetListResponse
 
 | Name | Type | Description | Required |
@@ -25685,29 +25738,6 @@ declaration of an endpoint group
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | columns | [ [EvaluationTemplateColumnResponse](#evaluationtemplatecolumnresponse) ] |  | Yes |
-
-#### ErrorMessageResponse
-
-Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| error | string |  | Yes |
-
-#### ErrorResponse
-
-Documented non-2xx body emitted by ``register_external_error_handlers``.
-
-``params`` and ``details`` appear only on the errors that set them. The schema
-stays open because ``HTTPException.data`` may carry extra keys.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| code | string |  | Yes |
-| details | object |  | No |
-| message | string |  | Yes |
-| params | string |  | No |
-| status | integer |  | Yes |
 
 #### EventApiEntity
 
@@ -35738,23 +35768,6 @@ How a workflow node is bound to an Agent.
 | node_execution_id | string | Workflow node execution ID | Yes |
 | path | string | Binding path: relative paths start in Workspace; exact `~` and paths beginning with `~/` start in Home; `~user` is an ordinary relative path from Workspace; absolute paths remain absolute; `..` and paths outside Workspace are governed by backend isolation, not a Workspace-root restriction | Yes |
 
-#### WorkflowAppLogEvaluationItemResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| details | object |  | No |
-| name | string |  | Yes |
-| node_info | [WorkflowAppLogEvaluationNodeInfoResponse](#workflowapplogevaluationnodeinforesponse) |  | No |
-| value |  |  | No |
-
-#### WorkflowAppLogEvaluationNodeInfoResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| node_id | string |  | Yes |
-| title | string |  | Yes |
-| type | string |  | Yes |
-
 #### WorkflowAppBlockingResponse
 
 WorkflowAppBlockingResponse entity
@@ -35781,6 +35794,23 @@ Data entity
 | total_steps | integer |  | Yes |
 | total_tokens | integer |  | Yes |
 | workflow_id | string |  | Yes |
+
+#### WorkflowAppLogEvaluationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| details | object |  | No |
+| name | string |  | Yes |
+| node_info | [WorkflowAppLogEvaluationNodeInfoResponse](#workflowapplogevaluationnodeinforesponse) |  | No |
+| value |  |  | No |
+
+#### WorkflowAppLogEvaluationNodeInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string |  | Yes |
+| title | string |  | Yes |
+| type | string |  | Yes |
 
 #### WorkflowAppLogPaginationResponse
 

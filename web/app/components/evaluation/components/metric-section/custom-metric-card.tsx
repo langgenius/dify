@@ -14,7 +14,7 @@ type CustomMetricCardProps = EvaluationResourceProps & {
 }
 
 const CustomMetricCard = ({ resourceType, resourceId, metric }: CustomMetricCardProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const removeMetric = useEvaluationStore((state) => state.removeMetric)
   const isCustomMetricInvalid = !isCustomMetricConfigured(metric)
   const metricToneClasses = getToneClasses('indigo')

@@ -419,9 +419,9 @@ def _node(
     agent_backend_client: FakeAgentBackendRunClient | None = None,
     binding_resolver: FakeBindingResolver | None = None,
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
-    capture_agent_evaluation_trace: bool = False,
     workflow_tool_invocation_id: str | None = None,
     error_strategy: ErrorStrategy | None = None,
+    capture_agent_evaluation_trace: bool = False,
 ) -> DifyAgentNode:
     graph_init_params = InitParams(
         workflow_id="workflow-1",
@@ -433,8 +433,8 @@ def _node(
                 user_id="user-1",
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
-                capture_agent_evaluation_trace=capture_agent_evaluation_trace,
                 workflow_tool_invocation_id=workflow_tool_invocation_id,
+                capture_agent_evaluation_trace=capture_agent_evaluation_trace,
             )
         },
         call_depth=0,
@@ -536,8 +536,7 @@ def test_agent_node_captures_trace_only_for_evaluation_execution() -> None:
         )._run()
     )
 
-    completed = next(event for event in events if isinstance(event, StreamCompletedEvent))
-    result = completed.node_run_result
+    result = next(event for event in events if isinstance(event, StreamCompletedEvent)).node_run_result
     trace = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["evaluation_trace"]
     assert trace["schema_version"] == "1.0"
     assert trace["trajectory"]["source"] == "agent_v2"

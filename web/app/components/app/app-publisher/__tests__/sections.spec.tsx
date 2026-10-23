@@ -598,14 +598,17 @@ describe('app-publisher sections', () => {
 
       render(
         <PublisherActionsSection
+          appDetail={{
+            mode: 'workflow',
+            workflow_kind: workflowKind,
+          }}
           appId="workflow-app"
-          appMode="workflow"
           appURL="https://example.com/app"
           canViewAccessPoint={false}
           disabledFunctionButton={false}
           publishedAt={publishedAt}
-          workflowKind={workflowKind}
           workflowToolIsLoading={false}
+          showWorkflowTool={false}
           onConfigureWorkflowTool={vi.fn()}
           onConvertWorkflowKind={onConvertWorkflowKind}
           onPublishEvaluation={onPublishEvaluation}

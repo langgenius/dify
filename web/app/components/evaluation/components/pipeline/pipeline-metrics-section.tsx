@@ -10,7 +10,7 @@ import { InlineSectionHeader } from '../section-header'
 import PipelineMetricItem from './pipeline-metric-item'
 
 const PipelineMetricsSection = ({ resourceType, resourceId }: EvaluationResourceProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const addBuiltinMetric = useEvaluationStore((state) => state.addBuiltinMetric)
   const removeMetric = useEvaluationStore((state) => state.removeMetric)
   const updateMetricThreshold = useEvaluationStore((state) => state.updateMetricThreshold)

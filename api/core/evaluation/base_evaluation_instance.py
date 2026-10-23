@@ -110,6 +110,7 @@ class BaseEvaluationInstance(ABC):
         from core.db.session_factory import session_factory
         from core.evaluation.runners import get_service_account_for_app
         from models.model import App
+        from services.workflow_run_agg import WorkflowRunAgg
         from services.workflow_service import WorkflowService
 
         workflow_id = customized_metrics.evaluation_workflow_id
@@ -148,7 +149,7 @@ class BaseEvaluationInstance(ABC):
                     node_run_result_mapping,
                 )
 
-                generator = WorkflowAppGenerator()
+                generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
                 response: Mapping[str, Any] = generator.generate(
                     app_model=app,
                     workflow=published_workflow,

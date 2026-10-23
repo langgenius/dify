@@ -26,7 +26,7 @@ const PipelineMetricItem = ({
   threshold = DEFAULT_PIPELINE_METRIC_THRESHOLD,
   onThresholdChange,
 }: PipelineMetricItemProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const metricDescription = getTranslatedMetricDescription(t, metric.id, metric.description)
 
   return (

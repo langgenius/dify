@@ -1,8 +1,8 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.js'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createTestDataset } from '../../../support/api/datasets'
-import { waitForKnowledgeConsole } from '../../../support/knowledge'
+import { createTestDataset } from '../../../support/api/datasets.js'
+import { waitForKnowledgeConsole } from '../../../support/knowledge.js'
 
 const getLatestCreatedId = (ids: string[], resource: string) => {
   const id = ids.at(-1)

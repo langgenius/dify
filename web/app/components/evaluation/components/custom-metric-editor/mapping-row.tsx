@@ -35,7 +35,7 @@ type MappingRowProps = {
 }
 
 const MappingRow = ({ inputVariable, source, value, onUpdate }: MappingRowProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
 
   return (
     <div className="flex items-center">

@@ -11,7 +11,7 @@ import MetricCard from './metric-card'
 import MetricSectionEmptyState from './metric-section-empty-state'
 
 const MetricSection = ({ resourceType, resourceId }: NonPipelineEvaluationResourceProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const resource = useEvaluationResource(resourceType, resourceId)
   const hasMetrics = resource.metrics.length > 0
   const hasBuiltinMetrics = resource.metrics.some((metric) => metric.kind === 'builtin')

@@ -37,12 +37,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isEvaluationEdition } from '@/features/system-features/utils'
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
-import {
-  useConvertWorkflowKind,
-  useInvalidateAppWorkflow,
-  usePublishEvaluationWorkflow,
-  useResetWorkflowVersionHistory,
-} from '@/service/use-workflow'
+import { useInvalidateAppWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation(['common', 'workflow'])
@@ -52,10 +47,7 @@ const FeaturesTrigger = () => {
   const queryClient = useQueryClient()
   const { appId: appID } = useAtomValue(workflowAppIdentityAtom)
   const { data: appDetail } = useQuery(
-    consoleQuery.apps.byAppId.get.queryOptions({
-      enabled: !!appID,
-      input: { params: { app_id: appID ?? '' } },
-    }),
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appID } } }),
   )
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
@@ -143,6 +135,7 @@ const FeaturesTrigger = () => {
     if (!startNodeIds.length) return false
     return edges.some((edge) => startNodeIds.includes(edge.source))
   }, [edges, startNodeIds])
+  const hasHumanInputNode = nodes.some((node) => node.data.type === BlockEnum.HumanInput)
   // Track trigger presence so the publisher can adjust UI (e.g. hide missing start section).
   const hasTriggerNode = useMemo(() => nodes.some((node) => isTriggerNode(node.data.type)), [nodes])
   const startNodeLimitExceeded = useMemo(() => {
@@ -165,13 +158,16 @@ const FeaturesTrigger = () => {
   const { mutateAsync: publishWorkflow } = useMutation(
     consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions(),
   )
-  const { mutateAsync: publishEvaluationWorkflow } = usePublishEvaluationWorkflow()
-  const { isPending: workflowKindChangePending, mutateAsync: convertWorkflowKind } =
-    useConvertWorkflowKind()
+  const { mutateAsync: publishEvaluationWorkflow } = useMutation(
+    consoleQuery.apps.byAppId.workflows.publish.evaluation.post.mutationOptions(),
+  )
+  const { isPending: workflowKindChangePending, mutateAsync: convertWorkflowKind } = useMutation(
+    consoleQuery.apps.byAppId.workflows.convertType.post.mutationOptions(),
+  )
+  const invalidateAppWorkflow = useInvalidateAppWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
   const needWarningNodes = useChecklist(nodes, edges)
 
-  const updatePublishedWorkflow = useInvalidateAppWorkflow()
   const publishByKind = useCallback(
     async (
       publishKind: 'default' | 'evaluation',
@@ -194,58 +190,60 @@ const FeaturesTrigger = () => {
         if (!draftSyncResult) throw new Error('Workflow draft sync failed')
         if (!appID) throw new Error('App ID is required to publish a workflow')
 
-        const title = publishParams?.title || ''
-        const releaseNotes = publishParams?.releaseNotes || ''
+        const input = {
+          params: { app_id: appID },
+          body: {
+            marked_name: publishParams?.title || '',
+            marked_comment: publishParams?.releaseNotes || '',
+          },
+        }
         const res =
           publishKind === 'evaluation'
-            ? await publishEvaluationWorkflow({
-                body: {
-                  marked_comment: releaseNotes,
-                  marked_name: title,
-                },
-                params: {
-                  app_id: appID,
-                },
-              })
-            : await publishWorkflow({
-                params: { app_id: appID },
-                body: { marked_name: title, marked_comment: releaseNotes },
-              })
+            ? await publishEvaluationWorkflow(input)
+            : await publishWorkflow(input)
         if (res) {
           // One toast per publish: a warning from the server replaces the success message.
           if (res.warning) toast.warning(res.warning)
           else if (options?.showSuccessToast !== false)
             toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-          updatePublishedWorkflow(appID)
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.apps.byAppId.get.queryKey({
-              input: { params: { app_id: appID } },
-            }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey:
-              consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get.key(
-                {
-                  type: 'query',
-                  input: {
-                    params: {
-                      evaluate_target_id: appID,
-                      evaluate_target_type: 'apps',
+          if (publishKind === 'evaluation') {
+            void Promise.all([
+              invalidateAppWorkflow(appID),
+              queryClient.invalidateQueries({
+                queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                  input: { params: { app_id: appID } },
+                }),
+              }),
+              queryClient.invalidateQueries({
+                queryKey: consoleQuery.apps.byAppId.triggers.get.key({
+                  input: { params: { app_id: appID } },
+                }),
+              }),
+            ]).catch((error) => console.warn('[evaluation] refresh after publish failed', error))
+          }
+          void queryClient
+            .invalidateQueries({
+              queryKey:
+                consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get.key(
+                  {
+                    type: 'query',
+                    input: {
+                      params: {
+                        evaluate_target_id: appID,
+                        evaluate_target_type: 'apps',
+                      },
                     },
                   },
-                },
-              ),
-          })
-          if (publishKind === 'evaluation' || appDetail?.workflow_kind === 'evaluation') {
-            void queryClient.invalidateQueries({
-              queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
+                ),
             })
+            .catch((error) => console.warn('[evaluation] refresh default metrics failed', error))
+          if (publishKind === 'evaluation' || appDetail?.workflow_kind === 'evaluation') {
+            void queryClient
+              .invalidateQueries({
+                queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
+              })
+              .catch((error) => console.warn('[evaluation] refresh workflow list failed', error))
           }
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.apps.byAppId.triggers.get.queryKey({
-              input: { params: { app_id: appID } },
-            }),
-          })
           if (rosterAgentIds.length > 0) {
             void queryClient.invalidateQueries({
               queryKey: consoleQuery.agent.get.key(),
@@ -278,6 +276,7 @@ const FeaturesTrigger = () => {
       handleSyncWorkflowDraft,
       publishWorkflow,
       publishEvaluationWorkflow,
+      invalidateAppWorkflow,
       appID,
       appDetail?.workflow_kind,
       t,
@@ -303,31 +302,24 @@ const FeaturesTrigger = () => {
 
   const onConvertWorkflowKind = useCallback(
     async (targetKind: WorkflowKind) => {
-      if (!appID || !appDetail) return
-
-      try {
-        await convertWorkflowKind({
-          params: {
-            app_id: appID,
-          },
-          query: {
-            target_type: targetKind === 'standard' ? 'workflow' : 'evaluation',
-          },
-        })
-        queryClient.setQueryData(
-          consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appID } } }),
-          { ...appDetail, workflow_kind: targetKind },
-        )
-        await Promise.all([
-          updatePublishedWorkflow(appID),
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
+      await convertWorkflowKind({
+        params: { app_id: appID },
+        query: { target_type: targetKind === 'standard' ? 'workflow' : 'evaluation' },
+      })
+      await Promise.all([
+        invalidateAppWorkflow(appID),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.apps.byAppId.get.queryKey({
+            input: { params: { app_id: appID } },
           }),
-        ])
-        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-      } catch {}
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
+        }),
+      ])
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     },
-    [appDetail, appID, convertWorkflowKind, queryClient, t, updatePublishedWorkflow],
+    [appID, convertWorkflowKind, invalidateAppWorkflow, queryClient, t],
   )
 
   const onPublisherToggle = useCallback(
@@ -374,6 +366,7 @@ const FeaturesTrigger = () => {
           workflowToolAvailable: lastPublishedHasUserInput,
           alignOffset: 4,
           missingStartNode: !startNode,
+          hasHumanInputNode,
           hasTriggerNode,
           startNodeLimitExceeded,
           publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded || !canReleaseAndVersion,

@@ -13,7 +13,7 @@ import SelectorMetricSection from './selector-metric-section'
 import { useMetricSelectorData } from './use-metric-selector-data'
 
 const MetricSelector = ({ resourceType, resourceId, triggerClassName }: MetricSelectorProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
   const resource = useEvaluationResource(resourceType, resourceId)
   const addCustomMetric = useEvaluationStore((state) => state.addCustomMetric)
   const [open, setOpen] = useState(false)

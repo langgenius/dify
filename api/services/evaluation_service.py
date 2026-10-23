@@ -5,8 +5,9 @@ import logging
 import math
 import uuid
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import suppress
 from decimal import Decimal, InvalidOperation
-from typing import Any, TypedDict, Union, cast
+from typing import Any, TypedDict, cast
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -41,6 +42,7 @@ from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
+from extensions.ext_storage import storage
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.node_events.base import NodeRunResult
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
@@ -113,7 +115,7 @@ class EvaluationService:
     @classmethod
     def generate_dataset_template(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         data: EvaluationConfigData,
         session: Session,
@@ -763,13 +765,11 @@ class EvaluationService:
             category = cls.NODE_TYPE_CATEGORY_MAPPING[node_type]
         except KeyError as exc:
             raise ValueError(f"Evaluation does not support node type '{node_type}'.") from exc
-        if node_type == KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE and not dify_config.EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED:
-            raise ValueError(f"Evaluation support for node type '{node_type}' is disabled.")
         return category
 
     @classmethod
     def validate_default_metric_node_types(cls, default_metrics: Sequence[DefaultMetric]) -> None:
-        """Reject task payloads that reference unsupported or disabled node types."""
+        """Reject task payloads that reference unsupported node types."""
         for metric in default_metrics:
             for node_info in metric.node_info_list:
                 cls.category_for_node_type(node_info.type)
@@ -1460,16 +1460,8 @@ class EvaluationService:
     ) -> None:
         """Stop selected workflow phases for the selected original row positions."""
         from core.app.apps.base_app_queue_manager import AppQueueManager
-        from extensions.ext_redis import redis_client
-        from graphon.graph_engine.manager import GraphEngineManager
+        from core.app.apps.execution_coordinator import send_abort_command
 
-        try:
-            manager = GraphEngineManager(redis_client)
-        except Exception:
-            logger.exception(
-                "Failed to initialize graph engine manager while stopping evaluation run %s", evaluation_run_id
-            )
-            manager = None
         for position in positions:
             for phase in phases:
                 task_id = cls.workflow_task_id(evaluation_run_id, phase, position)
@@ -1477,10 +1469,8 @@ class EvaluationService:
                     AppQueueManager.set_stop_flag_no_user_check(task_id)
                 except Exception:
                     logger.exception("Failed to set stop flag for evaluation workflow task %s", task_id)
-                if manager is None:
-                    continue
                 try:
-                    manager.send_stop_command(task_id)
+                    send_abort_command(task_id)
                 except Exception:
                     logger.exception("Failed to send stop command for evaluation workflow task %s", task_id)
 
@@ -1871,7 +1861,7 @@ class EvaluationService:
     @classmethod
     def get_dataset_column_names(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         data: EvaluationConfigData,
         session: Session,
@@ -1931,7 +1921,7 @@ class EvaluationService:
     @classmethod
     def _get_target_input_columns(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         session: Session,
     ) -> list[EvaluationTemplateColumn]:
@@ -2131,7 +2121,7 @@ class EvaluationService:
     @classmethod
     def get_default_metrics_with_nodes_for_published_target(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         session: Session,
     ) -> list[DefaultMetric]:
@@ -2176,7 +2166,7 @@ class EvaluationService:
     @classmethod
     def get_nodes_for_metrics(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         session: Session,
         metrics: list[str] | None = None,
@@ -2214,7 +2204,7 @@ class EvaluationService:
     @classmethod
     def _resolve_published_workflow(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         session: Session,
     ) -> Workflow | None:
@@ -2228,7 +2218,7 @@ class EvaluationService:
     @classmethod
     def _resolve_workflow(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         session: Session,
     ) -> Workflow | None:
@@ -2410,7 +2400,7 @@ class EvaluationService:
         ``target_type``:
 
         * ``"snippets"`` → :meth:`SnippetGenerateService.run_published`
-        * ``"apps"`` → :meth:`WorkflowAppGenerator().generate` (blocking mode)
+        * ``"apps"`` → :meth:`WorkflowAppGenerator.generate` (blocking mode)
 
         :returns: The blocking response mapping from the workflow engine.
         :raises ValueError: If the target itself is invalid or missing.
@@ -2419,6 +2409,7 @@ class EvaluationService:
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
         from core.app.entities.app_invoke_entities import InvokeFrom
         from core.evaluation.runners import get_service_account_for_app, get_service_account_for_snippet
+        from services.workflow_run_agg import WorkflowRunAgg
 
         if target_type == EvaluationTargetType.SNIPPETS.value:
             from services.snippet_generate_service import SnippetGenerateService
@@ -2487,7 +2478,7 @@ class EvaluationService:
                     f"Pinned workflow version {target_workflow_version_id} no longer exists for app {target_id}."
                 )
 
-            response: Mapping[str, object] = WorkflowAppGenerator().generate(
+            response: Mapping[str, object] = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                 app_model=app,
                 workflow=workflow,
                 user=service_account,
@@ -2550,16 +2541,16 @@ class EvaluationService:
             raw_metadata = node.execution_metadata_dict
             typed_metadata: dict[WorkflowNodeExecutionMetadataKey, object] = {}
             for key, val in raw_metadata.items():
-                try:
+                with suppress(ValueError):  # skip unknown metadata keys
                     typed_metadata[WorkflowNodeExecutionMetadataKey(key)] = val
-                except ValueError:
-                    pass  # skip unknown metadata keys
 
             result[node.node_id] = NodeRunResult(
                 status=WorkflowNodeExecutionStatus(node.status),
-                inputs=node.inputs_dict or {},
+                inputs=node.load_full_inputs(session, storage) or {},
                 process_data=node.process_data_dict or {},
-                outputs=node.outputs_dict or {},
+                # Workflow outputs can be truncated in the row and offloaded to storage.
+                # Evaluation metrics must use every retrieved context, not the preview.
+                outputs=node.load_full_outputs(session, storage) or {},
                 metadata=typed_metadata,
                 error=node.error or "",
             )

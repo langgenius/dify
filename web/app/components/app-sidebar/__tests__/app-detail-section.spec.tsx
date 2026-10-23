@@ -13,13 +13,6 @@ let mockAppPermissionKeys: string[] = []
 let mockIsRbacEnabled = true
 let mockHasPublishedWorkflow = true
 let mockDeploymentEdition: DeploymentEdition = 'ENTERPRISE'
-const mockConsoleState = vi.hoisted(() => ({
-  current: {
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [] as string[],
-  },
-}))
-
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(
@@ -30,15 +23,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
       mode: mockAppMode,
       permission_keys: mockAppPermissionKeys,
       workflow: mockHasPublishedWorkflow
-        ? {
-            id: 'workflow-1',
-            type: 'workflow',
-            kind: 'standard',
-            created_by: null,
-            created_at: 1,
-            updated_by: null,
-            updated_at: 1,
-          }
+        ? { id: 'workflow-1', type: 'workflow', created_at: 1, updated_at: 1 }
         : null,
     }),
   )
@@ -54,7 +39,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState.current)
+  return createPermissionStateModuleMock(() => ({ workspacePermissionKeys: [] }))
 })
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -193,7 +178,7 @@ describe('AppDetailSection', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should render evaluation for a published workflow app with view-layout permission', () => {
+    it('shows evaluation for a published workflow with layout view permission', () => {
       mockAppMode = 'workflow'
       mockAppPermissionKeys = [AppACLPermission.ViewLayout]
 
@@ -205,7 +190,7 @@ describe('AppDetailSection', () => {
       )
     })
 
-    it('should keep evaluation visible but disabled before the workflow is published', () => {
+    it('shows disabled evaluation before the workflow is published', () => {
       mockAppMode = 'workflow'
       mockAppPermissionKeys = [AppACLPermission.ViewLayout]
       mockHasPublishedWorkflow = false
@@ -216,7 +201,7 @@ describe('AppDetailSection', () => {
       expect(screen.queryByRole('link', { name: 'evaluation.title' })).not.toBeInTheDocument()
     })
 
-    it('should hide evaluation for non-workflow apps', () => {
+    it('hides evaluation for other app modes', () => {
       mockAppMode = 'advanced-chat'
       mockAppPermissionKeys = [AppACLPermission.ViewLayout]
 

@@ -448,6 +448,54 @@ describe('AppDetailLayout', () => {
     expect(mockRedirect).not.toHaveBeenCalled()
   })
 
+  it('allows layout viewers to open evaluation for a published workflow', async () => {
+    mockPathname = '/app/app-1/evaluation'
+    mockAppResponse.mockResolvedValue(
+      createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitForAppContent()
+    expect(mockRedirect).not.toHaveBeenCalled()
+  })
+
+  it('redirects evaluation when the workflow is unpublished', async () => {
+    mockPathname = '/app/app-1/evaluation'
+    mockAppResponse.mockResolvedValue(
+      createAppDetail({ permission_keys: [AppACLPermission.ViewLayout], workflow: null }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith('/app/app-1/workflow'))
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+  })
+
+  it('redirects evaluation when layout view permission is missing', async () => {
+    mockPathname = '/app/app-1/evaluation'
+    mockAppResponse.mockResolvedValue(
+      createAppDetail({ permission_keys: [AppACLPermission.Monitor] }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith('/app/app-1/overview'))
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+  })
+
   it('should redirect workflow pages when layout access is missing', async () => {
     mockPathname = '/app/app-1/workflow'
     mockAppResponse.mockResolvedValue(createAppDetail({ permission_keys: [] }))

@@ -19,7 +19,7 @@ const SnippetAndEvaluationPlanGuard = ({
   children,
   fallbackHref,
 }: SnippetAndEvaluationPlanGuardProps) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const router = useRouter()
   const systemFeaturesQuery = useQuery(systemFeaturesQueryOptions())
   const deploymentEdition = systemFeaturesQuery.data?.deployment_edition

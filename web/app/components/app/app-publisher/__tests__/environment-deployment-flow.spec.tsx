@@ -168,6 +168,7 @@ function createDeployment({
       }
 
   return {
+    deployment_id: 'deployment-staging',
     access: {
       enable_api: true,
       enable_site: true,

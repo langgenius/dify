@@ -52,7 +52,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
 }
 
 function AppDetailContent({ appId, expand }: { appId: string; expand: boolean }) {
-  const { t } = useTranslation(['app', 'common', 'evaluation', 'navigation'])
+  const { t } = useTranslation(['app', 'common', 'navigation', 'evaluation'])
   const pathname = usePathname()
   const [detailQuery, featuresQuery, profileQuery] = useQueries({
     queries: [

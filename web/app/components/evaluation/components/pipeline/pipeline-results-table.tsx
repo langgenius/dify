@@ -19,7 +19,7 @@ type PipelineResultsTableProps = {
 }
 
 const PipelineResultsTable = ({ items, metricColumns, isLoading }: PipelineResultsTableProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation(['evaluation'])
 
   return (
     <div className="overflow-x-auto py-2 xl:min-h-0 xl:flex-1 xl:overflow-auto">

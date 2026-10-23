@@ -237,18 +237,14 @@ describe('DatasetDetailLayout', () => {
   describe('Permission Route Guards', () => {
     it('should render evaluation with pipeline-test permission', () => {
       mockUsePathname.mockReturnValue('/datasets/dataset-1/evaluation')
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: [DatasetACLPermission.PipelineTest],
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: [DatasetACLPermission.PipelineTest],
+      })
 
       render(
         <DatasetDetailLayout datasetId="dataset-1">
@@ -262,18 +258,14 @@ describe('DatasetDetailLayout', () => {
 
     it('should redirect evaluation when pipeline-test permission is missing', async () => {
       mockUsePathname.mockReturnValue('/datasets/dataset-1/evaluation')
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: [],
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: [],
+      })
 
       render(
         <DatasetDetailLayout datasetId="dataset-1">
@@ -289,18 +281,14 @@ describe('DatasetDetailLayout', () => {
 
     it('should redirect evaluation for external datasets', async () => {
       mockUsePathname.mockReturnValue('/datasets/dataset-1/evaluation')
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'external',
-          runtime_mode: 'general',
-          is_published: true,
-          permission_keys: [DatasetACLPermission.PipelineTest],
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'external',
+        runtime_mode: 'general',
+        is_published: true,
+        permission_keys: [DatasetACLPermission.PipelineTest],
+      })
 
       render(
         <DatasetDetailLayout datasetId="dataset-1">
@@ -316,18 +304,14 @@ describe('DatasetDetailLayout', () => {
 
     it('should redirect evaluation while a RAG pipeline is unpublished', async () => {
       mockUsePathname.mockReturnValue('/datasets/dataset-1/evaluation')
-      mockUseDatasetDetail.mockReturnValue({
-        data: {
-          id: 'dataset-1',
-          name: 'Dataset 1',
-          provider: 'vendor',
-          runtime_mode: 'rag_pipeline',
-          is_published: false,
-          permission_keys: [DatasetACLPermission.PipelineTest],
-        },
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      dataset = createDatasetFixture({
+        id: 'dataset-1',
+        name: 'Dataset 1',
+        provider: 'vendor',
+        runtime_mode: 'rag_pipeline',
+        is_published: false,
+        permission_keys: [DatasetACLPermission.PipelineTest],
+      })
 
       render(
         <DatasetDetailLayout datasetId="dataset-1">

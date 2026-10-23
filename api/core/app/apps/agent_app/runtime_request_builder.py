@@ -185,6 +185,7 @@ class AgentAppRuntimeRequestBuilder:
 
         shell_config = build_shell_layer_config(agent_soul)
         tracing_hooks = application_tracing_hooks()
+        shell_config = build_shell_layer_config(agent_soul)
         request = self._request_builder.build_for_agent_app(
             AgentBackendAgentAppRunInput(
                 model=AgentBackendModelConfig(

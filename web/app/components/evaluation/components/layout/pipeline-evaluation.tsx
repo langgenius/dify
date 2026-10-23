@@ -14,8 +14,8 @@ import PipelineResultsPanel from '../pipeline/pipeline-results-panel'
 import SectionHeader, { InlineSectionHeader } from '../section-header'
 
 const PipelineEvaluation = ({ resourceType, resourceId }: EvaluationResourceProps) => {
-  const { t } = useTranslation('evaluation')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['evaluation'])
+  const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
   const ensureResource = useEvaluationStore((state) => state.ensureResource)
 

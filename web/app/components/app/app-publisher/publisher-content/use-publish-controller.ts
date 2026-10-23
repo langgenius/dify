@@ -134,7 +134,7 @@ export function usePublishController({
   }
 
   async function handlePublishEvaluation(params?: AppPublisherPublishParams) {
-    if (publishingRef.current) return
+    if (publishingRef.current || !onPublishEvaluation) return
     publishingRef.current = true
     setIsPublishing(true)
     try {

@@ -300,7 +300,7 @@ def test_execute_evaluation_starts_running_lease_before_work(
     assert execute_running.call_args.args[-1] == lease
 
 
-def test_execute_evaluation_rejects_disabled_knowledge_retrieval_v2_payload(
+def test_execute_evaluation_accepts_knowledge_retrieval_v2_payload(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -323,14 +323,16 @@ def test_execute_evaluation_rejects_disabled_knowledge_retrieval_v2_payload(
         )
         session.commit()
 
-    monkeypatch.setattr(
-        "services.evaluation_service.dify_config.EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED",
-        False,
-    )
-    get_instance = MagicMock()
+    get_instance = MagicMock(return_value=MagicMock())
     execute_running = MagicMock()
     monkeypatch.setattr("tasks.evaluation_task.EvaluationManager.get_evaluation_instance", get_instance)
     monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", execute_running)
+
+    @contextmanager
+    def maintain_heartbeat(_lease: EvaluationRunLease):
+        yield
+
+    monkeypatch.setattr("tasks.evaluation_task._maintain_evaluation_run_heartbeat", maintain_heartbeat)
     run_data = EvaluationRunData(
         evaluation_run_id=run_id,
         tenant_id="30000000-0000-0000-0000-000000000002",
@@ -351,11 +353,10 @@ def test_execute_evaluation_rejects_disabled_knowledge_retrieval_v2_payload(
     )
 
     with sqlite_session_factory() as session:
-        with pytest.raises(ValueError, match="knowledge-retrieval-v2.*disabled"):
-            _execute_evaluation(session, run_data, _lease(run_id))
+        _execute_evaluation(session, run_data, _lease(run_id))
 
-    get_instance.assert_not_called()
-    execute_running.assert_not_called()
+    get_instance.assert_called_once_with(EvaluationFrameworkEnum.RAGAS)
+    execute_running.assert_called_once()
 
 
 def test_execute_evaluation_does_not_run_duplicate_delivery(

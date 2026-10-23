@@ -86,7 +86,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     children,
     appId, // get appId in path
   } = props
-  const { t } = useTranslation(['common', 'navigation'])
+  const { t } = useTranslation(['common', 'navigation', 'evaluation'])
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
