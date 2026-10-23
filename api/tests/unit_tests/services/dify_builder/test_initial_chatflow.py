@@ -196,7 +196,12 @@ class _GeneratedAgent(PlaceholderAgent):
 
     @override
     def build_nodes(
-        self, plan_items: list[str], resource_ids: list[str] | None = None, *, trusted_text: str = ""
+        self,
+        plan_items: list[str],
+        resource_ids: list[str] | None = None,
+        *,
+        trusted_text: str = "",
+        reply_language: str | None = None,
     ) -> BuildNodesResult:
         del plan_items, resource_ids, trusted_text
         return BuildNodesResult(intents=copy.deepcopy(self._intents))

@@ -518,18 +518,24 @@ class StubAgent(DifyBuilderAgent):
         self.edit_intent_calls: list[tuple[list[str], str | None]] = []
 
     @override
-    def diagnose(self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> Diagnosis:
+    def diagnose(
+        self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput], *, reply_language: str | None = None
+    ) -> Diagnosis:
         return Diagnosis(culprit_node_id="output", root_cause="Output node requires 'metrics'", severity="high")
 
     @override
-    def diagnose_checklist(self, errors: list[ChecklistError], graph: Graph) -> Diagnosis:
+    def diagnose_checklist(
+        self, errors: list[ChecklistError], graph: Graph, *, reply_language: str | None = None
+    ) -> Diagnosis:
         if not errors:
             return Diagnosis()
         first = errors[0]
         return Diagnosis(culprit_node_id=first.node_id, root_cause="Checklist error", severity="high")
 
     @override
-    def propose_repair(self, diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]:
+    def propose_repair(
+        self, diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
+    ) -> tuple[list[MutationIntent], Risk]:
         intents = [
             MutationIntent(
                 op="set_node_config",
@@ -551,7 +557,9 @@ class StubAgent(DifyBuilderAgent):
         return ""
 
     @override
-    def propose_plan_v1(self, requirements: dict[str, object], *, goal_text: str) -> WorkflowPlan | None:
+    def propose_plan_v1(
+        self, requirements: dict[str, object], *, goal_text: str, reply_language: str | None = None
+    ) -> WorkflowPlan | None:
         return None
 
     @override
@@ -572,7 +580,12 @@ class StubAgent(DifyBuilderAgent):
 
     @override
     def build_nodes(
-        self, plan_items: list[str], resource_ids: list[str] | None = None, *, trusted_text: str = ""
+        self,
+        plan_items: list[str],
+        resource_ids: list[str] | None = None,
+        *,
+        trusted_text: str = "",
+        reply_language: str | None = None,
     ) -> BuildNodesResult:
         return BuildNodesResult(intents=[])
 
