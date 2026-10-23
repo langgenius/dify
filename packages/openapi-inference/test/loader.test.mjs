@@ -1,7 +1,7 @@
 /* oxlint-disable vitest/no-import-node-test, antfu/no-import-dist -- Verify the loader's module graph and watch invalidation against the built package. */
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { test } from 'node:test'
 import loader from '../dist/tooling/loader.js'
 /* oxlint-enable vitest/no-import-node-test, antfu/no-import-dist */
@@ -41,7 +41,8 @@ test('loader namespaces use a tiny resource and invalidate when the source docum
     }
     const before = loader.call(namespaceContext, '')
     assert(before.includes('as "get"'))
-    assert(before.includes(JSON.stringify(runtime)))
+    const runtimeImport = JSON.parse(before.match(/import runtime from (.+);/)[1])
+    assert.equal(resolve(dirname(namespaceContext.resourcePath), runtimeImport), runtime)
     assert(dependencies.has(file))
     assert(dependencies.has(runtime))
     spec.paths['/pets'].delete = { responses: { 204: { description: 'Deleted' } } }

@@ -1,5 +1,5 @@
 import { readFileSync, statSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { dirname, relative, resolve } from 'node:path'
 import { compileRuntime, runtimeConfigFile } from './transform.js'
 
 type LoaderContext = {
@@ -26,7 +26,10 @@ export default function openapiLoader(this: LoaderContext, content: string): str
   const { runtime } = this.getOptions()
   const config = runtime ? resolve(dirname(fileName), runtime) : runtimeConfigFile(fileName)
   if (config) this.addDependency(config)
-  const key = JSON.stringify([fileName, config])
+  const runtimeModule = config
+    ? `./${relative(dirname(this.resourcePath), config).replaceAll('\\', '/')}`
+    : undefined
+  const key = JSON.stringify([fileName, runtimeModule])
   const stat = statSync(fileName)
   const version = `${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}`
   let compiled = cache.get(key)
@@ -36,7 +39,7 @@ export default function openapiLoader(this: LoaderContext, content: string): str
     compiled = {
       version,
       content: source,
-      render: compileRuntime(source, fileName, config, namespace),
+      render: compileRuntime(source, fileName, runtimeModule, namespace),
     }
     cache.set(key, compiled)
   }
