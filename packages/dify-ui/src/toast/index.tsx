@@ -150,8 +150,8 @@ function ToastCard({ toast: toastItem, children }: ToastCardProps) {
       toast={toastItem}
       swipeDirection={['up', 'right']}
       className={cn(
-        // oxlint-disable-next-line better-tailwindcss/enforce-logical-properties -- the toast stack is anchored to the physical right: its swipe direction and exit transform are physical
         focusRingClassName,
+        // oxlint-disable-next-line better-tailwindcss/enforce-logical-properties -- the toast stack is anchored to the physical right: its swipe direction and exit transform are physical
         'group/toast pointer-events-auto absolute top-0 right-0 w-full origin-top cursor-default rounded-xl select-none',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-expanded-offset-y:calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-gap)))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
         'z-[calc(100-var(--toast-index))] h-(--toast-current-height)',

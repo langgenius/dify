@@ -81,7 +81,6 @@ const selectTriggerVariants = cva(
     variants: {
       size: {
         // The text sits 4px further in than the icon: 8px around the control, 4px more for text.
-        // Physical padding, so callers' `px-*`/`pl-*`/`pr-*` overrides keep replacing it.
         small: 'h-6 gap-px rounded-md py-1 ps-2 pe-1 system-xs-regular',
         medium: 'h-8 gap-0.5 rounded-lg py-2 ps-3 pe-2 system-sm-regular',
         large: 'h-9 gap-0.5 rounded-[10px] py-2 ps-4 pe-3 system-md-regular',

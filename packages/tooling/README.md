@@ -89,7 +89,33 @@ Oxlint and Vite+ type-check scope is defined by `packages/tooling/lint.config.ts
 
 The primary rule baseline lives in `packages/tooling/lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. Oxlint-native rules are preferred, and compatible ESLint rules can run through Oxlint's `jsPlugins` support. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
 
-Tailwind canonical class cleanup is optional because loading the JavaScript plugin adds noticeable lint startup time. The default `vp run -w check` command does not load it. Run `vp run -w lint:tailwind` to inspect `web/` and `packages/dify-ui/`, or `vp run -w lint:tailwind:fix` to apply safe replacements. Both commands run the complete lint configuration with the additional `better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css` and a 16px root font size.
+The Tailwind plugin always loads. `better-tailwindcss/enforce-logical-properties` runs at
+`error` in Web and Dify UI, including the default check and CI. Inline-direction classes
+use `ps-*`/`pe-*`, `ms-*`/`me-*`, `inset-s-*`/`inset-e-*`, `border-s`/`border-e`,
+logical corner radii, and `text-start`/`text-end`. Caller overrides must use the same
+family as the primitive because `cn` does not merge `pl-*` with `ps-*`.
+
+Block-axis and sizing classes remain physical. Direction variants (`rtl:`/`ltr:`),
+Base UI physical swipe-direction variants, and `left-1/2`/`right-1/2` centering are
+excluded by the rule. Review the paired transforms when using the centering exception;
+the rule does not verify them. Other deliberate physical classes require a described,
+line-scoped disable, such as the Toast stack anchored to its physical swipe exit.
+
+Dify UI has no suppression entries for this rule. Existing Web findings are recorded
+in `oxlint-suppressions.json`; new findings beyond each file's count fail. This baseline
+only covers classes found by the plugin, not CSS modules, inline styles, dynamically
+constructed classes, or full RTL behavior. Audit these separately during each migration.
+
+Migrate Web in reviewed batches with `vp lint --fix <paths>` and `vp fmt <paths>`,
+check primitive/caller overrides and physical animation contracts, then review the
+suppression diff and run the affected tests. Autofix also changes baselined violations
+and can prune entries for the files it processes; inspect every change rather than
+running a repository-wide fix. Do not increase counts for new code.
+
+Tailwind canonical class cleanup remains optional. `vp run -w lint:tailwind` and
+`vp run -w lint:tailwind:fix` additionally enable the warning-level
+`better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css`
+and a 16px root font size.
 
 The non-code baseline and its repository-wide file scope live in `packages/tooling/eslint.ts`. ESLint checks JSON, JSONC, JSON5, YAML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
 

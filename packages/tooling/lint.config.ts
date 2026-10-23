@@ -383,12 +383,12 @@ const tailwindCanonicalClassesOverride = {
   },
 } satisfies NonNullable<OxlintConfig['overrides']>[number]
 
-// Directories already migrated to logical inline-direction classes. The rule has no bulk-suppression
-// baseline on purpose: a fix run prunes baseline entries for the files it lints, and the autofix
-// would migrate unlisted files one commit at a time. Migrate a directory with
-// `vp lint --fix <dir>` and `vp fmt <dir>`, then add it here.
+// Web's existing violations use the per-file suppression baseline; Dify UI is fully migrated.
 const tailwindLogicalPropertiesOverride = {
-  files: ['packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
+  files: [
+    'web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+    'packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+  ],
   rules: {
     'better-tailwindcss/enforce-logical-properties': [
       'error',
