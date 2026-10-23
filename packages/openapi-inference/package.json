@@ -1,0 +1,52 @@
+{
+  "name": "@dify/openapi-inference",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "./dist/tooling/register.js"
+  ],
+  "exports": {
+    ".": "./dist/index.js",
+    "./vite": "./dist/tooling/vite.js",
+    "./register": "./dist/tooling/register.js",
+    "./mapper": "./dist/tooling/mapper.js",
+    "./runtime": "./dist/client.js",
+    "./query-runtime": "./dist/query-runtime.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "type-check": "tsc -p tsconfig.json --noEmit && tsc --runExternalCode --noEmit -p examples/petstore/tsconfig.json",
+    "test": "node --test test/*.test.mjs",
+    "demo": "node --import ./dist/tooling/register.js examples/petstore/demo.ts",
+    "test:repository": "node --test integration/*.test.mjs",
+    "compare:orpc": "node integration/compare-orpc.mjs",
+    "check:orpc": "node integration/compare-orpc.mjs --check"
+  },
+  "dependencies": {
+    "@orpc/client": "catalog:",
+    "@orpc/tanstack-query": "catalog:",
+    "yaml": "catalog:"
+  },
+  "devDependencies": {
+    "@tanstack/query-core": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:ts71",
+    "vite": "catalog:"
+  },
+  "typescript": {
+    "contentMapper": {
+      "compilerOptions": [],
+      "exec": [
+        "node",
+        "dist/tooling/mapper.js"
+      ]
+    }
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

@@ -2,6 +2,7 @@
 
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleClient as inferredClient } from './inferred'
 
 const mocks = vi.hoisted(() => ({
   headers: vi.fn(),
@@ -41,6 +42,41 @@ beforeEach(() => {
 })
 
 describe('server console oRPC client', () => {
+  it('uses request-local cookies and CSRF for the inferred KnowledgeFS operation', async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockImplementation(async () =>
+        Response.json({ data: [], next_cursor: null }, { headers: { 'x-request-id': 'inferred' } }),
+      )
+    vi.stubGlobal('fetch', fetch)
+    await import('./server')
+    const controller = new AbortController()
+    const onResponseHeaders = vi.fn()
+    await inferredClient.knowledgeFs.spaces.byControlSpaceId.metadata.get(
+      { params: { control_space_id: 'space-1' } },
+      {
+        signal: controller.signal,
+        context: { keepalive: true, onResponseHeaders },
+      },
+    )
+    mocks.headers.mockResolvedValue(new Headers({ cookie: 'access_token=second' }))
+    mocks.cookies.mockResolvedValue({ get: () => ({ value: 'second-csrf' }) })
+    await inferredClient.knowledgeFs.spaces.byControlSpaceId.metadata.get({
+      params: { control_space_id: 'space-2' },
+    })
+    const [url, init] = fetch.mock.calls[0]!
+    expect(String(url)).toBe(
+      'http://localhost:5001/console/api/knowledge-fs/spaces/space-1/metadata',
+    )
+    expect(new Headers(init?.headers).get('cookie')).toContain('access_token=abc')
+    expect(new Headers(init?.headers).get('X-CSRF-Token')).toBe('csrf-token')
+    expect(init).toMatchObject({ cache: 'no-store', keepalive: true, signal: controller.signal })
+    expect(onResponseHeaders.mock.calls[0]![0].get('x-request-id')).toBe('inferred')
+    const secondHeaders = new Headers(fetch.mock.calls[1]![1]?.headers)
+    expect(secondHeaders.get('cookie')).toBe('access_token=second')
+    expect(secondHeaders.get('X-CSRF-Token')).toBe('second-csrf')
+  })
+
   it('preserves cancellation after receiving HTTP error headers', async () => {
     const controller = new AbortController()
     const abortError = new DOMException('Cancelled while reading the response', 'AbortError')

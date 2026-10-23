@@ -1,0 +1,187 @@
+import type { Node, Scalar } from 'yaml'
+import type { RouterNode } from './router.js'
+import { existsSync } from 'node:fs'
+import { isMap, isScalar, isSeq, parseDocument, visit } from 'yaml'
+import { assertDocument, pointer } from '../document.js'
+import { describeOperations } from '../operation.js'
+import { createRouter, queryQuery, routerModule, routerQuery } from './router.js'
+import { schemaTypes } from './schema-types.js'
+
+// Positions use UTF-16, as do YAML's ranges and JavaScript string offsets.
+export type Mapping = [number, number, number, number, 0 | 1, number]
+export type Transform = {
+  text: string
+  extension: '.ts'
+  mappings: Mapping[]
+  diagnostics?: { messageText: string; start: number; length: number; code: number }[]
+}
+
+export function runtimeConfigFile(fileName: string): string | undefined {
+  const config = `${fileName}.config.ts`
+  return existsSync(config.startsWith('file:') ? new URL(config) : config) ? config : undefined
+}
+
+function assertObjectKey(node: unknown): asserts node is Scalar<string | number> {
+  if (!isScalar(node) || !['string', 'number'].includes(typeof node.value))
+    throw new Error('OpenAPI object keys must be strings or numbers')
+}
+
+// Both compiler mappings and runtime modules share the same document validation.
+function parseSpec(content: string, fileName: string) {
+  // JSON files must be valid JSON, even though YAML is a superset.
+  if (fileName.endsWith('.json')) JSON.parse(content)
+  const document = parseDocument(content, { uniqueKeys: true, version: '1.2' })
+  if (document.errors.length) throw document.errors[0]
+  const value: unknown = document.toJS({ maxAliasCount: 0 })
+  assertDocument(value)
+  visit(document, {
+    Alias() {
+      throw new Error('YAML aliases are not supported; use OpenAPI $ref')
+    },
+    Pair(_key, pair) {
+      assertObjectKey(pair.key)
+      const key = String(pair.key.value)
+      if (key === '$ref' && isScalar(pair.value) && typeof pair.value.value === 'string')
+        pointer(value, pair.value.value)
+    },
+    Scalar(_key, node) {
+      if (typeof node.value === 'number' && !Number.isFinite(node.value))
+        throw new Error('OpenAPI does not support non-finite numbers')
+    },
+  })
+  const operations = describeOperations(value)
+  if (operations.has('api') || operations.has('query'))
+    throw new Error('operationId "api" and "query" are reserved for the nested client')
+  return { document, value, operations, router: createRouter(operations) }
+}
+
+export function transformSpec(content: string, fileName: string): Transform {
+  try {
+    const { document, value, operations, router } = parseSpec(content, fileName)
+    let text = 'const document = '
+    const mappings: Mapping[] = []
+    const operationNodes = new Map<string, Node>()
+    const methodNodes = new Map<string, Node>()
+    function token(encoded: string, node: Node | null | undefined) {
+      const start = text.length
+      text += encoded
+      if (node?.range) {
+        const [from, to] = node.range
+        mappings.push([
+          start,
+          encoded.length,
+          from,
+          to - from,
+          content.slice(from, to) === encoded ? 0 : 1,
+          1 | 8 | 16 | 64,
+        ])
+      }
+    }
+    function emit(node: Node | null | undefined, path: string[] = []): void {
+      if (isMap(node)) {
+        text += '{'
+        node.items.forEach((pair, index) => {
+          if (index) text += ','
+          assertObjectKey(pair.key)
+          const key = String(pair.key.value)
+          if (path.length === 2 && path[0] === 'paths')
+            methodNodes.set(`${path[1]} ${key}`, pair.key)
+          if (key === 'operationId' && isScalar(pair.value) && typeof pair.value.value === 'string')
+            operationNodes.set(pair.value.value, pair.value)
+          // Computed keys preserve __proto__ as a data property at runtime.
+          text += '['
+          token(JSON.stringify(key), pair.key)
+          text += ']:'
+          emit(pair.value as Node | null, [...path, key])
+        })
+        text += '}'
+      } else if (isSeq(node)) {
+        text += '['
+        node.items.forEach((item, index) => {
+          if (index) text += ','
+          emit(item as Node | null, [...path, String(index)])
+        })
+        text += ']'
+      } else if (isScalar(node)) {
+        token(JSON.stringify(node.value), node)
+      } else {
+        text += 'null'
+      }
+    }
+    emit(document.contents)
+    text += ' as const;\n'
+    text += schemaTypes(value)
+    const config = runtimeConfigFile(fileName)
+    text += config
+      ? `type Context = import(${JSON.stringify(config)}).Context;\n`
+      : 'type Context = object;\n'
+    text += 'type SDK = import("@dify/openapi-inference").Operations<Document>;\n'
+    function emitRouter(node: RouterNode) {
+      text += '{\n'
+      for (const [method, op] of node.methods) {
+        token(JSON.stringify(method), methodNodes.get(`${op.path} ${method}`))
+        text += `: import("@dify/openapi-inference").RpcOperation<Document, ${JSON.stringify(op.path)}, ${JSON.stringify(method)}, Context>;\n`
+      }
+      for (const [key, child] of node.children) {
+        text += `${JSON.stringify(key)}: `
+        emitRouter(child)
+        text += ';\n'
+      }
+      text += '}'
+    }
+    text += 'export declare const api: '
+    emitRouter(router)
+    text += ';\n'
+    text += 'export declare const query: import("@orpc/tanstack-query").RouterUtils<typeof api>;\n'
+    let index = 0
+    for (const id of operations.keys()) {
+      if (id.startsWith('\0')) continue // Named exports require operationId; the router does not.
+      const binding = `operation${index++}`
+      text += `declare const ${binding}: SDK[${JSON.stringify(id)}];\nexport { ${binding} as `
+      token(JSON.stringify(id), operationNodes.get(id))
+      text += ' };\n'
+    }
+    return { text, extension: '.ts', mappings }
+  } catch (error) {
+    const position =
+      error && typeof error === 'object' && 'pos' in error
+        ? (error.pos as [number, number])
+        : [0, Math.min(content.length, 1)]
+    const start = Math.min(content.length, Math.max(0, position[0] ?? 0))
+    const end = Math.min(content.length, Math.max(start, position[1] ?? start))
+    return {
+      text: 'declare const invalid: never; export default invalid;',
+      extension: '.ts',
+      mappings: [],
+      diagnostics: [
+        {
+          messageText: error instanceof Error ? error.message : String(error),
+          start,
+          length: end - start,
+          code: 1001,
+        },
+      ],
+    }
+  }
+}
+
+export function compileRuntime(
+  content: string,
+  fileName: string,
+  runtimeModule = runtimeConfigFile(fileName),
+): (routerPath?: string[], query?: boolean) => string {
+  const { operations, router } = parseSpec(content, fileName)
+  let text = 'import { invokeOperation } from "@dify/openapi-inference/runtime";\n'
+  if (runtimeModule) text += `import runtime from ${JSON.stringify(runtimeModule)};\n`
+  text += `export * as api from ${JSON.stringify(`${fileName}${routerQuery}${encodeURIComponent('[]')}`)};\n`
+  text += `export * as query from ${JSON.stringify(`${fileName}${queryQuery}${encodeURIComponent('[]')}`)};\n`
+  let index = 0
+  for (const [id, descriptor] of operations) {
+    if (id.startsWith('\0')) continue
+    const binding = `operation${index++}`
+    text += `const ${binding} = options => invokeOperation(${JSON.stringify(descriptor)}, options${runtimeModule ? ', runtime' : ''});\n`
+    text += `export { ${binding} as ${JSON.stringify(id)} };\n`
+  }
+  return (routerPath, query) =>
+    routerPath ? routerModule(router, fileName, routerPath, query, runtimeModule) : text
+}

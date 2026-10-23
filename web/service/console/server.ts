@@ -1,6 +1,7 @@
 import type { ClientLink } from '@orpc/client'
 import type { AnyContractRouter } from '@orpc/contract'
 import type { ConsoleClientContext } from './index'
+import { createClient } from '@dify/openapi-inference'
 import { onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { cache } from 'react'
@@ -62,6 +63,17 @@ export const getServerConsoleRequestHeaders = async () => {
   return requestHeaders
 }
 
+async function fetchServerConsole(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  context: ConsoleClientContext,
+): Promise<Response> {
+  const response = await globalThis.fetch(input, { ...init, cache: 'no-store' })
+  if (isHttpErrorStatus(response.status)) throw await httpErrorFromResponse(response)
+  context.onResponseHeaders?.(response.headers)
+  return response
+}
+
 function createServerConsoleOpenAPILink(
   contract: AnyContractRouter,
 ): ClientLink<ConsoleClientContext> {
@@ -75,13 +87,7 @@ function createServerConsoleOpenAPILink(
       const normalizedURL = normalizeConsoleOpenAPIURL(request.url)
       const normalizedRequest =
         normalizedURL === request.url ? request : new Request(normalizedURL, request)
-      const response = await globalThis.fetch(normalizedRequest, {
-        ...init,
-        cache: 'no-store',
-      })
-      if (isHttpErrorStatus(response.status)) throw await httpErrorFromResponse(response)
-      options.context.onResponseHeaders?.(response.headers)
-      return response
+      return fetchServerConsole(normalizedRequest, init, options.context)
     },
     interceptors: [
       validateDefinedErrors(contract),
@@ -98,3 +104,17 @@ const consoleServerLink = createConsoleContractLink<ConsoleClientContext>(
 
 // Share only the transport across RSC and Client Component SSR module graphs.
 globalThis.$consoleServerLink = consoleServerLink
+
+globalThis.$consoleInferenceTransport = (context) =>
+  createClient({
+    baseUrl: getServerConsoleApiPrefix(),
+    fetch: async (input, init) => {
+      const requestHeaders = await getServerConsoleRequestHeaders()
+      new Headers(init?.headers).forEach((value, key) => requestHeaders.set(key, value))
+      return fetchServerConsole(
+        input,
+        { ...init, headers: requestHeaders, keepalive: context.keepalive },
+        context,
+      )
+    },
+  })
