@@ -2,12 +2,14 @@ import { Button } from '@langgenius/dify-ui/button'
 import { DialogClose, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import WorkspaceRole from './workspace-role'
 
 export default function ScopeDetails({ tokenId }: { tokenId: string }) {
   const { t } = useTranslation(['accountSettings', 'common', 'dataset'])
+  const [now] = useState(Date.now)
   const query = useQuery(
     consoleQuery.account.personalAccessTokens.byTokenId.get.queryOptions({
       context: { silent: true },
@@ -16,9 +18,9 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
     }),
   )
   const detail = query.data
-  const expiration = detail?.token.expires_at
-    ? new Date(detail.token.expires_at).toISOString().slice(0, 10)
-    : null
+  const expiresAt = detail?.token.expires_at ? new Date(detail.token.expires_at) : null
+  const hasExpired = expiresAt !== null && expiresAt.getTime() < now
+  const expiration = hasExpired ? expiresAt.toISOString().slice(0, 10) : null
   const unavailableResourceCount =
     detail?.resources.filter(
       (resource) => !resource.available && resource.reason !== 'workspace_not_current',
@@ -73,11 +75,11 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
                 {new Date(detail.token.created_at).toISOString().slice(0, 10)}
               </span>
             </div>
-            <p className="mt-1 text-text-destructive">
-              {expiration
-                ? t(($) => $['personalAccessToken.expiredDate'], { date: expiration })
-                : t(($) => $['personalAccessToken.never'])}
-            </p>
+            {expiration && (
+              <p className="mt-1 text-text-destructive">
+                {t(($) => $['personalAccessToken.expiredDate'], { date: expiration })}
+              </p>
+            )}
             {unavailableCount > 0 && (
               <p className="mt-1 text-text-warning">
                 {unavailableResourceCount > 0 && unavailableWorkspaceCount > 0

@@ -200,7 +200,7 @@ export default function ResourceSelector({
           <div className="flex items-center justify-between gap-3">
             <TabsList className="gap-5">
               <TabsTab value="all" className="py-1.5 system-sm-semibold">
-                {t(($) => $['resourceAccessToken.tabAll'], { ns: 'accountSettings' })}
+                {t(($) => $['resourceAccessToken.tabAllTypes'], { ns: 'accountSettings' })}
               </TabsTab>
               <TabsTab value="app" className="py-1.5 system-sm-semibold">
                 {t(($) => $['resourceAccessToken.tabApps'], { ns: 'accountSettings' })}

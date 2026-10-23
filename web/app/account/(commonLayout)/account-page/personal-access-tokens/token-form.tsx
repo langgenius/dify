@@ -303,7 +303,7 @@ export default function TokenForm({
                 }}
               >
                 <SegmentedControlItem value="all" className="data-checked:text-text-primary">
-                  {t(($) => $['resourceAccessToken.tabAll'])}
+                  {t(($) => $['personalAccessToken.all'])}
                 </SegmentedControlItem>
                 <SegmentedControlItem value="selected" className="data-checked:text-text-primary">
                   {t(($) => $['personalAccessToken.selected'])}
@@ -380,7 +380,7 @@ export default function TokenForm({
                 }}
               >
                 <SegmentedControlItem value="all" className="data-checked:text-text-primary">
-                  {t(($) => $['resourceAccessToken.tabAll'])}
+                  {t(($) => $['personalAccessToken.all'])}
                 </SegmentedControlItem>
                 <SegmentedControlItem value="selected" className="data-checked:text-text-primary">
                   {t(($) => $['personalAccessToken.selected'])}
