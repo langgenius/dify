@@ -125,7 +125,7 @@ class WebPassportRepository:
                             app_id=app.app_id,
                             type=EndUserType.BROWSER,
                             account_id=account_id,
-                            is_anonymous=False,
+                            _is_anonymous=False,
                             session_id=self._generate_unique_session_id(session),
                         )
                         session.add(end_user)
@@ -198,7 +198,7 @@ class WebPassportRepository:
             tenant_id=app.tenant_id,
             app_id=app.app_id,
             type=EndUserType.BROWSER,
-            is_anonymous=True,
+            _is_anonymous=True,
             session_id=session_id,
         )
         session.add(end_user)

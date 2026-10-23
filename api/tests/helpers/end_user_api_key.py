@@ -182,7 +182,7 @@ def make_harness(sessions: sessionmaker[Session]) -> ConnectionHarness:
             type=EndUserType.BROWSER,
             account_id=account.id,
             session_id=str(uuidv7()),
-            is_anonymous=False,
+            _is_anonymous=False,
         )
         session.add(user)
         graph: dict[str, Any] = {

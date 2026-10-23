@@ -4,6 +4,7 @@ import json
 import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from threading import Barrier
 from typing import Never
 
@@ -298,10 +299,10 @@ def test_other_legacy_entrypoints_use_the_same_private_sdk(
         model_provider="test",
         model_id="model",
         answer="answer",
-        total_price=0,
-        created_at=started,
-        updated_at=started + timedelta(seconds=1),
+        total_price=Decimal(0),
     )
+    message.created_at = started
+    message.updated_at = started + timedelta(seconds=1)
     common = {
         "metadata": {},
         "message_data": message,
