@@ -81,6 +81,7 @@ def prepare_continuation(
             )
             return StepResult(next=session.current_state, context=context, items=items)
 
+    context.task_control["generation"] = int(context.task_control.get("generation", 0)) + 1
     context.retained_test_input_ref = context.test_input_ref or context.retained_test_input_ref
     context.confirmed_consent_id = ""
     context.confirmed_command_id = ""

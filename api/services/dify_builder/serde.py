@@ -93,6 +93,7 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         edit_target_node_ids=list(d.get("edit_target_node_ids") or []),
         last_edit_rejection=d.get("last_edit_rejection", ""),
         paused=bool(d.get("paused", False)),
+        task_control=dict(d.get("task_control") or {}),
         checkpoint_seq=int(d.get("checkpoint_seq", 0)),
         last_structure_fingerprint=d.get("last_structure_fingerprint", ""),
         recovery_class=d.get("recovery_class", ""),
