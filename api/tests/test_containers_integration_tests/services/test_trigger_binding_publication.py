@@ -136,3 +136,4 @@ def test_publish_signal_shares_workflow_and_binding_transaction(
         assert saved_binding.subscription_id == (next_subscription_id if commit else previous_subscription_id)
         assert saved_binding.event_name == ("issues" if commit else "push")
         assert (reader.get(Workflow, new_workflow_id) is not None) == commit
+        assert (reader.scalar(select(AppTrigger.id).where(AppTrigger.app_id == app_id)) is not None) == commit

@@ -9,11 +9,11 @@ from core.workflow.nodes.trigger_schedule.exc import (
     TenantOwnerNotFoundError,
 )
 from enums import QuotaType
+from extensions.ext_application_services import application_services
 from models.trigger import WorkflowSchedulePlan
 from services.async_workflow_service import AsyncWorkflowService
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService, unlimited
-from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.schedule_service import ScheduleService
 from services.workflow.entities import ScheduleTriggerData
 
@@ -47,7 +47,7 @@ def run_schedule_trigger(schedule_id: str) -> None:
     try:
         quota_charge = QuotaService.reserve(QuotaType.TRIGGER, schedule.tenant_id)
     except QuotaExceededError:
-        AppTriggerService.mark_tenant_triggers_rate_limited(schedule.tenant_id)
+        application_services().apps.trigger_status.mark_tenant_triggers_rate_limited(schedule.tenant_id)
         logger.info("Tenant %s rate limited, skipping schedule trigger %s", schedule.tenant_id, schedule_id)
         return
 

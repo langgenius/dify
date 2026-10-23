@@ -807,6 +807,7 @@ class WebhookService:
         workflow: Workflow,
         *,
         end_users: WebhookEndUserProvisioner,
+        trigger_status: AppTriggerService,
     ) -> None:
         """Trigger workflow execution via AsyncWorkflowService.
 
@@ -841,7 +842,7 @@ class WebhookService:
             try:
                 quota_charge = QuotaService.reserve(QuotaType.TRIGGER, webhook_trigger.tenant_id)
             except QuotaExceededError:
-                AppTriggerService.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
+                trigger_status.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
                 raise
 
             try:

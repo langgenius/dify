@@ -325,3 +325,65 @@ def test_failed_status_write_rolls_back_and_releases_connection(
     assert not open_connections
     with sqlite_session_factory() as session:
         assert session.get_one(AppTrigger, scope.trigger_id).status == AppTriggerStatus.ENABLED
+
+
+@pytest.mark.parametrize("initial_status", list(AppTriggerStatus))
+def test_quota_status_updates_only_enabled_triggers_in_tenant(
+    repository: SQLAlchemyAppTriggerRepository,
+    sqlite_session_factory: sessionmaker[Session],
+    scope: TriggerScope,
+    initial_status: AppTriggerStatus,
+    open_connections: set[object],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.get_one(AppTrigger, scope.trigger_id).status = initial_status
+        other_app = AppTrigger(
+            tenant_id=scope.context.active_workspace_id,
+            app_id=str(uuid4()),
+            node_id="other-app",
+            trigger_type=AppTriggerType.TRIGGER_SCHEDULE,
+            title="Same tenant",
+            status=AppTriggerStatus.ENABLED,
+        )
+        foreign = AppTrigger(
+            tenant_id=str(uuid4()),
+            app_id=scope.app_id,
+            node_id=scope.node_id,
+            trigger_type=AppTriggerType.TRIGGER_PLUGIN,
+            title="Other tenant",
+            status=AppTriggerStatus.ENABLED,
+        )
+        session.add_all([other_app, foreign])
+    repository.mark_tenant_triggers_rate_limited(scope.context.active_workspace_id)
+    assert not open_connections
+    with sqlite_session_factory() as session:
+        expected = AppTriggerStatus.RATE_LIMITED if initial_status == AppTriggerStatus.ENABLED else initial_status
+        assert session.get_one(AppTrigger, scope.trigger_id).status == expected
+        assert session.get_one(AppTrigger, other_app.id).status == AppTriggerStatus.RATE_LIMITED
+        assert session.get_one(AppTrigger, foreign.id).status == AppTriggerStatus.ENABLED
+
+
+def test_best_effort_status_failure_rolls_back_and_preserves_original_error_path(
+    repository: SQLAlchemyAppTriggerRepository,
+    sqlite_session_factory: sessionmaker[Session],
+    scope: TriggerScope,
+    open_connections: set[object],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from services.trigger.app_trigger_service import AppTriggerService
+
+    with sqlite_session_factory.begin() as session:
+        session.execute(
+            text(
+                "CREATE TRIGGER reject_trigger_update BEFORE UPDATE ON app_triggers "
+                "BEGIN SELECT RAISE(ABORT, 'status unavailable'); END"
+            )
+        )
+    AppTriggerService(triggers=repository).mark_tenant_triggers_rate_limited(scope.context.active_workspace_id)
+    assert not open_connections
+    assert (
+        f"Failed to mark all enabled triggers as rate limited for tenant {scope.context.active_workspace_id}"
+        in caplog.text
+    )
+    with sqlite_session_factory() as session:
+        assert session.get_one(AppTrigger, scope.trigger_id).status == AppTriggerStatus.ENABLED
