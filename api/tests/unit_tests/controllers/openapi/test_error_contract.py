@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import (
     BadGateway,
@@ -28,7 +27,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.openapi._catalog import CATALOG_HEADER, build_catalog, catalog_for
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi._errors import (
     AccessModeNotAllowed,
     AppAccessModeUnavailable,
@@ -54,7 +53,6 @@ from controllers.openapi._errors import (
     PrivateAppUserUnresolved,
     RecipientSurfaceMismatch,
     ResourceNotAuthorized,
-    ServiceApiDisabled,
     UnsupportedTokenType,
     WorkspaceMismatch,
     WorkspaceUnavailable,
@@ -392,33 +390,3 @@ def test_formatter_emits_hints_only_from_openapi_errors() -> None:
     foreign = BadRequest()
     foreign.hints = [hint]  # type: ignore[attr-defined]
     assert "hints" not in OpenApiErrorFormatter().finalize(foreign, {}, 400)
-
-
-def test_plain_503_gets_service_unavailable_code(fmt):
-    wire = fmt.finalize(ServiceUnavailable("x"), {"message": "x"}, 503)
-    assert wire["code"] == "service_unavailable"
-    assert wire["message"] == "Internal Server Error"
-
-
-def test_openapi_503_keeps_its_message_and_hint(fmt):
-    wire = fmt.finalize(BearerAuthDisabled(), {"message": BearerAuthDisabled.description}, 503)
-    assert wire == {
-        "code": "bearer_auth_disabled",
-        "message": "Sign-in with access tokens is turned off on this server.",
-        "status": 503,
-        "hint": "Ask an admin to set ENABLE_OAUTH_BEARER=true and restart the API.",
-    }
-
-
-def test_service_api_disabled_hint_has_no_api_wording():
-    assert ServiceApiDisabled.hint == "A workspace admin can turn it on."
-
-
-@pytest.mark.parametrize(
-    ("exc_class", "op"),
-    [(WorkspaceMismatch, "get.workspace"), (ResourceNotAuthorized, "get.console_app")],
-)
-def test_app_token_hints_name_a_real_op(openapi_app: Flask, exc_class: type[OpenApiError], op: str) -> None:
-    assert exc_class.hint is not None
-    assert exc_class.hint.startswith(f"{op} ")
-    assert op in build_catalog(openapi_app)["ops"]

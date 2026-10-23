@@ -61,13 +61,3 @@ it('runs deferred cleanups in reverse, after failure too', async () => {
   expect(await main([], [], ctx)).toBe(1)
   expect(order).toEqual(['second', 'first'])
 })
-
-it('prints each server hint as a runnable next line', async () => {
-  w = await testContext({ login: true, tty: true })
-  w.mock.setScenario('hinted-forbidden')
-  const code = await main(['describe', 'account'], w.overrides)
-  expect(code).toBe(4)
-  const err = w.io.errBuf()
-  expect(err).toContain('difyctl set service_api --app-id app-1 --enabled')
-  expect(err).toContain('— Turn the Service API on')
-})

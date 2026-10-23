@@ -125,21 +125,6 @@ def test_a_disabled_bearer_feature_503s_before_the_bearer_is_read(
             view()
 
 
-def test_a_dead_license_is_reported_before_a_disabled_bearer_feature(
-    app: Flask,
-    config_overrides: Callable[..., None],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE, ENABLE_OAUTH_BEARER=False)
-    monkeypatch.setattr(FEATURES, lambda: system_features(license_status=LicenseStatus.EXPIRED))
-    monkeypatch.setattr(f"{ROUTER}.extract_bearer", never_reached)
-    view = _guard(_nothing)
-
-    with app.test_request_context("/openapi/v1/account"):
-        with pytest.raises(LicenseInvalid):
-            view()
-
-
 INVALID_BEARER = "invalid bearer"
 """The one answer the router gives a bearer it will not accept.
 

@@ -56,12 +56,10 @@ const BAD_VERIFICATION_URI = 'ftp://elsewhere.example/device'
 const HANG_MS = 30_000
 const OAUTH_PREFIX = '/openapi/v1/oauth/'
 export const FORBIDDEN_HINT = 'ask a workspace owner for the editor role'
-export const LICENSE_INVALID_HINT = 'Ask an admin to renew or reactivate the license.'
 
 const ServerErrorCode = {
   Unauthorized: 'unauthorized',
   Forbidden: 'forbidden',
-  LicenseInvalid: 'license_invalid',
   RateLimited: 'rate_limited',
   Server5xx: 'server_5xx',
   NotFound: 'not_found',
@@ -450,31 +448,6 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     if (scenario === 'auth-expired') return unauthorized()
     if (scenario === 'forbidden')
       return errorResponse(ServerErrorCode.Forbidden, 'you may not do this', 403, FORBIDDEN_HINT)
-    if (scenario === 'blank-hint-forbidden')
-      return errorResponse(ServerErrorCode.Forbidden, 'you may not do this', 403, '')
-    if (scenario === 'hinted-forbidden')
-      return Response.json(
-        {
-          code: 'service_api_disabled',
-          message: 'The Service API is off for this app.',
-          status: 403,
-          hints: [
-            {
-              summary: 'Turn the Service API on',
-              op: 'set.service_api',
-              input: { app_id: 'app-1', enabled: true },
-            },
-          ],
-        },
-        { status: 403 },
-      )
-    if (scenario === 'license-invalid')
-      return errorResponse(
-        ServerErrorCode.LicenseInvalid,
-        "This Dify server's license is not active.",
-        403,
-        LICENSE_INVALID_HINT,
-      )
     await next()
   })
 

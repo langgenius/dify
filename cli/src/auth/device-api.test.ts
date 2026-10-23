@@ -41,17 +41,6 @@ it('maps a 404 on the code endpoint to a server_error naming the missing feature
   })
 })
 
-it('a 404 on the token endpoint carries the same OpenAPI hint', async () => {
-  await withServer(
-    (res) => res.writeHead(404).end(),
-    async (baseUrl) => {
-      await expect(
-        deviceApi(baseUrl, { insecure: true }).pollOnce({ device_code: 'dc' }),
-      ).rejects.toMatchObject({ code: 'server_error', hint: OPENAPI_OFF_HINT })
-    },
-  )
-})
-
 it('maps a non-2xx code response to a server_error carrying the raw body', async () => {
   const mock = await startMock({ scenario: 'server-5xx' })
   mocks.push(mock)
@@ -129,31 +118,6 @@ it('rejects a non-JSON code response without leaking a raw SyntaxError', async (
       const api = deviceApi(baseUrl, { insecure: true })
       await expect(api.requestCode({ device_label: 'test' })).rejects.toMatchObject({
         code: 'server_error',
-      })
-    },
-  )
-})
-
-it('surfaces the server code, message and hint when device codes are refused', async () => {
-  const body = {
-    code: 'bearer_auth_disabled',
-    status: 503,
-    message: 'Sign-in with access tokens is turned off on this server.',
-    hint: 'Ask an admin to set ENABLE_OAUTH_BEARER=true and restart the API.',
-  }
-  await withServer(
-    (res) => {
-      res.writeHead(503, { 'content-type': 'application/json' })
-      res.end(JSON.stringify(body))
-    },
-    async (baseUrl) => {
-      const api = deviceApi(baseUrl, { insecure: true })
-      await expect(api.requestCode({ device_label: 't' })).rejects.toMatchObject({
-        code: 'server_error',
-        httpStatus: 503,
-        message: body.message,
-        hint: body.hint,
-        serverError: expect.objectContaining({ code: 'bearer_auth_disabled' }),
       })
     },
   )

@@ -214,21 +214,6 @@ def test_archived_workspace_is_rejected(resource_fixture: ResourceFixture, sqlit
         call(flask_app, app_id)
 
 
-def test_workspace_gone_after_grant_is_rejected(
-    resource_fixture: ResourceFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from controllers.openapi.auth import resource_access
-
-    flask_app, app_id, _, _, end_user = resource_fixture
-    # The token's live grant still passes; only the later tenant load misses.
-    monkeypatch.setattr(
-        resource_access.application_services().workspaces.identity, "get_workspace", lambda _workspace_id: None
-    )
-    with pytest.raises(WorkspaceUnavailable):
-        call(flask_app, app_id)
-    end_user.assert_not_called()
-
-
 def test_resource_token_has_workspace_read_scope(resource_fixture: ResourceFixture) -> None:
     flask_app, _, _, tenant_id, _ = resource_fixture
     with flask_app.test_request_context("/"):

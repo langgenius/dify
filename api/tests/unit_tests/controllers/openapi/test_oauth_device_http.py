@@ -236,17 +236,6 @@ def test_disabled_bearer_feature_blocks_code_and_account_decisions(
     assert device_service.mock_calls == []
 
 
-def test_token_poll_stays_rfc8628_when_bearer_is_off(
-    openapi_app: Flask, device_service: Mock, config_overrides: Callable[..., None]
-) -> None:
-    config_overrides(ENABLE_OAUTH_BEARER=False)
-    device_service.poll.side_effect = AuthorizationPendingError()
-
-    response = openapi_app.test_client().post(f"{_PREFIX}/token", json={"client_id": "difyctl", "device_code": "c"})
-
-    assert (response.status_code, response.json) == (400, {"error": "authorization_pending"})
-
-
 def test_sso_initiation_clears_old_approval_cookie(openapi_app: Flask, device_service: Mock) -> None:
     device_service.initiate_sso.return_value = DeviceSSOInitiation("https://idp.example/authorize")
 

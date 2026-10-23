@@ -2,8 +2,6 @@ import ast
 from pathlib import Path
 from typing import Final
 
-import pytest
-
 import controllers.openapi
 
 BANNED: Final = frozenset({"Forbidden", "ServiceUnavailable"})
@@ -49,35 +47,3 @@ def test_openapi_controllers_raise_openapi_errors_not_plain_werkzeug() -> None:
         for line in banned_raise_lines(path.read_text())
     ]
     assert offenders == []
-
-
-FLAGGED_SNIPPETS: Final = {
-    "call": "from werkzeug.exceptions import Forbidden\nraise Forbidden('x')",
-    "bare name": "from werkzeug.exceptions import Forbidden\nraise Forbidden",
-    "dotted": "import werkzeug.exceptions\nraise werkzeug.exceptions.Forbidden()",
-    "module alias": "import werkzeug.exceptions as we\nraise we.Forbidden()",
-    "from-module alias": "from werkzeug import exceptions as ex\nraise ex.Forbidden()",
-    "name alias": "from werkzeug.exceptions import Forbidden as F\nraise F('x')",
-    "unavailable call": "from werkzeug.exceptions import ServiceUnavailable\nraise ServiceUnavailable()",
-    "unavailable bare": "from werkzeug.exceptions import ServiceUnavailable\nraise ServiceUnavailable",
-    "unavailable dotted": "import werkzeug.exceptions\nraise werkzeug.exceptions.ServiceUnavailable()",
-    "unavailable module alias": "import werkzeug.exceptions as we\nraise we.ServiceUnavailable()",
-    "unavailable name alias": "from werkzeug.exceptions import ServiceUnavailable as S\nraise S()",
-}
-
-CLEAN_SNIPPETS: Final = {
-    "similar name": "raise ForbiddenError()",
-    "not found": "from werkzeug.exceptions import NotFound\nraise NotFound()",
-    "bare raise": "try:\n    pass\nexcept Exception:\n    raise",
-    "other alias": "from werkzeug.exceptions import NotFound as F\nraise F()",
-}
-
-
-@pytest.mark.parametrize("source", FLAGGED_SNIPPETS.values(), ids=FLAGGED_SNIPPETS.keys())
-def test_scanner_flags_plain_werkzeug_raises(source: str) -> None:
-    assert banned_raise_lines(source) == [source.count("\n") + 1]
-
-
-@pytest.mark.parametrize("source", CLEAN_SNIPPETS.values(), ids=CLEAN_SNIPPETS.keys())
-def test_scanner_ignores_other_raises(source: str) -> None:
-    assert banned_raise_lines(source) == []

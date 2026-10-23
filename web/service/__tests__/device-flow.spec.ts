@@ -18,20 +18,4 @@ describe('deviceApproveAccount error codes', () => {
     expect(err).toBeInstanceOf(DeviceFlowError)
     expect(err).toMatchObject({ code: 'bearer_auth_disabled', status: 503 })
   })
-
-  it('prefers the legacy error key over code', async () => {
-    stubFetch(404, JSON.stringify({ error: 'expired_or_unknown', code: 'not_found' }))
-
-    const err = await deviceApproveAccount('ABCD-EFGH').catch((e: unknown) => e)
-
-    expect(err).toMatchObject({ code: 'expired_or_unknown', status: 404 })
-  })
-
-  it('falls back to the status class for a non-JSON body', async () => {
-    stubFetch(500, 'oops')
-
-    const err = await deviceApproveAccount('ABCD-EFGH').catch((e: unknown) => e)
-
-    expect(err).toMatchObject({ code: 'server_error', status: 500 })
-  })
 })

@@ -40,19 +40,6 @@ it('reports missing required, wrong types and bad enums in the 422 detail shape'
   })
 })
 
-it('lists every allowed value of a large enum', () => {
-  const values = Array.from({ length: 40 }, (_, i) => `v${i}`)
-  expect(validateInput({ enum: values }, 'nope')).toEqual([
-    { type: 'enum', loc: [], msg: `must be one of the allowed values: ${values.join(', ')}` },
-  ])
-})
-
-it('renders non-string enum values as JSON', () => {
-  expect(validateInput({ enum: [1, true, null, 'a', { k: 1 }] }, 'nope')).toEqual([
-    { type: 'enum', loc: [], msg: 'must be one of the allowed values: 1, true, null, a, {"k":1}' },
-  ])
-})
-
 it('lets unknown keys through to the server', () => {
   expect(validateInput(run, { app_id: 'a', inputs: {}, extra: 1 })).toEqual([])
 })

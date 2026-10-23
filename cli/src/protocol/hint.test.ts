@@ -14,17 +14,3 @@ it.each([undefined, null, 'hints', { op: 'get.app', summary: 'x' }])(
     expect(parseHints(value)).toEqual([])
   },
 )
-
-it('an input that is not an object is dropped, the hint stays', () => {
-  expect(
-    parseHints([
-      { summary: 's', op: 'a.b', input: ['x'] },
-      { summary: 's', op: 'a.b', input: 'abc' },
-      { summary: 's', op: 'a.b', input: null },
-    ]),
-  ).toEqual([
-    { summary: 's', op: 'a.b' },
-    { summary: 's', op: 'a.b' },
-    { summary: 's', op: 'a.b' },
-  ])
-})

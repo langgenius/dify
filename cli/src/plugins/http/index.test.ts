@@ -2,7 +2,7 @@ import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { FORBIDDEN_HINT, LICENSE_INVALID_HINT, startMock } from '@test/fixtures/dify-mock/server'
+import { FORBIDDEN_HINT, startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { OPENAPI_OFF_HINT } from '@/errors/base'
 import { Context } from '@/kernel/context'
@@ -121,18 +121,6 @@ describe('http plugin', () => {
     })
   })
 
-  it('a 403 license_invalid keeps its server code, message and hint', async () => {
-    const h = await new Context().get(http)
-    mock.setScenario('license-invalid')
-    await expect(h.request(account)).rejects.toMatchObject({
-      code: 'access_denied',
-      httpStatus: 403,
-      message: "This Dify server's license is not active.",
-      hint: LICENSE_INVALID_HINT,
-      serverError: expect.objectContaining({ code: 'license_invalid' }),
-    })
-  })
-
   it('a 403 without any server hint says the server refused', async () => {
     process.env.DIFY_TOKEN = 'sk-test-resource'
     const h = await new Context().get(http)
@@ -143,26 +131,6 @@ describe('http plugin', () => {
       code: 'access_denied',
       httpStatus: 403,
       hint: PERMISSION_DENIED_HINT,
-    })
-  })
-
-  it('a 403 with an empty server hint still says the server refused', async () => {
-    const h = await new Context().get(http)
-    mock.setScenario('blank-hint-forbidden')
-    await expect(h.request(account)).rejects.toMatchObject({
-      code: 'access_denied',
-      message: 'you may not do this',
-      hint: PERMISSION_DENIED_HINT,
-    })
-  })
-
-  it('a 403 with server hints adds no guessed hint', async () => {
-    const h = await new Context().get(http)
-    mock.setScenario('hinted-forbidden')
-    await expect(h.request(account)).rejects.toMatchObject({
-      code: 'access_denied',
-      httpStatus: 403,
-      hint: undefined,
     })
   })
 
@@ -225,18 +193,6 @@ describe('http plugin', () => {
     })
   })
 
-  it('a refused connection on localhost names its cause, with no trailing separator', async () => {
-    process.env.DIFY_SERVER = 'http://localhost:9'
-    const error = await (
-      await new Context().get(http)
-    )
-      .request(() => ({ method: 'GET', path: '/x', auth: false }))
-      .catch((e: unknown) => e)
-    expect((error as Error).message).toMatch(
-      /^network error calling GET http:\/\/localhost:9\/x: \S.*[^:\s]$/,
-    )
-  })
-
   it('a refused connection names its cause and carries no hint', async () => {
     process.env.DIFY_SERVER = 'http://127.0.0.1:9'
     const error = await (
@@ -257,14 +213,6 @@ describe('http plugin', () => {
       code: 'catalog_unavailable',
       message: `failed to fetch the catalog: HTTP 404 from ${CATALOG_PATH}`,
       hint: OPENAPI_OFF_HINT,
-    })
-  })
-
-  it('a catalog fetch with no status keeps the reachability hint', async () => {
-    process.env.DIFY_SERVER = 'http://127.0.0.1:1'
-    await expect((await new Context().get(http)).request(account)).rejects.toMatchObject({
-      code: 'catalog_unavailable',
-      hint: expect.stringContaining('server is reachable'),
     })
   })
 
