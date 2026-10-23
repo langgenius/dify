@@ -28,7 +28,16 @@ for (const extension of ['yaml', 'openapi']) {
         configFile: false,
         root: dir,
         logLevel: 'silent',
-        plugins: [openapi()],
+        plugins: [
+          openapi(),
+          {
+            name: 'downstream-source-map',
+            transform(code, id) {
+              if (!id.includes('?openapi-')) return
+              return { code, map: { version: 3, sources: [id], names: [], mappings: 'AAAA' } }
+            },
+          },
+        ],
         server: {
           port: 0,
           watch: { awaitWriteFinish: { stabilityThreshold: 50, pollInterval: 10 } },
@@ -42,8 +51,15 @@ for (const extension of ['yaml', 'openapi']) {
         (kind) =>
           `/api.${extension}?openapi-${kind}=${encodeURIComponent(JSON.stringify(['pets', 'byPetId']))}`,
       )
-      for (const url of urls)
-        assert.match((await server.transformRequest(url)).code, /before\.test/)
+      for (const url of urls) {
+        const transformed = await server.transformRequest(url)
+        assert.match(transformed.code, /before\.test/)
+        assert.equal(
+          transformed.map.mappings,
+          '',
+          'Virtual namespaces must not embed the source specification',
+        )
+      }
       const refreshed = new Promise((resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error('No Vite reload after spec edit')), 10000)
         const send = server.ws.send.bind(server.ws)

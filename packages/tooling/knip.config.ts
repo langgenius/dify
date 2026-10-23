@@ -16,6 +16,8 @@ const config: KnipConfig = {
         'dev-proxy.config.ts',
         // Loaded by the OpenAPI bundler adapters rather than a static import.
         'service/console/console.openapi.config.ts!',
+        'service/console/console.openapi.queries.ts!',
+        'service/console/console.openapi.errors.ts!',
         // Public surface consumed by the standalone Marketplace host.
         // The `!` suffix keeps these entries in `knip --production`.
         'app/components/plugins/marketplace/detail-dialog/image-preview-message.ts!',

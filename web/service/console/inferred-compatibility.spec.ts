@@ -73,6 +73,9 @@ describe('inferred console compatibility', () => {
   })
   it('preserves query defaults and caller overrides', () => {
     expect(
+      consoleQuery.knowledgeFs.features.get.queryOptions({ staleTime: Infinity }).queryKey,
+    ).toEqual(originalQuery.knowledgeFs.features.get.queryOptions({ staleTime: Infinity }).queryKey)
+    expect(
       originalQuery.auth.plugin.datasource.list.get.queryOptions({ input: {} }),
     ).toHaveProperty('retry', false)
     expect(consoleQuery.auth.plugin.datasource.list.get.queryOptions({ input: {} })).toHaveProperty(

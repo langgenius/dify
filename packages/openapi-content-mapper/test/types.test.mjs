@@ -34,6 +34,11 @@ export default runtime;
 import { api, query } from './pets.yaml';
 await api.pets.get(undefined, { context: { silent: true } });
 query.pets.get.queryOptions({ input: {}, context: { silent: true } });
+query.pets.get.queryOptions();
+query.pets.get.queryOptions({ staleTime: Infinity });
+query.pets.get.queryKey();
+// @ts-expect-error required path input cannot be omitted
+query.pets.byPetId.get.queryOptions();
 // @ts-expect-error context is inferred from the document configuration
 api.pets.get(undefined, { context: { silent: 'yes' } });
 // @ts-expect-error query helpers preserve that same context
@@ -99,8 +104,10 @@ import * as document from './pets.${extension}';
 document.getPet;
 import { createTanstackQueryUtils } from '@orpc/tanstack-query';
 const wrappedQuery = createTanstackQueryUtils(api);
-const fromWrapped: typeof query = wrappedQuery;
-const toWrapped: typeof wrappedQuery = query;
+const fromWrapped: typeof query.pets.byPetId.get = wrappedQuery.pets.byPetId.get;
+const toWrapped: typeof wrappedQuery.pets.byPetId.get = query.pets.byPetId.get;
+// The document helpers also preserve optional inputs that generic client inference loses.
+query.pets.get.queryOptions();
 const generatedOptions = query.pets.byPetId.get.queryOptions({ input: { params: { petId: 1 } } });
 const generatedKey = query.pets.key();
 // @ts-expect-error generated query helpers retain parameter types

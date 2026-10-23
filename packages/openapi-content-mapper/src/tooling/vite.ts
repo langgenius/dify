@@ -83,7 +83,9 @@ export function openapi(
           encoded === undefined ? undefined : JSON.parse(decodeURIComponent(encoded)),
           isQuery,
         ),
-        map: null,
+        // Generated namespaces have no source positions in the specification.
+        // Stop downstream transforms from embedding the full document in every module's map.
+        map: { mappings: '' },
       }
     },
     watchChange() {

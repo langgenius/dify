@@ -1,6 +1,6 @@
 import type { ClientPromiseResult } from '@orpc/client'
 import type { ErrorFromErrorMap, ErrorMap } from '@orpc/contract'
-import type { GeneralUtils, RouterUtils } from '@orpc/tanstack-query'
+import type { GeneralUtils, ProcedureUtils } from '@orpc/tanstack-query'
 import type { HttpClient } from './client.js'
 
 declare const schemaTypeMap: unique symbol
@@ -266,13 +266,19 @@ export type RpcRouter<S, Routes, Context extends object = object, Errors = objec
     ? RpcOperation<S, P, M, Context, Errors>
     : RpcRouter<S, Routes[K], Context, Errors>
 }
-/** Apply oRPC's helper types per procedure without checking the entire client tree. */
+type RpcQueryOperation<Operation, Context extends object> = Operation extends (
+  ...args: infer Args
+) => ClientPromiseResult<infer Output, infer Error>
+  ? ProcedureUtils<Context, Args[0], Output, Error> & GeneralUtils<Args[0]>
+  : never
+
+/** Preserve optional input when adapting the public call signature to oRPC's helpers. */
 export type RpcQueryRouter<S, Routes, Context extends object = object, Errors = object> = {
   [K in keyof Routes]: Routes[K] extends readonly [
     infer P extends keyof Paths<S>,
     infer M extends Method,
   ]
-    ? RouterUtils<RpcOperation<S, P, M, Context, Errors>>
+    ? RpcQueryOperation<RpcOperation<S, P, M, Context, Errors>, Context>
     : RpcQueryRouter<S, Routes[K], Context, Errors>
 } & GeneralUtils<unknown>
 export type RpcOperation<
