@@ -352,6 +352,59 @@ it('unregisters disabled and reassociated inputs while retaining read-only value
   ).toBe('2025-01-15')
 })
 
+it.each(['external-booking', 'missing-booking'])(
+  'excludes an initially reassociated picker from contextual validation and submission (%s)',
+  async (form) => {
+    const submitted = vi.fn()
+    const validate = vi.fn(() => 'This date is unavailable.')
+    const screen = await render(
+      <React.Fragment>
+        <form id="external-booking" aria-label="External booking" />
+        <Form onFormSubmit={submitted}>
+          <Field name="departure" validate={validate}>
+            {families[0]!.render({ form })}
+          </Field>
+          <button type="submit">Submit booking</button>
+        </Form>
+      </React.Fragment>,
+    )
+    await screen.getByRole('button', { name: 'Submit booking' }).click()
+    expect(validate).not.toHaveBeenCalled()
+    expect(submitted).toHaveBeenCalledExactlyOnceWith({}, expect.anything())
+    expect(
+      new FormData(
+        screen.getByRole('form', { name: 'External booking' }).element() as HTMLFormElement,
+      ).get('departure'),
+    ).toBe(form === 'external-booking' ? '2025-01-15' : null)
+  },
+)
+
+it('updates contextual registration when the explicit form owner changes its id', async () => {
+  const submitted = vi.fn()
+  function Example({ id }: { id: string }) {
+    return (
+      <Form id={id} aria-label="Booking" onFormSubmit={submitted}>
+        <Field name="departure">{families[0]!.render({ form: 'booking' })}</Field>
+        <button type="submit">Submit booking</button>
+      </Form>
+    )
+  }
+  const screen = await render(<Example id="booking" />)
+  await screen.getByRole('button', { name: 'Submit booking' }).click()
+  expect(submitted).toHaveBeenLastCalledWith({ departure: '2025-01-15' }, expect.anything())
+  await screen.rerender(<Example id="other" />)
+  expect(
+    new FormData(screen.getByRole('form', { name: 'Booking' }).element() as HTMLFormElement).has(
+      'departure',
+    ),
+  ).toBe(false)
+  await screen.getByRole('button', { name: 'Submit booking' }).click()
+  expect(submitted).toHaveBeenLastCalledWith({}, expect.anything())
+  await screen.rerender(<Example id="booking" />)
+  await screen.getByRole('button', { name: 'Submit booking' }).click()
+  expect(submitted).toHaveBeenLastCalledWith({ departure: '2025-01-15' }, expect.anything())
+})
+
 it('registers and resets a portalled picker with its contextual Form', async () => {
   const submitted = vi.fn()
   const screen = await render(

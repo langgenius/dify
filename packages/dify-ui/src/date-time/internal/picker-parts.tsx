@@ -154,8 +154,8 @@ function PickerRoot({
   const formValue = useStableCallback(() => serializedValue)
   useRegisterFieldControl(triggerRef, triggerId, value, formValue, eligible, props.name)
 
-  // Registration follows the proxy input's native form owner, including disabled fieldsets.
-  React.useLayoutEffect(() => {
+  // Read the native form owner after ancestor refs attach, including the contextual Form's ref.
+  React.useEffect(() => {
     const input = inputRef.current
     if (!input) return
     function updateEligibility() {
@@ -171,7 +171,7 @@ function PickerRoot({
     updateEligibility()
     const observer = new (ownerWindow(input).MutationObserver)(updateEligibility)
     for (let ancestor: Element | null = input; ancestor; ancestor = ancestor.parentElement)
-      observer.observe(ancestor, { attributes: true, attributeFilter: ['disabled', 'form'] })
+      observer.observe(ancestor, { attributes: true, attributeFilter: ['disabled', 'form', 'id'] })
     return () => observer.disconnect()
   }, [disabled, props.form, formElementRef])
   const { registerInput: registerFieldInput } = field.validation
