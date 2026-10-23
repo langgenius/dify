@@ -661,8 +661,11 @@ def test_actual_parallel_stop_or_unknown_has_priority_after_native_pause_is_obse
         "one": ApprovalWait(pending_operation_id="pending-one", wait_reason="approval"),
         "two": PolicyStop(reason_code="outcome_unknown"),
     }
+    # Both controls must be reached before pause can defer an unstarted sibling.
+    arrived = Barrier(2)
 
     def wait_for_pause(record: NativeControlRecord) -> None:
+        arrived.wait(timeout=3)
         if isinstance(record.control, module.NativePolicyStop):
             assert observed.wait(3), "native public pause event must precede stop acceptance"
             if callback_fails:
