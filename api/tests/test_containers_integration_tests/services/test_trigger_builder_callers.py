@@ -19,7 +19,6 @@ from extensions.ext_redis import RedisClientWrapper, redis_client
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
-from services.plugin.plugin_parameter_service import PluginParameterService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from tests.test_containers_integration_tests.services import test_trigger_subscription_query
 from tests.unit_tests.controllers.console.workspace import test_trigger_subscription_builder
@@ -120,7 +119,7 @@ def test_dynamic_select_uses_owned_builder_credentials_and_package(
     _options_response(daemon)
     daemon.requests.clear()
 
-    options = PluginParameterService.get_dynamic_select_options(
+    options = application_services().workspaces.plugin_parameters.get_dynamic_select_options(
         tenant_id=harness.tenant_id,
         user_id=harness.account_id,
         plugin_id=_PROVIDER_ID.plugin_id,
@@ -129,7 +128,6 @@ def test_dynamic_select_uses_owned_builder_credentials_and_package(
         parameter="branch",
         credential_id=builder_id,
         provider_type="trigger",
-        builders=runtime.builders,
     )
 
     assert [(option.value, option.label.en_US) for option in options] == [("main", "Main branch")]
@@ -170,7 +168,7 @@ def test_dynamic_select_rejects_builder_owner_mismatch_before_persisted_fallback
     daemon.requests.clear()
 
     with pytest.raises(ValueError, match="not found"):
-        PluginParameterService.get_dynamic_select_options(
+        application_services().workspaces.plugin_parameters.get_dynamic_select_options(
             tenant_id=tenant_id,
             user_id=user_id,
             plugin_id=provider_id.plugin_id,
@@ -179,15 +177,13 @@ def test_dynamic_select_rejects_builder_owner_mismatch_before_persisted_fallback
             parameter="branch",
             credential_id=builder_id,
             provider_type="trigger",
-            builders=runtime.builders,
         )
 
     assert daemon.requests == []
 
 
-def test_dynamic_select_uses_persisted_subscription_after_builder_expires(
-    harness: _Harness, runtime: _Runtime, daemon: _Daemon
-) -> None:
+@pytest.mark.usefixtures("runtime")
+def test_dynamic_select_uses_persisted_subscription_after_builder_expires(harness: _Harness, daemon: _Daemon) -> None:
     subscription_id = str(uuid4())
     _persist_subscription(
         harness,
@@ -198,7 +194,7 @@ def test_dynamic_select_uses_persisted_subscription_after_builder_expires(
     )
     _options_response(daemon)
 
-    options = PluginParameterService.get_dynamic_select_options(
+    options = application_services().workspaces.plugin_parameters.get_dynamic_select_options(
         tenant_id=harness.tenant_id,
         user_id=harness.account_id,
         plugin_id=_PROVIDER_ID.plugin_id,
@@ -207,7 +203,6 @@ def test_dynamic_select_uses_persisted_subscription_after_builder_expires(
         parameter="branch",
         credential_id=subscription_id,
         provider_type="trigger",
-        builders=runtime.builders,
     )
 
     assert [option.value for option in options] == ["main"]
@@ -222,11 +217,10 @@ def test_dynamic_select_uses_persisted_subscription_after_builder_expires(
     }
 
 
-def test_dynamic_select_rejects_missing_builder_and_subscription(
-    harness: _Harness, runtime: _Runtime, daemon: _Daemon
-) -> None:
+@pytest.mark.usefixtures("runtime")
+def test_dynamic_select_rejects_missing_builder_and_subscription(harness: _Harness, daemon: _Daemon) -> None:
     with pytest.raises(ValueError, match="not found"):
-        PluginParameterService.get_dynamic_select_options(
+        application_services().workspaces.plugin_parameters.get_dynamic_select_options(
             tenant_id=harness.tenant_id,
             user_id=harness.account_id,
             plugin_id=_PROVIDER_ID.plugin_id,
@@ -235,7 +229,6 @@ def test_dynamic_select_rejects_missing_builder_and_subscription(
             parameter="branch",
             credential_id=str(uuid4()),
             provider_type="trigger",
-            builders=runtime.builders,
         )
 
     assert daemon.requests == []

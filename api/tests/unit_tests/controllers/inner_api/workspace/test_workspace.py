@@ -33,6 +33,8 @@ from services.errors.workspace import (
     WorkspaceOwnerNotFoundError,
     WorkspacesLimitExceededError,
 )
+from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
+from services.plugin.plugin_parameter_service import PluginParameterService
 from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
 from services.trigger.endpoint_service import TriggerEndpointService
 from services.trigger.oauth_client_service import TriggerOAuthClientService
@@ -90,6 +92,12 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
         invitations=Mock(),
         identity=Mock(),
         resource_cleanup=Mock(),
+        plugin_parameters=PluginParameterService(
+            credentials=CredentialQueryRepository(session_factory=sqlite_session_factory),
+            subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+            builders=builders,
+            plugins=DaemonPluginParameterGateway(),
+        ),
         trigger_providers=PluginTriggerProviderQuery(),
         trigger_subscriptions=TriggerSubscriptionQueryService(
             credentials=CredentialQueryRepository(session_factory=sqlite_session_factory),

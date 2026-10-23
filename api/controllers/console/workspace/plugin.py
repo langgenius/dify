@@ -20,12 +20,12 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.workspace.error import PluginOperationError
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
-    is_admin_or_owner_required,
     model_validate,
     rbac_permission_required,
     setup_required,
@@ -57,8 +57,10 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
+from machinery.context import RequestContext
 from models.account import (
     Account,
+    TenantAccountRole,
     TenantPluginAutoUpgradeCategory,
     TenantPluginAutoUpgradeMode,
     TenantPluginAutoUpgradeStrategy,
@@ -69,7 +71,6 @@ from models.account import (
 from models.provider_ids import ToolProviderID
 from services.entities.model_provider_entities import ProviderEntityResponse
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
-from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.tools.tools_transform_service import ToolTransformService
 
@@ -1149,26 +1150,22 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     @error_responses(PluginOperationError)
     @console_ns.doc(params=query_params_from_model(ParserDynamicOptions))
     @console_ns.response(200, "Success", console_ns.models[PluginDynamicOptionsResponse.__name__])
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac_checks=(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()),),
+    )
     @model_validate(ParserDynamicOptions)
-    def get(self, req_data: ParserDynamicOptions, tenant_id: str, current_user: Account):
+    def get(self, req_data: ParserDynamicOptions, context: RequestContext) -> dict[str, Any]:
         try:
-            options = PluginParameterService.get_dynamic_select_options(
-                tenant_id=tenant_id,
-                user_id=current_user.id,
+            options = application_services().workspaces.plugin_parameters.get_dynamic_select_options(
+                tenant_id=context.active_workspace_id,
+                user_id=context.account_id,
                 plugin_id=req_data.plugin_id,
                 provider=req_data.provider,
                 action=req_data.action,
                 parameter=req_data.parameter,
                 credential_id=req_data.credential_id,
                 provider_type=req_data.provider_type,
-                builders=application_services().workspaces.trigger_builders,
             )
         except PluginDaemonClientSideError as e:
             raise PluginOperationError(e.description) from e
@@ -1181,21 +1178,18 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
     @error_responses(PluginOperationError)
     @console_ns.expect(console_ns.models[ParserDynamicOptionsWithCredentials.__name__])
     @console_ns.response(200, "Success", console_ns.models[PluginDynamicOptionsResponse.__name__])
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac_checks=(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()),),
+    )
     @model_validate(ParserDynamicOptionsWithCredentials)
-    def post(self, req_data: ParserDynamicOptionsWithCredentials, tenant_id: str, current_user: Account):
+    def post(self, req_data: ParserDynamicOptionsWithCredentials, context: RequestContext) -> dict[str, Any]:
         """Fetch dynamic options using credentials directly (for edit mode)."""
 
         try:
-            options = PluginParameterService.get_dynamic_select_options_with_credentials(
-                tenant_id=tenant_id,
-                user_id=current_user.id,
+            options = application_services().workspaces.plugin_parameters.get_dynamic_select_options_with_credentials(
+                tenant_id=context.active_workspace_id,
+                user_id=context.account_id,
                 plugin_id=req_data.plugin_id,
                 provider=req_data.provider,
                 action=req_data.action,

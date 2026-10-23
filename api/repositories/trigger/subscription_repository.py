@@ -72,6 +72,19 @@ class TriggerSubscriptionRepository(TriggerSubscriptionStore):
             row = session.scalar(select(TriggerSubscription).where(TriggerSubscription.endpoint_id == endpoint_id))
             return self._snapshot(row) if row is not None else None
 
+    def get_for_provider(
+        self, *, tenant_id: str, provider_id: TriggerProviderID, subscription_id: str | None
+    ) -> TriggerSubscriptionSnapshot | None:
+        """Load a provider subscription; an absent or empty ID preserves the legacy first-match lookup."""
+        query = select(TriggerSubscription).where(
+            TriggerSubscription.tenant_id == tenant_id, TriggerSubscription.provider_id == str(provider_id)
+        )
+        if subscription_id:
+            query = query.where(TriggerSubscription.id == subscription_id)
+        with self._session_factory() as session:
+            row = session.scalar(query.limit(1))
+            return self._snapshot(row) if row is not None else None
+
     @override
     def create(self, *, subscription: TriggerSubscriptionSnapshot, max_count: int) -> None:
         try:

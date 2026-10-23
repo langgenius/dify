@@ -1014,6 +1014,12 @@ def test_build_application_services_wires_credential_query(
 
     assert [(record.id, record.name) for record in records] == [(credential_id, "Team")]
     assert services.workspaces.trigger_subscriptions._credentials is services.credential_queries
+    assert services.workspaces.plugin_parameters._credentials is services.credential_queries
+    assert services.workspaces.plugin_parameters._builders is services.workspaces.trigger_builders
+    assert (
+        services.workspaces.plugin_parameters._subscriptions
+        is services.workspaces.trigger_subscription_management._subscriptions
+    )
     assert services.workspaces.trigger_subscriptions._schemas is services.workspaces.trigger_providers
     gateway = services.workspaces.trigger_oauth._builders
     assert isinstance(gateway, TriggerOAuthBuilderGateway)
