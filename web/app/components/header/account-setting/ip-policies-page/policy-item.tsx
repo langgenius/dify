@@ -30,7 +30,7 @@ import { PolicyReferencedApps } from '@/features/network-access/policy-reference
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 
-export const policyRowClassName = 'flex items-center pl-3 pr-1'
+export const policyRowClassName = 'flex items-center ps-3 pe-1'
 export const policyNameColClassName = 'min-w-0 flex-1 truncate'
 export const policyIpEntriesColClassName = 'w-30 shrink-0'
 export const policyUsedByColClassName = 'w-32 shrink-0'
@@ -93,7 +93,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
         {/* Extend the name button's hit area across the row without nesting the actions. */}
         <Button
           variant="ghost"
-          className="h-auto w-full min-w-0 justify-start gap-0 overflow-visible rounded-none p-0 text-left after:absolute after:inset-0 hover:bg-transparent"
+          className="h-auto w-full min-w-0 justify-start gap-0 overflow-visible rounded-none p-0 text-start after:absolute after:inset-0 hover:bg-transparent"
           onClick={() => onView(group)}
         >
           <span className={`${policyNameColClassName} system-sm-medium text-text-secondary`}>
