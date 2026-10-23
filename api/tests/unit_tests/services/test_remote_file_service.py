@@ -222,7 +222,7 @@ def test_upload_reuses_get_fallback_content_and_returns_signed_result(
         call("HEAD", url=REMOTE_URL),
         call("GET", url=REMOTE_URL, timeout=3, follow_redirects=True),
     ]
-    size_check.assert_called_once_with(extension=".pdf", file_size=14)
+    size_check.assert_called_once_with(extension="pdf", file_size=14)
     upload.assert_called_once_with(
         filename="report.pdf",
         content=b"remote content",
@@ -369,5 +369,64 @@ def test_upload_rejects_file_that_exceeds_size_limit(
         with pytest.raises(FileTooLargeError):
             remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
-    size_check.assert_called_once_with(extension=".pdf", file_size=1024)
+    size_check.assert_called_once_with(extension="pdf", file_size=1024)
     upload.assert_not_called()
+
+
+@pytest.mark.parametrize("filename", ["clip.mp4", "clip.MP4", "sound.wav", "image.png"])
+def test_upload_applies_media_limit_before_downloading(
+    filename: str,
+    remote_file_service: RemoteFileService,
+    storage: Storage,
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(
+        UPLOAD_FILE_SIZE_LIMIT=1,
+        UPLOAD_VIDEO_FILE_SIZE_LIMIT=3,
+        UPLOAD_AUDIO_FILE_SIZE_LIMIT=3,
+        UPLOAD_IMAGE_FILE_SIZE_LIMIT=3,
+    )
+    content = b"a" * (2 * 1024 * 1024)
+    url = f"https://example.com/{filename}"
+    head_response = httpx.Response(
+        200,
+        request=httpx.Request("HEAD", url),
+        headers={"Content-Length": str(len(content))},
+    )
+    get_response = httpx.Response(200, request=httpx.Request("GET", url), content=content)
+    with patch(
+        "services.remote_file_service.remote_fetcher.make_request",
+        side_effect=[head_response, get_response],
+    ) as make_request:
+        result = remote_file_service.upload_from_url(url=url, user=_account())
+
+    assert make_request.call_args_list == [call("HEAD", url=url), call("GET", url=url)]
+    upload_file = sqlite_session.get(UploadFile, result.id)
+    assert upload_file is not None
+    assert upload_file.extension == filename.rsplit(".", 1)[1].lower()
+    assert upload_file.size == len(content)
+    assert storage.load_once(upload_file.key) == content
+
+
+def test_upload_rejects_oversized_media_before_get(
+    remote_file_service: RemoteFileService,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(UPLOAD_FILE_SIZE_LIMIT=3, UPLOAD_VIDEO_FILE_SIZE_LIMIT=1)
+    content = b"a" * (2 * 1024 * 1024)
+    url = "https://example.com/clip.mp4"
+    head_response = httpx.Response(
+        200,
+        request=httpx.Request("HEAD", url),
+        headers={"Content-Length": str(len(content))},
+    )
+    get_response = httpx.Response(200, request=httpx.Request("GET", url), content=content)
+    with patch(
+        "services.remote_file_service.remote_fetcher.make_request",
+        side_effect=[head_response, get_response],
+    ) as make_request:
+        with pytest.raises(FileTooLargeError):
+            remote_file_service.upload_from_url(url=url, user=_account())
+
+    make_request.assert_called_once_with("HEAD", url=url)
