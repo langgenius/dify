@@ -7372,11 +7372,6 @@
       "count": 1
     }
   },
-  "web/features/network-access/policy-editor/allowlist-field.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/features/network-access/policy-references.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
