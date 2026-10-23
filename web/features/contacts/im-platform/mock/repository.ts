@@ -119,21 +119,31 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
     provider: ContactImProviderDefinition,
     command: Pick<
       SaveContactImCredentialsCommand,
-      'provider' | 'retainSecret' | 'secret' | 'values'
+      'provider' | 'retainSecret' | 'secret' | 'values' | 'clearedFields'
     >,
+    replaceActiveProvider = false,
   ) {
-    const currentIntegration = this.getIntegration(command.provider)
-    const retainingCurrentSecret =
-      command.retainSecret && Boolean(currentIntegration?.secretConfigured)
+    const currentIntegration = replaceActiveProvider
+      ? undefined
+      : this.getIntegration(command.provider)
+    const configuredFields = new Set(currentIntegration?.configuredFields)
+    if (currentIntegration?.secretConfigured) configuredFields.add(ContactImProviderField.Secret)
+    for (const { field } of provider.requiredFields) {
+      if (field !== ContactImProviderField.Secret && currentIntegration?.configuredValues[field])
+        configuredFields.add(field)
+    }
+    for (const field of command.clearedFields ?? []) {
+      const definition = provider.requiredFields.find((item) => item.field === field)
+      if (!definition || definition.required)
+        throw new ContactImRepositoryError(ContactImRepositoryErrorCode.InvalidCommand)
+    }
+    const retainingCurrentSecret = Boolean(currentIntegration?.secretConfigured)
     const hasReplacementSecret = Boolean(command.secret?.trim())
     const missingRequiredField = provider.requiredFields.some((definition) => {
       if (!definition.required) return false
       if (definition.field === ContactImProviderField.Secret)
         return !retainingCurrentSecret && !hasReplacementSecret
-      return !(
-        command.values[definition.field]?.trim() ||
-        currentIntegration?.configuredValues[definition.field]?.trim()
-      )
+      return !(command.values[definition.field]?.trim() || configuredFields.has(definition.field))
     })
 
     if (missingRequiredField)
@@ -141,6 +151,7 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
 
     return {
       currentIntegration,
+      configuredFields,
       secretConfigured: retainingCurrentSecret || hasReplacementSecret,
     }
   }
@@ -198,18 +209,27 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
     if (provider.authMode !== ContactImAuthMode.Credentials)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.InvalidCommand)
 
-    const { currentIntegration, secretConfigured } = this.validateCredentials(provider, command)
+    const { currentIntegration, configuredFields, secretConfigured } = this.validateCredentials(
+      provider,
+      command,
+      command.replaceActiveProvider,
+    )
 
     if (this.seed.failures.save)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed)
 
-    const configuredValues: ContactImIntegrationView['configuredValues'] = {
-      ...currentIntegration?.configuredValues,
-      ...(Object.fromEntries(
-        Object.entries(command.values)
-          .map(([field, value]) => [field, value?.trim()])
-          .filter((entry): entry is [string, string] => Boolean(entry[1])),
-      ) as ContactImIntegrationView['configuredValues']),
+    const configuredValues = { ...currentIntegration?.configuredValues }
+    for (const { field, secret: isSecret } of provider.requiredFields) {
+      if (field === ContactImProviderField.Secret) continue
+      const value = command.values[field]
+      if (!value?.trim()) continue
+      configuredFields.add(field)
+      if (!isSecret) configuredValues[field] = value.trim()
+    }
+    if (secretConfigured) configuredFields.add(ContactImProviderField.Secret)
+    for (const field of command.clearedFields ?? []) {
+      configuredFields.delete(field)
+      if (field !== ContactImProviderField.Secret) delete configuredValues[field]
     }
     const displayIdentifier =
       configuredValues.senderEmail ??
@@ -223,6 +243,7 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
       capabilities: clone(provider.capabilities),
       channelKind: provider.channelKind,
       configuredValues,
+      configuredFields: [...configuredFields],
       displayIdentifier,
       lastCheckedAt: null,
       lastSync: currentIntegration?.lastSync ?? null,
@@ -279,20 +300,33 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
     if (provider.authMode !== ContactImAuthMode.Credentials)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.InvalidCommand)
 
-    const { currentIntegration, secretConfigured } = this.validateCredentials(provider, command)
+    const { currentIntegration, configuredFields, secretConfigured } = this.validateCredentials(
+      provider,
+      command,
+    )
 
     if (this.seed.failures.connectionTest)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed)
 
-    const configuredValues: ContactImIntegrationView['configuredValues'] = {
-      ...currentIntegration?.configuredValues,
-      ...command.values,
+    const configuredValues = { ...currentIntegration?.configuredValues }
+    for (const { field, secret: isSecret } of provider.requiredFields) {
+      if (field === ContactImProviderField.Secret) continue
+      const value = command.values[field]?.trim()
+      if (!value) continue
+      configuredFields.add(field)
+      if (!isSecret) configuredValues[field] = value
+    }
+    if (secretConfigured) configuredFields.add(ContactImProviderField.Secret)
+    for (const field of command.clearedFields ?? []) {
+      configuredFields.delete(field)
+      if (field !== ContactImProviderField.Secret) delete configuredValues[field]
     }
     const testedIntegration: ContactImIntegrationView = {
       canManage: this.seed.organization.canManage,
       capabilities: clone(provider.capabilities),
       channelKind: provider.channelKind,
       configuredValues,
+      configuredFields: [...configuredFields],
       displayIdentifier:
         configuredValues.senderEmail ?? currentIntegration?.displayIdentifier ?? null,
       lastCheckedAt: '2026-07-17T06:14:00.000Z',
@@ -303,8 +337,6 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
       status: ContactImConnectionStatus.Connected,
       statusReason: null,
     }
-    if (currentIntegration) this.upsertIntegration(testedIntegration)
-
     return clone(testedIntegration)
   }
 

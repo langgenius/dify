@@ -17,6 +17,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ContactImCallbackSetup } from './callback-setup'
+import { canRetainCredential } from './credential-draft'
 import { useSaveContactImCredentials, useTestContactImConnection } from './hooks'
 import {
   resolveContactImCallbackSetup,
@@ -63,23 +64,19 @@ export function ContactImBindingDialog({
   const [step, setStep] = useState<'credentials' | 'callbacks'>(() =>
     !replaceActiveProvider && integration?.callbackUrl ? 'callbacks' : 'credentials',
   )
-  const [values, setValues] = useState<CredentialValues>(() => {
-    const configuredValues = { ...integration?.configuredValues }
-    if (
-      !replaceActiveProvider &&
-      (provider.provider === ContactImProvider.Feishu ||
-        provider.provider === ContactImProvider.Lark) &&
-      integration?.displayIdentifier
-    ) {
-      configuredValues[ContactImProviderField.AppId] ??= integration.displayIdentifier
-    }
-    return configuredValues
-  })
+  const [values, setValues] = useState<CredentialValues>(() =>
+    replaceActiveProvider ? {} : { ...integration?.configuredValues },
+  )
   const [secret, setSecret] = useState('')
+  const [clearedFields, setClearedFields] = useState<ContactImProviderField[]>([])
   const [credentialsEdited, setCredentialsEdited] = useState(false)
   const [testSucceeded, setTestSucceeded] = useState(false)
   const isCurrentProvider = Boolean(savedIntegration)
   const isPending = saveCredentials.isPending || testConnection.isPending
+  const savedDetailsUnavailable =
+    saveCredentials.error instanceof ContactImRepositoryError &&
+    saveCredentials.error.code === ContactImRepositoryErrorCode.SavedDetailsUnavailable
+  const credentialsDisabled = isPending || savedDetailsUnavailable
   const callbackUrl = savedIntegration?.callbackUrl
   const callbackSetup =
     provider.provider === ContactImProvider.Email
@@ -87,16 +84,18 @@ export function ContactImBindingDialog({
       : resolveContactImCallbackSetup(provider.provider)
   const hasCallbackSetup = Boolean(callbackUrl || (!savedIntegration && callbackSetup))
   const canContinueWithoutSaving = Boolean(callbackUrl) && !credentialsEdited
-  const canRetainSecret =
-    !provider.requiresFreshCredentials && isCurrentProvider && savedIntegration?.secretConfigured
   const targetIntegration = savedIntegration ?? replacedIntegration
+  const canRetainField = (field: ContactImProviderField) =>
+    canRetainCredential(savedIntegration, field, provider.requiresFreshCredentials)
 
   useEffect(() => {
     if (step === 'credentials') firstCredentialRef.current?.focus()
   }, [step])
   const credentialCommand = () => ({
+    channelId: savedIntegration?.channelId,
+    expectedConfigVersion: savedIntegration?.configVersion,
     provider: provider.provider,
-    retainSecret: Boolean(canRetainSecret && !secret.trim()),
+    clearedFields,
     secret: secret.trim() || undefined,
     values: Object.fromEntries(
       Object.entries(values).map(([key, value]) => [key, value?.trim() ?? '']),
@@ -104,6 +103,7 @@ export function ContactImBindingDialog({
   })
   const clearSecrets = () => {
     setSecret('')
+    setClearedFields([])
     setValues((current) =>
       Object.fromEntries(
         Object.entries(current).filter(
@@ -116,6 +116,10 @@ export function ContactImBindingDialog({
     if (!(error instanceof ContactImRepositoryError)) return fallback
     if (error.code === ContactImRepositoryErrorCode.ConfigurationUpdated)
       return t(($) => $['imPlatform.configurationUpdated'])
+    if (error.code === ContactImRepositoryErrorCode.SavedDetailsUnavailable)
+      return t(($) => $['imPlatform.bindingDialog.savedDetailsUnavailable'])
+    if (error.code === ContactImRepositoryErrorCode.ReplacementRequired)
+      return t(($) => $['imPlatform.bindingDialog.replacementRequired'])
     return error.statusDescription ?? fallback
   }
   const title =
@@ -138,7 +142,7 @@ export function ContactImBindingDialog({
   }
 
   const handleTestConnection = async () => {
-    if (isPending || !formRef.current?.reportValidity()) return
+    if (credentialsDisabled || !formRef.current?.reportValidity()) return
     setTestSucceeded(false)
     try {
       await testConnection.testConnection(credentialCommand())
@@ -149,7 +153,7 @@ export function ContactImBindingDialog({
   }
 
   const handleSave = async () => {
-    if (isPending) return
+    if (credentialsDisabled) return
     setTestSucceeded(false)
     try {
       const saved = await saveCredentials.saveCredentials({
@@ -159,12 +163,20 @@ export function ContactImBindingDialog({
         replaceActiveProvider: replaceActiveProvider && !savedIntegration,
       })
       setSavedIntegration(saved)
+      setValues(saved.configuredValues)
       setCredentialsEdited(false)
       clearSecrets()
       if (saved.callbackUrl) setStep('callbacks')
       else onOpenChange(false)
-    } catch {
-      // Preserve the draft so the user can correct the credentials and retry.
+    } catch (error) {
+      if (
+        error instanceof ContactImRepositoryError &&
+        error.code === ContactImRepositoryErrorCode.SavedDetailsUnavailable
+      ) {
+        clearSecrets()
+        testConnection.reset()
+      }
+      // Ordinary write failures keep the draft available for correction and retry.
     }
   }
 
@@ -304,15 +316,47 @@ export function ContactImBindingDialog({
               )}
               {adapter.fields.map(({ field, required, secret: isSecret }, index) => (
                 <Field key={field} name={field}>
-                  <FieldLabel>{fieldLabels[field]}</FieldLabel>
+                  <div className="flex items-center justify-between gap-2">
+                    <FieldLabel>{fieldLabels[field]}</FieldLabel>
+                    {isSecret && !required && canRetainField(field) && (
+                      <Button
+                        size="small"
+                        variant="ghost"
+                        disabled={credentialsDisabled}
+                        aria-label={`${fieldLabels[field]}: ${
+                          clearedFields.includes(field)
+                            ? t(($) => $['imPlatform.bindingDialog.undoClearCredential'])
+                            : t(($) => $['imPlatform.bindingDialog.clearSavedCredential'])
+                        }`}
+                        onClick={() => {
+                          setClearedFields((current) =>
+                            current.includes(field)
+                              ? current.filter((item) => item !== field)
+                              : [...current, field],
+                          )
+                          setValues((current) => ({ ...current, [field]: '' }))
+                          setCredentialsEdited(true)
+                          setTestSucceeded(false)
+                          testConnection.reset()
+                          saveCredentials.reset()
+                        }}
+                      >
+                        {clearedFields.includes(field)
+                          ? t(($) => $['imPlatform.bindingDialog.undoClearCredential'])
+                          : t(($) => $['imPlatform.bindingDialog.clearSavedCredential'])}
+                      </Button>
+                    )}
+                  </div>
                   <Input
                     ref={index === 0 ? firstCredentialRef : undefined}
                     autoComplete={isSecret ? 'new-password' : 'off'}
-                    disabled={isPending}
-                    placeholder={fieldPlaceholders[field]}
-                    required={
-                      required && !(field === ContactImProviderField.Secret && canRetainSecret)
+                    disabled={credentialsDisabled || clearedFields.includes(field)}
+                    placeholder={
+                      isSecret && canRetainField(field) && !clearedFields.includes(field)
+                        ? '••••••••'
+                        : fieldPlaceholders[field]
                     }
+                    required={required && !canRetainField(field)}
                     type={isSecret ? 'password' : 'text'}
                     value={field === ContactImProviderField.Secret ? secret : (values[field] ?? '')}
                     onChange={(event) => {
@@ -325,10 +369,17 @@ export function ContactImBindingDialog({
                       else setValues((current) => ({ ...current, [field]: value }))
                     }}
                   />
-                  {field === ContactImProviderField.Secret && canRetainSecret && (
+                  {clearedFields.includes(field) ? (
                     <FieldDescription>
-                      {t(($) => $['imPlatform.bindingDialog.secretConfigured'])}
+                      {t(($) => $['imPlatform.bindingDialog.credentialWillBeCleared'])}
                     </FieldDescription>
+                  ) : (
+                    isSecret &&
+                    canRetainField(field) && (
+                      <FieldDescription>
+                        {t(($) => $['imPlatform.bindingDialog.secretConfigured'])}
+                      </FieldDescription>
+                    )
                   )}
                   <FieldError match="valueMissing">
                     {t(($) => $['imPlatform.bindingDialog.required'])}
@@ -337,7 +388,7 @@ export function ContactImBindingDialog({
               ))}
               <Button
                 aria-labelledby={testLabelId}
-                disabled={saveCredentials.isPending}
+                disabled={saveCredentials.isPending || savedDetailsUnavailable}
                 loading={testConnection.isPending}
                 onClick={handleTestConnection}
               >
@@ -392,7 +443,7 @@ export function ContactImBindingDialog({
                   onClick={canContinueWithoutSaving ? () => setStep('callbacks') : undefined}
                   className="min-w-18"
                   variant="primary"
-                  disabled={testConnection.isPending}
+                  disabled={testConnection.isPending || savedDetailsUnavailable}
                   loading={saveCredentials.isPending}
                 >
                   <span id={saveLabelId}>
