@@ -11,8 +11,6 @@
   "changeScope.structure": "struktura",
   "checklistIssues": "Problemy z listy kontrolnej",
   "configureModel": "Skonfiguruj model",
-  "copy.actions.cancelTest": "Anuluj test",
-  "copy.actions.confirmTestOperation": "Potwierdź tę operację",
   "copy.actions.applyTheFix": "Zastosuj poprawkę",
   "copy.actions.approveChanges": "Zatwierdź zmiany",
   "copy.actions.approveFix": "Zatwierdź poprawkę",
