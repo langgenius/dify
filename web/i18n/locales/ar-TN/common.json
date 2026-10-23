@@ -224,7 +224,7 @@
   "operation.zoomIn": "تكبير",
   "operation.zoomOut": "تصغير",
   "pageUnavailable": "الصفحة غير متاحة",
-  "pagination.editPageNumber": "تعديل رقم الصفحة، الصفحة الحالية {{page}} من {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: تعديل رقم الصفحة",
   "pagination.next": "الصفحة التالية",
   "pagination.pageNumber": "رقم الصفحة",
   "pagination.perPage": "عناصر لكل صفحة",

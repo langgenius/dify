@@ -224,7 +224,7 @@
   "operation.zoomIn": "Măriți",
   "operation.zoomOut": "Micșorare",
   "pageUnavailable": "Pagina nu este disponibilă",
-  "pagination.editPageNumber": "Editați numărul paginii, pagina curentă {{page}} din {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: Editați numărul paginii",
   "pagination.next": "Pagina următoare",
   "pagination.pageNumber": "Numărul paginii",
   "pagination.perPage": "Articole pe pagină",

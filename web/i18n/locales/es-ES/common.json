@@ -224,7 +224,7 @@
   "operation.zoomIn": "Acercar",
   "operation.zoomOut": "Alejar",
   "pageUnavailable": "Página no disponible",
-  "pagination.editPageNumber": "Editar número de página, página actual {{page}} de {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: Editar número de página",
   "pagination.next": "Página siguiente",
   "pagination.pageNumber": "Número de página",
   "pagination.perPage": "Elementos por página",

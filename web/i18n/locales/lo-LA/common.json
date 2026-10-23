@@ -224,7 +224,7 @@
   "operation.zoomIn": "ຂະຫຍາຍເຂົ້າ",
   "operation.zoomOut": "ຂະຫຍາຍອອກ",
   "pageUnavailable": "ໜ້າເວັບບໍ່ພ້ອມໃຊ້ງານ",
-  "pagination.editPageNumber": "ແກ້ໄຂເລກໜ້າ, ໜ້າປັດຈຸບັນ {{page}} ຈາກທັງໝົດ {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: ແກ້ໄຂເລກໜ້າ",
   "pagination.next": "ໜ້າຖັດໄປ",
   "pagination.pageNumber": "ເລກໜ້າ",
   "pagination.perPage": "ລາຍການຕໍ່ໜ້າ",

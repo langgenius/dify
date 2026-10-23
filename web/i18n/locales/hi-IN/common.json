@@ -224,7 +224,7 @@
   "operation.zoomIn": "ज़ूम इन करें",
   "operation.zoomOut": "ज़ूम आउट करें",
   "pageUnavailable": "पृष्ठ उपलब्ध नहीं है",
-  "pagination.editPageNumber": "पृष्ठ संख्या संपादित करें, वर्तमान पृष्ठ {{page}} / {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: पृष्ठ संख्या संपादित करें",
   "pagination.next": "अगला पृष्ठ",
   "pagination.pageNumber": "पृष्ठ संख्या",
   "pagination.perPage": "प्रति पृष्ठ आइटम",

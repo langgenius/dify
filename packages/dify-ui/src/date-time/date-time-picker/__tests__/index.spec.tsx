@@ -59,8 +59,8 @@ it('keeps the natural calendar and month-picker height around a centered mobile 
 })
 
 it.each([
-  ['Tuesday, December 31st, 2024', 'December 2024', '2024-12-31'],
-  ['Saturday, February 1st, 2025', 'February 2025', '2025-02-01'],
+  ['31: Tuesday, December 31st, 2024', 'December 2024', '2024-12-31'],
+  ['1: Saturday, February 1st, 2025', 'February 2025', '2025-02-01'],
 ])('navigates to %s on selection and commits only on OK', async (day, month, date) => {
   const changed = vi.fn()
   const screen = await render(
@@ -178,7 +178,7 @@ describe('DateTimePicker', () => {
     )
     await screen.getByRole('button', { name: 'Meeting Jan 15, 2025, 1:30 PM' }).click()
     const selectedDay = screen.getByRole('button', {
-      name: 'Wednesday, January 15th, 2025, selected',
+      name: '15: Wednesday, January 15th, 2025, selected',
     })
     await expect.element(selectedDay).toHaveFocus()
 

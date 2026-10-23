@@ -259,11 +259,7 @@ function PickerTrigger({
       id={field.triggerId}
       dir={field.direction}
       aria-label={ariaLabel}
-      aria-labelledby={
-        labelId
-          ? [labelId, field.serializedValue ? field.valueId : undefined].filter(Boolean).join(' ')
-          : undefined
-      }
+      aria-labelledby={labelId ? `${labelId} ${field.valueId}` : undefined}
       aria-describedby={
         [
           ariaDescribedBy,

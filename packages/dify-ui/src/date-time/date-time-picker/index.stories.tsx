@@ -54,7 +54,9 @@ export const Default: Story = {
     })
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
     await userEvent.click(trigger)
-    await userEvent.click(await body.findByRole('button', { name: 'Thursday, January 16th, 2025' }))
+    await userEvent.click(
+      await body.findByRole('button', { name: '16: Thursday, January 16th, 2025' }),
+    )
     await expect(trigger).toHaveAccessibleName('Meeting time Jan 15, 2025, 1:30 PM')
     await userEvent.click(body.getByRole('button', { name: /Pick Time:/ }))
     const hours = within(await body.findByRole('listbox', { name: 'Hour' }))

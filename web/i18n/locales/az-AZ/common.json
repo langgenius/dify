@@ -224,7 +224,7 @@
   "operation.zoomIn": "Yaxınlaşdır",
   "operation.zoomOut": "Uzaqlaşdır",
   "pageUnavailable": "Səhifə əlçatan deyil",
-  "pagination.editPageNumber": "Səhifə nömrəsini redaktə et. Cəmi {{totalPages}} səhifə, cari səhifə: {{page}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: Səhifə nömrəsini redaktə et",
   "pagination.next": "Növbəti səhifəyə keç",
   "pagination.pageNumber": "Səhifə nömrəsi",
   "pagination.perPage": "Hər səhifədəki elementlərin sayı",

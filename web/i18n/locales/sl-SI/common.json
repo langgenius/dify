@@ -224,7 +224,7 @@
   "operation.zoomIn": "Povečava",
   "operation.zoomOut": "Pomanjšanje",
   "pageUnavailable": "Stran ni na voljo",
-  "pagination.editPageNumber": "Uredi številko strani, trenutna stran {{page}} od {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: Uredi številko strani",
   "pagination.next": "Naslednja stran",
   "pagination.pageNumber": "Številka strani",
   "pagination.perPage": "Elementi na stran",

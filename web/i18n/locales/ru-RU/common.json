@@ -224,7 +224,7 @@
   "operation.zoomIn": "Увеличить",
   "operation.zoomOut": "Уменьшение масштаба",
   "pageUnavailable": "Страница недоступна",
-  "pagination.editPageNumber": "Изменить номер страницы, текущая страница {{page}} из {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: Изменить номер страницы",
   "pagination.next": "Следующая страница",
   "pagination.pageNumber": "Номер страницы",
   "pagination.perPage": "Элементов на странице",

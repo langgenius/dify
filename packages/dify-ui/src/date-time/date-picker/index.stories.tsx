@@ -140,7 +140,7 @@ export const NativeForm: Story = {
   play: async ({ canvasElement, userEvent }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    const trigger = canvas.getByRole('button', { name: 'Start date (required)' })
+    const trigger = canvas.getByRole('button', { name: 'Start date (required) Select date' })
     await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
     await expect(canvas.queryByRole('status', { name: 'Submitted values' })).not.toBeInTheDocument()
     await expect(trigger).toHaveFocus()
@@ -149,7 +149,7 @@ export const NativeForm: Story = {
       /Choose a calendar date; no time zone is stored.*Choose a start date/,
     )
     for (const [label, name] of [
-      ['Start date (required)', 'Start date (required)'],
+      ['Start date (required)', 'Start date (required) Select date'],
       ['Start time', /^Start time\b/],
       ['Reminder (UTC)', /^Reminder \(UTC\)/],
     ] as const) {
@@ -177,7 +177,7 @@ export const NativeForm: Story = {
       reminder: '2025-01-15T13:30:00.000Z',
     })
     await userEvent.click(canvas.getByRole('button', { name: 'Reset' }))
-    await waitFor(() => expect(trigger).toHaveAccessibleName('Start date (required)'))
+    await waitFor(() => expect(trigger).toHaveAccessibleName('Start date (required) Select date'))
     await expect(trigger).not.toHaveAttribute('aria-invalid', 'true')
     await expect(canvas.queryByRole('status', { name: 'Submitted values' })).not.toBeInTheDocument()
   },
@@ -252,12 +252,12 @@ export const RTL: Story = {
     const dialog = await body.findByRole('dialog', { name: 'Start date' })
     await expect(dialog).toHaveAttribute('dir', 'rtl')
     await waitFor(() =>
-      expect(body.getByRole('button', { name: /^الأربعاء، 15 جانفي 2025/ })).toHaveFocus(),
+      expect(body.getByRole('button', { name: /^15: الأربعاء، 15 جانفي 2025/ })).toHaveFocus(),
     )
     await userEvent.keyboard('{ArrowLeft}')
-    await expect(body.getByRole('button', { name: 'الخميس، 16 جانفي 2025' })).toHaveFocus()
+    await expect(body.getByRole('button', { name: '16: الخميس، 16 جانفي 2025' })).toHaveFocus()
     await userEvent.keyboard('{ArrowRight}')
-    await expect(body.getByRole('button', { name: /^الأربعاء، 15 جانفي 2025/ })).toHaveFocus()
+    await expect(body.getByRole('button', { name: /^15: الأربعاء، 15 جانفي 2025/ })).toHaveFocus()
     const heading = body.getByRole('button', { name: /Choose month and year:/ })
     await userEvent.click(heading)
     const months = await body.findByRole('listbox', { name: 'Month' })

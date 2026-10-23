@@ -58,7 +58,8 @@ Without a Label, name Trigger and Content explicitly using standard ARIA attribu
 
 External text can name both parts through `aria-labelledby`; click forwarding remains with its
 owner. Explicit names override the automatic Label association. When a Trigger references label
-text, its committed Value is appended to the name. An explicit `aria-label` supplies the whole name.
+text, its visible Value (including the empty placeholder) is appended to the name. An explicit
+`aria-label` supplies the whole name and must include the visible Value text.
 Trigger's `aria-describedby` is combined with required and validation feedback. Do not rely on
 placeholder or selected text alone to identify the field.
 

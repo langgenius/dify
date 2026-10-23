@@ -224,7 +224,7 @@
   "operation.zoomIn": "Yakınlaştırma",
   "operation.zoomOut": "Uzaklaştırma",
   "pageUnavailable": "Sayfa kullanılamıyor",
-  "pagination.editPageNumber": "Sayfa numarasını düzenle, geçerli sayfa {{page}} / {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: Sayfa numarasını düzenle",
   "pagination.next": "Sonraki sayfa",
   "pagination.pageNumber": "Sayfa numarası",
   "pagination.perPage": "Sayfa başına öğe sayısı",

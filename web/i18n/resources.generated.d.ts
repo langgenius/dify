@@ -1853,7 +1853,7 @@ export default interface Resources {
     'operation.zoomIn': 'Zoom In'
     'operation.zoomOut': 'Zoom Out'
     pageUnavailable: 'Page not available'
-    'pagination.editPageNumber': 'Edit page number, current page {{page}} of {{totalPages}}'
+    'pagination.editPageNumber': '{{page}}/{{totalPages}}: Edit page number'
     'pagination.next': 'Next page'
     'pagination.pageNumber': 'Page number'
     'pagination.perPage': 'Items per page'

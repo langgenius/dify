@@ -224,7 +224,7 @@
   "operation.zoomIn": "Збільшити масштаб",
   "operation.zoomOut": "Зменшити масштаб",
   "pageUnavailable": "Сторінка недоступна",
-  "pagination.editPageNumber": "Редагувати номер сторінки, поточна сторінка {{page}} з {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: Редагувати номер сторінки",
   "pagination.next": "Наступна сторінка",
   "pagination.pageNumber": "Номер сторінки",
   "pagination.perPage": "Елементів на сторінці",

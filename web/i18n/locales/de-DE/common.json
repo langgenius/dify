@@ -224,7 +224,7 @@
   "operation.zoomIn": "Vergrößern",
   "operation.zoomOut": "Verkleinern",
   "pageUnavailable": "Seite nicht verfügbar",
-  "pagination.editPageNumber": "Seitennummer bearbeiten, aktuelle Seite {{page}} von {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: Seitennummer bearbeiten",
   "pagination.next": "Nächste Seite",
   "pagination.pageNumber": "Seitennummer",
   "pagination.perPage": "Artikel pro Seite",

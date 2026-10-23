@@ -224,7 +224,7 @@
   "operation.zoomIn": "Zoom In",
   "operation.zoomOut": "Zoom Out",
   "pageUnavailable": "Pagina niet beschikbaar",
-  "pagination.editPageNumber": "Paginanummer bewerken, huidige pagina {{page}} van {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: Paginanummer bewerken",
   "pagination.next": "Volgende pagina",
   "pagination.pageNumber": "Paginanummer",
   "pagination.perPage": "Items per page",

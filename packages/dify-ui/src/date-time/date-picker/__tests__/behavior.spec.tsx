@@ -66,7 +66,7 @@ describe('DatePicker keyboard and form contract', () => {
         </DatePicker>,
       )
       await screen.getByText('Date', { exact: true }).click()
-      const trigger = screen.getByRole('button', { name: 'Date', exact: true })
+      const trigger = screen.getByRole('button', { name: 'Date Select date', exact: true })
       if (state === 'disabled') await expect.element(trigger).not.toHaveFocus()
       else await expect.element(trigger).toHaveFocus()
       await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')
@@ -217,15 +217,17 @@ describe('DatePicker keyboard and form contract', () => {
     )
     await screen.getByRole('button', { name: 'Submit' }).click()
     expect(submitted).not.toHaveBeenCalled()
-    await expect.element(screen.getByRole('button', { name: 'Date', exact: true })).toHaveFocus()
+    await expect
+      .element(screen.getByRole('button', { name: 'Date Select date', exact: true }))
+      .toHaveFocus()
     await expect.element(screen.getByRole('alert')).toHaveTextContent('Choose a date')
-    await screen.getByRole('button', { name: 'Date', exact: true }).click()
+    await screen.getByRole('button', { name: 'Date Select date', exact: true }).click()
     await userEvent.keyboard('{Enter}')
     await screen.getByRole('button', { name: 'Submit' }).click()
     expect(submitted).toHaveBeenCalledWith(expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/))
     await screen.getByRole('button', { name: 'Reset' }).click()
     await expect
-      .element(screen.getByRole('button', { name: 'Date', exact: true }))
+      .element(screen.getByRole('button', { name: 'Date Select date', exact: true }))
       .toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Clear date' })).not.toBeInTheDocument()
   })
@@ -253,7 +255,9 @@ describe('DatePicker keyboard and form contract', () => {
       )
       await screen.getByRole('button', { name: 'Clear date' }).click()
       expect(changed).toHaveBeenCalledExactlyOnceWith(null)
-      await expect.element(screen.getByRole('button', { name: 'Date', exact: true })).toHaveFocus()
+      await expect
+        .element(screen.getByRole('button', { name: 'Date Select date', exact: true }))
+        .toHaveFocus()
       await expect
         .element(screen.getByRole('button', { name: 'Clear date' }))
         .not.toBeInTheDocument()
@@ -293,7 +297,7 @@ it('moves across an adjacent month with the keyboard', async () => {
   await screen.getByRole('button', { name: 'Date Jan 31, 2025' }).click()
   await userEvent.keyboard('{ArrowRight}')
   await expect
-    .element(screen.getByRole('button', { name: 'Saturday, February 1st, 2025', exact: true }))
+    .element(screen.getByRole('button', { name: '1: Saturday, February 1st, 2025', exact: true }))
     .toHaveFocus()
   await expect.element(screen.getByRole('status')).toHaveTextContent('February 2025')
   expect(
@@ -312,7 +316,7 @@ it('opens on the allowed month and retains a visible focus target if every date 
       <Parts />
     </DatePicker>,
   )
-  await screen.getByRole('button', { name: 'Date', exact: true }).click()
+  await screen.getByRole('button', { name: 'Date Select date', exact: true }).click()
   await expect
     .element(screen.getByRole('button', { name: 'Choose month and year: February 2037' }))
     .toHaveFocus()
@@ -345,7 +349,7 @@ it('keeps adjacent-month dates selectable by pointer', async () => {
     </DatePicker>,
   )
   await screen.getByRole('button', { name: 'Date Jan 15, 2025' }).click()
-  await screen.getByRole('button', { name: 'Saturday, February 1st, 2025', exact: true }).click()
+  await screen.getByRole('button', { name: '1: Saturday, February 1st, 2025', exact: true }).click()
   await expect.element(screen.getByRole('button', { name: 'Date Feb 1, 2025' })).toHaveFocus()
 })
 
@@ -360,19 +364,19 @@ it('supports month/year paging and week endpoints without committing during navi
   await screen.getByRole('button', { name: 'Date Jan 31, 2025' }).click()
   await userEvent.keyboard('{PageDown}')
   await expect
-    .element(screen.getByRole('button', { name: 'Friday, February 28th, 2025', exact: true }))
+    .element(screen.getByRole('button', { name: '28: Friday, February 28th, 2025', exact: true }))
     .toHaveFocus()
   await userEvent.keyboard('{Shift>}{PageDown}{/Shift}')
   await expect
-    .element(screen.getByRole('button', { name: 'Saturday, February 28th, 2026', exact: true }))
+    .element(screen.getByRole('button', { name: '28: Saturday, February 28th, 2026', exact: true }))
     .toHaveFocus()
   await userEvent.keyboard('{Home}')
   await expect
-    .element(screen.getByRole('button', { name: 'Sunday, February 22nd, 2026', exact: true }))
+    .element(screen.getByRole('button', { name: '22: Sunday, February 22nd, 2026', exact: true }))
     .toHaveFocus()
   await userEvent.keyboard('{End}')
   await expect
-    .element(screen.getByRole('button', { name: 'Saturday, February 28th, 2026', exact: true }))
+    .element(screen.getByRole('button', { name: '28: Saturday, February 28th, 2026', exact: true }))
     .toHaveFocus()
   expect(changed).not.toHaveBeenCalled()
 })
@@ -391,7 +395,7 @@ it('localizes full dates and reverses horizontal calendar navigation in RTL', as
     .element(screen.getByRole('dialog', { name: 'Date', exact: true }))
     .toHaveAttribute('dir', 'rtl')
   await userEvent.keyboard('{ArrowLeft}')
-  const nextLabel = 'الخميس، 16 جانفي 2025'
+  const nextLabel = '16: الخميس، 16 جانفي 2025'
   await expect.element(screen.getByRole('button', { name: nextLabel, exact: true })).toHaveFocus()
 })
 
@@ -413,7 +417,9 @@ it('focuses the first invalid picker inside a native fieldset', async () => {
     </form>,
   )
   await screen.getByRole('button', { name: 'Submit trip' }).click()
-  await expect.element(screen.getByRole('button', { name: 'Departure', exact: true })).toHaveFocus()
+  await expect
+    .element(screen.getByRole('button', { name: 'Departure Select date', exact: true }))
+    .toHaveFocus()
 })
 
 it('lets a picker override inherited direction independently of its formatting locale', async () => {
@@ -432,7 +438,7 @@ it('lets a picker override inherited direction independently of its formatting l
     .element(screen.getByRole('dialog', { name: 'Date', exact: true }))
     .toHaveAttribute('dir', 'ltr')
   await userEvent.keyboard('{ArrowRight}')
-  const nextLabel = 'الخميس، 16 جانفي 2025'
+  const nextLabel = '16: الخميس، 16 جانفي 2025'
   await expect.element(screen.getByRole('button', { name: nextLabel, exact: true })).toHaveFocus()
 })
 
@@ -451,7 +457,7 @@ it('keeps Persian month labels in the Gregorian calendar used by the value', asy
     .toHaveAttribute('aria-selected', 'true')
   await screen.getByRole('option', { name: 'فوریه' }).click()
   await screen.getByRole('button', { name: 'OK' }).click()
-  const dateName = 'شنبه ۱۵ فوریه ۲۰۲۵'
+  const dateName = '۱۵: شنبه ۱۵ فوریه ۲۰۲۵'
   await screen.getByRole('button', { name: dateName }).click()
   expect(changed).toHaveBeenCalledExactlyOnceWith('2025-02-15')
 })

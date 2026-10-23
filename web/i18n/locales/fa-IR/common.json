@@ -224,7 +224,7 @@
   "operation.zoomIn": "بزرگنمایی",
   "operation.zoomOut": "کوچک نمایی",
   "pageUnavailable": "صفحه در دسترس نیست",
-  "pagination.editPageNumber": "ویرایش شماره صفحه، صفحه فعلی {{page}} از {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: ویرایش شماره صفحه",
   "pagination.next": "صفحه بعد",
   "pagination.pageNumber": "شماره صفحه",
   "pagination.perPage": "موارد در هر صفحه",

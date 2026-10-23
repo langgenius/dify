@@ -224,7 +224,7 @@
   "operation.zoomIn": "Perbesar",
   "operation.zoomOut": "Perkecil",
   "pageUnavailable": "Halaman tidak tersedia",
-  "pagination.editPageNumber": "Edit nomor halaman, halaman saat ini {{page}} dari {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: Edit nomor halaman",
   "pagination.next": "Halaman berikutnya",
   "pagination.pageNumber": "Nomor halaman",
   "pagination.perPage": "Item per halaman",

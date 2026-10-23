@@ -224,7 +224,7 @@
   "operation.zoomIn": "放大",
   "operation.zoomOut": "縮小",
   "pageUnavailable": "頁面不可用",
-  "pagination.editPageNumber": "編輯頁碼，目前第 {{page}} 頁，共 {{totalPages}} 頁",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: 編輯頁碼",
   "pagination.next": "下一頁",
   "pagination.pageNumber": "頁碼",
   "pagination.perPage": "每頁項目數",

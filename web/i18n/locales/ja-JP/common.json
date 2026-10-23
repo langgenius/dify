@@ -224,7 +224,7 @@
   "operation.zoomIn": "ズームインする",
   "operation.zoomOut": "ズームアウト",
   "pageUnavailable": "ページは利用できません",
-  "pagination.editPageNumber": "ページ番号を編集、現在のページ {{page}} / {{totalPages}}",
+  "pagination.editPageNumber": "{{page}}/{{totalPages}}: ページ番号を編集",
   "pagination.next": "次のページ",
   "pagination.pageNumber": "ページ番号",
   "pagination.perPage": "ページあたりのアイテム数",
