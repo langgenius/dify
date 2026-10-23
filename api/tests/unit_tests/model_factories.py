@@ -10,6 +10,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.storage.storage_type import StorageType
 from graphon.variables import VariableBase
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
@@ -499,27 +500,32 @@ def make_document(
     created_at: datetime | None = None,
     updated_at: datetime | None = None,
 ) -> Document:
-    """Build a transient ``Document``; unset keywords leave their column unset."""
-    values: dict[str, object] = {
-        "tenant_id": tenant_id,
-        "dataset_id": dataset_id,
-        "position": position,
-        "data_source_type": data_source_type,
-        "batch": batch,
-        "name": name,
-        "created_from": created_from,
-        "created_by": created_by,
-    }
-    optional: dict[str, object | None] = {
-        "id": document_id,
-        "data_source_info": data_source_info,
-        "doc_form": doc_form,
-        "doc_metadata": doc_metadata,
-        "created_at": created_at,
-        "updated_at": updated_at,
-    }
-    values.update({key: value for key, value in optional.items() if value is not None})
-    return Document(**values)
+    """Build a transient Document with constructor defaults.
+
+    None leaves the document ID and optional form at their model defaults.
+    None timestamps leave database-generated fields unset.
+    """
+    document = Document(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        position=position,
+        data_source_type=data_source_type,
+        batch=batch,
+        name=name,
+        created_from=DocumentCreatedFrom(created_from),
+        created_by=created_by,
+        data_source_info=data_source_info,
+        doc_metadata=doc_metadata,
+    )
+    if document_id is not None:
+        document.id = document_id
+    if doc_form is not None:
+        document.doc_form = IndexStructureType(doc_form)
+    if created_at is not None:
+        document.created_at = created_at
+    if updated_at is not None:
+        document.updated_at = updated_at
+    return document
 
 
 __all__ = [

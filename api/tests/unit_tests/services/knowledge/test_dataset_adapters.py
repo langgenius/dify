@@ -23,6 +23,14 @@ from models.dataset import (
 )
 from models.enums import CreatorUserRole, DatasetQuerySource, IndexingStatus, SegmentStatus
 from models.model import AppMode
+from models.enums import (
+    CreatorUserRole,
+    DatasetQuerySource,
+    DataSourceType,
+    DocumentCreatedFrom,
+    IndexingStatus,
+    SegmentStatus,
+)
 from repositories.app.console_repository import ConsoleAppRepository
 from services.enterprise import rbac_service
 from services.knowledge.dataset_access import DatasetNotFoundError
@@ -57,21 +65,21 @@ def dataset(**values: object) -> Dataset:
 
 
 def document(**values: object) -> Document:
-    return Document(
-        **{
-            "id": "document",
-            "tenant_id": "tenant",
-            "dataset_id": "dataset",
-            "position": 1,
-            "data_source_type": "local_file",
-            "batch": "batch",
-            "name": "Document",
-            "created_from": "web",
-            "created_by": "actor",
-            "indexing_status": IndexingStatus.ERROR,
-            **values,
-        }
+    row = Document(
+        tenant_id="tenant",
+        dataset_id="dataset",
+        position=1,
+        data_source_type=DataSourceType("local_file"),
+        batch="batch",
+        name="Document",
+        created_from=DocumentCreatedFrom("web"),
+        created_by="actor",
     )
+    row.id = "document"
+    row.indexing_status = IndexingStatus.ERROR
+    for key, value in values.items():
+        setattr(row, key, value)
+    return row
 
 
 @pytest.fixture

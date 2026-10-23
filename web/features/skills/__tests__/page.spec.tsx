@@ -190,16 +190,18 @@ describe('SkillsPage', () => {
       { count: 2, tag: 'support' },
       { count: 1, tag: 'sales' },
     ]
-    mocks.list.mockReset().mockImplementation(async ({ query } = {}) => {
-      const page = query?.page ?? 1
-      return {
-        data: mocks.skillPages[page - 1] ?? [],
-        has_more: page < mocks.skillPages.length,
-        limit: 20,
-        page,
-        total: mocks.skillPages.flat().length,
-      }
-    })
+    mocks.list
+      .mockReset()
+      .mockImplementation(async ({ query }: Parameters<typeof mocks.list>[0] = {}) => {
+        const page = query?.page ?? 1
+        return {
+          data: mocks.skillPages[page - 1] ?? [],
+          has_more: page < mocks.skillPages.length,
+          limit: 20,
+          page,
+          total: mocks.skillPages.flat().length,
+        }
+      })
     mocks.references.mockReset().mockImplementation(async () => ({ data: mocks.skillReferences }))
     vi.spyOn(toast, 'error')
     vi.spyOn(toast, 'success')
@@ -386,7 +388,7 @@ describe('SkillsPage', () => {
           total: number
         }) => void)
       | undefined
-    mocks.list.mockImplementation(async ({ query } = {}) => {
+    mocks.list.mockImplementation(async ({ query }: Parameters<typeof mocks.list>[0] = {}) => {
       if (Number(query?.page ?? 1) === 1) {
         return {
           data: firstPageSkills,
@@ -465,7 +467,7 @@ describe('SkillsPage', () => {
         }) => void)
       | undefined
     let nextPageRequestCount = 0
-    mocks.list.mockImplementation(({ query } = {}) => {
+    mocks.list.mockImplementation(({ query }: Parameters<typeof mocks.list>[0] = {}) => {
       if (Number(query?.page ?? 1) === 1) {
         return new Promise((resolve) => {
           resolveFirstPageRefetch = resolve
@@ -540,7 +542,7 @@ describe('SkillsPage', () => {
           total: number
         }) => void)
       | undefined
-    mocks.list.mockImplementation(async ({ query } = {}) => {
+    mocks.list.mockImplementation(async ({ query }: Parameters<typeof mocks.list>[0] = {}) => {
       if (Number(query?.page ?? 1) === 1) {
         return {
           data: firstPageSkills,

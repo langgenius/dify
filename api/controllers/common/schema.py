@@ -63,6 +63,7 @@ class SchemaNameCollisionError(ValueError):
 # names depending on which model pulled it in. Types that share a class name with
 # another documented type get a fixed, unique component name here instead.
 SCHEMA_NAME_OVERRIDES: Mapping[str, str] = {
+    "services.agent_config_service.AgentConfigVersionKind": "AgentConfigTargetVersionKind",
     "graphon.model_runtime.entities.common_entities.I18nObject": "ModelRuntimeI18nObject",
     "services.knowledge.entities.knowledge_entities.FileInfo": "KnowledgeFileInfo",
     "core.plugin.entities.plugin.PluginDependency.Github": "PluginDependencyGithub",
