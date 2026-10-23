@@ -2,17 +2,19 @@
 
 import collections
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import override
+from typing import Any, override
 from unittest.mock import MagicMock
 
 import pytest
 from dify_trace_opik.config import OpikConfig
-from dify_trace_opik.opik_trace import OpikDataTrace, prepare_opik_uuid, wrap_dict, wrap_metadata
+from dify_trace_opik.opik_trace import OpikDataTrace, mark_internal, prepare_opik_uuid, wrap_dict, wrap_metadata
 from sqlalchemy.orm import Session
 
 from core.ops.entities.trace_entity import (
+    BaseTraceInfo,
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
     MessageTraceInfo,
@@ -569,30 +571,294 @@ def test_tool_trace(trace_instance):
     assert span_data["name"] == "my_tool"
 
 
-def test_generate_name_trace(trace_instance):
-    trace_info = GenerateNameTraceInfo(
+def test_mark_internal_sets_flag_without_mutating_input() -> None:
+    metadata = {"tenant_id": "tenant-1"}
+
+    assert mark_internal(metadata) == {"tenant_id": "tenant-1", "_opik": {"is_internal": True}}
+    assert metadata == {"tenant_id": "tenant-1"}
+
+
+def test_mark_internal_merges_existing_opik_keys() -> None:
+    metadata = {"tenant_id": "tenant-1", "_opik": {"source": "sdk", "is_internal": False}}
+
+    assert mark_internal(metadata) == {"tenant_id": "tenant-1", "_opik": {"source": "sdk", "is_internal": True}}
+    assert metadata == {"tenant_id": "tenant-1", "_opik": {"source": "sdk", "is_internal": False}}
+
+
+@pytest.mark.parametrize("opik_value", [None, "not-a-dict", ["is_internal"]])
+def test_mark_internal_replaces_non_dict_opik_value(opik_value: object) -> None:
+    assert mark_internal({"_opik": opik_value}) == {"_opik": {"is_internal": True}}
+
+
+def _generate_name_trace_info(metadata: dict[str, Any]) -> GenerateNameTraceInfo:
+    return GenerateNameTraceInfo(
         inputs={"q": "hi"},
         outputs={"name": "new"},
         tenant_id="tenant-1",
         conversation_id="271fe28f-6b86-416b-8d6b-bbbbfa9db791",
+        message_id="5a4a3a0a-91b4-4b52-9f3c-3c1c3c6e0b7d",
         start_time=_dt(),
-        end_time=_dt(),
-        metadata={"921f010e-6878-4831-ae6b-271bf68c56fb": 1},
+        end_time=_dt() + timedelta(seconds=1),
+        metadata=metadata,
     )
 
+
+def test_generate_name_trace_is_internal_and_keeps_thread(trace_instance) -> None:
+    trace_info = _generate_name_trace_info(
+        {"conversation_id": "271fe28f-6b86-416b-8d6b-bbbbfa9db791", "tenant_id": "tenant-1"}
+    )
     trace_instance.add_trace = MagicMock(return_value=MagicMock(id="trace_id_3"))
     trace_instance.add_span = MagicMock()
 
     trace_instance.generate_name_trace(trace_info)
 
-    trace_instance.add_trace.assert_called_once()
+    trace_instance.add_trace.assert_called_once_with(
+        {
+            "id": prepare_opik_uuid(trace_info.start_time, trace_info.message_id),
+            "name": TraceTaskName.GENERATE_NAME_TRACE,
+            "start_time": trace_info.start_time,
+            "end_time": trace_info.end_time,
+            "metadata": {
+                "conversation_id": "271fe28f-6b86-416b-8d6b-bbbbfa9db791",
+                "tenant_id": "tenant-1",
+                "created_from": "dify",
+                "_opik": {"is_internal": True},
+            },
+            "input": {"q": "hi"},
+            "output": {"name": "new"},
+            # Kept so the trace stays linked to its conversation.
+            "thread_id": "271fe28f-6b86-416b-8d6b-bbbbfa9db791",
+            "tags": ["generate_name"],
+            "project_name": "test-project",
+        }
+    )
+    # The span inside the internal trace is not itself internal, so it stays visible in the trace tree.
+    trace_instance.add_span.assert_called_once_with(
+        {
+            "trace_id": "trace_id_3",
+            "name": TraceTaskName.GENERATE_NAME_TRACE,
+            "start_time": trace_info.start_time,
+            "end_time": trace_info.end_time,
+            "metadata": {
+                "conversation_id": "271fe28f-6b86-416b-8d6b-bbbbfa9db791",
+                "tenant_id": "tenant-1",
+                "created_from": "dify",
+            },
+            "input": {"q": "hi"},
+            "output": {"name": "new"},
+            "tags": ["generate_name"],
+        }
+    )
+
+
+def test_generate_name_trace_merges_existing_opik_metadata(trace_instance) -> None:
+    trace_info = _generate_name_trace_info({"tenant_id": "tenant-1", "_opik": {"source": "custom"}})
+    trace_instance.add_trace = MagicMock(return_value=MagicMock(id="trace_id_4"))
+    trace_instance.add_span = MagicMock()
+
+    trace_instance.generate_name_trace(trace_info)
+
+    trace_data = trace_instance.add_trace.call_args.args[0]
+    span_data = trace_instance.add_span.call_args.args[0]
+    assert trace_data["metadata"] == {
+        "tenant_id": "tenant-1",
+        "_opik": {"source": "custom", "is_internal": True},
+        "created_from": "dify",
+    }
+    assert span_data["metadata"] == {
+        "tenant_id": "tenant-1",
+        "_opik": {"source": "custom"},
+        "created_from": "dify",
+    }
+
+
+def test_generate_name_trace_without_conversation_has_no_thread(trace_instance) -> None:
+    trace_info = GenerateNameTraceInfo(tenant_id="tenant-1", conversation_id=None, metadata={})
+    trace_instance.add_trace = MagicMock(return_value=MagicMock(id="trace_id_5"))
+    trace_instance.add_span = MagicMock()
+
+    trace_instance.generate_name_trace(trace_info)
+
+    trace_data = trace_instance.add_trace.call_args.args[0]
+    assert trace_data["thread_id"] is None
+    assert trace_data["metadata"] == {"created_from": "dify", "_opik": {"is_internal": True}}
+
+
+def test_message_trace_is_not_marked_internal(trace_instance) -> None:
+    message_data = MagicMock()
+    message_data.from_account_id = "acc-1"
+    message_data.from_end_user_id = None
+    message_data.conversation_id = "9d3f3751-7521-4c19-9307-20e3cf6789a3"
+    message_data.answer = "hello"
+
+    trace_info = MessageTraceInfo(
+        message_id="710ace2f-bca8-41be-858c-54da42742a77",
+        message_data=message_data,
+        inputs={"query": "hi"},
+        outputs={"answer": "hello"},
+        message_tokens=10,
+        answer_tokens=20,
+        total_tokens=30,
+        start_time=_dt(),
+        end_time=_dt() + timedelta(seconds=1),
+        metadata={"foo": "bar"},
+        conversation_mode="chat",
+        conversation_model="gpt-4",
+        file_list=[],
+        error=None,
+    )
+    trace_instance.add_trace = MagicMock(return_value=MagicMock(id="trace_id_6"))
+    trace_instance.add_span = MagicMock()
+
+    trace_instance.message_trace(trace_info)
+
+    expected_metadata = {"foo": "bar", "user_id": "acc-1", "file_list": [], "created_from": "dify"}
+    trace_instance.add_trace.assert_called_once_with(
+        {
+            "id": prepare_opik_uuid(trace_info.start_time, trace_info.message_id),
+            "name": TraceTaskName.MESSAGE_TRACE,
+            "start_time": trace_info.start_time,
+            "end_time": trace_info.end_time,
+            "metadata": expected_metadata,
+            "input": {"query": "hi"},
+            "output": "hello",
+            "thread_id": "9d3f3751-7521-4c19-9307-20e3cf6789a3",
+            "tags": ["message", "chat"],
+            "project_name": "test-project",
+        }
+    )
+    assert trace_instance.add_span.call_args.args[0]["metadata"] == expected_metadata
+
+
+@pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
+def test_workflow_trace_is_not_marked_internal(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+) -> None:
+    trace_info = WorkflowTraceInfo(
+        workflow_id="fb05c7cd-6cec-4add-8a84-df03a408b4ce",
+        tenant_id="tenant-1",
+        workflow_run_id="33c67568-7a8a-450e-8916-a5f135baeaef",
+        workflow_run_elapsed_time=1.0,
+        workflow_run_status="succeeded",
+        workflow_run_inputs={"input": "hi"},
+        workflow_run_outputs={"output": "hello"},
+        workflow_run_version="1.0",
+        message_id="04ec3956-85f3-488a-8539-1017251dc8c6",
+        conversation_id="d3d01066-23ae-4830-9ce4-eb5640b42a7e",
+        total_tokens=0,
+        file_list=[],
+        query="hi",
+        start_time=_dt(),
+        end_time=_dt() + timedelta(seconds=1),
+        metadata={"app_id": "app-1"},
+        workflow_app_log_id="ca0e018e-edd4-43fb-a05a-ea001ca8ef4b",
+        error="",
+    )
+    monkeypatch.setattr(
+        "dify_trace_opik.opik_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
+    repo = MagicMock()
+    repo.get_by_workflow_execution.return_value = []
+    mock_factory = MagicMock()
+    mock_factory.create_workflow_node_execution_repository.return_value = repo
+    monkeypatch.setattr("dify_trace_opik.opik_trace.DifyCoreRepositoryFactory", mock_factory)
+    monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
+    trace_instance.add_trace = MagicMock()
+    trace_instance.add_span = MagicMock()
+
+    trace_instance.workflow_trace(trace_info)
+
+    expected_metadata = {
+        "app_id": "app-1",
+        "created_from": "dify",
+        "message_id": "04ec3956-85f3-488a-8539-1017251dc8c6",
+        "workflow_app_log_id": "ca0e018e-edd4-43fb-a05a-ea001ca8ef4b",
+    }
+    trace_instance.add_trace.assert_called_once_with(
+        {
+            "id": prepare_opik_uuid(trace_info.start_time, trace_info.message_id),
+            "name": TraceTaskName.MESSAGE_TRACE,
+            "start_time": trace_info.start_time,
+            "end_time": trace_info.end_time,
+            "metadata": expected_metadata,
+            "input": {"input": "hi"},
+            "output": {"output": "hello"},
+            "thread_id": "d3d01066-23ae-4830-9ce4-eb5640b42a7e",
+            "tags": ["message", "workflow"],
+            "project_name": "test-project",
+        }
+    )
+    assert trace_instance.add_span.call_args.args[0]["metadata"] == expected_metadata
+
+
+def _moderation_trace_info() -> ModerationTraceInfo:
+    return ModerationTraceInfo(
+        message_id="489d0dfd-065c-4106-8f9c-daded296c92d",
+        message_data=MagicMock(created_at=_dt(), updated_at=_dt()),
+        inputs={},
+        action="allow",
+        flagged=False,
+        preset_response="",
+        query="hi",
+        metadata={"foo": "bar"},
+    )
+
+
+def _suggested_question_trace_info() -> SuggestedQuestionTraceInfo:
+    return SuggestedQuestionTraceInfo(
+        message_id="7de55bda-a91d-477e-98ab-85c53c438469",
+        message_data=MagicMock(created_at=_dt(), updated_at=_dt()),
+        suggested_question=["q1"],
+        total_tokens=0,
+        level="info",
+        metadata={"foo": "bar"},
+    )
+
+
+def _dataset_retrieval_trace_info() -> DatasetRetrievalTraceInfo:
+    return DatasetRetrievalTraceInfo(
+        message_id="3e1a819f-c391-4950-adfd-96f82e5419a1",
+        message_data=MagicMock(created_at=_dt(), updated_at=_dt()),
+        documents=[],
+        metadata={"foo": "bar"},
+    )
+
+
+def _tool_trace_info() -> ToolTraceInfo:
+    return ToolTraceInfo(
+        message_id="99db92c4-2254-496a-b5cc-18153315ce35",
+        message_data=MagicMock(),
+        tool_name="my_tool",
+        tool_inputs={},
+        tool_outputs="ok",
+        time_cost=0.1,
+        start_time=_dt(),
+        end_time=_dt(),
+        metadata={"foo": "bar"},
+        tool_config={},
+        tool_parameters={},
+    )
+
+
+@pytest.mark.parametrize(
+    ("method", "make_trace_info"),
+    [
+        ("moderation_trace", _moderation_trace_info),
+        ("suggested_question_trace", _suggested_question_trace_info),
+        ("dataset_retrieval_trace", _dataset_retrieval_trace_info),
+        ("tool_trace", _tool_trace_info),
+    ],
+)
+def test_span_only_traces_are_not_marked_internal(
+    trace_instance, method: str, make_trace_info: Callable[[], BaseTraceInfo]
+) -> None:
+    trace_instance.add_span = MagicMock()
+
+    getattr(trace_instance, method)(make_trace_info())
+
     trace_instance.add_span.assert_called_once()
-
-    trace_data = trace_instance.add_trace.call_args[0][0]
-    assert trace_data["name"] == TraceTaskName.GENERATE_NAME_TRACE
-
-    span_data = trace_instance.add_span.call_args[0][0]
-    assert span_data["trace_id"] == "trace_id_3"
+    assert trace_instance.add_span.call_args.args[0]["metadata"] == {"foo": "bar", "created_from": "dify"}
 
 
 def test_add_trace_success(trace_instance):
