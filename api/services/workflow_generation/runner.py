@@ -1855,8 +1855,8 @@ class WorkflowGenerator:
         # mode is a prompt that references ``{#start.url#}`` when the start
         # node has ``variables: []``, so we auto-inject missing start-node
         # variables. We also repair a mistaken output name when its source
-        # exposes exactly one valid output; ambiguous references still fail
-        # closed in the structural validator.
+        # exposes one supported repair output. Native Code and audited Tool
+        # contracts keep illegal names unresolved for structural validation.
         cls._normalize_sys_query_references(nodes=nodes, mode=mode)
         cls._reconcile_variable_references(nodes=nodes, mode=mode)
 
@@ -2075,8 +2075,10 @@ class WorkflowGenerator:
         Missing start-node inputs are added as ``paragraph`` variables. A
         DOTTED reference to a start input that cannot be addressed one segment
         deeper is repaired to its root. For non-start nodes, a mistaken output
-        name is rewritten only when the source exposes exactly one declared
-        output. Sources with zero or multiple outputs remain untouched so
+        name is rewritten only for supported aliases or sole-output repairs.
+        Native Code and the audited code/simple_code tool keep illegal names
+        unresolved: a different declared output does not establish intent.
+        Sources with zero or multiple outputs remain untouched so
         validation fails closed instead of guessing which value the workflow
         should consume.
 
@@ -2500,8 +2502,8 @@ class WorkflowGenerator:
     # unambiguous aliases. HTTP-request nodes expose {body, status_code, headers,
     # files} and never `response`; the response body a workflow wants is `body`.
     _OUTPUT_ALIASES: dict[tuple[str, str], str] = {
-        # `result` is the output name models reach for on a tool node; the
-        # real one is `text`. Rewriting beats failing the build over it.
+        # Preserve the legacy generic-tool alias for unknown providers. Known
+        # API and code/simple_code contracts are excluded in _aliased_output.
         (BuiltinNodeTypes.TOOL, "result"): "text",
         # The structured-output family a builder invents when it planned
         # structured output for this LLM node but the node ended up
@@ -2541,7 +2543,7 @@ class WorkflowGenerator:
         but only when that correct output is actually declared (safety)."""
         data = node.get("data") or {}
         node_type = data.get("type")
-        if is_native_api_tool(data) or not isinstance(node_type, str):
+        if is_native_api_tool(data) or cls._is_builtin_simple_code(data) or not isinstance(node_type, str):
             return None
         if node_type == BuiltinNodeTypes.HTTP_REQUEST:
             return aliased_http_output(data, var, producer_is_unique=http_producer_is_unique)
@@ -2559,7 +2561,7 @@ class WorkflowGenerator:
 
     @classmethod
     def _sole_declared_variable(cls, node: dict[str, Any]) -> str | None:
-        """Return the only output exposed by ``node``, or ``None`` when ambiguous."""
+        """Return a supported sole-output repair target, or ``None`` when unsafe."""
         data = node.get("data") or {}
         node_type = data.get("type")
         if node_type == BuiltinNodeTypes.LLM:
@@ -2571,8 +2573,10 @@ class WorkflowGenerator:
             # generation failure rather than a silent run-time break.
             return "text" if cls._llm_is_schema_less(data) else None
         if node_type == BuiltinNodeTypes.CODE:
-            outputs = [key for key in (data.get("outputs") or {}) if isinstance(key, str)]
-            return outputs[0] if len(outputs) == 1 else None
+            # Output names carry the code's contract, even with a sole output.
+            # Guessing a replacement can turn a boolean/array reference into
+            # an unrelated value and hide the error from structural validation.
+            return None
         if node_type == BuiltinNodeTypes.PARAMETER_EXTRACTOR:
             parameters = [
                 parameter.get("name")

@@ -254,6 +254,182 @@ def test_edit_resource_form_uses_canonical_unique_match() -> None:
     assert selected["bindings"][field["key"]]["name"] == "claude-fable-5-1"
 
 
+@pytest.mark.parametrize("kind", ["model", "tool"])
+def test_named_missing_resource_never_offers_unrequested_alternatives(kind: str) -> None:
+    from services.dify_builder.resource_grounding import ground_edit_impact
+
+    ref = resources.ResourceRef(id="provider/other", label="Other", binding={})
+    directory = resources.TenantResources(
+        models=[ref] if kind == "model" else [], tools=[ref] if kind == "tool" else [], datasets=[]
+    )
+    impact = ground_edit_impact(
+        {"fields": [], "values": {}, "resource_requests": [{"kind": kind, "query": "missing-requested"}]}, directory
+    )
+    assert impact["fields"][0]["options"] == []
+    assert list(impact["values"].values()) == [""]
+
+
+def test_open_resource_discovery_still_offers_available_choices() -> None:
+    from services.dify_builder.resource_grounding import ground_edit_impact
+
+    ref = resources.ResourceRef(id="provider/other", label="Other", binding={})
+    impact = ground_edit_impact(
+        {"fields": [], "values": {}, "resource_requests": [{"kind": "model", "query": ""}]},
+        resources.TenantResources(models=[ref], tools=[], datasets=[]),
+    )
+    assert impact["fields"][0]["options"] == ["model:" + ref.id]
+    assert list(impact["values"].values()) == [""]
+
+
+@pytest.mark.parametrize("revised_goal", ["Only rename the title", "Use available", "Use unavailable"])
+@pytest.mark.parametrize("submit_title", [True, False])
+def test_revising_goal_recovers_from_missing_resource_form(
+    monkeypatch: pytest.MonkeyPatch, revised_goal: str, submit_title: bool
+) -> None:
+    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
+    from core.dify_builder.state import PcState
+    from services.dify_builder.application.handlers_edit import handle_impact_analysis
+    from services.dify_builder.plan import WorkflowPlan
+    from services.dify_builder.resource_grounding import ground_edit_impact, resolve_edit_choices
+    from tests.unit_tests.core.dify_builder.test_runner import _new_env
+
+    env, _ = _new_env()
+    directory = resources.TenantResources(
+        models=[
+            resources.ResourceRef(
+                id="provider/available", label="Available", binding={"provider": "provider", "name": "available"}
+            )
+        ],
+        tools=[],
+        datasets=[],
+    )
+    calls: list[str] = []
+
+    def impact(goal: str, _graph: object, *, reply_language: str | None = None) -> dict[str, object]:
+        assert reply_language == "zh-Hans"
+        calls.append(goal)
+        return ground_edit_impact(
+            {
+                "fields": [{"key": "change", "type": "textarea"}, {"key": "title", "type": "text"}],
+                "values": {"change": goal, "title": "Generated default"},
+                "target_node_ids": ["llm"],
+                "resource_requests": [{"kind": "model", "node_id": "llm", "query": goal.removeprefix("Use ")}]
+                if goal.startswith("Use ")
+                else [],
+            },
+            directory,
+        )
+
+    monkeypatch.setattr(env.agent, "analyze_impact", impact)
+    monkeypatch.setattr(
+        env.agent,
+        "resolve_edit_bindings",
+        lambda fields, rules, _graph: resolve_edit_choices(fields, rules, directory),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        env.agent,
+        "propose_edit_plan",
+        lambda *_args, **_kwargs: WorkflowPlan("Title", "Input", "Output", ["Change title"]),
+    )
+    old = ground_edit_impact(
+        {
+            "fields": [{"key": "change", "type": "textarea"}, {"key": "title", "type": "text"}],
+            "values": {"change": "Use missing", "title": "Old default"},
+            "resource_requests": [{"kind": "model", "node_id": "llm", "query": "missing"}],
+        },
+        directory,
+    )
+    context = DifyBuilderContext(
+        reply_language="zh-Hans",
+        goal_text="Use missing",
+        form_fields=old["fields"],
+        edit_rules=old["values"],
+        plan_items=["Accepted prior step"],
+        checkpoint_id="prior-checkpoint",
+        resource_selection={"bindings": {"old": {"name": "missing"}}},
+    )
+    session = Session(app_id="app", entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_IMPACT_ANALYSIS)
+    actor = Actor(account_id="u", tenant_id="t")
+    unchanged = handle_impact_analysis(
+        env, Turn(actor=actor, action=Action(kind="submit_edit_rules")), session, context
+    )
+    assert unchanged.next == PcState.EDIT_IMPACT_ANALYSIS
+    assert calls == []
+    revised = handle_impact_analysis(
+        env,
+        Turn(
+            actor=actor,
+            action=Action(
+                kind="submit_edit_rules",
+                payload={
+                    "change": revised_goal,
+                    **({"title": "Confirmed title"} if submit_title else {}),
+                    "__builder_resource__0": "model:provider/missing",
+                },
+            ),
+        ),
+        session,
+        context,
+    )
+    assert calls == [revised_goal]
+    assert revised.next == PcState.EDIT_IMPACT_ANALYSIS
+    assert context.goal_text == revised_goal
+    assert context.plan_items == ["Accepted prior step"]
+    assert context.checkpoint_id == "prior-checkpoint"
+    form = next(item for item in revised.items if item.kind == "form")
+    assert form.payload["values"]["title"] == ("Confirmed title" if submit_title else "Generated default")
+    assert context.resource_selection == {}
+    assert form.payload["values"].get("__builder_resource__0") != "model:provider/missing"
+    assert "missing" not in str([f for f in context.form_fields if f.get("resource_kind")])
+    confirmed = handle_impact_analysis(
+        env, Turn(actor=actor, action=Action(kind="submit_edit_rules")), session, context
+    )
+    assert confirmed.next == (
+        PcState.EDIT_IMPACT_ANALYSIS if revised_goal == "Use unavailable" else PcState.EDIT_PLAN_APPROVAL
+    )
+    assert calls == [revised_goal]
+
+
+@pytest.mark.parametrize("language", ["en-US", "zh-Hans"])
+@pytest.mark.parametrize("source_error", [None, "inventory_unavailable"])
+def test_named_missing_resource_is_explained_before_approval(
+    monkeypatch: pytest.MonkeyPatch, language: str, source_error: str | None
+) -> None:
+    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
+    from core.dify_builder.state import PcState
+    from runtime_contracts.builder.copy_ids import BuilderCopyId
+    from services.dify_builder.application.handlers_edit import handle_capability_check
+    from services.dify_builder.resource_grounding import ground_edit_impact
+    from tests.unit_tests.core.dify_builder.test_runner import _new_env
+
+    env, _ = _new_env()
+    impact = ground_edit_impact(
+        {"fields": [], "values": {}, "resource_requests": [{"kind": "model", "query": "absent"}]},
+        resources.TenantResources(models=[], tools=[], datasets=[], model_source_error=source_error),
+    )
+    monkeypatch.setattr(env.agent, "analyze_impact", lambda *_args, **_kwargs: impact)
+    session = Session(app_id="app", entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_CAPABILITY_CHECK)
+    context = DifyBuilderContext(reply_language=language)
+    result = handle_capability_check(
+        env,
+        Turn(
+            actor=Actor(account_id="u", tenant_id="t"), action=Action(kind="send_edit_goal", payload={"text": "absent"})
+        ),
+        session,
+        context,
+    )
+    assert result.next == PcState.EDIT_IMPACT_ANALYSIS
+    assistant = next(item for item in result.items if item.kind == "assistant_turn")
+    reply = str(assistant.payload["reply_text"])
+    if source_error:
+        assert BuilderCopyId.RESOURCES_CATALOGUE_UNAVAILABLE in reply
+    else:
+        assert ("未找到" if language.startswith("zh") else "No available resource matches") in reply
+    assert not any(item.kind == "plan" for item in result.items)
+    assert not context.checkpoint_id
+
+
 def test_ambiguous_resources_have_no_automatic_choice() -> None:
     import pytest
 

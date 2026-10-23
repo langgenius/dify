@@ -87,7 +87,7 @@ from services.dify_builder.business_acceptance import (
     record_run_acceptance,
 )
 from services.dify_builder.execution_messages import change_scope_label
-from services.dify_builder.plan import WorkflowPlan, make_plan_card, store_plan
+from services.dify_builder.plan import EditPlanNotActionableError, WorkflowPlan, make_plan_card, store_plan
 from services.dify_builder.plan_failure import edit_planning_failed
 from services.dify_builder.repair_gate import NO_REPAIR_REASON
 
@@ -108,7 +108,9 @@ __all__ = [
 ]
 
 
-def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+def handle_capability_check(
+    env: Env, turn: Turn, s: Session, fc: DifyBuilderContext, *, submitted_rules: dict | None = None
+) -> StepResult:
     """(waiting) Entry state. On ``send_edit_goal`` read the existing graph,
     emit a read-only context summary, analyze impact into edit_rules + target
     nodes (highlighting them), and transition to edit.impact_analysis emitting
@@ -154,6 +156,17 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     fc.form_fields = list(impact.get("fields") or [])
     fc.edit_rules = dict(impact.get("values") or {})
     fc.edit_target_node_ids = list(impact.get("target_node_ids") or [])
+    if submitted_rules is not None:
+        # A revised goal owns a fresh resource request. Carry confirmed ordinary
+        # values only where that fresh impact still owns the field; never reuse
+        # an old choice merely because its resource field index is the same.
+        keys = [
+            field["key"]
+            for field in fc.form_fields
+            if isinstance(field, dict) and field.get("key") and not str(field["key"]).startswith("__builder_resource")
+        ]
+        fc.edit_rules = merge_known_keys(fc.edit_rules, submitted_rules, keys)
+        fc.resource_selection = {}
 
     for node_id in fc.edit_target_node_ids:
         emit_canvas(env, "highlight_edit_target", node_id=node_id)
@@ -172,13 +185,19 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     )
     execution = progress.finish()
     target_text = ", ".join(fc.edit_target_node_ids)
+    from services.dify_builder.resource_grounding import edit_resource_guidance
+
+    resource_guidance = edit_resource_guidance(fc.form_fields, fc.reply_language)
     turn_items = append_assistant(
         env,
         s,
         fc,
-        copy_text(BuilderCopyId.EDIT_INSPECTED, nodes=node_count, connections=edge_count, targets=target_text)
-        if target_text
-        else copy_text(BuilderCopyId.EDIT_INSPECTED_WITHOUT_TARGETS, nodes=node_count, connections=edge_count),
+        text_parts(
+            copy_text(BuilderCopyId.EDIT_INSPECTED, nodes=node_count, connections=edge_count, targets=target_text)
+            if target_text
+            else copy_text(BuilderCopyId.EDIT_INSPECTED_WITHOUT_TARGETS, nodes=node_count, connections=edge_count),
+            text_parts("\n\n", resource_guidance) if resource_guidance is not None else "",
+        ),
         execution=execution,
         cards=["form"],
         turn_id=progress.operation_id,
@@ -199,6 +218,20 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     kind = action_kind(turn)
     if kind != "submit_edit_rules":
         return StepResult(next=PcState.EDIT_IMPACT_ANALYSIS, context=fc)
+
+    if turn.action is not None and any(field.get("key") == "change" for field in fc.form_fields):
+        requested_goal = turn.action.payload.get("change")
+        if isinstance(requested_goal, str) and requested_goal.strip() and requested_goal != fc.edit_rules.get("change"):
+            # Reuse impact analysis only when the user changes the goal. Old
+            # resource choices cannot resolve a removed/replaced request; show
+            # the refreshed form for confirmation before planning or approval.
+            return handle_capability_check(
+                env,
+                replace(turn, action=replace(turn.action, kind="send_edit_goal", payload={"text": requested_goal})),
+                s,
+                fc,
+                submitted_rules=turn.action.payload,
+            )
 
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
@@ -247,7 +280,10 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         resolve_plan_resources(env.agent, fc, graph)
     except ResourceBindingError as exc:
         return selection_failure_step(env, s, fc, turn.actor, graph, progress, exc, failed_step="edit-draft-plan")
-    plan = env.agent.propose_edit_plan(dict(fc.edit_rules), graph, reply_language=fc.reply_language or None)
+    try:
+        plan = env.agent.propose_edit_plan(dict(fc.edit_rules), graph, reply_language=fc.reply_language or None)
+    except EditPlanNotActionableError as exc:
+        return edit_planning_failed(env, s, fc, progress, "edit-draft-plan", guidance=str(exc))
     if plan is None:
         return edit_planning_failed(env, s, fc, progress, "edit-draft-plan")
     store_plan(fc, plan)
@@ -1322,7 +1358,10 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     )
     progress.activate("edit-rebuild-plan")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
-    plan = env.agent.propose_edit_plan(dict(fc.edit_rules), graph, reply_language=fc.reply_language or None)
+    try:
+        plan = env.agent.propose_edit_plan(dict(fc.edit_rules), graph, reply_language=fc.reply_language or None)
+    except EditPlanNotActionableError as exc:
+        return edit_planning_failed(env, s, fc, progress, "edit-rebuild-plan", guidance=str(exc))
     if plan is None:
         return edit_planning_failed(env, s, fc, progress, "edit-rebuild-plan")
     store_plan(fc, plan)
