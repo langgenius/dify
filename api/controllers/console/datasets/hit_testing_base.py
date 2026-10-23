@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-import services
+import services.errors.base
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -97,8 +97,8 @@ class DatasetsHitTestingBase:
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+        except services.errors.base.NoPermissionError as e:
+            raise Forbidden(str(e)) from e
 
         return dataset
 
@@ -140,23 +140,23 @@ class DatasetsHitTestingBase:
                 "query": {"content": query["content"]},
                 "records": DatasetsHitTestingBase._prepare_hit_testing_records(response.get("records", [])),
             }
-        except services.errors.index.IndexNotInitializedError:
-            raise DatasetNotInitializedError()
+        except services.errors.index.IndexNotInitializedError as caught_error:
+            raise DatasetNotInitializedError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except LLMBadRequestError:
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
+        except LLMBadRequestError as caught_error:
             raise ProviderNotInitializeError(
                 "No Embedding Model or Reranking Model available. Please configure a valid provider "
                 "in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
-            raise ValueError(str(e))
+            raise ValueError(str(e)) from e
         except Exception as e:
             logger.exception("Hit testing failed.")
-            raise InternalServerError(str(e))
+            raise InternalServerError() from e

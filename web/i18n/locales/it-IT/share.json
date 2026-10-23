@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Contatta l’amministratore dell’app se hai bisogno di aiuto.",
+  "appNotAccessible.documentTitle": "App non accessibile · Dify",
+  "appNotAccessible.ipAddress": "Il tuo indirizzo IP è <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Questa app non esiste o non è accessibile dalla tua rete.",
   "chat.chatFormTip": "Le impostazioni della chat non possono essere modificate dopo che la chat è iniziata.",
   "chat.chatSettingsTitle": "Nuova configurazione della chat",
   "chat.collapse": "Riduci",

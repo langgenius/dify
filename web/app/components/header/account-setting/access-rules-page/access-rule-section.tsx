@@ -100,7 +100,7 @@ const AccessRuleSection = ({
       }
     >
       <div className="flex items-center gap-4 p-4">
-        <CollapsibleTrigger className="flex min-h-0 min-w-0 flex-1 touch-manipulation items-center justify-start gap-0 text-start system-sm-medium text-text-secondary outline-hidden select-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary">
+        <CollapsibleTrigger className="flex min-h-0 min-w-0 flex-1 touch-manipulation items-center justify-start gap-0 text-start system-sm-medium text-text-secondary select-none hover:text-text-primary data-panel-open:text-text-primary">
           <div className="flex min-w-0 items-center gap-4">
             <span className="truncate system-sm-semibold text-text-primary">{title}</span>
             <span className="shrink-0 system-xs-regular text-text-tertiary">

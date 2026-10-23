@@ -1,6 +1,6 @@
 'use client'
+import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { FullDocumentDetail } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -16,7 +16,7 @@ type Props = Readonly<{
   datasetId: string
   documentId: string
   className?: string
-  docDetail: FullDocumentDetail
+  docDetail: DocumentDetailResponse
   canEdit?: boolean
 }>
 const MetadataDocument: FC<Props> = ({

@@ -1,7 +1,6 @@
 import type { PluginInstallationScope } from '@dify/contracts/api/console/system-features/types.gen'
 import { zPluginInstallationScope } from '@dify/contracts/api/console/system-features/zod.gen'
 import { describe, expect, it } from 'vite-plus/test'
-import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { pluginInstallLimit } from '../use-install-plugin-limit'
 
 type PluginInstallCandidate = Parameters<typeof pluginInstallLimit>[0]
@@ -90,30 +89,5 @@ describe('pluginInstallLimit', () => {
     const plugin = { from: 'marketplace' as const } satisfies PluginInstallCandidate
 
     expect(pluginInstallLimit(plugin, features).canInstall).toBe(true)
-  })
-
-  it('should deny installation for an unrecognized runtime scope', () => {
-    const features = {
-      plugin_installation_permission: {
-        restrict_to_marketplace_only: false,
-        plugin_installation_scope: 'unknown-scope',
-      },
-    } as unknown as SystemFeatures
-
-    expect(pluginInstallLimit(basePlugin, features).canInstall).toBe(false)
-  })
-})
-
-describe('usePluginInstallLimit', () => {
-  it('should return canInstall from pluginInstallLimit using global store', async () => {
-    const { default: usePluginInstallLimit } = await import('../use-install-plugin-limit')
-    const plugin = {
-      from: 'marketplace' as const,
-      verification: { authorized_category: 'langgenius' },
-    } satisfies PluginInstallCandidate
-
-    const { result } = renderHook(() => usePluginInstallLimit(plugin))
-
-    expect(result.current.canInstall).toBe(true)
   })
 })

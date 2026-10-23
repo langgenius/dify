@@ -1,12 +1,12 @@
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import type { DataSourceCredential } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { NotionPage } from '@/models/common'
 import { useEffect, useMemo, useState } from 'react'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { NotionPageSelector } from '.'
 
 const DATASET_ID = 'dataset-demo'
-const CREDENTIALS: DataSourceCredential[] = [
+const CREDENTIALS: DatasourceCredentialResponse[] = [
   {
     id: 'cred-1',
     name: 'Marketing Workspace',
@@ -145,7 +145,7 @@ const useMockNotionApi = () => {
       throw new Error(`Unmocked fetch call for ${url}`)
     }
 
-    globalThis.fetch = handler as typeof globalThis.fetch
+    globalThis.fetch = handler
 
     return () => {
       if (originalFetch) globalThis.fetch = originalFetch

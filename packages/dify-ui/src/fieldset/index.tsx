@@ -1,11 +1,10 @@
 'use client'
 
-import type { Fieldset as BaseFieldsetNS } from '@base-ui/react/fieldset'
 import { Fieldset as BaseFieldset } from '@base-ui/react/fieldset'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 
-type FieldsetProps = BaseFieldsetNS.Root.Props
+type FieldsetProps = BaseFieldset.Root.Props
 
 function Fieldset({ className, ...props }: FieldsetProps) {
   return (
@@ -16,7 +15,7 @@ function Fieldset({ className, ...props }: FieldsetProps) {
   )
 }
 
-type FieldsetLegendProps = BaseFieldsetNS.Legend.Props
+type FieldsetLegendProps = BaseFieldset.Legend.Props
 
 function FieldsetLegend({ className, ...props }: FieldsetLegendProps) {
   return (

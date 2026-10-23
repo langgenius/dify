@@ -16,7 +16,7 @@ export default function AccessControlItem({ type, children, disabled }: AccessCo
       disabled={disabled}
       render={<div />}
       className={cn(
-        'rounded-[10px] border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg shadow-xs transition-colors',
+        'rounded-[10px] border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg shadow-xs',
         'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
         'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:inset-ring-[0.5px] data-checked:inset-ring-components-option-card-option-selected-border',
         'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover data-disabled:cursor-not-allowed data-disabled:opacity-60 data-disabled:hover:border-components-option-card-option-border data-disabled:hover:bg-components-option-card-option-bg',

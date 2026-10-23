@@ -30,11 +30,10 @@ const AppOperations = ({ appName, operationGroups }: AppOperationsProps) => {
   const { t } = useTranslation(['common'])
   const visibleGroups = operationGroups.filter((group) => group.length > 0)
 
-  if (!visibleGroups.length) return null
-
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
+        disabled={!visibleGroups.length}
         render={
           <IconButton
             aria-label={t(($) => $['operation.moreActionsFor'], {
@@ -48,7 +47,7 @@ const AppOperations = ({ appName, operationGroups }: AppOperationsProps) => {
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-40">
+      <DropdownMenuContent className="min-w-40">
         {visibleGroups.map((group, groupIndex) => (
           <Fragment key={group.map((operation) => operation.id).join('-')}>
             {groupIndex > 0 && <DropdownMenuSeparator />}

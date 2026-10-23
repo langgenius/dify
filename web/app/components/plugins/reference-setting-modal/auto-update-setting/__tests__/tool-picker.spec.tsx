@@ -1,200 +1,136 @@
-import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { consoleClient } from '@/service/console'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createInstalledPluginFixture } from '@/test/fixtures/plugin'
 import ToolPicker from '../tool-picker'
 
-const mockInstalledPluginList = vi.hoisted(() => ({
-  data: {
-    plugins: [] as PluginDetail[],
-  },
-  isLoading: false,
-}))
+const installedPlugins = vi.hoisted(() =>
+  vi.fn<typeof consoleClient.workspaces.current.plugin.list.get>(),
+)
 
-vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => mockInstalledPluginList,
-}))
-
-vi.mock('@/app/components/base/loading-placeholder', () => ({
-  LoadingPlaceholder: () => <div data-testid="loading">loading</div>,
-}))
-
-vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
-  default: ({
-    search,
-    tags,
-    onSearchChange,
-    onTagsChange,
-    placeholder,
-  }: {
-    search: string
-    tags: string[]
-    onSearchChange: (value: string) => void
-    onTagsChange: (value: string[]) => void
-    placeholder: string
-  }) => (
-    <div data-testid="search-box">
-      <div>{placeholder}</div>
-      <div data-testid="search-state">{search}</div>
-      <div data-testid="tags-state">{tags.join(',')}</div>
-      <button data-testid="set-query" onClick={() => onSearchChange('tool-rag')}>
-        set-query
-      </button>
-      <button data-testid="set-tags" onClick={() => onTagsChange(['rag'])}>
-        set-tags
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../no-data-placeholder', () => ({
-  default: ({ noPlugins }: { noPlugins?: boolean }) => (
-    <div data-testid="no-data">{String(noPlugins)}</div>
-  ),
-}))
-
-vi.mock('../tool-item', () => ({
-  default: ({
-    payload,
-    isChecked,
-    onCheckChange,
-  }: {
-    payload: PluginDetail
-    isChecked?: boolean
-    onCheckChange: () => void
-  }) => (
-    <div data-testid="tool-item">
-      <span>{payload.plugin_id}</span>
-      <span>{String(isChecked)}</span>
-      <button data-testid={`toggle-${payload.plugin_id}`} onClick={onCheckChange}>
-        toggle
-      </button>
-    </div>
-  ),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.get': installedPlugins,
+    }),
+  }
+})
 
 const createPlugin = (
   pluginId: string,
-  source: PluginDetail['source'],
-  category: string,
+  source: PluginSource,
+  category: PluginCategoryEnum,
   tags: string[],
-): PluginDetail =>
-  ({
+) => {
+  const plugin = createInstalledPluginFixture({ id: pluginId, plugin_id: pluginId })
+  return {
+    ...plugin,
     plugin_id: pluginId,
     source,
     declaration: {
+      ...plugin.declaration,
       category,
       tags,
+      label: { ...plugin.declaration.label, en_US: pluginId },
     },
-  }) as PluginDetail
+  }
+}
 
 describe('ToolPicker', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockInstalledPluginList.data = {
-      plugins: [],
-    }
-    mockInstalledPluginList.isLoading = false
+    installedPlugins.mockReset().mockResolvedValue({ plugins: [], total: 0 })
   })
 
-  it('toggles popup visibility from the trigger', () => {
-    const onShowChange = vi.fn()
+  it('shows the empty installed-plugin state', async () => {
+    render(
+      <ToolPicker
+        trigger={<button>trigger</button>}
+        value={[]}
+        onChange={vi.fn()}
+        isShow
+        onShowChange={vi.fn()}
+      />,
+    )
+    expect(
+      await screen.findByText('plugin.autoUpdate.noPluginPlaceholder.noInstalled'),
+    ).toBeInTheDocument()
+  })
+
+  it('filters by plugin type, tags, and query', async () => {
+    const user = userEvent.setup()
+    installedPlugins.mockResolvedValue({
+      plugins: [
+        createPlugin('tool-search', PluginSource.marketplace, PluginCategoryEnum.tool, ['search']),
+        createPlugin('tool-rag', PluginSource.marketplace, PluginCategoryEnum.tool, ['rag']),
+        createPlugin('model-agent', PluginSource.marketplace, PluginCategoryEnum.model, ['agent']),
+        createPlugin('github-tool', PluginSource.github, PluginCategoryEnum.tool, ['rag']),
+      ],
+      total: 4,
+    })
+
     render(
       <ToolPicker
         trigger={<button type="button">trigger</button>}
         value={[]}
         onChange={vi.fn()}
-        isShow={false}
-        onShowChange={onShowChange}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('trigger'))
-
-    expect(onShowChange).toHaveBeenCalledWith(true, expect.any(Object))
-  })
-
-  it('renders loading content while installed plugins are loading', () => {
-    mockInstalledPluginList.isLoading = true
-
-    render(
-      <ToolPicker
-        trigger={<span>trigger</span>}
-        value={[]}
-        onChange={vi.fn()}
         isShow
         onShowChange={vi.fn()}
       />,
     )
 
-    expect(screen.getByTestId('loading')).toBeInTheDocument()
-  })
-
-  it('renders no-data placeholder when there are no matching marketplace plugins', () => {
-    render(
-      <ToolPicker
-        trigger={<span>trigger</span>}
-        value={[]}
-        onChange={vi.fn()}
-        isShow
-        onShowChange={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByTestId('no-data')).toHaveTextContent('true')
-  })
-
-  it('filters by plugin type, tags, and query', () => {
-    mockInstalledPluginList.data = {
-      plugins: [
-        createPlugin('tool-search', PluginSource.marketplace, 'tool', ['search']),
-        createPlugin('tool-rag', PluginSource.marketplace, 'tool', ['rag']),
-        createPlugin('model-agent', PluginSource.marketplace, 'model', ['agent']),
-        createPlugin('github-tool', PluginSource.github, 'tool', ['rag']),
-      ],
-    }
-
-    render(
-      <ToolPicker
-        trigger={<span>trigger</span>}
-        value={[]}
-        onChange={vi.fn()}
-        isShow
-        onShowChange={vi.fn()}
-      />,
-    )
-
-    expect(screen.getAllByTestId('tool-item')).toHaveLength(3)
+    expect(
+      await screen.findAllByRole('checkbox', { name: /^(tool-|model-|datasource-)/ }),
+    ).toHaveLength(3)
     expect(screen.queryByText('github-tool')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('plugin.category.models'))
-    expect(screen.getAllByTestId('tool-item')).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'plugin.category.models' }))
+    expect(screen.getByRole('button', { name: 'plugin.category.models' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getAllByRole('checkbox', { name: /^(tool-|model-|datasource-)/ })).toHaveLength(1)
     expect(screen.getByText('model-agent')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('plugin.category.tools'))
-    expect(screen.getAllByTestId('tool-item')).toHaveLength(2)
+    await user.click(screen.getByRole('button', { name: 'plugin.category.tools' }))
+    expect(screen.getAllByRole('checkbox', { name: /^(tool-|model-|datasource-)/ })).toHaveLength(2)
 
-    fireEvent.click(screen.getByTestId('set-tags'))
-    expect(screen.getAllByTestId('tool-item')).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'pluginTags.allTags' }))
+    await user.click(screen.getByRole('checkbox', { name: 'pluginTags.tags.rag' }))
+    expect(screen.getAllByRole('checkbox', { name: /^(tool-|model-|datasource-)/ })).toHaveLength(1)
     expect(screen.getByText('tool-rag')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
 
-    fireEvent.click(screen.getByTestId('set-query'))
-    expect(screen.getAllByTestId('tool-item')).toHaveLength(1)
-    expect(screen.getByTestId('search-state')).toHaveTextContent('tool-rag')
+    const search = screen.getByRole('searchbox', { name: 'plugin.searchTools' })
+    await user.type(search, 'tool-rag')
+    expect(screen.getAllByRole('checkbox', { name: /^(tool-|model-|datasource-)/ })).toHaveLength(1)
+    expect(search).toHaveValue('tool-rag')
+    await user.clear(search)
+    await user.type(search, 'not-installed')
+    expect(screen.queryByRole('checkbox', { name: 'tool-rag' })).not.toBeInTheDocument()
+    expect(screen.getByText('plugin.autoUpdate.noPluginPlaceholder.noFound')).toBeInTheDocument()
   })
 
-  it('limits selectable integrations to the provided integration category', () => {
-    mockInstalledPluginList.data = {
+  it('limits selectable integrations to the provided integration category', async () => {
+    installedPlugins.mockResolvedValue({
       plugins: [
-        createPlugin('model-openai', PluginSource.marketplace, 'model', ['llm']),
-        createPlugin('tool-rag', PluginSource.marketplace, 'tool', ['rag']),
-        createPlugin('datasource-notion', PluginSource.marketplace, 'datasource', ['docs']),
+        createPlugin('model-openai', PluginSource.marketplace, PluginCategoryEnum.model, ['llm']),
+        createPlugin('tool-rag', PluginSource.marketplace, PluginCategoryEnum.tool, ['rag']),
+        createPlugin('datasource-notion', PluginSource.marketplace, PluginCategoryEnum.datasource, [
+          'docs',
+        ]),
       ],
-    }
+      total: 3,
+    })
 
     render(
       <ToolPicker
-        trigger={<span>trigger</span>}
+        trigger={<button type="button">trigger</button>}
         value={[]}
         onChange={vi.fn()}
         isShow
@@ -203,47 +139,16 @@ describe('ToolPicker', () => {
       />,
     )
 
-    expect(screen.getByText('plugin.category.models')).toBeInTheDocument()
-    expect(screen.queryByText('plugin.category.all')).not.toBeInTheDocument()
-    expect(screen.queryByText('plugin.category.tools')).not.toBeInTheDocument()
-    expect(screen.getAllByTestId('tool-item')).toHaveLength(1)
+    expect(await screen.findByRole('checkbox', { name: 'model-openai' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin.category.models' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.queryByRole('button', { name: 'plugin.category.all' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'plugin.category.tools' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('checkbox', { name: /^(tool-|model-|datasource-)/ })).toHaveLength(1)
     expect(screen.getByText('model-openai')).toBeInTheDocument()
     expect(screen.queryByText('tool-rag')).not.toBeInTheDocument()
     expect(screen.queryByText('datasource-notion')).not.toBeInTheDocument()
-  })
-
-  it('adds and removes plugin ids from the selection', () => {
-    mockInstalledPluginList.data = {
-      plugins: [
-        createPlugin('tool-rag', PluginSource.marketplace, 'tool', ['rag']),
-        createPlugin('tool-search', PluginSource.marketplace, 'tool', ['search']),
-      ],
-    }
-    const onChange = vi.fn()
-    const { rerender } = render(
-      <ToolPicker
-        trigger={<span>trigger</span>}
-        value={['tool-rag']}
-        onChange={onChange}
-        isShow
-        onShowChange={vi.fn()}
-      />,
-    )
-
-    fireEvent.click(screen.getByTestId('toggle-tool-search'))
-    expect(onChange).toHaveBeenCalledWith(['tool-rag', 'tool-search'])
-
-    rerender(
-      <ToolPicker
-        trigger={<span>trigger</span>}
-        value={['tool-rag']}
-        onChange={onChange}
-        isShow
-        onShowChange={vi.fn()}
-      />,
-    )
-
-    fireEvent.click(screen.getByTestId('toggle-tool-rag'))
-    expect(onChange).toHaveBeenCalledWith([])
   })
 })

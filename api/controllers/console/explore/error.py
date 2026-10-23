@@ -4,6 +4,12 @@ from core.logging.context import get_request_id
 from libs.exception import BaseHTTPException
 
 
+class AgentVersionNotFoundHTTPError(BaseHTTPException):
+    error_code = "agent_version_not_found_error"
+    description = "Agent config version not found."
+    code = HTTPStatus.NOT_FOUND
+
+
 class InstalledAppHTTPError(BaseHTTPException):
     """A Console error with safe details and a request ID for troubleshooting."""
 

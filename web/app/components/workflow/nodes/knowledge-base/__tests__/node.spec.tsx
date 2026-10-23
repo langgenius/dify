@@ -1,18 +1,17 @@
 import type { KnowledgeBaseNodeType } from '../types'
 import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CommonNodeType } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Node from '../node'
 import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../types'
 
-const mockModelListQuery = vi.hoisted(() => vi.fn())
-const mockUseSettingsDisplay = vi.hoisted(() => vi.fn())
 const mockUseEmbeddingModelStatus = vi.hoisted(() => vi.fn())
 
 vi.mock(
@@ -28,10 +27,6 @@ vi.mock(
     }
   },
 )
-
-vi.mock('../hooks/use-settings-display', () => ({
-  useSettingsDisplay: mockUseSettingsDisplay,
-}))
 
 vi.mock('../hooks/use-embedding-model-status', () => ({
   useEmbeddingModelStatus: mockUseEmbeddingModelStatus,
@@ -72,11 +67,7 @@ const createNodeData = (
 describe('KnowledgeBaseNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockModelListQuery.mockReturnValue({ data: [] })
-    mockUseSettingsDisplay.mockReturnValue({
-      [IndexMethodEnum.QUALIFIED]: 'High Quality',
-      [RetrievalSearchMethodEnum.semantic]: 'Vector Search',
-    })
+
     mockUseEmbeddingModelStatus.mockReturnValue({
       providerMeta: undefined,
       modelProvider: undefined,
@@ -185,24 +176,7 @@ describe('KnowledgeBaseNode', () => {
       expect(screen.getByText(/chunksVariableIsRequired/i)).toBeInTheDocument()
     })
 
-    it('should render a warning value for retrieval settings when reranking is incomplete', () => {
-      mockModelListQuery.mockImplementation(
-        ({ input }: { input: { params: { model_type: string } } }) => {
-          const modelType = input.params.model_type
-          if (modelType === ModelTypeEnum.textEmbedding) {
-            return {
-              data: [
-                {
-                  provider: 'openai',
-                  models: [createModelItem()],
-                },
-              ],
-            }
-          }
-          return { data: [] }
-        },
-      )
-
+    it('should render a warning value for retrieval settings when reranking is incomplete', async () => {
       render(
         <Node
           id="knowledge-base-1"
@@ -218,7 +192,7 @@ describe('KnowledgeBaseNode', () => {
         />,
       )
 
-      expect(screen.getByText(/rerankingModelIsRequired/i)).toBeInTheDocument()
+      expect(await screen.findByText(/rerankingModelIsRequired/i)).toBeInTheDocument()
     })
 
     it('should hide the embedding model row when the index method is not qualified', () => {
@@ -236,13 +210,25 @@ describe('KnowledgeBaseNode', () => {
   })
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    useQuery: (options: { queryKey?: readonly [readonly string[], unknown] }) =>
-      options.queryKey?.[0].includes('modelTypes')
-        ? mockModelListQuery(options)
-        : { data: undefined },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.models.modelTypes.byModelType.get': async ({
+        params,
+      }: {
+        params: { model_type: string }
+      }) => ({
+        data:
+          params.model_type === ModelTypeEnum.textEmbedding
+            ? [{ provider: 'openai', models: [createModelItem()] }]
+            : [],
+      }),
+      'workspaces.current.modelProviders.byProvider.models.get': async () => ({
+        data: [createModelItem()],
+      }),
+    }),
   }
 })

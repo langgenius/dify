@@ -1,8 +1,30 @@
-import type { EntityMatch } from '@lexical/text'
-import type { Klass, LexicalEditor, TextNode } from 'lexical'
-import { render, renderHook, screen } from '@testing-library/react'
+import type {
+  LexicalCommand,
+  LexicalEditor,
+  LexicalNode,
+  NodeKey,
+  SerializedTextNode,
+} from 'lexical'
+import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { COMMAND_PRIORITY_LOW, KEY_BACKSPACE_COMMAND, KEY_DELETE_COMMAND } from 'lexical'
+import {
+  $createParagraphNode,
+  $createRangeSelection,
+  $getNodeByKey,
+  $getRoot,
+  $getSelection,
+  $isNodeSelection,
+  $isTextNode,
+  $setSelection,
+  COMMAND_PRIORITY_LOW,
+  createEditor,
+  KEY_BACKSPACE_COMMAND,
+  KEY_DELETE_COMMAND,
+  TextNode,
+} from 'lexical'
+import { useEffect } from 'react'
 import {
   useBasicTypeaheadTriggerMatch,
   useLexicalTextEntity,
@@ -11,400 +33,310 @@ import {
 } from '../hooks'
 import { DELETE_CONTEXT_BLOCK_COMMAND } from '../plugins/context-block'
 import { ContextBlockNode } from '../plugins/context-block/node'
+import { CustomTextNode } from '../plugins/custom-text/node'
 import { DELETE_HISTORY_BLOCK_COMMAND } from '../plugins/history-block'
 import { HistoryBlockNode } from '../plugins/history-block/node'
 import { DELETE_QUERY_BLOCK_COMMAND } from '../plugins/query-block'
 import { QueryBlockNode } from '../plugins/query-block/node'
 
-type MockNode = {
-  isDecorator?: boolean
-  remove?: () => void
-}
-
-type MockSelection = {
-  getNodes: () => MockNode[]
-  isNodeSelection?: boolean
-}
-
-type SelectOrDeleteCommand = Parameters<typeof useSelectOrDelete>[1]
-type LexicalTextEntityGetMatch = (text: string) => null | EntityMatch
-type LexicalTextEntityCreateNode = (textNode: TextNode) => TextNode
-
-const mockState = vi.hoisted(() => {
-  const commandHandlers = new Map<unknown, (event: KeyboardEvent) => boolean>()
-  const registerCommand = vi.fn((command: unknown, handler: (event: KeyboardEvent) => boolean) => {
-    commandHandlers.set(command, handler)
-    return vi.fn()
-  })
-
-  return {
-    editor: {
-      registerCommand,
-      registerNodeTransform: vi.fn(),
-      dispatchCommand: vi.fn(),
-    },
-    commandHandlers,
-    isSelected: false,
-    setSelected: vi.fn(),
-    clearSelection: vi.fn(),
-    selection: null as MockSelection | null,
-    node: null as MockNode | null,
-    mergeRegister: vi.fn((...cleanups: Array<() => void>) => {
-      return () => {
-        cleanups.forEach((cleanup) => cleanup())
-      }
-    }),
-    removePlainTextTransform: vi.fn(),
-    removeReverseNodeTransform: vi.fn(),
+class MentionNode extends TextNode {
+  static override getType() {
+    return 'test-mention'
   }
-})
-
-vi.mock('@lexical/react/LexicalComposerContext', () => ({
-  useLexicalComposerContext: () => [mockState.editor],
-}))
-
-vi.mock('@lexical/react/useLexicalNodeSelection', () => ({
-  useLexicalNodeSelection: () => [
-    mockState.isSelected,
-    mockState.setSelected,
-    mockState.clearSelection,
-  ],
-}))
-
-vi.mock('@lexical/utils', () => ({
-  mergeRegister: mockState.mergeRegister,
-}))
-
-vi.mock('lexical', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('lexical')>()
-  return {
-    ...actual,
-    $getSelection: () => mockState.selection,
-    $getNodeByKey: () => mockState.node,
-    $isDecoratorNode: (node: MockNode | null) => !!node?.isDecorator,
-    $isNodeSelection: (selection: MockSelection | null) => !!selection?.isNodeSelection,
+  static override clone(node: MentionNode) {
+    return new MentionNode(node.__text, node.__key)
   }
-})
-
-const SelectOrDeleteHarness = ({
-  nodeKey,
-  command,
-}: {
-  nodeKey: string
-  command?: SelectOrDeleteCommand
-}) => {
-  const [ref, isSelected] = useSelectOrDelete(nodeKey, command)
-  return (
-    <div
-      ref={ref}
-      data-testid="select-or-delete-node"
-      data-selected={isSelected ? 'true' : 'false'}
-    >
-      node
-    </div>
-  )
+  static override importJSON(node: SerializedTextNode) {
+    return new MentionNode(node.text)
+  }
+  override isTextEntity() {
+    return true
+  }
 }
 
-const SelectOrDeleteNoRefHarness = ({
-  nodeKey,
-  command,
-}: {
-  nodeKey: string
-  command?: SelectOrDeleteCommand
-}) => {
-  useSelectOrDelete(nodeKey, command)
-  return <div data-testid="select-or-delete-no-ref">node</div>
+const matchMention = (text: string) => {
+  const match = /@[a-z]+/.exec(text)
+  return match ? { start: match.index, end: match.index + match[0].length } : null
 }
+const createMention = (node: CustomTextNode) => new MentionNode(node.getTextContent())
 
-const TriggerHarness = () => {
-  const [ref, open] = useTrigger()
-  return (
-    <div>
-      <div ref={ref} data-testid="trigger-target">
-        toggle
-      </div>
-      <span>{open ? 'open' : 'closed'}</span>
-    </div>
-  )
-}
-
-const TriggerNoRefHarness = () => {
-  const [, open] = useTrigger()
-  return <span data-testid="trigger-no-ref-state">{open ? 'open' : 'closed'}</span>
-}
-
-const LexicalTextEntityHarness = ({
-  getMatch,
-  targetNode,
-  createNode,
-}: {
-  getMatch: LexicalTextEntityGetMatch
-  targetNode: Klass<TextNode>
-  createNode: LexicalTextEntityCreateNode
-}) => {
-  useLexicalTextEntity(getMatch, targetNode, createNode)
+function EntityPlugin() {
+  useLexicalTextEntity(matchMention, MentionNode, createMention)
   return null
 }
 
+function SelectionHarness({
+  nodeKey,
+  command,
+}: {
+  nodeKey: NodeKey
+  command?: LexicalCommand<undefined>
+}) {
+  const [ref, selected] = useSelectOrDelete(nodeKey, command)
+  return (
+    <div ref={ref} data-testid="block" data-selected={selected}>
+      block
+    </div>
+  )
+}
+
+function TriggerHarness({ onBubble }: { onBubble: () => void }) {
+  const [ref, open, setOpen] = useTrigger<HTMLButtonElement>()
+  return (
+    <div role="presentation" onClick={onBubble}>
+      <button ref={ref} type="button">
+        Toggle
+      </button>
+      <span>{open ? 'open' : 'closed'}</span>
+      <button type="button" onClick={() => setOpen(false)}>
+        Close
+      </button>
+    </div>
+  )
+}
+
+function renderEditor(makeNode: () => LexicalNode, command?: LexicalCommand<undefined>) {
+  let editor: LexicalEditor
+  let nodeKey: NodeKey
+  const deleted = vi.fn(() => false)
+  function Harness({ showHook }: { showHook: boolean }) {
+    const [instance] = useLexicalComposerContext()
+    editor = instance
+    useEffect(
+      () =>
+        command ? instance.registerCommand(command, deleted, COMMAND_PRIORITY_LOW) : undefined,
+      [instance],
+    )
+    return showHook ? <SelectionHarness nodeKey={nodeKey} command={command} /> : null
+  }
+  const initialConfig = {
+    namespace: 'hooks-test',
+    nodes: [ContextBlockNode, HistoryBlockNode, QueryBlockNode, CustomTextNode, MentionNode],
+    onError: (error: Error) => {
+      throw error
+    },
+    editorState: () => {
+      const node = makeNode()
+      nodeKey = node.getKey()
+      $getRoot().append($createParagraphNode().append(node))
+    },
+  }
+  const view = render(
+    <LexicalComposer initialConfig={initialConfig}>
+      <Harness showHook />
+    </LexicalComposer>,
+  )
+  return {
+    ...view,
+    editor: editor!,
+    nodeKey: nodeKey!,
+    deleted,
+    detachHook: () =>
+      view.rerender(
+        <LexicalComposer initialConfig={initialConfig}>
+          <Harness showHook={false} />
+        </LexicalComposer>,
+      ),
+  }
+}
+
+const blocks = [
+  {
+    name: 'context',
+    makeNode: () => new ContextBlockNode([], vi.fn()),
+    command: DELETE_CONTEXT_BLOCK_COMMAND,
+  },
+  {
+    name: 'history',
+    makeNode: () => new HistoryBlockNode({ user: 'Human', assistant: 'Assistant' }, vi.fn()),
+    command: DELETE_HISTORY_BLOCK_COMMAND,
+  },
+  { name: 'query', makeNode: () => new QueryBlockNode(), command: DELETE_QUERY_BLOCK_COMMAND },
+]
+
 describe('prompt-editor/hooks', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockState.commandHandlers.clear()
-    mockState.isSelected = false
-    mockState.selection = null
-    mockState.node = null
-    mockState.editor.registerNodeTransform
-      .mockReset()
-      .mockReturnValueOnce(mockState.removePlainTextTransform)
-      .mockReturnValueOnce(mockState.removeReverseNodeTransform)
-  })
-
-  // Selection/deletion hook behavior around Lexical node commands.
   describe('useSelectOrDelete', () => {
-    it('should register delete and backspace commands and select node on click', async () => {
+    it.each([KEY_DELETE_COMMAND, KEY_BACKSPACE_COMMAND])(
+      'selects and deletes the real decorator for keyboard command %s',
+      async (keyCommand) => {
+        const user = userEvent.setup()
+        const { editor, nodeKey, deleted } = renderEditor(
+          () => new QueryBlockNode(),
+          DELETE_QUERY_BLOCK_COMMAND,
+        )
+        await user.click(screen.getByTestId('block'))
+        await waitFor(() =>
+          expect(screen.getByTestId('block')).toHaveAttribute('data-selected', 'true'),
+        )
+        editor.getEditorState().read(() => {
+          const selection = $getSelection()
+          expect($isNodeSelection(selection)).toBe(true)
+          expect(selection?.getNodes().map((node) => node.getKey())).toEqual([nodeKey])
+        })
+        const event = new KeyboardEvent('keydown', { cancelable: true })
+        act(() => {
+          expect(editor.dispatchCommand(keyCommand, event)).toBe(true)
+        })
+        await waitFor(() =>
+          expect(editor.getEditorState().read(() => $getNodeByKey(nodeKey))).toBeNull(),
+        )
+        expect(event.defaultPrevented).toBe(true)
+        expect(deleted).toHaveBeenCalledTimes(1)
+      },
+    )
+
+    it('deletes a selected decorator without an optional domain command', async () => {
       const user = userEvent.setup()
-      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />)
-
-      expect(mockState.editor.registerCommand).toHaveBeenCalledWith(
-        KEY_DELETE_COMMAND,
-        expect.any(Function),
-        COMMAND_PRIORITY_LOW,
+      const { editor, nodeKey } = renderEditor(() => new QueryBlockNode())
+      await user.click(screen.getByTestId('block'))
+      await waitFor(() =>
+        expect(screen.getByTestId('block')).toHaveAttribute('data-selected', 'true'),
       )
-      expect(mockState.editor.registerCommand).toHaveBeenCalledWith(
-        KEY_BACKSPACE_COMMAND,
-        expect.any(Function),
-        COMMAND_PRIORITY_LOW,
-      )
-
-      await user.click(screen.getByTestId('select-or-delete-node'))
-
-      expect(mockState.clearSelection).toHaveBeenCalled()
-      expect(mockState.setSelected).toHaveBeenCalledWith(true)
-    })
-
-    it('should dispatch delete command when unselected context block is focused', () => {
-      mockState.isSelected = false
-      mockState.selection = {
-        getNodes: () => [Object.create(ContextBlockNode.prototype) as MockNode],
-        isNodeSelection: false,
-      }
-
-      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />)
-
-      const deleteHandler = mockState.commandHandlers.get(KEY_DELETE_COMMAND)
-      expect(deleteHandler).toBeDefined()
-
-      const handled = deleteHandler?.(new KeyboardEvent('keydown'))
-
-      expect(handled).toBe(false)
-      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(
-        DELETE_CONTEXT_BLOCK_COMMAND,
-        undefined,
+      act(() => {
+        editor.dispatchCommand(
+          KEY_DELETE_COMMAND,
+          new KeyboardEvent('keydown', { cancelable: true }),
+        )
+      })
+      await waitFor(() =>
+        expect(editor.getEditorState().read(() => $getNodeByKey(nodeKey))).toBeNull(),
       )
     })
 
-    it('should dispatch delete command when unselected history block is focused', () => {
-      mockState.isSelected = false
-      mockState.selection = {
-        getNodes: () => [Object.create(HistoryBlockNode.prototype) as MockNode],
-        isNodeSelection: false,
-      }
+    it.each(blocks)(
+      'notifies the $name plugin when its block is covered by a range selection',
+      ({ makeNode, command }) => {
+        const { editor, nodeKey, deleted } = renderEditor(makeNode, command)
+        act(() =>
+          editor.update(
+            () => {
+              const paragraph = $getNodeByKey(nodeKey)!.getParentOrThrow()
+              const selection = $createRangeSelection()
+              selection.anchor.set(paragraph.getKey(), 0, 'element')
+              selection.focus.set(paragraph.getKey(), 1, 'element')
+              $setSelection(selection)
+            },
+            { discrete: true },
+          ),
+        )
+        act(() => {
+          expect(editor.dispatchCommand(KEY_DELETE_COMMAND, new KeyboardEvent('keydown'))).toBe(
+            false,
+          )
+        })
+        expect(deleted).toHaveBeenCalledTimes(1)
+      },
+    )
 
-      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_HISTORY_BLOCK_COMMAND} />)
-
-      const deleteHandler = mockState.commandHandlers.get(KEY_DELETE_COMMAND)
-      const handled = deleteHandler?.(new KeyboardEvent('keydown'))
-
-      expect(handled).toBe(false)
-      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(
-        DELETE_HISTORY_BLOCK_COMMAND,
-        undefined,
-      )
+    it.each(['metaKey', 'ctrlKey'])('preserves selection for a modified click (%s)', (modifier) => {
+      const { editor } = renderEditor(() => new QueryBlockNode())
+      fireEvent.click(screen.getByTestId('block'), { [modifier]: true })
+      expect(screen.getByTestId('block')).toHaveAttribute('data-selected', 'false')
+      expect(editor.getEditorState().read(() => $getSelection())).toBeNull()
     })
 
-    it('should dispatch delete command when unselected query block is focused', () => {
-      mockState.isSelected = false
-      mockState.selection = {
-        getNodes: () => [Object.create(QueryBlockNode.prototype) as MockNode],
-        isNodeSelection: false,
-      }
-
-      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_QUERY_BLOCK_COMMAND} />)
-
-      const deleteHandler = mockState.commandHandlers.get(KEY_DELETE_COMMAND)
-      const handled = deleteHandler?.(new KeyboardEvent('keydown'))
-
-      expect(handled).toBe(false)
-      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(
+    it('unregisters deletion when the hook is removed', async () => {
+      const user = userEvent.setup()
+      const { editor, nodeKey, deleted, detachHook } = renderEditor(
+        () => new QueryBlockNode(),
         DELETE_QUERY_BLOCK_COMMAND,
-        undefined,
       )
-    })
-
-    it('should prevent default and remove selected decorator node on delete', () => {
-      const remove = vi.fn()
-      const preventDefault = vi.fn()
-      mockState.isSelected = true
-      mockState.selection = {
-        getNodes: () => [Object.create(QueryBlockNode.prototype) as MockNode],
-        isNodeSelection: true,
-      }
-      mockState.node = {
-        isDecorator: true,
-        remove,
-      }
-
-      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_QUERY_BLOCK_COMMAND} />)
-
-      const backspaceHandler = mockState.commandHandlers.get(KEY_BACKSPACE_COMMAND)
-      expect(backspaceHandler).toBeDefined()
-
-      const handled = backspaceHandler?.({ preventDefault } as unknown as KeyboardEvent)
-
-      expect(handled).toBe(true)
-      expect(preventDefault).toHaveBeenCalled()
-      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(
-        DELETE_QUERY_BLOCK_COMMAND,
-        undefined,
+      await user.click(screen.getByTestId('block'))
+      await waitFor(() =>
+        expect(screen.getByTestId('block')).toHaveAttribute('data-selected', 'true'),
       )
-      expect(remove).toHaveBeenCalled()
-    })
-
-    it('should remove selected decorator node without dispatching when command is undefined', () => {
-      const remove = vi.fn()
-      const preventDefault = vi.fn()
-      mockState.isSelected = true
-      mockState.selection = {
-        getNodes: () => [Object.create(QueryBlockNode.prototype) as MockNode],
-        isNodeSelection: true,
-      }
-      mockState.node = { isDecorator: true, remove }
-
-      render(<SelectOrDeleteHarness nodeKey="node-1" />)
-
-      const deleteHandler = mockState.commandHandlers.get(KEY_DELETE_COMMAND)
-      const handled = deleteHandler?.({ preventDefault } as unknown as KeyboardEvent)
-
-      expect(handled).toBe(true)
-      expect(remove).toHaveBeenCalled()
-      expect(mockState.editor.dispatchCommand).not.toHaveBeenCalled()
-    })
-
-    it('should return false when selected node is not a decorator node', () => {
-      const preventDefault = vi.fn()
-      mockState.isSelected = true
-      mockState.selection = {
-        getNodes: () => [Object.create(QueryBlockNode.prototype) as MockNode],
-        isNodeSelection: true,
-      }
-      mockState.node = { isDecorator: false, remove: vi.fn() }
-
-      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_QUERY_BLOCK_COMMAND} />)
-
-      const deleteHandler = mockState.commandHandlers.get(KEY_DELETE_COMMAND)
-      const handled = deleteHandler?.({ preventDefault } as unknown as KeyboardEvent)
-      expect(handled).toBe(false)
-    })
-
-    it('should not select when metaKey is pressed on click', () => {
-      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />)
-
-      const node = screen.getByTestId('select-or-delete-node')
-      node.dispatchEvent(new MouseEvent('click', { bubbles: true, metaKey: true }))
-
-      expect(mockState.clearSelection).not.toHaveBeenCalled()
-      expect(mockState.setSelected).not.toHaveBeenCalled()
-    })
-
-    it('should not select when ctrlKey is pressed on click', () => {
-      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />)
-
-      const node = screen.getByTestId('select-or-delete-node')
-      node.dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }))
-
-      expect(mockState.clearSelection).not.toHaveBeenCalled()
-      expect(mockState.setSelected).not.toHaveBeenCalled()
-    })
-
-    it('should skip select listener registration when consumer does not attach the returned ref', () => {
-      const { unmount } = render(
-        <SelectOrDeleteNoRefHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />,
-      )
-
-      screen
-        .getByTestId('select-or-delete-no-ref')
-        .dispatchEvent(new MouseEvent('click', { bubbles: true }))
-
-      expect(mockState.clearSelection).not.toHaveBeenCalled()
-      expect(mockState.setSelected).not.toHaveBeenCalled()
-
-      expect(() => unmount()).not.toThrow()
+      detachHook()
+      act(() => {
+        expect(editor.dispatchCommand(KEY_DELETE_COMMAND, new KeyboardEvent('keydown'))).toBe(false)
+      })
+      expect(editor.getEditorState().read(() => $getNodeByKey(nodeKey))).not.toBeNull()
+      expect(deleted).not.toHaveBeenCalled()
     })
   })
 
-  // Trigger hook toggles dropdown/popup state from bound DOM element.
-  describe('useTrigger', () => {
-    it('should toggle open state when trigger element is clicked', async () => {
-      const user = userEvent.setup()
-      render(<TriggerHarness />)
-
-      expect(screen.getByText('closed'))!.toBeInTheDocument()
-
-      await user.click(screen.getByTestId('trigger-target'))
-      expect(screen.getByText('open'))!.toBeInTheDocument()
-
-      await user.click(screen.getByTestId('trigger-target'))
-      expect(screen.getByText('closed'))!.toBeInTheDocument()
-    })
-
-    it('should keep state unchanged when consumer does not attach the returned ref', async () => {
-      const user = userEvent.setup()
-      const { unmount } = render(<TriggerNoRefHarness />)
-
-      expect(screen.getByTestId('trigger-no-ref-state'))!.toHaveTextContent('closed')
-
-      await user.click(screen.getByTestId('trigger-no-ref-state'))
-      expect(screen.getByTestId('trigger-no-ref-state'))!.toHaveTextContent('closed')
-
-      expect(() => unmount()).not.toThrow()
-    })
+  it('toggles and externally closes the popup without bubbling trigger clicks', async () => {
+    const user = userEvent.setup()
+    const onBubble = vi.fn()
+    render(<TriggerHarness onBubble={onBubble} />)
+    await user.click(screen.getByRole('button', { name: 'Toggle' }))
+    expect(screen.getByText('open')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Toggle' }))
+    expect(screen.getByText('closed')).toBeInTheDocument()
+    expect(onBubble).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Toggle' }))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.getByText('closed')).toBeInTheDocument()
   })
 
-  // Lexical entity hook should register and cleanup transforms.
-  describe('useLexicalTextEntity', () => {
-    it('should register lexical text entity transforms and cleanup on unmount', () => {
-      class MockTargetNode {}
-      const getMatch: LexicalTextEntityGetMatch = vi.fn(() => null)
-      const createNode: LexicalTextEntityCreateNode = vi.fn((textNode: TextNode) => textNode)
-
-      const { unmount } = render(
-        <LexicalTextEntityHarness
-          getMatch={getMatch}
-          targetNode={MockTargetNode as unknown as Klass<TextNode>}
-          createNode={createNode}
-        />,
-      )
-
-      expect(mockState.editor.registerNodeTransform).toHaveBeenCalledTimes(2)
-      // Verify the first call uses TextNode, not MockTargetNode
-      const calls = mockState.editor.registerNodeTransform.mock.calls
-      expect(calls[0]![0]).not.toBe(MockTargetNode)
-      expect(typeof calls[0]![0]).toBe('function')
-      expect(mockState.editor.registerNodeTransform).toHaveBeenCalledWith(
-        MockTargetNode,
-        expect.any(Function),
-      )
-
-      unmount()
-
-      expect(getMatch).not.toHaveBeenCalled()
-      expect(createNode).not.toHaveBeenCalled()
-      expect(mockState.removePlainTextTransform).toHaveBeenCalled()
-      expect(mockState.removeReverseNodeTransform).toHaveBeenCalled()
+  it('transforms matching text into an entity, restores plain text and removes transforms on unmount', () => {
+    let editor: LexicalEditor
+    function Capture() {
+      ;[editor] = useLexicalComposerContext()
+      return null
+    }
+    const config = {
+      namespace: 'entities',
+      nodes: [CustomTextNode, MentionNode],
+      onError: (error: Error) => {
+        throw error
+      },
+    }
+    const { rerender } = render(
+      <LexicalComposer initialConfig={config}>
+        <Capture />
+        <EntityPlugin />
+      </LexicalComposer>,
+    )
+    act(() =>
+      editor.update(
+        () => {
+          $getRoot()
+            .clear()
+            .append($createParagraphNode().append(new CustomTextNode('@alice')))
+        },
+        { discrete: true },
+      ),
+    )
+    const entityKey = editor!.getEditorState().read(() => {
+      const node = $getRoot().getFirstDescendant()!
+      expect(node).toBeInstanceOf(MentionNode)
+      expect(node.getTextContent()).toBe('@alice')
+      return node.getKey()
     })
+    act(() =>
+      editor.update(
+        () => {
+          const node = $getNodeByKey(entityKey)
+          if (!$isTextNode(node)) throw new Error('Expected a text node')
+          node.setTextContent('plain')
+        },
+        { discrete: true },
+      ),
+    )
+    editor!.getEditorState().read(() => {
+      expect($getRoot().getFirstDescendant()).toBeInstanceOf(TextNode)
+      expect($getRoot().getFirstDescendant()).not.toBeInstanceOf(MentionNode)
+      expect($getRoot().getTextContent()).toBe('plain')
+    })
+    rerender(
+      <LexicalComposer initialConfig={config}>
+        <Capture />
+      </LexicalComposer>,
+    )
+    act(() =>
+      editor.update(
+        () => {
+          $getRoot()
+            .clear()
+            .append($createParagraphNode().append(new CustomTextNode('@bob')))
+        },
+        { discrete: true },
+      ),
+    )
+    editor!
+      .getEditorState()
+      .read(() => expect($getRoot().getFirstDescendant()).toBeInstanceOf(CustomTextNode))
   })
-
-  // Regex trigger matcher behavior for typeahead text detection.
   describe('useBasicTypeaheadTriggerMatch', () => {
     it('should return match details when input satisfies trigger and length rules', () => {
       const { result } = renderHook(() =>
@@ -414,7 +346,7 @@ describe('prompt-editor/hooks', () => {
         }),
       )
 
-      const match = result.current('prefix @ab', {} as LexicalEditor)
+      const match = result.current('prefix @ab', createEditor())
       expect(match).toEqual({
         leadOffset: 7,
         matchingString: 'ab',
@@ -430,7 +362,7 @@ describe('prompt-editor/hooks', () => {
         }),
       )
 
-      expect(result.current('prefix @a', {} as LexicalEditor)).toBeNull()
+      expect(result.current('prefix @a', createEditor())).toBeNull()
     })
 
     it('should return null when matching text exceeds maxLength', () => {
@@ -440,7 +372,7 @@ describe('prompt-editor/hooks', () => {
           maxLength: 2,
         }),
       )
-      expect(result.current('prefix @abc', {} as LexicalEditor)).toBeNull()
+      expect(result.current('prefix @abc', createEditor())).toBeNull()
     })
 
     it('should return null when text has no trigger character', () => {
@@ -450,7 +382,7 @@ describe('prompt-editor/hooks', () => {
           maxLength: 75,
         }),
       )
-      expect(result.current('no trigger here', {} as LexicalEditor)).toBeNull()
+      expect(result.current('no trigger here', createEditor())).toBeNull()
     })
 
     it('should match a trigger at the start of the text', () => {
@@ -462,7 +394,7 @@ describe('prompt-editor/hooks', () => {
         }),
       )
 
-      expect(result.current('/query', {} as LexicalEditor)).toEqual({
+      expect(result.current('/query', createEditor())).toEqual({
         leadOffset: 0,
         matchingString: 'query',
         replaceableString: '/query',
@@ -478,7 +410,7 @@ describe('prompt-editor/hooks', () => {
         }),
       )
 
-      expect(result.current('prefix /query', {} as LexicalEditor)).toEqual({
+      expect(result.current('prefix /query', createEditor())).toEqual({
         leadOffset: 7,
         matchingString: 'query',
         replaceableString: '/query',
@@ -496,7 +428,7 @@ describe('prompt-editor/hooks', () => {
           }),
         )
 
-        expect(result.current(text, {} as LexicalEditor)).toBeNull()
+        expect(result.current(text, createEditor())).toBeNull()
       },
     )
 
@@ -508,7 +440,7 @@ describe('prompt-editor/hooks', () => {
         }),
       )
 
-      expect(result.current('prefix{query', {} as LexicalEditor)).toEqual({
+      expect(result.current('prefix{query', createEditor())).toEqual({
         leadOffset: 6,
         matchingString: 'query',
         replaceableString: '{query',

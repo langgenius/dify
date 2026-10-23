@@ -22,7 +22,7 @@ from core.rag.datasource.keyword.jieba.jieba import Jieba
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from core.rag.models.document import Document
 from extensions.application_services.data_sources import build_data_source_credentials
 from extensions.ext_redis import redis_client

@@ -36,7 +36,7 @@ const InputCombined: FC<Props> = ({
     return (
       <Datepicker
         label={label}
-        className={className}
+        className={cn(className, 'min-w-0')}
         value={value}
         onChange={onChange}
         readOnly={readOnly}

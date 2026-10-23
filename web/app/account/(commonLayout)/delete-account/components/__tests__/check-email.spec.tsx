@@ -1,22 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithAccountProfile } from '@/test/console/account-profile'
 import CheckEmail from '../check-email'
 
 const mockGetDeleteEmailVerifyCode = vi.fn()
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: ({
-      select,
-    }: {
-      select: (data: { profile: { email: string } }) => string
-    }) => ({
-      data: select({ profile: { email: 'owner@example.com' } }),
-    }),
-  }
-})
 
 vi.mock('../../state', () => ({
   useSendDeleteAccountEmail: () => ({
@@ -27,15 +14,16 @@ vi.mock('../../state', () => ({
 
 describe('CheckEmail', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockGetDeleteEmailVerifyCode.mockResolvedValue({ result: 'success' })
+    mockGetDeleteEmailVerifyCode.mockReset().mockResolvedValue({ result: 'success' })
   })
 
   it('submits with Enter only after the account email matches', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
 
-    render(<CheckEmail onCancel={vi.fn()} onConfirm={onConfirm} />)
+    renderWithAccountProfile(<CheckEmail onCancel={vi.fn()} onConfirm={onConfirm} />, {
+      accountProfile: { email: 'owner@example.com' },
+    })
 
     const input = screen.getByRole('textbox', { name: 'accountSettings.account.deleteLabel' })
     const submitButton = screen.getByRole('button', {

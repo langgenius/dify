@@ -1,5 +1,5 @@
 import type { CursorPosition, NodePanelPresenceMap, OnlineUser } from '../../types/collaboration'
-import { waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useCollaboration } from '../use-collaboration'
 
@@ -32,11 +32,6 @@ let isCollaborationEnabled = true
 
 const mockStartTracking = vi.hoisted(() => vi.fn())
 const mockStopTracking = vi.hoisted(() => vi.fn())
-const cursorServiceInstances: Array<{
-  startTracking: typeof mockStartTracking
-  stopTracking: typeof mockStopTracking
-}> = []
-
 vi.mock('../../core/collaboration-manager', () => ({
   collaborationManager: {
     connect: (...args: unknown[]) => mockConnect(...args),
@@ -77,12 +72,6 @@ vi.mock('../../services/cursor-service', () => ({
   CursorService: class {
     startTracking = mockStartTracking
     stopTracking = mockStopTracking
-    constructor() {
-      cursorServiceInstances.push({
-        startTracking: this.startTracking,
-        stopTracking: this.stopTracking,
-      })
-    }
   },
 }))
 
@@ -95,7 +84,6 @@ describe('useCollaboration', () => {
     onPresenceCallback = null
     onLeaderCallback = null
     isCollaborationEnabled = true
-    cursorServiceInstances.length = 0
     mockConnect.mockResolvedValue('conn-1')
     mockIsConnected.mockReturnValue(true)
   })
@@ -115,19 +103,25 @@ describe('useCollaboration', () => {
       expect(mockConnect).toHaveBeenCalledWith('app-1', reactFlowStore)
     })
 
-    onStateChangeCallback?.({ isConnected: true })
-    onUsersCallback?.([{ user_id: 'u1', username: 'U1', avatar: '', sid: 'sid-1' } as OnlineUser])
-    onCursorCallback?.({ u1: { x: 10, y: 20, userId: 'u1', timestamp: 1 } })
-    onPresenceCallback?.({
-      nodeA: { sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 } },
+    act(() => {
+      onStateChangeCallback?.({ isConnected: true })
+      onUsersCallback?.([{ user_id: 'u1', username: 'U1', avatar: '', sid: 'sid-1' } as OnlineUser])
+      onCursorCallback?.({ u1: { x: 10, y: 20, userId: 'u1', timestamp: 1 } })
+      onPresenceCallback?.({
+        nodeA: { sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 } },
+      })
+      onLeaderCallback?.(true)
     })
-    onLeaderCallback?.(true)
 
     await waitFor(() => {
       expect(result.current.isConnected).toBe(true)
-      expect(result.current.onlineUsers).toHaveLength(1)
+      expect(result.current.onlineUsers).toEqual([
+        { user_id: 'u1', username: 'U1', avatar: '', sid: 'sid-1' },
+      ])
       expect(result.current.cursors.u1?.x).toBe(10)
-      expect(result.current.nodePanelPresence.nodeA).toBeDefined()
+      expect(result.current.nodePanelPresence.nodeA).toEqual({
+        sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 },
+      })
       expect(result.current.isLeader).toBe(true)
       expect(result.current.leaderId).toBe('leader-1')
     })

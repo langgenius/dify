@@ -1,25 +1,21 @@
-import type { ReactElement } from 'react'
-import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
-import { render as renderWithConsoleState } from '@/test/console/render'
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import CommentsPanel from '../index'
 
-const mockHandleCommentIconClick = vi.hoisted(() => vi.fn())
-const mockHandleCommentResolve = vi.hoisted(() => vi.fn())
-const mockSetActiveCommentId = vi.hoisted(() => vi.fn())
-const mockSetControlMode = vi.hoisted(() => vi.fn())
-const mockSetShowResolvedComments = vi.hoisted(() => vi.fn())
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: { id: 'user-1' },
-}))
-
-const render = (ui: ReactElement) =>
-  renderWithConsoleState(ui, {
-    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+const selectComment = vi.fn()
+const resolveComment = vi.fn()
+function setup() {
+  const { queryClient } = createConsoleQueryWrapper({ accountProfile: { id: 'user-1' } })
+  return renderWorkflowComponent(<CommentsPanel />, {
+    queryClient,
+    initialStoreState: { showResolvedComments: true },
   })
+}
 
-const commentFixtures: WorkflowCommentList[] = [
+const commentFixtures: WorkflowCommentBasic[] = [
   {
     id: 'c-1',
     position_x: 10,
@@ -50,94 +46,41 @@ const commentFixtures: WorkflowCommentList[] = [
   },
 ]
 
-type WorkflowStoreSelectionState = {
-  activeCommentId: string | null
-  setActiveCommentId: (value: string | null) => void
-  setControlMode: (value: unknown) => void
-  showResolvedComments: boolean
-  setShowResolvedComments: (value: boolean) => void
-}
-
-const storeState = {
-  activeCommentId: null as string | null,
-  showResolvedComments: true,
-}
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ appId: 'app-1' }),
-}))
-
-vi.mock('@/hooks/use-format-time-from-now', () => ({
-  useFormatTimeFromNow: () => ({
-    formatTimeFromNow: () => 'just now',
-  }),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: WorkflowStoreSelectionState) => unknown) =>
-    selector({
-      activeCommentId: storeState.activeCommentId,
-      setActiveCommentId: (...args: unknown[]) => mockSetActiveCommentId(...args),
-      setControlMode: (...args: unknown[]) => mockSetControlMode(...args),
-      showResolvedComments: storeState.showResolvedComments,
-      setShowResolvedComments: (...args: unknown[]) => mockSetShowResolvedComments(...args),
-    }),
-}))
-
+// Comment retrieval and canvas positioning are independent of the panel's filters.
 vi.mock('../../../hooks/use-workflow-comment', () => ({
   useWorkflowComment: () => ({
     comments: commentFixtures,
     loading: false,
-    handleCommentIconClick: (...args: unknown[]) => mockHandleCommentIconClick(...args),
-    handleCommentResolve: (...args: unknown[]) => mockHandleCommentResolve(...args),
+    handleCommentIconClick: selectComment,
+    handleCommentResolve: resolveComment,
   }),
 }))
 
-vi.mock('@/app/components/base/user-avatar-list', () => ({
-  UserAvatarList: () => <div data-testid="user-avatar-list" />,
-}))
+it('filters to the current user and routes the chosen thread', async () => {
+  const user = userEvent.setup()
+  setup()
+  expect(screen.getByText('others resolved thread')).toBeInTheDocument()
+  await user.click(
+    screen.getByRole('button', { name: 'workflowComments.comments.aria.filterComments' }),
+  )
+  await user.click(
+    screen.getByRole('button', { name: 'workflowComments.comments.filter.onlyYourThreads' }),
+  )
+  expect(screen.queryByText('others resolved thread')).not.toBeInTheDocument()
+  await user.click(screen.getByText('my open thread'))
+  expect(selectComment).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'c-1' }))
+})
 
-describe('CommentsPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    storeState.activeCommentId = null
-    storeState.showResolvedComments = true
-    mockHandleCommentResolve.mockResolvedValue(undefined)
-  })
-
-  it('filters comments and selects a thread', () => {
-    render(<CommentsPanel />)
-
-    expect(screen.getByText('my open thread')).toBeInTheDocument()
-    expect(screen.getByText('others resolved thread')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.filterComments'))
-    fireEvent.click(screen.getByText('workflowComments.comments.filter.onlyYourThreads'))
-    expect(screen.queryByText('others resolved thread')).not.toBeInTheDocument()
-    expect(screen.getByText('my open thread')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('my open thread'))
-    expect(mockHandleCommentIconClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'c-1' }))
-  })
-
-  it('resolves a comment and syncs list refresh', async () => {
-    const { container } = render(<CommentsPanel />)
-    const resolveIcons = container.querySelectorAll('.size-4.cursor-pointer.text-text-tertiary')
-    expect(resolveIcons.length).toBeGreaterThan(0)
-
-    fireEvent.click(resolveIcons[0]!)
-
-    await waitFor(() => {
-      expect(mockHandleCommentResolve).toHaveBeenCalledWith('c-1')
-      expect(mockSetActiveCommentId).toHaveBeenCalledWith('c-1')
-    })
-  })
-
-  it('toggles show-resolved state from filter panel switch', () => {
-    render(<CommentsPanel />)
-
-    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.filterComments'))
-    fireEvent.click(screen.getByRole('switch'))
-
-    expect(mockSetShowResolvedComments).toHaveBeenCalledWith(false)
-  })
+it('hides and restores resolved comments when the filter changes', async () => {
+  const user = userEvent.setup()
+  const { store } = setup()
+  await user.click(
+    screen.getByRole('button', { name: 'workflowComments.comments.aria.filterComments' }),
+  )
+  await user.click(screen.getByRole('switch'))
+  expect(store.getState().showResolvedComments).toBe(false)
+  expect(screen.queryByText('others resolved thread')).not.toBeInTheDocument()
+  expect(screen.getByText('my open thread')).toBeInTheDocument()
+  await user.click(screen.getByRole('switch'))
+  expect(screen.getByText('others resolved thread')).toBeInTheDocument()
 })

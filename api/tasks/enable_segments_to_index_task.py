@@ -8,7 +8,7 @@ from sqlalchemy import select, update
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -54,6 +54,13 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                 DocumentSegment.id.in_(segment_ids),
                 DocumentSegment.dataset_id == dataset_id,
                 DocumentSegment.document_id == document_id,
+                # A segment that never finished indexing has no trustworthy index
+                # payload (its ``index_node_id`` may still be NULL), so it must not
+                # be pushed into the vector index. This mirrors the guard in
+                # ``enable_segment_to_index_task`` ("Segment is not completed,
+                # enable is not allowed") and in
+                # ``disable_segment_from_index_task``.
+                DocumentSegment.status == SegmentStatus.COMPLETED,
             )
         ).all()
         if not segments:

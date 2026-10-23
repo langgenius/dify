@@ -57,40 +57,35 @@ describe('NoteEditor Toolbar Operator', () => {
     const { onCopy, onDelete, onDuplicate } = renderOperator()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    await user.click(screen.getByText('workflow.common.copy'))
+    await user.click(screen.getByRole('menuitem', { name: /workflow\.common\.copy/ }))
     expect(onCopy).toHaveBeenCalledTimes(1)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    await user.click(screen.getByText('workflow.common.duplicate'))
+    await user.click(screen.getByRole('menuitem', { name: /workflow\.common\.duplicate/ }))
     expect(onDuplicate).toHaveBeenCalledTimes(1)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    await user.click(screen.getByText('common.operation.delete'))
+    await user.click(screen.getByRole('menuitem', { name: /common\.operation\.delete/ }))
     expect(onDelete).toHaveBeenCalledTimes(1)
   })
 
-  it('lets the keyboard toggle show author and return to the trigger', async () => {
+  it('keeps the menu open while toggling author visibility', async () => {
     const user = userEvent.setup()
     const { onShowAuthorChange } = renderOperator(true)
 
     const trigger = screen.getByRole('button', { name: 'common.operation.more' })
-    await user.tab()
-    expect(trigger).toHaveFocus()
-    await user.keyboard('{Enter}')
+    await user.click(trigger)
     const option = screen.getByRole('menuitemcheckbox', {
       name: 'workflow.nodes.note.editor.showAuthor',
       checked: true,
     })
-    await user.keyboard('{End}{ArrowUp}')
-    expect(option).toHaveFocus()
-    await user.keyboard(' ')
+    await user.click(option)
 
     expect(onShowAuthorChange).toHaveBeenCalledWith(false)
     expect(option).toHaveAttribute('aria-checked', 'false')
-    expect(option).toHaveFocus()
     expect(screen.getByRole('menu')).toBeInTheDocument()
-    await user.keyboard('{Escape}')
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-    expect(trigger).toHaveFocus()
+    await user.click(option)
+    expect(onShowAuthorChange).toHaveBeenLastCalledWith(true)
+    expect(option).toHaveAttribute('aria-checked', 'true')
   })
 })

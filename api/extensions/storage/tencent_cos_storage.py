@@ -56,3 +56,18 @@ class TencentCosStorage(BaseStorage):
     @override
     def delete(self, filename: str):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)
+
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        keys: list[str] = []
+        marker = ""
+        while True:
+            page = self.client.list_objects(Bucket=self.bucket_name, Prefix=path, Marker=marker, MaxKeys=1000)
+            keys.extend(obj["Key"] for obj in page.get("Contents", []))
+            if str(page.get("IsTruncated", "false")).lower() != "true":
+                break
+            next_marker = page.get("NextMarker")
+            if not next_marker or next_marker == marker:
+                raise RuntimeError("COS object listing did not advance its pagination marker")
+            marker = next_marker
+        return self._filter_scan_keys(keys, files, directories)

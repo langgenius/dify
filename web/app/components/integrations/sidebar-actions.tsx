@@ -26,7 +26,6 @@ type PermissionTooltipWrapperProps = {
   children: ReactNode
   className?: string
   content: string
-  placement: 'top' | 'bottom'
   show: boolean
 }
 
@@ -34,7 +33,6 @@ function PermissionTooltipWrapper({
   children,
   className,
   content,
-  placement,
   show,
 }: PermissionTooltipWrapperProps) {
   const trigger = (
@@ -49,9 +47,7 @@ function PermissionTooltipWrapper({
   return (
     <Tooltip>
       <TooltipTrigger render={trigger} />
-      <TooltipContent placement={placement} sideOffset={8}>
-        {content}
-      </TooltipContent>
+      <TooltipContent side="bottom">{content}</TooltipContent>
     </Tooltip>
   )
 }
@@ -98,27 +94,21 @@ function IntegrationSidebarInstallActions({
       <PermissionTooltipWrapper
         show={!canManagement}
         content={permissionTooltip}
-        placement="bottom"
         className="min-w-0 flex-1"
       >
         <InstallPluginDropdown
           disabled={!canManagement}
           rootClassName="w-full"
           triggerVariant="primary"
-          triggerClassName="h-8 min-w-0 justify-start gap-2 px-2.5 py-2 system-sm-medium transition-[width]"
+          triggerClassName="h-8 min-w-0 justify-start gap-2 px-2.5 py-2 system-sm-medium transition-[width] data-popup-open:bg-components-button-primary-bg-hover"
           triggerLabel={installLabel}
-          triggerOpenClassName="bg-components-button-primary-bg-hover"
           popupClassName="w-[200px]"
           installContextCategory={installContextCategory}
           showTriggerArrow={false}
           onSwitchToMarketplaceTab={onSwitchToMarketplace}
         />
       </PermissionTooltipWrapper>
-      <PluginTasks
-        animatedSlot
-        dropdownAnchor={() => actionRowRef.current}
-        dropdownPlacement="bottom-start"
-      />
+      <PluginTasks animatedSlot anchor={() => actionRowRef.current} />
     </div>
   )
 }
@@ -148,7 +138,6 @@ export function IntegrationSidebarUtilityActions({
     <div className="flex w-46 shrink-0 flex-col gap-px pt-2 pb-2.5">
       {canDebugger && (
         <DebugInfo
-          popupPlacement="top-start"
           triggerVariant="ghost"
           triggerClassName={sidebarUtilityActionClassName}
           triggerContent={
@@ -174,7 +163,8 @@ export function IntegrationSidebarUtilityActions({
             }
           />
           <PopoverContent
-            placement="top-start"
+            side="top"
+            align="start"
             sideOffset={4}
             className="border-0 bg-transparent p-0 shadow-none"
           >

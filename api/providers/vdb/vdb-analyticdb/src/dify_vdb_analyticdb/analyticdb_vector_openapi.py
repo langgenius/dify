@@ -3,14 +3,14 @@ from typing import Any, TypedDict
 
 from pydantic import BaseModel, model_validator
 
+from core.rag.datasource.vdb.field import parse_metadata_json
+from core.rag.models.document import Document
+from extensions.ext_redis import redis_client
+
 _import_err_msg = (
     "`alibabacloud_gpdb20160503` and `alibabacloud_tea_openapi` packages not found, "
     "please run `pip install alibabacloud_gpdb20160503 alibabacloud_tea_openapi`"
 )
-
-from core.rag.datasource.vdb.field import parse_metadata_json
-from core.rag.models.document import Document
-from extensions.ext_redis import redis_client
 
 
 class AnalyticdbClientParamsDict(TypedDict):
@@ -28,7 +28,7 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
     account: str
     account_password: str
     namespace: str = "dify"
-    namespace_password: str | None = None
+    namespace_password: str
     metrics: str = "cosine"
     read_timeout: int = 60000
 
@@ -66,8 +66,8 @@ class AnalyticdbVectorOpenAPI:
         try:
             from alibabacloud_gpdb20160503.client import Client  # type: ignore
             from alibabacloud_tea_openapi import models as open_api_models  # type: ignore
-        except Exception:
-            raise ImportError(_import_err_msg)
+        except Exception as caught_error:
+            raise ImportError(_import_err_msg) from caught_error
         self._collection_name = collection_name.lower()
         self.config = config
         self._client_config = open_api_models.Config(user_agent="dify", **config.to_analyticdb_client_params())
@@ -121,7 +121,7 @@ class AnalyticdbVectorOpenAPI:
                 )
                 self._client.create_namespace(request)
             else:
-                raise ValueError(f"failed to create namespace {self.config.namespace}: {e}")
+                raise ValueError(f"failed to create namespace {self.config.namespace}: {e}") from e
 
     def create_collection_if_not_exists(self, embedding_dimension: int):
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
@@ -160,7 +160,7 @@ class AnalyticdbVectorOpenAPI:
                     )
                     self._client.create_collection(request)
                 else:
-                    raise ValueError(f"failed to create collection {self._collection_name}: {e}")
+                    raise ValueError(f"failed to create collection {self._collection_name}: {e}") from e
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
@@ -201,8 +201,6 @@ class AnalyticdbVectorOpenAPI:
             collection=self._collection_name,
             metrics=self.config.metrics,
             include_values=True,
-            vector=None,
-            content=None,
             top_k=1,
             filter=f"ref_doc_id='{id}'",
         )
@@ -220,7 +218,6 @@ class AnalyticdbVectorOpenAPI:
             namespace=self.config.namespace,
             namespace_password=self.config.namespace_password,
             collection=self._collection_name,
-            collection_data=None,
             collection_data_filter=f"ref_doc_id IN {ids_str}",
         )
         self._client.delete_collection_data(request)
@@ -234,7 +231,6 @@ class AnalyticdbVectorOpenAPI:
             namespace=self.config.namespace,
             namespace_password=self.config.namespace_password,
             collection=self._collection_name,
-            collection_data=None,
             collection_data_filter=f"metadata_ ->> '{key}' = '{value}'",
         )
         self._client.delete_collection_data(request)
@@ -258,7 +254,6 @@ class AnalyticdbVectorOpenAPI:
             include_values=kwargs.pop("include_values", True),
             metrics=self.config.metrics,
             vector=query_vector,
-            content=None,
             top_k=kwargs.get("top_k", 4),
             filter=where_clause,
         )
@@ -269,7 +264,7 @@ class AnalyticdbVectorOpenAPI:
                 metadata = parse_metadata_json(match.metadata.get("metadata_"))
                 metadata["score"] = match.score
                 doc = Document(
-                    page_content=match.metadata.get("page_content"),
+                    page_content=match.metadata["page_content"],
                     vector=match.values.value,
                     metadata=metadata,
                 )
@@ -294,7 +289,6 @@ class AnalyticdbVectorOpenAPI:
             collection=self._collection_name,
             include_values=kwargs.pop("include_values", True),
             metrics=self.config.metrics,
-            vector=None,
             content=query,
             top_k=kwargs.get("top_k", 4),
             filter=where_clause,
@@ -306,7 +300,7 @@ class AnalyticdbVectorOpenAPI:
                 metadata = parse_metadata_json(match.metadata.get("metadata_"))
                 metadata["score"] = match.score
                 doc = Document(
-                    page_content=match.metadata.get("page_content"),
+                    page_content=match.metadata["page_content"],
                     vector=match.values.value,
                     metadata=metadata,
                 )

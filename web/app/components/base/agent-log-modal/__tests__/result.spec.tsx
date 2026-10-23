@@ -1,33 +1,14 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import * as React from 'react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ResultPanel from '../result'
 
+// Code editing is independently covered; keep the status widget real to verify API status mapping.
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
     <div data-testid="code-editor">
       <div data-testid="code-editor-title">{title}</div>
       <div data-testid="code-editor-value">{JSON.stringify(value)}</div>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/run/status', () => ({
-  default: ({
-    status,
-    time,
-    tokens,
-    error,
-  }: {
-    status: string
-    time?: number
-    tokens?: number
-    error?: string
-  }) => (
-    <div data-testid="status-panel">
-      <span>{status}</span>
-      <span>{time}</span>
-      <span>{tokens}</span>
-      <span>{error}</span>
     </div>
   ),
 }))
@@ -39,7 +20,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
 }))
 
 const mockProps = {
-  status: 'succeeded',
+  status: 'success',
   elapsed_time: 1.23456,
   total_tokens: 150,
   error: '',
@@ -53,26 +34,17 @@ const mockProps = {
 }
 
 describe('ResultPanel', () => {
-  it('should render status panel and code editors', () => {
+  it('shows inputs, outputs and execution metadata', () => {
     render(<ResultPanel {...mockProps} />)
-
-    expect(screen.getByTestId('status-panel')).toBeInTheDocument()
-
-    const editors = screen.getAllByTestId('code-editor')
-    expect(editors).toHaveLength(2)
 
     expect(screen.getByText('INPUT')).toBeInTheDocument()
     expect(screen.getByText('OUTPUT')).toBeInTheDocument()
     expect(screen.getByText(JSON.stringify(mockProps.inputs))).toBeInTheDocument()
     expect(screen.getByText(JSON.stringify(mockProps.outputs))).toBeInTheDocument()
-  })
-
-  it('should display correct metadata', () => {
-    render(<ResultPanel {...mockProps} />)
-
     expect(screen.getByText('User Name')).toBeInTheDocument()
-    expect(screen.getByText('1.235s')).toBeInTheDocument() // toFixed(3)
-    expect(screen.getByText('150 Tokens')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('appLog.status.succeeded')
+    expect(screen.getByRole('status')).toHaveTextContent('1.235s')
+    expect(screen.getByRole('status')).toHaveTextContent('150 Tokens')
     expect(screen.getByText('appDebug.agent.agentModeType.functionCall')).toBeInTheDocument()
     expect(screen.getByText('tool1, tool2')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
@@ -81,20 +53,20 @@ describe('ResultPanel', () => {
     expect(screen.getByText(/formatted-/)).toBeInTheDocument()
   })
 
-  it('should handle missing created_by and tools', () => {
-    render(<ResultPanel {...mockProps} created_by={undefined} tools={[]} />)
+  it('shows available mode and fallbacks when execution metadata is missing', () => {
+    render(
+      <ResultPanel
+        {...mockProps}
+        created_by={undefined}
+        tools={[]}
+        total_tokens={undefined}
+        agentMode="react"
+      />,
+    )
 
     expect(screen.getByText('N/A')).toBeInTheDocument()
     expect(screen.getByText('Null')).toBeInTheDocument()
-  })
-
-  it('should display ReACT mode correctly', () => {
-    render(<ResultPanel {...mockProps} agentMode="react" />)
+    expect(screen.getByRole('status')).toHaveTextContent('0 Tokens')
     expect(screen.getByText('appDebug.agent.agentModeType.ReACT')).toBeInTheDocument()
-  })
-
-  it('should fallback to zero tokens when total_tokens is undefined', () => {
-    render(<ResultPanel {...mockProps} total_tokens={undefined} />)
-    expect(screen.getByText('0 Tokens')).toBeInTheDocument()
   })
 })

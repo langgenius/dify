@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "ສິດໃນການເຂົ້າເຖິງ",
   "accessRule.actions": "ການຈັດການ",
-  "accessRule.addMemberAria": "ເພີ່ມ {{name}}",
   "accessRule.addMembersTitle": "ເພີ່ມສະມາຊິກ",
   "accessRule.agentDescription": "ຈັດການຜູ້ທີ່ສາມາດເຂົ້າເຖິງຕົວແທນນີ້ ແລະ ສິດຂອງພວກເຂົາ.",
   "accessRule.agentTitle": "ຊຸດການກຳນົດສິດຕົວແທນ",
@@ -21,7 +20,6 @@
   "accessRule.defaultPermission": "ຕາມສິດຂອງບົດບາດ",
   "accessRule.deleteDescription": "ກົດລະບຽບການເຂົ້າເຖິງນີ້ຈະຖືກລຶບຢ່າງຖາວອນ ແລະ ອອກຈາກລາຍການການອະນຸຍາດຊັບພະຍາກອນ.",
   "accessRule.deleteTitle": "ລຶບ \"{{name}}\" ບໍ?",
-  "accessRule.deleted": "ລຶບກົດລະບຽບການເຂົ້າເຖິງສຳເລັດແລ້ວ",
   "accessRule.exceptionPermissionFor": "ສິດຍົກເວັ້ນສຳລັບ {{name}}",
   "accessRule.expandSection": "ຂະຫຍາຍ {{title}}",
   "accessRule.maintainer": "ຜູ້ດູແລ",
@@ -83,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" ຖືກມອບໝາຍໃຫ້ {{count}} ສະມາຊິກ. ທ່ານຕ້ອງການໃຫ້ບົດບາດໃໝ່ລວມເອົາສະມາຊິກເຫຼົ່ານີ້ບໍ?",
   "role.copyMembersLoading": "ກຳລັງໂຫລດການມອບໝາຍສະມາຊິກ...",
   "role.copyMembersTitle": "ຄັດລອກການມອບໝາຍສະມາຊິກບໍ?",
-  "role.created": "ສ້າງບົດບາດສຳເລັດແລ້ວ",
   "role.deleteDescription": "ບົດບາດນີ້ຈະຖືກລຶບຢ່າງຖາວອນ ແລະ ຖືກຍ້າຍອອກຈາກສະມາຊິກ ຫຼື ກົດລະບຽບການເຂົ້າເຖິງທີ່ນຳໃຊ້ມັນ.",
   "role.deleteTitle": "ລຶບ \"{{name}}\" ບໍ?",
-  "role.deleted": "ລຶບບົດບາດສຳເລັດແລ້ວ",
-  "role.duplicated": "ເຮັດສຳເນົາບົດບາດສຳເລັດແລ້ວ",
   "role.groups.builtin": "ບົດບາດລະບົບ",
   "role.groups.custom": "ບົດບາດທີ່ກຳນົດເອງ",
   "role.loading": "ກຳລັງໂຫລດບົດບາດ...",
@@ -104,7 +99,6 @@
   "role.noDescription": "ບໍ່ມີຄຳອະທິບາຍ",
   "role.noMatchingRoles": "ບໍ່ພົບບົດບາດທີ່ກົງກັນ",
   "role.searchPlaceholder": "ຄົ້ນຫາບົດບາດ...",
-  "role.updated": "ອັບເດດບົດບາດສຳເລັດແລ້ວ",
   "role.workspaceRoles.description": "ສ້າງບົດບາດ ແລະ ກຳນົດວ່າແຕ່ລະບົດບາດສາມາດເຮັດຫຍັງໄດ້ໃນພື້ນທີ່ເຮັດວຽກນີ້.",
   "role.workspaceRoles.title": "ບົດບາດໃນພື້ນທີ່ເຮັດວຽກ"
 }

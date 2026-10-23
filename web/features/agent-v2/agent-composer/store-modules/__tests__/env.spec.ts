@@ -64,6 +64,11 @@ describe('agent composer env store', () => {
         scope: 'plain',
       },
     ])
+    expect(store.get(agentComposerDraftAtom).envVariables).toEqual([
+      starterVariable,
+      { id: 'env-1', key: 'FIRST_KEY', value: '', scope: 'plain' },
+      { id: 'env-2', key: 'SECOND_KEY', value: 'enabled', scope: 'plain' },
+    ])
     store.set(removeEnvVariableAtom, 'starter')
 
     expect(store.get(agentComposerDraftAtom).envVariables).toEqual([

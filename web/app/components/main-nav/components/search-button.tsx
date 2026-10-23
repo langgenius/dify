@@ -41,7 +41,7 @@ export function MainNavSearchButton({
           type="button"
           aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
           aria-keyshortcuts={ariaKeyShortcuts}
-          className="flex h-8 items-center gap-1.5 overflow-hidden rounded-[10px] p-2 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          className="flex h-8 items-center gap-1.5 overflow-hidden rounded-[10px] p-2 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
         />
       }
     >

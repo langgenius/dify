@@ -4,39 +4,40 @@ from __future__ import annotations
 
 import base64
 import json
-from dataclasses import dataclass
-from typing import ClassVar, assert_never
+from typing import assert_never
 
 from pydantic_ai.messages import BinaryContent, ImageUrl, UserContent
-from typing_extensions import Self, override
 
-from agenton.layers import EmptyRuntimeState, NoLayerDeps, PydanticAILayer
+from pydantic import BaseModel, ConfigDict
+from pydantic_ai.capabilities import AbstractCapability
+from dify_agent.runtime.context import Deps
 from dify_agent.layers.user_prompt.configs import (
-    DIFY_USER_PROMPT_LAYER_TYPE_ID,
     DifyUserPromptDownloadConfig,
     DifyUserPromptImageConfig,
     DifyUserPromptLayerConfig,
 )
 
 
-@dataclass(slots=True)
-class DifyUserPromptLayer(PydanticAILayer[NoLayerDeps, object, DifyUserPromptLayerConfig, EmptyRuntimeState]):
-    """State-free layer for a text prompt and directly attached images."""
+class Config(DifyUserPromptLayerConfig):
+    pass
 
-    type_id: ClassVar[str | None] = DIFY_USER_PROMPT_LAYER_TYPE_ID
-    config: DifyUserPromptLayerConfig
 
-    @classmethod
-    @override
-    def from_config(cls, config: DifyUserPromptLayerConfig) -> Self:
-        return cls(config=DifyUserPromptLayerConfig.model_validate(config))
+class State(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    @property
-    @override
-    def user_prompts(self) -> list[UserContent]:
+
+class Capability(AbstractCapability[Deps]):
+    """Resolve current user content before calling Agent.run."""
+
+    def __init__(self, name: str):
+        self.id = name
+        self.name = name
+
+    def build_user_content(self, deps: Deps) -> list[UserContent]:
+        config = Config.model_validate(deps.layers[self.name]["config"])
         images: list[UserContent] = []
         downloads: list[DifyUserPromptDownloadConfig] = []
-        for file in self.config.files:
+        for file in config.files:
             match file.delivery:
                 case "multimodal":
                     images.append(_to_image_content(file))
@@ -44,7 +45,7 @@ class DifyUserPromptLayer(PydanticAILayer[NoLayerDeps, object, DifyUserPromptLay
                     downloads.append(file)
                 case _:
                     assert_never(file)
-        return [_append_file_downloads(self.config.text, downloads), *images]
+        return [_append_file_downloads(config.text, downloads), *images]
 
 
 def _append_file_downloads(text: str, files: list[DifyUserPromptDownloadConfig]) -> str:
@@ -88,4 +89,4 @@ def _identifier_from_filename(filename: str, file_format: str) -> str:
     return filename
 
 
-__all__ = ["DifyUserPromptLayer"]
+__all__ = ["Config", "State", "Capability"]

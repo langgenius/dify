@@ -125,10 +125,9 @@ const JinaReader: FC<Props> = ({
         await sleep(2500)
         return await waitForCrawlFinished(jobId)
       } catch (e: any) {
-        const errorBody = await e.json()
         return {
           isError: true,
-          errorMessage: errorBody.message,
+          errorMessage: e instanceof Error ? e.message : undefined,
           data: {
             data: [],
           },

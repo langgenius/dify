@@ -1,113 +1,22 @@
-import type { ReactNode } from 'react'
 import type { ToolNodeType } from '../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient } from '@/test/console/query-data'
 import Panel from '../panel'
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
-const mockUseStore = vi.hoisted(() => vi.fn())
-const mockUseMatchSchemaType = vi.hoisted(() => vi.fn())
-const mockGetMatchedSchemaType = vi.hoisted(() => vi.fn())
-const mockWrapStructuredVarItem = vi.hoisted(() => vi.fn())
-const mockToolForm = vi.hoisted(() => vi.fn())
-const mockStructureOutputItem = vi.hoisted(() => vi.fn())
-const mockSplit = vi.hoisted(() => vi.fn())
-
-vi.mock('../hooks/use-config', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockUseConfig(...args),
+vi.mock('../hooks/use-config', () => ({ default: (...args: unknown[]) => mockUseConfig(...args) }))
+vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
+  default: () => ({ availableVars: [], availableNodesWithParent: [] }),
 }))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: typeof mockWorkflowStoreState) => unknown) => mockUseStore(selector),
-}))
-
-vi.mock('../../_base/components/variable/use-match-schema-type', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockUseMatchSchemaType(...args),
-  getMatchedSchemaType: (...args: unknown[]) => mockGetMatchedSchemaType(...args),
-}))
-
-vi.mock('@/app/components/workflow/utils/tool', () => ({
-  wrapStructuredVarItem: (...args: unknown[]) => mockWrapStructuredVarItem(...args),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  __esModule: true,
-  default: (props: {
-    title?: string
-    children: ReactNode
-    collapsed?: boolean
-    onCollapse?: (collapsed: boolean) => void
-  }) => (
-    <div data-testid="output-vars">
-      <div>{props.title ?? 'workflow.nodes.common.outputVars'}</div>
-      {props.onCollapse && (
-        <button type="button" onClick={() => props.onCollapse?.(!props.collapsed)}>
-          toggle-output-vars
-        </button>
-      )}
-      <div>{props.children}</div>
-    </div>
-  ),
-  VarItem: (props: { name: string; type: string; description: string }) => (
-    <div data-testid={`var-item-${props.name}`}>
-      <span>{props.name}</span>
-      <span>{props.type}</span>
-      <span>{props.description}</span>
-    </div>
-  ),
-}))
-
-vi.mock('../components/tool-form', () => ({
-  __esModule: true,
-  default: (props: {
-    schema: CredentialFormSchema[]
-    showManageInputField?: boolean
-    onManageInputField?: () => void
-  }) => {
-    mockToolForm(props)
-    return (
-      <div
-        data-testid={`tool-form-${props.schema.map((item) => item.variable).join('-') || 'empty'}`}
-      >
-        {props.showManageInputField && props.onManageInputField && (
-          <button type="button" onClick={props.onManageInputField}>
-            Manage Input Field
-          </button>
-        )}
-      </div>
-    )
-  },
-}))
-
-vi.mock(
-  '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show',
-  () => ({
-    __esModule: true,
-    default: (props: { payload: { id: string } }) => {
-      mockStructureOutputItem(props)
-      return <div data-testid="structured-output">{props.payload.id}</div>
-    },
-  }),
-)
-
-vi.mock('../../_base/components/split', () => ({
-  __esModule: true,
-  default: (props: { className?: string }) => {
-    mockSplit(props)
-    return <div data-testid="split">{props.className ?? 'default'}</div>
-  },
-}))
-
-const mockWorkflowStoreState = {
-  pipelineId: undefined as string | undefined,
-  setShowInputFieldPanel: vi.fn(),
-}
 
 const createNodeData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => ({
   title: 'Google Search',
@@ -127,12 +36,20 @@ const createSchemaItem = (variable: string): CredentialFormSchema => ({
   name: variable,
   variable,
   label: { en_US: variable, zh_Hans: variable },
-  type: FormTypeEnum.textInput,
+  type: FormTypeEnum.textNumber,
   required: false,
   show_on: [],
 })
 
-const renderPanel = (data: ToolNodeType = createNodeData()) => {
+const renderPanel = (
+  data: ToolNodeType = createNodeData(),
+  definitions: { name: string; schema: Record<string, unknown> }[] = [],
+) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.spec.schemaDefinitions.get.queryOptions().queryKey,
+    definitions.map((definition) => ({ label: definition.name, ...definition })),
+  )
   const props: NodePanelProps<ToolNodeType> = {
     id: 'tool-node-1',
     data,
@@ -146,7 +63,12 @@ const renderPanel = (data: ToolNodeType = createNodeData()) => {
     },
   }
 
-  return render(<Panel {...props} />)
+  return renderWorkflowFlowComponent(<Panel {...props} />, {
+    queryClient,
+    nodes: [],
+    edges: [],
+    resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+  })
 }
 
 const createConfigResult = (overrides: Record<string, unknown> = {}) => ({
@@ -172,16 +94,6 @@ const createConfigResult = (overrides: Record<string, unknown> = {}) => ({
 describe('ToolPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkflowStoreState.pipelineId = undefined
-    mockWorkflowStoreState.setShowInputFieldPanel = vi.fn()
-    mockUseStore.mockImplementation((selector) => selector(mockWorkflowStoreState))
-    mockUseMatchSchemaType.mockReturnValue({
-      schemaTypeDefinitions: [{ name: 'structured' }],
-    })
-    mockGetMatchedSchemaType.mockReturnValue('')
-    mockWrapStructuredVarItem.mockImplementation((outputItem, schemaType) => ({
-      id: `${outputItem.name}-${schemaType || 'plain'}`,
-    }))
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
@@ -195,52 +107,53 @@ describe('ToolPanel', () => {
 
       renderPanel()
 
-      expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
       expect(screen.queryByText('workflow.nodes.tool.inputVars')).not.toBeInTheDocument()
-      expect(mockToolForm).not.toHaveBeenCalled()
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
   })
 
   describe('Form Rendering', () => {
-    it('should render input and settings forms and forward the manage input field action', () => {
-      mockWorkflowStoreState.pipelineId = 'pipeline-1'
+    it('edits input and settings independently and collapses the real settings form', async () => {
+      const user = userEvent.setup()
+      const setInputVar = vi.fn()
+      const setToolSettingValue = vi.fn()
       mockUseConfig.mockReturnValue(
         createConfigResult({
-          inputs: {
-            tool_parameters: { query: { value: 'weather' } },
-            tool_configurations: {},
-          },
-          toolInputVarSchema: [createSchemaItem('query')],
-          toolSettingSchema: [createSchemaItem('region')],
-          toolSettingValue: { region: 'us' },
+          inputs: { tool_parameters: { count: { type: VarKindType.constant, value: 2 } } },
+          toolInputVarSchema: [createSchemaItem('count')],
+          toolSettingSchema: [createSchemaItem('limit')],
+          toolSettingValue: { limit: { type: VarKindType.constant, value: 10 } },
+          setInputVar,
+          setToolSettingValue,
         }),
       )
-
       renderPanel()
+      const count = screen.getByRole<HTMLInputElement>('textbox', { name: 'count' })
+      await user.click(count)
+      count.select()
+      await user.paste('3')
+      expect(setInputVar).toHaveBeenLastCalledWith({
+        count: { type: VarKindType.constant, value: 3 },
+      })
+      expect(setToolSettingValue).not.toHaveBeenCalled()
+      const limit = screen.getByRole<HTMLInputElement>('textbox', { name: 'limit' })
+      await user.click(limit)
+      limit.select()
+      await user.paste('20')
+      expect(setToolSettingValue).toHaveBeenLastCalledWith({
+        limit: { type: VarKindType.constant, value: 20 },
+      })
 
-      expect(screen.getByText('workflow.nodes.tool.inputVars'))!.toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.tool.settings'))!.toBeInTheDocument()
-      expect(screen.getAllByTestId('split')).toHaveLength(2)
-
-      fireEvent.click(screen.getByRole('button', { name: 'Manage Input Field' }))
-
-      expect(mockToolForm).toHaveBeenCalledTimes(2)
-      expect(mockToolForm.mock.calls[0]![0]).toEqual(
-        expect.objectContaining({
-          nodeId: 'tool-node-1',
-          showManageInputField: true,
-        }),
+      await user.click(
+        screen.getByRole('button', { name: 'workflow.nodes.tool.settings', expanded: true }),
       )
-      expect(mockToolForm.mock.calls[1]![0]).toEqual(
-        expect.objectContaining({
-          nodeId: 'tool-node-1',
-        }),
-      )
-      expect(mockToolForm.mock.calls[1]![0]).not.toHaveProperty('showManageInputField')
-      expect(mockWorkflowStoreState.setShowInputFieldPanel).toHaveBeenCalledWith(true)
+      expect(screen.queryByRole('textbox', { name: 'limit' })).not.toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'count' })).toBeInTheDocument()
     })
 
-    it('should hide editable forms when the auth button is shown but keep output variables visible', () => {
+    it('should hide editable forms when the auth button is shown but keep output variables visible', async () => {
+      const user = userEvent.setup()
       mockUseConfig.mockReturnValue(
         createConfigResult({
           isShowAuthBtn: true,
@@ -251,20 +164,20 @@ describe('ToolPanel', () => {
 
       renderPanel()
 
+      await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
+
       expect(screen.queryByText('workflow.nodes.tool.inputVars')).not.toBeInTheDocument()
       expect(screen.queryByText('workflow.nodes.tool.settings')).not.toBeInTheDocument()
-      expect(screen.getByText('text'))!.toBeInTheDocument()
-      expect(screen.getByText('files'))!.toBeInTheDocument()
-      expect(screen.getByText('json'))!.toBeInTheDocument()
-      expect(mockToolForm).not.toHaveBeenCalled()
+      expect(screen.getByText('text')).toBeInTheDocument()
+      expect(screen.getByText('files')).toBeInTheDocument()
+      expect(screen.getByText('json')).toBeInTheDocument()
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
   })
 
   describe('Output Schema', () => {
-    it('should render scalar and structured outputs with matched schema types', () => {
-      mockGetMatchedSchemaType.mockImplementation((value: { type?: string }) => {
-        return value?.type === 'string' ? 'qa_structured' : 'object_structured'
-      })
+    it('should render scalar and structured outputs with matched schema types', async () => {
+      const user = userEvent.setup()
       mockUseConfig.mockReturnValue(
         createConfigResult({
           hasObjectOutput: true,
@@ -285,29 +198,22 @@ describe('ToolPanel', () => {
         }),
       )
 
-      renderPanel()
+      renderPanel(createNodeData(), [
+        { name: 'qa_structured', schema: { type: 'string' } },
+        { name: 'object_structured', schema: { type: 'object', properties: {} } },
+      ])
 
-      expect(screen.getByText('summary'))!.toBeInTheDocument()
-      expect(screen.getByText('string (qa_structured)'))!.toBeInTheDocument()
-      expect(screen.getByText('Summary field'))!.toBeInTheDocument()
-      expect(screen.getByTestId('structured-output'))!.toHaveTextContent(
-        'details-object_structured',
-      )
-      expect(mockWrapStructuredVarItem).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'details',
-        }),
-        'object_structured',
-      )
-      expect(mockStructureOutputItem).toHaveBeenCalledWith(
-        expect.objectContaining({
-          payload: { id: 'details-object_structured' },
-        }),
-      )
+      await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
+
+      expect(screen.getByText('summary')).toBeInTheDocument()
+      expect(screen.getByText('string (qa_structured)')).toBeInTheDocument()
+      expect(screen.getByText('Summary field')).toBeInTheDocument()
+      expect(screen.getByText('details')).toBeInTheDocument()
+      expect(screen.getByText('object (object_structured)')).toBeInTheDocument()
     })
 
-    it('should render scalar outputs without a schema suffix when no schema type matches', () => {
-      mockGetMatchedSchemaType.mockReturnValue('')
+    it('should render scalar outputs without a schema suffix when no schema type matches', async () => {
+      const user = userEvent.setup()
       mockUseConfig.mockReturnValue(
         createConfigResult({
           outputSchema: [
@@ -323,9 +229,10 @@ describe('ToolPanel', () => {
 
       renderPanel()
 
-      expect(screen.getByTestId('var-item-summary'))!.toHaveTextContent('summary')
-      expect(screen.getByTestId('var-item-summary'))!.toHaveTextContent('String'.toLowerCase())
-      expect(screen.getByTestId('var-item-summary')).not.toHaveTextContent('qa_structured')
+      await user.click(screen.getByRole('button', { name: 'workflow.nodes.common.outputVars' }))
+
+      expect(screen.getByText('summary')).toBeInTheDocument()
+      expect(screen.queryByText(/qa_structured/)).not.toBeInTheDocument()
     })
   })
 })

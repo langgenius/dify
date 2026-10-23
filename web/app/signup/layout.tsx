@@ -5,6 +5,6 @@ export function generateMetadata() {
   return getRouteMetadata('login', ($) => $['signup.createAccount'])
 }
 
-export default function RegisterLayout({ children }: any) {
+export default function RegisterLayout({ children }: { children: React.ReactNode }) {
   return <SignupLayout>{children}</SignupLayout>
 }

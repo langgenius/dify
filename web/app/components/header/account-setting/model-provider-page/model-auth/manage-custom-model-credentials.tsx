@@ -1,3 +1,4 @@
+import type { ComponentPropsWithRef } from 'react'
 import type {
   CustomConfigurationModelFixedFields,
   ModelProvider,
@@ -11,7 +12,7 @@ import {
   ModelModalModeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Authorized from './authorized'
-import { useCustomModels } from './hooks'
+import { getCustomModels } from './hooks'
 
 type ManageCustomModelCredentialsProps = {
   provider: ModelProvider
@@ -26,13 +27,14 @@ const ManageCustomModelCredentials = ({
   onOpenChange,
 }: ManageCustomModelCredentialsProps) => {
   const { t } = useTranslation(['common', 'modelProvider'])
-  const customModels = useCustomModels(provider)
+  const customModels = getCustomModels(provider)
   const noModels = !customModels.length
 
   const renderTrigger = useCallback(
-    (open?: boolean) => {
+    (open: boolean, triggerProps: ComponentPropsWithRef<'button'>) => {
       const Item = (
         <Button
+          {...triggerProps}
           variant="ghost"
           size="small"
           className={cn('mr-0.5 text-text-tertiary', open && 'bg-components-button-ghost-bg-hover')}

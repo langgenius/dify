@@ -1,3 +1,5 @@
+import { renderToStaticMarkup } from 'react-dom/server'
+
 const mocks = vi.hoisted(() => ({
   dehydrateSystemFeatures: vi.fn(() => ({ mutations: [], queries: [] })),
   getOptionalSystemFeatures: vi.fn(),
@@ -34,6 +36,26 @@ describe('Root layout System Features bootstrap', () => {
     mocks.headers.mockResolvedValue(new Headers())
   })
 
+  it('renders the terminal error document without requesting console bootstrap', async () => {
+    mocks.headers.mockResolvedValue(
+      new Headers({
+        'x-dify-pathname': '/webapp-unavailable',
+        'accept-language': 'zh-CN,zh;q=0.9',
+      }),
+    )
+    const { default: RootLayout, generateMetadata } = await import('../layout')
+
+    const html = renderToStaticMarkup(await RootLayout({ children: <main>App unavailable</main> }))
+    const document = new DOMParser().parseFromString(html, 'text/html')
+
+    expect(document.documentElement.lang).toBe('zh-Hans')
+    expect(document.body.querySelector('main')).toHaveTextContent('App unavailable')
+    await expect(generateMetadata()).resolves.toEqual({ icons: { icon: '/favicon.ico' } })
+
+    expect(mocks.getOptionalSystemFeatures).not.toHaveBeenCalled()
+    expect(mocks.dehydrateSystemFeatures).not.toHaveBeenCalled()
+  })
+
   it('uses optional System Features for branded metadata', async () => {
     mocks.getOptionalSystemFeatures.mockResolvedValue({
       branding: {
@@ -42,9 +64,8 @@ describe('Root layout System Features bootstrap', () => {
       },
       deployment_edition: 'CLOUD',
     })
-    const { default: RootLayout, generateMetadata } = await import('../layout')
+    const { generateMetadata } = await import('../layout')
 
-    await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
     await expect(generateMetadata()).resolves.toMatchObject({
       title: {
         default: 'Acme AI',
@@ -96,11 +117,10 @@ describe('Root layout System Features bootstrap', () => {
     })
   })
 
-  it('renders the client recovery path when optional System Features are unavailable', async () => {
+  it('uses default metadata when optional System Features are unavailable', async () => {
     mocks.getOptionalSystemFeatures.mockResolvedValue(undefined)
-    const { default: RootLayout, generateMetadata } = await import('../layout')
+    const { generateMetadata } = await import('../layout')
 
-    await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
     await expect(generateMetadata()).resolves.toMatchObject({
       title: {
         default: 'Dify',

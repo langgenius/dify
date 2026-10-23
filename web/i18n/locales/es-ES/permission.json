@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Permiso de acceso",
   "accessRule.actions": "Acciones",
-  "accessRule.addMemberAria": "Añadir {{name}}",
   "accessRule.addMembersTitle": "Añadir miembros",
   "accessRule.agentDescription": "Gestiona quién puede acceder a este agente y sus permisos.",
   "accessRule.agentTitle": "Conjunto de permisos de agente",
@@ -21,7 +20,6 @@
   "accessRule.defaultPermission": "Por permisos de rol",
   "accessRule.deleteDescription": "Esta regla de acceso se eliminará de forma permanente y se quitará de la lista de autorización del recurso.",
   "accessRule.deleteTitle": "¿Eliminar \"{{name}}\"?",
-  "accessRule.deleted": "Regla de acceso eliminada correctamente",
   "accessRule.exceptionPermissionFor": "Permiso de excepción para {{name}}",
   "accessRule.expandSection": "Expandir {{title}}",
   "accessRule.maintainer": "Mantenedor",
@@ -83,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" está asignado a {{count}} miembros. ¿Quieres que la nueva copia del rol incluya los mismos miembros?",
   "role.copyMembersLoading": "Cargando asignaciones de miembros...",
   "role.copyMembersTitle": "¿Copiar asignaciones de miembros?",
-  "role.created": "Rol creado correctamente",
   "role.deleteDescription": "Este rol se eliminará de forma permanente y se quitará de cualquier miembro o regla de acceso que lo use.",
   "role.deleteTitle": "¿Eliminar \"{{name}}\"?",
-  "role.deleted": "Rol eliminado correctamente",
-  "role.duplicated": "Rol duplicado correctamente",
   "role.groups.builtin": "Roles del sistema",
   "role.groups.custom": "Roles personalizados",
   "role.loading": "Cargando roles...",
@@ -104,7 +99,6 @@
   "role.noDescription": "Sin descripción",
   "role.noMatchingRoles": "No hay roles coincidentes",
   "role.searchPlaceholder": "Buscar roles...",
-  "role.updated": "Rol actualizado correctamente",
   "role.workspaceRoles.description": "Crea roles y define lo que cada rol puede hacer en este espacio de trabajo.",
   "role.workspaceRoles.title": "Roles del espacio de trabajo"
 }

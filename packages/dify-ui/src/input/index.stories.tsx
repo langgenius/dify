@@ -25,20 +25,10 @@ type Story = StoryObj<typeof meta>
 
 export const Basic: Story = {
   render: () => (
-    <div className="w-80">
-      <label
-        htmlFor="workspace-name"
-        className="mb-1 block w-fit py-1 system-sm-medium text-text-secondary"
-      >
-        Workspace name
-      </label>
-      <Input
-        id="workspace-name"
-        name="workspaceName"
-        autoComplete="organization"
-        placeholder="e.g. Acme workspace…"
-      />
-    </div>
+    <Field name="workspaceName" className="w-80">
+      <FieldLabel>Workspace name</FieldLabel>
+      <Input autoComplete="organization" placeholder="e.g. Acme workspace…" />
+    </Field>
   ),
 }
 
@@ -81,6 +71,16 @@ export const States: Story = {
           <FieldError match>Enter a full URL including https://.</FieldError>
         </Field>
       </div>
+      <Field name="readonlyRepositoryUrl" invalid>
+        <FieldLabel>Read-only invalid</FieldLabel>
+        <Input readOnly defaultValue="github.com/langgenius" />
+        <FieldError match>Enter a full URL including https://.</FieldError>
+      </Field>
+      <Field name="disabledRepositoryUrl" invalid>
+        <FieldLabel>Disabled invalid</FieldLabel>
+        <Input disabled defaultValue="github.com/langgenius" />
+        <FieldError match>Enter a full URL including https://.</FieldError>
+      </Field>
       <div className="grid gap-1">
         <label className="system-sm-medium text-text-secondary" htmlFor="disabled-state">
           Disabled

@@ -101,7 +101,7 @@ def regenerate_summary_index_task(
                     .where(
                         DocumentSegment.dataset_id == dataset_id,
                         DocumentSegment.status == "completed",  # Segment must be completed
-                        DocumentSegment.enabled == True,
+                        DocumentSegment.enabled.is_(True),
                         DocumentSegmentSummary.dataset_id == dataset_id,
                         DocumentSegmentSummary.summary_content.isnot(None),  # Must have summary content
                         # Include completed summaries or error summaries (with content)
@@ -109,8 +109,8 @@ def regenerate_summary_index_task(
                             DocumentSegmentSummary.status == SummaryStatus.COMPLETED,
                             DocumentSegmentSummary.status == SummaryStatus.ERROR,
                         ),
-                        DatasetDocument.enabled == True,  # Document must be enabled
-                        DatasetDocument.archived == False,  # Document must not be archived
+                        DatasetDocument.enabled.is_(True),  # Document must be enabled
+                        DatasetDocument.archived.is_(False),  # Document must not be archived
                         DatasetDocument.doc_form != IndexStructureType.QA_INDEX,  # Skip qa_model documents
                     )
                     .order_by(DocumentSegment.document_id.asc(), DocumentSegment.position.asc())
@@ -177,8 +177,8 @@ def regenerate_summary_index_task(
                     select(DatasetDocument).where(
                         DatasetDocument.dataset_id == dataset_id,
                         DatasetDocument.indexing_status == "completed",
-                        DatasetDocument.enabled == True,
-                        DatasetDocument.archived == False,
+                        DatasetDocument.enabled.is_(True),
+                        DatasetDocument.archived.is_(False),
                     )
                 ).all()
 
@@ -214,7 +214,7 @@ def regenerate_summary_index_task(
                                 DocumentSegment.document_id == dataset_document.id,
                                 DocumentSegment.dataset_id == dataset_id,
                                 DocumentSegment.status == "completed",
-                                DocumentSegment.enabled == True,
+                                DocumentSegment.enabled.is_(True),
                                 DocumentSegmentSummary.dataset_id == dataset_id,
                             )
                             .order_by(DocumentSegment.position.asc())

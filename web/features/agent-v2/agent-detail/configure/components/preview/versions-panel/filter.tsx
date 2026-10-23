@@ -50,7 +50,7 @@ export function VersionFilter({
             type="button"
             aria-label={t(($) => $['agentDetail.versionHistory.filter'])}
             className={cn(
-              'flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+              'flex size-6 shrink-0 items-center justify-center rounded-md p-0.5',
               isFiltering
                 ? 'bg-state-accent-active-alt text-text-accent'
                 : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
@@ -61,7 +61,7 @@ export function VersionFilter({
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
         alignOffset={55}
         className="border-none bg-transparent shadow-none"

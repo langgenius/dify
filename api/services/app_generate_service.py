@@ -21,11 +21,10 @@ from core.app.features.rate_limiting import RateLimit
 from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
-from core.trigger.constants import is_trigger_node_type
 from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import Workflow
 from services.errors.app import (
     QuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
@@ -34,6 +33,7 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
+from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
 
@@ -146,8 +146,10 @@ class AppGenerateService:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             try:
                 quota_charge = QuotaService.reserve(QuotaType.WORKFLOW, app_model.tenant_id)
-            except QuotaExceededError:
-                raise InvokeRateLimitError(f"Workflow execution quota limit reached for tenant {app_model.tenant_id}")
+            except QuotaExceededError as caught_error:
+                raise InvokeRateLimitError(
+                    f"Workflow execution quota limit reached for tenant {app_model.tenant_id}"
+                ) from caught_error
 
         # app level rate limiter
         max_active_request = cls._get_max_active_requests(app_model)
@@ -203,7 +205,7 @@ class AppGenerateService:
             case AppMode.AGENT_CHAT:
                 return rate_limit.generate(
                     AgentChatAppGenerator.convert_to_event_stream(
-                        AgentChatAppGenerator().generate(
+                        AgentChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                             session=session,
                             app_model=app_model,
                             user=user,
@@ -265,10 +267,9 @@ class AppGenerateService:
                         workflow_based_app_execution_task.delay(payload_json)
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
-                    generator = AdvancedChatAppGenerator()
                     return rate_limit.generate(
-                        generator.convert_to_event_stream(
-                            generator.retrieve_events(
+                        AdvancedChatAppGenerator.convert_to_event_stream(
+                            AdvancedChatAppGenerator.retrieve_events(
                                 AppMode.ADVANCED_CHAT,
                                 payload.workflow_run_id,
                                 on_subscribe=on_subscribe,
@@ -283,7 +284,7 @@ class AppGenerateService:
                     session_factory=session_factory.get_session_maker(),
                     state_owner_user_id=workflow.created_by,
                 )
-                advanced_generator = AdvancedChatAppGenerator()
+                advanced_generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
                 return rate_limit.generate(
                     advanced_generator.convert_to_event_stream(
                         advanced_generator.generate(
@@ -340,7 +341,7 @@ class AppGenerateService:
                 )
                 return rate_limit.generate(
                     WorkflowAppGenerator.convert_to_event_stream(
-                        WorkflowAppGenerator().generate(
+                        WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
@@ -359,13 +360,8 @@ class AppGenerateService:
 
     @staticmethod
     def _ensure_workflow_service_mode_available(*, workflow: Workflow, invoke_from: InvokeFrom) -> None:
-        if invoke_from not in _MANUAL_WORKFLOW_INVOKE_SOURCES:
-            return
-
-        for _, node_data in workflow.walk_nodes():
-            node_type = node_data.get("type")
-            if isinstance(node_type, str) and is_trigger_node_type(node_type):
-                raise TriggerWorkflowServiceModeUnavailableError()
+        if invoke_from in _MANUAL_WORKFLOW_INVOKE_SOURCES and workflow.has_trigger_node():
+            raise TriggerWorkflowServiceModeUnavailableError()
 
     @staticmethod
     def _get_max_active_requests(app: App) -> int:
@@ -405,7 +401,7 @@ class AppGenerateService:
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    AdvancedChatAppGenerator().single_iteration_generate(
+                    AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -418,7 +414,7 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    WorkflowAppGenerator().single_iteration_generate(
+                    WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -450,7 +446,7 @@ class AppGenerateService:
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    AdvancedChatAppGenerator().single_loop_generate(
+                    AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -463,7 +459,7 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    WorkflowAppGenerator().single_loop_generate(
+                    WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -529,8 +525,8 @@ class AppGenerateService:
         if workflow_id:
             try:
                 _ = uuid.UUID(workflow_id)
-            except ValueError:
-                raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ")
+            except ValueError as caught_error:
+                raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ") from caught_error
             workflow = workflow_service.get_published_workflow_by_id(
                 app_model=app_model, workflow_id=workflow_id, session=session
             )
@@ -552,19 +548,3 @@ class AppGenerateService:
                 raise ValueError("Workflow not published")
 
         return workflow
-
-    @classmethod
-    def get_response_generator(
-        cls,
-        app_model: App,
-        workflow_run: WorkflowRun,
-    ):
-        if workflow_run.status.is_ended():
-            # TODO(QuantumGhost): handled the ended scenario.
-            pass
-
-        generator = AdvancedChatAppGenerator()
-
-        return generator.convert_to_event_stream(
-            generator.retrieve_events(AppMode(app_model.mode), workflow_run.id),
-        )

@@ -1,35 +1,42 @@
 import type { ModelProvider } from '../../../declarations'
 import type { CredentialPanelState } from '../../use-credential-panel-state'
-import { fireEvent, screen } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { createDeferred } from '@/test/deferred'
 import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
 import DropdownContent from '../dropdown-content'
 
 const mockHandleOpenModal = vi.fn()
-const mockActivate = vi.fn()
+const { mockSwitchCredential, mockUpdateProviders, mockUpdateModels } = vi.hoisted(() => ({
+  mockSwitchCredential: vi.fn(),
+  mockUpdateProviders: vi.fn(),
+  mockUpdateModels: vi.fn(),
+}))
 const mockOpenConfirmDelete = vi.fn()
 const mockCloseConfirmDelete = vi.fn()
 const mockHandleConfirmDelete = vi.fn()
 let mockDeleteCredentialId: string | null = null
 let mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
 
-vi.mock('../../use-trial-credits', () => ({
-  useTrialCredits: () => ({
-    credits: 0,
-    totalCredits: 10_000,
-    isExhausted: true,
-    isLoading: false,
-  }),
-}))
-
-vi.mock('../use-activate-credential', () => ({
-  useActivateCredential: () => ({
-    selectedCredentialId: 'cred-1',
-    isActivating: false,
-    activate: mockActivate,
-  }),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.credentials.switch.post': (input) =>
+        mockSwitchCredential(input),
+    }),
+  }
+})
+vi.mock('../../../hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../hooks')>()),
+  useUpdateModelProviders: () => mockUpdateProviders,
+  useUpdateModelList: () => mockUpdateModels,
 }))
 
 vi.mock('../../../model-auth/hooks', () => ({
@@ -41,58 +48,6 @@ vi.mock('../../../model-auth/hooks', () => ({
     deleteCredentialId: mockDeleteCredentialId,
     handleOpenModal: mockHandleOpenModal,
   }),
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('../../../model-auth/authorized/credential-item', () => ({
-  default: ({
-    credential,
-    disabled,
-    disableEdit,
-    disableDelete,
-    onItemClick,
-    onEdit,
-    onDelete,
-  }: {
-    credential: { credential_id: string; credential_name: string }
-    disabled?: boolean
-    disableEdit?: boolean
-    disableDelete?: boolean
-    onItemClick?: (c: unknown) => void
-    onEdit?: (c: unknown) => void
-    onDelete?: (c: unknown) => void
-  }) => (
-    <div data-testid={`credential-${credential.credential_id}`}>
-      <span>{credential.credential_name}</span>
-      <button
-        data-testid={`click-${credential.credential_id}`}
-        disabled={disabled}
-        onClick={() => onItemClick?.(credential)}
-      >
-        select
-      </button>
-      <button
-        data-testid={`edit-${credential.credential_id}`}
-        disabled={disabled || disableEdit}
-        onClick={() => onEdit?.(credential)}
-      >
-        edit
-      </button>
-      <button
-        data-testid={`delete-${credential.credential_id}`}
-        disabled={disabled || disableDelete}
-        onClick={() => onDelete?.(credential)}
-      >
-        delete
-      </button>
-    </div>
-  ),
 }))
 
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
@@ -132,6 +87,7 @@ describe('DropdownContent', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSwitchCredential.mockReset().mockResolvedValue({ result: 'success' })
     mockDeleteCredentialId = null
     mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
   })
@@ -321,20 +277,6 @@ describe('DropdownContent', () => {
   })
 
   describe('API key section', () => {
-    it('should render all credential items', () => {
-      render(
-        <DropdownContent
-          provider={createProvider()}
-          state={createState()}
-          isChangingPriority={false}
-          onChangePriority={onChangePriority}
-          onClose={onClose}
-        />,
-      )
-      expect(screen.getByText('My Key')).toBeInTheDocument()
-      expect(screen.getByText('Other Key')).toBeInTheDocument()
-    })
-
     it('should show empty state when no credentials', () => {
       render(
         <DropdownContent
@@ -354,7 +296,10 @@ describe('DropdownContent', () => {
       expect(screen.getByText(/noApiKeysDescription/)).toBeInTheDocument()
     })
 
-    it('should call activate without closing on credential item click', () => {
+    it('should call activate without closing on credential item click', async () => {
+      const user = userEvent.setup()
+      const pending = createDeferred<{ result: string }>()
+      mockSwitchCredential.mockReturnValueOnce(pending.promise)
       render(
         <DropdownContent
           provider={createProvider()}
@@ -365,15 +310,26 @@ describe('DropdownContent', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('click-cred-2'))
+      await user.click(screen.getByRole('button', { name: 'Other Key' }))
 
-      expect(mockActivate).toHaveBeenCalledWith(
-        expect.objectContaining({ credential_id: 'cred-2' }),
+      expect(mockSwitchCredential).toHaveBeenCalledExactlyOnceWith({
+        params: { provider: 'test' },
+        body: { credential_id: 'cred-2' },
+      })
+      expect(screen.getByRole('button', { name: 'Other Key' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
       )
+      expect(screen.getByRole('button', { name: 'My Key' })).toBeDisabled()
+      expect(mockUpdateProviders).not.toHaveBeenCalled()
+      await act(async () => pending.resolve({ result: 'success' }))
+      await waitFor(() => expect(mockUpdateProviders).toHaveBeenCalledTimes(1))
+      expect(mockUpdateModels).toHaveBeenCalledExactlyOnceWith('llm')
       expect(onClose).not.toHaveBeenCalled()
     })
 
-    it('should call handleOpenModal and close on edit credential', () => {
+    it('should call handleOpenModal and close on edit credential', async () => {
+      const user = userEvent.setup()
       render(
         <DropdownContent
           provider={createProvider()}
@@ -384,7 +340,11 @@ describe('DropdownContent', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('edit-cred-2'))
+      await user.click(
+        within(screen.getByText('Other Key').closest('.group')!).getByRole('button', {
+          name: 'common.operation.edit',
+        }),
+      )
 
       expect(mockHandleOpenModal).toHaveBeenCalledWith(
         expect.objectContaining({ credential_id: 'cred-2' }),
@@ -392,7 +352,8 @@ describe('DropdownContent', () => {
       expect(onClose).toHaveBeenCalled()
     })
 
-    it('should call openConfirmDelete on delete credential', () => {
+    it('should call openConfirmDelete on delete credential', async () => {
+      const user = userEvent.setup()
       render(
         <DropdownContent
           provider={createProvider()}
@@ -403,14 +364,19 @@ describe('DropdownContent', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('delete-cred-2'))
+      await user.click(
+        within(screen.getByText('Other Key').closest('.group')!).getByRole('button', {
+          name: 'common.operation.delete',
+        }),
+      )
 
       expect(mockOpenConfirmDelete).toHaveBeenCalledWith(
         expect.objectContaining({ credential_id: 'cred-2' }),
       )
     })
 
-    it('should allow use-only users to switch credentials but not edit or delete them', () => {
+    it('should allow use-only users to switch credentials but not edit or delete them', async () => {
+      const user = userEvent.setup()
       mockWorkspacePermissionKeys = ['credential.use']
 
       render(
@@ -423,18 +389,24 @@ describe('DropdownContent', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('click-cred-2'))
-      fireEvent.click(screen.getByTestId('edit-cred-2'))
-      fireEvent.click(screen.getByTestId('delete-cred-2'))
+      await user.click(screen.getByRole('button', { name: 'Other Key' }))
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.edit' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.delete' }),
+      ).not.toBeInTheDocument()
 
-      expect(mockActivate).toHaveBeenCalledWith(
-        expect.objectContaining({ credential_id: 'cred-2' }),
-      )
+      expect(mockSwitchCredential).toHaveBeenCalledExactlyOnceWith({
+        params: { provider: 'test' },
+        body: { credential_id: 'cred-2' },
+      })
       expect(mockHandleOpenModal).not.toHaveBeenCalled()
       expect(mockOpenConfirmDelete).not.toHaveBeenCalled()
     })
 
-    it('should allow create-only users to add credentials but not switch, edit, or delete existing credentials', () => {
+    it('should allow create-only users to add credentials but not switch, edit, or delete existing credentials', async () => {
+      const user = userEvent.setup()
       mockWorkspacePermissionKeys = ['credential.create']
 
       render(
@@ -447,19 +419,24 @@ describe('DropdownContent', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('click-cred-2'))
-      fireEvent.click(screen.getByTestId('edit-cred-2'))
-      fireEvent.click(screen.getByTestId('delete-cred-2'))
-      fireEvent.click(screen.getByRole('button', { name: /addApiKey/ }))
+      expect(screen.queryByRole('button', { name: 'Other Key' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.edit' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.delete' }),
+      ).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /addApiKey/ }))
 
-      expect(mockActivate).not.toHaveBeenCalled()
+      expect(mockSwitchCredential).not.toHaveBeenCalled()
       expect(mockOpenConfirmDelete).not.toHaveBeenCalled()
       expect(mockHandleOpenModal).toHaveBeenCalledTimes(1)
       expect(mockHandleOpenModal).toHaveBeenCalledWith()
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should allow manage-only users to edit and delete credentials but not switch or add them', () => {
+    it('should allow manage-only users to edit and delete credentials but not switch or add them', async () => {
+      const user = userEvent.setup()
       mockWorkspacePermissionKeys = ['credential.manage']
 
       render(
@@ -472,11 +449,19 @@ describe('DropdownContent', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('click-cred-2'))
-      fireEvent.click(screen.getByTestId('edit-cred-2'))
-      fireEvent.click(screen.getByTestId('delete-cred-2'))
+      expect(screen.queryByRole('button', { name: 'Other Key' })).not.toBeInTheDocument()
+      await user.click(
+        within(screen.getByText('Other Key').closest('.group')!).getByRole('button', {
+          name: 'common.operation.edit',
+        }),
+      )
+      await user.click(
+        within(screen.getByText('Other Key').closest('.group')!).getByRole('button', {
+          name: 'common.operation.delete',
+        }),
+      )
 
-      expect(mockActivate).not.toHaveBeenCalled()
+      expect(mockSwitchCredential).not.toHaveBeenCalled()
       expect(mockHandleOpenModal).toHaveBeenCalledWith(
         expect.objectContaining({ credential_id: 'cred-2' }),
       )
@@ -487,8 +472,34 @@ describe('DropdownContent', () => {
     })
   })
 
+  it.each(['cancel', 'delete'] as const)(
+    'routes the delete confirmation %s action',
+    async (action) => {
+      const user = userEvent.setup()
+      mockDeleteCredentialId = 'cred-2'
+      render(
+        <DropdownContent
+          provider={createProvider()}
+          state={createState()}
+          isChangingPriority={false}
+          onChangePriority={onChangePriority}
+          onClose={onClose}
+        />,
+      )
+      const dialog = screen.getByRole('alertdialog')
+      await user.click(within(dialog).getByRole('button', { name: `common.operation.${action}` }))
+      expect(
+        action === 'cancel' ? mockCloseConfirmDelete : mockHandleConfirmDelete,
+      ).toHaveBeenCalledTimes(1)
+      expect(
+        action === 'cancel' ? mockHandleConfirmDelete : mockCloseConfirmDelete,
+      ).not.toHaveBeenCalled()
+    },
+  )
+
   describe('Add API Key', () => {
-    it('should call handleOpenModal with no args and close on add', () => {
+    it('should call handleOpenModal with no args and close on add', async () => {
+      const user = userEvent.setup()
       render(
         <DropdownContent
           provider={createProvider({
@@ -504,7 +515,7 @@ describe('DropdownContent', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: /addApiKey/ }))
+      await user.click(screen.getByRole('button', { name: /addApiKey/ }))
 
       expect(mockHandleOpenModal).toHaveBeenCalledWith()
       expect(onClose).toHaveBeenCalled()
@@ -531,55 +542,22 @@ describe('DropdownContent', () => {
       expect(screen.queryByRole('button', { name: /addApiKey/ })).not.toBeInTheDocument()
     })
   })
-
-  describe('AlertDialog for delete confirmation', () => {
-    it('should show confirm dialog when deleteCredentialId is set', () => {
-      mockDeleteCredentialId = 'cred-1'
-      render(
-        <DropdownContent
-          provider={createProvider()}
-          state={createState()}
-          isChangingPriority={false}
-          onChangePriority={onChangePriority}
-          onClose={onClose}
-        />,
-      )
-      expect(screen.getByText(/confirmDelete/)).toBeInTheDocument()
-    })
-
-    it('should not show confirm dialog when deleteCredentialId is null', () => {
-      mockDeleteCredentialId = null
-      render(
-        <DropdownContent
-          provider={createProvider()}
-          state={createState()}
-          isChangingPriority={false}
-          onChangePriority={onChangePriority}
-          onClose={onClose}
-        />,
-      )
-      expect(screen.queryByText(/confirmDelete/)).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Layout', () => {
-    it('should have 320px width container', () => {
-      const { container } = render(
-        <DropdownContent
-          provider={createProvider()}
-          state={createState()}
-          isChangingPriority={false}
-          onChangePriority={onChangePriority}
-          onClose={onClose}
-        />,
-      )
-      expect(container.querySelector('.w-\\[320px\\]')).toBeTruthy()
-    })
-  })
 })
 
 function render(ui: React.ReactElement) {
-  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
+  const { wrapper: QueryWrapper, queryClient } = createConsoleQueryWrapper({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  })
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(), {
+    exhausted_at: null,
+    next_credit_reset_date: null,
+    pool_type: 'paid',
+    remaining_credits: 0,
+    quota_limit: 10_000,
+    quota_used: 10_000,
+    is_exhausted: true,
+    is_unlimited: false,
+  })
   return renderWithConsoleState(ui, {
     wrapper: ({ children }) => (
       <NuqsTestingAdapter>

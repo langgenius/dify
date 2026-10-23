@@ -1,7 +1,7 @@
+import logging
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import Engine, event, select
@@ -13,8 +13,8 @@ from core.rag.models.document import Document
 from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, DocumentSegment
 from repositories.knowledge.dataset_read_repository import get_dataset_keyword_table
 from repositories.knowledge.keyword_table_repository import load_keyword_table
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_dataset
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_dataset
 
 
 @dataclass
@@ -296,7 +296,7 @@ def test_keyword_search_diagnostics_classify_known_and_ambiguous_outcomes(
 
 @pytest.mark.parametrize("filtered", [False, True])
 def test_search_keeps_partial_results_and_logs_accurate_diagnostics(
-    runtime: KeywordRuntime, monkeypatch: pytest.MonkeyPatch, filtered: bool
+    runtime: KeywordRuntime, caplog: pytest.LogCaptureFixture, filtered: bool
 ) -> None:
     runtime.session.add(segment("present-node"))
     keyword = Jieba(runtime.dataset)
@@ -308,17 +308,17 @@ def test_search_keeps_partial_results_and_logs_accurate_diagnostics(
         runtime.session,
     )
     runtime.session.commit()
-    logger = MagicMock()
-    monkeypatch.setattr(jieba_module, "logger", logger)
+    caplog.set_level(logging.DEBUG, logger=jieba_module.__name__)
 
     documents = keyword.search(
         "shared", session=runtime.session, top_k=2, **({"document_ids_filter": ["document-1"]} if filtered else {})
     )
 
     assert [document.metadata["doc_id"] for document in documents] == ["present-node"]
-    logged = logger.debug if filtered else logger.warning
-    logged.assert_called_once()
-    diagnostics = logged.call_args.kwargs["extra"]["keyword_search_diagnostics"]
+    records = [record for record in caplog.records if record.name == jieba_module.__name__]
+    assert len(records) == 1
+    assert records[0].levelno == (logging.DEBUG if filtered else logging.WARNING)
+    diagnostics = vars(records[0])["keyword_search_diagnostics"]
     assert diagnostics == {
         "keyword_hits": 2,
         "materialized": 1,
@@ -327,7 +327,6 @@ def test_search_keeps_partial_results_and_logs_accurate_diagnostics(
         "filter_applied": filtered,
         "status": "filter_indeterminate" if filtered else "partial",
     }
-    (logger.warning if filtered else logger.debug).assert_not_called()
 
 
 def test_empty_keyword_hits_skip_materialization_queries(runtime: KeywordRuntime, sqlite_engine: Engine) -> None:

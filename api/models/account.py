@@ -2,79 +2,20 @@ import enum
 import json
 from dataclasses import field
 from datetime import datetime
-from typing import Optional, TypedDict
+from typing import TypedDict
 from uuid import uuid4
+from warnings import deprecated
 
 import sqlalchemy as sa
 from flask_login import UserMixin
 from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
-from typing_extensions import deprecated
 
 from configs import dify_config
+from enums.account import TenantAccountRole
 
 from .base import TypeBase
 from .types import EnumText, LongText, StringUUID
-
-
-class TenantAccountRole(enum.StrEnum):
-    OWNER = "owner"
-    ADMIN = "admin"
-    EDITOR = "editor"
-    NORMAL = "normal"
-    DATASET_OPERATOR = "dataset_operator"
-
-    @staticmethod
-    def is_valid_role(role: str) -> bool:
-        if not role:
-            return False
-        return role in {
-            TenantAccountRole.OWNER,
-            TenantAccountRole.ADMIN,
-            TenantAccountRole.EDITOR,
-            TenantAccountRole.NORMAL,
-            TenantAccountRole.DATASET_OPERATOR,
-        }
-
-    @staticmethod
-    def is_privileged_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
-
-    @staticmethod
-    def is_admin_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role == TenantAccountRole.ADMIN
-
-    @staticmethod
-    def is_non_owner_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role in {
-            TenantAccountRole.ADMIN,
-            TenantAccountRole.EDITOR,
-            TenantAccountRole.NORMAL,
-            TenantAccountRole.DATASET_OPERATOR,
-        }
-
-    @staticmethod
-    def is_editing_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
-
-    @staticmethod
-    def is_dataset_edit_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role in {
-            TenantAccountRole.OWNER,
-            TenantAccountRole.ADMIN,
-            TenantAccountRole.EDITOR,
-            TenantAccountRole.DATASET_OPERATOR,
-        }
 
 
 class AccountStatus(enum.StrEnum):
@@ -374,7 +315,7 @@ class TenantPluginPermission(TypeBase):
     install_permission: Mapped[TenantPluginInstallPermission] = mapped_column(
         EnumText(TenantPluginInstallPermission, length=16),
         nullable=False,
-        default=TenantPluginInstallPermission.EVERYONE,
+        default=TenantPluginInstallPermission.ADMINS,
     )
     debug_permission: Mapped[TenantPluginDebugPermission] = mapped_column(
         EnumText(TenantPluginDebugPermission, length=16),

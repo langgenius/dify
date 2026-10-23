@@ -1,8 +1,10 @@
 import type { Var } from '../../../types'
 import type { IfElseNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, VarType } from '../../../types'
 import ConditionAdd from '../components/condition-add'
@@ -16,42 +18,24 @@ import Panel from '../panel'
 import { ComparisonOperator, LogicalOperator } from '../types'
 import useConfig from '../use-config'
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
-  return {
-    ...actual,
-    useNodes: () => [
-      {
-        id: 'node-1',
-        data: {
-          title: 'Start Node',
-          type: BlockEnum.Start,
-        },
-      },
-    ],
-  }
-})
-
 vi.mock('react-sortablejs', () => ({
   ReactSortable: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-vars', () => ({
-  default: ({
-    onChange,
-  }: {
-    onChange: (valueSelector: string[], varItem: { type: VarType }) => void
-  }) => (
-    <button type="button" onClick={() => onChange(['node-1', 'score'], { type: VarType.number })}>
-      pick-var
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/variable-label', () => ({
-  VariableLabelInText: ({ variables }: { variables: string[] }) => <div>{variables.join('.')}</div>,
-  VariableLabelInNode: ({ variables }: { variables: string[] }) => <div>{variables.join('.')}</div>,
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/_base/components/variable/variable-label',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@/app/components/workflow/nodes/_base/components/variable/variable-label')
+    >()),
+    VariableLabelInText: ({ variables }: { variables: string[] }) => (
+      <div>{variables.join('.')}</div>
+    ),
+    VariableLabelInNode: ({ variables }: { variables: string[] }) => (
+      <div>{variables.join('.')}</div>
+    ),
+  }),
+)
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable-tag', () => ({
   __esModule: true,
@@ -62,25 +46,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/node-handle', () => ({
   NodeSourceHandle: ({ handleId }: { handleId: string }) => (
     <div data-testid={`handle-${handleId}`} />
   ),
-}))
-
-const mockWorkflowStoreState = {
-  controlPromptEditorRerenderKey: 0,
-  pipelineId: undefined as string | undefined,
-  setShowInputFieldPanel: vi.fn(),
-}
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: typeof mockWorkflowStoreState) => unknown) =>
-    selector(mockWorkflowStoreState),
-  useWorkflowStore: () => ({
-    getState: () => ({
-      ...mockWorkflowStoreState,
-      conversationVariables: [],
-      dataSourceList: [],
-      setControlPromptEditorRerenderKey: vi.fn(),
-    }),
-  }),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type', () => ({
@@ -100,12 +65,19 @@ vi.mock('../../variable-assigner/hooks', () => ({
   ],
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
+})
 
 vi.mock('../use-config', () => ({
   default: vi.fn(),
@@ -204,12 +176,28 @@ const panelProps: PanelProps = {
   runResult: null,
 }
 
+const render = (
+  ui: Parameters<typeof renderWorkflowFlowComponent>[0],
+  options: Parameters<typeof renderWorkflowFlowComponent>[1] = {},
+) =>
+  renderWorkflowFlowComponent(ui, {
+    nodes: [
+      {
+        id: 'node-1',
+        position: { x: 0, y: 0 },
+        data: { title: 'Start Node', desc: '', type: BlockEnum.Start },
+      },
+    ],
+    ...options,
+  })
+const renderWithConsoleQuery = render
+const numberVariables = [
+  { nodeId: 'node-1', title: 'Start Node', vars: [{ variable: 'score', type: VarType.number }] },
+]
+
 describe('if-else path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkflowStoreState.controlPromptEditorRerenderKey = 0
-    mockWorkflowStoreState.pipelineId = undefined
-    mockWorkflowStoreState.setShowInputFieldPanel = vi.fn()
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
@@ -218,58 +206,84 @@ describe('if-else path', () => {
       const user = userEvent.setup()
       const onSelectVariable = vi.fn()
 
-      render(<ConditionAdd caseId="case-1" variables={[]} onSelectVariable={onSelectVariable} />)
+      render(
+        <ConditionAdd
+          caseId="case-1"
+          variables={numberVariables}
+          onSelectVariable={onSelectVariable}
+        />,
+        {
+          resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+        },
+      )
 
       await user.click(
         screen.getByRole('button', { name: /workflowLogic.nodes.ifElse.addCondition/i }),
       )
-      await user.click(screen.getByText('pick-var'))
+      await user.click(await screen.findByText('score'))
 
       expect(onSelectVariable).toHaveBeenCalledWith('case-1', ['node-1', 'score'], {
+        variable: 'score',
         type: VarType.number,
       })
+      expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
     })
 
-    it('should switch operators and number input modes', async () => {
+    it('edits a constant then switches to a real numeric variable selection', async () => {
       const user = userEvent.setup()
-      const onSelect = vi.fn()
-      const onNumberVarTypeChange = vi.fn()
       const onValueChange = vi.fn()
-
-      render(
-        <div>
-          <ConditionOperator
-            varType={VarType.string}
-            value={ComparisonOperator.contains}
-            onSelect={onSelect}
-          />
+      const NumberCondition = () => {
+        const [kind, setKind] = useState<VarKindType>(VarKindType.constant)
+        const [value, setValue] = useState('12')
+        return (
           <ConditionNumberInput
-            value="12"
-            numberVarType={VarKindType.constant}
-            onNumberVarTypeChange={onNumberVarTypeChange}
-            onValueChange={onValueChange}
-            variables={[]}
+            value={value}
+            numberVarType={kind}
+            onNumberVarTypeChange={(next) => {
+              setKind(next)
+              setValue('')
+            }}
+            onValueChange={(next) => {
+              setValue(next)
+              onValueChange(next)
+            }}
+            variables={numberVariables}
             unit="%"
           />
-        </div>,
-      )
+        )
+      }
+      render(<NumberCondition />)
+      await user.clear(screen.getByRole('spinbutton'))
+      await user.type(screen.getByRole('spinbutton'), '42')
+      expect(onValueChange).toHaveBeenLastCalledWith('42')
+      await user.click(screen.getByRole('button', { name: /constant/i }))
+      await user.click(screen.getByRole('menuitemradio', { name: 'Variable' }))
+      expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
+      await user.click(screen.getByText('workflowLogic.nodes.ifElse.selectVariable'))
+      await user.click(await screen.findByText('score'))
+      expect(onValueChange).toHaveBeenLastCalledWith('{{#node-1.score#}}')
+    })
 
+    it('selects a compatible string comparison operator', async () => {
+      const user = userEvent.setup()
+      const onSelect = vi.fn()
+      render(
+        <ConditionOperator
+          varType={VarType.string}
+          value={ComparisonOperator.contains}
+          onSelect={onSelect}
+        />,
+      )
       await user.click(screen.getByRole('button', { name: /contains/i }))
       await user.click(screen.getByText('workflowLogic.nodes.ifElse.comparisonOperator.is'))
-      await user.click(screen.getByRole('button', { name: /constant/i }))
-      await user.click(screen.getByText('Variable'))
-      fireEvent.change(screen.getByDisplayValue('12'), { target: { value: '42' } })
-
       expect(onSelect.mock.calls[0]?.[0]).toBe(ComparisonOperator.is)
-      expect(onNumberVarTypeChange.mock.calls[0]?.[0]).toBe(VarKindType.variable)
-      expect(onValueChange).toHaveBeenCalledWith('42')
     })
 
     it('should toggle logical operators for a case list with multiple conditions', async () => {
       const user = userEvent.setup()
       const onToggleConditionLogicalOperator = vi.fn()
 
-      render(
+      renderWithConsoleQuery(
         <ConditionList
           caseId="case-1"
           caseItem={{
@@ -340,6 +354,7 @@ describe('if-else path', () => {
             }}
           />
         </div>,
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
       expect(screen.getByText('node-1.answer')).toBeInTheDocument()
@@ -385,6 +400,7 @@ describe('if-else path', () => {
             ],
           })}
         />,
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
       expect(screen.getByText('IF')).toBeInTheDocument()
@@ -411,7 +427,9 @@ describe('if-else path', () => {
         }),
       )
 
-      render(<Panel id="if-else-node" data={inputs} panelProps={panelProps} />)
+      render(<Panel id="if-else-node" data={inputs} panelProps={panelProps} />, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       await user.click(screen.getByRole('button', { name: /elif/i }))
 

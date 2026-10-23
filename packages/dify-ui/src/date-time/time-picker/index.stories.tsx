@@ -155,6 +155,7 @@ export const UnavailableTime: Story = {
     )
     await expect(body.getByRole('button', { name: 'OK' })).toBeDisabled()
     await expect(body.getByRole('status')).toHaveTextContent('This date or time is unavailable.')
+    await waitFor(() => expect(body.getByRole('dialog', { name: 'Start time' })).toBeVisible())
   },
 }
 

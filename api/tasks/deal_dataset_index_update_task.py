@@ -8,7 +8,7 @@ from sqlalchemy import select, update
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
@@ -24,7 +24,7 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
     :param action: action
     Usage: deal_dataset_index_update_task.delay(dataset_id, action)
     """
-    logging.info(click.style("Start deal dataset index update: {}".format(dataset_id), fg="green"))
+    logging.info(click.style(f"Start deal dataset index update: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
@@ -40,8 +40,8 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
                     select(DatasetDocument).where(
                         DatasetDocument.dataset_id == dataset_id,
                         DatasetDocument.indexing_status == "completed",
-                        DatasetDocument.enabled == True,
-                        DatasetDocument.archived == False,
+                        DatasetDocument.enabled.is_(True),
+                        DatasetDocument.archived.is_(False),
                     )
                 ).all()
 
@@ -61,7 +61,7 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
                                 select(DocumentSegment)
                                 .where(
                                     DocumentSegment.document_id == dataset_document.id,
-                                    DocumentSegment.enabled == True,
+                                    DocumentSegment.enabled.is_(True),
                                 )
                                 .order_by(DocumentSegment.position.asc())
                             ).all()
@@ -107,8 +107,8 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
                     select(DatasetDocument).where(
                         DatasetDocument.dataset_id == dataset_id,
                         DatasetDocument.indexing_status == "completed",
-                        DatasetDocument.enabled == True,
-                        DatasetDocument.archived == False,
+                        DatasetDocument.enabled.is_(True),
+                        DatasetDocument.archived.is_(False),
                     )
                 ).all()
                 # add new index
@@ -134,7 +134,7 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
                                 select(DocumentSegment)
                                 .where(
                                     DocumentSegment.document_id == dataset_document.id,
-                                    DocumentSegment.enabled == True,
+                                    DocumentSegment.enabled.is_(True),
                                 )
                                 .order_by(DocumentSegment.position.asc())
                             ).all()
@@ -212,7 +212,7 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
             end_at = time.perf_counter()
             logging.info(
                 click.style(
-                    "Deal dataset vector index: {} latency: {}".format(dataset_id, end_at - start_at),
+                    f"Deal dataset vector index: {dataset_id} latency: {end_at - start_at}",
                     fg="green",
                 )
             )

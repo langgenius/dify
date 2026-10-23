@@ -1,23 +1,20 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppInfoOperation } from './app-info-modals'
 import type { Operation } from './app-operations'
-import type { AppInfoModalType } from './use-app-info-actions'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
-import AppIcon from '../../base/app-icon'
+import AppInfoHeader from './app-info-header'
 import { getAppModeLabel } from './app-mode-labels'
-import AppOperations from './app-operations'
 
 type AppInfoTriggerProps = {
   appDetail: AppDetailWithSite
   expand: boolean
-  openModal: (modal: Exclude<AppInfoModalType, null>) => void
+  openModal: (modal: AppInfoOperation) => void
   isExporting: boolean
   exportCheck: () => void
 }
@@ -76,7 +73,7 @@ const AppInfoTrigger = ({
         ]
       : []),
     ...(appACLCapabilities.canImportExportDSL &&
-    (appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW)
+    (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')
       ? [
           {
             id: 'import',
@@ -101,8 +98,7 @@ const AppInfoTrigger = ({
     : []
 
   const workflowConversionOperations: Operation[] =
-    appACLCapabilities.canEdit &&
-    (appDetail.mode === AppModeEnum.COMPLETION || appDetail.mode === AppModeEnum.CHAT)
+    appACLCapabilities.canEdit && (appDetail.mode === 'completion' || appDetail.mode === 'chat')
       ? [
           {
             id: 'switch',
@@ -114,44 +110,13 @@ const AppInfoTrigger = ({
       : []
 
   return (
-    <div
-      className={cn(
-        'rounded-xl',
-        expand ? 'flex items-start gap-2 p-2' : 'flex items-center justify-center px-1 py-1.5',
-      )}
-    >
-      <div className="flex shrink-0 items-center">
-        <div>
-          <AppIcon
-            size="medium"
-            iconType={appDetail.icon_type}
-            icon={appDetail.icon ?? undefined}
-            background={appDetail.icon_background}
-            imageUrl={appDetail.icon_url}
-          />
-        </div>
-      </div>
-      {expand && (
-        <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 self-stretch">
-          <div className="flex w-full min-w-0 items-center gap-2 pr-1">
-            <div className="min-w-0 flex-1 truncate system-md-semibold text-text-secondary">
-              {appDetail.name}
-            </div>
-            <AppOperations
-              appName={appDetail.name}
-              operationGroups={[
-                mainOperations,
-                destructiveOperations,
-                workflowConversionOperations,
-              ]}
-            />
-          </div>
-          <div className="system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary">
-            {modeLabel}
-          </div>
-        </div>
-      )}
-    </div>
+    <AppInfoHeader
+      expand={expand}
+      appName={appDetail.name}
+      modeLabel={modeLabel}
+      operationGroups={[mainOperations, destructiveOperations, workflowConversionOperations]}
+      icon={appDetail}
+    />
   )
 }
 

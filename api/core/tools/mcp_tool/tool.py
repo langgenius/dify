@@ -4,6 +4,7 @@ import base64
 import json
 import logging
 from collections.abc import Generator, Mapping
+from copy import deepcopy
 from typing import Any, cast, override
 
 from sqlalchemy.orm import Session
@@ -34,6 +35,23 @@ logger = logging.getLogger(__name__)
 # stomping on the workspace-scoped Authorization header (provider OAuth /
 # user-supplied custom credentials), which would silently break those flows.
 FORWARDED_IDENTITY_HEADER = "X-Dify-SSO-Token"
+
+
+def schema_accepts_multiple_types(schema: Mapping[str, Any]) -> bool:
+    """Whether a JSON schema property accepts more than one JSON type, e.g. `string` or `array`."""
+    branches = [schema]
+    for union_key in ("anyOf", "oneOf"):
+        union_schemas = schema.get(union_key)
+        if isinstance(union_schemas, list):
+            branches.extend(branch for branch in union_schemas if isinstance(branch, Mapping))
+
+    type_names: set[str] = set()
+    for branch in branches:
+        declared = branch.get("type")
+        for type_name in declared if isinstance(declared, list) else [declared]:
+            if isinstance(type_name, str) and type_name != "null":
+                type_names.add("number" if type_name in ("integer", "float") else type_name)
+    return len(type_names) > 1
 
 
 class MCPTool(Tool):
@@ -74,7 +92,7 @@ class MCPTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         result = self.invoke_remote_mcp_tool(tool_parameters, user_id=user_id, app_id=app_id)
 
         # Extract usage metadata from MCP protocol's _meta field
@@ -111,7 +129,7 @@ class MCPTool(Tool):
         elif result.structuredContent:
             yield self.create_json_message(result.structuredContent)
 
-    def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage, None, None]:
+    def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage]:
         """Process text content and yield appropriate messages."""
         # Check if content looks like JSON before attempting to parse
         text = content.text.strip()
@@ -126,7 +144,7 @@ class MCPTool(Tool):
         # If not JSON or parsing failed, treat as plain text
         yield self.create_text_message(content.text)
 
-    def _process_json_content(self, content_json: Any) -> Generator[ToolInvokeMessage, None, None]:
+    def _process_json_content(self, content_json: Any) -> Generator[ToolInvokeMessage]:
         """Process JSON content based on its type."""
         match content_json:
             case dict():
@@ -137,7 +155,7 @@ class MCPTool(Tool):
                 # For primitive types (str, int, bool, etc.), convert to string
                 yield self.create_text_message(str(content_json))
 
-    def _process_json_list(self, json_list: list) -> Generator[ToolInvokeMessage, None, None]:
+    def _process_json_list(self, json_list: list) -> Generator[ToolInvokeMessage]:
         """Process a list of JSON items."""
         if any(not isinstance(item, dict) for item in json_list):
             # If the list contains any non-dict item, treat the entire list as a text message.
@@ -170,7 +188,7 @@ class MCPTool(Tool):
         if result.meta:
             usage_dict = cls._extract_usage_dict(result.meta)
             if usage_dict is not None:
-                return LLMUsage.from_metadata(cast(LLMUsageMetadata, cast(object, dict(usage_dict))))
+                return LLMUsage.from_metadata(cast(LLMUsageMetadata, dict(usage_dict)))
 
         return LLMUsage.empty_usage()
 
@@ -256,6 +274,21 @@ class MCPTool(Tool):
             sse_read_timeout=self.sse_read_timeout,
             identity_mode=self.identity_mode,
         )
+
+    @override
+    def _transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
+        # A multi-type union is declared to Dify as just one of its types, so casting would corrupt values
+        # of the other types (e.g. str(["light"]) -> "['light']"). Forward them as-is; the server validates.
+        union_names = {
+            parameter.name
+            for parameter in self.entity.parameters or []
+            if parameter.input_schema is not None and schema_accepts_multiple_types(parameter.input_schema)
+        }
+        result = super()._transform_tool_parameters_type(
+            {name: value for name, value in tool_parameters.items() if name not in union_names}
+        )
+        result.update({name: deepcopy(value) for name, value in tool_parameters.items() if name in union_names})
+        return result
 
     def _handle_none_parameter(self, parameter: dict[str, Any]) -> dict[str, Any]:
         """

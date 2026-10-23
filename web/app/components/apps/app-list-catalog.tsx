@@ -17,7 +17,6 @@ import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-se
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { AppCard } from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import { APP_LIST_GRID_CLASS_NAME } from './constants'
@@ -104,8 +103,7 @@ function AppListCatalogContent({
   const workflowOnlineUserAppIds = useMemo(() => {
     const appIds = new Set<string>()
     apps.forEach((app) => {
-      if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
-        appIds.add(app.id)
+      if (app.mode === 'workflow' || app.mode === 'advanced-chat') appIds.add(app.id)
     })
     return Array.from(appIds)
   }, [apps])

@@ -1,22 +1,18 @@
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
 import type { OperationName } from '../types'
-import type { CommonResponse } from '@/models/common'
 import type { DocumentDisplayStatus } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMutation } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import {
-  useDocumentDelete,
-  useDocumentDisable,
-  useDocumentEnable,
-} from '@/service/knowledge/use-document'
+import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 import s from '../style.module.css'
 import { useIndexStatus } from './hooks'
@@ -61,26 +57,23 @@ const StatusItem = ({
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
   const statusItem = DOC_INDEX_STATUS_MAP[localStatus]
   const { enabled = false, archived = false, id = '' } = detail || {}
-  const { mutateAsync: enableDocument } = useDocumentEnable()
-  const { mutateAsync: disableDocument } = useDocumentDisable()
-  const { mutateAsync: deleteDocument } = useDocumentDelete()
+  const documents = consoleQuery.datasets.byDatasetId.documents
+  const { mutateAsync: changeDocumentStatus } = useMutation(
+    documents.status.byAction.batch.patch.mutationOptions(),
+  )
+  const { mutateAsync: deleteDocuments } = useMutation(documents.delete.mutationOptions())
   const onOperate = async (operationName: OperationName) => {
     if (!canEdit) return
 
-    let opApi = deleteDocument
-    switch (operationName) {
-      case 'enable':
-        opApi = enableDocument
-        break
-      case 'disable':
-        opApi = disableDocument
-        break
-    }
-    const [e] = await asyncRunSafe<CommonResponse>(
-      opApi({ datasetId, documentId: id }) as Promise<CommonResponse>,
+    const [e] = await asyncRunSafe(
+      operationName === 'enable' || operationName === 'disable'
+        ? changeDocumentStatus({
+            params: { dataset_id: datasetId, action: operationName },
+            query: { document_id: [id] },
+          })
+        : deleteDocuments({ params: { dataset_id: datasetId }, query: { document_id: [id] } }),
     )
     if (!e) {
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onUpdate?.(operationName)
     } else {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))

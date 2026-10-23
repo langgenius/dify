@@ -164,7 +164,7 @@ export default function CreatorContent({
           <DropdownMenu>
             <DropdownMenuTrigger
               aria-label={`${t(($) => $['marketplace.creatorProfile.sortBy'], { ns: 'plugin' })} ${selectedSort.label}`}
-              className="flex h-8 items-center rounded-lg px-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="flex h-8 items-center rounded-lg px-2 hover:bg-state-base-hover"
             >
               <span className="mr-1 system-sm-regular text-text-tertiary">
                 {t(($) => $['marketplace.creatorProfile.sortBy'], { ns: 'plugin' })}
@@ -172,11 +172,7 @@ export default function CreatorContent({
               <span className="system-sm-medium text-text-secondary">{selectedSort.label}</span>
               <span aria-hidden className="ml-1 i-ri-arrow-down-s-line size-4 text-text-tertiary" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              placement="bottom-end"
-              sideOffset={4}
-              className="min-w-[176px] p-1"
-            >
+            <DropdownMenuContent className="min-w-[176px] p-1">
               <DropdownMenuRadioGroup<CreatorSortField>
                 value={sortField}
                 onValueChange={(nextField) => {

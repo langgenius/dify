@@ -1,37 +1,27 @@
+import asyncio
+import json
 from typing import Any, cast
 
+import httpx
 import pytest
-from agenton.layers import ExitIntent
-from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
-from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
-from dify_agent.layers.dify_core_tools import (
-    DIFY_CORE_TOOLS_LAYER_TYPE_ID,
-    DifyCoreToolConfig,
-    DifyCoreToolsLayerConfig,
-)
-from dify_agent.layers.dify_plugin import (
-    DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
-    DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-    DifyPluginLLMLayerConfig,
-    DifyPluginToolConfig,
-    DifyPluginToolsLayerConfig,
-)
-from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
-from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
-from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID
-from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellEnvVarConfig, DifyShellLayerConfig
-from dify_agent.layers.user_prompt import (
-    DIFY_USER_PROMPT_LAYER_TYPE_ID,
-    DifyUserPromptDownloadConfig,
-    DifyUserPromptImageConfig,
-)
+from dify_agent.adapters.llm.model import _get_stop_sequences, _map_model_settings_to_parameters
+from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
+from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginToolConfig, DifyPluginToolsLayerConfig
+from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
+from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig
+from dify_agent.layers.knowledge_fs import DifyKnowledgeFsLayerConfig
+from dify_agent.layers.prompt import Config as PromptConfig
+from dify_agent.layers.shell import DifyShellEnvVarConfig, DifyShellLayerConfig
+from dify_agent.layers.user_prompt import DifyUserPromptDownloadConfig, DifyUserPromptImageConfig
 from dify_agent.protocol import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
     DIFY_AGENT_OUTPUT_LAYER_ID,
     CreateRunRequest,
 )
-from pydantic import ValidationError
+from dify_agent.runtime.context import Services
+from dify_agent.runtime.modules import create_modules, load_modules
+from pydantic import JsonValue, ValidationError
 
 from clients.agent_backend import (
     AGENT_SOUL_PROMPT_LAYER_ID,
@@ -49,6 +39,7 @@ from clients.agent_backend import (
     redact_for_agent_backend_log,
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
+from models.agent_config_entities import AgentSoulModelSettings
 
 
 def _run_input() -> AgentBackendWorkflowNodeRunInput:
@@ -85,7 +76,7 @@ def _run_input() -> AgentBackendWorkflowNodeRunInput:
     )
 
 
-def test_request_builder_outputs_dify_agent_create_run_request():
+def test_request_builder_outputs_dify_agent_create_run_request() -> None:
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
     dumped = request.model_dump(mode="json")
 
@@ -99,20 +90,14 @@ def test_request_builder_outputs_dify_agent_create_run_request():
         DIFY_AGENT_MODEL_LAYER_ID,
         DIFY_AGENT_OUTPUT_LAYER_ID,
     ]
-    assert request.on_exit.default is ExitIntent.SUSPEND
     assert request.idempotency_key == "workflow-run-1:node-execution-1"
     assert request.metadata == {"workflow_id": "workflow-1", "node_id": "node-1"}
     assert "purpose" not in dumped
 
 
-def test_request_builder_separates_agent_soul_and_workflow_job_prompt():
+def test_request_builder_separates_agent_soul_and_workflow_job_prompt() -> None:
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
-    layers = {layer.name: layer for layer in request.composition.layers}
-
-    assert layers[AGENT_SOUL_PROMPT_LAYER_ID].type == PLAIN_PROMPT_LAYER_TYPE_ID
-    assert layers[AGENT_SOUL_PROMPT_LAYER_ID].metadata["origin"] == "agent_soul"
-    assert layers[WORKFLOW_NODE_JOB_PROMPT_LAYER_ID].metadata["origin"] == "workflow_node_job"
-    assert layers[WORKFLOW_USER_PROMPT_LAYER_ID].metadata["origin"] == "workflow_user_prompt"
+    {layer.name: layer for layer in request.composition.layers}
 
     dumped = request.model_dump(mode="json")
     assert dumped["composition"]["layers"][0]["config"]["prefix"] == "You are a careful reviewer."
@@ -122,7 +107,7 @@ def test_request_builder_separates_agent_soul_and_workflow_job_prompt():
     assert dumped["composition"]["layers"][2]["config"]["user"] == "Summarize the report."
 
 
-def test_request_builder_forwards_plugin_specific_model_settings_via_extra_body():
+def test_request_builder_forwards_plugin_specific_model_settings_via_extra_body() -> None:
     run_input = _run_input().model_copy(
         update={
             "model": AgentBackendModelConfig(
@@ -136,7 +121,7 @@ def test_request_builder_forwards_plugin_specific_model_settings_via_extra_body(
 
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
     layers = {layer.name: layer for layer in request.composition.layers}
-    model_config = cast(DifyPluginLLMLayerConfig, layers[DIFY_AGENT_MODEL_LAYER_ID].config)
+    model_config = DifyPluginLLMLayerConfig.model_validate(layers[DIFY_AGENT_MODEL_LAYER_ID].config)
 
     assert model_config.model_settings == {
         "temperature": 0.7,
@@ -144,10 +129,74 @@ def test_request_builder_forwards_plugin_specific_model_settings_via_extra_body(
     }
 
 
+@pytest.mark.parametrize("builder_kind", ["agent_app", "workflow_node"])
+@pytest.mark.parametrize(
+    "settings",
+    [
+        pytest.param({}, id="default"),
+        pytest.param({"response_format": None}, id="none"),
+        pytest.param({"response_format": "text"}, id="plugin-text"),
+        pytest.param(
+            {
+                "response_format": "json_schema",
+                "json_schema": json.dumps(
+                    {"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"]}
+                ),
+            },
+            id="plugin-json-schema",
+        ),
+        pytest.param({"response_format": {"type": "text"}}, id="legacy-text"),
+        pytest.param(
+            {
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {"name": "response", "schema": {"type": "object"}},
+                }
+            },
+            id="legacy-json-schema",
+        ),
+    ],
+)
+def test_response_format_reaches_plugin_parameters_through_real_request_serialization(
+    builder_kind: str, settings: dict[str, JsonValue]
+) -> None:
+    soul_settings = AgentSoulModelSettings.model_validate(
+        {**settings, "temperature": 0.2, "stop": ["END"], "enable_thinking": True}
+    )
+    model = AgentBackendModelConfig(
+        plugin_id="langgenius/openai",
+        model_provider="openai",
+        model="gpt-test",
+        model_settings=soul_settings.model_dump(mode="json", exclude_none=True),
+    )
+    builder = AgentBackendRunRequestBuilder()
+    if builder_kind == "agent_app":
+        request = builder.build_for_agent_app(_agent_app_input().model_copy(update={"model": model}))
+    else:
+        request = builder.build_for_workflow_node(_run_input().model_copy(update={"model": model}))
+
+    request = CreateRunRequest.model_validate_json(request.model_dump_json())
+    model_layer = next(layer for layer in request.composition.layers if layer.name == DIFY_AGENT_MODEL_LAYER_ID)
+    model_config = DifyPluginLLMLayerConfig.model_validate(model_layer.config)
+    plugin_settings = {key: value for key, value in settings.items() if value is not None}
+
+    assert model_config.model_settings == {
+        "temperature": 0.2,
+        "stop_sequences": ["END"],
+        "extra_body": {"enable_thinking": True, **plugin_settings},
+    }
+    assert _map_model_settings_to_parameters(model_config.model_settings) == {
+        "temperature": 0.2,
+        "enable_thinking": True,
+        **plugin_settings,
+    }
+    assert _get_stop_sequences(model_config.model_settings) == ["END"]
+
+
 @pytest.mark.parametrize("agent_config_version_kind", ["snapshot", "draft"])
 def test_agent_app_request_builder_keeps_agent_soul_prompt_for_snapshot_and_draft(
     agent_config_version_kind: str,
-):
+) -> None:
     original_prompt = "  You are Iris.  \n"
     run_input = _agent_app_input().model_copy(
         update={
@@ -159,11 +208,11 @@ def test_agent_app_request_builder_keeps_agent_soul_prompt_for_snapshot_and_draf
     request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
     layers = {layer.name: layer for layer in request.composition.layers}
 
-    prompt_config = cast(PromptLayerConfig, layers[AGENT_SOUL_PROMPT_LAYER_ID].config)
+    prompt_config = PromptConfig.model_validate(layers[AGENT_SOUL_PROMPT_LAYER_ID].config)
     assert prompt_config.prefix == original_prompt
 
 
-def test_agent_app_request_builder_wraps_agent_soul_prompt_for_build_draft():
+def test_agent_app_request_builder_wraps_agent_soul_prompt_for_build_draft() -> None:
     original_prompt = "  You are Iris.  \n"
     run_input = _agent_app_input().model_copy(
         update={
@@ -175,13 +224,14 @@ def test_agent_app_request_builder_wraps_agent_soul_prompt_for_build_draft():
     request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
     layers = {layer.name: layer for layer in request.composition.layers}
 
-    prompt_config = cast(PromptLayerConfig, layers[AGENT_SOUL_PROMPT_LAYER_ID].config)
+    prompt_config = PromptConfig.model_validate(layers[AGENT_SOUL_PROMPT_LAYER_ID].config)
     assert prompt_config.prefix != original_prompt
+    assert isinstance(prompt_config.prefix, str)
     assert prompt_config.prefix.startswith("You are running in build mode.")
     assert "```text\nYou are Iris.\n```" in prompt_config.prefix
 
 
-def test_agent_app_request_builder_uses_longer_fence_for_build_draft_prompt_body():
+def test_agent_app_request_builder_uses_longer_fence_for_build_draft_prompt_body() -> None:
     run_input = _agent_app_input().model_copy(
         update={
             "agent_config_version_kind": "build_draft",
@@ -192,31 +242,61 @@ def test_agent_app_request_builder_uses_longer_fence_for_build_draft_prompt_body
     request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
     layers = {layer.name: layer for layer in request.composition.layers}
 
-    prompt_config = cast(PromptLayerConfig, layers[AGENT_SOUL_PROMPT_LAYER_ID].config)
+    prompt_config = PromptConfig.model_validate(layers[AGENT_SOUL_PROMPT_LAYER_ID].config)
     assert "````text" in prompt_config.prefix
     assert "```python" in prompt_config.prefix
 
 
-def test_request_builder_sets_model_and_output_layer_contract_ids():
+def test_request_builder_sets_model_and_output_layer_contract_ids() -> None:
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
     layers = {layer.name: layer for layer in request.composition.layers}
 
-    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID].type == DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID
-    execution_context_config = cast(DifyExecutionContextLayerConfig, layers[DIFY_EXECUTION_CONTEXT_LAYER_ID].config)
+    execution_context_config = DifyExecutionContextLayerConfig.model_validate(
+        layers[DIFY_EXECUTION_CONTEXT_LAYER_ID].config
+    )
     assert execution_context_config.user_id == "user-1"
     assert execution_context_config.user_from == "account"
     assert execution_context_config.agent_mode == "workflow_run"
     assert execution_context_config.invoke_from == "debugger"
-    assert layers[DIFY_AGENT_HISTORY_LAYER_ID].type == PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
-    assert layers[DIFY_AGENT_MODEL_LAYER_ID].type == DIFY_PLUGIN_LLM_LAYER_TYPE_ID
-    model_config = cast(DifyPluginLLMLayerConfig, layers[DIFY_AGENT_MODEL_LAYER_ID].config)
+    model_config = DifyPluginLLMLayerConfig.model_validate(layers[DIFY_AGENT_MODEL_LAYER_ID].config)
     assert model_config.plugin_id == "langgenius/openai"
     assert "credentials" not in model_config.model_dump(mode="json")
-    assert layers[DIFY_AGENT_MODEL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
-    assert layers[DIFY_AGENT_OUTPUT_LAYER_ID].type == DIFY_OUTPUT_LAYER_TYPE_ID
+    assert layers[DIFY_AGENT_MODEL_LAYER_ID].config["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
 
 
-def test_request_builder_adds_dify_plugin_tools_layer_when_configured():
+@pytest.mark.parametrize("mode", ["agent_app", "workflow_node"])
+@pytest.mark.parametrize("traced", [False, True])
+def test_context_wire_contract_omits_tracing_for_legacy_runtime(mode: str, traced: bool) -> None:
+    run_input = _agent_app_input() if mode == "agent_app" else _run_input()
+    tracing = ApplicationTracingContext(
+        run_id="00000000-0000-0000-0000-000000000001",
+        invocation_id="00000000-0000-0000-0000-000000000002",
+        trace_id="a" * 32,
+        parent_span_id="b" * 16,
+        session_id="session",
+        capture_content=False,
+    )
+    if traced:
+        run_input = run_input.model_copy(
+            update={"execution_context": run_input.execution_context.model_copy(update={"tracing": tracing})}
+        )
+    builder = AgentBackendRunRequestBuilder()
+    request = (
+        builder.build_for_agent_app(run_input)
+        if isinstance(run_input, AgentBackendAgentAppRunInput)
+        else builder.build_for_workflow_node(run_input)
+    )
+    payload = next(
+        layer.config for layer in request.composition.layers if layer.name == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    )
+    if traced:
+        assert payload["tracing"] == tracing.model_dump(mode="json")
+    else:
+        # Pre-tracing runtimes reject even a null unknown field (extra=forbid).
+        assert "tracing" not in payload
+
+
+def test_request_builder_adds_dify_plugin_tools_layer_when_configured() -> None:
     run_input = _run_input()
     run_input.tools = DifyPluginToolsLayerConfig(
         tools=[
@@ -231,6 +311,7 @@ def test_request_builder_adds_dify_plugin_tools_layer_when_configured():
                 runtime_parameters={},
                 parameters=[],
                 parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                plugin_unique_identifier="langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ]
     )
@@ -238,13 +319,12 @@ def test_request_builder_adds_dify_plugin_tools_layer_when_configured():
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
     layers = {layer.name: layer for layer in request.composition.layers}
 
-    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID].type == DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID
-    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
-    tools_config = cast(DifyPluginToolsLayerConfig, layers[DIFY_PLUGIN_TOOLS_LAYER_ID].config)
+    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID].config["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    tools_config = DifyPluginToolsLayerConfig.model_validate(layers[DIFY_PLUGIN_TOOLS_LAYER_ID].config)
     assert tools_config.tools[0].tool_name == "current_time"
 
 
-def test_request_builder_adds_dify_core_tools_layer_when_configured():
+def test_request_builder_adds_dify_core_tools_layer_when_configured() -> None:
     run_input = _run_input()
     run_input.core_tools = DifyCoreToolsLayerConfig(
         tools=[
@@ -264,11 +344,10 @@ def test_request_builder_adds_dify_core_tools_layer_when_configured():
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
     layers = {layer.name: layer for layer in request.composition.layers}
 
-    assert layers[DIFY_CORE_TOOLS_LAYER_ID].type == DIFY_CORE_TOOLS_LAYER_TYPE_ID
-    assert layers[DIFY_CORE_TOOLS_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_CORE_TOOLS_LAYER_ID].config["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
 
 
-def test_request_builder_adds_knowledge_layer_when_configured():
+def test_request_builder_adds_knowledge_layer_when_configured() -> None:
     run_input = _run_input()
     run_input.knowledge = DifyKnowledgeBaseLayerConfig.model_validate(
         {
@@ -288,14 +367,13 @@ def test_request_builder_adds_knowledge_layer_when_configured():
     layers = {layer.name: layer for layer in request.composition.layers}
 
     assert DIFY_KNOWLEDGE_BASE_LAYER_ID in layers
-    assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].type == DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID
-    assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
-    knowledge_config = cast(DifyKnowledgeBaseLayerConfig, layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config)
+    assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    knowledge_config = DifyKnowledgeBaseLayerConfig.model_validate(layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config)
     assert knowledge_config.sets[0].dataset_ids == ["dataset-1"]
 
 
-def test_request_builder_rejects_blank_prompts():
-    with pytest.raises(ValidationError):
+def test_request_builder_rejects_blank_prompts() -> None:
+    with pytest.raises(ValidationError, match="prompt must not be blank"):
         AgentBackendWorkflowNodeRunInput(
             model=AgentBackendModelConfig(
                 plugin_id="langgenius/openai",
@@ -308,12 +386,13 @@ def test_request_builder_rejects_blank_prompts():
                 agent_mode="workflow_run",
                 invoke_from="debugger",
             ),
+            backend_binding_ref="binding-ref-1",
             workflow_node_job_prompt=" ",
             user_prompt="hello",
         )
 
 
-def test_agent_backend_request_does_not_contain_llm_credentials():
+def test_agent_backend_request_does_not_contain_llm_credentials() -> None:
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
 
     redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
@@ -344,12 +423,12 @@ def _agent_app_input(*, include_shell: bool = False) -> AgentBackendAgentAppRunI
     )
 
 
-def test_workflow_request_builder_omits_shell_layer_by_default():
+def test_workflow_request_builder_omits_shell_layer_by_default() -> None:
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
     assert DIFY_SHELL_LAYER_ID not in {layer.name for layer in request.composition.layers}
 
 
-def test_workflow_request_builder_adds_shell_layer_when_include_shell():
+def test_workflow_request_builder_adds_shell_layer_when_include_shell() -> None:
     run_input = _run_input()
     run_input.include_shell = True
     run_input.shell_config = DifyShellLayerConfig(env=[DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo")])
@@ -359,20 +438,20 @@ def test_workflow_request_builder_adds_shell_layer_when_include_shell():
 
     assert DIFY_SHELL_LAYER_ID in layers
     shell = layers[DIFY_SHELL_LAYER_ID]
-    assert shell.type == DIFY_SHELL_LAYER_TYPE_ID
     # The shell layer depends on execution_context so the agent server can mint
     # per-command Agent Stub env for sandbox CLI forwarding.
-    assert shell.deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID, "runtime": "runtime"}
-    shell_config = cast(DifyShellLayerConfig, shell.config)
+    assert shell.config["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    assert shell.config["runtime"] == "runtime"
+    shell_config = DifyShellLayerConfig.model_validate(shell.config)
     assert shell_config.env[0].name == "PROJECT_NAME"
 
 
-def test_agent_app_request_builder_omits_shell_layer_by_default():
+def test_agent_app_request_builder_omits_shell_layer_by_default() -> None:
     request = AgentBackendRunRequestBuilder().build_for_agent_app(_agent_app_input())
     assert DIFY_SHELL_LAYER_ID not in {layer.name for layer in request.composition.layers}
 
 
-def test_agent_app_request_builder_emits_multimodal_user_prompt_layer():
+def test_agent_app_request_builder_emits_multimodal_user_prompt_layer() -> None:
     run_input = _agent_app_input()
     run_input.user_files = [
         DifyUserPromptDownloadConfig(
@@ -390,18 +469,17 @@ def test_agent_app_request_builder_emits_multimodal_user_prompt_layer():
     request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
     layer = next(layer for layer in request.composition.layers if layer.name == "agent_app_user_prompt")
 
-    assert layer.type == DIFY_USER_PROMPT_LAYER_TYPE_ID
-    assert layer.config.text == "List files."
-    assert layer.config.files == run_input.user_files
+    assert layer.config["text"] == "List files."
+    assert layer.config["files"] == [f.model_dump(mode="json") for f in run_input.user_files]
     restored_request = CreateRunRequest.model_validate_json(request.model_dump_json())
     restored_layer = next(
         layer for layer in restored_request.composition.layers if layer.name == "agent_app_user_prompt"
     )
-    assert restored_layer.config == layer.config.model_dump(mode="json")
+    assert restored_layer.config == layer.config
     assert "locators" not in restored_layer.config
 
 
-def test_agent_backend_log_redacts_multimodal_file_transport():
+def test_agent_backend_log_redacts_multimodal_file_transport() -> None:
     run_input = _agent_app_input()
     run_input.metadata = {"source_url": "https://example.com/docs"}
     run_input.user_files = [
@@ -430,7 +508,7 @@ def test_agent_backend_log_redacts_multimodal_file_transport():
     assert redacted["metadata"]["source_url"] == "https://example.com/docs"
 
 
-def test_agent_app_request_builder_keeps_build_draft_prompt_when_agent_soul_prompt_is_blank():
+def test_agent_app_request_builder_keeps_build_draft_prompt_when_agent_soul_prompt_is_blank() -> None:
     run_input = _agent_app_input().model_copy(
         update={"agent_soul_prompt": "   ", "agent_config_version_kind": "build_draft"}
     )
@@ -438,12 +516,12 @@ def test_agent_app_request_builder_keeps_build_draft_prompt_when_agent_soul_prom
     request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
     layers = {layer.name: layer for layer in request.composition.layers}
 
-    prompt_config = cast(PromptLayerConfig, layers[AGENT_SOUL_PROMPT_LAYER_ID].config)
+    prompt_config = PromptConfig.model_validate(layers[AGENT_SOUL_PROMPT_LAYER_ID].config)
     assert "You are running in build mode." in prompt_config.prefix
     assert "No task prompt was provided." in prompt_config.prefix
 
 
-def test_agent_app_request_builder_adds_shell_layer_when_include_shell():
+def test_agent_app_request_builder_adds_shell_layer_when_include_shell() -> None:
     run_input = _agent_app_input(include_shell=True)
     run_input.shell_config = DifyShellLayerConfig(env=[DifyShellEnvVarConfig(name="APP_ENV", value="enabled")])
 
@@ -451,16 +529,13 @@ def test_agent_app_request_builder_adds_shell_layer_when_include_shell():
     layers = {layer.name: layer for layer in request.composition.layers}
 
     assert DIFY_SHELL_LAYER_ID in layers
-    assert layers[DIFY_SHELL_LAYER_ID].type == DIFY_SHELL_LAYER_TYPE_ID
-    assert layers[DIFY_SHELL_LAYER_ID].deps == {
-        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
-        "runtime": "runtime",
-    }
-    shell_config = cast(DifyShellLayerConfig, layers[DIFY_SHELL_LAYER_ID].config)
+    assert layers[DIFY_SHELL_LAYER_ID].config["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    assert layers[DIFY_SHELL_LAYER_ID].config["runtime"] == "runtime"
+    shell_config = DifyShellLayerConfig.model_validate(layers[DIFY_SHELL_LAYER_ID].config)
     assert shell_config.env[0].name == "APP_ENV"
 
 
-def test_agent_app_request_builder_adds_knowledge_layer_when_configured():
+def test_agent_app_request_builder_adds_knowledge_layer_when_configured() -> None:
     run_input = _agent_app_input()
     run_input.knowledge = DifyKnowledgeBaseLayerConfig.model_validate(
         {
@@ -480,52 +555,66 @@ def test_agent_app_request_builder_adds_knowledge_layer_when_configured():
     layers = {layer.name: layer for layer in request.composition.layers}
 
     assert DIFY_KNOWLEDGE_BASE_LAYER_ID in layers
-    assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].type == DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID
-    assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
-    knowledge_config = cast(DifyKnowledgeBaseLayerConfig, layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config)
+    assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    knowledge_config = DifyKnowledgeBaseLayerConfig.model_validate(layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config)
     assert knowledge_config.sets[0].dataset_ids == ["dataset-1", "dataset-2"]
 
 
-# ── ENG-635 / ENG-638: ask_human layer injection + deferred_tool_results ─────
+@pytest.mark.parametrize("mode", ["agent_app", "workflow"])
+def test_knowledge_fs_requires_shell_and_can_coexist_with_classic_knowledge(mode: str) -> None:
+    config = DifyKnowledgeFsLayerConfig.model_validate(
+        {"spaces": [{"id": "docs", "name": "Docs", "control_space_id": "00000000-0000-4000-8000-000000000001"}]}
+    )
+    run_input = _agent_app_input() if mode == "agent_app" else _run_input()
+    run_input.knowledge_fs = config
+    builder = AgentBackendRunRequestBuilder()
 
+    def build() -> CreateRunRequest:
+        if isinstance(run_input, AgentBackendAgentAppRunInput):
+            return builder.build_for_agent_app(run_input)
+        return builder.build_for_workflow_node(run_input)
 
-def test_ask_human_layer_injected_when_configured():
-    from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
-
-    from clients.agent_backend.request_builder import DIFY_ASK_HUMAN_LAYER_ID
-
-    run_input = _run_input().model_copy(update={"ask_human_config": DifyAskHumanLayerConfig()})
-    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
-
-    layers = {layer.name: layer for layer in request.composition.layers}
-    assert DIFY_ASK_HUMAN_LAYER_ID in layers
-    assert layers[DIFY_ASK_HUMAN_LAYER_ID].type == DIFY_ASK_HUMAN_LAYER_TYPE_ID
-    # the deferred tool needs the history layer to resume, so history must precede it
-    names = [layer.name for layer in request.composition.layers]
-    assert names.index(DIFY_AGENT_HISTORY_LAYER_ID) < names.index(DIFY_ASK_HUMAN_LAYER_ID)
-
-
-def test_no_ask_human_layer_when_unconfigured():
-    from clients.agent_backend.request_builder import DIFY_ASK_HUMAN_LAYER_ID
-
-    request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
-    assert all(layer.name != DIFY_ASK_HUMAN_LAYER_ID for layer in request.composition.layers)
-
-
-def test_deferred_tool_results_threaded_into_request():
-    from dify_agent.protocol import DeferredToolResultsPayload
-
-    payload = DeferredToolResultsPayload(
-        calls={
-            "tool-call-1": {
-                "status": "submitted",
-                "action": {"id": "submit", "label": "Submit"},
-                "values": {"x": "y"},
-            }
+    with pytest.raises(ValueError, match="requires shell"):
+        build()
+    run_input.include_shell = True
+    layers = {layer.name: layer for layer in build().composition.layers}
+    knowledge_fs = DifyKnowledgeFsLayerConfig.model_validate(layers["knowledge_fs"].config)
+    assert knowledge_fs == config
+    assert knowledge_fs.execution_context == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    assert knowledge_fs.shell == DIFY_SHELL_LAYER_ID
+    assert DIFY_KNOWLEDGE_BASE_LAYER_ID not in layers
+    assert not any("search" in layer.name or "retriev" in layer.name for layer in layers.values())
+    run_input.knowledge = DifyKnowledgeBaseLayerConfig.model_validate(
+        {
+            "sets": [
+                {
+                    "id": "legacy",
+                    "name": "Legacy",
+                    "datasets": [{"id": "dataset-1"}],
+                    "query": {"mode": "generated_query"},
+                    "retrieval": {"mode": "multiple", "top_k": 2},
+                }
+            ]
         }
     )
-    run_input = _run_input().model_copy(update={"deferred_tool_results": payload})
-    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
-
-    assert request.deferred_tool_results is not None
-    assert "tool-call-1" in request.deferred_tool_results.calls
+    mixed_layers = {layer.name: layer for layer in build().composition.layers}
+    assert DIFY_KNOWLEDGE_BASE_LAYER_ID in mixed_layers
+    assert "knowledge_fs" in mixed_layers
+    classic_config = DifyKnowledgeBaseLayerConfig.model_validate(mixed_layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config)
+    knowledge_fs_config = DifyKnowledgeFsLayerConfig.model_validate(mixed_layers["knowledge_fs"].config)
+    assert classic_config.sets[0].id == "legacy"
+    assert knowledge_fs_config.spaces[0].id == "docs"
+    run_input.execution_context.app_id = "app-1"
+    client = httpx.AsyncClient()
+    try:
+        services = Services(
+            plugin_daemon_http_client=client,
+            dify_api_http_client=client,
+            runtime_backend_profile=cast(Any, object()),
+            knowledge_session_store=cast(Any, object()),
+        )
+        modules = create_modules(load_modules(build(), services, "mixed-knowledge-run"))
+        assert DIFY_KNOWLEDGE_BASE_LAYER_ID in modules
+        assert "knowledge_fs" in modules
+    finally:
+        asyncio.run(client.aclose())

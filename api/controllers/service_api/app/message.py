@@ -20,6 +20,7 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
+from libs.external_api import error_responses
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.errors.message import (
@@ -71,6 +72,7 @@ register_response_schema_models(
 
 @service_api_ns.route("/messages")
 class MessageListApi(Resource):
+    @error_responses(NotChatAppError)
     @service_api_ns.doc("list_messages")
     @service_api_ns.doc(
         summary="List Conversation Messages",
@@ -127,10 +129,10 @@ class MessageListApi(Resource):
             return MessageInfiniteScrollPagination(
                 limit=pagination.limit, has_more=pagination.has_more, data=items
             ).model_dump(mode="json")
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except FirstMessageNotExistsError:
-            raise NotFound("First Message Not Exists.")
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except FirstMessageNotExistsError as caught_error:
+            raise NotFound("First Message Not Exists.") from caught_error
 
 
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
@@ -177,8 +179,8 @@ class MessageFeedbackApi(Resource):
                 content=payload.content,
                 session=db.session(),
             )
-        except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+        except MessageNotExistsError as caught_error:
+            raise NotFound("Message Not Exists.") from caught_error
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -225,6 +227,7 @@ class AppGetFeedbacksApi(Resource):
 
 @service_api_ns.route("/messages/<uuid:message_id>/suggested")
 class MessageSuggestedApi(Resource):
+    @error_responses(NotChatAppError)
     @service_api_ns.doc("get_suggested_questions")
     @service_api_ns.doc(
         summary="Get Next Suggested Questions",
@@ -275,12 +278,12 @@ class MessageSuggestedApi(Resource):
                 invoke_from=InvokeFrom.SERVICE_API,
                 session=db.session(),
             )
-        except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
-        except SuggestedQuestionsAfterAnswerDisabledError:
-            raise BadRequest("Suggested Questions Is Disabled.")
-        except Exception:
+        except MessageNotExistsError as caught_error:
+            raise NotFound("Message Not Exists.") from caught_error
+        except SuggestedQuestionsAfterAnswerDisabledError as caught_error:
+            raise BadRequest("Suggested Questions Is Disabled.") from caught_error
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
         return SimpleResultStringListResponse(result="success", data=questions).model_dump(mode="json")

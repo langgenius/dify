@@ -20,7 +20,6 @@ export type ConsoleStateFixture = {
   isLoadingWorkspacePermissionKeys?: boolean
   workspacePermissionKeys?: string[]
   datasetRbacEnabled?: boolean
-  knowledgeFsEnabled?: boolean
   deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
   brandingEnabled?: boolean
   refreshCurrentWorkspace?: () => void
@@ -86,7 +85,6 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
     systemFeaturesAtom,
     createSystemFeaturesFixture({
       rbac_enabled: state.datasetRbacEnabled ?? false,
-      knowledge_fs_enabled: state.knowledgeFsEnabled ?? false,
       deployment_edition: state.deploymentEdition ?? 'COMMUNITY',
       branding: {
         enabled: state.brandingEnabled ?? false,

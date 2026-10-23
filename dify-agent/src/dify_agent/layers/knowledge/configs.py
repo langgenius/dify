@@ -1,4 +1,4 @@
-"""Client-safe DTOs for the Dify knowledge-base Agenton layer.
+"""Client-safe DTOs for the Dify knowledge-base layer.
 
 The public layer config carries one or more named knowledge sets. Each set owns
 its dataset ids plus query, retrieval, and metadata-filtering policy. Generated-
@@ -10,11 +10,10 @@ are kept only in JSON-safe ``runtime_state`` for session snapshots.
 
 from __future__ import annotations
 
-from typing import ClassVar, Final, Literal
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
-from agenton.layers import LayerConfig
 
 type DifyKnowledgeMetadataComparisonOperator = Literal[
     "contains",
@@ -36,8 +35,6 @@ type DifyKnowledgeMetadataComparisonOperator = Literal[
     "before",
     "after",
 ]
-
-DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID: Final[str] = "dify.knowledge_base"
 
 
 class DifyKnowledgeModelConfig(BaseModel):
@@ -239,7 +236,7 @@ class DifyKnowledgeEagerResult(BaseModel):
 
 
 class DifyKnowledgeRuntimeState(BaseModel):
-    """Serializable eager-retrieval state stored in Agenton session snapshots."""
+    """Serializable eager-retrieval state stored in session snapshots."""
 
     eager_config_fingerprint: str | None = None
     eager_results: list[DifyKnowledgeEagerResult] = Field(default_factory=list)
@@ -247,7 +244,7 @@ class DifyKnowledgeRuntimeState(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", validate_assignment=True)
 
 
-class DifyKnowledgeBaseLayerConfig(LayerConfig):
+class DifyKnowledgeBaseLayerConfig(BaseModel):
     """Public config for one knowledge-base layer.
 
     The model-visible surface stays fixed to ``knowledge_base_search``. Set
@@ -255,6 +252,8 @@ class DifyKnowledgeBaseLayerConfig(LayerConfig):
     controls, metadata filtering, and caller identity remain config/runtime
     concerns outside the tool schema.
     """
+
+    execution_context: str = "execution_context"
 
     sets: list[DifyKnowledgeSetConfig]
     max_result_content_chars: int = Field(default=2000, ge=1)
@@ -278,7 +277,6 @@ class DifyKnowledgeBaseLayerConfig(LayerConfig):
 
 
 __all__ = [
-    "DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID",
     "DifyKnowledgeBaseLayerConfig",
     "DifyKnowledgeDatasetConfig",
     "DifyKnowledgeEagerResult",

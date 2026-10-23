@@ -13,34 +13,29 @@ import { useMarketplace } from '../hooks'
 
 const mockQueryMarketplaceCollectionsAndPlugins = vi.fn()
 const mockQueryPlugins = vi.fn()
-const mockQueryPluginsWithDebounced = vi.fn()
 const mockResetQueryParams = vi.fn()
 const mockFetchNextPage = vi.fn()
 
 const mockUseMarketplaceCollectionsAndPlugins = vi.fn()
 const mockUseMarketplacePlugins = vi.fn()
-const mockInstalledIdsQueryOptions = vi.fn()
+const mockFetchInstalledIds = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplaceCollectionsAndPlugins: (...args: unknown[]) =>
     mockUseMarketplaceCollectionsAndPlugins(...args),
   useMarketplacePlugins: (...args: unknown[]) => mockUseMarketplacePlugins(...args),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    workspaces: {
-      current: {
-        plugin: {
-          installedIds: {
-            get: {
-              queryOptions: (...args: unknown[]) => mockInstalledIdsQueryOptions(...args),
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.installedIds.get': (...args: unknown[]) =>
+        mockFetchInstalledIds(...args),
+    }),
+  }
+})
 
 vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: vi.fn(() => 'https://marketplace.test/market'),
@@ -72,7 +67,6 @@ const setupHookMocks = (overrides?: {
     plugins: overrides?.plugins,
     resetQueryParams: mockResetQueryParams,
     queryPlugins: mockQueryPlugins,
-    queryPluginsWithDebounced: mockQueryPluginsWithDebounced,
     isLoading: overrides?.isPluginsLoading ?? false,
     fetchNextPage: mockFetchNextPage,
     hasNextPage: overrides?.hasNextPage ?? false,
@@ -85,32 +79,26 @@ const setupHookMocks = (overrides?: {
 describe('useMarketplace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockInstalledIdsQueryOptions.mockReturnValue({
-      queryKey: ['installed-plugin-ids', 'tool'],
-      queryFn: () => Promise.resolve({ plugin_ids: [] }),
-    })
+    mockFetchInstalledIds.mockResolvedValue({ plugin_ids: [] })
     setupHookMocks()
   })
 
   describe('Queries', () => {
-    it('does not query installed IDs or Marketplace data before activation', async () => {
-      renderHook(() => useMarketplace('', [], false), { wrapper: createWrapper() })
-
-      await waitFor(() => {
-        expect(mockInstalledIdsQueryOptions).toHaveBeenCalledWith({
-          input: { query: { category: 'tool' } },
-          enabled: false,
-        })
+    it('defers installed IDs and marketplace data until activation', async () => {
+      const { rerender } = renderHook(({ enabled }) => useMarketplace('', [], enabled), {
+        initialProps: { enabled: false },
+        wrapper: createWrapper(),
       })
+      expect(mockFetchInstalledIds).not.toHaveBeenCalled()
       expect(mockQueryMarketplaceCollectionsAndPlugins).not.toHaveBeenCalled()
       expect(mockQueryPlugins).not.toHaveBeenCalled()
+      rerender({ enabled: true })
+      await waitFor(() => expect(mockQueryMarketplaceCollectionsAndPlugins).toHaveBeenCalled())
+      expect(mockFetchInstalledIds).toHaveBeenCalledOnce()
     })
 
     it('should query plugins when the debounced page filter provides search text', async () => {
-      mockInstalledIdsQueryOptions.mockReturnValue({
-        queryKey: ['installed-plugin-ids', 'tool'],
-        queryFn: () => Promise.resolve({ plugin_ids: ['plugin-a'] }),
-      })
+      mockFetchInstalledIds.mockResolvedValue({ plugin_ids: ['plugin-a'] })
 
       renderHook(() => useMarketplace('alpha', []), { wrapper: createWrapper() })
 
@@ -123,16 +111,12 @@ describe('useMarketplace', () => {
           type: 'plugin',
         })
       })
-      expect(mockQueryPluginsWithDebounced).not.toHaveBeenCalled()
       expect(mockQueryMarketplaceCollectionsAndPlugins).not.toHaveBeenCalled()
       expect(mockResetQueryParams).not.toHaveBeenCalled()
     })
 
     it('should query plugins immediately when only tags are provided', async () => {
-      mockInstalledIdsQueryOptions.mockReturnValue({
-        queryKey: ['installed-plugin-ids', 'tool'],
-        queryFn: () => Promise.resolve({ plugin_ids: ['plugin-b'] }),
-      })
+      mockFetchInstalledIds.mockResolvedValue({ plugin_ids: ['plugin-b'] })
 
       renderHook(() => useMarketplace('', ['tag-1']), { wrapper: createWrapper() })
 
@@ -148,10 +132,7 @@ describe('useMarketplace', () => {
     })
 
     it('should query collections and reset plugins when no filters are provided', async () => {
-      mockInstalledIdsQueryOptions.mockReturnValue({
-        queryKey: ['installed-plugin-ids', 'tool'],
-        queryFn: () => Promise.resolve({ plugin_ids: ['plugin-c'] }),
-      })
+      mockFetchInstalledIds.mockResolvedValue({ plugin_ids: ['plugin-c'] })
 
       renderHook(() => useMarketplace('', []), { wrapper: createWrapper() })
 

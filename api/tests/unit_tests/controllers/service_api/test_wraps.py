@@ -3,6 +3,7 @@ Unit tests for Service API wraps (authentication decorators)
 """
 
 import uuid
+from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -24,13 +25,23 @@ from controllers.service_api.wraps import (
     validate_app_token,
     validate_dataset_token,
 )
+from core.db.session_factory import get_session_maker
 from enums import CloudPlan, DeploymentEdition
+from extensions.application_services.resource_access_token import build_resource_access_token_service
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
-from models.enums import ApiTokenType, EndUserType
+from models.enums import ApiTokenBindingResourceType, ApiTokenType, EndUserType
+from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
 from models.model import ApiToken, App, AppMode, DatasetApiTokenBinding, EndUser, IconType
-from tests.unit_tests.config_override import config_overrides_context
+from models.resource_access_token import (
+    ResourceAccessToken,
+    ResourceAccessTokenRelation,
+    ResourceAccessTokenResourceType,
+)
+from services.api_token_service import ApiTokenCache
+from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceCommandService
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 class _RecordingEndUserCommands:
@@ -43,9 +54,9 @@ class _RecordingEndUserCommands:
         return self._result
 
 
+@dataclass(eq=False, repr=False)
 class _AppScopedEndUserServicesStub:
-    def __init__(self, commands: _RecordingEndUserCommands) -> None:
-        self.commands = commands
+    commands: _RecordingEndUserCommands
 
 
 class _ApplicationServicesStub:
@@ -159,7 +170,7 @@ class TestValidateAndGetApiToken:
             # Act & Assert
             with pytest.raises(Unauthorized) as exc_info:
                 validate_and_get_api_token("app")
-            assert "Authorization scheme must be 'Bearer'" in str(exc_info.value)
+            assert "Authorization header must be provided and start with 'Bearer'" in str(exc_info.value)
 
     @patch("controllers.service_api.wraps.record_token_usage")
     @patch("controllers.service_api.wraps.ApiTokenCache")
@@ -215,6 +226,16 @@ class TestValidateAppToken:
         app = Flask(__name__)
         app.config["TESTING"] = True
         return app
+
+    @pytest.mark.parametrize("separator", ["\u00a0", "\u001c", "\u000b", "\u2003"])
+    def test_non_http_whitespace_never_resolves_resource_token(self, app: Flask, separator: str) -> None:
+        with (
+            app.test_request_context("/", headers={"Authorization": f"Bearer{separator}dify_rt_token"}),
+            patch.object(wraps_module, "application_services") as services,
+            pytest.raises(Unauthorized),
+        ):
+            validate_app_token(lambda: "ok")()
+        services.assert_not_called()
 
     @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
@@ -335,6 +356,65 @@ class TestValidateAppToken:
         assert login_manager.users == [end_user]
         assert signal.calls == [(app, end_user)]
 
+    @patch("controllers.service_api.wraps.user_logged_in")
+    @patch("controllers.service_api.wraps.current_app")
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(App, ResourceAccessToken, ResourceAccessTokenRelation, Tenant, Account, TenantAccountJoin)],
+        indirect=True,
+    )
+    def test_resource_access_token_allows_bound_app(
+        self,
+        mock_current_app,
+        mock_user_logged_in,
+        app: Flask,
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        _configure_current_app_mock(mock_current_app)
+        token_service = build_resource_access_token_service(database_client=get_session_maker())
+        monkeypatch.setattr(
+            wraps_module, "application_services", lambda: SimpleNamespace(resource_access_tokens=token_service)
+        )
+        tenant, account, _ = _persist_workspace(sqlite_session)
+        app_model = _app_model(tenant_id=tenant.id)
+        access_token = ResourceAccessToken(
+            tenant_id=tenant.id,
+            name="Production integration",
+            track_id="a" * 32,
+            token="sk-00000000-0000-0000-0000-000000000000",
+            created_by=account.id,
+        )
+        sqlite_session.add_all([app_model, access_token])
+        sqlite_session.flush()
+        sqlite_session.add(
+            ResourceAccessTokenRelation(
+                token_id=access_token.id,
+                resource_type=ResourceAccessTokenResourceType.APP,
+                app_id=app_model.id,
+                dataset_id=None,
+            )
+        )
+        sqlite_session.commit()
+
+        @validate_app_token
+        def protected_view(app_model):
+            return {"success": True, "app_id": app_model.id}
+
+        with (
+            app.test_request_context(
+                "/",
+                method="GET",
+                headers={"Authorization": f"Bearer {access_token.token}"},
+            ),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+        ):
+            result = protected_view()
+
+        assert result["app_id"] == app_model.id
+        sqlite_session.expire_all()
+        assert sqlite_session.get(ResourceAccessToken, access_token.id).last_used_at is not None
+
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
     def test_app_not_found_raises_forbidden(self, mock_validate_token, app: Flask, sqlite_session: Session):
@@ -354,7 +434,7 @@ class TestValidateAppToken:
         # Act & Assert
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.db.session", sqlite_session),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
         ):
             with pytest.raises(Forbidden) as exc_info:
                 protected_view()
@@ -382,7 +462,7 @@ class TestValidateAppToken:
         # Act & Assert
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.db.session", sqlite_session),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
         ):
             with pytest.raises(Forbidden) as exc_info:
                 protected_view()
@@ -409,7 +489,7 @@ class TestValidateAppToken:
         # Act & Assert
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.db.session", sqlite_session),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
         ):
             with pytest.raises(Forbidden) as exc_info:
                 protected_view()
@@ -679,7 +759,7 @@ class TestCloudEditionBillingRateLimitCheck:
         return app
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.FeatureService.get_knowledge_rate_limit")
+    @patch("services.knowledge_rate_limit_service.FeatureService.get_knowledge_rate_limit")
     def test_allows_within_rate_limit(self, mock_get_rate_limit, mock_validate_token, app: Flask):
         """Test that request is allowed when within rate limit."""
         # Arrange
@@ -691,7 +771,7 @@ class TestCloudEditionBillingRateLimitCheck:
         mock_get_rate_limit.return_value = mock_rate_limit
 
         # Mock redis operations
-        with patch("controllers.service_api.wraps.redis_client") as mock_redis:
+        with patch("services.knowledge_rate_limit_service.redis_client") as mock_redis:
             mock_redis.zcard.return_value = 50  # Under limit
 
             @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
@@ -708,7 +788,7 @@ class TestCloudEditionBillingRateLimitCheck:
             mock_redis.zremrangebyscore.assert_called_once()
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.FeatureService.get_knowledge_rate_limit")
+    @patch("services.knowledge_rate_limit_service.FeatureService.get_knowledge_rate_limit")
     @pytest.mark.parametrize("sqlite_session", [(RateLimitLog,)], indirect=True)
     def test_rejects_over_rate_limit(
         self,
@@ -732,9 +812,9 @@ class TestCloudEditionBillingRateLimitCheck:
         mock_get_rate_limit.return_value = mock_rate_limit
 
         with (
-            patch("controllers.service_api.wraps.redis_client") as mock_redis,
+            patch("services.knowledge_rate_limit_service.redis_client") as mock_redis,
             patch(
-                "controllers.service_api.wraps.db",
+                "services.knowledge_rate_limit_service.db",
                 SimpleNamespace(engine=sqlite_session.get_bind()),
             ),
         ):
@@ -790,6 +870,8 @@ class TestValidateDatasetToken:
         tenant, account, _ = _persist_workspace(sqlite_session)
         api_token = _api_token(tenant_id=tenant.id, token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
 
         @validate_dataset_token
         def protected_view(tenant_id):
@@ -807,6 +889,68 @@ class TestValidateDatasetToken:
         assert result["tenant_id"] == tenant.id
         assert account.current_tenant_id == tenant.id
 
+    @patch("controllers.service_api.wraps.user_logged_in")
+    @patch("controllers.service_api.wraps.current_app")
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(Dataset, ResourceAccessToken, ResourceAccessTokenRelation, Tenant, Account, TenantAccountJoin)],
+        indirect=True,
+    )
+    def test_resource_access_token_allows_bound_dataset(
+        self,
+        mock_current_app,
+        mock_user_logged_in,
+        app: Flask,
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        _configure_current_app_mock(mock_current_app)
+        token_service = build_resource_access_token_service(database_client=get_session_maker())
+        monkeypatch.setattr(
+            wraps_module, "application_services", lambda: SimpleNamespace(resource_access_tokens=token_service)
+        )
+        tenant, account, _ = _persist_workspace(sqlite_session)
+        dataset = Dataset(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant.id,
+            name="Customer Support",
+            created_by=account.id,
+            enable_api=True,
+        )
+        access_token = ResourceAccessToken(
+            tenant_id=tenant.id,
+            name="Production integration",
+            track_id="b" * 32,
+            token="sk-00000000-0000-0000-0000-000000000001",
+            created_by=account.id,
+        )
+        sqlite_session.add_all([dataset, access_token])
+        sqlite_session.flush()
+        sqlite_session.add(
+            ResourceAccessTokenRelation(
+                token_id=access_token.id,
+                resource_type=ResourceAccessTokenResourceType.KNOWLEDGE,
+                app_id=None,
+                dataset_id=dataset.id,
+            )
+        )
+        sqlite_session.commit()
+
+        @validate_dataset_token
+        def protected_view(tenant_id, dataset_id=None):
+            return {"success": True, "tenant_id": tenant_id, "dataset_id": dataset_id}
+
+        with (
+            app.test_request_context("/", method="GET", headers={"Authorization": f"Bearer {access_token.token}"}),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+        ):
+            result = protected_view(dataset_id=dataset.id)
+
+        assert result["tenant_id"] == tenant.id
+        assert result["dataset_id"] == dataset.id
+        sqlite_session.expire_all()
+        assert sqlite_session.get(ResourceAccessToken, access_token.id).last_used_at is not None
+
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
     def test_dataset_not_found_raises_not_found(self, mock_validate_token, app: Flask, sqlite_session: Session):
@@ -814,6 +958,8 @@ class TestValidateDatasetToken:
         # Arrange
         api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
 
         @validate_dataset_token
         def protected_view(dataset_id=None, **kwargs):
@@ -840,6 +986,8 @@ class TestValidateDatasetToken:
         """A key with no bindings passes the scope gate and proceeds to the dataset lookup."""
         api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
 
         @validate_dataset_token
         def protected_view(**kwargs):
@@ -857,7 +1005,39 @@ class TestValidateDatasetToken:
         """A key bound to one dataset is forbidden from reaching a different dataset."""
         api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
         sqlite_session.add(DatasetApiTokenBinding(api_token_id=api_token.id, dataset_id=str(uuid.uuid4())))
+        sqlite_session.commit()
+
+        @validate_dataset_token
+        def protected_view(**kwargs):
+            return {"success": True}
+
+        with (
+            app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+        ):
+            with pytest.raises(Forbidden) as exc_info:
+                protected_view(dataset_id=str(uuid.uuid4()))
+            assert "not authorized to access this knowledge base" in str(exc_info.value)
+
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_key_bound_only_to_knowledge_space_rejects_legacy_dataset(
+        self, mock_validate_token, app: Flask, sqlite_session: Session
+    ):
+        """KnowledgeFS space bindings restrict the key but never grant legacy dataset access."""
+        api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
+        mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
+        sqlite_session.add(
+            DatasetApiTokenBinding(
+                api_token_id=api_token.id,
+                resource_type=ApiTokenBindingResourceType.KNOWLEDGE_FS_SPACE,
+                control_space_id=str(uuid.uuid4()),
+            )
+        )
         sqlite_session.commit()
 
         @validate_dataset_token
@@ -879,6 +1059,8 @@ class TestValidateDatasetToken:
         """A scoped key cannot call collection endpoints (list/create) that carry no dataset id."""
         api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
         sqlite_session.add(DatasetApiTokenBinding(api_token_id=api_token.id, dataset_id=str(uuid.uuid4())))
         sqlite_session.commit()
 
@@ -899,6 +1081,8 @@ class TestValidateDatasetToken:
         """A scoped key targeting one of its bound datasets passes the scope gate."""
         api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
+        sqlite_session.add(api_token)
+        sqlite_session.commit()
         allowed_dataset_id = str(uuid.uuid4())
         sqlite_session.add(DatasetApiTokenBinding(api_token_id=api_token.id, dataset_id=allowed_dataset_id))
         sqlite_session.commit()
@@ -915,6 +1099,54 @@ class TestValidateDatasetToken:
             # downstream lookup raises NotFound instead of the scope Forbidden.
             with pytest.raises(NotFound):
                 protected_view(dataset_id=allowed_dataset_id)
+
+
+@pytest.mark.parametrize("dataset_id", [None, "00000000-0000-0000-0000-000000000001"])
+def test_deleted_space_key_cannot_expand_scope_from_stale_authentication_cache(
+    app: Flask, sqlite_session: Session, dataset_id: str | None
+) -> None:
+    tenant_id = str(uuid.uuid4())
+    token = _api_token(tenant_id=tenant_id, token_type=ApiTokenType.DATASET)
+    space = KnowledgeFSControlSpace(
+        tenant_id=tenant_id,
+        owner_account_id=str(uuid.uuid4()),
+        provisioning_key=str(uuid.uuid4()),
+        knowledge_space_id="remote-space",
+        state=KnowledgeFSControlSpaceState.ACTIVE,
+    )
+    sqlite_session.add_all([token, space])
+    sqlite_session.flush()
+    sqlite_session.add(
+        DatasetApiTokenBinding(
+            api_token_id=token.id,
+            resource_type=ApiTokenBindingResourceType.KNOWLEDGE_FS_SPACE,
+            control_space_id=space.id,
+        )
+    )
+    sqlite_session.commit()
+    cached = ApiTokenCache._deserialize_token(ApiTokenCache._serialize_token(token))
+
+    @validate_dataset_token
+    def protected_view(tenant_id: str, dataset_id: str | None = None) -> None:
+        pytest.fail("A deleted scoped key must never reach the endpoint")
+
+    with (
+        app.test_request_context(headers={"Authorization": f"Bearer {token.token}"}),
+        patch.object(ApiTokenCache, "get", return_value=cached),
+        patch.object(ApiTokenCache, "invalidate_by_tenant", return_value=False),
+        patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+    ):
+        with pytest.raises(Forbidden):
+            protected_view(dataset_id=dataset_id)
+        sqlite_session.rollback()
+        KnowledgeFSControlSpaceCommandService(get_session_maker()).request_deletion(
+            tenant_id=tenant_id,
+            control_space_id=space.id,
+            operation_id="delete-space",
+            idempotency_key="delete-space",
+        )
+        with pytest.raises(Unauthorized, match="no longer valid"):
+            protected_view(dataset_id=dataset_id)
 
 
 class TestFetchUserArg:

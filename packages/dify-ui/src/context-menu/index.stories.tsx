@@ -6,8 +6,8 @@ import {
   ContextMenuCheckboxItemIndicator,
   ContextMenuContent,
   ContextMenuGroup,
+  ContextMenuGroupLabel,
   ContextMenuItem,
-  ContextMenuLabel,
   ContextMenuLinkItem,
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
@@ -88,13 +88,13 @@ export const WithGroupLabel: Story = {
       <TriggerArea />
       <ContextMenuContent className="w-44">
         <ContextMenuGroup>
-          <ContextMenuLabel>Actions</ContextMenuLabel>
+          <ContextMenuGroupLabel>Actions</ContextMenuGroupLabel>
           <ContextMenuItem>Rename</ContextMenuItem>
           <ContextMenuItem>Duplicate</ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuGroup>
-          <ContextMenuLabel>Danger Zone</ContextMenuLabel>
+          <ContextMenuGroupLabel>Danger Zone</ContextMenuGroupLabel>
           <ContextMenuItem variant="destructive">Delete</ContextMenuItem>
         </ContextMenuGroup>
       </ContextMenuContent>

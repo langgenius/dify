@@ -5,7 +5,7 @@ from collections.abc import Generator, Iterable
 from copy import deepcopy
 from datetime import UTC, datetime
 from mimetypes import guess_type
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from sqlalchemy.orm import Session, sessionmaker
 from yarl import URL
@@ -49,7 +49,7 @@ class ToolEngine:
     def agent_invoke(
         session: Session,
         tool: Tool,
-        tool_parameters: Union[str, dict[str, Any]],
+        tool_parameters: str | dict[str, Any],
         user_id: str,
         tenant_id: str,
         message: Message,
@@ -88,7 +88,7 @@ class ToolEngine:
 
             def message_callback(
                 invocation_meta_dict: dict[str, ToolInvokeMeta],
-                messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None],
+                messages: Generator[ToolInvokeMessage | ToolInvokeMeta],
             ):
                 for message in messages:
                     if isinstance(message, ToolInvokeMeta):
@@ -167,7 +167,7 @@ class ToolEngine:
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         Workflow invokes the tool with the given arguments.
         """
@@ -211,7 +211,7 @@ class ToolEngine:
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]:
+    ) -> Generator[ToolInvokeMessage | ToolInvokeMeta]:
         """
         Invoke the tool with the given arguments.
         """
@@ -231,7 +231,7 @@ class ToolEngine:
             yield from tool.invoke(session, user_id, tool_parameters, conversation_id, app_id, message_id)
         except Exception as e:
             meta.error = str(e)
-            raise ToolEngineInvokeError(meta)
+            raise ToolEngineInvokeError(meta) from e
         finally:
             ended_at = datetime.now(UTC)
             meta.time_cost = (ended_at - started_at).total_seconds()
@@ -288,7 +288,7 @@ class ToolEngine:
     @staticmethod
     def _extract_tool_response_binary_and_text(
         tool_response: list[ToolInvokeMessage],
-    ) -> Generator[ToolInvokeMessageBinary, None, None]:
+    ) -> Generator[ToolInvokeMessageBinary]:
         """
         Extract tool response binary
         """

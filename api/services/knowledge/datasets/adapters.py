@@ -16,9 +16,10 @@ from models import Account, Dataset, Document
 from models.dataset import DatasetPermission, DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from repositories.knowledge.dataset_repository import _get_dataset
-from services.app.query_service import AppQueryService
+from services.app.query_service import RelatedApps
+from services.dataset_knowledge_fs_upgrade_service import KnowledgeFSUpgradeSnapshotService, upgrade_discovery_response
 from services.enterprise import rbac_service
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.dataset_read_service import get_dataset_queries, load_dataset_detail, load_dataset_details
 from services.knowledge.dataset_service import DatasetPermissionService, DatasetService, DocumentService
@@ -28,11 +29,14 @@ from services.knowledge.datasets.application import (
 )
 from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
 from services.knowledge.resource_scope import DatasetRef
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
+from services.rbac import contracts as rbac_contracts
+from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
 
 
 @contextmanager
-def _translate_permissions() -> Generator[None, None, None]:
+def _translate_permissions() -> Generator[None]:
     try:
         yield
     except NoPermissionError as error:
@@ -61,7 +65,7 @@ def _normalize_provider(item: DatasetDetailRecord) -> DatasetDetailRecord:
 
 
 def _status(document: Document, counts: tuple[int, int] | None = None) -> dict[str, Any]:
-    result = {
+    result: dict[str, Any] = {
         "id": document.id,
         "indexing_status": document.indexing_status,
         "processing_started_at": document.processing_started_at,
@@ -80,17 +84,20 @@ def _status(document: Document, counts: tuple[int, int] | None = None) -> dict[s
 
 class SQLAlchemyDatasetOperations:
     def __init__(
-        self, *, session_factory: sessionmaker[Session], tags: TagTargetQuery, app_queries: AppQueryService
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        tags: TagTargetQuery,
+        app_queries: RelatedApps,
+        members: MemberService,
     ) -> None:
         self._sessions = session_factory
         self._tags = tags
         self._app_queries = app_queries
+        self._members_service = members
 
     def visibility(self, context: RequestContext) -> DatasetVisibility:
-        with self._sessions() as session:
-            permissions = rbac_service.RBACService.MyPermissions.get(
-                context.active_workspace_id, context.account_id, session=session
-            )
+        permissions = self._members_service.permissions(context.active_workspace_id, context.account_id)
         scope = (
             rbac_service.RBACService.DatasetAccess.whitelist_resources(context.active_workspace_id, context.account_id)
             if dify_config.RBAC_ENABLED
@@ -136,6 +143,7 @@ class SQLAlchemyDatasetOperations:
                     query.keyword,
                     list(query.tag_ids),
                     query.include_all,
+                    creator_ids=list(query.creator_ids),
                     tags=self._tags,
                     accessible_dataset_ids=accessible_ids,
                     include_own_datasets=include_own,
@@ -151,9 +159,20 @@ class SQLAlchemyDatasetOperations:
                     )
                 ):
                     members.setdefault(dataset_id, []).append(account_id)
+            upgrade_jobs = KnowledgeFSUpgradeSnapshotService(self._sessions).get_latest_by_dataset_ids(
+                tenant_id=context.active_workspace_id,
+                dataset_ids=[item["id"] for item in data],
+                session=session,
+            )
+            knowledge_fs_enabled = get_knowledge_fs_features().enabled
             for item in data:
                 _normalize_provider(item)
                 item["partial_member_list"] = members.get(item["id"], [])
+                item["knowledge_fs_upgrade"] = upgrade_discovery_response(
+                    upgrade_jobs.get(item["id"]),
+                    feature_enabled=knowledge_fs_enabled,
+                    dataset_provider=str(item["provider"]),
+                ).model_dump(mode="json")
             return {
                 "data": data,
                 "has_more": not query.ids and page * limit < total,
@@ -162,11 +181,10 @@ class SQLAlchemyDatasetOperations:
                 "limit": limit,
             }
 
-    @staticmethod
-    def _detail(session: Session, context: RequestContext, dataset: Dataset) -> DatasetDetailRecord:
+    def _detail(self, session: Session, context: RequestContext, dataset: Dataset) -> DatasetDetailRecord:
         result = load_dataset_detail(dataset, session=session)
-        permissions = rbac_service.RBACService.DatasetPermissions.batch_get(
-            context.active_workspace_id, context.account_id, [dataset.id], session=session
+        permissions = self._members_service.resource_permissions(
+            context.active_workspace_id, context.account_id, rbac_contracts.RBACResourceType.DATASET, [dataset.id]
         )
         result["permission_keys"] = permissions.get(dataset.id, [])
         return result
@@ -175,8 +193,8 @@ class SQLAlchemyDatasetOperations:
         with self._sessions() as session:
             dataset = require_dataset(session, ref)
             result = load_dataset_detail(dataset, session=session)
-            permissions = rbac_service.RBACService.MyPermissions.get(
-                context.active_workspace_id, context.account_id, dataset_id=ref.dataset_id, session=session
+            permissions = self._members_service.permissions(
+                context.active_workspace_id, context.account_id, dataset_id=ref.dataset_id
             )
             result["permission_keys"] = permissions.dataset.permission_keys_by_resource_ids([dataset.id]).get(
                 dataset.id, []
@@ -202,7 +220,7 @@ class SQLAlchemyDatasetOperations:
                 context.active_workspace_id,
                 context.account_id,
                 dataset_id,
-                rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
+                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
         return result
 

@@ -125,7 +125,7 @@ function WorkspaceCardTrigger({
         onMouseEnter={onPrefetchWorkspaces}
         onFocus={onPrefetchWorkspaces}
         className={cn(
-          'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
+          'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors hover:bg-state-base-hover focus-visible:ring-inset',
           showCloudBilling ? 'rounded-t-xl' : 'rounded-xl',
           'data-popup-open:bg-linear-to-b data-popup-open:from-background-section-burn data-popup-open:to-background-section',
         )}
@@ -309,7 +309,6 @@ export function WorkspaceCard() {
       if (currentWorkspace.id === tenant_id) return
 
       await switchWorkspaceMutation.mutateAsync({ body: { tenant_id } })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       location.assign(`${location.origin}${basePath}`)
     } catch {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
@@ -331,7 +330,7 @@ export function WorkspaceCard() {
           onPlanClick={() => setPricing('open')}
         />
         <PopoverContent
-          placement="bottom-start"
+          align="start"
           sideOffset={-workspaceMenuTriggerHeight}
           alignOffset={workspaceMenuAlignOffset}
           className="w-70 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"

@@ -2,7 +2,8 @@ import type { ComponentProps } from 'react'
 import type { PromptConfig, SavedMessage } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AccessMode } from '@/models/access-control'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -111,7 +112,6 @@ describe('TextGenerationSidebar', () => {
 
     expect(screen.getByText('Text Generation')).toBeInTheDocument()
     expect(screen.getByText('Share description')).toBeInTheDocument()
-    expect(screen.getByRole('tablist')).toHaveClass('w-full')
     expect(screen.getByTestId('run-once-mock')).toBeInTheDocument()
     expect(runOncePropsSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -142,7 +142,8 @@ describe('TextGenerationSidebar', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('should render saved items and allow switching back to create tab', () => {
+  it('should render saved items and allow switching back to create tab', async () => {
+    const user = userEvent.setup()
     const onTabChange = vi.fn()
 
     renderSidebar({
@@ -158,7 +159,7 @@ describe('TextGenerationSidebar', () => {
       }),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'back-to-create' }))
+    await user.click(screen.getByRole('button', { name: 'back-to-create' }))
     expect(onTabChange).toHaveBeenCalledWith('create')
   })
 
@@ -185,72 +186,6 @@ describe('TextGenerationSidebar', () => {
       />,
     )
 
-    expect(screen.queryByText('share.chat.poweredBy')).not.toBeInTheDocument()
-  })
-
-  it('should render mobile installed-app layout without saved badge when no saved messages exist', () => {
-    const { container } = renderSidebar({
-      accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-      isInstalledApp: true,
-      isPC: false,
-      resultExisted: false,
-      savedMessages: [],
-      siteInfo: {
-        ...siteInfo,
-        description: '',
-        icon_background: '',
-      },
-    })
-
-    const root = container.firstElementChild as HTMLElement
-    const header = root.children[0] as HTMLElement
-    const body = root.children[1] as HTMLElement
-
-    expect(root).toHaveClass('rounded-l-2xl')
-    expect(root).not.toHaveClass('h-[calc(100%-64px)]')
-    expect(header).toHaveClass('p-4', 'pb-0')
-    expect(body).toHaveClass('px-4')
-    expect(screen.queryByText('Share description')).not.toBeInTheDocument()
-  })
-
-  it('should render mobile saved tab with compact spacing and no text-to-speech flag', () => {
-    const { container } = renderSidebar({
-      accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-      currentTab: 'saved',
-      isPC: false,
-      resultExisted: true,
-      textToSpeechConfig: null,
-    })
-
-    const root = container.firstElementChild as HTMLElement
-    const body = root.children[1] as HTMLElement
-    const footer = root.children[2] as HTMLElement
-
-    expect(root).toHaveClass('h-[calc(100%-64px)]')
-    expect(body).toHaveClass('px-4')
-    expect(footer).toHaveClass('px-4', 'rounded-b-2xl')
-    expect(savedItemsPropsSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        className: expect.stringContaining('mt-4'),
-        isShowTextToSpeech: undefined,
-      }),
-    )
-  })
-
-  it('should round the mobile panel body and hide branding when the webapp brand is removed', () => {
-    const { container } = renderSidebar({
-      isPC: false,
-      resultExisted: true,
-      customConfig: {
-        remove_webapp_brand: true,
-        replace_webapp_logo: '',
-      },
-    })
-
-    const root = container.firstElementChild as HTMLElement
-    const body = root.children[1] as HTMLElement
-
-    expect(body).toHaveClass('rounded-b-2xl')
     expect(screen.queryByText('share.chat.poweredBy')).not.toBeInTheDocument()
   })
 

@@ -45,8 +45,7 @@ Choose the label primitive by the control:
   each `Radio` option, `Switch`, and `NumberField` use `FieldLabel`.
 - Trigger-based `Select` fields use `SelectLabel`.
 - Date/time pickers use their own `DatePickerLabel`, `TimePickerLabel` or `DateTimePickerLabel`
-  to focus the trigger without opening it. They currently support native forms, not Base UI
-  Field/Form registration; see the [picker field contract].
+  to focus the trigger without opening it. They participate in Base UI Field/Form and native forms; see the [picker field contract].
 - `Slider` fields follow the [Base UI Slider anatomy] and use `SliderLabel`; only multi-thumb
   sliders add per-thumb `aria-label` to distinguish the thumbs.
 - `SelectGroupLabel` and `AutocompleteGroupLabel` label option groups inside popup content. They

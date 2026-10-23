@@ -22,7 +22,7 @@ class ResolvedAgentStrategy(Protocol):
         app_id: str | None = None,
         message_id: str | None = None,
         credentials: InvokeCredentials | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]: ...
+    ) -> Generator[ToolInvokeMessage]: ...
 
 
 class AgentStrategyResolver(Protocol):
