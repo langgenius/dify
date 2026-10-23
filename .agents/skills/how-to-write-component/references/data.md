@@ -48,6 +48,7 @@ Read this document when a component consumes generated contracts, nullable API v
 
 - Static configuration owns path-invariant routing. Request-dependent authentication, setup, role, and tenant decisions belong to SSR or runtime decision boundaries.
 - Distinguish soft SSR cache warming from authoritative decisions. Prefetched or placeholder data must not grant access or represent successful availability.
+- Enforce authentication and authorization at each server action or API boundary; a client guard does not protect server execution. Keep request-specific mutable state scoped to its request, and partition shared sensitive caches by authoritative identity.
 - Treat Server Components as query prefetch-and-dehydrate owners by default. Do not render or pass an imperative query
   result when a browser observer can revalidate the same data unless ownership and freshness explicitly prevent drift.
 - Non-blocking RSC streaming requires pending-query dehydration without redacting Next.js server errors, a

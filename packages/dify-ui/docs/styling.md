@@ -34,6 +34,13 @@ See Base UI's [styling] and [composition] guides for the upstream contracts.
 
 ## Tailwind CSS v4
 
+Use utilities and component variants for component styles. When they cannot express a requirement,
+use scoped `*.module.css`; do not import component-specific plain CSS through a global stylesheet.
+
+Build conditional or composed class lists with the local `cn(...)` helper. Put defaults before
+incoming `className` so callers can override them, resolving state callbacks as described above.
+Do not introduce a custom combiner or assemble class lists with concatenation or `.join(' ')`.
+
 Import Tailwind from the consumer's root stylesheet as described in the [Tailwind CSS v4 upgrade
 guide], then import the Dify UI CSS entry:
 
