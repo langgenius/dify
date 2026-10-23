@@ -2,7 +2,6 @@
 
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
-import type { Placement } from '../internal/placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -15,7 +14,6 @@ import {
   floatingSeparatorClassName,
   positionerClassName,
 } from '../internal/overlay'
-import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 type AutocompleteActions = BaseAutocomplete.Root.Actions
@@ -267,18 +265,15 @@ function AutocompleteIcon({ className, children, ...props }: AutocompleteIconPro
 const AutocompletePortal = BaseAutocomplete.Portal
 type AutocompletePortalProps = BaseAutocomplete.Portal.Props
 
-type AutocompletePositionerProps = Omit<BaseAutocomplete.Positioner.Props, 'side' | 'align'> & {
-  placement?: Placement
-}
+type AutocompletePositionerProps = BaseAutocomplete.Positioner.Props
 
 function AutocompletePositioner({
   className,
-  placement = 'bottom-start',
+  side = 'bottom',
+  align = 'start',
   sideOffset = 4,
   ...props
 }: AutocompletePositionerProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <BaseAutocomplete.Positioner
       side={side}

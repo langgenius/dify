@@ -191,7 +191,8 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
         )}
         <DropdownMenuContent
           onKeyDown={(event) => handleShortcutMenuKeyDown(event, shortcutMappings, handleSelect)}
-          placement="bottom-start"
+          side="bottom"
+          align="start"
           sideOffset={8}
           alignOffset={-4}
           className="w-71 px-1"

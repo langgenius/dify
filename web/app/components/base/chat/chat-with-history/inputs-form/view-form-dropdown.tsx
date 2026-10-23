@@ -19,7 +19,8 @@ const ViewFormDropdown = () => {
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         sideOffset={4}
         alignOffset={4}
         className="border-none bg-transparent shadow-none"

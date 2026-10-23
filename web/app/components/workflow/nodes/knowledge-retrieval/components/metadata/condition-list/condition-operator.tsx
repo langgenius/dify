@@ -60,7 +60,8 @@ const ConditionOperator = ({
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         sideOffset={4}
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >

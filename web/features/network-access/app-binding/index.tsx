@@ -533,7 +533,8 @@ function AccessControlSession({
             initialFocus={(interactionType) =>
               interactionType === 'keyboard' || interactionType === '' ? true : panelRef.current
             }
-            placement="bottom-end"
+            side="bottom"
+            align="end"
             className="w-100 rounded-2xl border-divider-regular p-0 backdrop-blur-[5px] transition-none data-starting-style:scale-100 data-starting-style:opacity-100"
           >
             {showPaywall ? (

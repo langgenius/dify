@@ -3,7 +3,6 @@
 import type { ComponentRenderFn, HTMLProps } from '@base-ui/react/types'
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
-import type { Placement } from '../internal/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -16,7 +15,6 @@ import {
   floatingSeparatorClassName,
   positionerClassName,
 } from '../internal/overlay'
-import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 type SelectActions = BaseSelect.Root.Actions
@@ -156,20 +154,17 @@ function SelectSeparator({ className, ...props }: SelectSeparatorProps) {
 const SelectPortal = BaseSelect.Portal
 type SelectPortalProps = BaseSelect.Portal.Props
 
-type SelectPositionerProps = Omit<BaseSelect.Positioner.Props, 'side' | 'align'> & {
-  placement?: Placement
-}
+type SelectPositionerProps = BaseSelect.Positioner.Props
 
 function SelectPositioner({
-  placement = 'bottom-start',
+  side = 'bottom',
+  align = 'start',
   sideOffset = 4,
   alignOffset = 0,
   alignItemWithTrigger = false,
   className,
   ...props
 }: SelectPositionerProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <BaseSelect.Positioner
       side={side}
@@ -217,13 +212,14 @@ function SelectList({ className, ...props }: SelectListProps) {
 }
 
 type SelectContentProps = Omit<SelectPopupProps, 'children'> &
-  Pick<SelectPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+  Pick<SelectPositionerProps, 'alignOffset' | 'side' | 'align' | 'sideOffset'> & {
     children: React.ReactNode
   }
 
 function SelectContent({
   children,
-  placement = 'bottom-start',
+  side = 'bottom',
+  align = 'start',
   sideOffset = 4,
   alignOffset = 0,
   className,
@@ -231,7 +227,7 @@ function SelectContent({
 }: SelectContentProps) {
   return (
     <SelectPortal>
-      <SelectPositioner placement={placement} sideOffset={sideOffset} alignOffset={alignOffset}>
+      <SelectPositioner side={side} align={align} sideOffset={sideOffset} alignOffset={alignOffset}>
         <SelectPopup className={className} {...props}>
           <SelectList>{children}</SelectList>
         </SelectPopup>

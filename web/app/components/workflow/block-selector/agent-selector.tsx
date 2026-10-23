@@ -53,14 +53,14 @@ export function AgentSelectorMenu({ children }: { children: ReactNode }) {
 
 export const AgentSelectorMenuTrigger = DropdownMenuTrigger
 
-type AgentSelectorMenuContentProps = {
-  placement?: DropdownMenuContentProps['placement']
+type AgentSelectorMenuContentProps = Pick<DropdownMenuContentProps, 'side' | 'align'> & {
   onSelect: (agent: AgentRosterNodeData) => void
   onStartFromScratch?: () => void
 }
 
 export function AgentSelectorMenuContent({
-  placement = 'bottom-end',
+  side = 'bottom',
+  align = 'end',
   onSelect,
   onStartFromScratch,
 }: AgentSelectorMenuContentProps) {
@@ -68,7 +68,8 @@ export function AgentSelectorMenuContent({
 
   return (
     <DropdownMenuContent
-      placement={placement}
+      side={side}
+      align={align}
       sideOffset={4}
       aria-label={t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
       className="w-60"
@@ -283,7 +284,8 @@ export function AgentBlockItem({
         />
       </AgentSelectorMenuTrigger>
       <AgentSelectorMenuContent
-        placement="right-start"
+        side="right"
+        align="start"
         onSelect={onSelect}
         onStartFromScratch={onStartFromScratch}
       />

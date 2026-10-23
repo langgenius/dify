@@ -251,7 +251,9 @@ function ModelSelectorTrigger({
         }
       />
       {triggerTooltipLabel && (
-        <TooltipContent placement="top">{triggerTooltipLabel}</TooltipContent>
+        <TooltipContent side="top" align="center">
+          {triggerTooltipLabel}
+        </TooltipContent>
       )}
     </Tooltip>
   )

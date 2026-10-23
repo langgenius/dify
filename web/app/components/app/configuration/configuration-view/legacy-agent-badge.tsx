@@ -21,7 +21,8 @@ export function LegacyAgentBadge() {
         {t(($) => $['legacyAgentBadge.label'], { ns: 'appDebug' })}
       </PopoverTrigger>
       <PopoverContent
-        placement="bottom-start"
+        side="bottom"
+        align="start"
         sideOffset={6}
         className="max-w-75 px-3 py-2 system-xs-regular text-text-tertiary"
       >

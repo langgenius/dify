@@ -58,7 +58,8 @@ export function Sort<const Field extends string | number>({
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            placement="bottom-start"
+            side="bottom"
+            align="start"
             sideOffset={4}
             className="relative w-60 p-0"
           >

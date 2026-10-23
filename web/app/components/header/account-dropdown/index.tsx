@@ -85,7 +85,8 @@ function AppearanceSubmenu() {
         />
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
-        placement="right-start"
+        side="right"
+        align="start"
         sideOffset={6}
         className="max-h-90 w-34.75 px-1"
       >
@@ -279,7 +280,8 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
             })
             return false
           }}
-          placement="top-start"
+          side="top"
+          align="start"
           sideOffset={6}
           alignOffset={4}
           className={mainNavMenuPopupClassName}

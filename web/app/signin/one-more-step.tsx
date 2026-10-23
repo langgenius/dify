@@ -144,7 +144,8 @@ const OneMoreStep = () => {
                   }
                 />
                 <PopoverContent
-                  placement="top"
+                  side="top"
+                  align="center"
                   className="w-[256px] px-3 py-2 text-xs font-medium text-text-tertiary"
                 >
                   <div>

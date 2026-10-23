@@ -51,7 +51,11 @@ const Statistics = ({ expand, documentCount, relatedApps }: StatisticsProps) => 
               </button>
             }
           />
-          <PopoverContent placement="top-start" className="border-0 bg-transparent p-0 shadow-none">
+          <PopoverContent
+            side="top"
+            align="start"
+            className="border-0 bg-transparent p-0 shadow-none"
+          >
             {hasRelatedApps ? (
               <LinkedAppsPanel relatedApps={relatedApps.data} isMobile={!expand} />
             ) : (

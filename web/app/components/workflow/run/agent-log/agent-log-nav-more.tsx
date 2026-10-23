@@ -30,7 +30,8 @@ const AgentLogNavMore = ({ options, onShowAgentOrToolLog }: AgentLogNavMoreProps
         }
       />
       <DropdownMenuContent
-        placement="bottom-start"
+        side="bottom"
+        align="start"
         sideOffset={2}
         alignOffset={-54}
         className="w-34 p-1"

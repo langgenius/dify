@@ -48,7 +48,8 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
           </button>
         )}
         <PopoverContent
-          placement="bottom-start"
+          side="bottom"
+          align="start"
           sideOffset={4}
           className="w-60 rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
         >

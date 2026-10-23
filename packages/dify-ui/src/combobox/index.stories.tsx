@@ -598,7 +598,7 @@ function InlinePopoverDemo() {
         }}
       >
         <PopoverTrigger render={<Button variant="secondary" />}>Choose reviewer</PopoverTrigger>
-        <PopoverContent placement="bottom-start" sideOffset={4} className="w-80 p-0">
+        <PopoverContent side="bottom" align="start" sideOffset={4} className="w-80 p-0">
           <PopoverTitle className="sr-only">Choose reviewer</PopoverTitle>
           <Combobox
             inline

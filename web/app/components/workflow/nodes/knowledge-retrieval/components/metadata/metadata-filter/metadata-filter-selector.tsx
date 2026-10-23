@@ -60,7 +60,7 @@ const MetadataFilterSelector = ({
         {selectedOption.value}
         <RiArrowDownSLine className="size-3.5" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-70 p-1">
+      <DropdownMenuContent side="bottom" align="end" sideOffset={4} className="w-70 p-1">
         <DropdownMenuRadioGroup value={value} onValueChange={onSelect}>
           {options.map((option) => (
             <DropdownMenuRadioItem

@@ -242,7 +242,7 @@ function DatasetScopeContent({
                   {addLabel}
                 </ComboboxTrigger>
                 <ComboboxPortal>
-                  <ComboboxPositioner placement="bottom">
+                  <ComboboxPositioner side="bottom" align="center">
                     <ComboboxPopup
                       aria-label={searchLabel}
                       className="w-[min(20rem,var(--available-width))]"

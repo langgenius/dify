@@ -212,7 +212,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
                       </button>
                     }
                   />
-                  <TooltipContent placement="bottom" sideOffset={4}>
+                  <TooltipContent side="bottom" align="center" sideOffset={4}>
                     {debugUrlCopied
                       ? t(($) => $[`${i18nPrefix}.debugUrlCopied`], { ns: 'workflowIntegrations' })
                       : t(($) => $[`${i18nPrefix}.debugUrlCopy`], { ns: 'workflowIntegrations' })}

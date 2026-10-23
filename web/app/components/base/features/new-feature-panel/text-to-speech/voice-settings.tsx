@@ -37,7 +37,8 @@ const VoiceSettings = ({
         render={trigger ?? <div className="flex">{children}</div>}
       />
       <PopoverContent
-        placement={placementLeft ? 'left' : 'top'}
+        side={placementLeft ? 'left' : 'top'}
+        align="center"
         sideOffset={placementLeft ? 32 : 4}
         className="border-none bg-transparent shadow-none"
       >

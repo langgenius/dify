@@ -52,7 +52,8 @@ const SelectVarType: FC<Props> = ({ onChange }) => {
     <DropdownMenu>
       <DropdownMenuTrigger render={<OperationButton operation="add" />} />
       <DropdownMenuContent
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         sideOffset={8}
         alignOffset={-2}
         className="min-w-48 rounded-lg border bg-components-panel-bg-blur p-0 backdrop-blur-xs"

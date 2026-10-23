@@ -110,7 +110,8 @@ const ToolPicker: FC<Props> = ({
     <Popover open={isShow} onOpenChange={onShowChange}>
       <PopoverTrigger render={resolvedTrigger} />
       <PopoverContent
-        placement="top"
+        side="top"
+        align="center"
         sideOffset={4}
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >

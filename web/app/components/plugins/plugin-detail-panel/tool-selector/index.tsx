@@ -168,7 +168,8 @@ function ToolSelector({
       ) : null}
 
       <PopoverContent
-        placement="left"
+        side="left"
+        align="center"
         sideOffset={4}
         className="border-none bg-transparent shadow-none"
       >

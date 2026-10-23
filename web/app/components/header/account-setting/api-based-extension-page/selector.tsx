@@ -89,7 +89,8 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
         />
         <PopoverPortal>
           <PopoverPositioner
-            placement="bottom-start"
+            side="bottom"
+            align="start"
             sideOffset={4}
             className="w-[calc(100%-32px)] max-w-xl"
           >

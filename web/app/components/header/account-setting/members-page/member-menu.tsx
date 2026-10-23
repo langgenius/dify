@@ -131,7 +131,12 @@ const MemberMenu = ({
             </IconButton>
           }
         />
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-45 rounded-xl">
+        <DropdownMenuContent
+          side="bottom"
+          align="end"
+          sideOffset={4}
+          className="min-w-45 rounded-xl"
+        >
           {canAssignRoles && (
             <DropdownMenuItem
               className="system-sm-medium text-text-secondary"

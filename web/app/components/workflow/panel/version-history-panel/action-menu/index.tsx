@@ -203,7 +203,8 @@ function ActionMenu(props: ActionMenuProps) {
         }
       />
       <DropdownMenuContent
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         sideOffset={4}
         className="w-max max-w-[calc(100vw-24px)] min-w-46 shadow-shadow-shadow-5"
       >

@@ -136,7 +136,8 @@ const RetrievalConfig: FC<Props> = ({
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         sideOffset={0}
         alignOffset={-2}
         className="border-none bg-transparent shadow-none"

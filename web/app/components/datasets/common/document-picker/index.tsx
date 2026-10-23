@@ -173,7 +173,7 @@ export function DocumentPicker({ datasetId, value, parentMode, onChange }: Props
         </ComboboxValue>
       </ComboboxTrigger>
       <ComboboxPortal>
-        <ComboboxPositioner placement="bottom-start" sideOffset={0}>
+        <ComboboxPositioner side="bottom" align="start" sideOffset={0}>
           <ComboboxPopup
             aria-label={t(($) => $['operation.search'], { ns: 'common' })}
             className="w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"

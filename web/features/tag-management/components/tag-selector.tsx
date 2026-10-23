@@ -280,7 +280,7 @@ export const TagSelector = ({
         />
       </ComboboxTrigger>
       <ComboboxPortal>
-        <ComboboxPositioner placement="bottom-start" sideOffset={4}>
+        <ComboboxPositioner side="bottom" align="start" sideOffset={4}>
           <ComboboxPopup
             onClick={(event) => event.stopPropagation()}
             aria-label={accessibleTriggerLabel}

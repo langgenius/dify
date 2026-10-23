@@ -162,7 +162,8 @@ export function AgentWorkingDirectoryBreadcrumb({
                           }
                         />
                         <DropdownMenuContent
-                          placement="bottom-start"
+                          side="bottom"
+                          align="start"
                           sideOffset={4}
                           className="w-34 p-1"
                         >

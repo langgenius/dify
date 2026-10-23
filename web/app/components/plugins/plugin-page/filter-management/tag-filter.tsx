@@ -83,7 +83,8 @@ const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
         )}
       </div>
       <PopoverContent
-        placement="bottom-start"
+        side="bottom"
+        align="start"
         sideOffset={4}
         className="border-none bg-transparent shadow-none"
       >

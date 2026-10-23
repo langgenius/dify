@@ -194,7 +194,7 @@ function PopupItem({
               </Button>
             }
           />
-          <PopoverContent placement="bottom-end">
+          <PopoverContent side="bottom" align="end">
             <PopoverTitle className="sr-only">{providerLabel}</PopoverTitle>
             {providerDetail && (
               <DropdownContent
@@ -250,7 +250,9 @@ function PopupItem({
                             </span>
                           }
                         />
-                        <TooltipContent placement="top">{suggestionTip}</TooltipContent>
+                        <TooltipContent side="top" align="center">
+                          {suggestionTip}
+                        </TooltipContent>
                       </Tooltip>
                     )}
                   </ModelName>

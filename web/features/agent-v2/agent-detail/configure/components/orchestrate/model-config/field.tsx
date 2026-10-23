@@ -73,7 +73,8 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
           showModelMeta={false}
           modelPredicate={isAgentCompatibleModel}
           modelSuggestionPredicate={isAgentSuggestedModel}
-          placement="bottom-end"
+          side="bottom"
+          align="end"
           setModel={({ modelId, provider, plugin_id }) => {
             onSelect({
               provider,

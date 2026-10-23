@@ -173,7 +173,8 @@ export default function CreatorContent({
               <span aria-hidden className="ml-1 i-ri-arrow-down-s-line size-4 text-text-tertiary" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              placement="bottom-end"
+              side="bottom"
+              align="end"
               sideOffset={4}
               className="min-w-[176px] p-1"
             >

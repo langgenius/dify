@@ -52,7 +52,8 @@ const GetSchema: FC<Props> = ({ onChange }) => {
           </span>
         </PopoverTrigger>
         <PopoverContent
-          placement="bottom-start"
+          side="bottom"
+          align="start"
           sideOffset={2}
           className="w-75 p-2"
           aria-label={t(($) => $['createTool.importFromUrl'], { ns: 'tools' })}
@@ -95,7 +96,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
           </span>
           <span className="i-ri-arrow-down-s-line size-3" aria-hidden />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={2} className="min-w-max">
+        <DropdownMenuContent side="bottom" align="end" sideOffset={2} className="min-w-max">
           {examples.map((item) => (
             <DropdownMenuItem
               key={item.key}

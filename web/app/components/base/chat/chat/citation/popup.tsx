@@ -60,7 +60,8 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
         }
       />
       <PopoverContent
-        placement="top-start"
+        side="top"
+        align="start"
         sideOffset={8}
         alignOffset={-2}
         className="border-none bg-transparent shadow-none"

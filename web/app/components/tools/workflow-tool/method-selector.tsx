@@ -40,7 +40,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ value, onChange }) => {
             </div>
           }
         />
-        <PopoverContent placement="bottom-start" sideOffset={4}>
+        <PopoverContent side="bottom" align="start" sideOffset={4}>
           <div className="relative w-[320px]">
             <div className="p-1">
               <button

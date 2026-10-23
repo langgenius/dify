@@ -112,7 +112,8 @@ function BuilderModelSelector({
           modelList={modelList}
           modelSelectorPopupClassName="h-[480px]! max-h-[480px]! w-80! max-w-80!"
           showModelMeta={false}
-          placement="bottom-start"
+          side="bottom"
+          align="start"
           trigger={
             <button
               type="button"

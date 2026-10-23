@@ -59,7 +59,8 @@ function AgentBuildChatEmptyState({
         </div>
         <CommunityEditionTip
           tip={communityEditionBuildModeTip}
-          placement="top"
+          side="top"
+          align="center"
           className="max-w-85"
         />
       </div>

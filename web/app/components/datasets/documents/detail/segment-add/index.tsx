@@ -152,7 +152,7 @@ export function SegmentAdd({
         >
           <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4', textColor)} />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-30">
+        <DropdownMenuContent side="bottom" align="end" sideOffset={4} className="min-w-30">
           <DropdownMenuItem
             className="system-md-regular"
             onClick={() => openSegmentDialog(showBatchModal)}

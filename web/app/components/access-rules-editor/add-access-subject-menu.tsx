@@ -154,7 +154,8 @@ function AddAccessSubjectMenu({
           <span>{t(($) => $['operation.add'], { ns: 'common' })}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          placement="bottom-end"
+          side="bottom"
+          align="end"
           sideOffset={8}
           aria-label={t(($) => $['accessRule.addMembersTitle'], { ns: 'permission' })}
           className="w-86 max-w-[calc(100vw-32px)]"

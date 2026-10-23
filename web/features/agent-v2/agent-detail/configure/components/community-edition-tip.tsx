@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
-type CommunityEditionTipProps = Pick<PopoverContentProps, 'className' | 'placement'> & {
+type CommunityEditionTipProps = Pick<PopoverContentProps, 'className' | 'side' | 'align'> & {
   tip: string
 }
 
@@ -17,7 +17,8 @@ type CommunityEditionTipProps = Pick<PopoverContentProps, 'className' | 'placeme
  */
 export function CommunityEditionTip({
   tip,
-  placement = 'bottom',
+  side = 'bottom',
+  align = 'center',
   className,
 }: CommunityEditionTipProps) {
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -47,7 +48,8 @@ export function CommunityEditionTip({
         }
       />
       <PopoverContent
-        placement={placement}
+        side={side}
+        align={align}
         className={cn('px-3 py-2 system-xs-regular text-text-tertiary', className)}
       >
         {tip}

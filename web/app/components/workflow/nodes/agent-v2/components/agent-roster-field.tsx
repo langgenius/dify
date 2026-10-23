@@ -215,7 +215,8 @@ function AgentRosterDrawer({
                             <span aria-hidden className="i-ri-more-fill size-4" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
-                            placement="bottom-end"
+                            side="bottom"
+                            align="end"
                             sideOffset={4}
                             className="w-max min-w-44"
                           >
@@ -449,7 +450,8 @@ export function AgentRosterField({
             {t(($) => $[`${i18nPrefix}.roster.change`], { ns: 'workflowAgent' })}
           </AgentSelectorMenuTrigger>
           <AgentSelectorMenuContent
-            placement="bottom-end"
+            side="bottom"
+            align="end"
             onSelect={onChange}
             onStartFromScratch={onStartFromScratch}
           />

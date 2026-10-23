@@ -163,7 +163,8 @@ const PermissionSelector = ({
         />
       </PopoverTrigger>
       <PopoverContent
-        placement="bottom-start"
+        side="bottom"
+        align="start"
         sideOffset={4}
         className="max-w-(--available-width) border-none bg-transparent shadow-none"
       >

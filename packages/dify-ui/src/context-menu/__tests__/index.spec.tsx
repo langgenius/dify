@@ -50,7 +50,7 @@ describe('context-menu wrapper', () => {
       const screen = await renderWithRoomAround(
         <ContextMenu>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
-          <ContextMenuContent placement="top-end" sideOffset={12} alignOffset={-3}>
+          <ContextMenuContent side="top" align="end" sideOffset={12} alignOffset={-3}>
             <ContextMenuItem>Custom content</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>,
@@ -86,7 +86,7 @@ describe('context-menu wrapper', () => {
   })
 
   describe('ContextMenuSubContent', () => {
-    it('should place sub-content inline-end-start when placement is omitted', async () => {
+    it('should place sub-content inline-end-start when side and align are omitted', async () => {
       const screen = await renderWithRoomAround(
         <ContextMenu>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>

@@ -59,7 +59,8 @@ export function EnvironmentDeployMenu({
       />
       <DropdownMenuContent
         aria-busy={isLoading || isRetrying}
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         sideOffset={4}
         className="w-42 p-1"
       >

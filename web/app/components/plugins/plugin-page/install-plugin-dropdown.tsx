@@ -176,7 +176,8 @@ const InstallPluginDropdown = ({
           }
         />
         <DropdownMenuContent
-          placement="bottom-start"
+          side="bottom"
+          align="start"
           sideOffset={4}
           className={cn('w-50 pb-2', popupClassName)}
         >

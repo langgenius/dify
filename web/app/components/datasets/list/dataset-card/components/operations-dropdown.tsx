@@ -108,7 +108,8 @@ const OperationsDropdown = ({
           <span className="i-ri-more-fill size-5 text-text-tertiary" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          placement="bottom-end"
+          side="bottom"
+          align="end"
           {...getStepByStepTourDropdownMenuContentProps({
             highlightPart: stepByStepTourHighlightPart,
             interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',

@@ -549,7 +549,7 @@ function SkillCard({
                 </IconButton>
               }
             />
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+            <DropdownMenuContent side="bottom" align="end" sideOffset={4} className="w-40">
               {canEdit && (
                 <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
                   <span

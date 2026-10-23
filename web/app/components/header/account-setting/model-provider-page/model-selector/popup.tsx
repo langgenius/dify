@@ -361,7 +361,8 @@ function ModelSelectorPreviewCard({
 
   return (
     <PreviewCardContent
-      placement="right"
+      side="right"
+      align="center"
       className="w-51.5 bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
     >
       <div className="flex flex-col gap-1">

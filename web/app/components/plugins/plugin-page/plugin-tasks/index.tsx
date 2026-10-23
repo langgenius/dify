@@ -14,13 +14,11 @@ import PluginTaskList from './components/plugin-task-list'
 import TaskStatusIndicator from './components/task-status-indicator'
 import { usePluginTaskStatus } from './hooks'
 
-type PluginTasksProps = {
+type PluginTasksProps = Pick<PopoverPositionerProps, 'anchor'> & {
   animatedSlot?: boolean
-  anchor?: () => Element | null
-  placement?: PopoverPositionerProps['placement']
 }
 
-const PluginTasks = ({ animatedSlot = false, anchor, placement = 'bottom' }: PluginTasksProps) => {
+const PluginTasks = ({ animatedSlot = false, anchor }: PluginTasksProps) => {
   const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const {
@@ -138,7 +136,7 @@ const PluginTasks = ({ animatedSlot = false, anchor, placement = 'bottom' }: Plu
           disabled={!canOpenPopover}
         />
         <PopoverPortal>
-          <PopoverPositioner placement={placement} sideOffset={4} anchor={anchor}>
+          <PopoverPositioner side="bottom" align="start" sideOffset={4} anchor={anchor}>
             <PopoverPopup aria-label={tip}>
               <PluginTaskList
                 runningPlugins={runningPlugins}

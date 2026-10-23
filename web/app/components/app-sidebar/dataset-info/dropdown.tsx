@@ -173,7 +173,8 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
         }
       />
       <DropdownMenuContent
-        placement={expand ? 'bottom-end' : 'right-start'}
+        side={expand ? 'bottom' : 'right'}
+        align={expand ? 'end' : 'start'}
         sideOffset={4}
         className="w-50"
       >

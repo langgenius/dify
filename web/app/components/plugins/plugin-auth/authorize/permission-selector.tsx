@@ -75,7 +75,8 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        placement="bottom-start"
+        side="bottom"
+        align="start"
         sideOffset={4}
         className="w-(--anchor-width) max-w-(--available-width)"
       >

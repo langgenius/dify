@@ -26,7 +26,6 @@ type PermissionTooltipWrapperProps = {
   children: ReactNode
   className?: string
   content: string
-  placement: 'top' | 'bottom'
   show: boolean
 }
 
@@ -34,7 +33,6 @@ function PermissionTooltipWrapper({
   children,
   className,
   content,
-  placement,
   show,
 }: PermissionTooltipWrapperProps) {
   const trigger = (
@@ -49,7 +47,7 @@ function PermissionTooltipWrapper({
   return (
     <Tooltip>
       <TooltipTrigger render={trigger} />
-      <TooltipContent placement={placement} sideOffset={8}>
+      <TooltipContent side="bottom" sideOffset={8}>
         {content}
       </TooltipContent>
     </Tooltip>
@@ -98,7 +96,6 @@ function IntegrationSidebarInstallActions({
       <PermissionTooltipWrapper
         show={!canManagement}
         content={permissionTooltip}
-        placement="bottom"
         className="min-w-0 flex-1"
       >
         <InstallPluginDropdown
@@ -113,7 +110,7 @@ function IntegrationSidebarInstallActions({
           onSwitchToMarketplaceTab={onSwitchToMarketplace}
         />
       </PermissionTooltipWrapper>
-      <PluginTasks animatedSlot anchor={() => actionRowRef.current} placement="bottom-start" />
+      <PluginTasks animatedSlot anchor={() => actionRowRef.current} />
     </div>
   )
 }
@@ -143,7 +140,6 @@ export function IntegrationSidebarUtilityActions({
     <div className="flex w-46 shrink-0 flex-col gap-px pt-2 pb-2.5">
       {canDebugger && (
         <DebugInfo
-          popupPlacement="top-start"
           triggerVariant="ghost"
           triggerClassName={sidebarUtilityActionClassName}
           triggerContent={
@@ -169,7 +165,8 @@ export function IntegrationSidebarUtilityActions({
             }
           />
           <PopoverContent
-            placement="top-start"
+            side="top"
+            align="start"
             sideOffset={4}
             className="border-0 bg-transparent p-0 shadow-none"
           >

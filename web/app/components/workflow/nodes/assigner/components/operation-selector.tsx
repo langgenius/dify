@@ -82,7 +82,8 @@ function OperationSelector({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        placement="bottom-start"
+        side="bottom"
+        align="start"
         sideOffset={4}
         className={cn('w-35', popupClassName)}
       >

@@ -1143,7 +1143,7 @@ export function FileTree({
                 </button>
               }
             />
-            <TooltipContent placement="right">
+            <TooltipContent side="right" align="center">
               {t(($) => $['skillManagement.detail.expandSidebar'])}
             </TooltipContent>
           </Tooltip>
@@ -1260,7 +1260,7 @@ export function FileTree({
                   />
                 }
               />
-              <TooltipContent placement="bottom" className="flex items-center gap-1">
+              <TooltipContent side="bottom" align="center" className="flex items-center gap-1">
                 <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
                 <KbdGroup>
                   {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
@@ -1292,7 +1292,7 @@ export function FileTree({
                   </button>
                 }
               />
-              <TooltipContent placement="bottom">
+              <TooltipContent side="bottom" align="center">
                 {t(($) => $['skillManagement.detail.collapseSidebar'])}
               </TooltipContent>
             </Tooltip>
@@ -1364,7 +1364,8 @@ export function FileTree({
                 <DropdownMenuContent
                   data-skill-file-menu
                   onKeyDown={handleRootMenuKeyDown}
-                  placement="bottom-end"
+                  side="bottom"
+                  align="end"
                   className={skillFileMenuPopupClassName}
                 >
                   <RootFileActionMenuItems
@@ -1604,7 +1605,8 @@ export function FileTree({
                   }
                 />
                 <PopoverContent
-                  placement="top-start"
+                  side="top"
+                  align="start"
                   sideOffset={4}
                   className="w-(--anchor-width) max-w-(--available-width) bg-components-panel-bg-blur p-1 shadow-shadow-shadow-5 backdrop-blur-[5px]"
                   aria-label={referenceCountLabel}

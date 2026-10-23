@@ -85,7 +85,8 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         sideOffset={6}
         className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-xs"
       >

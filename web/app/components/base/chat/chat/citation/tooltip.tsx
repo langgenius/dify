@@ -18,7 +18,7 @@ const CitationTooltip: FC<CitationTooltipProps> = ({ data, text, icon }) => {
         {icon}
         {data}
       </TooltipTrigger>
-      <TooltipContent data-testid="tooltip-popup" placement="top-start">
+      <TooltipContent data-testid="tooltip-popup" side="top" align="start">
         {text} {data}
       </TooltipContent>
     </Tooltip>

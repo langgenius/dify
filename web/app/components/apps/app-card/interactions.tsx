@@ -599,7 +599,8 @@ export function AppCardInteractions({
                 }
               />
               <DropdownMenuContent
-                placement="bottom-end"
+                side="bottom"
+                align="end"
                 sideOffset={4}
                 {...getStepByStepTourDropdownMenuContentProps({
                   highlightPart: stepByStepTourActionMenuHighlightPart,

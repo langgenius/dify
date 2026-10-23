@@ -153,7 +153,8 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
             />
             <PopoverPortal>
               <PopoverPositioner
-                placement="bottom-start"
+                side="bottom"
+                align="start"
                 sideOffset={4}
                 alignOffset={-40}
                 anchor={inputRef}

@@ -3,7 +3,6 @@
 import type * as React from 'react'
 import type { InputGroupProps } from '../input-group'
 import type { MenuItemVariant } from '../internal/menu'
-import type { Placement } from '../internal/placement'
 import { Menu } from '@base-ui/react/menu'
 import { cn } from '../cn'
 import { InputGroup } from '../input-group'
@@ -22,7 +21,6 @@ import {
   floatingSeparatorClassName,
   positionerClassName,
 } from '../internal/overlay'
-import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const DropdownMenu = Menu.Root
@@ -248,25 +246,16 @@ function DropdownMenuGroupLabel({ className, ...props }: DropdownMenuGroupLabelP
   )
 }
 
-type DropdownMenuPositionerProps = Omit<Menu.Positioner.Props, 'side' | 'align'> & {
-  placement: Placement
-}
+type DropdownMenuPositionerProps = Menu.Positioner.Props
 
 function DropdownMenuPositioner({
   className,
-  placement,
   sideOffset = 4,
-  alignOffset = 0,
   ...props
 }: DropdownMenuPositionerProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <Menu.Positioner
-      side={side}
-      align={align}
       sideOffset={sideOffset}
-      alignOffset={alignOffset}
       className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
@@ -294,14 +283,14 @@ function DropdownMenuPopup({ className, ...props }: DropdownMenuPopupProps) {
 }
 
 type DropdownMenuContentProps = Omit<DropdownMenuPopupProps, 'children'> &
-  Pick<DropdownMenuPositionerProps, 'alignOffset' | 'sideOffset'> & {
+  Pick<DropdownMenuPositionerProps, 'side' | 'align' | 'alignOffset' | 'sideOffset'> & {
     children: React.ReactNode
-    placement?: Placement
   }
 
 function DropdownMenuContent({
   children,
-  placement = 'bottom-end',
+  side = 'bottom',
+  align = 'end',
   sideOffset = 4,
   alignOffset = 0,
   className,
@@ -310,7 +299,8 @@ function DropdownMenuContent({
   return (
     <DropdownMenuPortal>
       <DropdownMenuPositioner
-        placement={placement}
+        side={side}
+        align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
       >
@@ -357,7 +347,8 @@ type DropdownMenuSubContentProps = DropdownMenuContentProps
 // Base UI's own submenu default: it opens away from the trigger and follows the text direction.
 function DropdownMenuSubContent({
   children,
-  placement = 'inline-end-start',
+  side = 'inline-end',
+  align = 'start',
   sideOffset = 4,
   alignOffset = 0,
   className,
@@ -366,7 +357,8 @@ function DropdownMenuSubContent({
   return (
     <DropdownMenuPortal>
       <DropdownMenuPositioner
-        placement={placement}
+        side={side}
+        align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
       >

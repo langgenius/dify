@@ -107,7 +107,7 @@ function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
   }
 
   return (
-    <DropdownMenuPositioner placement="bottom-end">
+    <DropdownMenuPositioner side="bottom" align="end">
       <DropdownMenuPopup
         finalFocus={() => (deletingRef.current ? (flowStore.getState().domNode ?? true) : true)}
         className={`${NODE_ACTIONS_MENU_WIDTH_CLASS_NAME} border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 shadow-lg backdrop-blur-[5px]`}
@@ -142,7 +142,7 @@ function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
                 </DropdownMenuItem>
                 <PopoverPortal>
                   <PopoverBackdrop />
-                  <PopoverPositioner placement="right-start" positionMethod="fixed">
+                  <PopoverPositioner side="right" align="start" positionMethod="fixed">
                     <ChangeBlockPopup
                       nodeId={model.id}
                       nodeData={model.data}

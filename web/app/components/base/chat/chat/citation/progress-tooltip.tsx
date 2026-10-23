@@ -24,7 +24,7 @@ const ProgressTooltip: FC<ProgressTooltipProps> = ({ data }) => {
         </div>
         {data}
       </TooltipTrigger>
-      <TooltipContent data-testid="progress-tooltip-popup" placement="top-start">
+      <TooltipContent data-testid="progress-tooltip-popup" side="top" align="start">
         {t(($) => $['chat.citation.hitScore'], { ns: 'common' })} {data}
       </TooltipContent>
     </Tooltip>

@@ -40,7 +40,8 @@ function VersionSelector({ versionLen, value, onChange }: VersionSelectorProps) 
         {moreThanOneVersion && <RiArrowDownSLine className="size-3" />}
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        placement="bottom-start"
+        side="bottom"
+        align="start"
         sideOffset={4}
         alignOffset={-12}
         className="w-52 p-1"

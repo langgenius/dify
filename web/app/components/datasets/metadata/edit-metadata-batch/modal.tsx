@@ -181,7 +181,8 @@ const EditMetadataBatchModal: FC<Props> = ({
             <div className="mt-3">
               <DatasetMetadataPicker
                 datasetId={datasetId}
-                placement="top-start"
+                side="top"
+                align="start"
                 sideOffset={4}
                 alignOffset={0}
                 onCreateMetadata={handleAddMetaData}

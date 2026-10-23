@@ -43,7 +43,8 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({ onUpload, disable
         }
       />
       <PopoverContent
-        placement="top-start"
+        side="top"
+        align="start"
         sideOffset={0}
         className="border-none bg-transparent shadow-none"
       >

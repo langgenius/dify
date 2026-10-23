@@ -30,7 +30,7 @@ const AddCondition = ({
           <span aria-hidden="true" className="i-ri-add-line size-3.5" />
           {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.add'], { ns: 'workflowModels' })}
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-start" sideOffset={12} className="w-80">
+        <DropdownMenuContent side="bottom" align="start" sideOffset={12} className="w-80">
           <DropdownMenuInputGroup>
             <span
               aria-hidden="true"

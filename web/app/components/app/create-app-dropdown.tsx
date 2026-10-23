@@ -54,7 +54,8 @@ export function CreateAppDropdown({
         }
       />
       <DropdownMenuContent
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         sideOffset={4}
         {...getStepByStepTourDropdownMenuContentProps({
           disableMotion: menu.controlled,

@@ -143,7 +143,8 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
                               />
                             </PopoverTrigger>
                             <PopoverContent
-                              placement="top"
+                              side="top"
+                              align="center"
                               aria-labelledby={`${failedEmailId}-${index}`}
                               className="max-w-75 p-2 system-xs-medium wrap-break-word text-text-secondary"
                             >

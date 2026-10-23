@@ -60,7 +60,8 @@ const ColorPicker = ({ theme, onThemeChange }: ColorPickerProps) => {
         }
       />
       <PopoverContent
-        placement="top"
+        side="top"
+        align="center"
         sideOffset={4}
         className="border-none bg-transparent shadow-none"
       >

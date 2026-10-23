@@ -82,7 +82,8 @@ const JsonImporter: FC<JsonImporterProps> = ({ onSubmit, updateBtnWidth }) => {
         </span>
       </PopoverTrigger>
       <PopoverContent
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         sideOffset={4}
         alignOffset={16}
         className="border-none bg-transparent shadow-none"

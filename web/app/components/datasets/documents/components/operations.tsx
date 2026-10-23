@@ -396,7 +396,8 @@ const Operations = ({
               </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              placement="bottom-end"
+              side="bottom"
+              align="end"
               sideOffset={4}
               className={cn('w-50', className)}
             >

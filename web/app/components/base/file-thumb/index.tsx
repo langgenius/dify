@@ -71,7 +71,9 @@ const FileThumb = ({ file, size, className, onClick }: FileThumbProps) => {
           </button>
         }
       />
-      <TooltipContent placement="top">{name}</TooltipContent>
+      <TooltipContent side="top" align="center">
+        {name}
+      </TooltipContent>
     </Tooltip>
   )
 }

@@ -71,7 +71,8 @@ const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, 
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         sideOffset={4}
         alignOffset={44}
         className="border-none bg-transparent shadow-none"

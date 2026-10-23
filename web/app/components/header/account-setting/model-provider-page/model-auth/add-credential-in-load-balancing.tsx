@@ -102,7 +102,8 @@ const AddCredentialInLoadBalancing = ({
       currentCustomConfigurationModelFixedFields={currentCustomConfigurationModelFixedFields}
       onItemClick={onSelectCredential}
       hideAddAction={!canCreateCredential}
-      placement="bottom-start"
+      side="bottom"
+      align="start"
       popupTitle={
         isCustomModel
           ? t(($) => $['modelProvider.auth.modelCredentials'], { ns: 'modelProvider' })

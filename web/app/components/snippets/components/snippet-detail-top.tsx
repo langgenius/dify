@@ -94,7 +94,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
             />
           }
         />
-        <TooltipContent placement="bottom" className="flex items-center gap-1">
+        <TooltipContent side="bottom" align="center" className="flex items-center gap-1">
           <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
           <KbdGroup>
             {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (

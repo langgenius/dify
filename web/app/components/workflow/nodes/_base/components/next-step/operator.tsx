@@ -58,7 +58,8 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
   return (
     <BlockSelector
       onSelect={handleSelect}
-      placement="top-end"
+      side="top"
+      align="end"
       sideOffset={6}
       alignOffset={8}
       trigger={triggerElement}
@@ -96,7 +97,7 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
         }
       />
       <DropdownMenuPortal>
-        <DropdownMenuPositioner placement="bottom-end" sideOffset={4} alignOffset={-4}>
+        <DropdownMenuPositioner side="bottom" align="end" sideOffset={4} alignOffset={-4}>
           <DropdownMenuPopup>
             <div className="min-w-30 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
               <div className="p-1">

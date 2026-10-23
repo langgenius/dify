@@ -51,7 +51,8 @@ export default function AppSelector() {
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         sideOffset={4}
         className="w-60 max-w-80 divide-y divide-divider-subtle bg-components-panel-bg-blur p-0"
       >

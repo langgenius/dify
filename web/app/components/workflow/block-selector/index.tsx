@@ -33,7 +33,7 @@ import { BlockSelectorPanels } from './tabs'
 
 export type BlockSelectorProps = Pick<
   PopoverPositionerProps,
-  'alignOffset' | 'placement' | 'sideOffset'
+  'alignOffset' | 'side' | 'align' | 'sideOffset'
 > & {
   finalFocus?: PopoverPopupProps['finalFocus']
   triggerRef?: Ref<HTMLButtonElement>
@@ -69,7 +69,8 @@ function BlockSelector({
   triggerTooltip,
   triggerRef,
   finalFocus,
-  placement = 'right',
+  side = 'right',
+  align = 'center',
   sideOffset,
   alignOffset,
   triggerClassName,
@@ -166,7 +167,8 @@ function BlockSelector({
       {triggerWithTooltip}
       <PopoverPortal>
         <PopoverPositioner
-          placement={placement}
+          side={side}
+          align={align}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
           positionMethod="fixed"

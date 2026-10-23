@@ -167,7 +167,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
         )}
       </div>
       <ComboboxPortal>
-        <ComboboxPositioner placement="bottom-start" sideOffset={4}>
+        <ComboboxPositioner side="bottom" align="start" sideOffset={4}>
           <ComboboxPopup
             aria-label={t(($) => $['studio.filters.creators'], { ns: 'app' })}
             className="w-[min(280px,var(--available-width))] min-w-[min(var(--anchor-width),var(--available-width))] bg-components-panel-bg-blur text-sm text-text-secondary backdrop-blur-[5px]"

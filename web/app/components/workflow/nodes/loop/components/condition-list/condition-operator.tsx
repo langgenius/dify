@@ -65,7 +65,8 @@ const ConditionOperator = ({
         <RiArrowDownSLine className="size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        placement="bottom-end"
+        side="bottom"
+        align="end"
         sideOffset={4}
         className="rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
       >

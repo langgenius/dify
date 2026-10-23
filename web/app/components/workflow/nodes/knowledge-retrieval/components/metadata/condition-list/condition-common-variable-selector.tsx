@@ -65,7 +65,8 @@ const ConditionCommonVariableSelector = ({
         }}
       />
       <PopoverContent
-        placement="bottom-start"
+        side="bottom"
+        align="start"
         sideOffset={4}
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >

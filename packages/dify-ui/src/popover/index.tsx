@@ -1,12 +1,10 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../internal/placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
 import { focusRingClassName } from '../internal/focus'
 import { floatingPopupAnimationClassName, positionerClassName } from '../internal/overlay'
-import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const Popover = BasePopover.Root
@@ -53,25 +51,12 @@ function PopoverBackdrop({ className, ...props }: PopoverBackdropProps) {
   )
 }
 
-type PopoverPositionerProps = Omit<BasePopover.Positioner.Props, 'side' | 'align'> & {
-  placement?: Placement
-}
+type PopoverPositionerProps = BasePopover.Positioner.Props
 
-function PopoverPositioner({
-  className,
-  placement = 'bottom',
-  sideOffset = 8,
-  alignOffset = 0,
-  ...props
-}: PopoverPositionerProps) {
-  const { side, align } = parsePlacement(placement)
-
+function PopoverPositioner({ className, sideOffset = 8, ...props }: PopoverPositionerProps) {
   return (
     <BasePopover.Positioner
-      side={side}
-      align={align}
       sideOffset={sideOffset}
-      alignOffset={alignOffset}
       className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
@@ -96,13 +81,14 @@ function PopoverPopup({ className, ...props }: PopoverPopupProps) {
 }
 
 type PopoverContentProps = Omit<PopoverPopupProps, 'children'> &
-  Pick<PopoverPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+  Pick<PopoverPositionerProps, 'alignOffset' | 'side' | 'align' | 'sideOffset'> & {
     children: React.ReactNode
   }
 
 function PopoverContent({
   children,
-  placement = 'bottom',
+  side = 'bottom',
+  align = 'center',
   sideOffset = 8,
   alignOffset = 0,
   className,
@@ -110,7 +96,12 @@ function PopoverContent({
 }: PopoverContentProps) {
   return (
     <PopoverPortal>
-      <PopoverPositioner placement={placement} sideOffset={sideOffset} alignOffset={alignOffset}>
+      <PopoverPositioner
+        side={side}
+        align={align}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+      >
         <PopoverPopup
           className={(state) =>
             cn(

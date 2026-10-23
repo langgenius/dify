@@ -485,7 +485,7 @@ function CommentThreadComponent({
                   </button>
                 }
               />
-              <TooltipContent placement="top">
+              <TooltipContent side="top" align="center">
                 {t(($) => $['comments.aria.deleteComment'], { ns: 'workflowComments' })}
               </TooltipContent>
             </Tooltip>
@@ -511,7 +511,7 @@ function CommentThreadComponent({
                   </button>
                 }
               />
-              <TooltipContent placement="top">
+              <TooltipContent side="top" align="center">
                 {t(($) => $['comments.aria.resolveComment'], { ns: 'workflowComments' })}
               </TooltipContent>
             </Tooltip>
@@ -534,7 +534,7 @@ function CommentThreadComponent({
                   </button>
                 }
               />
-              <TooltipContent placement="top">
+              <TooltipContent side="top" align="center">
                 {t(($) => $['comments.aria.previousComment'], { ns: 'workflowComments' })}
               </TooltipContent>
             </Tooltip>
@@ -556,7 +556,7 @@ function CommentThreadComponent({
                   </button>
                 }
               />
-              <TooltipContent placement="top">
+              <TooltipContent side="top" align="center">
                 {t(($) => $['comments.aria.nextComment'], { ns: 'workflowComments' })}
               </TooltipContent>
             </Tooltip>
@@ -586,7 +586,8 @@ function CommentThreadComponent({
                   <RiMoreFill className="size-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  placement="bottom-end"
+                  side="bottom"
+                  align="end"
                   sideOffset={4}
                   className="w-36 backdrop-blur-[10px]"
                 >
@@ -679,7 +680,8 @@ function CommentThreadComponent({
                           <RiMoreFill className="size-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
-                          placement="bottom-end"
+                          side="bottom"
+                          align="end"
                           sideOffset={4}
                           className="w-36 backdrop-blur-[10px]"
                           data-reply-menu
