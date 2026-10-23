@@ -8,6 +8,7 @@ from zipfile import ZipFile
 
 import pytest
 import yaml
+from blinker import Signal
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -115,6 +116,9 @@ def workspaces(
     monkeypatch.setattr(type(db), "engine", property(lambda _: sqlite_engine))
     # Plugin metadata is resolved by the plugin daemon; these Apps use no plugins.
     monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", _no_plugin_dependencies)
+    # Workflow event handlers reach the Flask-bound database; these tests check the imported records.
+    monkeypatch.setattr("services.workflow_service.app_draft_workflow_was_synced", Signal())
+    monkeypatch.setattr("services.workflow_service.app_published_workflow_was_updated", Signal())
     actor, source_id, target_id = str(uuid4()), str(uuid4()), str(uuid4())
     caller_app_id, tool_app_id, provider_id = str(uuid4()), str(uuid4()), str(uuid4())
     version = Workflow.version_from_datetime(naive_utc_now())
@@ -315,6 +319,7 @@ def test_failed_import_deletes_the_workflows_it_created(
 ) -> None:
     cleanups: list[dict[str, str]] = []
     monkeypatch.setattr(remove_app_and_related_data_task, "delay", lambda **kwargs: cleanups.append(kwargs))
+    monkeypatch.setattr("services.app_service.app_was_deleted", Signal())
     target_id = workspaces.target.active_workspace_id
 
     result = _export_and_import(
