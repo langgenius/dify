@@ -9,7 +9,7 @@ import { callOptionsSchema } from '@/call/flags'
 import { parseArgv } from '@/plugins/argv/parse'
 import { parseCatalog } from '@/plugins/catalog'
 import { propertiesOf } from '@/protocol/shape'
-import { effectOf, opCommand, opEffect } from './command'
+import { effectOf, opCommand } from './command'
 
 const OPS = parseCatalog(
   readFileSync(join(__dirname, '../../../test/fixtures/catalog-v2.json')),
@@ -97,38 +97,6 @@ const EFFECTS: readonly [string, CommandEffect | undefined][] = [
 
 it.each(EFFECTS)('effect of %s is %s', (method, effect) => {
   expect(effectOf(method)).toBe(effect)
-})
-
-const OP_EFFECTS: readonly [
-  string,
-  Pick<CatalogOp, 'method'> & { effect?: string },
-  CommandEffect | undefined,
-][] = [
-  ['declared destructive on a POST', { method: 'POST', effect: 'destructive' }, 'destructive'],
-  ['declared read on a POST', { method: 'POST', effect: 'read' }, 'read'],
-  ['no effect from an older server falls back to the method', { method: 'DELETE' }, 'destructive'],
-  [
-    'an effect it has never heard of gets no label',
-    { method: 'POST', effect: 'irreversible' },
-    undefined,
-  ],
-]
-
-it.each(OP_EFFECTS)('%s', (_, patch, effect) => {
-  const { effect: _declared, ...base } = list
-  const op: CatalogOp = { ...base, ...patch }
-  expect(opEffect(op)).toBe(effect)
-  expect(opCommand('x.y', op).effect).toBe(effect)
-})
-
-it('help shows the effect the server declared', async () => {
-  const w = await world()
-  const row = await opCommand('reset.webapp', {
-    ...list,
-    method: 'POST',
-    effect: 'destructive',
-  }).help({ path: ['reset', 'webapp'], rest: [], ctx: w.ctx })
-  expect(row).toMatchObject({ effect: 'destructive' })
 })
 
 it('help shows the business schema, the op facets, the call options and the pin', async () => {

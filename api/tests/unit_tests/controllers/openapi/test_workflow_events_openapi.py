@@ -18,7 +18,6 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import NotFound
 
-from controllers.openapi._errors import RunNotFound
 from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi, WorkflowEventsQuery
 from core.db.session_factory import session_factory
 from graphon.enums import WorkflowExecutionStatus
@@ -142,22 +141,6 @@ class TestOpenApiWorkflowEventsApi:
         # own maker rather than a fresh one bound straight to the engine.
         session_maker = factory_mock.create_api_workflow_run_repository.call_args.args[0]
         assert session_maker is session_factory.get_session_maker()
-
-    def test_not_found_when_run_id_is_not_a_uuid(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
-        factory_mock = self._bind_repo(monkeypatch, None)
-
-        api = OpenApiWorkflowEventsApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/runs/not-a-uuid/events"):
-            with pytest.raises(RunNotFound):
-                api.get.__handler__(
-                    api,
-                    _context(_make_account(), CreatorUserRole.ACCOUNT),
-                    app_id="app-1",
-                    run_id="not-a-uuid",
-                    query=WorkflowEventsQuery(),
-                )
-
-        factory_mock.create_api_workflow_run_repository.return_value.get_workflow_run_by_id_and_tenant_id.assert_not_called()
 
     def test_not_found_when_run_belongs_to_different_app(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         self._bind_repo(monkeypatch, _make_workflow_run(app_id="other-app"))

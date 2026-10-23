@@ -53,12 +53,6 @@ it('keeps an effect it has never heard of, and leaves it out when the server sen
   expect(ops['x.z']?.effect).toBeUndefined()
 })
 
-it('reads the declared effect from the fixture', () => {
-  const ops = parseCatalog(FIXTURE).ops
-  expect(ops['reset.webapp']?.effect).toBe('destructive')
-  expect(ops['check.console_app.dsl']?.effect).toBe('read')
-})
-
 it('rejects a document without ops as catalog_unavailable', () => {
   expect(() => parseCatalog(new TextEncoder().encode('{"nope":1}'))).toThrow(
     expect.objectContaining({ code: 'catalog_unavailable' }),

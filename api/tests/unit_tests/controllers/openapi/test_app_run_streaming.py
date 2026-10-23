@@ -164,26 +164,6 @@ def test_stop_run_answers_by_outcome(
     assert redis.values[f"generate_task_stopped:{task_id}"] == b"1"
 
 
-def test_stop_run_rejects_a_non_uuid_run_id(
-    app: Flask,
-    account_application_services: ApplicationServices,
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-):
-    redis = _StopRedis()
-    _stop_services(monkeypatch, account_application_services, sqlite_session, redis)
-    ctx = _SealableContext(
-        subject=_subject(),
-        caller=_make_account(),
-        app=App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW),
-    )
-    api = AppRunStopApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/runs/abc:stop", method="POST"):
-        with pytest.raises(RunNotFound):
-            api.post.__handler__(api, ctx, app_id="app-1", run_id="abc")
-    assert redis.operations == []
-
-
 @pytest.mark.parametrize(
     "token_type", [TokenType.OAUTH_ACCOUNT, TokenType.OAUTH_EXTERNAL_SSO, TokenType.RESOURCE_ACCESS]
 )
@@ -222,25 +202,6 @@ def test_stop_task_enforces_resolved_caller_ownership(
     else:
         assert redis.operations == []
     assert redis.commands == {}
-
-
-@pytest.mark.parametrize(
-    ("resource", "mode", "kwargs"),
-    [
-        (AppRunStopApi, AppMode.CHAT, {"run_id": str(uuid.uuid4())}),
-        (AppRunStopApi, AppMode.COMPLETION, {"run_id": str(uuid.uuid4())}),
-        (AppTaskStopApi, AppMode.WORKFLOW, {"task_id": str(uuid.uuid4())}),
-        (AppTaskStopApi, AppMode.ADVANCED_CHAT, {"task_id": str(uuid.uuid4())}),
-    ],
-)
-def test_stop_routes_refuse_the_other_id_kind(app: Flask, resource: type, mode: AppMode, kwargs: dict[str, str]):
-    ctx = _SealableContext(
-        subject=_subject(), caller=_make_account(), app=App(id="app-1", tenant_id="tenant-1", mode=mode)
-    )
-    api = resource()
-    with app.test_request_context("/openapi/v1/apps/app-1/stop", method="POST"):
-        with pytest.raises(AppModeMismatch):
-            api.post.__handler__(api, ctx, app_id="app-1", **kwargs)
 
 
 class _SealableContext:

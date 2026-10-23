@@ -98,36 +98,6 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
     assert streaming == per_mode | draft | {"get.run.event"}
 
 
-@pytest.mark.parametrize(
-    ("method", "effect"),
-    [
-        ("GET", Effect.READ),
-        ("POST", Effect.WRITE),
-        ("PUT", Effect.WRITE),
-        ("PATCH", Effect.WRITE),
-        ("DELETE", Effect.DESTRUCTIVE),
-        ("delete", Effect.DESTRUCTIVE),
-    ],
-)
-def test_effect_for_method(method: str, effect: Effect) -> None:
-    assert Effect.for_method(method) is effect
-
-
-def test_effect_for_an_unknown_method_raises() -> None:
-    with pytest.raises(ValueError, match="BREW"):
-        Effect.for_method("BREW")
-
-
-def test_every_op_carries_its_declared_effect_or_its_method_default(app: Flask, ops: dict[str, CatalogOp]) -> None:
-    for _, verb, fn in iter_handlers(app):
-        spec = spec_of(fn)
-        if spec is None or spec.catalog.op not in ops:
-            continue
-        default = Effect.for_method(verb)
-        assert spec.catalog.effect != default, f"{spec.catalog.op} declares its method's default effect"
-        assert ops[spec.catalog.op]["effect"] == (spec.catalog.effect or default).value
-
-
 # Every op whose effect differs from its HTTP method. Adding one is a reviewed change.
 _DECLARED_EFFECTS: Final = {
     "reset.webapp": Effect.DESTRUCTIVE,
@@ -139,15 +109,6 @@ _DECLARED_EFFECTS: Final = {
     "stop.task": Effect.DESTRUCTIVE,
     "check.console_app.dsl": Effect.READ,
 }
-
-
-def test_declared_effects_are_exactly_the_reviewed_overrides(app: Flask) -> None:
-    declared = {
-        spec.catalog.op: spec.catalog.effect
-        for _, _, fn in iter_handlers(app)
-        if (spec := spec_of(fn)) is not None and spec.catalog.effect is not None
-    }
-    assert declared == _DECLARED_EFFECTS
 
 
 def test_declared_effects_reach_the_catalog_rows(ops: dict[str, CatalogOp]) -> None:

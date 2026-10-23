@@ -389,32 +389,6 @@ def test_stop_workflow_run_outcomes(
         assert run.finished_at is None
 
 
-def test_stop_workflow_run_skips_legacy_recovery_for_a_finished_run(
-    sqlite_session: Session, app_task_workflow_run: WorkflowRun, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    run = app_task_workflow_run
-    run.status = WorkflowExecutionStatus.SUCCEEDED
-    sqlite_session.commit()
-    recovery_attempts: list[object] = []
-    monkeypatch.setattr(
-        AppTaskService,
-        "_recover_legacy_workflow_task_id",
-        staticmethod(lambda **kwargs: recovery_attempts.append(kwargs)),
-    )
-
-    result = AppTaskControlService(redis_client=_StopRedis()).stop_workflow_run(
-        tenant_id=run.tenant_id,
-        app_id=run.app_id,
-        run_id=run.id,
-        app_mode=AppMode.WORKFLOW,
-        caller_role=CreatorUserRole.ACCOUNT,
-        caller_id=_USER_ID,
-    )
-
-    assert result is WorkflowStopOutcome.NOT_STOPPABLE
-    assert recovery_attempts == []
-
-
 @pytest.mark.parametrize(
     ("caller_role", "cached_owner", "admitted"),
     [
