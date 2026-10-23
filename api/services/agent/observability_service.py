@@ -406,7 +406,7 @@ class AgentObservabilityService:
 
     def _list_message_agent_thoughts(self, *, message_ids: Sequence[str]) -> dict[str, list[dict[str, Any]]]:
         """Batch-read persisted `MessageAgentThought` rows as AgentThought-shaped dicts."""
-        if not message_ids:
+        if not message_ids or self._session is None:
             return {}
 
         stmt = (
@@ -921,7 +921,10 @@ class AgentObservabilityService:
     def _workflow_node_answer(outputs: Mapping[str, Any]) -> str:
         for key in ("output", "text", "answer"):
             value = outputs.get(key)
-            if isinstance(value, str):
+            # An empty string is a real answer, but a key that is present yet empty
+            # usually means the run produced no text at all; keep looking so the
+            # payload's other keys still reach the reader.
+            if isinstance(value, str) and value:
                 return value
         return json.dumps(outputs, ensure_ascii=False) if outputs else ""
 
@@ -1261,17 +1264,19 @@ WHERE
                 AND wr.type = :chat_workflow_type
         )"""
 
-    @staticmethod
+    @classmethod
     def _workflow_execution_metadata_numeric_sql(
+        cls,
         path: tuple[str, ...],
         numeric_type: str,
         *,
         fallback_path: tuple[str, ...] | None = None,
     ) -> str:
-        current = self._workflow_execution_metadata_json_sql(path, numeric_type)
+        """Compose the JSON lookup for one metadata path, with an optional legacy path."""
+        current = cls._workflow_execution_metadata_json_sql(path, numeric_type)
         if fallback_path is None:
             return current
-        legacy = self._workflow_execution_metadata_json_sql(fallback_path, numeric_type)
+        legacy = cls._workflow_execution_metadata_json_sql(fallback_path, numeric_type)
         return f"COALESCE({current}, {legacy})"
 
     @staticmethod
