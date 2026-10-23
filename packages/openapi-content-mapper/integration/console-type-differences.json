@@ -245,10 +245,8 @@
   ],
   "console GET /workspaces/current/permission": ["no-input-schema", "compatible"],
   "console GET /workspaces/current/plugin/{category}/list": ["compatible", "parsed-vs-wire-output"],
-  "console GET /workspaces/current/plugin/asset": ["compatible", "json-binary-vs-blob"],
   "console GET /workspaces/current/plugin/debugging-key": ["no-input-schema", "compatible"],
   "console GET /workspaces/current/plugin/fetch-manifest": ["compatible", "parsed-vs-wire-output"],
-  "console GET /workspaces/current/plugin/icon": ["compatible", "json-binary-vs-blob"],
   "console GET /workspaces/current/plugin/list": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/plugin/marketplace/pkg": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/plugin/permission/fetch": ["no-input-schema", "compatible"],
@@ -374,10 +372,6 @@
   "console GET /workspaces/current/skills": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/skills/{skill_id}": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/skills/{skill_id}/export": ["compatible", "undocumented-output"],
-  "console GET /workspaces/current/skills/{skill_id}/files/content": [
-    "compatible",
-    "json-binary-vs-blob"
-  ],
   "console GET /workspaces/current/skills/{skill_id}/versions": [
     "compatible",
     "parsed-vs-wire-output"
@@ -550,10 +544,6 @@
     "compatible",
     "undocumented-output"
   ],
-  "console POST /installed-apps/{installed_app_id}/text-to-audio": [
-    "compatible",
-    "json-binary-vs-blob"
-  ],
   "console POST /installed-apps/{installed_app_id}/workflows/run": [
     "compatible",
     "undocumented-output"
@@ -602,7 +592,6 @@
   ],
   "console POST /trial-apps/{app_id}/chat-messages": ["compatible", "undocumented-output"],
   "console POST /trial-apps/{app_id}/completion-messages": ["compatible", "undocumented-output"],
-  "console POST /trial-apps/{app_id}/text-to-audio": ["compatible", "json-binary-vs-blob"],
   "console POST /trial-apps/{app_id}/workflows/run": ["compatible", "undocumented-output"],
   "console POST /workflow-generate": ["compatible", "parsed-vs-wire-output"],
   "console POST /workflow-generate/stream": ["compatible", "parsed-vs-wire-output"],

@@ -495,8 +495,6 @@ export type WorkspacePermissionResponse = {
   workspace_id: string
 }
 
-export type BinaryFileResponse = Blob | File
-
 export type PluginError = ErrorResponse & {
   code: 'plugin_error'
   status: 400
@@ -4760,7 +4758,7 @@ export type GetWorkspacesCurrentPluginAssetError =
   GetWorkspacesCurrentPluginAssetErrors[keyof GetWorkspacesCurrentPluginAssetErrors]
 
 export type GetWorkspacesCurrentPluginAssetResponses = {
-  200: BinaryFileResponse
+  200: Blob | File
 }
 
 export type GetWorkspacesCurrentPluginAssetResponse =
@@ -4896,7 +4894,7 @@ export type GetWorkspacesCurrentPluginIconError =
   GetWorkspacesCurrentPluginIconErrors[keyof GetWorkspacesCurrentPluginIconErrors]
 
 export type GetWorkspacesCurrentPluginIconResponses = {
-  200: BinaryFileResponse
+  200: Blob | File
 }
 
 export type GetWorkspacesCurrentPluginIconResponse =
@@ -7290,7 +7288,7 @@ export type GetWorkspacesCurrentSkillsBySkillIdFilesContentError =
   GetWorkspacesCurrentSkillsBySkillIdFilesContentErrors[keyof GetWorkspacesCurrentSkillsBySkillIdFilesContentErrors]
 
 export type GetWorkspacesCurrentSkillsBySkillIdFilesContentResponses = {
-  200: BinaryFileResponse
+  200: Blob | File
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdFilesContentResponse =

@@ -81,9 +81,9 @@ pnpm --filter @dify/openapi-content-mapper benchmark:console
 `check:console` requires full route coverage and compares input/output assignability
 against the reviewed per-operation baseline in `console-type-differences.json`.
 The baseline distinguishes omitted-input ergonomics, explicit multipart media,
-raw SSE streams, parsed defaults versus wire values, undocumented bodies, and
-legacy JSON-labelled binary responses. Those last responses are existing spec
-issues: verify/fix their advertised response media before migrating those callers.
+raw SSE streams, parsed defaults versus wire values, and undocumented bodies.
+File and audio responses declare binary media explicitly; JSON error bodies keep
+their own media type.
 To review changed differences, run `compare:orpc -- --console --update-baseline`
 and inspect the generated report; do not accept a changed baseline without
 checking the affected operation. The default all-surface repository tests also
