@@ -7,15 +7,12 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.datasets.datasets_document import DocumentDetailResponse, DocumentWithSegmentsListResponse
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from machinery.context import RequestContext
 from models.account import Account
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentPipelineExecutionLog, DocumentSegment
-from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
-from services.errors.document import DocumentIndexingError
-from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models.dataset import Dataset, DatasetProcessRule, Document, DocumentPipelineExecutionLog, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode, SegmentStatus
+from services.errors.document import DocumentIndexingError
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
 from services.knowledge.documents.application import (
     DocumentInvalidActionError,
