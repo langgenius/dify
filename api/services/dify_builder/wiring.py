@@ -233,8 +233,6 @@ def _public_session_view(view: dict[str, Any], *, include_last_command_id: bool)
         "phase": view.get("phase", "understand"),
         "actions": _public_actions(view.get("actions")),
     }
-    if view.get("test_execution") is not None:
-        projected["test_execution"] = view["test_execution"]
     if view.get("diagnostics"):
         projected["diagnostics"] = view["diagnostics"]
     if view.get("decision") is not None:
