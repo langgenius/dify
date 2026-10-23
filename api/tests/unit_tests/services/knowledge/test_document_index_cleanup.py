@@ -7,6 +7,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, Document, DocumentSegment, DocumentSegmentSummary
 from models.enums import DataSourceType, DocumentCreatedFrom
@@ -210,6 +211,31 @@ def test_cleanup_keeps_other_documents_and_datasets(
     assert sqlite_session.get(DocumentSegmentSummary, summary_id) is None
     for record in retained:
         assert sqlite_session.get(DocumentSegmentSummary, record.id) is not None
+
+
+@pytest.mark.usefixtures("vector")
+def test_cleanup_drops_the_documents_knowledge_graph_facts(
+    graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Document deletion used to drop graph facts through the index processors'
+    # clean(); this path skips them, so without the call the facts outlive
+    # their chunks and retrieval keeps citing deleted text.
+    dataset, document, _, _, _ = graph
+    dataset_id, document_id = dataset.id, document.id
+    deleted: list[tuple[str, list[str]]] = []
+
+    def delete_by_document_ids(owner: Dataset, document_ids: list[str], **_kwargs: object) -> None:
+        deleted.append((owner.id, list(document_ids)))
+
+    monkeypatch.setattr(cleanup.GraphIndexService, "delete_by_document_ids", delete_by_document_ids)
+    cleanup.clean_document_indexes(
+        dataset_id=dataset_id,
+        document_ids=[document_id],
+        doc_form="text_model",
+        new_session=session_factory.create_session,
+    )
+    assert deleted == [(dataset_id, [document_id])]
 
 
 def test_economy_cleanup_preserves_unrelated_keyword_entries(

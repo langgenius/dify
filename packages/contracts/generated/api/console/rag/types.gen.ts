@@ -70,6 +70,7 @@ export type DatasetDetailResponse = {
   enable_api: boolean
   external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
+  graph_index_setting?: DatasetGraphIndexSettingResponse
   icon_info?: DatasetIconInfoResponse
   id: string
   indexing_technique: IndexTechniqueType | null
@@ -416,6 +417,20 @@ export type DatasetExternalRetrievalModelResponse = {
   score_threshold?: number | null
   score_threshold_enabled?: boolean | null
   top_k: number
+}
+
+export type DatasetGraphIndexSettingResponse = {
+  enabled?: boolean | null
+  entity_types?: Array<string> | null
+  extract_prompt?: string | null
+  hop_decay?: number | null
+  llm_query_fallback?: boolean | null
+  max_depth?: number | null
+  max_entities_per_chunk?: number | null
+  max_neighbors_per_hop?: number | null
+  max_seed_entities?: number | null
+  model_name?: string | null
+  model_provider_name?: string | null
 }
 
 export type DatasetIconInfoResponse = {

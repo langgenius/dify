@@ -8,6 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
+from core.rag.graph.graph_index_service import GraphIndexService
 from core.rag.index_processor.index_processor import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
@@ -90,6 +91,9 @@ def clean_dataset_task(
 
         with session_factory.create_session() as session:
             if not index_cleanup_done:
+                # Purge the knowledge graph before the index: that step can keep failing
+                # and retrying, and the graph must not outlive its dataset meanwhile.
+                _run_step(session, dataset_id, "knowledge graph", lambda: _purge_graph(session, dataset))
                 # Index processors also delete relational child rows, so the whole step must succeed first.
                 _run_step(session, dataset_id, "dataset index", lambda: _clean_index(session, dataset, doc_form))
                 index_cleanup_done = True
@@ -155,6 +159,16 @@ def _run_step(session: Session, dataset_id: str, name: str, step: Callable[[], N
         except Exception:
             logger.exception("Failed to rollback database session")
         raise
+
+
+def _purge_graph(session: Session, dataset: Dataset) -> None:
+    """Drop the dataset's knowledge graph and commit it ahead of the index cleanup.
+
+    The purge ignores the deleted dataset's graph settings, so it also clears a
+    graph whose feature was switched off; repeating it on a retry is harmless.
+    """
+    GraphIndexService.purge_dataset(dataset, session=session)
+    session.commit()
 
 
 def _clean_index(session: Session, dataset: Dataset, doc_form: str) -> None:

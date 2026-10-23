@@ -3,7 +3,11 @@ import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/ap
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import type {
+  GraphIndexSetting as GraphIndexSettingType,
+  IconInfo,
+  SummaryIndexSetting as SummaryIndexSettingType,
+} from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -22,7 +26,12 @@ import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
 import { getDatasetACLCapabilities } from '@/utils/permission'
-import { toIconInfo, toRetrievalConfig, toSummaryIndexSetting } from '../../../dataset-fields'
+import {
+  toGraphIndexSetting,
+  toIconInfo,
+  toRetrievalConfig,
+  toSummaryIndexSetting,
+} from '../../../dataset-fields'
 import { checkShowMultiModalTip } from '../../utils'
 
 const DEFAULT_APP_ICON: IconInfo = {
@@ -110,6 +119,12 @@ export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResp
       toSummaryIndexSetting(currentDataset.summary_index_setting),
   )
 
+  // Knowledge graph index state
+  const [graphIndexSetting, setGraphIndexSetting] = useState<GraphIndexSettingType | undefined>(
+    () =>
+      currentDataset.graph_index_setting && toGraphIndexSetting(currentDataset.graph_index_setting),
+  )
+
   // Model lists
   const { data: rerankModelList = [] } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
@@ -162,6 +177,11 @@ export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResp
     setSummaryIndexSetting((prev) => ({ ...prev, ...payload }))
   }, [])
 
+  // Knowledge graph setting handler
+  const handleGraphIndexSettingChange = useCallback((payload: GraphIndexSettingType) => {
+    setGraphIndexSetting((prev) => ({ ...prev, ...payload }))
+  }, [])
+
   // Save handler
   const handleSave = async () => {
     if (!canEditSettings) return
@@ -175,6 +195,21 @@ export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResp
 
     if (!isReRankModelSelected({ rerankModelList, retrievalConfig, indexMethod })) {
       toast.error(t(($) => $['datasetConfig.rerankModelRequired'], { ns: 'appDebug' }))
+      return
+    }
+
+    // An external knowledge base indexes nothing locally, so there is no graph
+    // to build: the control is hidden and the field is never sent.
+    const supportsGraphIndex = currentDataset?.provider !== 'external'
+
+    // Extraction cannot run without a model, and silently indexing nothing would
+    // look like the graph feature is broken rather than unconfigured.
+    if (
+      supportsGraphIndex &&
+      graphIndexSetting?.enabled &&
+      (!graphIndexSetting.model_name || !graphIndexSetting.model_provider_name)
+    ) {
+      toast.error(t(($) => $['form.graphIndex.modelRequired'], { ns: 'datasetSettings' }))
       return
     }
 
@@ -207,6 +242,8 @@ export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResp
         keyword_number: keywordNumber,
         summary_index_setting: summaryIndexSetting,
       }
+
+      if (supportsGraphIndex) body.graph_index_setting = graphIndexSetting
 
       if (currentDataset.provider === 'external') {
         body.external_knowledge_id = currentDataset.external_knowledge_info?.external_knowledge_id
@@ -309,6 +346,10 @@ export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResp
     // Summary index
     summaryIndexSetting,
     handleSummaryIndexSettingChange,
+
+    // Knowledge graph index
+    graphIndexSetting,
+    handleGraphIndexSettingChange,
 
     // Computed
     showMultiModalTip,

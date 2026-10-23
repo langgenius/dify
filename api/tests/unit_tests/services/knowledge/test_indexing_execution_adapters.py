@@ -401,6 +401,46 @@ def test_worker_failure_marks_document_error_and_keeps_retryable_segments(
     assert len(segments.resume_indexing(job)[0]) == 1
 
 
+@pytest.mark.parametrize("technique", ["economy", "high_quality"])
+def test_high_quality_load_extracts_graph_after_vectors_without_open_transaction(
+    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session], technique: str
+) -> None:
+    # Extraction used to ride on the index processors' load(); this backend
+    # writes vectors itself, so dropping the call silently leaves the graph empty.
+    adapter, _, segments, _, job, _ = backend
+    with sqlite_session_factory.begin() as session:
+        persisted_dataset = session.get(Dataset, "dataset-1")
+        assert persisted_dataset is not None
+        persisted_dataset.indexing_technique = IndexTechniqueType(technique)
+    chunks = [
+        IndexDocument(page_content=content, metadata={"doc_id": f"node-{i}", "doc_hash": f"hash-{i}"})
+        for i, content in enumerate(["alpha", "beta"])
+    ]
+    segments.save_for_indexing(job, chunks, [3, 5])
+    events: list[str] = []
+
+    def build(dataset: Dataset, documents: list[IndexDocument], *, session: Session) -> None:
+        assert dataset.id == "dataset-1"
+        # Extraction calls the model; no transaction may be held across it.
+        assert not session.in_transaction()
+        events.append("graph:" + ",".join(sorted(document.page_content for document in documents)))
+
+    with (
+        Flask(__name__).app_context(),
+        patch(f"{MODULE}.Vector") as vector,
+        patch(f"{MODULE}.Jieba"),
+        patch(f"{MODULE}.GraphIndexService.build_for_documents", side_effect=build),
+    ):
+        vector.return_value.create.side_effect = lambda _group: events.append("vector")
+        adapter.load(job, chunks)
+
+    if technique == "high_quality":
+        assert events[-1] == "graph:alpha,beta"
+        assert "vector" in events[:-1]
+    else:
+        assert events == []
+
+
 def test_worker_pause_does_not_mark_segments_complete(backend: BackendFixture) -> None:
     adapter, _, segments, _, job, redis = backend
     chunks = [IndexDocument(page_content="text", metadata={"doc_id": "node", "doc_hash": "hash"})]
