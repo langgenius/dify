@@ -24,7 +24,6 @@ Read only the packs for contracts affected by the change, not every topic presen
 - Generated clients, Query, mutations, auth, SSR, URL state, or persistence: [`references/data-query-contracts.md`][data-query]
 - Test files or a concrete missing-regression-test finding: [`references/testing.md`][testing]
 - Bundle, waterfall, rendering, or subscription cost supported by evidence: [`references/performance.md`][performance]
-- Workflow/editor/preview dependency or provider changes: [`references/workflow-preview.md`][workflow-preview]
 - Changes to type boundaries, styling composition, or localized copy not covered above: [`references/code-quality.md`][code-quality]
 
 Follow a known contract directly; use an index only to discover its owner. Project documents define local requirements; installed dependencies and their public APIs establish version-specific behavior. Resolve disagreements with implementation and tests rather than treating existing code as the standard. For unresolved framework, browser, or accessibility behavior, consult current official documentation or standards; use a targeted guidance search when it helps locate them.
@@ -45,4 +44,3 @@ Choose severity by impact, reachability, and recovery, not by topic; accessibili
 [dify-ui]: references/dify-ui.md
 [performance]: references/performance.md
 [testing]: references/testing.md
-[workflow-preview]: references/workflow-preview.md
