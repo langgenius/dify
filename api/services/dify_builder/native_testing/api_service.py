@@ -401,7 +401,9 @@ class NativeTestApiService:
             if row.category == "approval":
                 if self.disclosure is None:
                     raise BuilderExecutionPolicyError("native_disclosure_unavailable")
-                resolved = self.pending.load(actor=actor, request_id=request_id, pending_operation_id=row.id)
+                resolved = self.pending.load(
+                    actor=actor, request_id=request_id, pending_operation_id=row.id, for_projection=True
+                )
                 item = PendingActionDisclosure.model_validate(
                     self.disclosure.describe(actor=actor, resolved=resolved).model_dump(mode="json")
                 )
@@ -412,9 +414,12 @@ class NativeTestApiService:
                     row.owner_version,
                 ):
                     raise BuilderExecutionPolicyError("native_disclosure_mismatch")
-                if item.approval_limits != self.pending.load_terms(resolved=resolved):
+                if item.approval_limits != self.pending.load_terms(resolved=resolved, for_projection=True):
                     raise BuilderExecutionPolicyError("native_disclosure_mismatch")
-                pending.append(project_pending_decision(item, grant=grants.get(row.owner_version), now=utc_now()))
+                projected = project_pending_decision(item, grant=grants.get(row.owner_version), now=utc_now())
+                if scope is not None and scope.expires_at <= utc_now() and projected.decision_status != "denied":
+                    projected = projected.model_copy(update={"decision_status": "expired"})
+                pending.append(projected)
             else:
                 pending.append(
                     PendingActionDisclosure(
@@ -449,7 +454,9 @@ class NativeTestApiService:
                 outcome = "succeeded"
         can_resume, blocked = False, "not_waiting"
         if root.state == "waiting" and cancellation is None:
-            if any(item.wait_reason != "approval" for item in pending):
+            if scope is not None and scope.expires_at <= utc_now():
+                blocked = "native_expired"
+            elif any(item.wait_reason != "approval" for item in pending):
                 blocked = "native_resolution_unavailable"
             elif any(item.decision_status != "confirmed" for item in pending):
                 blocked = "approval_required"

@@ -181,6 +181,7 @@ class _AgentPreparation:
     resource_digest: str
     objects: list[ObjectReceipt]
     settlement: bool = False
+    for_projection: bool = False
 
 
 @contextmanager
@@ -376,6 +377,10 @@ class NativeExecutionStateStore:
     def load_context(self, *, ref: NativeTestContextRef) -> ResolvedNativeTestContext:
         return self._load_context(ref=ref, recovery=False)
 
+    def load_projection_context(self, *, ref: NativeTestContextRef) -> ResolvedNativeTestContext:
+        """Current owned read visibility survives expiry; this grants no execution."""
+        return self._load_context(ref=ref, recovery=False, allow_expired=True)
+
     def load_recovery_context(self, *, ref: NativeTestContextRef) -> ResolvedNativeTestContext:
         """Read-only recovery material; an inactive invocation gains no authority."""
         return self._load_context(ref=ref, recovery=True)
@@ -510,7 +515,14 @@ class NativeExecutionStateStore:
         except Exception:
             raise BuilderExecutionPolicyError("checkpoint_unavailable") from None
 
-    def read_checkpoint(self, *, ref: NativeTestContextRef, checkpoint: CheckpointRef) -> NativeCheckpointPayload:
+    def read_checkpoint(
+        self, *, ref: NativeTestContextRef, checkpoint: CheckpointRef, for_projection: bool = False
+    ) -> NativeCheckpointPayload:
+        """Read current protected facts; only server-selected projection ignores TTL.
+
+        Projection retains active ownership, revision, input and Agent resource
+        checks and cannot enter a writing Agent preparation or execution path.
+        """
         owned = validate_private_read(self.loader, ref)
         with self.loader.session_factory() as session:
             continuation = session.scalar(
@@ -536,7 +548,7 @@ class NativeExecutionStateStore:
             with _agent_boundary():
                 if payload.generation != continuation.generation:
                     raise BuilderExecutionPolicyError("native_generation_conflict")
-                prepared = self._agent_checkpoint_preparations(ref, payload)
+                prepared = self._agent_checkpoint_preparations(ref, payload, for_projection=for_projection)
                 outer = ObjectReceipt.from_payload_object(row)
                 with self.loader.locked(ref=ref) as (session, current, scope):
                     selected_continuation = session.scalar(
@@ -983,14 +995,19 @@ class NativeExecutionStateStore:
         writing: bool,
         expected_generation: int | None = None,
         settlement: bool = False,
+        for_projection: bool = False,
     ) -> _AgentPreparation:
+        if for_projection and writing:
+            raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
         parent = AgentParentNodeRef.model_validate(parent_node.model_dump(mode="json"))
         if ref != parent.ref:
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
         self.loader.load(ref=ref)
         authority = validate_private_read(self.loader, ref)
         context = (
-            self._load_context(ref=ref, recovery=False, allow_expired=True)
+            self.load_projection_context(ref=ref)
+            if for_projection
+            else self._load_context(ref=ref, recovery=False, allow_expired=True)
             if settlement
             else self.load_context(ref=ref)
         )
@@ -1009,11 +1026,13 @@ class NativeExecutionStateStore:
                 authority,
                 context.generation,
                 allowed_states=("running",) if writing else ("running", "waiting", "queued"),
-                allow_expired=settlement,
+                allow_expired=settlement or for_projection,
             )
             self._agent_single_parent(session, context, parent)
             workspace, stamp = self._agent_resources(session, owned, context)
-        prepared = _AgentPreparation(parent, context, authority, workspace, stamp, [], settlement=settlement)
+        prepared = _AgentPreparation(
+            parent, context, authority, workspace, stamp, [], settlement=settlement, for_projection=for_projection
+        )
         selected = self._agent_object(
             prepared, logical_key="node-input:" + parent.execution_id, object_ref=parent.input_result_ref
         )
@@ -1032,7 +1051,7 @@ class NativeExecutionStateStore:
         writing: bool,
         definition_receipt: AgentDefinitionReceipt | None = None,
     ) -> None:
-        if prepared.settlement and writing:
+        if (prepared.settlement or prepared.for_projection) and writing:
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
         self._validate_node_inputs_owner(
             session,
@@ -1042,7 +1061,7 @@ class NativeExecutionStateStore:
             prepared.authority,
             prepared.context.generation,
             allowed_states=("running",) if writing else ("running", "waiting", "queued"),
-            allow_expired=prepared.settlement,
+            allow_expired=prepared.settlement or prepared.for_projection,
         )
         self._agent_single_parent(session, prepared.context, prepared.parent)
         workspace, stamp = self._agent_resources(
@@ -1280,10 +1299,13 @@ class NativeExecutionStateStore:
         ref: NativeTestContextRef,
         parent_node: AgentParentNodeRef,
         config_ref: str | None,
+        for_projection: bool = False,
     ) -> AgentPreparedConfig:
         """Private current-config read with owner/resource recheck after decryption."""
         with _agent_boundary():
-            prepared = self._agent_prepare(ref=ref, parent_node=parent_node, writing=False)
+            prepared = self._agent_prepare(
+                ref=ref, parent_node=parent_node, writing=False, for_projection=for_projection
+            )
             result = self._agent_prepared_config(prepared, config_ref)
             self._agent_refresh_access(prepared)
             with self.loader.locked(ref=ref) as (session, owned, scope):
@@ -1602,7 +1624,7 @@ class NativeExecutionStateStore:
             return self._agent_ack(prepared, logical_key=self._agent_key("agent-final", prepared.parent), value=value)
 
     def _agent_checkpoint_preparations(
-        self, ref: NativeTestContextRef, payload: NativeCheckpointPayload
+        self, ref: NativeTestContextRef, payload: NativeCheckpointPayload, *, for_projection: bool = False
     ) -> list[_AgentPreparation]:
         """Resolve all selected private references outside the later SQL-only recheck.
 
@@ -1611,7 +1633,9 @@ class NativeExecutionStateStore:
         """
         preparations = []
         for wait in payload.agent_associations:
-            prepared = self._agent_prepare(ref=ref, parent_node=wait.parent_node, writing=False)
+            prepared = self._agent_prepare(
+                ref=ref, parent_node=wait.parent_node, writing=False, for_projection=for_projection
+            )
             if (
                 payload.native_run_id != prepared.context.native_run_id
                 or payload.generation > prepared.context.generation

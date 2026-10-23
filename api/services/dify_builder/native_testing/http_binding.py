@@ -802,7 +802,7 @@ class NativeHttpDisclosure:
     def describe(self, *, actor: Actor, resolved) -> PendingActionDisclosure:
         if actor != self.loader.actor or resolved.intent.kind != "http":
             raise BuilderExecutionPolicyError("native_owner_mismatch")
-        proposed = self.reader.load_terms(resolved=resolved)  # Requires actual protected proposal.
+        proposed = self.reader.load_terms(resolved=resolved, for_projection=True)  # Actual protected proposal.
         owned = self.loader.load(ref=resolved.ref)
         terms = NativeApprovalTerms(
             max_calls=1, max_dispatches=1, max_cost_units=1, expires_at=owned.expires_at.isoformat()
