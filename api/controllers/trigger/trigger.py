@@ -42,8 +42,17 @@ def trigger_endpoint(endpoint_id: str) -> Response | tuple[Response, int]:
     except TriggerEndpointLoadError:
         logger.exception("Failed to load trigger subscription for endpoint %s", endpoint_id)
         return Response(status=HTTPStatus.INTERNAL_SERVER_ERROR, response="Failed to get subscription by endpoint")
-    except (TriggerEndpointEventNotFoundError, ValueError) as e:
-        return jsonify({"error": "Endpoint processing failed", "message": str(e)}), HTTPStatus.BAD_REQUEST
+    except TriggerEndpointEventNotFoundError:
+        return (
+            jsonify({"error": "Endpoint processing failed", "message": "Plugin returned an undeclared trigger event."}),
+            HTTPStatus.BAD_REQUEST,
+        )
+    except ValueError:
+        logger.exception("Invalid webhook request or plugin response for endpoint %s", endpoint_id)
+        return (
+            jsonify({"error": "Endpoint processing failed", "message": "Invalid webhook request or plugin response."}),
+            HTTPStatus.BAD_REQUEST,
+        )
     except Exception:
         logger.exception("Webhook processing failed for %s", endpoint_id)
         return jsonify({"error": "Internal server error"}), HTTPStatus.INTERNAL_SERVER_ERROR

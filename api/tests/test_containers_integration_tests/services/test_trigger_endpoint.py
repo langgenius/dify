@@ -260,7 +260,7 @@ def test_events_are_persisted_before_real_task_publication_with_trusted_subscrip
 
 
 def test_unknown_event_returns_bad_request_after_persistence_without_publishing(
-    harness: _Harness, daemon: _Daemon, runtime: _Runtime
+    harness: _Harness, daemon: _Daemon, runtime: _Runtime, caplog: pytest.LogCaptureFixture
 ) -> None:
     subscription = _seed(harness, daemon, CredentialType.API_KEY)
     _dispatch(daemon, events=["push", "undeclared"])
@@ -270,8 +270,10 @@ def test_unknown_event_returns_bad_request_after_persistence_without_publishing(
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.get_json() == {
         "error": "Endpoint processing failed",
-        "message": f"Event name undeclared not found in provider {_PROVIDER}",
+        "message": "Plugin returned an undeclared trigger event.",
     }
+    expected_log = f"Event name undeclared not found in provider {_PROVIDER} for endpoint {subscription.endpoint_id}"
+    assert expected_log in caplog.text
     assert runtime.take_messages() == []
     assert runtime.publications == []
     files = storage.scan("triggers/")
@@ -313,33 +315,49 @@ def test_subscription_preparation_failures_keep_raw_error_response_and_do_not_fa
     assert not storage.exists("triggers/")
 
 
-@pytest.mark.parametrize("failure", ["rejected", "unavailable"])
+@pytest.mark.parametrize("failure", ["rejected", "unavailable", "empty", "malformed"])
 def test_plugin_dispatch_errors_keep_json_response_without_persisting_or_publishing(
-    harness: _Harness, daemon: _Daemon, runtime: _Runtime, failure: str
+    harness: _Harness, daemon: _Daemon, runtime: _Runtime, caplog: pytest.LogCaptureFixture, failure: str
 ) -> None:
     subscription = _seed(harness, daemon, CredentialType.API_KEY)
+    diagnostic = "private-plugin-diagnostic-for-test"
     daemon.response_data = None
+    expected_status = HTTPStatus.BAD_REQUEST
+    expected_body = {
+        "error": "Endpoint processing failed",
+        "message": "Invalid webhook request or plugin response.",
+    }
     if failure == "rejected":
         daemon.response_code = 1
-        daemon.response_message = "signature rejected"
-        expected_status = HTTPStatus.BAD_REQUEST
-        expected_body = {
-            "error": "Endpoint processing failed",
-            "message": "plugin daemon: signature rejected, code: 1",
-        }
-    else:
+        daemon.response_message = f"signature rejected: {diagnostic}"
+    elif failure == "unavailable":
         daemon.response_code = -500
         daemon.response_message = json.dumps(
-            {"error_type": "PluginDaemonInternalServerError", "message": "unavailable"}
+            {"error_type": "PluginDaemonInternalServerError", "message": f"unavailable: {diagnostic}"}
         )
         expected_status = HTTPStatus.INTERNAL_SERVER_ERROR
         expected_body = {"error": "Internal server error"}
+    elif failure == "malformed":
+        _dispatch(daemon, events=[])
+        assert daemon.response_data is not None
+        daemon.response_data["response"] = "not-hex"
+        daemon.response_data["payload"] = {"secret": diagnostic}
 
     response = Context().run(harness.client.post, f"/triggers/plugin/{subscription.endpoint_id}", data=b"body")
 
     assert response.status_code == expected_status
     assert response.get_json() == expected_body
+    assert diagnostic not in response.get_data(as_text=True)
+    expected_detail = "got empty data from plugin daemon" if failure == "empty" else diagnostic
+    assert any(
+        record.name == "controllers.trigger.trigger"
+        and subscription.endpoint_id in record.getMessage()
+        and record.exc_info
+        and expected_detail in str(record.exc_info[1])
+        for record in caplog.records
+    )
     assert runtime.take_messages() == []
+    assert runtime.publications == []
     assert not storage.exists("triggers/")
 
 
