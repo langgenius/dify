@@ -472,11 +472,13 @@ class NoModelAgent(StubAgent):
     """Every cognition/localization entry point fails the test if reached."""
 
     @override
-    def diagnose(self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> NoReturn:
+    def diagnose(
+        self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput], *, reply_language: str | None = None
+    ) -> NoReturn:
         raise AssertionError("confirmed outcome must not be diagnosed")
 
     @override
-    def propose_repair(self, diagnosis: Diagnosis, graph: Graph) -> NoReturn:
+    def propose_repair(self, diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None) -> NoReturn:
         raise AssertionError(f"confirmed outcome must not be repaired: {diagnosis.root_cause}")
 
     @override

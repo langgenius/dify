@@ -28,7 +28,9 @@ class PlanningAgent(PlaceholderAgent):
         )
 
     @override
-    def propose_plan_v1(self, requirements: dict[str, object], *, goal_text: str) -> WorkflowPlan:
+    def propose_plan_v1(
+        self, requirements: dict[str, object], *, goal_text: str, reply_language: str | None = None
+    ) -> WorkflowPlan:
         return self.plan
 
     @override

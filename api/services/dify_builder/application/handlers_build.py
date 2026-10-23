@@ -95,6 +95,7 @@ from services.dify_builder.business_acceptance import (
 from services.dify_builder.execution_messages import change_scope_label
 from services.dify_builder.initial_draft import build_intents_for_draft
 from services.dify_builder.plan import make_plan_card, store_plan
+from services.dify_builder.repair_gate import NO_REPAIR_REASON
 
 logger = logging.getLogger(__name__)
 
@@ -237,7 +238,7 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             clear_task_acceptance(fc)
 
     progress.activate("build-draft-plan")
-    plan = env.agent.propose_plan_v1(fc.requirements, goal_text=fc.goal_text)
+    plan = env.agent.propose_plan_v1(fc.requirements, goal_text=fc.goal_text, reply_language=fc.reply_language or None)
     if not plan:
         return _planning_failed(env, s, fc, progress, "build-draft-plan", PcState.BUILD_GOAL_ANALYSIS)
     store_plan(fc, plan)
@@ -511,7 +512,9 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     # text_matching_user_supplied_trusted_text_for). Lets build_nodes tell an
     # endpoint the user actually gave from one the model invented (ESQ1-302/S5b).
     trusted_text = f"{fc.goal_text}\n{json.dumps(dict(fc.requirements), ensure_ascii=False)}"
-    build_result = env.agent.build_nodes(list(fc.plan_items), selected_resource_ids, trusted_text=trusted_text)
+    build_result = env.agent.build_nodes(
+        list(fc.plan_items), selected_resource_ids, trusted_text=trusted_text, reply_language=fc.reply_language or None
+    )
     intents = build_result.intents
 
     if not any(intent.op == "create_node" for intent in intents):
@@ -1160,6 +1163,8 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             else text_parts("\n\n", copy_text(BuilderCopyId.REPAIR_NO_SAFE_FOUND))
         ),
     )
+    if not intents and risk.reason and risk.reason != NO_REPAIR_REASON:
+        reply_text = text_parts(reply_text, "\n", copy_text(BuilderCopyId.REPAIR_REASON, reason=risk.reason))
     turn_items = append_assistant(
         env,
         s,
@@ -1442,7 +1447,7 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     # Draft the plan but show it only once: build.initial_plan (next) falls
     # straight through to build.resource_recommendation, which shows the ONE
     # plan card for this pass (v1, resources bound).
-    plan = env.agent.propose_plan_v1(fc.requirements, goal_text=fc.goal_text)
+    plan = env.agent.propose_plan_v1(fc.requirements, goal_text=fc.goal_text, reply_language=fc.reply_language or None)
     if not plan:
         return _planning_failed(env, s, fc, progress, "build-restart-plan", PcState.BUILD_REVERTED)
     store_plan(fc, plan)

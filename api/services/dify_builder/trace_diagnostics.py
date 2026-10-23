@@ -45,6 +45,14 @@ _MESSAGES = {
         "degraded",
         "Builder used its existing deterministic fallback; review the result before continuing.",
     ),
+    "repair_not_proposed": (
+        "repair",
+        "The model proposed no repair. Review the explanation before deciding how to continue.",
+    ),
+    "repair_not_applicable": (
+        "repair",
+        "The proposed repair contains no applicable changes. Review the current draft before continuing.",
+    ),
     "validation_refused": (
         "validation",
         "Builder validation refused the proposed change. Review the validation result before continuing.",

@@ -52,7 +52,9 @@ BUILD_END_ID = "end"
 class PlaceholderAgent:
     """Deterministic test cognition; see module docstring."""
 
-    def diagnose(self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> Diagnosis:
+    def diagnose(
+        self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput], *, reply_language: str | None = None
+    ) -> Diagnosis:
         culprit = "output"
         for o in node_outputs:
             if o.status in ("failed", "exception"):
@@ -60,7 +62,9 @@ class PlaceholderAgent:
                 break
         return Diagnosis(culprit_node_id=culprit, root_cause="Code node raised at runtime", severity="high")
 
-    def diagnose_checklist(self, errors: list[ChecklistError], graph: Graph) -> Diagnosis:
+    def diagnose_checklist(
+        self, errors: list[ChecklistError], graph: Graph, *, reply_language: str | None = None
+    ) -> Diagnosis:
         culprit, cause = "", "Checklist error"
         for e in errors:
             if e.messages:
@@ -68,7 +72,9 @@ class PlaceholderAgent:
                 break
         return Diagnosis(culprit_node_id=culprit, root_cause=cause, severity="medium")
 
-    def propose_repair(self, diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]:
+    def propose_repair(
+        self, diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
+    ) -> tuple[list[MutationIntent], Risk]:
         intents = [
             MutationIntent(
                 op="set_node_config",
@@ -109,7 +115,9 @@ class PlaceholderAgent:
         # of the prompt. Returning "" leaves that derived name in place.
         return ""
 
-    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> WorkflowPlan:
+    def propose_plan_v1(
+        self, requirements: dict[str, Any], *, goal_text: str, reply_language: str | None = None
+    ) -> WorkflowPlan:
         return WorkflowPlan(
             title="Build a document summary workflow",
             input_summary="Source documents to summarize.",
@@ -150,7 +158,12 @@ class PlaceholderAgent:
         ]
 
     def build_nodes(
-        self, plan_items: list[str], resource_ids: list[str] | None = None, *, trusted_text: str = ""
+        self,
+        plan_items: list[str],
+        resource_ids: list[str] | None = None,
+        *,
+        trusted_text: str = "",
+        reply_language: str | None = None,
     ) -> BuildNodesResult:
         # Start -> Knowledge-Retrieval -> LLM -> End. Creates and connects are
         # interleaved so each connect's endpoints already exist when

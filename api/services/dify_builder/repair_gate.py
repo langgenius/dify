@@ -65,7 +65,9 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
             task=(s, fc, revision),
         )
     else:
-        intents, risk = env.agent.propose_repair(cast(Diagnosis, fc.diagnosis), graph)
+        intents, risk = env.agent.propose_repair(
+            cast(Diagnosis, fc.diagnosis), graph, reply_language=fc.reply_language or None
+        )
     fc.staged_repair = intents
     fc.risk = risk
 
