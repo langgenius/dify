@@ -848,6 +848,7 @@ jobs:
           a4_expected.setdefault('tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion', {}).update({
               'test_initial_no_source_proof_refuses_dispatch_added_after_child_cancel': 2,
               'test_initial_ordinary_run_without_dispatch_settles_same_declined_attempt_once': 1,
+              'test_initial_sealed_cancel_public_receipt_is_readonly_terminal': 14,
               'test_later_generation_requires_its_completed_source_before_declined_settlement': 2,
           })
           # Code risk reasoning and preparation: exact reviewed function inventories.
