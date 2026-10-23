@@ -762,6 +762,7 @@ class TestHitlServiceApi:
             pause_entity=pause_entity,
             resumption_context=resumption_context,
             session_maker=sqlite_session_maker,
+            node_executions={},
         )
 
         assert [event["event"] for event in events] == [

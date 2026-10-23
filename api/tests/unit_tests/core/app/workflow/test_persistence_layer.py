@@ -1,19 +1,43 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
+from flask import Flask
+from sqlalchemy import event as sqlalchemy_event
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.tools.workflow_as_tool.repository import WorkflowToolSource
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    WORKFLOW_TOOL_ROOT_APP_ID_KEY,
+)
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
+from enums import WorkflowKind
+from graphon.engine.event.node_failure import NodeFailureHandler
+from graphon.engine.event.processor import NodeEventProcessor
+from graphon.engine.event.stream import EventStream
+from graphon.engine.frame import ExecutionFrame, FrameRegistry
+from graphon.engine.scheduler import Scheduler
+from graphon.engine.worker import NodeEventTask
 from graphon.engine_events import (
+    EngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
+    GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
+    NodeEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunPauseRequestedEvent,
@@ -30,10 +54,29 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
+from graphon.graph import Graph
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
+from graphon.runtime.execution import ROOT_FRAME_ID
+from models import Account, WorkflowRun
+from models.enums import WorkflowRunTriggeredFrom
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from repositories.entities.workflow_execution import WorkflowExecution
+from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
+)
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.workflow_test_utils import build_test_graph_init_params
+
+
+@pytest.fixture(autouse=True)
+def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
 
 
 class _RepoRecorder:
@@ -44,6 +87,9 @@ class _RepoRecorder:
 
     def save(self, entity):
         self.saved.append(entity)
+
+    def save_many(self, entities):
+        self.saved.extend(entities)
 
     def save_synchronously(self, entity):
         self.synchronously_saved.append(entity)
@@ -116,7 +162,564 @@ def _make_layer(
     return layer, workflow_execution_repo, workflow_node_execution_repo, runtime_state
 
 
+def _make_sql_layer(session_factory, *, node_run_indices=None):
+    user = Account(name="Test", email="test@example.com")
+    user.id = "user"
+    layer, _, _, _ = _make_layer(
+        node_run_indices=node_run_indices,
+        workflow_execution_repo=SQLAlchemyWorkflowExecutionRepository(
+            session_factory=session_factory,
+            tenant_id="tenant",
+            user=user,
+            app_id="caller-app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        ),
+        workflow_node_execution_repo=SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=session_factory,
+            tenant_id="tenant",
+            user=user,
+            app_id="caller-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        ),
+    )
+    layer._application_generate_entity.app_config.app_id = "caller-app"
+    return layer
+
+
+def test_tool_trace_identity_survives_start_pause_and_resume():
+    layer, _, node_repo, _ = _make_layer(node_run_indices={"tool-exec": 1})
+    layer.on_event(GraphRunStartedEvent())
+    started_at = _naive_utc_now()
+    layer.on_event(
+        NodeRunStartedEvent(
+            id="tool-exec",
+            node_id="tool",
+            node_type=BuiltinNodeTypes.TOOL,
+            node_title="Nested tool",
+            provider_type="workflow",
+            provider_id="provider",
+            start_at=started_at,
+            node_run_result=NodeRunResult(process_data={WORKFLOW_TOOL_INVOCATION_ID_KEY: "invocation"}),
+        )
+    )
+    for event in (
+        NodeRunPauseRequestedEvent(
+            id="tool-exec", node_id="tool", node_type=BuiltinNodeTypes.TOOL, reason=SchedulingPause(message="pause")
+        ),
+        NodeRunSucceededEvent(id="tool-exec", node_id="tool", node_type=BuiltinNodeTypes.TOOL, start_at=started_at),
+    ):
+        layer.on_event(event)
+        execution = node_repo.saved_exec_data[-1]
+        assert execution.process_data[WORKFLOW_TOOL_INVOCATION_ID_KEY] == "invocation"
+        assert execution.metadata[WorkflowNodeExecutionMetadataKey.TOOL_INFO] == {
+            "provider_type": "workflow",
+            "provider_id": "provider",
+        }
+
+
+def _tool_source():
+    return WorkflowToolSource(
+        app_id="source-app",
+        workflow_id="source-workflow",
+        graph_config={"nodes": [{"id": "source-loop", "data": {"type": "loop"}}], "edges": []},
+        features_dict={},
+        environment_variables=[],
+        workflow_kind=WorkflowKind.STANDARD,
+    )
+
+
+def test_workflow_tool_agent_nodes_persist_in_source_app_under_only_root_run(sqlite_session_factory):
+    layer = _make_sql_layer(sqlite_session_factory, node_run_indices={"caller-exec": 1, "source-agent-exec": 1})
+    listen = layer.create_workflow_tool_event_listener(_tool_source(), "workflow-id", "caller-exec")
+    layer.on_graph_start()
+    layer.on_event(GraphRunStartedEvent())
+    started_at = _naive_utc_now()
+    layer.on_event(
+        NodeRunStartedEvent(
+            id="caller-exec",
+            node_id="caller",
+            node_type=BuiltinNodeTypes.TOOL,
+            node_title="Workflow Tool",
+            start_at=started_at,
+        )
+    )
+    listen(
+        NodeRunStartedEvent(
+            id="source-agent-exec",
+            node_id="agent",
+            node_type=BuiltinNodeTypes.AGENT,
+            node_version="2",
+            node_title="Agent",
+            start_at=started_at,
+            container_id="source-loop",
+            node_run_result=NodeRunResult(
+                process_data={WORKFLOW_TOOL_ROOT_APP_ID_KEY: "untrusted-app"}, metadata={"loop_id": "source-loop"}
+            ),
+        )
+    )
+
+    with sqlite_session_factory() as session:
+        rows = {row.id: row for row in session.scalars(select(WorkflowNodeExecutionModel))}
+        assert rows["caller-exec"].app_id == "caller-app"
+        source_row = rows["source-agent-exec"]
+        assert (source_row.tenant_id, source_row.app_id, source_row.workflow_id, source_row.workflow_run_id) == (
+            "tenant",
+            "source-app",
+            "source-workflow",
+            "run-id",
+        )
+        assert source_row.status == "running"
+        assert source_row.process_data_dict[WORKFLOW_TOOL_ROOT_APP_ID_KEY] == "caller-app"
+        assert source_row.execution_metadata_dict["loop_id"] == "source-loop"
+        assert session.scalars(select(WorkflowRun)).one().workflow_id == "workflow-id"
+
+    listen(
+        NodeRunSucceededEvent(
+            id="source-agent-exec",
+            node_id="agent",
+            node_type=BuiltinNodeTypes.AGENT,
+            node_title="Agent",
+            start_at=started_at,
+            node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs={"answer": "ok"}),
+        )
+    )
+    layer.on_event(GraphRunSucceededEvent(outputs={"result": "caller-result"}))
+
+    with sqlite_session_factory() as session:
+        run = session.scalars(select(WorkflowRun)).one()
+        assert (run.app_id, run.workflow_id, run.status, run.outputs_dict) == (
+            "caller-app",
+            "workflow-id",
+            "succeeded",
+            {"result": "caller-result"},
+        )
+        row = session.get(WorkflowNodeExecutionModel, "source-agent-exec")
+        assert row.status == "succeeded"
+        assert row.outputs_dict == {"answer": "ok"}
+        assert row.process_data_dict[WORKFLOW_TOOL_ROOT_APP_ID_KEY] == "caller-app"
+
+
+def test_nested_tool_callers_keep_distinct_invocations_in_shared_source_layers(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    ids = ["a-call-1", "a-call-2", "b-call-1", "b-call-2", "c-child"]
+    layer = _make_sql_layer(sqlite_session_factory, node_run_indices=dict.fromkeys(ids, 1))
+    source = _tool_source()
+    nested = replace(source, app_id="nested-app", workflow_id="nested-workflow")
+    first_call = layer.create_workflow_tool_event_listener(source, "workflow-id", "a-call-1")
+    second_call = layer.create_workflow_tool_event_listener(source, "workflow-id", "a-call-2")
+    nested_call = layer.create_workflow_tool_event_listener(nested, source.workflow_id, "b-call-1")
+    layer.on_event(GraphRunStartedEvent())
+    for execution_id, listener in zip(
+        ids, [layer.on_event, layer.on_event, first_call, second_call, nested_call], strict=True
+    ):
+        listener(
+            NodeRunStartedEvent(
+                id=execution_id,
+                node_id="same-canvas-node",
+                node_type=BuiltinNodeTypes.TOOL,
+                node_title="Tool",
+                start_at=_naive_utc_now(),
+            )
+        )
+    repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
+    for caller, expected, source_app, source_workflow in (
+        ("a-call-1", "b-call-1", "source-app", "source-workflow"),
+        ("a-call-2", "b-call-2", "source-app", "source-workflow"),
+        ("b-call-1", "c-child", "nested-app", "nested-workflow"),
+    ):
+        children = repository.get_workflow_tool_executions("tenant", "run-id", caller)
+        assert [child.id for child in children] == [expected]
+        child = children[0]
+        assert (child.app_id, child.workflow_id, child.workflow_run_id) == (source_app, source_workflow, "run-id")
+        assert child.triggered_from_workflow_id == ("source-workflow" if caller == "b-call-1" else "workflow-id")
+        assert child.triggered_from_node_execution_id == caller
+
+
+def test_workflow_tool_resume_updates_existing_running_container(sqlite_session_factory):
+    layer = _make_sql_layer(sqlite_session_factory, node_run_indices={"loop-exec": 1})
+    listen = layer.create_workflow_tool_event_listener(_tool_source(), "workflow-id", "caller-exec")
+    layer.on_event(GraphRunStartedEvent())
+    started_at = _naive_utc_now()
+    listen(
+        NodeRunStartedEvent(
+            id="loop-exec",
+            node_id="source-loop",
+            node_type=BuiltinNodeTypes.LOOP,
+            node_title="Approval Loop",
+            start_at=started_at,
+        )
+    )
+    layer.on_event(GraphRunPausedEvent(outputs={}, reasons=[]))
+
+    resumed = _make_sql_layer(sqlite_session_factory, node_run_indices={"loop-exec": 1})
+    resume_listener = resumed.create_workflow_tool_event_listener(
+        _tool_source(),
+        "workflow-id",
+        "caller-exec",
+        node_executions=resumed._workflow_node_execution_repository.for_workflow_tool(
+            "source-app"
+        ).get_by_workflow_execution("run-id"),
+    )
+    resumed.on_graph_start()
+    resumed.on_event(GraphRunStartedEvent(reason=WorkflowStartReason.RESUMPTION))
+    resume_listener(
+        NodeRunSucceededEvent(
+            id="loop-exec",
+            node_id="source-loop",
+            node_type=BuiltinNodeTypes.LOOP,
+            node_title="Approval Loop",
+            start_at=started_at,
+            node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs={"approved": True}),
+        )
+    )
+    resumed.on_event(GraphRunSucceededEvent(outputs={"answer": "approved"}))
+
+    with sqlite_session_factory() as session:
+        node = session.scalars(select(WorkflowNodeExecutionModel)).one()
+        assert (node.app_id, node.workflow_id, node.workflow_run_id, node.status) == (
+            "source-app",
+            "source-workflow",
+            "run-id",
+            "succeeded",
+        )
+        assert node.outputs_dict == {"approved": True}
+        run = session.scalars(select(WorkflowRun)).one()
+        assert (run.app_id, run.workflow_id, run.status) == ("caller-app", "workflow-id", "succeeded")
+
+
+@pytest.mark.parametrize("source_workflow_id", ["older-workflow", "workflow-id"])
+def test_root_resume_isolates_same_app_workflow_tool_origin(sqlite_session_factory, source_workflow_id):
+    source = replace(_tool_source(), app_id="caller-app", workflow_id=source_workflow_id)
+    layer = _make_sql_layer(sqlite_session_factory, node_run_indices={"caller-exec": 1, "older-exec": 1})
+    listen = layer.create_workflow_tool_event_listener(source, "workflow-id", "caller-exec")
+    layer.on_event(GraphRunStartedEvent())
+    started_at = _naive_utc_now()
+    layer.on_event(
+        NodeRunStartedEvent(
+            id="caller-exec",
+            node_id="caller",
+            node_type=BuiltinNodeTypes.TOOL,
+            node_title="Caller",
+            start_at=started_at,
+        )
+    )
+    listen(
+        NodeRunStartedEvent(
+            id="older-exec",
+            node_id="older-node",
+            node_type=BuiltinNodeTypes.LLM,
+            node_title="Older version",
+            start_at=started_at,
+        )
+    )
+    layer.on_event(GraphRunPausedEvent())
+
+    resumed = _make_sql_layer(sqlite_session_factory, node_run_indices={"caller-exec": 1, "older-exec": 1})
+    resumed.set_node_execution_history(resumed._workflow_node_execution_repository.get_by_workflow_execution("run-id"))
+    resume_listener = resumed.create_workflow_tool_event_listener(
+        source,
+        "workflow-id",
+        "caller-exec",
+        node_executions=resumed._workflow_node_execution_repository.for_workflow_tool(
+            source.app_id
+        ).get_by_workflow_execution("run-id"),
+    )
+    resumed.on_event(GraphRunStartedEvent(reason=WorkflowStartReason.RESUMPTION))
+    resume_listener(
+        NodeRunSucceededEvent(
+            id="older-exec",
+            node_id="older-node",
+            node_type=BuiltinNodeTypes.LLM,
+            start_at=started_at,
+            node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED),
+        )
+    )
+    resumed.on_event(GraphRunFailedEvent(error="caller failed later"))
+
+    with sqlite_session_factory() as session:
+        rows = {row.id: row for row in session.scalars(select(WorkflowNodeExecutionModel))}
+        assert rows["caller-exec"].status == "failed"
+        assert rows["older-exec"].status == "succeeded"
+        assert rows["older-exec"].workflow_id == source_workflow_id
+
+
+@pytest.mark.parametrize("source", [False, True])
+@pytest.mark.parametrize("outcome", ["succeeded", "failed", "aborted", "paused"])
+def test_retry_starts_preserve_original_execution_and_attempt_history(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    source: bool,
+    outcome: str,
+) -> None:
+    layer = _make_sql_layer(sqlite_session_factory, node_run_indices={"retry-exec": 1})
+    listen = (
+        layer.create_workflow_tool_event_listener(_tool_source(), "workflow-id", "caller-exec")
+        if source
+        else layer.on_event
+    )
+    layer.on_event(GraphRunStartedEvent())
+    workflow_id = "source-workflow" if source else "workflow-id"
+    state = RuntimeState(workflow_id=workflow_id, variable_pool=VariablePool(), start_at=0)
+    frames = FrameRegistry()
+    node = StartNode(
+        node_id="child",
+        data=StartNodeData(title="Child", variables=[]),
+        init_params=build_test_graph_init_params(workflow_id=workflow_id),
+        runtime_state=state,
+    )
+    graph = Graph.new().add_root(node).build()
+    frames.register(
+        ExecutionFrame(
+            frame_id=ROOT_FRAME_ID,
+            graph=graph,
+            state=state,
+            scheduler=Scheduler(graph, state, ROOT_FRAME_ID),
+            failure_handler=NodeFailureHandler(graph, state.graph_execution),
+        )
+    )
+
+    event_stream = EventStream(layers=[])
+    collect = event_stream.collect
+
+    def collect_source_event(event: EngineEvent) -> None:
+        assert isinstance(event, NodeEvent)
+        listen(event)
+        collect(event)
+
+    monkeypatch.setattr(event_stream, "collect", collect_source_event)
+    processor = NodeEventProcessor(state.graph_execution, event_stream, frames, {})
+
+    def dispatch(event: NodeEvent) -> None:
+        processor.dispatch(NodeEventTask(frame_id=ROOT_FRAME_ID, event=event))
+
+    started_at = _naive_utc_now()
+    started = NodeRunStartedEvent(
+        id="retry-exec",
+        node_id="child",
+        node_type=BuiltinNodeTypes.LLM,
+        node_title="Child",
+        start_at=started_at,
+    )
+    dispatch(started)
+    for attempt in (1, 2):
+        dispatch(
+            NodeRunRetryEvent(
+                id="retry-exec",
+                node_id="child",
+                node_type=BuiltinNodeTypes.LLM,
+                node_title="Child",
+                start_at=started_at,
+                retry_index=attempt,
+                error=f"attempt-{attempt}",
+                node_run_result=NodeRunResult(outputs={"attempt": attempt}),
+            )
+        )
+        dispatch(started)
+    if outcome == "succeeded":
+        dispatch(
+            NodeRunSucceededEvent(
+                id="retry-exec",
+                node_id="child",
+                node_type=BuiltinNodeTypes.LLM,
+                start_at=started_at,
+                node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs={"ok": True}),
+            )
+        )
+    elif outcome == "failed":
+        layer.on_event(GraphRunFailedEvent(error="terminal failure"))
+    elif outcome == "aborted":
+        layer.on_event(GraphRunAbortedEvent(reason="terminal failure"))
+    else:
+        commits = []
+
+        def record_commit(_session: Session) -> None:
+            commits.append(True)
+
+        sqlalchemy_event.listen(Session, "after_commit", record_commit)
+        try:
+            layer.persist_unfinished_nodes_synchronously()
+        finally:
+            sqlalchemy_event.remove(Session, "after_commit", record_commit)
+        assert len(commits) == 1
+
+    with sqlite_session_factory() as session:
+        row = session.scalars(select(WorkflowNodeExecutionModel)).one()
+        assert row.index == 1
+        assert row.created_at == started_at
+        assert row.workflow_id == workflow_id
+        assert row.app_id == ("source-app" if source else "caller-app")
+        if outcome == "succeeded":
+            assert row.status == "succeeded"
+            assert row.outputs_dict == {"ok": True}
+        elif outcome == "paused":
+            assert row.status == "retry"
+            assert row.finished_at is None
+        else:
+            assert row.status == "failed"
+            assert row.error == "terminal failure"
+            assert row.finished_at is not None
+        history = row.process_data_dict[RETRY_HISTORY_PROCESS_DATA_KEY]
+        assert [(attempt["retry_index"], attempt["error"]) for attempt in history] == [
+            (1, "attempt-1"),
+            (2, "attempt-2"),
+        ]
+
+
+@pytest.mark.parametrize(
+    "event", [GraphRunFailedEvent(error="failed", exceptions_count=1), GraphRunAbortedEvent(reason="aborted")]
+)
+def test_root_terminal_failure_finishes_running_workflow_tool_nodes(sqlite_session_factory, event):
+    layer = _make_sql_layer(sqlite_session_factory, node_run_indices={"source-exec": 1})
+    listen = layer.create_workflow_tool_event_listener(_tool_source(), "workflow-id", "caller-exec")
+    layer.on_event(GraphRunStartedEvent())
+    listen(
+        NodeRunStartedEvent(
+            id="source-exec",
+            node_id="child",
+            node_type=BuiltinNodeTypes.LLM,
+            node_title="Child",
+            start_at=_naive_utc_now(),
+        )
+    )
+
+    layer.on_event(event)
+
+    with sqlite_session_factory() as session:
+        node = session.scalars(select(WorkflowNodeExecutionModel)).one()
+        assert node.status == "failed"
+        assert node.error == (event.error if isinstance(event, GraphRunFailedEvent) else event.reason)
+        assert node.finished_at is not None
+        assert session.scalars(select(WorkflowRun)).one().workflow_id == "workflow-id"
+
+
+def test_terminal_failure_batches_only_unfinished_nodes_per_source(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    ids = (
+        "root-a",
+        "root-b",
+        "root-retry",
+        "root-paused",
+        "source-a",
+        "source-b",
+        "source-retry",
+        "source-paused",
+        "source-done",
+    )
+    layer = _make_sql_layer(sqlite_session_factory, node_run_indices=dict.fromkeys(ids, 1))
+    listen = layer.create_workflow_tool_event_listener(_tool_source(), "workflow-id", "root-a")
+    layer.on_event(GraphRunStartedEvent())
+    started_at = _naive_utc_now()
+    for execution_id in ids:
+        listener = listen if execution_id.startswith("source") else layer.on_event
+        listener(
+            NodeRunStartedEvent(
+                id=execution_id,
+                node_id=execution_id,
+                node_type=BuiltinNodeTypes.CODE,
+                node_title="Code",
+                start_at=started_at,
+            )
+        )
+        if execution_id.endswith("paused"):
+            listener(
+                NodeRunPauseRequestedEvent(
+                    id=execution_id,
+                    node_id=execution_id,
+                    node_type=BuiltinNodeTypes.CODE,
+                    reason=SchedulingPause(message="pause"),
+                )
+            )
+        elif execution_id.endswith("retry"):
+            listener(
+                NodeRunRetryEvent(
+                    id=execution_id,
+                    node_id=execution_id,
+                    node_type=BuiltinNodeTypes.CODE,
+                    node_title="Code",
+                    start_at=started_at,
+                    retry_index=1,
+                    error="retry failed",
+                )
+            )
+    listen(
+        NodeRunSucceededEvent(
+            id="source-done",
+            node_id="source-done",
+            node_type=BuiltinNodeTypes.CODE,
+            start_at=started_at,
+            node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs={"answer": "kept"}),
+        )
+    )
+    commits = []
+
+    def record_commit(_session: Session) -> None:
+        commits.append(True)
+
+    sqlalchemy_event.listen(Session, "after_commit", record_commit)
+    try:
+        layer.on_event(GraphRunFailedEvent(error="terminal failure", exceptions_count=0))
+    finally:
+        sqlalchemy_event.remove(Session, "after_commit", record_commit)
+
+    with sqlite_session_factory() as session:
+        rows = {row.id: row for row in session.scalars(select(WorkflowNodeExecutionModel))}
+        assert {key: row.status for key, row in rows.items()} == {
+            "root-a": "failed",
+            "root-b": "failed",
+            "root-retry": "failed",
+            "root-paused": "paused",
+            "source-a": "failed",
+            "source-b": "failed",
+            "source-retry": "failed",
+            "source-paused": "paused",
+            "source-done": "succeeded",
+        }
+        assert rows["source-done"].outputs_dict == {"answer": "kept"}
+        for execution_id in ("root-a", "root-b", "root-retry", "source-a", "source-b", "source-retry"):
+            assert rows[execution_id].error == "terminal failure"
+            assert rows[execution_id].finished_at is not None
+        for execution_id in ("root-retry", "source-retry"):
+            assert rows[execution_id].process_data_dict[RETRY_HISTORY_PROCESS_DATA_KEY][0]["error"] == "retry failed"
+        assert rows["source-a"].triggered_from_node_execution_id == "root-a"
+        assert rows["source-a"].app_id == "source-app"
+    # One commit per source owner, plus the workflow summary.
+    assert len(commits) == 3
+
+
 class TestWorkflowPersistenceLayer:
+    def test_start_freezes_tracing_only_after_workflow_save(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+        layer, workflow_repo, _, _ = _make_layer(extras={"trace_session_id": "external-session"})
+        calls: list[tuple[str, str, str, str, object]] = []
+
+        def freeze(
+            entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity,
+            *,
+            workflow_id: str,
+            workflow_run_id: str,
+            conversation_id: object,
+            graph_data: object,
+        ) -> None:
+            assert workflow_repo.synchronously_saved
+            assert graph_data == {"nodes": [], "edges": []}
+            saved_execution = workflow_repo.synchronously_saved[-1]
+            assert isinstance(saved_execution, WorkflowExecution)
+            assert saved_execution.id_ == workflow_run_id
+            calls.append(
+                (entity.app_config.app_id, entity.app_config.tenant_id, workflow_id, workflow_run_id, conversation_id)
+            )
+
+        monkeypatch.setattr(RuntimeApplicationTracingHooks, "freeze_workflow_run", staticmethod(freeze))
+        hooks = RuntimeApplicationTracingHooks()
+        app = Flask(__name__)
+        bind_application_tracing_hooks(app, hooks)
+
+        with app.app_context():
+            layer._handle_graph_run_started()
+        assert calls == [("app", "tenant", "workflow-id", "run-id", "conv-id")]
+
     def test_get_execution_id_requires_system_variable(self):
         layer, _, _, _ = _make_layer(build_system_variables())
 
@@ -546,6 +1149,7 @@ class TestWorkflowPersistenceLayer:
             process_data={
                 "p": 1,
                 "workflow_agent_binding_id": "workflow-binding-1",
+                "workflow_tool_invocation_id": "tool-call-1",
             },
             metadata={},
         )
@@ -562,6 +1166,7 @@ class TestWorkflowPersistenceLayer:
         assert domain_execution.inputs == {"old": True}
         assert domain_execution.process_data == {
             "workflow_agent_binding_id": "workflow-binding-1",
+            "workflow_tool_invocation_id": "tool-call-1",
         }
 
     def test_handle_node_retry_preserves_workflow_agent_binding_identity(self):
@@ -590,12 +1195,14 @@ class TestWorkflowPersistenceLayer:
                 node_run_result=NodeRunResult(
                     process_data={
                         "workflow_agent_binding_id": "workflow-binding-1",
+                        "workflow_tool_invocation_id": "tool-call-1",
                     },
                 ),
             )
         )
 
         assert layer._node_execution_cache["exec"].process_data["workflow_agent_binding_id"] == "workflow-binding-1"
+        assert layer._node_execution_cache["exec"].process_data["workflow_tool_invocation_id"] == "tool-call-1"
 
     def test_get_node_execution_raises_for_missing(self):
         layer, _, _, _ = _make_layer()

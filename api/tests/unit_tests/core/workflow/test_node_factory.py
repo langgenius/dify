@@ -414,6 +414,7 @@ class TestDifyNodeFactoryCreateNode:
             app_type=None,
             created_by=None,
         )
+        factory._use_workflow_tool_containers = True
         factory._code_executor = sentinel.code_executor
         factory._code_limits = sentinel.code_limits
         factory._jinja2_template_renderer = sentinel.jinja2_template_renderer

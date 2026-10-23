@@ -41,6 +41,14 @@ describe('context-menu wrapper', () => {
 
       await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'bottom')
       await expect.element(screen.getByRole('menu')).toHaveAttribute('data-align', 'start')
+      const triggerRect = screen.getByLabelText('context trigger').element().getBoundingClientRect()
+      await expect
+        .poll(() => screen.getByRole('menu').element().getBoundingClientRect().left)
+        .toBeCloseTo(triggerRect.left + 8, 0)
+      await expect
+        .poll(() => screen.getByRole('menu').element().getBoundingClientRect().top)
+        .toBeCloseTo(triggerRect.top + 8, 0)
+
       await expect
         .element(screen.getByRole('menuitem', { name: 'Content action' }))
         .toBeInTheDocument()
@@ -50,7 +58,7 @@ describe('context-menu wrapper', () => {
       const screen = await renderWithRoomAround(
         <ContextMenu>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
-          <ContextMenuContent placement="top-end" sideOffset={12} alignOffset={-3}>
+          <ContextMenuContent side="top" align="end" sideOffset={12} alignOffset={-3}>
             <ContextMenuItem>Custom content</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>,
@@ -86,7 +94,7 @@ describe('context-menu wrapper', () => {
   })
 
   describe('ContextMenuSubContent', () => {
-    it('should place sub-content inline-end-start when placement is omitted', async () => {
+    it('should place sub-content inline-end-start when side and align are omitted', async () => {
       const screen = await renderWithRoomAround(
         <ContextMenu>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>

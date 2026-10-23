@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import datetime
+from importlib import import_module
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, create_autospec, patch
@@ -39,6 +40,9 @@ from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity, Tri
 from core.trigger.entities.entities import RequestLog
 from models.account import Account
 from services.credentials.query import CredentialQuery
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
+
+_OAUTH_IDENTIFIER = f"langgenius/github:1.0.0@{'a' * 64}"
 
 
 @pytest.fixture
@@ -389,6 +393,39 @@ class TestTriggerSubscriptionCrud:
 
 
 class TestTriggerOAuthApis:
+    def test_oauth_callback_rejects_replaced_package_before_dispatch(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        context = {
+            "user_id": "u1",
+            "tenant_id": "t1",
+            "subscription_builder_id": "b1",
+            "plugin_id": "langgenius/github",
+            "provider": "github",
+            "plugin_unique_identifier": _OAUTH_IDENTIFIER,
+        }
+        config = PluginOAuthClientConfig(f"langgenius/github:2.0.0@{'b' * 64}", {"client_secret": "test-secret"})
+        controller_module = import_module("controllers.console.workspace.trigger_providers")
+        monkeypatch.setattr(
+            controller_module.OAuthProxyService,
+            "use_proxy_context",
+            lambda _context_id: context,
+        )
+        monkeypatch.setattr(
+            controller_module.TriggerProviderService,
+            "get_oauth_client",
+            lambda *_args, **_kwargs: config,
+        )
+
+        def unexpected_dispatch(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("Changed packages must not receive OAuth credentials")
+
+        monkeypatch.setattr(controller_module.OAuthHandler, "get_credentials", unexpected_dispatch)
+        api = TriggerOAuthCallbackApi()
+        with app.test_request_context("/", headers={"Cookie": "context_id=ctx"}):
+            with pytest.raises(Forbidden, match="Plugin changed"):
+                unwrap(api.get)(api, "github")
+
     def test_oauth_authorize_success(self, app: Flask) -> None:
         api = TriggerOAuthAuthorizeApi()
         method = unwrap(api.get)
@@ -397,7 +434,7 @@ class TestTriggerOAuthApis:
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.get_oauth_client",
-                return_value={"a": 1},
+                return_value=PluginOAuthClientConfig(_OAUTH_IDENTIFIER, {"a": 1}),
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.create_trigger_subscription_builder",
@@ -406,14 +443,17 @@ class TestTriggerOAuthApis:
             patch(
                 "controllers.console.workspace.trigger_providers.OAuthProxyService.create_proxy_context",
                 return_value="ctx",
-            ),
+            ) as create_context,
             patch(
                 "controllers.console.workspace.trigger_providers.OAuthHandler.get_authorization_url",
                 return_value=MagicMock(authorization_url="url"),
-            ),
+            ) as authorize,
         ):
             resp = method(api, "t1", mock_user(), "github")
             assert resp.status_code == 200
+        assert create_context.call_args.kwargs["extra_data"]["plugin_unique_identifier"] == _OAUTH_IDENTIFIER
+        assert authorize.call_args.kwargs["plugin_unique_identifier"] == _OAUTH_IDENTIFIER
+        assert authorize.call_args.kwargs["system_credentials"] == {"a": 1}
 
     def test_oauth_authorize_no_client(self, app: Flask) -> None:
         api = TriggerOAuthAuthorizeApi()
@@ -445,6 +485,9 @@ class TestTriggerOAuthApis:
             "user_id": "u1",
             "tenant_id": "t1",
             "subscription_builder_id": "b1",
+            "plugin_id": "langgenius/github",
+            "provider": "github",
+            "plugin_unique_identifier": _OAUTH_IDENTIFIER,
         }
 
         with (
@@ -454,18 +497,20 @@ class TestTriggerOAuthApis:
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.get_oauth_client",
-                return_value={"a": 1},
+                return_value=PluginOAuthClientConfig(_OAUTH_IDENTIFIER, {"a": 1}),
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.OAuthHandler.get_credentials",
                 return_value=MagicMock(credentials={"a": 1}, expires_at=1),
-            ),
+            ) as get_credentials,
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.update_trigger_subscription_builder"
             ) as mock_update_builder,
         ):
             resp = method(api, "github")
             assert resp.status_code == 302
+        assert get_credentials.call_args.kwargs["plugin_unique_identifier"] == _OAUTH_IDENTIFIER
+        assert get_credentials.call_args.kwargs["system_credentials"] == {"a": 1}
         mock_update_builder.assert_called_once_with(
             tenant_id="t1",
             user_id="u1",
@@ -506,6 +551,9 @@ class TestTriggerOAuthApis:
             "user_id": "u1",
             "tenant_id": "t1",
             "subscription_builder_id": "b1",
+            "plugin_id": "langgenius/github",
+            "provider": "github",
+            "plugin_unique_identifier": _OAUTH_IDENTIFIER,
         }
 
         with (
@@ -516,7 +564,7 @@ class TestTriggerOAuthApis:
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.get_oauth_client",
-                return_value={"a": 1},
+                return_value=PluginOAuthClientConfig(_OAUTH_IDENTIFIER, {"a": 1}),
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.OAuthHandler.get_credentials",

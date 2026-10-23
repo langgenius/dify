@@ -38,7 +38,7 @@ const TypeSelector: FC<TypeSelectorProps> = ({ items, currentValue, onSelect }) 
         <SelectValue className="system-xs-medium text-text-tertiary" />
       </SelectTrigger>
       <SelectPortal>
-        <SelectPositioner sideOffset={4}>
+        <SelectPositioner>
           <SelectPopup className="w-40 rounded-xl border-[0.5px] p-1 shadow-lg shadow-shadow-shadow-5">
             <SelectList className="p-0">
               {items.map((item) => (

@@ -54,7 +54,7 @@ def _workspace(
     updated_at: datetime | None = None,
     backend_workspace_ref: str = "workspace-ref",
 ) -> AgentWorkspace:
-    return AgentWorkspace(
+    row = AgentWorkspace(
         id=workspace_id,
         tenant_id=tenant_id,
         app_id=app_id,
@@ -64,8 +64,10 @@ def _workspace(
         backend_workspace_ref=backend_workspace_ref,
         status=status,
         active_guard=1 if status is AgentWorkingResourceStatus.ACTIVE else None,
-        updated_at=updated_at,
     )
+    if updated_at is not None:
+        row.updated_at = updated_at
+    return row
 
 
 def _binding(
@@ -79,7 +81,7 @@ def _binding(
     config_kind: AgentConfigVersionKind = AgentConfigVersionKind.SNAPSHOT,
     updated_at: datetime | None = None,
 ) -> AgentWorkspaceBinding:
-    return AgentWorkspaceBinding(
+    row = AgentWorkspaceBinding(
         id=binding_id,
         tenant_id=tenant_id,
         app_id=app_id,
@@ -90,8 +92,10 @@ def _binding(
         agent_config_version_kind=config_kind,
         backend_binding_ref=f"{binding_id}-ref",
         status=status,
-        updated_at=updated_at,
     )
+    if updated_at is not None:
+        row.updated_at = updated_at
+    return row
 
 
 def test_workspace_client_honors_the_configured_snapshot_timeout(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -239,6 +239,9 @@ jobs:
       - name: Static check
         run: vp run -w check
 
+      - name: Tooling rule tests
+        run: vp run @dify/tooling#test run
+
       - name: Save static check task cache
         if: success() && github.event_name != 'merge_group'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

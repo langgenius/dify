@@ -1,21 +1,21 @@
 import importlib
 import json
 import sys
-import types
 from collections import UserDict
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
 def _build_fake_vikingdb_modules():
-    volcengine = types.ModuleType("volcengine")
+    volcengine = FakeModule("volcengine")
     volcengine.__path__ = []
-    viking_db = types.ModuleType("volcengine.viking_db")
+    viking_db = FakeModule("volcengine.viking_db")
 
     class Data(UserDict):
         def __init__(self, payload):

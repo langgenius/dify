@@ -126,7 +126,6 @@
   "personalAccessToken.yourRole": "你的角色",
   "resourceAccessToken.accessibleResources": "可存取資源",
   "resourceAccessToken.actions": "操作",
-  "resourceAccessToken.app": "應用",
   "resourceAccessToken.appCount": "{{count}} 應用",
   "resourceAccessToken.appsCount": "{{count}} 應用",
   "resourceAccessToken.appsSection": "應用",
@@ -144,7 +143,6 @@
   "resourceAccessToken.editTitle": "編輯存取權杖",
   "resourceAccessToken.empty": "尚無存取權杖",
   "resourceAccessToken.emptyDescription": "建立存取權杖，讓自動化工作和外部系統透過 Difyctl 探索並存取選定資源。",
-  "resourceAccessToken.knowledge": "知識庫",
   "resourceAccessToken.knowledgeBasesSection": "知識庫",
   "resourceAccessToken.knowledgeCount": "{{count}} 知識庫",
   "resourceAccessToken.knowledgesCount": "{{count}} 知識庫",
@@ -169,6 +167,5 @@
   "resourceAccessToken.tabApps": "應用",
   "resourceAccessToken.tabKnowledgeBases": "知識庫",
   "resourceAccessToken.token": "權杖",
-  "resourceAccessToken.total": "共 {{total}} 筆",
-  "resourceAccessToken.trackingId": "追蹤 ID"
+  "resourceAccessToken.total": "共 {{total}} 筆"
 }

@@ -112,7 +112,7 @@ const AddCustomModel = ({
         )}
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
         className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >

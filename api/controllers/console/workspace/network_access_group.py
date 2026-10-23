@@ -8,11 +8,12 @@ from pydantic import AliasChoices, BaseModel, Field, ValidationError, model_vali
 from werkzeug.exceptions import BadGateway, BadRequest, Conflict, Forbidden, NotFound, ServiceUnavailable
 
 from configs import dify_config
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.wraps import cloud_edition_billing_paid_plan_required, model_validate
+from controllers.console.wraps import RBACPermission, cloud_edition_billing_paid_plan_required, model_validate
 from core.network_access.client_ip import NetworkAccessClientIPUnavailableError, resolve_network_access_client_ip
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
@@ -265,7 +266,10 @@ class CurrentWorkspaceNetworkAccessGroupsApi(Resource):
         "Workspace network access groups retrieved successfully",
         console_ns.models[NetworkAccessGroupListResponse.__name__],
     )
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(
+        editions=frozenset({DeploymentEdition.CLOUD}),
+        rbac_checks=[RBACCheck(RBACPermission.IP_POLICY_VIEW, Workspace())],
+    )
     def get(self, request_context: RequestContext) -> dict[str, Any]:
         try:
             payload = application_services().network_access_groups.list_groups(request_context)
@@ -279,7 +283,10 @@ class CurrentWorkspaceNetworkAccessGroupsApi(Resource):
         "Workspace network access group created successfully",
         console_ns.models[NetworkAccessGroupMutationResponse.__name__],
     )
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(
+        editions=frozenset({DeploymentEdition.CLOUD}),
+        rbac_checks=[RBACCheck(RBACPermission.IP_POLICY_MANAGE, Workspace())],
+    )
     @cloud_edition_billing_paid_plan_required
     @model_validate(NetworkAccessGroupCreatePayload)
     def post(
@@ -323,7 +330,10 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
         "Workspace network access group updated successfully",
         console_ns.models[NetworkAccessGroupMutationResponse.__name__],
     )
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(
+        editions=frozenset({DeploymentEdition.CLOUD}),
+        rbac_checks=[RBACCheck(RBACPermission.IP_POLICY_MANAGE, Workspace())],
+    )
     @cloud_edition_billing_paid_plan_required
     @model_validate(NetworkAccessGroupUpdatePayload)
     def put(
@@ -351,7 +361,10 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
         "Workspace network access group deleted successfully",
         console_ns.models[NetworkAccessGroupDeleteResponse.__name__],
     )
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(
+        editions=frozenset({DeploymentEdition.CLOUD}),
+        rbac_checks=[RBACCheck(RBACPermission.IP_POLICY_MANAGE, Workspace())],
+    )
     @cloud_edition_billing_paid_plan_required
     @model_validate(NetworkAccessGroupDeleteQuery)
     def delete(

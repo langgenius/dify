@@ -126,7 +126,6 @@
   "personalAccessToken.yourRole": "Deine Rolle",
   "resourceAccessToken.accessibleResources": "Zugängliche Ressourcen",
   "resourceAccessToken.actions": "Aktionen",
-  "resourceAccessToken.app": "Anwendung",
   "resourceAccessToken.appCount": "{{count}} Anwendung",
   "resourceAccessToken.appsCount": "{{count}} Anwendungen",
   "resourceAccessToken.appsSection": "Anwendungen",
@@ -144,7 +143,6 @@
   "resourceAccessToken.editTitle": "Zugriffstoken bearbeiten",
   "resourceAccessToken.empty": "Noch keine Zugriffstoken",
   "resourceAccessToken.emptyDescription": "Erstellen Sie ein Zugriffstoken, damit automatisierte Aufgaben und externe Systeme ausgewählte Ressourcen über Difyctl finden und nutzen können.",
-  "resourceAccessToken.knowledge": "Wissensdatenbank",
   "resourceAccessToken.knowledgeBasesSection": "Wissensdatenbanken",
   "resourceAccessToken.knowledgeCount": "{{count}} Wissensdatenbank",
   "resourceAccessToken.knowledgesCount": "{{count}} Wissensdatenbanken",
@@ -169,6 +167,5 @@
   "resourceAccessToken.tabApps": "Anwendungen",
   "resourceAccessToken.tabKnowledgeBases": "Wissensdatenbanken",
   "resourceAccessToken.token": "Token",
-  "resourceAccessToken.total": "{{total}} insgesamt",
-  "resourceAccessToken.trackingId": "Tracking-ID"
+  "resourceAccessToken.total": "{{total}} insgesamt"
 }

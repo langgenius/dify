@@ -126,7 +126,6 @@
   "personalAccessToken.yourRole": "دورك",
   "resourceAccessToken.accessibleResources": "الموارد المتاحة",
   "resourceAccessToken.actions": "الإجراءات",
-  "resourceAccessToken.app": "تطبيق",
   "resourceAccessToken.appCount": "{{count}} تطبيق",
   "resourceAccessToken.appsCount": "{{count}} تطبيقات",
   "resourceAccessToken.appsSection": "تطبيقات",
@@ -144,7 +143,6 @@
   "resourceAccessToken.editTitle": "تعديل رمز الوصول",
   "resourceAccessToken.empty": "لا توجد رموز وصول بعد",
   "resourceAccessToken.emptyDescription": "أنشئ رمز وصول لتمكين المهام الآلية والأنظمة الخارجية من اكتشاف الموارد المحددة والوصول إليها باستخدام Difyctl.",
-  "resourceAccessToken.knowledge": "قاعدة معرفة",
   "resourceAccessToken.knowledgeBasesSection": "قواعد المعرفة",
   "resourceAccessToken.knowledgeCount": "{{count}} قاعدة معرفة",
   "resourceAccessToken.knowledgesCount": "{{count}} قواعد المعرفة",
@@ -169,6 +167,5 @@
   "resourceAccessToken.tabApps": "تطبيقات",
   "resourceAccessToken.tabKnowledgeBases": "قواعد المعرفة",
   "resourceAccessToken.token": "الرمز",
-  "resourceAccessToken.total": "الإجمالي {{total}}",
-  "resourceAccessToken.trackingId": "معرّف التتبع"
+  "resourceAccessToken.total": "الإجمالي {{total}}"
 }

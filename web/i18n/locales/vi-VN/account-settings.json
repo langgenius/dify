@@ -126,7 +126,6 @@
   "personalAccessToken.yourRole": "Vai trò của bạn",
   "resourceAccessToken.accessibleResources": "Tài nguyên có thể truy cập",
   "resourceAccessToken.actions": "Thao tác",
-  "resourceAccessToken.app": "Ứng dụng",
   "resourceAccessToken.appCount": "{{count}} Ứng dụng",
   "resourceAccessToken.appsCount": "{{count}} Ứng dụng",
   "resourceAccessToken.appsSection": "Ứng dụng",
@@ -144,7 +143,6 @@
   "resourceAccessToken.editTitle": "Sửa mã truy cập",
   "resourceAccessToken.empty": "Chưa có mã truy cập",
   "resourceAccessToken.emptyDescription": "Tạo mã truy cập để các tác vụ tự động và hệ thống bên ngoài có thể tìm và truy cập tài nguyên đã chọn thông qua Difyctl.",
-  "resourceAccessToken.knowledge": "Cơ sở tri thức",
   "resourceAccessToken.knowledgeBasesSection": "Cơ sở tri thức",
   "resourceAccessToken.knowledgeCount": "{{count}} Cơ sở tri thức",
   "resourceAccessToken.knowledgesCount": "{{count}} Cơ sở tri thức",
@@ -169,6 +167,5 @@
   "resourceAccessToken.tabApps": "Ứng dụng",
   "resourceAccessToken.tabKnowledgeBases": "Cơ sở tri thức",
   "resourceAccessToken.token": "Mã truy cập",
-  "resourceAccessToken.total": "Tổng cộng {{total}}",
-  "resourceAccessToken.trackingId": "ID theo dõi"
+  "resourceAccessToken.total": "Tổng cộng {{total}}"
 }

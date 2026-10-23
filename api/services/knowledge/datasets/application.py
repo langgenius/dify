@@ -21,6 +21,7 @@ class DatasetListFilter:
     ids: Sequence[str] = ()
     tag_ids: Sequence[str] = ()
     for_selection: bool = False
+    creator_ids: Sequence[str] = ()
 
 
 @dataclass(frozen=True)

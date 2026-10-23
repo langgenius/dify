@@ -160,10 +160,6 @@ class ConsoleAppPermissions(AppPermissions):
 class EnterpriseConsoleAppAccess(ConsoleAppAccess):
     @override
     def require_import(self, context: RequestContext, kind: Literal["url", "dsl", "agent"]) -> None:
-        if kind == "dsl" and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            apps = FeatureService.get_features(context.active_workspace_id, exclude_vector_space=True).apps
-            if 0 < apps.limit <= apps.size:
-                raise NoPermissionError("The number of apps has reached the limit of your subscription.")
         if not dify_config.RBAC_ENABLED:
             return
         permissions = (

@@ -1,14 +1,24 @@
 """Unit tests for built-in tool management and its persisted credential state."""
 
 import json
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+from core.plugin.entities.oauth import OAuthSchema
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.impl import base as client_module
+from core.plugin.impl.oauth import OAuthHandler
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin, ToolProviderIdentity
+from core.tools.plugin_tool.provider import PluginToolProviderController
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from repositories.credentials.query_repository import CredentialQueryRepository
 from services.tools import builtin_tools_manage_service as service_module
@@ -188,6 +198,167 @@ class TestIsOauthCustomClientEnabled:
         assert BuiltinToolManageService.is_oauth_custom_client_enabled("tenant-1", "google") is False
 
 
+class _RecordingLock:
+    """Redis lock stand-in that records when it is held and runs a hook just before release."""
+
+    def __init__(self, events: list[str], on_release: Callable[[], None] | None = None) -> None:
+        self._events = events
+        self._on_release = on_release
+
+    def __enter__(self) -> "_RecordingLock":
+        self._events.append("acquire")
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        if self._on_release is not None:
+            self._on_release()
+        self._events.append("release")
+
+
+class TestAddBuiltinToolProvider:
+    @pytest.fixture
+    def events(self) -> list[str]:
+        return []
+
+    @pytest.fixture
+    def controller(self, monkeypatch: pytest.MonkeyPatch, events: list[str]) -> PluginToolProviderController:
+        controller = PluginToolProviderController(
+            entity=ToolProviderEntityWithPlugin(
+                identity=ToolProviderIdentity(
+                    author="author",
+                    name="google",
+                    description=I18nObject(en_US="Google"),
+                    icon="icon.svg",
+                    label=I18nObject(en_US="Google"),
+                ),
+                credentials_schema=[ProviderConfig(name="key", type=ProviderConfigType.TEXT_INPUT)],
+                plugin_id="langgenius/google",
+                tools=[],
+            ),
+            plugin_id="langgenius/google",
+            plugin_unique_identifier="langgenius/google:0.0.1",
+            tenant_id="tenant-1",
+        )
+
+        def validate_credentials(user_id: str, credentials: dict[str, str]) -> None:
+            assert user_id == "u"
+            assert credentials == {"key": "value"}
+            events.append("validate")
+
+        monkeypatch.setattr(controller, "_validate_credentials", validate_credentials)
+        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", lambda *_: controller)
+        return controller
+
+    def _install_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        events: list[str],
+        on_release: Callable[[], None] | None = None,
+    ) -> None:
+        lock = _RecordingLock(events, on_release)
+        monkeypatch.setattr(service_module.redis_client, "lock", lambda *_, **__: lock)
+
+    def _count_providers(self, repository_session: Session) -> int:
+        with Session(repository_session.get_bind()) as session:
+            return len(session.scalars(select(BuiltinToolProvider)).all())
+
+    def test_validates_credentials_before_acquiring_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: PluginToolProviderController,
+        events: list[str],
+    ) -> None:
+        self._install_lock(monkeypatch, events)
+
+        result = BuiltinToolManageService.add_builtin_tool_provider(
+            "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "value"}, name="Google 1"
+        )
+
+        assert result["result"] == "success"
+        assert events == ["validate", "acquire", "release"]
+        provider = repository_session.get(BuiltinToolProvider, result["id"])
+        assert provider is not None
+        assert provider.credentials == {"key": "value"}
+
+    def test_commits_credential_before_releasing_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: PluginToolProviderController,
+        events: list[str],
+    ) -> None:
+        counts_at_release: list[int] = []
+        self._install_lock(
+            monkeypatch, events, on_release=lambda: counts_at_release.append(self._count_providers(repository_session))
+        )
+
+        BuiltinToolManageService.add_builtin_tool_provider(
+            "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "value"}, name="Google 1"
+        )
+
+        assert counts_at_release == [1]
+
+    def test_does_not_lock_or_save_when_validation_fails(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: PluginToolProviderController,
+        events: list[str],
+    ) -> None:
+        self._install_lock(monkeypatch, events)
+
+        def reject_credentials(user_id: str, credentials: dict[str, str]) -> None:
+            raise ValueError("invalid api key")
+
+        monkeypatch.setattr(controller, "_validate_credentials", reject_credentials)
+
+        with pytest.raises(ValueError, match="invalid api key"):
+            BuiltinToolManageService.add_builtin_tool_provider(
+                "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "bad"}
+            )
+
+        assert events == []
+        assert self._count_providers(repository_session) == 0
+
+    def test_checks_count_limit_inside_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: PluginToolProviderController,
+        events: list[str],
+    ) -> None:
+        _persist_provider(repository_session, credential_id="cred-1")
+        monkeypatch.setattr(BuiltinToolManageService, "__MAX_BUILTIN_TOOL_PROVIDER_COUNT__", 1)
+        self._install_lock(monkeypatch, events)
+
+        with pytest.raises(ValueError, match="maximum number of providers"):
+            BuiltinToolManageService.add_builtin_tool_provider(
+                "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "value"}
+            )
+
+        assert events == ["validate", "acquire", "release"]
+        assert self._count_providers(repository_session) == 1
+
+    def test_rejects_duplicate_name_inside_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: PluginToolProviderController,
+        events: list[str],
+    ) -> None:
+        _persist_provider(repository_session, credential_id="cred-1", name="Google 1")
+        self._install_lock(monkeypatch, events)
+
+        with pytest.raises(ValueError, match="already used"):
+            BuiltinToolManageService.add_builtin_tool_provider(
+                "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "value"}, name="Google 1"
+            )
+
+        assert events == ["validate", "acquire", "release"]
+        assert self._count_providers(repository_session) == 1
+
+
 class TestDeleteBuiltinToolProvider:
     def test_raises_when_not_found(self, repository_session: Session) -> None:
         with pytest.raises(ValueError, match="you have not added provider"):
@@ -276,11 +447,23 @@ class TestUpdateBuiltinToolProvider:
             MagicMock(return_value=(encrypter, cache)),
         )
 
-        result = BuiltinToolManageService.update_builtin_tool_provider(
-            "u", "tenant-1", "google", "cred-1", credentials={"key": "value"}
-        )
+        events: list[str] = []
+
+        def committed(_connection: Connection) -> None:
+            events.append("commit")
+
+        engine = repository_session.get_bind()
+        event.listen(engine, "commit", committed)
+        cache.delete.side_effect = lambda: events.append("invalidate")
+        try:
+            result = BuiltinToolManageService.update_builtin_tool_provider(
+                "u", "tenant-1", "google", "cred-1", credentials={"key": "value"}
+            )
+        finally:
+            event.remove(engine, "commit", committed)
 
         assert result == {"result": "success"}
+        assert events == ["commit", "invalidate"]
         controller.validate_credentials.assert_called_once_with("u", {"key": "value"})
         cache.delete.assert_called_once()
         repository_session.expire_all()
@@ -309,6 +492,90 @@ class TestGetOauthClientSchema:
 
 
 class TestGetOauthClient:
+    def test_system_client_binds_verified_package_and_reads_rotated_credentials(
+        self, monkeypatch: pytest.MonkeyPatch, repository_session: Session
+    ) -> None:
+        identifier = f"langgenius/google:1.0.0@{'a' * 32}"
+        controller = service_module.PluginToolProviderController(
+            entity=ToolProviderEntityWithPlugin(
+                identity=ToolProviderIdentity(
+                    author="test",
+                    name="google",
+                    label=I18nObject(en_US="Google"),
+                    description=I18nObject(en_US="Google"),
+                    icon="icon.svg",
+                ),
+                plugin_id="langgenius/google",
+                credentials_schema=[],
+                tools=[],
+                oauth_schema=OAuthSchema(),
+            ),
+            tenant_id="tenant-1",
+            plugin_id="langgenius/google",
+            plugin_unique_identifier=identifier,
+        )
+        monkeypatch.setattr(service_module.ToolManager, "get_plugin_provider", lambda *_args: controller)
+        monkeypatch.setattr(
+            service_module.PluginService, "is_plugin_verified", lambda _tenant, value: value == identifier
+        )
+        monkeypatch.setattr(service_module, "decrypt_system_params", json.loads)
+        row = _persist_system_oauth_client(repository_session)
+        row.encrypted_oauth_params = json.dumps({"client_secret": "first-test-secret"})
+        repository_session.commit()
+        first = BuiltinToolManageService.get_oauth_client("tenant-1", "google")
+        assert first is not None
+        assert first.plugin_unique_identifier == identifier
+
+        row.encrypted_oauth_params = json.dumps({"client_secret": "rotated-test-secret"})
+        repository_session.commit()
+        second = BuiltinToolManageService.get_oauth_client("tenant-1", "google")
+        assert second is not None
+        assert second.credentials == {"client_secret": "rotated-test-secret"}
+
+        replacement_identifier = f"langgenius/google:2.0.0@{'b' * 32}"
+
+        def replace_during_verification(_tenant: str, value: str) -> bool:
+            controller.plugin_unique_identifier = replacement_identifier
+            return value == identifier
+
+        monkeypatch.setattr(service_module.PluginService, "is_plugin_verified", replace_during_verification)
+        third = BuiltinToolManageService.get_oauth_client("tenant-1", "google")
+        assert third is not None
+        assert third.plugin_unique_identifier == identifier
+        assert controller.plugin_unique_identifier == replacement_identifier
+        assert BuiltinToolManageService.get_oauth_client("tenant-1", "google") is None
+        requests: list[httpx.Request] = []
+
+        def handle(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(
+                200, text='data: {"code":0,"message":"","data":{"authorization_url":"https://example.com"}}'
+            )
+
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            monkeypatch.setattr(client_module, "_httpx_client", client)
+            for config in (first, second, third):
+                OAuthHandler().get_authorization_url(
+                    "tenant-1",
+                    "user",
+                    "langgenius/google",
+                    "google",
+                    "https://example.com/callback",
+                    config.credentials,
+                    plugin_unique_identifier=config.plugin_unique_identifier,
+                )
+
+        assert [request.headers["X-Plugin-Unique-Identifier"] for request in requests] == [
+            identifier,
+            identifier,
+            identifier,
+        ]
+        assert [json.loads(request.content)["data"]["system_credentials"] for request in requests] == [
+            {"client_secret": "first-test-secret"},
+            {"client_secret": "rotated-test-secret"},
+            {"client_secret": "rotated-test-secret"},
+        ]
+
     def test_returns_tenant_client_params_when_exists(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -316,8 +583,9 @@ class TestGetOauthClient:
     ) -> None:
         _persist_tenant_oauth_client(repository_session)
         controller = MagicMock()
+        controller.plugin_unique_identifier = "langgenius/google:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         controller.get_oauth_client_schema.return_value = list[object]()
-        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", MagicMock(return_value=controller))
+        monkeypatch.setattr(service_module.ToolManager, "get_plugin_provider", MagicMock(return_value=controller))
         encrypter = MagicMock()
         encrypter.decrypt.return_value = {"client_id": "id", "client_secret": "secret"}
         monkeypatch.setattr(
@@ -326,7 +594,8 @@ class TestGetOauthClient:
 
         result = BuiltinToolManageService.get_oauth_client("tenant-1", "google")
 
-        assert result == {"client_id": "id", "client_secret": "secret"}
+        assert result is not None
+        assert result.credentials == {"client_id": "id", "client_secret": "secret"}
         encrypter.decrypt.assert_called_once_with({"encrypted": "data"})
 
     def test_falls_back_to_system_client(
@@ -336,17 +605,20 @@ class TestGetOauthClient:
     ) -> None:
         _persist_system_oauth_client(repository_session)
         controller = MagicMock()
+        controller.plugin_unique_identifier = "langgenius/google:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         controller.get_oauth_client_schema.return_value = list[object]()
-        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", MagicMock(return_value=controller))
+        monkeypatch.setattr(service_module.ToolManager, "get_plugin_provider", MagicMock(return_value=controller))
         monkeypatch.setattr(
             service_module, "create_provider_encrypter", MagicMock(return_value=(MagicMock(), MagicMock()))
         )
+        monkeypatch.setattr(service_module.PluginService, "is_plugin_verified", lambda *_args: True)
         decrypt = MagicMock(return_value={"sys_key": "sys_val"})
         monkeypatch.setattr(service_module, "decrypt_system_params", decrypt)
 
         result = BuiltinToolManageService.get_oauth_client("tenant-1", "google")
 
-        assert result == {"sys_key": "sys_val"}
+        assert result is not None
+        assert result.credentials == {"sys_key": "sys_val"}
         decrypt.assert_called_once_with("enc")
 
 

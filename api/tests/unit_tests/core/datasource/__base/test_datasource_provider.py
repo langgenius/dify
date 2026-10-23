@@ -18,6 +18,8 @@ class ConcreteDatasourcePluginProviderController(DatasourcePluginProviderControl
     Concrete implementation of DatasourcePluginProviderController for testing purposes.
     """
 
+    plugin_unique_identifier = "langgenius/example:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
     def get_datasource(self, datasource_name: str) -> DatasourcePlugin:
         raise AssertionError(f"Credential validation must not fetch datasource {datasource_name!r}")
 

@@ -33,7 +33,9 @@ def test_fulfill_params_from_enterprise_enable_app_deploy(
         staticmethod(lambda: enterprise_info),
     )
 
-    features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
+    features = SystemFeatureModel(
+        agent_tracing_api_collection_enabled=False, deployment_edition=DeploymentEdition.COMMUNITY
+    )
     features.enable_app_deploy = initial
 
     SystemFeatureService._fulfill_params_from_enterprise(features)

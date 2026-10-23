@@ -147,6 +147,7 @@ class TestSystemFeatureApi:
         from controllers.console.feature import SystemFeatureApi
 
         system_features = SystemFeatureModel(
+            agent_tracing_api_collection_enabled=False,
             deployment_edition=DeploymentEdition.COMMUNITY,
             is_allow_register=True,
             enable_learn_app=True,

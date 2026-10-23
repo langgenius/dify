@@ -79,6 +79,7 @@ def test_trusted_moderation_receives_hosted_credentials(
         tenant_id="tenant-1",
         user_id=None,
         plugin_id="langgenius/openai",
+        plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
         provider="openai",
         model="omni-moderation-latest",
         credentials=hosting.provider_map[OPENAI_PROVIDER].credentials,

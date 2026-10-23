@@ -42,7 +42,7 @@ def prepare_empty_commented_positions_yaml(tmp_path: Path, monkeypatch: pytest.M
     return str(tmp_path)
 
 
-def test_position_helper(prepare_example_positions_yaml):
+def test_position_helper(prepare_example_positions_yaml: str) -> None:
     position_map = get_position_map(folder_path=prepare_example_positions_yaml, file_name="example_positions.yaml")
     assert len(position_map) == 4
     assert position_map == {
@@ -53,14 +53,14 @@ def test_position_helper(prepare_example_positions_yaml):
     }
 
 
-def test_position_helper_with_all_commented(prepare_empty_commented_positions_yaml):
+def test_position_helper_with_all_commented(prepare_empty_commented_positions_yaml: str) -> None:
     position_map = get_position_map(
         folder_path=prepare_empty_commented_positions_yaml, file_name="example_positions_all_commented.yaml"
     )
     assert position_map == {}
 
 
-def test_excluded_position_data(prepare_example_positions_yaml):
+def test_excluded_position_data(prepare_example_positions_yaml: str) -> None:
     position_map = get_position_map(folder_path=prepare_example_positions_yaml, file_name="example_positions.yaml")
     pin_list = ["forth", "first"]
     include_set = set()
@@ -92,7 +92,7 @@ def test_excluded_position_data(prepare_example_positions_yaml):
     assert sorted_data == ["forth", "first", "second", "third", "extra1", "extra2"]
 
 
-def test_included_position_data(prepare_example_positions_yaml):
+def test_included_position_data(prepare_example_positions_yaml: str) -> None:
     position_map = get_position_map(folder_path=prepare_example_positions_yaml, file_name="example_positions.yaml")
     pin_list = ["forth", "first"]
     include_set = {"forth", "first"}

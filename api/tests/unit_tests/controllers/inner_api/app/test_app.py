@@ -112,14 +112,23 @@ def _app(tenant_id: str, name: str, *, mode: AppMode = AppMode.WORKFLOW, created
     return app
 
 
-def _agent(tenant_id: str, *, scope: AgentScope, status: AgentStatus = AgentStatus.ACTIVE, **kwargs: object) -> Agent:
+def _agent(
+    tenant_id: str,
+    *,
+    scope: AgentScope,
+    status: AgentStatus = AgentStatus.ACTIVE,
+    app_id: str | None = None,
+    backing_app_id: str | None = None,
+) -> Agent:
+    """Create a test Agent. None leaves the corresponding App association unset."""
     return Agent(
         tenant_id=tenant_id,
         name=f"agent-{uuid4()}",
         scope=scope,
         source=AgentSource.AGENT_APP if scope == AgentScope.ROSTER else AgentSource.WORKFLOW,
         status=status,
-        **kwargs,
+        app_id=app_id,
+        backing_app_id=backing_app_id,
     )
 
 
@@ -138,12 +147,24 @@ def _workflow(app: App, *, version: str, created_by: str, entry_node_type: str =
     )
 
 
-def _snapshot(agent: Agent, version: int, created_at: datetime, **kwargs: object) -> AgentConfigSnapshot:
-    snapshot = AgentConfigSnapshot(
-        tenant_id=agent.tenant_id, agent_id=agent.id, version=version, config_snapshot={}, **kwargs
+def _snapshot(
+    agent: Agent,
+    version: int,
+    created_at: datetime,
+    *,
+    version_note: str | None = None,
+    created_by: str | None = None,
+) -> AgentConfigSnapshot:
+    """Create a test snapshot. None leaves the version note or creator unspecified."""
+    return AgentConfigSnapshot(
+        tenant_id=agent.tenant_id,
+        agent_id=agent.id,
+        version=version,
+        config_snapshot={},
+        created_at=created_at,
+        version_note=version_note,
+        created_by=created_by,
     )
-    snapshot.created_at = created_at
-    return snapshot
 
 
 def _revision(

@@ -24,7 +24,9 @@ def test_fulfill_system_params_from_env_sets_allow_public_access(
 ) -> None:
     config_overrides(WEBAPP_PUBLIC_ACCESS_ENABLED=env_value)
 
-    system_features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
+    system_features = SystemFeatureModel(
+        agent_tracing_api_collection_enabled=False, deployment_edition=DeploymentEdition.COMMUNITY
+    )
     SystemFeatureService._fulfill_system_params_from_env(system_features)
 
     assert system_features.webapp_auth.allow_public_access is expected

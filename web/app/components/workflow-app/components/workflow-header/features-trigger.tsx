@@ -9,7 +9,7 @@ import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
 import type { WorkflowKind } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -41,7 +41,6 @@ import {
   useConvertWorkflowKind,
   useInvalidateAppWorkflow,
   usePublishEvaluationWorkflow,
-  usePublishWorkflow,
   useResetWorkflowVersionHistory,
 } from '@/service/use-workflow'
 
@@ -155,10 +154,6 @@ const FeaturesTrigger = () => {
     return deploymentEdition === 'CLOUD' && plan === 'sandbox' && entryCount > 2
   }, [nodes, plan, deploymentEdition])
 
-  const hasHumanInputNode = useMemo(() => {
-    return nodes.some((node) => node.data.type === BlockEnum.HumanInput)
-  }, [nodes])
-
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
 
   const handleShowFeatures = useCallback(() => {
@@ -167,7 +162,9 @@ const FeaturesTrigger = () => {
     setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
 
-  const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const { mutateAsync: publishWorkflow } = useMutation(
+    consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions(),
+  )
   const { mutateAsync: publishEvaluationWorkflow } = usePublishEvaluationWorkflow()
   const { isPending: workflowKindChangePending, mutateAsync: convertWorkflowKind } =
     useConvertWorkflowKind()
@@ -211,9 +208,8 @@ const FeaturesTrigger = () => {
                 },
               })
             : await publishWorkflow({
-                url: publishParams?.url || `/apps/${appID}/workflows/publish`,
-                title,
-                releaseNotes,
+                params: { app_id: appID },
+                body: { marked_name: title, marked_comment: releaseNotes },
               })
         if (res) {
           // One toast per publish: a warning from the server replaces the success message.
@@ -285,7 +281,6 @@ const FeaturesTrigger = () => {
       appID,
       appDetail?.workflow_kind,
       t,
-      updatePublishedWorkflow,
       rosterAgentIds,
       queryClient,
       workflowStore,
@@ -377,12 +372,11 @@ const FeaturesTrigger = () => {
           onToggle: onPublisherToggle,
           workflowKindChangePending,
           workflowToolAvailable: lastPublishedHasUserInput,
-          crossAxisOffset: 4,
+          alignOffset: 4,
           missingStartNode: !startNode,
           hasTriggerNode,
           startNodeLimitExceeded,
           publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded || !canReleaseAndVersion,
-          hasHumanInputNode,
         }}
       />
     </>

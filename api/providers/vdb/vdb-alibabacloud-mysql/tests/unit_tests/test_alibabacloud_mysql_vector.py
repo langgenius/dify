@@ -360,8 +360,8 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
 
         # Simulate table doesn't exist error on delete
 
-        def execute_side_effect[**P](*args: P.args, **kwargs: P.kwargs):
-            if "DELETE" in args[0]:
+        def execute_side_effect(sql: str, *_args: object) -> None:
+            if "DELETE" in sql:
                 raise MySQLError(errno=1146, msg="Table doesn't exist")
 
         mock_cursor.execute.side_effect = execute_side_effect
@@ -645,7 +645,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
                 password="test_password",
                 database="test_db",
                 max_connection=5,
-                distance_function="manhattan",  # Unsupported - not in Literal["cosine", "euclidean"]
+                distance_function="manhattan",  # pyrefly: ignore[bad-argument-type]  # not "cosine" or "euclidean"
             )
 
         # The error should be related to validation

@@ -1,15 +1,18 @@
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type { FileUploaderInAttachmentWrapperProps } from '@/app/components/base/file-uploader/file-uploader-in-attachment'
 import type { fileUpload } from '@/app/components/base/file-uploader/utils'
 import { zAppAgentModePayload } from '@dify/contracts/api/console/apps/zod.gen'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef, useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useFile } from '@/app/components/base/file-uploader/hooks'
 import { FileContextProvider, useStore } from '@/app/components/base/file-uploader/store'
 import { InputVarType } from '@/app/components/workflow/types'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import AppInputsForm from '../app-inputs-form'
+
+const render = (ui: ReactNode) => rtlRender(ui, { wrapper: createConsoleQueryWrapper().wrapper })
 
 const mockFileUpload = vi.hoisted(() => vi.fn<typeof fileUpload>())
 

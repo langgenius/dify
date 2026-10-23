@@ -1,4 +1,3 @@
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppPublisherProps } from '../types'
 import type { WorkflowKind } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -19,7 +18,6 @@ type PublisherActionsSectionProps = Pick<
   | 'workflowToolAvailable'
 > & {
   appId: string
-  appMode: AppDetailWithSite['mode']
   appURL: string
   canViewAccessPoint: boolean
   disabledFunctionButton: boolean
@@ -31,6 +29,7 @@ type PublisherActionsSectionProps = Pick<
   showDeployAction?: boolean
   showMarketplaceAction?: boolean
   showRunConfig?: boolean
+  showWorkflowTool: boolean
   workflowToolIsLoading: boolean
   workflowToolMessage?: string
   workflowToolOutdated?: boolean
@@ -41,13 +40,11 @@ type PublisherActionsSectionProps = Pick<
 
 export function PublisherActionsSection({
   appId,
-  appMode,
   appURL,
   canViewAccessPoint,
   disabledFunctionButton,
   disabledFunctionTooltip,
   handleOpenRunConfig,
-  hasHumanInputNode = false,
   hasTriggerNode = false,
   marketplaceActionDisabled = false,
   onConvertWorkflowKind,
@@ -58,6 +55,7 @@ export function PublisherActionsSection({
   showDeployAction = false,
   showMarketplaceAction = false,
   showRunConfig = false,
+  showWorkflowTool,
   toolPublished = false,
   workflowToolAvailable = true,
   workflowToolIsLoading,
@@ -72,7 +70,6 @@ export function PublisherActionsSection({
 
   const hasPublishedVersion = Boolean(publishedAt)
   const showOpenWebApp = !hasTriggerNode
-  const showWorkflowTool = appMode === 'workflow' && !hasHumanInputNode && !hasTriggerNode
   const navigationDisabled = !hasPublishedVersion
   const workflowToolDisabled =
     !hasPublishedVersion || !workflowToolAvailable || (toolPublished && workflowToolIsLoading)

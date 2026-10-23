@@ -126,7 +126,6 @@
   "personalAccessToken.yourRole": "Rolunuz",
   "resourceAccessToken.accessibleResources": "Əlçatan resurslar",
   "resourceAccessToken.actions": "Əməliyyatlar",
-  "resourceAccessToken.app": "Tətbiq",
   "resourceAccessToken.appCount": "{{count}} Tətbiq",
   "resourceAccessToken.appsCount": "{{count}} Tətbiqlər",
   "resourceAccessToken.appsSection": "Tətbiqlər",
@@ -144,7 +143,6 @@
   "resourceAccessToken.editTitle": "Giriş tokenini redaktə et",
   "resourceAccessToken.empty": "Hələ giriş tokeni yoxdur",
   "resourceAccessToken.emptyDescription": "Avtomatlaşdırılmış tapşırıqların və xarici sistemlərin seçilmiş resursları Difyctl vasitəsilə tapıb istifadə etməsi üçün giriş tokeni yaradın.",
-  "resourceAccessToken.knowledge": "Bilik bazası",
   "resourceAccessToken.knowledgeBasesSection": "Bilik bazaları",
   "resourceAccessToken.knowledgeCount": "{{count}} Bilik bazası",
   "resourceAccessToken.knowledgesCount": "{{count}} Bilik bazaları",
@@ -169,6 +167,5 @@
   "resourceAccessToken.tabApps": "Tətbiqlər",
   "resourceAccessToken.tabKnowledgeBases": "Bilik bazaları",
   "resourceAccessToken.token": "Token",
-  "resourceAccessToken.total": "Cəmi {{total}}",
-  "resourceAccessToken.trackingId": "İzləmə ID-si"
+  "resourceAccessToken.total": "Cəmi {{total}}"
 }

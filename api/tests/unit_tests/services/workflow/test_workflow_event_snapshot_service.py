@@ -32,7 +32,7 @@ from libs.datetime_utils import to_utc_timestamp
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.model import AppMode, Message
-from models.workflow import WorkflowPause, WorkflowRun
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
@@ -173,6 +173,7 @@ def test_build_snapshot_events_applies_message_context() -> None:
         message_context=message_context,
         pause_entity=None,
         resumption_context=None,
+        node_executions={},
     )
 
     assert [event["event"] for event in events] == [
@@ -720,6 +721,90 @@ def test_start_buffering_should_treat_closed_subscription_as_done(caplog: pytest
     assert "Failed while buffering workflow events" not in caplog.text
 
 
+@pytest.mark.parametrize("include_node_details", [False, True])
+def test_console_snapshot_replays_node_details_without_exposing_them_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    include_node_details: bool,
+) -> None:
+    snapshot = _build_snapshot(WorkflowNodeExecutionStatus.SUCCEEDED)
+    run = _build_workflow_run(WorkflowExecutionStatus.RUNNING)
+    execution = WorkflowNodeExecutionModel(
+        id="row-1",
+        tenant_id=run.tenant_id,
+        app_id=run.app_id,
+        workflow_id=run.workflow_id,
+        workflow_run_id=run.id,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        node_execution_id=snapshot.execution_id,
+        node_id=snapshot.node_id,
+        node_type=snapshot.node_type,
+        title=snapshot.title,
+        index=snapshot.index,
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        elapsed_time=snapshot.elapsed_time,
+        created_at=snapshot.created_at,
+        finished_at=snapshot.finished_at,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=run.created_by,
+        predecessor_node_id="start",
+        inputs=json.dumps({"request": "review"}),
+        process_data=json.dumps({"action": "approve"}),
+        outputs=json.dumps({"approved_text": "approved"}),
+        execution_metadata=json.dumps({"total_tokens": 7}),
+        offload_data=[],
+    )
+    sqlite_session.add_all([run, execution])
+    sqlite_session.commit()
+    node_repo = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
+    detail_queries: list[tuple[str, str, str]] = []
+    load_executions = node_repo.get_executions_by_workflow_run
+
+    def get_executions(tenant_id: str, app_id: str, workflow_run_id: str) -> Sequence[WorkflowNodeExecutionModel]:
+        detail_queries.append((tenant_id, app_id, workflow_run_id))
+        return load_executions(tenant_id=tenant_id, app_id=app_id, workflow_run_id=workflow_run_id)
+
+    monkeypatch.setattr(node_repo, "get_executions_by_workflow_run", get_executions)
+    monkeypatch.setattr(
+        service_module.DifyAPIRepositoryFactory, "create_api_workflow_node_execution_repository", lambda _: node_repo
+    )
+    monkeypatch.setattr(
+        service_module.MessageGenerator, "get_response_topic", lambda *_args: _Topic(_StaticSubscription())
+    )
+    buffer_state = BufferState(queue.Queue(), Event(), Event(), Event(), task_id_hint="task-1")
+    buffer_state.done_event.set()
+    monkeypatch.setattr(service_module, "_start_buffering", lambda _sub: buffer_state)
+
+    events = list(
+        build_workflow_event_stream(
+            app_mode=AppMode.WORKFLOW,
+            workflow_run=run,
+            tenant_id="tenant-1",
+            app_id="app-1",
+            session_maker=sqlite_session_factory,
+            **({"include_node_details": True} if include_node_details else {}),
+        )
+    )
+    started, finished = [
+        event["data"]
+        for event in events
+        if isinstance(event, Mapping) and event["event"] in (StreamEvent.NODE_STARTED, StreamEvent.NODE_FINISHED)
+    ]
+    assert started["id"] == finished["id"] == snapshot.execution_id
+    assert started["index"] == finished["index"] == 1
+    if include_node_details:
+        assert detail_queries == [("tenant-1", "app-1", "run-1")]
+        assert started["inputs"] == finished["inputs"] == {"request": "review"}
+        assert finished["process_data"] == {"action": "approve"}
+        assert finished["outputs"] == {"approved_text": "approved"}
+        assert finished["execution_metadata"] == {"total_tokens": 7}
+    else:
+        assert detail_queries == []
+        assert started["inputs"] is None
+        assert all(finished[key] is None for key in ("inputs", "process_data", "outputs", "execution_metadata"))
+
+
 def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_event(
     monkeypatch: pytest.MonkeyPatch,
     unbound_session_factory: sessionmaker[Session],
@@ -1093,6 +1178,7 @@ def test_build_snapshot_events_preserves_public_form_token(
         pause_entity=pause_entity,
         resumption_context=resumption_context,
         session_maker=sqlite_session_factory,
+        node_executions={},
     )
 
     assert events[-2]["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
@@ -1139,6 +1225,7 @@ def _build_recipient_snapshot_events(
         resumption_context=resumption_context,
         session_maker=session_maker,
         human_input_surface=HumanInputSurface.OPENAPI,
+        node_executions={},
     )
 
 
@@ -1255,6 +1342,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(
         pause_entity=pause_entity,
         resumption_context=resumption_context,
         session_maker=sqlite_session_factory,
+        node_executions={},
     )
 
     human_input_event = events[-2]
@@ -1352,6 +1440,7 @@ def _build_paused_snapshot_events(
         pause_entity=pause_entity,
         resumption_context=_build_resumption_context("task-ctx"),
         session_maker=session_maker,
+        node_executions={},
     )
 
 

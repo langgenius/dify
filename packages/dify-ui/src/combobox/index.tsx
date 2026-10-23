@@ -2,7 +2,6 @@
 
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
-import type { Placement } from '../internal/placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -15,7 +14,6 @@ import {
   floatingSeparatorClassName,
   positionerClassName,
 } from '../internal/overlay'
-import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 type ComboboxActions = BaseCombobox.Root.Actions
@@ -289,21 +287,16 @@ function ComboboxIcon({ className, children, ...props }: ComboboxIconProps) {
 const ComboboxPortal = BaseCombobox.Portal
 type ComboboxPortalProps = BaseCombobox.Portal.Props
 
-type ComboboxPositionerProps = Omit<BaseCombobox.Positioner.Props, 'side' | 'align'> & {
-  placement?: Placement
-}
+type ComboboxPositionerProps = BaseCombobox.Positioner.Props
 
 function ComboboxPositioner({
   className,
-  placement = 'bottom-start',
+  align = 'start',
   sideOffset = 4,
   ...props
 }: ComboboxPositionerProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <BaseCombobox.Positioner
-      side={side}
       align={align}
       sideOffset={sideOffset}
       className={(state) => cn(positionerClassName, resolveClassName(className, state))}

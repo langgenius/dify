@@ -1,26 +1,26 @@
 import importlib
 import json
 import sys
-import types
 from types import SimpleNamespace
 from unittest.mock import MagicMock, call, patch
 
 import pytest
 from pydantic import ValidationError
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
 def _build_fake_couchbase_modules():
-    couchbase = types.ModuleType("couchbase")
-    couchbase_auth = types.ModuleType("couchbase.auth")
-    couchbase_cluster = types.ModuleType("couchbase.cluster")
-    couchbase_management = types.ModuleType("couchbase.management")
-    couchbase_management_search = types.ModuleType("couchbase.management.search")
-    couchbase_options = types.ModuleType("couchbase.options")
-    couchbase_vector = types.ModuleType("couchbase.vector_search")
-    couchbase_search = types.ModuleType("couchbase.search")
+    couchbase = FakeModule("couchbase")
+    couchbase_auth = FakeModule("couchbase.auth")
+    couchbase_cluster = FakeModule("couchbase.cluster")
+    couchbase_management = FakeModule("couchbase.management")
+    couchbase_management_search = FakeModule("couchbase.management.search")
+    couchbase_options = FakeModule("couchbase.options")
+    couchbase_vector = FakeModule("couchbase.vector_search")
+    couchbase_search = FakeModule("couchbase.search")
 
     class PasswordAuthenticator:
         def __init__(self, user, password):

@@ -44,7 +44,7 @@ def _make_workflow_trace_info(**overrides) -> WorkflowTraceInfo:
         "total_tokens": 10,
         "file_list": [],
         "query": "hello",
-        "metadata": {"user_id": "u1", "conversation_id": "c1"},
+        "metadata": {"app_id": "app-1", "user_id": "u1", "conversation_id": "c1"},
         "start_time": _dt(),
         "end_time": _dt(),
     }
@@ -188,7 +188,7 @@ def mock_mlflow():
 def mock_tracing():
     """Patch all MLflow tracing functions used by the module."""
     with (
-        patch("dify_trace_mlflow.mlflow_trace.start_span_no_context") as mock_start,
+        patch("dify_trace_mlflow.mlflow_trace.MLflowDataTrace._start_span_no_context") as mock_start,
         patch("dify_trace_mlflow.mlflow_trace.update_current_trace") as mock_update,
         patch("dify_trace_mlflow.mlflow_trace.set_span_in_context") as mock_set,
         patch("dify_trace_mlflow.mlflow_trace.detach_span_from_context") as mock_detach,
@@ -234,10 +234,10 @@ class TestInit:
     def test_mlflow_config_no_auth(self, mock_mlflow):
         config = MLflowConfig(tracking_uri="http://localhost:5000", experiment_id="0")
         trace = MLflowDataTrace(config)
-        mock_mlflow.set_tracking_uri.assert_called_with("http://localhost:5000")
-        mock_mlflow.set_experiment.assert_called_with(experiment_id="0")
+        mock_mlflow.set_tracking_uri.assert_not_called()
+        mock_mlflow.set_experiment.assert_not_called()
         assert trace.get_project_url() == "http://localhost:5000/#/experiments/0/traces"
-        assert os.environ["MLFLOW_ENABLE_ASYNC_TRACE_LOGGING"] == "true"
+        assert trace._tracking_uri == "http://localhost:5000"
 
     def test_mlflow_config_with_auth(self, mock_mlflow):
         config = MLflowConfig(
@@ -262,6 +262,7 @@ class TestInit:
         assert os.environ["DATABRICKS_CLIENT_ID"] == "cid"
         assert os.environ["DATABRICKS_CLIENT_SECRET"] == "csec"
         mock_mlflow.set_tracking_uri.assert_called_with("databricks")
+        assert trace._tracking_uri == "databricks"
         # Trailing slash stripped
         assert trace.get_project_url() == "https://db.com/ml/experiments/42/traces"
 
@@ -502,7 +503,7 @@ class TestWorkflowTrace:
         mock_tracing["set"].return_value = "token"
 
         trace_info = _make_workflow_trace_info(
-            metadata={},
+            metadata={"app_id": "app-1"},
             conversation_id=None,
         )
         trace_instance.workflow_trace(trace_info)
@@ -860,8 +861,15 @@ class TestGenerateNameTrace:
 class TestGetWorkflowNodes:
     def test_queries_db(self, trace_instance, mock_db):
         mock_db.session.scalars.return_value.all.return_value = ["n1", "n2"]
-        result = trace_instance._get_workflow_nodes("run-1")
+        result = trace_instance._get_workflow_nodes(_make_workflow_trace_info())
         assert result == ["n1", "n2"]
+
+    @pytest.mark.parametrize("metadata", [{}, {"app_id": ""}, {"app_id": 123}], ids=["missing", "empty", "non-string"])
+    def test_rejects_invalid_app_id_before_querying_nodes(self, metadata, trace_instance, mock_db):
+        with pytest.raises(ValueError, match="No app_id found in workflow trace metadata"):
+            trace_instance._get_workflow_nodes(_make_workflow_trace_info(metadata=metadata))
+
+        mock_db.session.scalars.assert_not_called()
 
 
 # ── _get_node_span_type ─────────────────────────────────────────────────────
@@ -1027,11 +1035,11 @@ class TestResolveToolCallIds:
 
 class TestApiCheck:
     def test_success(self, trace_instance, mock_mlflow):
-        mock_mlflow.search_experiments.return_value = []
+        mock_mlflow.MlflowClient.return_value.search_experiments.return_value = []
         assert trace_instance.api_check() is True
 
     def test_failure(self, trace_instance, mock_mlflow):
-        mock_mlflow.search_experiments.side_effect = ConnectionError("refused")
+        mock_mlflow.MlflowClient.return_value.search_experiments.side_effect = ConnectionError("refused")
         with pytest.raises(ValueError, match="MLflow connection failed"):
             trace_instance.api_check()
 

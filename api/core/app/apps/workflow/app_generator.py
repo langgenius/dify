@@ -109,6 +109,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
     ) -> Generator[Mapping[str, Any] | str]: ...
@@ -129,6 +130,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any]: ...
@@ -149,6 +151,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
@@ -168,6 +171,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
@@ -231,6 +235,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 user_id=user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
+                allow_human_input=allow_human_input,
                 call_depth=call_depth,
                 trace_manager=trace_manager,
                 workflow_execution_id=workflow_run_id,

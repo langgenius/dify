@@ -89,7 +89,8 @@ const Item = ({
             )}
           </PopoverTrigger>
           <PopoverContent
-            placement="top-end"
+            side="top"
+            align="end"
             className="px-3 py-2 system-xs-regular text-text-tertiary"
           >
             {disabledTip}

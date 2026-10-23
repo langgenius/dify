@@ -7,7 +7,7 @@ import { renderToString } from 'react-dom/server'
 import { useTranslation } from 'react-i18next'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import { I18nServerProvider } from '@/app/components/provider/i18n-server'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { changeLanguage } from '../client'
 import { useLocale } from '../lib.client'
 
@@ -183,7 +183,7 @@ describe('on-demand translation loading', () => {
     const toast = createToast(manager)
     const content = () => (
       <I18nClientProvider locale="en-US" resource={{ 'en-US': resources['en-US'] }}>
-        <AppToastHost manager={manager} timeout={0} />
+        <AppToaster manager={manager} timeout={0} />
         <input aria-label="Shared draft" />
         {mocks.pathname === '/signin' ? <Label /> : <Destination />}
       </I18nClientProvider>

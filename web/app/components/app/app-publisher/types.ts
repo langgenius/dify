@@ -1,3 +1,4 @@
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { WorkflowToolOutputVariable } from '@/app/components/tools/types'
 import type { InputVar } from '@/app/components/workflow/types'
@@ -22,7 +23,7 @@ export type AppPublisherWorkflowKindChangeHandler = (
   targetKind: WorkflowKind,
 ) => Promise<unknown> | unknown
 
-export type AppPublisherProps = {
+export type AppPublisherProps = Pick<PopoverContentProps, 'alignOffset'> & {
   appId: string
   disabled?: boolean
   publishDisabled?: boolean
@@ -38,7 +39,6 @@ export type AppPublisherProps = {
   workflowKindChangePending?: boolean
   onRestore?: AppPublisherRestoreHandler
   onToggle?: (state: boolean) => void
-  crossAxisOffset?: number
   toolPublished?: boolean
   inputs?: InputVar[]
   outputs?: WorkflowToolOutputVariable[]
@@ -47,5 +47,4 @@ export type AppPublisherProps = {
   missingStartNode?: boolean
   hasTriggerNode?: boolean
   startNodeLimitExceeded?: boolean
-  hasHumanInputNode?: boolean
 }

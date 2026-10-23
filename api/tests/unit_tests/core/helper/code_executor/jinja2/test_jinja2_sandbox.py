@@ -29,7 +29,7 @@ MALICIOUS_TEMPLATES = [
 
 def _exec_scripts(runner: str, preload: str) -> str:
     """Execute preload then runner in a shared namespace, return captured stdout."""
-    ns: dict = {}
+    ns: dict[str, object] = {}
     exec(compile(preload, "<preload>", "exec"), ns)  # noqa: S102
     captured = io.StringIO()
     old_stdout = sys.stdout
@@ -47,7 +47,7 @@ class TestJinja2TransformCallerSandbox:
     @pytest.mark.parametrize("malicious_template", MALICIOUS_TEMPLATES)
     def test_blocks_unsafe_template(self, malicious_template: str) -> None:
         runner, preload = Jinja2TemplateTransformer.transform_caller(malicious_template, {})
-        ns: dict = {}
+        ns: dict[str, object] = {}
         exec(compile(preload, "<preload>", "exec"), ns)  # noqa: S102
         with pytest.raises(
             Exception,

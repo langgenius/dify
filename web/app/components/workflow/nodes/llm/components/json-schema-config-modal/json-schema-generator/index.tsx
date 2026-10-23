@@ -1,3 +1,4 @@
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { SchemaRoot } from '../../../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
@@ -19,9 +20,8 @@ import { SchemaGeneratorDark, SchemaGeneratorLight } from './assets'
 import GeneratedResult from './generated-result'
 import PromptEditor from './prompt-editor'
 
-type JsonSchemaGeneratorProps = {
+type JsonSchemaGeneratorProps = Pick<PopoverContentProps, 'alignOffset'> & {
   onApply: (schema: SchemaRoot) => void
-  crossAxisOffset?: number
 }
 
 const GENERATOR_VIEWS = {
@@ -38,7 +38,7 @@ const createEmptyModel = (): Model => ({
   completion_params: {} as CompletionParams,
 })
 
-export function JsonSchemaGenerator({ onApply, crossAxisOffset }: JsonSchemaGeneratorProps) {
+export function JsonSchemaGenerator({ onApply, alignOffset }: JsonSchemaGeneratorProps) {
   const { t } = useTranslation(['workflowModels'])
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<GeneratorView>(GENERATOR_VIEWS.promptEditor)
@@ -161,9 +161,9 @@ export function JsonSchemaGenerator({ onApply, crossAxisOffset }: JsonSchemaGene
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
-        alignOffset={crossAxisOffset ?? 0}
+        alignOffset={alignOffset}
         className="border-none bg-transparent shadow-none"
       >
         {view === GENERATOR_VIEWS.promptEditor && (

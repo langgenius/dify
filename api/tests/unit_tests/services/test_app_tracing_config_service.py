@@ -114,6 +114,7 @@ def test_create_calls_provider_between_separate_store_operations() -> None:
         app_id="app-1",
         tracing_provider="arize",
         tracing_config={"api_key": "encrypted"},
+        activate=False,
     )
 
 
@@ -170,6 +171,8 @@ def test_update_validates_reads_prepares_and_writes_in_order() -> None:
         app_id="app-1",
         tracing_provider="arize",
         tracing_config={"api_key": "new-encrypted"},
+        expected=current,
+        activate=False,
     )
 
 

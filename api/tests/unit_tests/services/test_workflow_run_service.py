@@ -1,16 +1,21 @@
 """Unit tests for the Console workflow-run application service."""
 
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock
+from unittest.mock import ANY, MagicMock, create_autospec
 
 import pytest
 
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    WORKFLOW_TOOL_ROOT_APP_ID_KEY,
+)
 from graphon.enums import WorkflowExecutionStatus
 from machinery.context import RequestContext
 from models import WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 from models.enums import CreatorUserRole
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunMessageRef
 from services import workflow_run_service as service_module
+from services.workflow_node_execution_trace_service import WorkflowNodeExecutionTrace
 from services.workflow_run_service import WorkflowRunService
 
 
@@ -56,6 +61,50 @@ def _workflow_run(
 
 
 class TestWorkflowRunServiceQueries:
+    def test_workflow_tool_details_require_the_root_app_run_and_hide_internal_correlation(
+        self, service_dependencies: tuple[MagicMock, MagicMock], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        node_executions, workflow_runs = service_dependencies
+        service = _service(service_dependencies)
+        workflow_runs.get_workflow_run_by_id.return_value = None
+        context = _request_context()
+        assert (
+            service.get_workflow_tool_node_executions(
+                context, app_id="app-1", run_id="run-1", node_execution_id="parent-1"
+            )
+            is None
+        )
+        node_executions.get_workflow_tool_executions.assert_not_called()
+
+        workflow_runs.get_workflow_run_by_id.return_value = _workflow_run()
+        trace = WorkflowNodeExecutionTrace(
+            id="execution-1",
+            tenant_id="tenant-1",
+            app_id="source-app",
+            workflow_id="source-workflow",
+            triggered_from="workflow-tool",
+            created_by="account-1",
+            process_data={
+                "answer": "approved",
+                WORKFLOW_TOOL_INVOCATION_ID_KEY: "invocation-1",
+                WORKFLOW_TOOL_ROOT_APP_ID_KEY: "app-1",
+            },
+        )
+        assemble = create_autospec(service_module.assemble_workflow_node_execution_traces, return_value=[trace])
+        monkeypatch.setattr(service_module, "assemble_workflow_node_execution_traces", assemble)
+        result = service.get_workflow_tool_node_executions(
+            context, app_id="app-1", run_id="run-1", node_execution_id="parent-1"
+        )
+        workflow_runs.get_workflow_run_by_id.assert_called_with(tenant_id="tenant-1", app_id="app-1", run_id="run-1")
+        node_executions.get_workflow_tool_executions.assert_called_once_with(
+            tenant_id="tenant-1", workflow_run_id="run-1", parent_node_execution_id="parent-1"
+        )
+        assemble.assert_called_once_with(
+            node_executions.get_workflow_tool_executions.return_value, node_executions, session=ANY
+        )
+        assert result == [trace]
+        assert trace.process_data == {"answer": "approved"}
+
     def test_get_paginate_workflow_runs_should_forward_filters_and_parse_limit(
         self,
         service_dependencies: tuple[MagicMock, MagicMock],

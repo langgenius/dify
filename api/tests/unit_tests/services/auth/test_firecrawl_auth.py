@@ -154,6 +154,22 @@ class TestFirecrawlAuth:
         assert str(exc_info.value) == expected_error_contains
 
     @pytest.mark.parametrize(
+        ("status_code", "body"),
+        [(402, '"Payment required"'), (402, "[]"), (401, "null"), (403, '"Forbidden"')],
+        ids=["string-402", "array-402", "null-401", "string-403"],
+    )
+    @patch("services.data_source.auth.firecrawl.firecrawl.ssrf_proxy.post", autospec=True)
+    def test_should_handle_json_error_body_that_is_not_an_object(
+        self, mock_post: MagicMock, status_code: int, body: str, auth_instance: FirecrawlAuth
+    ) -> None:
+        """A JSON string, array or null body is reported like a non-JSON body."""
+        mock_post.return_value = httpx.Response(status_code, text=body)
+
+        with pytest.raises(DataSourceApiKeyAuthCredentialValidationError) as exc_info:
+            auth_instance.validate_credentials()
+        assert str(exc_info.value) == f"Failed to authorize. Status code: {status_code}. Error: {body}"
+
+    @pytest.mark.parametrize(
         ("exception_type", "exception_message"),
         [
             (httpx.ConnectError, "Network error"),

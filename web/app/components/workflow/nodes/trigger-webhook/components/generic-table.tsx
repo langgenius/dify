@@ -127,6 +127,7 @@ const renderInputCell = (
       disabled={readonly}
       className={cn(
         'h-6 min-w-0 rounded-none border-0 bg-transparent p-0 shadow-none',
+        // oxlint-disable-next-line shadcn/no-restyle -- The table cell paints an inset focus ring around its full editable area.
         'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:ring-0',
         'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
       )}

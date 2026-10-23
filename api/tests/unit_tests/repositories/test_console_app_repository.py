@@ -18,10 +18,10 @@ from models.model import App, AppMode, AppModelConfig, AppStar, IconType, Site
 from models.workflow import Workflow, WorkflowType
 from repositories.app.console_repository import ConsoleAppRepository
 from services.app.console_service import ConsoleAppNotFoundError
+from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     AppListParams,
     AppRecord,
-    AppTraceSettings,
     StarredAppListParams,
     UpdateAppParams,
 )
@@ -160,7 +160,6 @@ def test_authorization_maintainer_requires_normal_app(
         lambda repo, ctx, app_id: repo.rename(ctx, app_id, "Renamed"),
         lambda repo, ctx, app_id: repo.set_starred(ctx, app_id, True),
         lambda repo, ctx, app_id: repo.get_trace(ctx, app_id),
-        lambda repo, ctx, app_id: repo.set_trace(ctx, app_id, AppTraceSettings(True, "langfuse")),
         lambda repo, ctx, app_id: repo.get_reference(ctx, app_id),
     ],
 )
@@ -332,13 +331,8 @@ def test_openapi_visible_app_list_only_includes_apps_with_api_enabled(
     assert page.total == 1
 
 
-def test_trace_settings_commit_and_default(repository: ConsoleAppRepository, sqlite_session: Session) -> None:
+def test_trace_settings_default(repository: ConsoleAppRepository, sqlite_session: Session) -> None:
     app = persist_app(sqlite_session)
-    assert repository.get_trace(CONTEXT, app.id) == AppTraceSettings()
-    settings = AppTraceSettings(True, "langfuse")
-    repository.set_trace(CONTEXT, app.id, settings)
-    assert repository.get_trace(CONTEXT, app.id) == settings
-    repository.set_trace(CONTEXT, app.id, AppTraceSettings())
     assert repository.get_trace(CONTEXT, app.id) == AppTraceSettings()
 
 

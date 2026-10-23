@@ -160,7 +160,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
         )}
         <DropdownMenuContent
           className="max-h-[min(16rem,var(--available-height))]"
-          placement="bottom-start"
+          align="start"
           aria-labelledby={versionMenuLabelId}
         >
           <DropdownMenuGroup>

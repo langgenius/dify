@@ -40,6 +40,7 @@ from services.app.console_service import (
     CreatorsPlatformDisabledError,
     InvalidAppExportError,
 )
+from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
@@ -48,7 +49,6 @@ from services.entities.app_entities import (
     AppPage,
     AppRecord,
     AppReference,
-    AppTraceSettings,
     CopyAppParams,
     CreateAppParams,
     ImportedAppPackage,
@@ -255,12 +255,10 @@ class Creators:
 
 
 class Tracing:
-    def validate_provider(self, tracing_provider: str) -> None:
-        if tracing_provider != "langfuse":
+    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
+        del context, app_id
+        if settings.tracing_provider not in (None, "langfuse"):
             raise ValueError("Invalid tracing provider")
-
-    def require_provider_available(self, tracing_provider: str) -> None:
-        self.validate_provider(tracing_provider)
 
 
 Ports = tuple[ConsoleAppService, Apps, Access, Transfers, Creators]
@@ -465,7 +463,7 @@ def test_trace_update_checks_ownership_and_provider_without_parsing_old_settings
         assert apps.calls == [("get_reference", CONTEXT, "app")]
     else:
         service.set_trace(CONTEXT, "app", settings)
-        assert apps.calls == [("get_reference", CONTEXT, "app"), ("set_trace", CONTEXT, "app", settings)]
+        assert apps.calls == [("get_reference", CONTEXT, "app")]
 
 
 class Lifecycle:

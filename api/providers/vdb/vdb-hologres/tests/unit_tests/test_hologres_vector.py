@@ -1,20 +1,19 @@
 import importlib
 import json
 import sys
-import types
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
 def _build_fake_hologres_modules():
-    holo_module = types.ModuleType("holo_search_sdk")
-    holo_types_module = types.ModuleType("holo_search_sdk.types")
+    holo_module = FakeModule("holo_search_sdk")
+    holo_types_module = FakeModule("holo_search_sdk.types")
 
     holo_types_module.BaseQuantizationType = str
     holo_types_module.DistanceType = str
@@ -124,7 +123,7 @@ def test_add_texts_batches_and_serializes_metadata(hologres_module):
         Document(page_content=f"doc-{i}", metadata={"doc_id": f"id-{i}", "document_id": f"document-{i}"})
         for i in range(100)
     ]
-    documents.append(SimpleNamespace(page_content="doc-100", metadata=None))
+    documents.append(Document(page_content="doc-100"))
     embeddings = [[float(i)] for i in range(len(documents))]
 
     ids = vector.add_texts(documents, embeddings)

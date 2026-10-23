@@ -13,6 +13,8 @@ from core.plugin.impl.model import PluginModelClient
 from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
+PLUGIN_IDENTIFIER = "org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
 
 class TestPluginModelClient:
     def test_fetch_model_providers(self, mocker: MockerFixture):
@@ -53,11 +55,12 @@ class TestPluginModelClient:
         result = client.get_model_schema(
             tenant_id="tenant-1",
             user_id="user-1",
-            plugin_id="org/plugin:1",
+            plugin_id="org/plugin",
             provider="provider-a",
             model_type="llm",
             model="gpt-test",
             credentials={"api_key": "key"},
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         )
 
         assert result is schema
@@ -67,7 +70,16 @@ class TestPluginModelClient:
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
-        result = client.get_model_schema("tenant-1", "user-1", "org/plugin:1", "provider-a", "llm", "gpt-test", {})
+        result = client.get_model_schema(
+            "tenant-1",
+            "user-1",
+            "org/plugin",
+            "provider-a",
+            "llm",
+            "gpt-test",
+            {},
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
+        )
 
         assert result is None
 
@@ -83,9 +95,10 @@ class TestPluginModelClient:
         result = client.validate_provider_credentials(
             tenant_id="tenant-1",
             user_id="user-1",
-            plugin_id="org/plugin:1",
+            plugin_id="org/plugin",
             provider="provider-a",
             credentials=credentials,
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         )
 
         assert result is True
@@ -104,7 +117,14 @@ class TestPluginModelClient:
         )
         credentials = {"api_key": "same"}
 
-        result = client.validate_provider_credentials("tenant-1", "user-1", "org/plugin:1", "provider-a", credentials)
+        result = client.validate_provider_credentials(
+            "tenant-1",
+            "user-1",
+            "org/plugin",
+            "provider-a",
+            credentials,
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
+        )
 
         assert result is False
         assert credentials == {"api_key": "same"}
@@ -113,7 +133,17 @@ class TestPluginModelClient:
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
-        assert client.validate_provider_credentials("tenant-1", "user-1", "org/plugin:1", "provider-a", {}) is False
+        assert (
+            client.validate_provider_credentials(
+                "tenant-1",
+                "user-1",
+                "org/plugin",
+                "provider-a",
+                {},
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
+            )
+            is False
+        )
 
     def test_validate_model_credentials(self, mocker: MockerFixture):
         client = PluginModelClient()
@@ -127,11 +157,12 @@ class TestPluginModelClient:
         result = client.validate_model_credentials(
             tenant_id="tenant-1",
             user_id="user-1",
-            plugin_id="org/plugin:1",
+            plugin_id="org/plugin",
             provider="provider-a",
             model_type="llm",
             model="gpt-test",
             credentials=credentials,
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         )
 
         assert result is True
@@ -146,7 +177,16 @@ class TestPluginModelClient:
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
         assert (
-            client.validate_model_credentials("tenant-1", "user-1", "org/plugin:1", "provider-a", "llm", "gpt-test", {})
+            client.validate_model_credentials(
+                "tenant-1",
+                "user-1",
+                "org/plugin",
+                "provider-a",
+                "llm",
+                "gpt-test",
+                {},
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
+            )
             is False
         )
 
@@ -160,7 +200,7 @@ class TestPluginModelClient:
             client.invoke_llm(
                 tenant_id="tenant-1",
                 user_id="user-1",
-                plugin_id="org/plugin:1",
+                plugin_id="org/plugin",
                 provider="provider-a",
                 model="gpt-test",
                 credentials={"api_key": "key"},
@@ -170,6 +210,7 @@ class TestPluginModelClient:
                 stop=["STOP"],
                 stream=False,
                 app_id="app-1",
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
             )
         )
 
@@ -188,11 +229,12 @@ class TestPluginModelClient:
             client.invoke_llm(
                 tenant_id="tenant-1",
                 user_id="user-1",
-                plugin_id="org/plugin:1",
+                plugin_id="org/plugin",
                 provider="provider-a",
                 model="gpt-test",
                 credentials={},
                 prompt_messages=[],
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
             )
         )
 
@@ -212,11 +254,12 @@ class TestPluginModelClient:
                 client.invoke_llm(
                     tenant_id="tenant-1",
                     user_id="user-1",
-                    plugin_id="org/plugin:1",
+                    plugin_id="org/plugin",
                     provider="provider-a",
                     model="gpt-test",
                     credentials={},
                     prompt_messages=[],
+                    plugin_unique_identifier=PLUGIN_IDENTIFIER,
                 )
             )
 
@@ -236,7 +279,7 @@ class TestPluginModelClient:
         result = client.start_llm_polling(
             tenant_id="tenant-1",
             user_id="user-1",
-            plugin_id="org/plugin:1",
+            plugin_id="org/plugin",
             provider="provider-a",
             model="gpt-test",
             credentials={"api_key": "key"},
@@ -245,6 +288,7 @@ class TestPluginModelClient:
             tools=[],
             stop=["STOP"],
             json_schema={"type": "object"},
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         )
 
         assert result == polling_result
@@ -283,11 +327,12 @@ class TestPluginModelClient:
         result = client.check_llm_polling(
             tenant_id="tenant-1",
             user_id="user-1",
-            plugin_id="org/plugin:1",
+            plugin_id="org/plugin",
             provider="provider-a",
             model="gpt-test",
             credentials={"api_key": "key"},
             plugin_state={"task_id": "poll-1"},
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         )
 
         assert result == polling_result
@@ -320,11 +365,12 @@ class TestPluginModelClient:
             client.start_llm_polling(
                 tenant_id="tenant-1",
                 user_id="user-1",
-                plugin_id="org/plugin:1",
+                plugin_id="org/plugin",
                 provider="provider-a",
                 model="gpt-test",
                 credentials={"api_key": "key"},
                 prompt_messages=[],
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
             )
 
     def test_get_llm_num_tokens(self, mocker: MockerFixture):
@@ -338,13 +384,14 @@ class TestPluginModelClient:
         result = client.get_llm_num_tokens(
             tenant_id="tenant-1",
             user_id="user-1",
-            plugin_id="org/plugin:1",
+            plugin_id="org/plugin",
             provider="provider-a",
             model_type="llm",
             model="gpt-test",
             credentials={},
             prompt_messages=[],
             tools=[],
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         )
 
         assert result == 42
@@ -354,7 +401,17 @@ class TestPluginModelClient:
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
         assert (
-            client.get_llm_num_tokens("tenant-1", "user-1", "org/plugin:1", "provider-a", "llm", "gpt-test", {}, [])
+            client.get_llm_num_tokens(
+                "tenant-1",
+                "user-1",
+                "org/plugin",
+                "provider-a",
+                "llm",
+                "gpt-test",
+                {},
+                [],
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
+            )
             == 0
         )
 
@@ -368,12 +425,13 @@ class TestPluginModelClient:
         result = client.invoke_text_embedding(
             tenant_id="tenant-1",
             user_id="user-1",
-            plugin_id="org/plugin:1",
+            plugin_id="org/plugin",
             provider="provider-a",
             model="embedding-a",
             credentials={},
             texts=["hello"],
             input_type="search_document",
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         )
 
         assert result is embedding_result
@@ -384,7 +442,15 @@ class TestPluginModelClient:
 
         with pytest.raises(ValueError, match="Failed to invoke text embedding"):
             client.invoke_text_embedding(
-                "tenant-1", "user-1", "org/plugin:1", "provider-a", "embedding-a", {}, ["hello"], "x"
+                "tenant-1",
+                "user-1",
+                "org/plugin",
+                "provider-a",
+                "embedding-a",
+                {},
+                ["hello"],
+                "x",
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
             )
 
     def test_invoke_multimodal_embedding(self, mocker: MockerFixture):
@@ -397,12 +463,13 @@ class TestPluginModelClient:
         result = client.invoke_multimodal_embedding(
             tenant_id="tenant-1",
             user_id="user-1",
-            plugin_id="org/plugin:1",
+            plugin_id="org/plugin",
             provider="provider-a",
             model="embedding-a",
             credentials={},
             documents=[{"type": "image", "value": "abc"}],
             input_type="search_document",
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         )
 
         assert result is embedding_result
@@ -413,7 +480,15 @@ class TestPluginModelClient:
 
         with pytest.raises(ValueError, match="Failed to invoke file embedding"):
             client.invoke_multimodal_embedding(
-                "tenant-1", "user-1", "org/plugin:1", "provider-a", "embedding-a", {}, [{"type": "image"}], "x"
+                "tenant-1",
+                "user-1",
+                "org/plugin",
+                "provider-a",
+                "embedding-a",
+                {},
+                [{"type": "image"}],
+                "x",
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
             )
 
     def test_get_text_embedding_num_tokens(self, mocker: MockerFixture):
@@ -425,7 +500,14 @@ class TestPluginModelClient:
         )
 
         assert client.get_text_embedding_num_tokens(
-            "tenant-1", "user-1", "org/plugin:1", "provider-a", "embedding-a", {}, ["a"]
+            "tenant-1",
+            "user-1",
+            "org/plugin",
+            "provider-a",
+            "embedding-a",
+            {},
+            ["a"],
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         ) == [
             1,
             2,
@@ -438,7 +520,14 @@ class TestPluginModelClient:
 
         assert (
             client.get_text_embedding_num_tokens(
-                "tenant-1", "user-1", "org/plugin:1", "provider-a", "embedding-a", {}, ["a"]
+                "tenant-1",
+                "user-1",
+                "org/plugin",
+                "provider-a",
+                "embedding-a",
+                {},
+                ["a"],
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
             )
             == []
         )
@@ -451,7 +540,7 @@ class TestPluginModelClient:
         result = client.invoke_rerank(
             tenant_id="tenant-1",
             user_id="user-1",
-            plugin_id="org/plugin:1",
+            plugin_id="org/plugin",
             provider="provider-a",
             model="rerank-a",
             credentials={},
@@ -459,6 +548,7 @@ class TestPluginModelClient:
             docs=["doc-1"],
             score_threshold=0.2,
             top_n=5,
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         )
 
         assert result is rerank_result
@@ -468,7 +558,17 @@ class TestPluginModelClient:
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
         with pytest.raises(ValueError, match="Failed to invoke rerank"):
-            client.invoke_rerank("tenant-1", "user-1", "org/plugin:1", "provider-a", "rerank-a", {}, "q", ["doc-1"])
+            client.invoke_rerank(
+                "tenant-1",
+                "user-1",
+                "org/plugin",
+                "provider-a",
+                "rerank-a",
+                {},
+                "q",
+                ["doc-1"],
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
+            )
 
     def test_invoke_multimodal_rerank(self, mocker: MockerFixture):
         client = PluginModelClient()
@@ -478,7 +578,7 @@ class TestPluginModelClient:
         result = client.invoke_multimodal_rerank(
             tenant_id="tenant-1",
             user_id="user-1",
-            plugin_id="org/plugin:1",
+            plugin_id="org/plugin",
             provider="provider-a",
             model="rerank-a",
             credentials={},
@@ -486,6 +586,7 @@ class TestPluginModelClient:
             docs=[{"type": "image", "value": "doc"}],
             score_threshold=0.1,
             top_n=3,
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         )
 
         assert result is rerank_result
@@ -498,12 +599,13 @@ class TestPluginModelClient:
             client.invoke_multimodal_rerank(
                 "tenant-1",
                 "user-1",
-                "org/plugin:1",
+                "org/plugin",
                 "provider-a",
                 "rerank-a",
                 {},
                 {"type": "text"},
                 [{"type": "image"}],
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
             )
 
     def test_invoke_tts(self, mocker: MockerFixture):
@@ -523,12 +625,13 @@ class TestPluginModelClient:
             client.invoke_tts(
                 tenant_id="tenant-1",
                 user_id="user-1",
-                plugin_id="org/plugin:1",
+                plugin_id="org/plugin",
                 provider="provider-a",
                 model="tts-a",
                 credentials={},
                 content_text="hello",
                 voice="alloy",
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
             )
         )
 
@@ -545,7 +648,19 @@ class TestPluginModelClient:
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=_boom())
 
         with pytest.raises(ValueError, match="tts error-400"):
-            list(client.invoke_tts("tenant-1", "user-1", "org/plugin:1", "provider-a", "tts-a", {}, "hello", "alloy"))
+            list(
+                client.invoke_tts(
+                    "tenant-1",
+                    "user-1",
+                    "org/plugin",
+                    "provider-a",
+                    "tts-a",
+                    {},
+                    "hello",
+                    "alloy",
+                    plugin_unique_identifier=PLUGIN_IDENTIFIER,
+                )
+            )
 
     def test_get_tts_model_voices(self, mocker: MockerFixture):
         client = PluginModelClient()
@@ -567,11 +682,12 @@ class TestPluginModelClient:
         result = client.get_tts_model_voices(
             tenant_id="tenant-1",
             user_id="user-1",
-            plugin_id="org/plugin:1",
+            plugin_id="org/plugin",
             provider="provider-a",
             model="tts-a",
             credentials={},
             language="en",
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         )
 
         assert result == [{"name": "Alloy", "value": "alloy"}, {"name": "Echo", "value": "echo"}]
@@ -580,7 +696,18 @@ class TestPluginModelClient:
         client = PluginModelClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
-        assert client.get_tts_model_voices("tenant-1", "user-1", "org/plugin:1", "provider-a", "tts-a", {}) == []
+        assert (
+            client.get_tts_model_voices(
+                "tenant-1",
+                "user-1",
+                "org/plugin",
+                "provider-a",
+                "tts-a",
+                {},
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
+            )
+            == []
+        )
 
     def test_invoke_speech_to_text(self, mocker: MockerFixture):
         client = PluginModelClient()
@@ -593,11 +720,12 @@ class TestPluginModelClient:
         result = client.invoke_speech_to_text(
             tenant_id="tenant-1",
             user_id="user-1",
-            plugin_id="org/plugin:1",
+            plugin_id="org/plugin",
             provider="provider-a",
             model="stt-a",
             credentials={},
             file=io.BytesIO(b"abc"),
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         )
 
         assert result == "transcribed text"
@@ -609,7 +737,14 @@ class TestPluginModelClient:
 
         with pytest.raises(ValueError, match="Failed to invoke speech to text"):
             client.invoke_speech_to_text(
-                "tenant-1", "user-1", "org/plugin:1", "provider-a", "stt-a", {}, io.BytesIO(b"abc")
+                "tenant-1",
+                "user-1",
+                "org/plugin",
+                "provider-a",
+                "stt-a",
+                {},
+                io.BytesIO(b"abc"),
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
             )
 
     def test_invoke_moderation(self, mocker: MockerFixture):
@@ -623,11 +758,12 @@ class TestPluginModelClient:
         result = client.invoke_moderation(
             tenant_id="tenant-1",
             user_id="user-1",
-            plugin_id="org/plugin:1",
+            plugin_id="org/plugin",
             provider="provider-a",
             model="moderation-a",
             credentials={},
             text="safe text",
+            plugin_unique_identifier=PLUGIN_IDENTIFIER,
         )
 
         assert result is True
@@ -638,4 +774,13 @@ class TestPluginModelClient:
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
         with pytest.raises(ValueError, match="Failed to invoke moderation"):
-            client.invoke_moderation("tenant-1", "user-1", "org/plugin:1", "provider-a", "moderation-a", {}, "unsafe")
+            client.invoke_moderation(
+                "tenant-1",
+                "user-1",
+                "org/plugin",
+                "provider-a",
+                "moderation-a",
+                {},
+                "unsafe",
+                plugin_unique_identifier=PLUGIN_IDENTIFIER,
+            )

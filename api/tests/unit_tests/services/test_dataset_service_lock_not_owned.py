@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.account import Account, Tenant
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentSegment
-from models.enums import ProcessRuleMode
+from models.enums import DataSourceType, DocumentCreatedFrom, ProcessRuleMode
 from services.knowledge.dataset_service import DocumentService, SegmentService
 from services.knowledge.entities.knowledge_entities import DataSource, InfoList, KnowledgeConfig
 from services.knowledge.segments.application import SegmentMutationService
@@ -166,11 +166,11 @@ def test_multi_create_segment_ignores_lock_not_owned(
         tenant_id=TENANT_ID,
         dataset_id=DATASET_ID,
         position=1,
-        data_source_type="upload_file",
+        data_source_type=DataSourceType("upload_file"),
         data_source_info="{}",
         batch="batch-1",
         name="Test Document",
-        created_from="web",
+        created_from=DocumentCreatedFrom("web"),
         created_by=USER_ID,
         word_count=0,
         doc_form=IndexStructureType.QA_INDEX,
