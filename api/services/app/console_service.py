@@ -136,6 +136,7 @@ class AppTransfers(Protocol):
         *,
         as_copy: bool = False,
         package: AppImportPackage | None = None,
+        preserve_agent_bindings: bool = False,
     ) -> Import: ...
 
     def confirm_import(self, context: RequestContext, import_id: str) -> tuple[Import, bool]: ...
@@ -405,6 +406,7 @@ class ConsoleAppService:
             context,
             AppImportParams(mode="yaml-content", yaml_content=dsl, **params.model_dump()),
             as_copy=True,
+            preserve_agent_bindings=True,
         )
         if result.status in {ImportStatus.FAILED, ImportStatus.PENDING}:
             return result, None
