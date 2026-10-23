@@ -15,9 +15,11 @@ from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_application_services import application_services
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
+from services.trigger.event_gateway import PluginTriggerEventGateway
+from services.trigger.event_service import TriggerEventService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService, TriggerSubscriptionRuntime
-from services.trigger.trigger_service import TriggerService
+from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.workflow.entities import PluginTriggerDispatchData
 from tasks.trigger_processing_tasks import dispatch_triggered_workflows_async
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client, test_trigger_subscription_builder
@@ -57,12 +59,15 @@ def test_missing_debug_subscription_uses_injected_reader_without_flask_context(
     def run() -> None:
         assert not has_app_context()
         with pytest.raises(ValueError, match="^Subscription not found$"):
-            TriggerService.invoke_trigger_event(
+            TriggerEventService(
+                subscriptions=subscriptions,
+                plugins=PluginTriggerEventGateway(),
+                requests=TriggerHttpRequestCachingService,
+            ).invoke_debug(
                 tenant_id=str(uuid4()),
                 user_id=event.user_id,
                 node_config={"id": "trigger", "data": node},
                 event=event,
-                subscriptions=subscriptions,
             )
 
     Context().run(run)

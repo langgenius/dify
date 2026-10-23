@@ -6,21 +6,12 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
-from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
-from core.trigger.debug.events import PluginTriggerDebugEvent
-from core.trigger.provider import PluginTriggerProviderController
-from core.trigger.trigger_manager import TriggerManager
-from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from graphon.entities.graph_config import NodeConfigDict
 from models.model import App
-from models.provider_ids import TriggerProviderID
 from models.trigger import WorkflowPluginTrigger
 from models.workflow import Workflow
-from services.trigger.subscription_query_service import TriggerSubscriptionRuntimeReader
-from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 
 logger = logging.getLogger(__name__)
 
@@ -31,45 +22,6 @@ class TriggerService:
     __ENDPOINT_REQUEST_CACHE_EXPIRE_MS__ = 5 * 60 * 1000
     __PLUGIN_TRIGGER_NODE_CACHE_KEY__ = "plugin_trigger_nodes"
     MAX_PLUGIN_TRIGGER_NODES_PER_WORKFLOW = 5  # Maximum allowed plugin trigger nodes per workflow
-
-    @classmethod
-    def invoke_trigger_event(
-        cls,
-        tenant_id: str,
-        user_id: str,
-        node_config: NodeConfigDict,
-        event: PluginTriggerDebugEvent,
-        *,
-        subscriptions: TriggerSubscriptionRuntimeReader,
-    ) -> TriggerInvokeEventResponse:
-        """Invoke a trigger event."""
-        subscription = subscriptions.get_for_execution(
-            tenant_id=tenant_id,
-            subscription_id=event.subscription_id,
-        )
-        if not subscription:
-            raise ValueError("Subscription not found")
-        node_data = TriggerEventNodeData.model_validate(node_config["data"], from_attributes=True)
-        request = TriggerHttpRequestCachingService.get_request(event.request_id)
-        payload = TriggerHttpRequestCachingService.get_payload(event.request_id)
-        # invoke triger
-        provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
-            tenant_id, TriggerProviderID(subscription.provider_id)
-        )
-        return TriggerManager.invoke_trigger_event(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            provider_id=TriggerProviderID(event.provider_id),
-            event_name=event.name,
-            parameters=node_data.resolve_parameters(
-                parameter_schemas=provider_controller.get_event_parameters(event_name=event.name)
-            ),
-            credentials=subscription.credentials,
-            credential_type=subscription.credential_type,
-            subscription=subscription.subscription,
-            request=request,
-            payload=payload,
-        )
 
     @classmethod
     def sync_plugin_trigger_relationships(cls, app: App, workflow: Workflow):

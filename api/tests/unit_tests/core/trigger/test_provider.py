@@ -258,27 +258,6 @@ class TestDispatch:
         mock_client.return_value.dispatch_event.assert_called_once()
 
 
-class TestInvokeTriggerEvent:
-    @patch("core.trigger.provider.PluginTriggerClient")
-    def test_delegates_to_client(self, mock_client: MagicMock) -> None:
-        ctrl = make_controller()
-        expected = MagicMock()
-        mock_client.return_value.invoke_trigger_event.return_value = expected
-
-        result = ctrl.invoke_trigger_event(
-            user_id="u1",
-            event_name="push",
-            parameters={},
-            credentials={},
-            credential_type=CredentialType.API_KEY,
-            subscription=make_subscription(),
-            request=MagicMock(),
-            payload={},
-        )
-
-        assert result is expected
-
-
 class TestSubscribeTrigger:
     @patch("core.trigger.provider.PluginTriggerClient")
     def test_returns_validated_subscription(self, mock_client: MagicMock) -> None:

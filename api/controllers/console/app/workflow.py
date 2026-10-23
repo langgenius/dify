@@ -2,7 +2,6 @@ import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from functools import partial
 from typing import Any, Literal, NotRequired, Self, TypedDict
 
 from flask import abort, request
@@ -103,7 +102,6 @@ from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
-from services.trigger.trigger_service import TriggerService
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 from services.workflow_variable_reference_validator import advisory_variable_reference_warning
@@ -1772,10 +1770,7 @@ class DraftWorkflowTriggerRunApi(Resource):
             user_id=current_user.id,
             app_id=app_model.id,
             node_id=node_id,
-            invoke_plugin_event=partial(
-                TriggerService.invoke_trigger_event,
-                subscriptions=application_services().workspaces.trigger_subscriptions,
-            ),
+            invoke_plugin_event=application_services().workspaces.trigger_events.invoke_debug,
         )
         event: TriggerDebugEvent | None = None
         try:
@@ -1857,10 +1852,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
                     user_id=current_user.id,
                     app_id=app_model.id,
                     node_id=node_id,
-                    invoke_plugin_event=partial(
-                        TriggerService.invoke_trigger_event,
-                        subscriptions=application_services().workspaces.trigger_subscriptions,
-                    ),
+                    invoke_plugin_event=application_services().workspaces.trigger_events.invoke_debug,
                 )
                 event = poller.poll()
             except PluginInvokeError as e:
@@ -1933,10 +1925,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
                 app_model=app_model,
                 user_id=current_user.id,
                 node_ids=node_ids,
-                invoke_plugin_event=partial(
-                    TriggerService.invoke_trigger_event,
-                    subscriptions=application_services().workspaces.trigger_subscriptions,
-                ),
+                invoke_plugin_event=application_services().workspaces.trigger_events.invoke_debug,
             )
         except PluginInvokeError as e:
             return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400

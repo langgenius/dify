@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from functools import partial
 from typing import cast
 from unittest.mock import MagicMock, patch
 
@@ -37,9 +36,11 @@ from models.model import App, AppMode
 from models.workflow import Workflow
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
+from services.trigger.event_gateway import PluginTriggerEventGateway
+from services.trigger.event_service import TriggerEventService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
-from services.trigger.trigger_service import TriggerService
+from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from tests.unit_tests.model_factories import make_app
 
 
@@ -69,7 +70,9 @@ def invoke_plugin_event(sqlite_session_factory: sessionmaker[Session]) -> Plugin
         schemas=PluginTriggerProviderQuery(),
         subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
     )
-    return partial(TriggerService.invoke_trigger_event, subscriptions=subscriptions)
+    return TriggerEventService(
+        subscriptions=subscriptions, plugins=PluginTriggerEventGateway(), requests=TriggerHttpRequestCachingService
+    ).invoke_debug
 
 
 def _workflow_with_node(node_type: NodeType | None) -> Workflow:

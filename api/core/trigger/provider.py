@@ -12,7 +12,6 @@ from core.entities.provider_entities import BasicProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import (
     TriggerDispatchResponse,
-    TriggerInvokeEventResponse,
     TriggerSubscriptionResponse,
 )
 from core.plugin.impl.trigger import PluginTriggerClient
@@ -294,45 +293,6 @@ class PluginTriggerProviderController:
             credential_type=credential_type,
         )
         return response
-
-    def invoke_trigger_event(
-        self,
-        user_id: str,
-        event_name: str,
-        parameters: Mapping[str, Any],
-        credentials: Mapping[str, str],
-        credential_type: CredentialType,
-        subscription: Subscription,
-        request: Request,
-        payload: Mapping[str, Any],
-    ) -> TriggerInvokeEventResponse:
-        """
-        Execute a trigger through plugin runtime
-
-        :param user_id: User ID
-        :param event_name: Event name
-        :param parameters: Trigger parameters
-        :param credentials: Provider credentials
-        :param credential_type: Credential type
-        :param request: Request
-        :param payload: Payload
-        :return: Trigger execution result
-        """
-        manager = PluginTriggerClient(plugin_unique_identifier=self.plugin_unique_identifier)
-        provider_id: TriggerProviderID = self.get_provider_id()
-
-        return manager.invoke_trigger_event(
-            tenant_id=self.tenant_id,
-            user_id=user_id,
-            provider=str(provider_id),
-            event_name=event_name,
-            credentials=credentials,
-            credential_type=credential_type,
-            request=request,
-            parameters=parameters,
-            subscription=subscription,
-            payload=payload,
-        )
 
     def subscribe_trigger(
         self,

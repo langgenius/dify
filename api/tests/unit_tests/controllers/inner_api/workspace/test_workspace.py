@@ -37,6 +37,8 @@ from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGatewa
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
 from services.trigger.endpoint_service import TriggerEndpointService
+from services.trigger.event_gateway import PluginTriggerEventGateway
+from services.trigger.event_service import TriggerEventService
 from services.trigger.oauth_client_service import TriggerOAuthClientService
 from services.trigger.oauth_gateway import (
     OAuthProxyContextGateway,
@@ -83,6 +85,11 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
         subscribe=TriggerManager.subscribe_trigger,
         create_subscription=subscription_management.create,
     )
+    subscription_queries = TriggerSubscriptionQueryService(
+        credentials=CredentialQueryRepository(session_factory=sqlite_session_factory),
+        schemas=PluginTriggerProviderQuery(),
+        subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+    )
     services = WorkspaceServices(
         queries=create_autospec(WorkspaceQueryService, instance=True),
         management=create_autospec(WorkspaceService, instance=True),
@@ -100,10 +107,11 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
             plugins=DaemonPluginParameterGateway(),
         ),
         trigger_providers=PluginTriggerProviderQuery(),
-        trigger_subscriptions=TriggerSubscriptionQueryService(
-            credentials=CredentialQueryRepository(session_factory=sqlite_session_factory),
-            schemas=PluginTriggerProviderQuery(),
-            subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+        trigger_subscriptions=subscription_queries,
+        trigger_events=TriggerEventService(
+            subscriptions=subscription_queries,
+            plugins=PluginTriggerEventGateway(),
+            requests=TriggerHttpRequestCachingService,
         ),
         trigger_builders=builders,
         trigger_endpoints=TriggerEndpointService(

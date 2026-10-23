@@ -21,9 +21,6 @@ from core.plugin.impl.exc import PluginInvokeError
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
-from core.trigger.entities.entities import TriggerProviderEntity
-from core.trigger.provider import PluginTriggerProviderController
-from core.trigger.trigger_manager import TriggerManager
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from enums import QuotaType
 from extensions.ext_application_services import application_services
@@ -36,15 +33,14 @@ from models.enums import (
     WorkflowTriggerStatus,
 )
 from models.model import App, EndUser
-from models.provider_ids import TriggerProviderID
 from models.trigger import WorkflowPluginTrigger, WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun
 from services.async_workflow_service import AsyncWorkflowService
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService, unlimited
 from services.trigger.app_trigger_service import AppTriggerService
+from services.trigger.event_service import TriggerEventService
 from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
-from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
 from services.workflow.entities import PluginTriggerData, PluginTriggerDispatchData, PluginTriggerMetadata
 from services.workflow.queue_dispatcher import QueueDispatcherManager
@@ -245,6 +241,7 @@ def dispatch_triggered_workflow(
     request_id: str,
     *,
     end_users: TriggerEndUserProvisioner,
+    events: TriggerEventService,
 ) -> int:
     """Process triggered workflows.
 
@@ -254,13 +251,11 @@ def dispatch_triggered_workflow(
         event_name: The name of the trigger event that was activated
         request_id: The ID of the stored request in storage system
         end_users: Provisioner that resolves or creates the end users for each app
+        events: Shared plugin event preparation and invocation
 
     Returns:
         The number of workflows dispatched for the event
     """
-    request = TriggerHttpRequestCachingService.get_request(request_id)
-    payload = TriggerHttpRequestCachingService.get_payload(request_id)
-
     subscribers: list[WorkflowPluginTrigger] = TriggerSubscriptionOperatorService.get_subscriber_triggers(
         tenant_id=subscription.tenant_id, subscription_id=subscription.id, event_name=event_name
     )
@@ -273,10 +268,8 @@ def dispatch_triggered_workflow(
         return 0
 
     dispatched_count = 0
-    provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
-        tenant_id=subscription.tenant_id, provider_id=TriggerProviderID(subscription.provider_id)
-    )
-    trigger_entity: TriggerProviderEntity = provider_controller.entity
+    prepared_event = events.prepare(subscription=subscription, event_name=event_name, request_id=request_id)
+    definition = prepared_event.definition
 
     # Ensure expire_on_commit is set to False to remain workflows available
     with session_factory.create_session() as session:
@@ -309,12 +302,12 @@ def dispatch_triggered_workflow(
             continue
 
         trigger_metadata = PluginTriggerMetadata(
-            plugin_unique_identifier=provider_controller.plugin_unique_identifier or "",
+            plugin_unique_identifier=definition.plugin_unique_identifier or "",
             endpoint_id=subscription.endpoint_id,
             provider_id=subscription.provider_id,
             event_name=event_name,
-            icon_filename=trigger_entity.identity.icon or "",
-            icon_dark_filename=trigger_entity.identity.icon_dark or "",
+            icon_filename=definition.icon,
+            icon_dark_filename=definition.icon_dark,
         )
 
         quota_charge = unlimited()
@@ -330,24 +323,11 @@ def dispatch_triggered_workflow(
 
         with session_factory.create_session() as session:
             try:
-                invoke_response = TriggerManager.invoke_trigger_event(
-                    tenant_id=subscription.tenant_id,
-                    user_id=user_id,
-                    provider_id=TriggerProviderID(subscription.provider_id),
-                    event_name=event_name,
-                    parameters=node_data.resolve_parameters(
-                        parameter_schemas=provider_controller.get_event_parameters(event_name=event_name)
-                    ),
-                    credentials=subscription.credentials,
-                    credential_type=subscription.credential_type,
-                    subscription=subscription.subscription,
-                    request=request,
-                    payload=payload,
-                )
+                invoke_response = events.invoke(event=prepared_event, user_id=user_id, node_data=node_data)
             except PluginInvokeError as e:
                 quota_charge.refund()
 
-                error_message = e.to_user_friendly_error(plugin_name=trigger_entity.identity.name)
+                error_message = e.to_user_friendly_error(plugin_name=definition.provider_name)
                 try:
                     end_user = end_users_by_app.get(plugin_trigger.app_id)
                     _record_trigger_failure_log(
@@ -430,6 +410,7 @@ def dispatch_triggered_workflows(
     request_id: str,
     *,
     end_users: TriggerEndUserProvisioner,
+    event_service: TriggerEventService,
 ) -> int:
     dispatched_count = 0
     for event_name in events:
@@ -440,6 +421,7 @@ def dispatch_triggered_workflows(
                 event_name=event_name,
                 request_id=request_id,
                 end_users=end_users,
+                events=event_service,
             )
         except Exception:
             logger.exception(
@@ -511,6 +493,7 @@ def dispatch_triggered_workflows_async(
             subscription=subscription,
             request_id=request_id,
             end_users=application_services().app_scoped_end_users.commands,
+            event_service=application_services().workspaces.trigger_events,
         )
 
         debug_dispatched = dispatch_trigger_debug_event(

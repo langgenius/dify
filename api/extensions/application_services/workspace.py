@@ -23,6 +23,8 @@ from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGatewa
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
 from services.trigger.endpoint_service import TriggerEndpointService
+from services.trigger.event_gateway import PluginTriggerEventGateway
+from services.trigger.event_service import TriggerEventService
 from services.trigger.oauth_client_service import TriggerOAuthClientService
 from services.trigger.oauth_gateway import (
     OAuthProxyContextGateway,
@@ -80,6 +82,7 @@ class WorkspaceServices:
     trigger_subscription_renewal: TriggerSubscriptionRenewalService
     trigger_builders: TriggerSubscriptionBuilderService
     trigger_endpoints: TriggerEndpointService
+    trigger_events: TriggerEventService
     trigger_oauth_clients: TriggerOAuthClientService
     trigger_oauth: TriggerOAuthService
 
@@ -139,6 +142,9 @@ def build_workspace_services(
         clients=TriggerOAuthClientRepository(session_factory=database_client),
         providers=trigger_oauth_provider,
     )
+    trigger_subscriptions = TriggerSubscriptionQueryService(
+        credentials=credentials, schemas=trigger_providers, subscriptions=subscriptions
+    )
     return WorkspaceServices(
         queries=WorkspaceQueryService(workspaces=workspaces, plans=DeploymentWorkspacePlanGateway()),
         management=WorkspaceService(
@@ -178,8 +184,11 @@ def build_workspace_services(
             plugins=DaemonPluginParameterGateway(),
         ),
         trigger_providers=trigger_providers,
-        trigger_subscriptions=TriggerSubscriptionQueryService(
-            credentials=credentials, schemas=trigger_providers, subscriptions=subscriptions
+        trigger_subscriptions=trigger_subscriptions,
+        trigger_events=TriggerEventService(
+            subscriptions=trigger_subscriptions,
+            plugins=PluginTriggerEventGateway(),
+            requests=TriggerHttpRequestCachingService,
         ),
         trigger_subscription_management=trigger_subscription_management,
         trigger_subscription_renewal=TriggerSubscriptionRenewalService(

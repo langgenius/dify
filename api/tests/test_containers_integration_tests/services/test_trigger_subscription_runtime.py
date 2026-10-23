@@ -2,7 +2,6 @@
 
 import json
 from contextvars import Context
-from functools import partial
 from uuid import uuid4
 
 import pytest
@@ -24,7 +23,6 @@ from repositories.trigger.subscription_repository import TriggerSubscriptionRepo
 from services.plugin.dispatch_identity import PLUGIN_IDENTIFIER_HEADER
 from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
-from services.trigger.trigger_service import TriggerService
 from tests.test_containers_integration_tests.services import test_trigger_subscription_builder
 from tests.test_containers_integration_tests.services.test_trigger_subscription_management import _cache_keys, _seed
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client
@@ -173,10 +171,7 @@ def test_debug_poller_invokes_injected_subscription_query_after_receiving_event(
 
     def poll() -> TriggerDebugEvent | None:
         with harness.app.app_context():
-            invoke = partial(
-                TriggerService.invoke_trigger_event,
-                subscriptions=application_services().workspaces.trigger_subscriptions,
-            )
+            invoke = application_services().workspaces.trigger_events.invoke_debug
             poller = create_event_poller(
                 draft_workflow=workflow,
                 tenant_id=harness.tenant_id,
@@ -250,3 +245,40 @@ def test_debug_poller_invokes_injected_subscription_query_after_receiving_event(
     assert restored_request.headers["X-Webhook-Signature"] == "signature"
     assert repository.get(tenant_id=harness.tenant_id, subscription_id=subscription.id) == before
     assert all(not entry.open_transactions for entry in daemon.requests)
+
+
+def test_debug_event_cannot_dispatch_subscription_credentials_to_another_provider(
+    harness: _Harness, daemon: _Daemon
+) -> None:
+    subscription = _seed(harness, daemon, CredentialType.OAUTH2)
+    other_provider = "langgenius/github/other"
+    event = PluginTriggerDebugEvent(
+        timestamp=100,
+        name="push",
+        user_id="webhook-user",
+        request_id=str(uuid4()),
+        subscription_id=subscription.id,
+        provider_id=other_provider,
+    )
+    node = TriggerEventNodeData(
+        plugin_id="langgenius/github",
+        provider_id=other_provider,
+        event_name="push",
+        subscription_id=subscription.id,
+        plugin_unique_identifier=_IDENTIFIER,
+    )
+
+    def invoke() -> None:
+        with harness.app.app_context():
+            with pytest.raises(ValueError, match="Subscription provider does not match trigger event"):
+                application_services().workspaces.trigger_events.invoke_debug(
+                    tenant_id=harness.tenant_id,
+                    user_id="webhook-user",
+                    node_config={"id": "trigger", "data": node},
+                    event=event,
+                )
+
+    Context().run(invoke)
+
+    assert [sent.method for sent in daemon.requests] == ["GET"]
+    assert all(not sent.open_transactions for sent in daemon.requests)
