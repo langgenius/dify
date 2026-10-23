@@ -21,19 +21,15 @@ const root = resolve(import.meta.dirname, '..')
 const repo = resolve(root, '../..')
 const specDir = process.env.DIFY_OPENAPI_DIR ?? resolve(root, '../contracts/openapi')
 const enforceAlignment = process.argv.includes('--check')
+const consoleOnly = process.argv.includes('--console')
+const updateBaseline = process.argv.includes('--update-baseline')
 const output = resolve(
-  process.argv.slice(2).find((arg) => arg !== '--check') ??
+  process.argv.slice(2).find((arg) => !arg.startsWith('--')) ??
     join(root, 'reports/orpc-comparison.json'),
 )
-const documents = [
-  'console',
-  'fastopenapi-console',
-  'service',
-  'openapi',
-  'web',
-  'inner',
-  'knowledge-fs',
-]
+const documents = consoleOnly
+  ? ['console-client']
+  : ['console', 'fastopenapi-console', 'service', 'openapi', 'web', 'inner', 'knowledge-fs']
 const report = {
   scope:
     'All repository OpenAPI operations versus existing generated/api oRPC procedures; static schema input/output types, not validation, errors or transport execution.',
@@ -63,10 +59,19 @@ report.sdkTypeSourceSha256 = createHash('sha256')
   .update(readFileSync(join(root, 'src/types.ts')))
   .digest('hex')
 const contracts = new Map()
-for (const file of globSync(join(repo, 'packages/contracts/generated/api/**/orpc.gen.ts')).sort()) {
+const contractFiles = consoleOnly
+  ? [
+      ...globSync(join(repo, 'packages/contracts/generated/api/console/**/orpc.gen.ts')),
+      join(repo, 'packages/contracts/generated/enterprise/orpc.gen.ts'),
+      join(repo, 'packages/contracts/generated/enterprise-app-deploy/orpc.gen.ts'),
+    ]
+  : [...globSync(join(repo, 'packages/contracts/generated/api/**/orpc.gen.ts'))]
+for (const file of contractFiles.sort()) {
   // oxlint-disable-next-line antfu/no-top-level-await -- This CLI must load contract metadata before generating the audit.
   const exports = await import(pathToFileURL(file))
-  const surface = relative(join(repo, 'packages/contracts/generated/api'), file).split('/')[0]
+  const surface = consoleOnly
+    ? 'console'
+    : relative(join(repo, 'packages/contracts/generated/api'), file).split('/')[0]
   for (const [name, value] of Object.entries(exports)) {
     const def = value?.['~orpc']
     if (!def) continue
@@ -145,7 +150,7 @@ try {
     symlinkSync(file, join(dir, `${name}.openapi`))
     add(`import { api as api${docIndex} } from './${name}.openapi';`)
     for (const { operation, members } of inventory) {
-      const surface = name === 'fastopenapi-console' ? 'console' : name
+      const surface = consoleOnly || name === 'fastopenapi-console' ? 'console' : name
       const path =
         name === 'fastopenapi-console'
           ? operation.path.replace(/^\/console\/api(?=\/|$)/, '') || '/'
@@ -184,6 +189,10 @@ try {
           requestMedia: Object.keys(content),
           responseMedia: [...new Set(responses.flatMap((r) => Object.keys(r.content ?? {})))],
           successStatuses: responses.map((r) => r.status),
+          jsonBinaryResponse: responses.some((r) => {
+            const schema = deref(r.content?.['application/json']?.schema, spec)
+            return schema?.type === 'string' && schema.format === 'binary'
+          }),
           opaqueResponse: responses.some(
             (r) =>
               !['204', '205'].includes(r.status) &&
@@ -218,6 +227,8 @@ try {
       }
       check(row, 'renamedHeaderSdkToOrpc', `Ext<RenameHeader<NI${row}>,OI${row}>`)
       check(row, 'renamedHeaderOrpcToSdk', `Ext<OI${row},RenameHeader<NI${row}>>`)
+      check(row, 'sdkOutputString', `Ext<NO${row},string>`)
+      check(row, 'orpcOutputBlob', `Ext<OO${row},Blob>`)
       check(row, 'sdkAcceptsOmittedInput', `Ext<undefined,NI${row}>`)
       check(row, 'wireOutputSdkToOrpc', `Ext<NO${row},WireOutput<typeof proc${row}>>`)
       check(row, 'wireOutputOrpcToSdk', `Ext<WireOutput<typeof proc${row}>,NO${row}>`)
@@ -353,9 +364,11 @@ try {
               ? 'raw-stream-and-parsed-defaults'
               : c.wireOutputSdkToOrpc && c.wireOutputOrpcToSdk
                 ? 'parsed-vs-wire-output'
-                : row.traits.opaqueResponse && c.sdkOutputUnknown
-                  ? 'undocumented-output'
-                  : 'schema-difference'
+                : row.traits.jsonBinaryResponse && c.sdkOutputString && c.orpcOutputBlob
+                  ? 'json-binary-vs-blob'
+                  : row.traits.opaqueResponse && c.sdkOutputUnknown
+                    ? 'undocumented-output'
+                    : 'schema-difference'
   }
   // Produce real assignability diagnostics for differences that remain after the
   // explicit representation checks. These are evidence, not inferred labels.
@@ -468,6 +481,7 @@ try {
     'undocumented-output',
     'raw-stream-vs-string',
     'raw-stream-and-parsed-defaults',
+    'json-binary-vs-blob',
   ])
   report.summary.unexplainedDifferences = report.matched.filter(
     (row) => !acceptedInputs.has(row.inputCategory) || !acceptedOutputs.has(row.outputCategory),
@@ -491,6 +505,22 @@ try {
     0,
     'Unexpected compiler errors invalidate this audit; see report',
   )
+  if (consoleOnly) {
+    const baselinePath = join(root, 'integration/console-type-differences.json')
+    const differences = Object.fromEntries(
+      report.matched
+        .filter((row) => row.inputCategory !== 'compatible' || row.outputCategory !== 'compatible')
+        .map((row) => [row.id, [row.inputCategory, row.outputCategory]])
+        .sort(([a], [b]) => a.localeCompare(b)),
+    )
+    if (updateBaseline) writeFileSync(baselinePath, `${JSON.stringify(differences, null, 2)}\n`)
+    else
+      assert.deepEqual(
+        differences,
+        JSON.parse(readFileSync(baselinePath, 'utf8')),
+        'Console type differences changed; inspect the report before updating the reviewed baseline',
+      )
+  }
   if (enforceAlignment) {
     assert.equal(report.summary.topLevelAnyOrNever, 0, 'Vacuous types invalidate compatibility')
     assert.equal(
@@ -499,6 +529,12 @@ try {
       'Unexpected oRPC type differences; see report',
     )
     assert.equal(report.summary.unmatchedOrpc, 0, 'Every generated procedure must be compared')
+    if (consoleOnly)
+      assert.equal(
+        report.summary.unmatchedOpenApi,
+        0,
+        'Every Console operation must have a contract',
+      )
   }
 } finally {
   rmSync(dir, { recursive: true, force: true })

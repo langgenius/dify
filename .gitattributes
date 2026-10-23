@@ -20,3 +20,5 @@
 
 # The backend exporter owns this snapshot; preserve its bytes and collapse its diff.
 /packages/contracts/openapi/console-openapi.json text eol=lf linguist-generated
+
+/packages/contracts/openapi/fastopenapi-console-openapi.json text eol=lf linguist-generated

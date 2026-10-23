@@ -24,8 +24,14 @@ async function javascript(directory) {
 for (const bundler of ['turbopack', 'webpack']) {
   test(`Next ${bundler}: full console JSON imports bind transport and prune unused operations`, async () => {
     const consoleSpec = JSON.parse(
-      await readFile(join(repository, 'packages/contracts/openapi/console-openapi.json'), 'utf8'),
+      await readFile(
+        join(repository, 'packages/contracts/openapi/console-client-openapi.json'),
+        'utf8',
+      ),
     )
+    const alias = 'enterprise.access.getMetadata'
+    consoleSpec.paths['/knowledge-fs/spaces/{control_space_id}/metadata'].get['x-client-path'] =
+      alias.split('.')
     const dir = await mkdtemp(join(web, '.openapi-next-'))
     // Match production: contracts owns the document but only Web depends on the SDK.
     const specDir = await mkdtemp(join(repository, 'packages/contracts/.openapi-next-'))
@@ -82,7 +88,7 @@ export default {
 'use client';
 import { api, query } from '../spec.openapi';
 export default function Button() {
-  return <button onClick={() => api.knowledgeFs.spaces.byControlSpaceId.metadata.get({ params: { control_space_id: 'space-1' } }, { context: { user: 'client' } })}>{JSON.stringify(query.knowledgeFs.spaces.byControlSpaceId.metadata.get.key())}</button>;
+  return <button onClick={() => api.${alias}({ params: { control_space_id: 'space-1' } }, { context: { user: 'client' } })}>{JSON.stringify(query.${alias}.key())}</button>;
 }
 `,
       )
@@ -92,9 +98,9 @@ export default function Button() {
 import { api, query } from '../spec.openapi';
 import Button from './button';
 export default async function Page() {
-  const response = await api.knowledgeFs.spaces.byControlSpaceId.metadata.get({ params: { control_space_id: 'space-1' } }, { context: { user: 'server' } });
-  const defined = await api.knowledgeFs.spaces.byControlSpaceId.metadata.get({ params: { control_space_id: 'space-1' } }, { context: { user: 'conflict' } }).catch(error => error.defined);
-  const options = query.knowledgeFs.spaces.byControlSpaceId.metadata.get.queryOptions({ input: { params: { control_space_id: 'space-1' } } });
+  const response = await api.${alias}({ params: { control_space_id: 'space-1' } }, { context: { user: 'server' } });
+  const defined = await api.${alias}({ params: { control_space_id: 'space-1' } }, { context: { user: 'conflict' } }).catch(error => error.defined);
+  const options = query.${alias}.queryOptions({ input: { params: { control_space_id: 'space-1' } } });
   return <><p>{response.value}</p><p>defined-error:{String(defined)};stale:{options.staleTime}</p><Button /></>;
 }
 `,

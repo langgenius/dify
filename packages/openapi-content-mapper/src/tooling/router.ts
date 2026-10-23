@@ -23,6 +23,7 @@ function memberName(segment: string): string {
 export function createRouter(operations: Map<string, OperationDescriptor>): RouterNode {
   const root: RouterNode = { children: new Map(), methods: new Map() }
   for (const operation of operations.values()) {
+    if (operation.clientPath) continue
     let node = root
     const segments = operation.path.split(/[/:]/).filter(Boolean)
     for (const segment of segments.length ? segments : ['root']) {
@@ -52,7 +53,23 @@ export function createRouter(operations: Map<string, OperationDescriptor>): Rout
     }
     return { children, methods: node.methods }
   }
-  return normalize(root)
+  const normalized = normalize(root)
+  for (const operation of operations.values()) {
+    if (!operation.clientPath) continue
+    let node = normalized
+    for (const member of operation.clientPath.slice(0, -1)) {
+      if (node.methods.has(member))
+        throw new Error(`Client path collides with an operation: ${operation.clientPath.join('.')}`)
+      if (!node.children.has(member))
+        node.children.set(member, { children: new Map(), methods: new Map() })
+      node = node.children.get(member)!
+    }
+    const member = operation.clientPath.at(-1)!
+    if (node.children.has(member) || node.methods.has(member))
+      throw new Error(`Duplicate client path: ${operation.clientPath.join('.')}`)
+    node.methods.set(member, operation)
+  }
+  return normalized
 }
 
 export const routerQuery = '?openapi-router='
@@ -95,7 +112,7 @@ export function routerModule(
     const method = path.at(-1)!
     const operation = node.methods.get(method)
     if (!operation || !configs?.errors.file) throw new Error('Unknown operation error module')
-    const key = `${method.toUpperCase()} ${operation.path}`
+    const key = `${operation.method.toUpperCase()} ${operation.path}`
     return `export { ${JSON.stringify(key)} as errors } from ${JSON.stringify(resolveModule(configs.errors.file))};\n`
   }
   let text = query
@@ -108,7 +125,7 @@ export function routerModule(
   let index = 0
   for (const [method, op] of node.methods) {
     const binding = `operation${index++}`
-    const key = `${method.toUpperCase()} ${op.path}`
+    const key = `${op.method.toUpperCase()} ${op.path}`
     const errors = configs?.errors
     const queries = configs?.queries
     let errorHandler = 'undefined'
@@ -122,11 +139,12 @@ export function routerModule(
       defaults = `${binding}Defaults`
       text += `import { ${JSON.stringify(key)} as ${defaults} } from ${JSON.stringify(resolveModule(queries.file))};\n`
     }
+    const { clientPath: _clientPath, ...descriptor } = op
     const configured = `${runtimeModule ? 'runtime' : 'undefined'}`
     text += `const ${binding} = ${
       query
-        ? `/* @__PURE__ */ createQueryOperation(${JSON.stringify(op)}, ${JSON.stringify([...path, method])}, ${configured}, ${defaults}, ${errorHandler})`
-        : `(input, options) => invokeRpcOperation(${JSON.stringify(op)}, input, options, ${configured}, ${errorHandler})`
+        ? `/* @__PURE__ */ createQueryOperation(${JSON.stringify(descriptor)}, ${JSON.stringify([...path, method])}, ${configured}, ${defaults}, ${errorHandler})`
+        : `(input, options) => invokeRpcOperation(${JSON.stringify(descriptor)}, input, options, ${configured}, ${errorHandler})`
     };\nexport { ${binding} as ${JSON.stringify(method)} };\n`
   }
   for (const key of node.children.keys()) {

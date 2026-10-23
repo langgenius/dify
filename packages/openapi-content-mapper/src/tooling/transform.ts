@@ -121,8 +121,8 @@ export function transformSpec(content: string, fileName: string): Transform {
     function emitRouter(node: RouterNode) {
       text += '{\n'
       for (const [method, op] of node.methods) {
-        token(JSON.stringify(method), methodNodes.get(`${op.path} ${method}`))
-        text += `: readonly [${JSON.stringify(op.path)}, ${JSON.stringify(method)}];\n`
+        token(JSON.stringify(method), methodNodes.get(`${op.path} ${op.method}`))
+        text += `: readonly [${JSON.stringify(op.path)}, ${JSON.stringify(op.method)}];\n`
       }
       for (const [key, child] of node.children) {
         text += `${JSON.stringify(key)}: `

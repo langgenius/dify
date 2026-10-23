@@ -12,7 +12,7 @@ import { openapi } from '../dist/tooling/vite.js'
 const repository = resolve(import.meta.dirname, '../../..')
 const web = join(repository, 'web')
 const entry = join(web, 'service/knowledge-fs/metadata.ts')
-const specFile = join(repository, 'packages/contracts/openapi/console-openapi.json')
+const specFile = join(repository, 'packages/contracts/openapi/console-client-openapi.json')
 
 test('the production metadata integration prunes every unused console operation', async (t) => {
   const directory = await mkdtemp(join(import.meta.dirname, '.console-bundle-'))

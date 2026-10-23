@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { spawn } from 'node:child_process'
 
-export function rpcProcess(command, args, cwd) {
+export function rpcProcess(command, args, cwd, timeoutMs = 15000) {
   const child = spawn(command, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'] })
   let stderr = ''
   let buffer = Buffer.alloc(0)
@@ -49,7 +49,7 @@ export function rpcProcess(command, args, cwd) {
         const timeout = setTimeout(() => {
           pending.delete(id)
           reject(new Error(`Timed out: ${method}\n${stderr}`))
-        }, 15000)
+        }, timeoutMs)
         pending.set(id, {
           resolve: (value) => {
             clearTimeout(timeout)

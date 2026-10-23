@@ -1,8 +1,11 @@
+import type { GeneralUtils, ProcedureUtils } from '@orpc/tanstack-query'
 import type { QueryKey } from '@tanstack/react-query'
+import { consoleRouterContract } from '@dify/contracts/console'
 import { safe } from '@orpc/client'
 import { MutationObserver, QueryClient } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createHttpError } from '../http-error'
+import * as policies from './console.openapi.queries'
 import { consoleClient as originalClient, consoleQuery as originalQuery } from './index'
 import { consoleClient, consoleQuery } from './inferred'
 
@@ -14,6 +17,48 @@ beforeEach(() => {
 })
 
 describe('inferred console compatibility', () => {
+  it('preserves every Console query key and operation policy, including enterprise methods', () => {
+    type Helpers = ProcedureUtils<object, unknown, unknown, unknown> & GeneralUtils<unknown>
+    function at(root: unknown, path: string[]): Helpers {
+      let node = root
+      for (const member of path) node = (node as Record<string, unknown>)[member]
+      return node as Helpers
+    }
+    const coveredPolicies = new Set<string>()
+    let operations = 0
+    function walk(node: unknown, path: string[] = []) {
+      const definition = (node as { '~orpc'?: { route: { method: string; path: string } } })[
+        '~orpc'
+      ]
+      if (!definition) {
+        for (const [key, value] of Object.entries(node as object)) walk(value, [...path, key])
+        expect(at(consoleQuery, path).key()).toEqual(at(originalQuery, path).key())
+        return
+      }
+      const previous = at(originalQuery, path)
+      const current = at(consoleQuery, path)
+      expect(current.queryKey(), path.join('.')).toEqual(previous.queryKey())
+      const input = { query: { cursor: 'next', limit: 10 } }
+      expect(current.queryKey({ input }), path.join('.')).toEqual(previous.queryKey({ input }))
+      const policy = `${definition.route.method} ${definition.route.path}`
+      if (Object.hasOwn(policies, policy)) coveredPolicies.add(policy)
+      for (const [kind, oldOptions, newOptions] of [
+        ['queryOptions', previous.queryOptions(), current.queryOptions()],
+        ['mutationOptions', previous.mutationOptions(), current.mutationOptions()],
+      ] as const) {
+        // The request closures differ; cache policies and callback references must not.
+        const omitRequest = (options: object) =>
+          Object.fromEntries(
+            Object.entries(options).filter(([key]) => !['queryFn', 'mutationFn'].includes(key)),
+          )
+        expect(omitRequest(newOptions), `${policy}: ${kind}`).toEqual(omitRequest(oldOptions))
+      }
+      operations++
+    }
+    walk(consoleRouterContract)
+    expect(operations).toBeGreaterThan(1000)
+    expect([...coveredPolicies].sort()).toEqual(Object.keys(policies).sort())
+  })
   it('preserves validated draft-conflict errors used by workflow recovery', async () => {
     request.mockImplementation(() => {
       throw createHttpError(

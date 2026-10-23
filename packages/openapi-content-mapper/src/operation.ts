@@ -10,6 +10,8 @@ export type Parameter = {
 }
 export type OperationDescriptor = {
   method: string
+  /** Optional public member path; used only while constructing the module graph. */
+  clientPath?: string[]
   path: string
   parameters?: Parameter[]
   baseUrl?: string
@@ -96,9 +98,23 @@ export function describeOperations(spec: OpenApiDocument): Map<string, Operation
           )
         multipartJson.push(name)
       }
+      const clientPath = operation['x-client-path']
+      if (
+        clientPath !== undefined &&
+        (!Array.isArray(clientPath) ||
+          !clientPath.length ||
+          clientPath.some(
+            (part) =>
+              typeof part !== 'string' ||
+              !part ||
+              ['key', 'then', '__proto__', 'prototype', 'constructor'].includes(part),
+          ))
+      )
+        throw new Error(`${method.toUpperCase()} ${path}: invalid x-client-path`)
       operations.set(id, {
         method,
         path,
+        ...(clientPath ? { clientPath: clientPath as string[] } : {}),
         ...(parameters.size ? { parameters: [...parameters.values()] } : {}),
         ...(typeof baseUrl === 'string' ? { baseUrl } : {}),
         ...(contentType ? { contentType } : {}),

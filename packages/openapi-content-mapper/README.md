@@ -125,6 +125,8 @@ Import `./pets.openapi`. On platforms where symlinks are unavailable, use a regu
 
 Documents export only `api` and `query`; operation IDs are not exports. `/pets/{petId}` becomes `pets.byPetId`, hyphenated segments become camelCase and HTTP methods are leaf functions. Colon actions such as `/chat:run` become `chat.run`. `key` is reserved as a route segment for query helpers. Unresolvable member collisions fail during compilation.
 
+An operation may set `x-client-path` to an explicit array such as `["enterprise", "access", "getEnvironmentApi"]` to preserve an existing public API. This replaces its entire client member path, including the method leaf, and also determines its query key. HTTP methods, URLs and per-operation sidecar keys still use the OpenAPI operation. Colliding or reserved member names fail during compilation.
+
 The first argument contains `params`, `query`, `headers`, `cookie`, `body` and `contentType` as declared by the specification. The optional second argument accepts `client`, `signal`, additional transport `headers`, `credentials` and document `context`.
 
 ```ts

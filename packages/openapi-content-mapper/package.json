@@ -87,7 +87,9 @@
     "compare:orpc": "node integration/compare-orpc.mjs",
     "check:orpc": "node integration/compare-orpc.mjs --check",
     "prepack": "pnpm run build",
-    "test:package": "node --test integration/package.mjs"
+    "test:package": "node --test integration/package.mjs",
+    "check:console": "node integration/compare-orpc.mjs --console --check",
+    "benchmark:console": "node integration/benchmark-console.mjs"
   },
   "dependencies": {
     "@orpc/client": "catalog:",

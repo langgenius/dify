@@ -33,7 +33,10 @@ jobs:
         run: pnpm --filter @dify/openapi-content-mapper test:next
 
       - name: Verify the production console bundle and error maps
-        run: pnpm --filter @dify/openapi-content-mapper exec node --test --test-concurrency=1 integration/knowledge-fs-console.test.mjs integration/orpc-errors.test.mjs
+        run: pnpm --filter @dify/openapi-content-mapper exec node --test --test-concurrency=1 integration/knowledge-fs-console.test.mjs integration/orpc-errors.test.mjs integration/console-preparation.test.mjs integration/console-editor.test.mjs
+
+      - name: Check all Console types against the reviewed migration differences
+        run: pnpm --filter @dify/openapi-content-mapper check:console
 
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})

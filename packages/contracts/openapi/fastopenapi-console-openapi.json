@@ -1,0 +1,367 @@
+{
+  "components": {
+    "schemas": {
+      "ErrorSchema": {
+        "properties": {
+          "error": {
+            "properties": {
+              "details": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message",
+              "status",
+              "type"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "InitStatusResponse": {
+        "properties": {
+          "status": {
+            "description": "Initialization status",
+            "enum": [
+              "finished",
+              "not_started"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "InitStatusResponse",
+        "type": "object"
+      },
+      "InitValidatePayload": {
+        "properties": {
+          "password": {
+            "description": "Initialization password",
+            "maxLength": 30,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "InitValidatePayload",
+        "type": "object"
+      },
+      "InitValidateResponse": {
+        "properties": {
+          "result": {
+            "description": "Operation result",
+            "examples": [
+              "success"
+            ],
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "InitValidateResponse",
+        "type": "object"
+      },
+      "PingResponse": {
+        "properties": {
+          "result": {
+            "description": "Health check result",
+            "examples": [
+              "pong"
+            ],
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "PingResponse",
+        "type": "object"
+      },
+      "SetupRequestPayload": {
+        "properties": {
+          "email": {
+            "description": "Admin email address",
+            "title": "Email",
+            "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Admin language",
+            "title": "Language"
+          },
+          "name": {
+            "description": "Admin name (max 30 characters)",
+            "maxLength": 30,
+            "title": "Name",
+            "type": "string"
+          },
+          "password": {
+            "description": "Admin password",
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "name",
+          "password"
+        ],
+        "title": "SetupRequestPayload",
+        "type": "object"
+      },
+      "SetupResponse": {
+        "properties": {
+          "result": {
+            "description": "Setup result",
+            "examples": [
+              "success"
+            ],
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "SetupResponse",
+        "type": "object"
+      },
+      "SetupStatusResponse": {
+        "properties": {
+          "setup_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Setup completion time (ISO format)",
+            "title": "Setup At"
+          },
+          "step": {
+            "description": "Setup step status",
+            "enum": [
+              "finished",
+              "not_started"
+            ],
+            "title": "Step",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step"
+        ],
+        "title": "SetupStatusResponse",
+        "type": "object"
+      },
+      "VersionResponse": {
+        "properties": {
+          "release_notes": {
+            "description": "Release notes for latest version",
+            "title": "Release Notes",
+            "type": "string"
+          },
+          "version": {
+            "description": "Latest version number",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "release_notes",
+          "version"
+        ],
+        "title": "VersionResponse",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "FastOpenAPI proof of concept for Dify API",
+    "title": "Dify API (FastOpenAPI PoC)",
+    "version": "1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/console/api/init": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InitStatusResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Get initialization validation status.",
+        "tags": [
+          "console"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitValidatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InitValidateResponse"
+                }
+              }
+            },
+            "description": "Created"
+          }
+        },
+        "summary": "Validate initialization password.",
+        "tags": [
+          "console"
+        ]
+      }
+    },
+    "/console/api/ping": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PingResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Health check endpoint for connection testing.",
+        "tags": [
+          "console"
+        ]
+      }
+    },
+    "/console/api/setup": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupStatusResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Get system setup status.\n\nNOTE: This endpoint is unauthenticated by design.\n\nDuring first-time bootstrap there is no admin account yet, so frontend initialization must be\nable to query setup progress before any login flow exists.\n\nOnly bootstrap-safe status information should be returned by this endpoint.\n",
+        "tags": [
+          "console"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetupRequestPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupResponse"
+                }
+              }
+            },
+            "description": "Created"
+          }
+        },
+        "summary": "Initialize system setup with admin account.\n\nNOTE: This endpoint is unauthenticated by design for first-time bootstrap.\nAccess is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,\nand init-password validation rather than user session authentication.\n",
+        "tags": [
+          "console"
+        ]
+      }
+    },
+    "/console/api/version": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "current_version",
+            "required": true,
+            "schema": {
+              "description": "Current application version",
+              "title": "Current Version",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Check for application version updates.",
+        "tags": [
+          "console"
+        ]
+      }
+    }
+  }
+}
