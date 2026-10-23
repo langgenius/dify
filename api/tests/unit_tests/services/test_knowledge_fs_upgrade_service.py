@@ -1530,6 +1530,19 @@ def test_runner_document_boundaries_and_successful_finalize(
         assert persisted_job.completed_at is not None
 
 
+def _source_document(data_source_type: DataSourceType) -> Document:
+    return Document(
+        tenant_id=_TENANT_ID,
+        dataset_id=_DATASET_ID,
+        position=1,
+        data_source_type=data_source_type,
+        batch="batch-1",
+        name="Page",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by=_ACCOUNT_ID,
+    )
+
+
 def test_upgrade_helper_source_identities_payloads_and_validation() -> None:
     notion = KnowledgeFSUpgradeDocument(
         job_id="00000000-0000-0000-0000-000000000070",
@@ -1590,10 +1603,7 @@ def test_upgrade_helper_source_identities_payloads_and_validation() -> None:
     with pytest.raises(KnowledgeFSUpgradeConflictError):
         upgrade_module._website_source_group_key({"provider": "firecrawl"})
 
-    notion_document = Document(
-        data_source_type="notion_import",
-        name="Page",
-    )
+    notion_document = _source_document(DataSourceType.NOTION_IMPORT)
     notion_payload = upgrade_module._source_payload_snapshot(
         "Dataset",
         [(notion_document, {"workspace_id": "workspace", "notion_page_id": "page", "type": "page"})],
@@ -1601,7 +1611,7 @@ def test_upgrade_helper_source_identities_payloads_and_validation() -> None:
     assert notion_payload["kind"] == "online_document"
     website_payload = upgrade_module._source_payload_snapshot(
         "Dataset",
-        [(Document(data_source_type="website_crawl", name="Page"), {"provider": "firecrawl", "url": "u"})],
+        [(_source_document(DataSourceType.WEBSITE_CRAWL), {"provider": "firecrawl", "url": "u"})],
     )
     assert website_payload["kind"] == "website_crawl"
     assert upgrade_module._chunks([1, 2, 3], 2) == [[1, 2], [3]]
