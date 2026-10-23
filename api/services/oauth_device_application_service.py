@@ -74,7 +74,7 @@ class DeviceFlowStore(Protocol):
         self,
         client_id: str,
         device_label: str,
-        installation_id: str,
+        installation_id: str | None,
         created_ip: str,
     ) -> tuple[str, str, int]: ...
 
@@ -208,12 +208,11 @@ class OAuthDeviceApplicationService:
     ) -> None:
         self._store = store
         self._accounts = accounts
-        self._workspaces = workspaces
-        self._tokens = tokens
         self._sessions = sessions
         self._sso = sso
         self._external_approval_limiter = external_approval_limiter
         self._settings = settings
+        self._minter = _ApprovalTokenMinter(accounts=accounts, workspaces=workspaces, tokens=tokens)
 
     def list_account_sessions(self, *, account_id: str, page: int, limit: int) -> OAuthDeviceSessionPage:
         return self._sessions.list_account_sessions(account_id=account_id, page=page, limit=limit)
@@ -228,7 +227,7 @@ class OAuthDeviceApplicationService:
         *,
         client_id: str,
         device_label: str,
-        installation_id: str,
+        installation_id: str | None,
         created_ip: str,
         request_origin: str,
     ) -> DeviceAuthorization:
@@ -276,8 +275,8 @@ class OAuthDeviceApplicationService:
     ) -> PollPayload:
         device_key = device_key_for(installation_id=state.installation_id, device_label=state.device_label)
         guard_id = self._rotation_guard_id(
-            subject_email=approval["subject_email"],
-            subject_issuer=approval["subject_issuer"],
+            subject_email=approval.subject_email,
+            subject_issuer=approval.subject_issuer,
             client_id=state.client_id,
             device_key=device_key,
         )
@@ -295,7 +294,7 @@ class OAuthDeviceApplicationService:
                 logger.error("device_flow: consumed state for %s has no approval", device_code)
                 raise ExpiredTokenError
             try:
-                poll_payload = self._mint_token(claimed, claimed_approval, device_key)
+                poll_payload = claimed_approval.mint(self._minter, claimed, device_key)
             except AccessDeniedError:
                 raise
             except Exception:
@@ -308,16 +307,6 @@ class OAuthDeviceApplicationService:
         self._audit_cross_ip_if_needed(claimed, poll_ip, poll_payload["token_id"])
         self._emit_token_issued_audit(claimed, claimed_approval, poll_payload)
         return poll_payload
-
-    def _mint_token(
-        self,
-        state: DeviceFlowStateView,
-        approval: DeviceApprovalRecord,
-        device_key: str,
-    ) -> PollPayload:
-        if approval["subject_type"] is SubjectType.ACCOUNT:
-            return self._mint_account_token(state, approval, device_key)
-        return self._mint_external_token(state, approval, device_key)
 
     # TODO(ENG-1302): remove one release after this ships. Older workers minted at approve.
     def _collect_legacy_payload(self, device_code: str, poll_ip: str) -> PollPayload:
@@ -332,56 +321,6 @@ class OAuthDeviceApplicationService:
 
         self._audit_cross_ip_if_needed(state, poll_ip, poll_payload["token_id"])
         return poll_payload
-
-    def _mint_account_token(
-        self,
-        state: DeviceFlowStateView,
-        approval: AccountApprovalRecord,
-        device_key: str,
-    ) -> PollPayload:
-        workspace_id = approval["workspace_id"]
-        account = self._accounts.get(approval["account_id"])
-        if account is None:
-            raise AccessDeniedError
-
-        # Query before minting: a failure after the mint would restore the approval and a retry would mint again.
-        workspaces = tuple(self._workspaces.list_for_device_flow(account.id))
-        mint = self._tokens.issue_account_token(
-            account=account,
-            workspace_id=workspace_id,
-            client_id=state.client_id,
-            device_label=state.device_label,
-            device_key=device_key,
-        )
-        return self._build_account_poll_payload(account, workspace_id, workspaces, mint)
-
-    def _mint_external_token(
-        self,
-        state: DeviceFlowStateView,
-        approval: ExternalApprovalRecord,
-        device_key: str,
-    ) -> PollPayload:
-        if self._accounts.has_active_email(approval["subject_email"]):
-            raise AccessDeniedError
-
-        mint = self._tokens.issue_external_token(
-            subject_email=approval["subject_email"],
-            subject_issuer=approval["subject_issuer"],
-            client_id=state.client_id,
-            device_label=state.device_label,
-            device_key=device_key,
-        )
-        return {
-            "token": mint.token,
-            "expires_at": mint.expires_at,
-            "subject_type": SubjectType.EXTERNAL_SSO,
-            "subject_email": approval["subject_email"],
-            "subject_issuer": approval["subject_issuer"],
-            "account": None,
-            "workspaces": [],
-            "default_workspace_id": None,
-            "token_id": mint.token_id,
-        }
 
     def lookup(self, *, user_code: str) -> DeviceLookup:
         found = self._store.load_by_user_code(user_code.strip().upper())
@@ -401,13 +340,12 @@ class OAuthDeviceApplicationService:
         account = self._accounts.get(context.account_id)
         if account is None or context.active_workspace_id is None:
             raise DeviceStateLostError
-        approval: DeviceApprovalRecord = {
-            "subject_type": SubjectType.ACCOUNT,
-            "account_id": account.id,
-            "workspace_id": context.active_workspace_id,
-            "subject_email": account.email,
-            "subject_issuer": ACCOUNT_ISSUER_SENTINEL,
-        }
+        approval = AccountApprovalRecord(
+            account_id=account.id,
+            workspace_id=context.active_workspace_id,
+            subject_email=account.email,
+            subject_issuer=ACCOUNT_ISSUER_SENTINEL,
+        )
         self._publish_approval(device_code, approval)
 
         self._emit_approve_audit(context.request_id, state, approval)
@@ -554,13 +492,10 @@ class OAuthDeviceApplicationService:
         reservation_id = sha256(f"oauth-device-approval\0{claims.nonce}".encode()).hexdigest()
         if not self._sso.reserve_approval_nonce(claims.nonce, reservation_id):
             raise ApprovalSessionConsumedError
-        approval: DeviceApprovalRecord = {
-            "subject_type": SubjectType.EXTERNAL_SSO,
-            "account_id": None,
-            "workspace_id": None,
-            "subject_email": claims.subject_email,
-            "subject_issuer": claims.subject_issuer,
-        }
+        approval = ExternalApprovalRecord(
+            subject_email=claims.subject_email,
+            subject_issuer=claims.subject_issuer,
+        )
         try:
             self._publish_approval(device_code, approval)
         except ApprovalOutcomeUnknownError:
@@ -592,34 +527,6 @@ class OAuthDeviceApplicationService:
         if state.status is not DeviceFlowStatus.PENDING:
             raise AlreadyResolvedError
         return device_code, state
-
-    def _build_account_poll_payload(
-        self,
-        account: AccountSnapshot,
-        active_workspace_id: str,
-        workspaces: Sequence[DeviceWorkspace],
-        mint: IssuedOAuthToken,
-    ) -> PollPayload:
-        default_workspace_id = next(
-            (workspace.id for workspace in workspaces if workspace.id == active_workspace_id),
-            None,
-        )
-        if default_workspace_id is None:
-            default_workspace_id = next((workspace.id for workspace in workspaces if workspace.current), None)
-        if default_workspace_id is None and workspaces:
-            default_workspace_id = workspaces[0].id
-
-        return {
-            "token": mint.token,
-            "expires_at": mint.expires_at,
-            "subject_type": SubjectType.ACCOUNT,
-            "account": {"id": account.id, "email": account.email, "name": account.name},
-            "workspaces": [
-                {"id": workspace.id, "name": workspace.name, "role": workspace.role} for workspace in workspaces
-            ],
-            "default_workspace_id": default_workspace_id,
-            "token_id": mint.token_id,
-        }
 
     def _publish_approval(self, device_code: str, approval: DeviceApprovalRecord) -> None:
         transition_id = secrets.token_urlsafe(16)
@@ -688,14 +595,14 @@ class OAuthDeviceApplicationService:
     def _approval_audit_fields(state: DeviceFlowStateView, approval: DeviceApprovalRecord) -> dict[str, object]:
         return {
             "audit": True,
-            "subject_type": approval["subject_type"],
-            "subject_email": approval["subject_email"],
-            "account_id": approval["account_id"],
-            "tenant_id": approval["workspace_id"],
+            "subject_type": approval.subject_type,
+            "subject_email": approval.subject_email,
+            "account_id": approval.account_id,
+            "tenant_id": approval.workspace_id,
             "client_id": state.client_id,
             "device_label": state.device_label,
-            "scopes": sorted(approval["subject_type"].scopes),
-            "subject_issuer": approval["subject_issuer"],
+            "scopes": sorted(approval.subject_type.scopes),
+            "subject_issuer": approval.subject_issuer,
         }
 
     @classmethod
@@ -707,8 +614,8 @@ class OAuthDeviceApplicationService:
     ) -> None:
         logger.warning(
             "audit: oauth.device_flow_approved subject_type=%s subject=%s client_id=%s device_label=%s",
-            approval["subject_type"],
-            approval["subject_email"],
+            approval.subject_type,
+            approval.subject_email,
             state.client_id,
             state.device_label,
             extra={
@@ -729,8 +636,8 @@ class OAuthDeviceApplicationService:
             "audit: oauth.device_token_issued token_id=%s subject_type=%s subject=%s client_id=%s device_label=%s "
             "expires_at=%s",
             poll_payload["token_id"],
-            approval["subject_type"],
-            approval["subject_email"],
+            approval.subject_type,
+            approval.subject_email,
             state.client_id,
             state.device_label,
             poll_payload["expires_at"],
@@ -782,3 +689,96 @@ class OAuthDeviceApplicationService:
                 "device_label": state.device_label,
             },
         )
+
+
+class _ApprovalTokenMinter:
+    """Mints the token an approval record stands for; the caller holds the rotation guard."""
+
+    def __init__(
+        self,
+        *,
+        accounts: OAuthDeviceAccountQuery,
+        workspaces: DeviceWorkspaceQuery,
+        tokens: OAuthDeviceTokenIssuer,
+    ) -> None:
+        self._accounts = accounts
+        self._workspaces = workspaces
+        self._tokens = tokens
+
+    def mint_account(
+        self,
+        state: DeviceFlowStateView,
+        approval: AccountApprovalRecord,
+        device_key: str,
+    ) -> PollPayload:
+        workspace_id = approval.workspace_id
+        account = self._accounts.get(approval.account_id)
+        if account is None:
+            raise AccessDeniedError
+
+        # Query before minting: a failure after the mint would restore the approval and a retry would mint again.
+        workspaces = tuple(self._workspaces.list_for_device_flow(account.id))
+        mint = self._tokens.issue_account_token(
+            account=account,
+            workspace_id=workspace_id,
+            client_id=state.client_id,
+            device_label=state.device_label,
+            device_key=device_key,
+        )
+        return self._build_account_poll_payload(account, workspace_id, workspaces, mint)
+
+    def mint_external(
+        self,
+        state: DeviceFlowStateView,
+        approval: ExternalApprovalRecord,
+        device_key: str,
+    ) -> PollPayload:
+        if self._accounts.has_active_email(approval.subject_email):
+            raise AccessDeniedError
+
+        mint = self._tokens.issue_external_token(
+            subject_email=approval.subject_email,
+            subject_issuer=approval.subject_issuer,
+            client_id=state.client_id,
+            device_label=state.device_label,
+            device_key=device_key,
+        )
+        return {
+            "token": mint.token,
+            "expires_at": mint.expires_at,
+            "subject_type": SubjectType.EXTERNAL_SSO,
+            "subject_email": approval.subject_email,
+            "subject_issuer": approval.subject_issuer,
+            "account": None,
+            "workspaces": [],
+            "default_workspace_id": None,
+            "token_id": mint.token_id,
+        }
+
+    @staticmethod
+    def _build_account_poll_payload(
+        account: AccountSnapshot,
+        active_workspace_id: str,
+        workspaces: Sequence[DeviceWorkspace],
+        mint: IssuedOAuthToken,
+    ) -> PollPayload:
+        default_workspace_id = next(
+            (workspace.id for workspace in workspaces if workspace.id == active_workspace_id),
+            None,
+        )
+        if default_workspace_id is None:
+            default_workspace_id = next((workspace.id for workspace in workspaces if workspace.current), None)
+        if default_workspace_id is None and workspaces:
+            default_workspace_id = workspaces[0].id
+
+        return {
+            "token": mint.token,
+            "expires_at": mint.expires_at,
+            "subject_type": SubjectType.ACCOUNT,
+            "account": {"id": account.id, "email": account.email, "name": account.name},
+            "workspaces": [
+                {"id": workspace.id, "name": workspace.name, "role": workspace.role} for workspace in workspaces
+            ],
+            "default_workspace_id": default_workspace_id,
+            "token_id": mint.token_id,
+        }

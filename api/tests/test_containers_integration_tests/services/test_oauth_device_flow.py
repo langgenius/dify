@@ -2,13 +2,14 @@
 
 import pytest
 
-from constants.oauth_bearer import SubjectType
 from extensions.ext_redis import redis_client
 from services.oauth_device_contracts import (
     DEVICE_FLOW_TTL_SECONDS,
+    AccountApprovalRecord,
     ApprovalTransitionConfirmation,
     DeviceApprovalRecord,
     DeviceFlowStatus,
+    ExternalApprovalRecord,
     InvalidTransitionError,
 )
 from services.oauth_device_flow import DEVICE_CODE_KEY_FMT, USER_CODE_KEY_FMT, DeviceFlowRedis
@@ -18,20 +19,13 @@ pytestmark = pytest.mark.usefixtures("flask_app_with_containers")
 
 _SUBJECT_EMAIL = 'user "quoted"\\path\n测试@example.com'
 _APPROVALS: list[DeviceApprovalRecord] = [
-    {
-        "subject_type": SubjectType.ACCOUNT,
-        "account_id": "account-1",
-        "workspace_id": "workspace-1",
-        "subject_email": _SUBJECT_EMAIL,
-        "subject_issuer": "dify:account",
-    },
-    {
-        "subject_type": SubjectType.EXTERNAL_SSO,
-        "account_id": None,
-        "workspace_id": None,
-        "subject_email": _SUBJECT_EMAIL,
-        "subject_issuer": "https://idp.example",
-    },
+    AccountApprovalRecord(
+        account_id="account-1",
+        workspace_id="workspace-1",
+        subject_email=_SUBJECT_EMAIL,
+        subject_issuer="dify:account",
+    ),
+    ExternalApprovalRecord(subject_email=_SUBJECT_EMAIL, subject_issuer="https://idp.example"),
 ]
 
 
@@ -85,7 +79,7 @@ def test_approval_record_is_stored_without_a_token_and_claimed_once(approval: De
 
 def test_denied_state_has_no_approval_and_is_consumed_once() -> None:
     store = DeviceFlowRedis(redis_client)
-    device_code, user_code, _ = store.start("difyctl", "CLI", "", "127.0.0.1")
+    device_code, user_code, _ = store.start("difyctl", "CLI", None, "127.0.0.1")
     try:
         store.deny(device_code, "deny-1")
         store.deny(device_code, "deny-1")

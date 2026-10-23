@@ -17,16 +17,19 @@ import json
 import logging
 import secrets
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 
 from constants.oauth_bearer import SubjectType
 from services.oauth_device_contracts import (
     DEVICE_FLOW_TTL_SECONDS,
+    AccountApprovalRecord,
     ApprovalTransitionConfirmation,
     DeviceApprovalRecord,
     DeviceFlowStateView,
     DeviceFlowStatus,
+    ExternalApprovalRecord,
     InvalidTransitionError,
     PollPayload,
     SlowDownDecision,
@@ -121,34 +124,41 @@ _TRANSITION_TOKEN_PREFIX = "transition:"
 _LEGACY_APPROVAL_FIELDS = ("subject_email", "account_id", "subject_issuer", "minted_token", "transition_id")
 
 
-def _parse_approval(data: dict[str, object]) -> DeviceApprovalRecord:
-    """Raises KeyError or ValueError for a record this version cannot honour."""
-    subject_type = SubjectType(str(data["subject_type"]))
-    subject_email = str(data["subject_email"])
-    subject_issuer = str(data["subject_issuer"])
-    if subject_type is SubjectType.EXTERNAL_SSO:
-        return {
-            "subject_type": SubjectType.EXTERNAL_SSO,
-            "account_id": None,
-            "workspace_id": None,
-            "subject_email": subject_email,
-            "subject_issuer": subject_issuer,
-        }
-    if subject_type is not SubjectType.ACCOUNT:
-        raise ValueError(f"device flow cannot approve subject type {subject_type}")
+def _parse_account_approval(data: dict[str, object]) -> AccountApprovalRecord:
     account_id = data["account_id"]
     if account_id is None:
         raise ValueError("account approval has no account_id")
     workspace_id = data["workspace_id"]
     if workspace_id is None:
         raise ValueError("account approval has no workspace_id")
-    return {
-        "subject_type": SubjectType.ACCOUNT,
-        "account_id": str(account_id),
-        "workspace_id": str(workspace_id),
-        "subject_email": subject_email,
-        "subject_issuer": subject_issuer,
-    }
+    return AccountApprovalRecord(
+        account_id=str(account_id),
+        workspace_id=str(workspace_id),
+        subject_email=str(data["subject_email"]),
+        subject_issuer=str(data["subject_issuer"]),
+    )
+
+
+def _parse_external_approval(data: dict[str, object]) -> ExternalApprovalRecord:
+    return ExternalApprovalRecord(
+        subject_email=str(data["subject_email"]),
+        subject_issuer=str(data["subject_issuer"]),
+    )
+
+
+_APPROVAL_PARSERS: dict[SubjectType, Callable[[dict[str, object]], DeviceApprovalRecord]] = {
+    SubjectType.ACCOUNT: _parse_account_approval,
+    SubjectType.EXTERNAL_SSO: _parse_external_approval,
+}
+
+
+def _parse_approval(data: dict[str, object]) -> DeviceApprovalRecord:
+    """Raises KeyError or ValueError for a record this version cannot honour."""
+    subject_type = SubjectType(str(data["subject_type"]))
+    parser = _APPROVAL_PARSERS.get(subject_type)
+    if parser is None:
+        raise ValueError(f"device flow cannot approve subject type {subject_type}")
+    return parser(data)
 
 
 @dataclass
@@ -158,6 +168,7 @@ class DeviceFlowState:
     user_code: str
     client_id: str
     device_label: str
+    installation_id: str | None
     status: DeviceFlowStatus
     token_id: str | None = None
     created_at: str = ""
@@ -165,7 +176,6 @@ class DeviceFlowState:
     last_poll_at: str = ""
     # Approved states written before approval records carry the minted payload here.
     poll_payload: PollPayload | None = field(default=None)
-    installation_id: str = ""
     approval: DeviceApprovalRecord | None = None
 
     def to_json(self) -> str:
@@ -178,6 +188,8 @@ class DeviceFlowState:
         # by the previous schema during a rolling deployment.
         for field_name in _LEGACY_APPROVAL_FIELDS:
             data.pop(field_name, None)
+        # States written before installation ids existed have no such field.
+        data.setdefault("installation_id", None)
         if "status" in data:
             data["status"] = DeviceFlowStatus(data["status"])
         if data.get("approval") is not None:
@@ -212,7 +224,7 @@ class DeviceFlowRedis:
         self,
         client_id: str,
         device_label: str,
-        installation_id: str,
+        installation_id: str | None,
         created_ip: str,
     ) -> tuple[str, str, int]:
         device_code = _random_device_code()
@@ -315,8 +327,10 @@ class DeviceFlowRedis:
             self._redis.delete(USER_CODE_KEY_FMT.format(code=state.user_code))
         except Exception:
             logger.exception("device_flow: failed to clean consumed user-code mapping")
-        # -1 (no expiry) and -2 (missing) give no lifetime to restore.
-        return state, max(int(ttl), 0)
+        ttl = int(ttl)
+        if ttl in (REDIS_TTL_NO_EXPIRY, REDIS_TTL_MISSING):
+            return state, 0
+        return state, ttl
 
     def restore(self, device_code: str, state: DeviceFlowStateView, ttl_seconds: int) -> bool:
         """Put a consumed state back for the time it had left. Never overwrites a state that exists again."""
@@ -377,7 +391,7 @@ class DeviceFlowRedis:
                 args=[
                     target.value,
                     self._transition_marker(transition_id),
-                    json.dumps(approval) if approval is not None else "",
+                    json.dumps(asdict(approval)) if approval is not None else "",
                     ttl_floor,
                 ],
             )

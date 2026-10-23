@@ -103,7 +103,7 @@ def test_device_code_serializes_authorization_and_passes_request_origin(
     device_service.start.assert_called_once_with(
         client_id="difyctl",
         device_label="laptop",
-        installation_id="",
+        installation_id=None,
         created_ip="192.0.2.10",
         request_origin="https://api.example/",
     )
@@ -113,13 +113,13 @@ def test_device_code_serializes_authorization_and_passes_request_origin(
     ("body_extra", "expected_installation_id"),
     [
         ({"installation_id": "0f9c2b7e-4a1d-4c3e-9b8a-2d6f1e0c5a7b"}, "0f9c2b7e-4a1d-4c3e-9b8a-2d6f1e0c5a7b"),
-        ({"installation_id": None}, ""),
-        ({}, ""),
+        ({"installation_id": None}, None),
+        ({}, None),
     ],
     ids=["install", "null", "absent"],
 )
-def test_code_request_passes_installation_id_or_legacy_empty(
-    openapi_app: Flask, device_service: Mock, body_extra: dict[str, str | None], expected_installation_id: str
+def test_code_request_passes_installation_id_or_none(
+    openapi_app: Flask, device_service: Mock, body_extra: dict[str, str | None], expected_installation_id: str | None
 ) -> None:
     device_service.start.return_value = DeviceAuthorization(
         device_code="opaque-code",

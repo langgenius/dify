@@ -381,7 +381,7 @@ def test_build_application_services_configures_setup_policy(
     assert services.setup.get_status().completed is setup_completed
     assert services.oauth_server is not None
     assert isinstance(services.oauth_device._accounts, SQLAlchemyAccountRepository)
-    assert isinstance(services.oauth_device._workspaces, WorkspaceRepository)
+    assert isinstance(services.oauth_device._minter._workspaces, WorkspaceRepository)
 
 
 def test_build_application_services_wires_builtin_schema_definitions(

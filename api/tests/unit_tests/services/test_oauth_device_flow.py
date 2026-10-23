@@ -1,22 +1,30 @@
 import json
 import logging
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
 import pytest
 
 from constants.oauth_bearer import SubjectType
 from services.oauth_device_contracts import (
+    AccountApprovalRecord,
     ApprovalTransitionConfirmation,
     DeviceApprovalRecord,
     DeviceFlowStatus,
+    ExternalApprovalRecord,
     device_key_for,
 )
 from services.oauth_device_flow import DeviceFlowRedis, DeviceFlowState
 
 _CONSUME_RETURN = "return {raw, ttl}"
-_APPROVAL: DeviceApprovalRecord = {
-    "subject_type": SubjectType.ACCOUNT,
+_APPROVAL = AccountApprovalRecord(
+    account_id="account-1",
+    workspace_id="workspace-1",
+    subject_email="ada@example.com",
+    subject_issuer="dify:account",
+)
+_APPROVAL_JSON = {
+    "subject_type": "account",
     "account_id": "account-1",
     "workspace_id": "workspace-1",
     "subject_email": "ada@example.com",
@@ -73,9 +81,10 @@ def _approved_state() -> DeviceFlowState:
         user_code="ABCD-EFGH",
         client_id="difyctl",
         device_label="CLI",
+        installation_id=None,
         status=DeviceFlowStatus.APPROVED,
         token_id="transition:approve-1",
-        approval=_APPROVAL.copy(),
+        approval=_APPROVAL,
     )
 
 
@@ -142,13 +151,13 @@ def test_approved_state_carries_approval_and_no_plaintext() -> None:
     assert """',"approval":' .. ARGV[3]""" in transition_script
     assert 'poll_payload":' not in transition_script
     _keys, args = next((keys, args) for source, keys, args in redis.script_calls if source == transition_script)
-    assert json.loads(str(args[2])) == _APPROVAL
+    assert json.loads(str(args[2])) == _APPROVAL_JSON
     assert "token" not in json.loads(str(args[2]))
 
     approved = _approved_state()
     serialized = approved.to_json()
     assert "dfoa_" not in serialized
-    assert json.loads(serialized)["approval"] == _APPROVAL
+    assert json.loads(serialized)["approval"] == _APPROVAL_JSON
     assert DeviceFlowState.from_json(serialized).approval == _APPROVAL
 
 
@@ -222,18 +231,18 @@ def test_reader_tolerates_old_approved_state_with_poll_payload() -> None:
 
     assert state is not None
     assert state.approval is None
-    assert state.installation_id == ""
+    assert state.installation_id is None
     assert state.poll_payload == legacy["poll_payload"]
 
 
 @pytest.mark.parametrize(
     "approval",
     [
-        {**_APPROVAL, "subject_type": "robot"},
-        {**_APPROVAL, "subject_type": SubjectType.RESOURCE_ACCESS},
-        {key: value for key, value in _APPROVAL.items() if key != "subject_email"},
-        {**_APPROVAL, "account_id": None},
-        {**_APPROVAL, "workspace_id": None},
+        {**_APPROVAL_JSON, "subject_type": "robot"},
+        {**_APPROVAL_JSON, "subject_type": SubjectType.RESOURCE_ACCESS},
+        {key: value for key, value in _APPROVAL_JSON.items() if key != "subject_email"},
+        {**_APPROVAL_JSON, "account_id": None},
+        {**_APPROVAL_JSON, "workspace_id": None},
     ],
     ids=[
         "unknown-subject-type",
@@ -260,13 +269,7 @@ def test_reader_rejects_an_approval_it_cannot_honour(
 @pytest.mark.parametrize(
     "approval",
     [
-        {
-            "subject_type": SubjectType.EXTERNAL_SSO,
-            "account_id": None,
-            "workspace_id": None,
-            "subject_email": "external@example.com",
-            "subject_issuer": "https://idp.example",
-        },
+        ExternalApprovalRecord(subject_email="external@example.com", subject_issuer="https://idp.example"),
         _APPROVAL,
     ],
     ids=["external", "account"],
@@ -279,6 +282,18 @@ def test_reader_round_trips_the_approvals_it_writes(approval: DeviceApprovalReco
 
     assert loaded is not None
     assert loaded.approval == approval
+
+
+def test_external_approval_keeps_the_stored_shape() -> None:
+    approval = ExternalApprovalRecord(subject_email="external@example.com", subject_issuer="https://idp.example")
+
+    assert asdict(approval) == {
+        "subject_email": "external@example.com",
+        "subject_issuer": "https://idp.example",
+        "subject_type": "external_sso",
+        "account_id": None,
+        "workspace_id": None,
+    }
 
 
 def test_approval_guard_release_compares_owner_before_delete() -> None:
@@ -298,9 +313,10 @@ def test_transition_marker_does_not_add_a_top_level_state_field() -> None:
         user_code="ABCD-EFGH",
         client_id="difyctl",
         device_label="CLI",
+        installation_id=None,
         status=DeviceFlowStatus.APPROVED,
         token_id="transition:approve-1",
-        approval=_APPROVAL.copy(),
+        approval=_APPROVAL,
     ).to_json()
     state_fields = {
         "user_code",
@@ -338,11 +354,11 @@ def test_state_reader_tolerates_legacy_approval_fields() -> None:
 
 def test_device_key_prefers_installation_id() -> None:
     assert device_key_for(installation_id="abcd1234", device_label="host") == "install:abcd1234"
-    assert device_key_for(installation_id="", device_label="host") == "host"
+    assert device_key_for(installation_id=None, device_label="host") == "host"
 
 
-@pytest.mark.parametrize("installation_id", ["abcd1234", ""], ids=["install", "legacy"])
-def test_start_stores_the_installation_id_in_pending_state(installation_id: str) -> None:
+@pytest.mark.parametrize("installation_id", ["abcd1234", None], ids=["install", "legacy"])
+def test_start_stores_the_installation_id_in_pending_state(installation_id: str | None) -> None:
     redis = _Redis(response="")
 
     device_code, _user_code, _ttl = DeviceFlowRedis(redis).start(
@@ -367,5 +383,9 @@ def test_state_round_trips_installation_id_and_reads_old_states() -> None:
     )
     assert DeviceFlowState.from_json(state.to_json()).installation_id == "abcd1234"
 
+
+def test_state_written_before_installation_ids_has_none() -> None:
     old = DeviceFlowState.from_json('{"user_code":"A","client_id":"difyctl","device_label":"h","status":"pending"}')
-    assert old.installation_id == ""
+
+    assert old.installation_id is None
+    assert device_key_for(installation_id=old.installation_id, device_label=old.device_label) == "h"

@@ -273,13 +273,13 @@ def test_legacy_key_equals_label_keeps_old_rotation(sqlite_session_factory: sess
 
 @pytest.mark.parametrize(
     ("installation_id", "expected_key"),
-    [("abcd1234", "install:abcd1234"), ("", "Laptop")],
+    [("abcd1234", "install:abcd1234"), (None, "Laptop")],
     ids=["install", "legacy"],
 )
 def test_issuer_keys_rotation_on_the_install_id_or_the_legacy_device_label(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
-    installation_id: str,
+    installation_id: str | None,
     expected_key: str,
 ) -> None:
     issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory)

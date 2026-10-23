@@ -11,6 +11,9 @@ from .base import TypeBase
 from .enums import PermissionEnum
 from .types import AdjustedJSON, EnumText, LongText, StringUUID
 
+# Longest utf8mb4 index prefix MySQL allows on a VARCHAR (767 bytes / 4).
+_MYSQL_INDEX_PREFIX_LENGTH = 191
+
 
 class DatasourceOauthParamConfig(TypeBase):
     __tablename__ = "datasource_oauth_params"
@@ -115,7 +118,11 @@ class OAuthAccessToken(TypeBase):
             "device_key",
             "active_guard",
             unique=True,
-            mysql_length={"subject_email": 191, "subject_issuer": 191, "device_key": 191},
+            mysql_length={
+                "subject_email": _MYSQL_INDEX_PREFIX_LENGTH,
+                "subject_issuer": _MYSQL_INDEX_PREFIX_LENGTH,
+                "device_key": _MYSQL_INDEX_PREFIX_LENGTH,
+            },
         ),
     )
 

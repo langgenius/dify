@@ -12,6 +12,7 @@ from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_application_service import OAuthDeviceApplicationService
 from services.oauth_device_contracts import (
     AccessDeniedError,
+    AccountApprovalRecord,
     AlreadyResolvedError,
     ApprovalOutcomeUnknownError,
     ApprovalSessionConsumedError,
@@ -29,6 +30,7 @@ from services.oauth_device_contracts import (
     ExternalApprovalCSRFError,
     ExternalApprovalGrant,
     ExternalApprovalRateLimitError,
+    ExternalApprovalRecord,
     ExternalIdentityConflictError,
     ExternalSubjectAssertion,
     ExternalUserCodeMismatchError,
@@ -56,7 +58,7 @@ class FakeState:
     user_code: str = "ABCD-EFGH"
     client_id: str = "difyctl"
     device_label: str = "CLI"
-    installation_id: str = ""
+    installation_id: str | None = None
     status: DeviceFlowStatus = DeviceFlowStatus.PENDING
     token_id: str | None = None
     created_ip: str = "127.0.0.1"
@@ -81,10 +83,12 @@ class FakeStore:
     consumed_approval: DeviceApprovalRecord | None = None
     acquired: list[tuple[str, str, int]] = field(default_factory=list)
     released: list[tuple[str, str]] = field(default_factory=list)
-    started: list[tuple[str, str, str, str]] = field(default_factory=list)
+    started: list[tuple[str, str, str | None, str]] = field(default_factory=list)
     restored: list[str] = field(default_factory=list)
 
-    def start(self, client_id: str, device_label: str, installation_id: str, created_ip: str) -> tuple[str, str, int]:
+    def start(
+        self, client_id: str, device_label: str, installation_id: str | None, created_ip: str
+    ) -> tuple[str, str, int]:
         self.started.append((client_id, device_label, installation_id, created_ip))
         return "device-1", "ABCD-EFGH", 900
 
@@ -415,7 +419,7 @@ def test_start_rejects_unknown_client_before_writing_state() -> None:
         harness.service.start(
             client_id="unknown",
             device_label="CLI",
-            installation_id="",
+            installation_id=None,
             created_ip="127.0.0.1",
             request_origin="https://api.example",
         )
@@ -667,21 +671,14 @@ def test_approval_records_the_subject_without_minting(external: bool) -> None:
 
     assert result.status == "approved"
     expected: DeviceApprovalRecord = (
-        {
-            "subject_type": SubjectType.EXTERNAL_SSO,
-            "account_id": None,
-            "workspace_id": None,
-            "subject_email": "external@example.com",
-            "subject_issuer": "https://idp.example",
-        }
+        ExternalApprovalRecord(subject_email="external@example.com", subject_issuer="https://idp.example")
         if external
-        else {
-            "subject_type": SubjectType.ACCOUNT,
-            "account_id": "account-1",
-            "workspace_id": "workspace-1",
-            "subject_email": "ada@example.com",
-            "subject_issuer": "dify:account",
-        }
+        else AccountApprovalRecord(
+            account_id="account-1",
+            workspace_id="workspace-1",
+            subject_email="ada@example.com",
+            subject_issuer="dify:account",
+        )
     )
     assert harness.store.approval == expected
     assert _issues(harness) == 0
@@ -841,9 +838,8 @@ def test_mint_failure_at_expiry_does_not_restore_the_code(remaining: int | None)
 def test_poll_mints_from_the_approval_it_consumed() -> None:
     harness = _approved_harness()
     approval = harness.store.approval
-    assert approval is not None
-    assert approval["subject_type"] is SubjectType.ACCOUNT
-    harness.store.consumed_approval = {**approval, "workspace_id": "workspace-2"}
+    assert isinstance(approval, AccountApprovalRecord)
+    harness.store.consumed_approval = replace(approval, workspace_id="workspace-2")
 
     _poll(harness)
 
@@ -877,11 +873,11 @@ def test_audits_name_the_token_only_once_it_is_issued(external: bool, caplog: py
 @pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
 @pytest.mark.parametrize(
     ("installation_id", "expected_key"),
-    [("abcd1234", "install:abcd1234"), ("", "CLI")],
+    [("abcd1234", "install:abcd1234"), (None, "CLI")],
     ids=["install", "legacy"],
 )
 def test_poll_mints_on_the_device_key_from_the_code_request(
-    external: bool, installation_id: str, expected_key: str
+    external: bool, installation_id: str | None, expected_key: str
 ) -> None:
     harness = _harness()
     harness.store.states["ABCD-EFGH"] = ("device-1", FakeState(installation_id=installation_id))

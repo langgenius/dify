@@ -1,6 +1,6 @@
 """Framework-neutral contracts shared by the OAuth device-flow use cases."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from typing import Literal, NotRequired, Protocol, TypedDict
@@ -17,9 +17,9 @@ ACCOUNT_ISSUER_SENTINEL = "dify:account"
 INSTALL_KEY_PREFIX = "install:"
 
 
-def device_key_for(*, installation_id: str, device_label: str) -> str:
+def device_key_for(*, installation_id: str | None, device_label: str) -> str:
     """Rotation key for a device; CLIs that send no installation id rotate on their label."""
-    if not installation_id:
+    if installation_id is None:
         return device_label
     return INSTALL_KEY_PREFIX + installation_id
 
@@ -55,20 +55,40 @@ class PollPayload(TypedDict):
     subject_issuer: NotRequired[str]
 
 
-class AccountApprovalRecord(TypedDict):
-    subject_type: Literal[SubjectType.ACCOUNT]
+class DeviceApprovalMinter(Protocol):
+    """Mints the token for each kind of approval record."""
+
+    def mint_account(
+        self, state: "DeviceFlowStateView", approval: "AccountApprovalRecord", device_key: str
+    ) -> PollPayload: ...
+
+    def mint_external(
+        self, state: "DeviceFlowStateView", approval: "ExternalApprovalRecord", device_key: str
+    ) -> PollPayload: ...
+
+
+@dataclass(frozen=True, slots=True)
+class AccountApprovalRecord:
     account_id: str
     workspace_id: str
     subject_email: str
     subject_issuer: str
+    subject_type: Literal[SubjectType.ACCOUNT] = field(default=SubjectType.ACCOUNT, init=False)
+
+    def mint(self, minter: DeviceApprovalMinter, state: "DeviceFlowStateView", device_key: str) -> PollPayload:
+        return minter.mint_account(state, self, device_key)
 
 
-class ExternalApprovalRecord(TypedDict):
-    subject_type: Literal[SubjectType.EXTERNAL_SSO]
-    account_id: None
-    workspace_id: None
+@dataclass(frozen=True, slots=True)
+class ExternalApprovalRecord:
     subject_email: str
     subject_issuer: str
+    subject_type: Literal[SubjectType.EXTERNAL_SSO] = field(default=SubjectType.EXTERNAL_SSO, init=False)
+    account_id: None = field(default=None, init=False)
+    workspace_id: None = field(default=None, init=False)
+
+    def mint(self, minter: DeviceApprovalMinter, state: "DeviceFlowStateView", device_key: str) -> PollPayload:
+        return minter.mint_external(state, self, device_key)
 
 
 # Who approved a device code; the token is minted from it on the first successful poll.
@@ -203,7 +223,7 @@ class DeviceFlowStateView(Protocol):
     user_code: str
     client_id: str
     device_label: str
-    installation_id: str
+    installation_id: str | None
     status: DeviceFlowStatus
     token_id: str | None
     created_ip: str
