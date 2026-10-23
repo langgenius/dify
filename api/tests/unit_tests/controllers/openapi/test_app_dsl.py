@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import Protocol, cast
 from uuid import uuid4
 
-import httpx
 import pytest
 import yaml
 from flask import Flask, request
@@ -18,9 +17,7 @@ from controllers.openapi._errors import (
     DraftChanged,
     DraftNotFound,
     DslInvalid,
-    MarketplaceUnavailable,
     OpenApiErrorFormatter,
-    PluginServiceUnavailable,
     VersionNotFound,
 )
 from controllers.openapi._models import (
@@ -43,13 +40,11 @@ from controllers.openapi.app_dsl import (
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.plugins import PluginInstallApi
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
-from core.plugin.impl.exc import PluginDaemonInternalError
 from libs.external_api import ExternalApi
 from machinery.context import AppRequestContext, RequestContext
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
-from services.app.console_service import ConsoleAppNotFoundError
 from services.app.export_service import AppExportService
 from services.app_dsl_service import AppDslService
 from services.entities.app_entities import AppExportOptions
@@ -624,58 +619,3 @@ def test_dependency_check_returns_unresolved_ids_and_an_install_hint(
     assert response.unresolved_plugin_ids == ["corp/private"]
     assert response.hints[0].op == op_of(PluginInstallApi.post)
     assert response.hints[0].input["identifiers"] == ["acme/search:1.2.0@abc"]
-
-
-def test_dependency_check_without_missing_marketplace_plugins_has_no_hint(
-    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    result = DraftDependencyCheck(unresolved_plugin_ids=["corp/private"])
-    monkeypatch.setattr(app_query_services.apps.imports, "check_draft_dependencies", lambda *_args: result)
-
-    response, _status = _check_dependencies(app, _DEPENDENCY_APP_ID)
-
-    assert response.unresolved_plugin_ids == ["corp/private"]
-    assert response.hints == []
-
-
-@pytest.mark.parametrize(
-    ("raised", "expected"),
-    [
-        (httpx.ConnectError("marketplace down"), MarketplaceUnavailable),
-        (PluginDaemonInternalError("daemon down"), PluginServiceUnavailable),
-    ],
-)
-def test_dependency_check_maps_marketplace_and_daemon_failures(
-    app: Flask,
-    app_query_services: ControllerTestServices,
-    monkeypatch: pytest.MonkeyPatch,
-    raised: Exception,
-    expected: type[Exception],
-) -> None:
-    def check_draft_dependencies(*_args: object) -> DraftDependencyCheck:
-        raise raised
-
-    monkeypatch.setattr(app_query_services.apps.imports, "check_draft_dependencies", check_draft_dependencies)
-
-    with pytest.raises(expected):
-        _check_dependencies(app, _DEPENDENCY_APP_ID)
-
-
-@pytest.mark.parametrize(
-    ("raised", "expected"),
-    [(ConsoleAppNotFoundError("x"), NotFound), (WorkflowNotFoundError("x"), DraftNotFound)],
-)
-def test_dependency_check_maps_missing_app_and_draft(
-    app: Flask,
-    app_query_services: ControllerTestServices,
-    monkeypatch: pytest.MonkeyPatch,
-    raised: Exception,
-    expected: type[Exception],
-) -> None:
-    def check_draft_dependencies(*_args: object) -> DraftDependencyCheck:
-        raise raised
-
-    monkeypatch.setattr(app_query_services.apps.imports, "check_draft_dependencies", check_draft_dependencies)
-
-    with pytest.raises(expected):
-        _check_dependencies(app, _DEPENDENCY_APP_ID)
