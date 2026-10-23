@@ -136,7 +136,9 @@ describe('SimplePromptInput', () => {
 
     await user.click(screen.getByRole('textbox'))
     await replacePromptEditorText(screen.getByRole('textbox'), '/')
-    await user.click(await screen.findByText('common.promptEditor.variable.modal.addTool'))
+    await user.click(
+      await screen.findByRole('option', { name: 'common.promptEditor.variable.modal.addTool' }),
+    )
 
     expect(mockSetShowExternalDataToolModal).toHaveBeenCalledTimes(1)
     const modalConfig = mockSetShowExternalDataToolModal.mock.calls[0]![0]
