@@ -89,8 +89,7 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
   touch or with assistive technology.
 
 Use a real `<button type="button">` for button-like triggers. If a Base UI trigger intentionally
-renders a non-button element, set `nativeButton={false}`. Let the primitive own placement and
-spacing unless its API documents a measured exception.
+renders a non-button element, set `nativeButton={false}`.
 
 [Base UI Portal]: https://base-ui.com/react/overview/quick-start#portals
 [Infotip contract]: ../src/infotip/README.md

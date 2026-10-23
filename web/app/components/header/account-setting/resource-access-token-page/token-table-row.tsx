@@ -69,16 +69,13 @@ export default function ResourceAccessTokenRow({
 
   return (
     <tr className="border-b border-divider-subtle system-md-regular last:border-b-0">
-      <td className="h-12 pr-6">
+      <td className="h-12 pr-4">
         <div className="truncate system-md-regular text-text-secondary">{row.name}</div>
       </td>
-      <td className="pr-6">
-        <div className="truncate font-mono text-text-secondary">{row.trackId}</div>
-      </td>
-      <td className="pr-6">
+      <td className="pr-4">
         <div className="truncate font-mono text-text-secondary">{row.maskedToken}</div>
       </td>
-      <td className="pr-6">
+      <td className="pr-4">
         <div className="flex min-w-0 items-center gap-1">
           <div className="min-w-0 truncate text-text-secondary">
             {resourceSummary ||
@@ -125,7 +122,7 @@ export default function ResourceAccessTokenRow({
           </Infotip>
         </div>
       </td>
-      <td className="pr-6">
+      <td className="pr-4">
         <div className="truncate text-text-secondary">
           {row.createdAt != null
             ? formatTime(

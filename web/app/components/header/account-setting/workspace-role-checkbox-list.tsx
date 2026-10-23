@@ -140,6 +140,12 @@ const WorkspaceRoleCheckboxList = ({
     )
   }, [roles, keyword])
 
+  const statusMessage = rolesLoading
+    ? t(($) => $['role.loading'], { ns: 'permission' })
+    : filteredRoles.length === 0
+      ? t(($) => $['role.noMatchingRoles'], { ns: 'permission' })
+      : ''
+
   const toggleRole = useCallback(
     (role: Role) => {
       if (disabledRoleIdSet.has(role.id)) return
@@ -215,15 +221,15 @@ const WorkspaceRoleCheckboxList = ({
       <ScrollArea className="min-h-0 flex-1">
         <ScrollAreaViewport ref={containerRef} className="overscroll-contain px-3">
           <ScrollAreaContent>
-            {rolesLoading ? (
-              <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                {t(($) => $['role.loading'], { ns: 'permission' })}
-              </div>
-            ) : filteredRoles.length === 0 ? (
-              <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                {t(($) => $['role.noMatchingRoles'], { ns: 'permission' })}
-              </div>
-            ) : (
+            <div
+              role="status"
+              className={cn(
+                statusMessage && 'px-3 py-6 text-center system-sm-regular text-text-tertiary',
+              )}
+            >
+              {statusMessage}
+            </div>
+            {!rolesLoading && filteredRoles.length > 0 && (
               <>
                 {allowMultipleRoles ? (
                   <ul className="flex flex-col gap-0.5 pb-2">

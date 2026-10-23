@@ -4,7 +4,7 @@ import type { marketplaceClient } from '@/service/marketplace'
 import { zAgentAppPartial } from '@dify/contracts/api/console/agent/zod.gen'
 import { zAppPartial } from '@dify/contracts/api/console/apps/zod.gen'
 import { zSkillResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
-import { detectPlatform } from '@tanstack/react-hotkeys'
+import { detectPlatform, useHotkey } from '@tanstack/react-hotkeys'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'next-themes'
@@ -13,7 +13,7 @@ import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useWorkflowSearch } from '@/app/components/workflow/hooks/use-workflow-search'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -146,7 +146,7 @@ function setup({ datasetOperator = false, enableSkill = true, canInstall = true 
     <ConsoleWrapper>
       <ThemeProvider defaultTheme="light" enableSystem={false}>
         <GotoAnything />
-        <AppToastHost timeout={0} />
+        <AppToaster timeout={0} />
       </ThemeProvider>
     </ConsoleWrapper>,
   )
@@ -154,7 +154,9 @@ function setup({ datasetOperator = false, enableSkill = true, canInstall = true 
 }
 async function openSearch() {
   triggerSearchShortcut()
-  return screen.findByRole('combobox', { name: 'app.gotoAnything.searchTitle' })
+  const input = await screen.findByRole('combobox', { name: 'app.gotoAnything.searchTitle' })
+  await waitFor(() => expect(input).toHaveFocus())
+  return input
 }
 
 beforeEach(() => {
@@ -176,6 +178,37 @@ afterEach(() => {
 })
 
 describe('search shortcut ownership', () => {
+  it('suspends background commands while search is open and restores them after closing', async () => {
+    const save = vi.fn()
+    function BackgroundEditor() {
+      useHotkey('Mod+S', save)
+      return <button onClick={save}>Save document</button>
+    }
+    const { user } = setup()
+    render(<BackgroundEditor />)
+    const pressSave = (target: HTMLElement) =>
+      fireEvent.keyDown(target, { key: 's', ctrlKey: !isMac, metaKey: isMac })
+
+    pressSave(screen.getByRole('button', { name: 'Save document' }))
+    expect(save).toHaveBeenCalledTimes(1)
+    const input = await openSearch()
+    pressSave(input)
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(triggerSearchShortcut(input)).toBe(false)
+    expect(
+      fireEvent.keyDown(input, { key: 'k', ctrlKey: !isMac, metaKey: isMac, repeat: true }),
+    ).toBe(false)
+    expect(input).toHaveFocus()
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'app.gotoAnything.searchTitle' }),
+      ).not.toBeInTheDocument(),
+    )
+    pressSave(screen.getByRole('button', { name: 'Save document' }))
+    expect(save).toHaveBeenCalledTimes(2)
+  })
+
   it('opens search, keeps the current query on a repeated shortcut, and clears it after closing', async () => {
     const { user } = setup()
     const input = await openSearch()

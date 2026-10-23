@@ -42,7 +42,6 @@ const byteFormatter = new Intl.NumberFormat(undefined, {
 })
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB']
 const DOWNLOAD_TASK_POLLING_INTERVAL = 3000
-const DELETION_RETRY_DELAY = 60_000
 const ARCHIVE_MONTH_PAGE_SIZE = 20
 
 function formatNumber(value: number) {
@@ -72,6 +71,17 @@ function formatDate(value: string | null | undefined) {
 
 function isPreparingStatus(status: WorkflowRunArchiveDownloadStatus | undefined) {
   return status === 'pending' || status === 'processing'
+}
+
+function latestDownloadTask(
+  snapshot: WorkflowRunArchiveDownloadTaskResponse | null | undefined,
+  candidate: WorkflowRunArchiveDownloadTaskResponse | null | undefined,
+) {
+  if (!candidate) return snapshot
+  if (!snapshot || Date.parse(candidate.updated_at) >= Date.parse(snapshot.updated_at)) {
+    return candidate
+  }
+  return snapshot
 }
 
 function isDeletingStatus(status: WorkflowRunArchiveMonthResponse['deletion_status']) {
@@ -111,6 +121,7 @@ export default function WorkflowLogArchivesPage() {
   const summary = archiveData?.summary
   const isLoading =
     (deploymentEdition === 'CLOUD' && plan === undefined) || archiveListQuery.isLoading
+  const isEmpty = !isLoading && !archiveListQuery.isError && archiveMonths.length === 0
   const hasMoreArchives = visibleArchiveMonths.length < archiveMonths.length
 
   useEffect(() => {
@@ -191,7 +202,7 @@ export default function WorkflowLogArchivesPage() {
       </div>
 
       <div className="overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs">
-        <div className="overflow-x-auto">
+        <div className="@container overflow-x-auto">
           <table className="w-full min-w-140 table-auto">
             <colgroup>
               <col />
@@ -243,7 +254,7 @@ export default function WorkflowLogArchivesPage() {
               {!isLoading && archiveListQuery.isError && (
                 <tr>
                   <td colSpan={4}>
-                    <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 text-center">
+                    <div className="sticky start-0 flex min-h-36 max-w-[100cqw] flex-col items-center justify-center gap-2 px-4 py-4 text-center">
                       <span
                         className="i-ri-error-warning-line size-6 text-text-tertiary"
                         aria-hidden="true"
@@ -253,24 +264,6 @@ export default function WorkflowLogArchivesPage() {
                       </div>
                       <div className="system-xs-regular text-text-tertiary">
                         {t(($) => $['archives.error.description'], { ns: 'appLog' })}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              )}
-              {!isLoading && !archiveListQuery.isError && archiveMonths.length === 0 && (
-                <tr>
-                  <td colSpan={4}>
-                    <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 text-center">
-                      <span
-                        className="i-ri-archive-line size-6 text-text-tertiary"
-                        aria-hidden="true"
-                      />
-                      <div className="system-sm-semibold text-text-secondary">
-                        {t(($) => $['archives.empty.title'], { ns: 'appLog' })}
-                      </div>
-                      <div className="system-xs-regular text-text-tertiary">
-                        {t(($) => $['archives.empty.description'], { ns: 'appLog' })}
                       </div>
                     </div>
                   </td>
@@ -297,6 +290,19 @@ export default function WorkflowLogArchivesPage() {
             </tbody>
           </table>
         </div>
+        <div role="status" aria-atomic="true" className={isEmpty ? 'p-px' : undefined}>
+          {isEmpty && (
+            <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 py-4 text-center">
+              <span className="i-ri-archive-line size-6 text-text-tertiary" aria-hidden="true" />
+              <div className="system-sm-semibold text-text-secondary">
+                {t(($) => $['archives.empty.title'], { ns: 'appLog' })}
+              </div>
+              <div className="system-xs-regular text-text-tertiary">
+                {t(($) => $['archives.empty.description'], { ns: 'appLog' })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -309,9 +315,9 @@ function ArchivedLogsUpgradeBanner() {
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs sm:flex-row sm:items-center sm:justify-between">
       <div className="space-y-1 text-text-primary-on-surface">
-        <div className="title-xl-semi-bold">
+        <h4 className="title-xl-semi-bold">
           {t(($) => $['archives.upgradeTip.title'], { ns: 'appLog' })}
-        </div>
+        </h4>
         <div className="system-sm-regular">
           {t(($) => $['archives.upgradeTip.description'], { ns: 'appLog' })}
         </div>
@@ -332,10 +338,10 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const archiveMonthLabelId = useId()
   const downloadActionLabelId = useId()
+  const downloadHintId = useId()
   const deleteActionLabelId = useId()
   const confirmDeleteLabelId = useId()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deletionRetryAvailable, setDeletionRetryAvailable] = useState(false)
   const [downloadTask, setDownloadTask] = useState<WorkflowRunArchiveDownloadTaskResponse | null>(
     null,
   )
@@ -346,17 +352,10 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
     }),
   )
   const isDeletionActive = isDeletingStatus(archive.deletion_status)
-  const canRetryDeletion = isDeletionActive && deletionRetryAvailable
-  const isDeleting = deleteArchiveMutation.isPending || (isDeletionActive && !canRetryDeletion)
+  const isDeleting = deleteArchiveMutation.isPending || isDeletionActive
   const isDownloadUnavailable = deleteArchiveMutation.isPending || archive.deletion_status != null
 
-  useEffect(() => {
-    if (!isDeletionActive || deleteArchiveMutation.isPending) return
-
-    const timer = setTimeout(() => setDeletionRetryAvailable(true), DELETION_RETRY_DELAY)
-    return () => clearTimeout(timer)
-  }, [isDeletionActive, deleteArchiveMutation.isPending, deleteArchiveMutation.submittedAt])
-  const cachedTask = downloadTask ?? archive.download_task ?? null
+  const cachedTask = latestDownloadTask(archive.download_task, downloadTask)
   const downloadTaskId = cachedTask?.download_id
   const taskQuery = useQuery(
     consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryOptions({
@@ -367,9 +366,13 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
             },
           }
         : skipToken,
-      enabled: !!downloadTaskId && !isDownloadUnavailable && isPreparingStatus(cachedTask?.status),
+      enabled: (query) =>
+        !!downloadTaskId &&
+        !isDownloadUnavailable &&
+        isPreparingStatus(latestDownloadTask(cachedTask, query.state.data)?.status),
       refetchInterval: (query) =>
-        !isDownloadUnavailable && isPreparingStatus(query.state.data?.status ?? cachedTask?.status)
+        !isDownloadUnavailable &&
+        isPreparingStatus(latestDownloadTask(cachedTask, query.state.data)?.status)
           ? DOWNLOAD_TASK_POLLING_INTERVAL
           : false,
     }),
@@ -377,8 +380,22 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const createDownloadMutation = useMutation(
     consoleQuery.workflowRunArchives.downloads.post.mutationOptions(),
   )
-  const currentTask = taskQuery.data ?? cachedTask
-  const isPreparing = createDownloadMutation.isPending || isPreparingStatus(currentTask?.status)
+  const currentTask = latestDownloadTask(cachedTask, taskQuery.data)
+  const isTaskPreparing = isPreparingStatus(currentTask?.status)
+  const isPreparing = createDownloadMutation.isPending || isTaskPreparing
+  const [observedPreparingTaskId, setObservedPreparingTaskId] = useState(
+    isTaskPreparing ? currentTask?.download_id : undefined,
+  )
+  // A list refresh can replace every preparing snapshot with the completed task.
+  if (
+    isTaskPreparing &&
+    !createDownloadMutation.isPending &&
+    observedPreparingTaskId !== currentTask?.download_id
+  ) {
+    setObservedPreparingTaskId(currentTask?.download_id)
+  } else if (observedPreparingTaskId && observedPreparingTaskId !== currentTask?.download_id) {
+    setObservedPreparingTaskId(undefined)
+  }
   const isReady = currentTask?.status === 'ready'
   const isFailed = currentTask?.status === 'failed'
   const failureReason = isFailed ? currentTask?.error?.trim() : undefined
@@ -398,10 +415,16 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
         : isPreparing
           ? t(($) => $['archives.downloadHint.preparing'], { ns: 'appLog' })
           : t(($) => $['archives.downloadHint.prepare'], { ns: 'appLog' })
+  const announceDownloadResult =
+    !createDownloadMutation.isPending &&
+    !isDownloadUnavailable &&
+    observedPreparingTaskId === currentTask?.download_id &&
+    (isReady || isFailed)
 
   const prepareDownload = () => {
     if (createDownloadMutation.isPending || isDownloadUnavailable) return
 
+    setObservedPreparingTaskId(undefined)
     createDownloadMutation.mutate(
       {
         body: {
@@ -444,7 +467,6 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const deleteArchive = () => {
     if (!isCurrentWorkspaceOwner || isDeleting) return
 
-    setDeletionRetryAvailable(false)
     deleteArchiveMutation.mutate(
       { params: { year: archive.year, month: archive.month } },
       { onSuccess: () => setDeleteDialogOpen(false) },
@@ -466,6 +488,9 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
       </td>
       <td className="px-2 py-3 text-center">
         <div className="flex flex-col items-center gap-2">
+          <span role="status" aria-atomic="true" className="sr-only">
+            {announceDownloadResult ? `${archiveMonth}: ${downloadHint}` : ''}
+          </span>
           <div className="flex items-center justify-center gap-1">
             <Tooltip>
               <TooltipTrigger
@@ -478,6 +503,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                     focusableWhenDisabled
                     className="shrink-0 px-2"
                     aria-labelledby={`${downloadActionLabelId} ${archiveMonthLabelId}`}
+                    aria-describedby={downloadHintId}
                     onClick={onAction}
                   />
                 }
@@ -490,7 +516,9 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                 )}
                 <span id={downloadActionLabelId}>{buttonContent}</span>
               </TooltipTrigger>
-              <TooltipContent>{downloadHint}</TooltipContent>
+              <TooltipContent id={downloadHintId} role="tooltip">
+                {downloadHint}
+              </TooltipContent>
             </Tooltip>
             {isCurrentWorkspaceOwner && (
               <AlertDialog
@@ -519,7 +547,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                   <span id={deleteActionLabelId}>
                     {isDeleting
                       ? t(($) => $['archives.delete.deleting'], { ns: 'appLog' })
-                      : archive.deletion_status === 'failed' || canRetryDeletion
+                      : archive.deletion_status === 'failed'
                         ? t(($) => $['archives.delete.retry'], { ns: 'appLog' })
                         : t(($) => $['operation.delete'], { ns: 'common' })}
                   </span>
@@ -546,7 +574,6 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                     </AlertDialogCancelButton>
                     <AlertDialogConfirmButton
                       loading={isDeleting}
-                      disabled={isDeletionActive && !canRetryDeletion}
                       aria-labelledby={confirmDeleteLabelId}
                       onClick={deleteArchive}
                     >

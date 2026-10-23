@@ -213,7 +213,7 @@ describe('Carousel', () => {
         return null
       }
 
-      expect(() => render(<InvalidConsumer />)).toThrowError(
+      expect(() => render(<InvalidConsumer />)).toThrow(
         'useCarousel must be used within a <Carousel />',
       )
     })

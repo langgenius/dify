@@ -8,7 +8,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { assert } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
@@ -114,7 +114,7 @@ async function setup(
   const tree = (
     // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts require their Provider rather than React 19 context rendering.
     <DatasetDetailContext.Provider value={{ dataset }}>
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
       <StepTwo
         dataSourceType={DataSourceType.FILE}
         files={[{ id: 'file-1', name: 'handbook.pdf', extension: 'pdf' }]}

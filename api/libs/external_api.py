@@ -10,6 +10,7 @@ from flask.typing import ResponseReturnValue
 from flask_restx import Api
 from pydantic import BaseModel
 from pydantic.json_schema import SkipJsonSchema
+from werkzeug.datastructures import Headers
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
 
@@ -481,11 +482,13 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
         if default_data["message"] == "Failed to decode JSON object: Expecting value: line 1 column 1 (char 0)":
             default_data["message"] = "Invalid JSON payload received or JSON payload is empty."
 
-        # Use headers on the exception if present; otherwise none.
-        headers = {}
+        # Preserve protocol headers while rendering our own JSON body.
+        headers = Headers(e.get_headers())
+        headers.remove("Content-Type")
+        headers.remove("Content-Length")
         exc_headers = getattr(e, "headers", None)
         if exc_headers:
-            headers.update(exc_headers)
+            headers.update(Headers(exc_headers))
 
         # Payload per status
         if status_code == 406 and api.default_mediatype is None:
@@ -511,12 +514,12 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
             data.setdefault("code", "unknown")
             # If you need WWW-Authenticate for 401, add it to headers
             if status_code == 401:
-                headers["WWW-Authenticate"] = 'Bearer realm="api"'
+                headers.setdefault("WWW-Authenticate", 'Bearer realm="api"')
                 # Check if this is a forced logout error - clear cookies
                 error_code = getattr(e, "error_code", None)
                 if error_code == "unauthorized_and_force_logout":
                     # Add Set-Cookie headers to clear auth cookies
-                    headers["Set-Cookie"] = build_force_logout_cookie_headers()
+                    headers.setlist("Set-Cookie", build_force_logout_cookie_headers())
             return _finalize(e, data, status_code), status_code, headers
 
     def handle_value_error(e: ValueError):

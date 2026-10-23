@@ -11,7 +11,7 @@ from typing_extensions import TypedDict
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
-from models.enums import DocumentCreatedFrom, SegmentStatus, SummaryStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
 from services.knowledge.resource_scope import DatasetRef, SegmentRef
 from tasks import regenerate_segment_summary_task as task_module
 
@@ -71,12 +71,12 @@ def summary_queue(
                 tenant_id="tenant-1",
                 dataset_id="dataset-1",
                 position=1,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="batch",
                 name="Document",
                 created_from=DocumentCreatedFrom.API,
                 created_by="author",
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
             )
         )
         segment = DocumentSegment(

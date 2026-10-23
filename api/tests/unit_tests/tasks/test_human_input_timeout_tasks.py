@@ -14,7 +14,7 @@ from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from models.human_input import HumanInputForm
 from tasks import human_input_timeout_tasks as task_module
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 class _FakeService:

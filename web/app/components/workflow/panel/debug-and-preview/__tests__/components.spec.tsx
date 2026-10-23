@@ -1,3 +1,4 @@
+import type { PaginatedConversationVariableResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ChatWrapperRefType } from '../index'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { ConversationVariable } from '@/app/components/workflow/types'
@@ -16,7 +17,6 @@ import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel
 import { InputVarType } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { EventEmitterContext } from '@/context/event-emitter'
-import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
 import ChatWrapper from '../chat-wrapper'
 import ConversationVariableModal from '../conversation-variable-modal'
 import UserInput from '../user-input'
@@ -39,10 +39,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: { call: mockRequest },
-}))
-
-vi.mock('@/service/workflow', () => ({
-  fetchCurrentValueOfConversationVariable: vi.fn(),
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -147,9 +143,6 @@ const renderWorkflowFlowComponent = (
   options?: Parameters<typeof renderWorkflowFlowComponentBase>[1],
 ) => renderWorkflowFlowComponentBase(<Providers>{ui}</Providers>, options)
 
-const mockFetchCurrentValueOfConversationVariable = vi.mocked(
-  fetchCurrentValueOfConversationVariable,
-)
 const mockCopy = vi.mocked(copy)
 
 const createConversationVariable = (
@@ -178,10 +171,8 @@ const createChatState = (overrides: Record<string, unknown> = {}) => ({
 })
 
 const createConversationVariableResponse = (
-  data: Array<
-    Awaited<ReturnType<typeof fetchCurrentValueOfConversationVariable>>['data'][number]
-  > = [],
-): Awaited<ReturnType<typeof fetchCurrentValueOfConversationVariable>> => ({
+  data: PaginatedConversationVariableResponse['data'] = [],
+): PaginatedConversationVariableResponse => ({
   data,
   has_more: false,
   limit: 20,
@@ -197,11 +188,8 @@ describe('debug-and-preview components', () => {
     vi.clearAllMocks()
     routeParams.appId = 'app-1'
     mockRequest.mockReset()
-    mockRequest.mockResolvedValue({ data: [] })
     mockUseChat.mockReturnValue(createChatState())
-    mockFetchCurrentValueOfConversationVariable.mockResolvedValue(
-      createConversationVariableResponse(),
-    )
+    mockRequest.mockResolvedValue(createConversationVariableResponse())
   })
 
   afterEach(() => {
@@ -212,7 +200,7 @@ describe('debug-and-preview components', () => {
     it('copies the displayed runtime value and re-enables copying after the timeout', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-      mockFetchCurrentValueOfConversationVariable.mockResolvedValue(
+      mockRequest.mockResolvedValue(
         createConversationVariableResponse([
           {
             ...createConversationVariable({ value: '{"latest":true}' }),
@@ -446,7 +434,7 @@ describe('debug-and-preview components', () => {
           isResponding: true,
         }),
       )
-      mockFetchCurrentValueOfConversationVariable.mockResolvedValue(
+      mockRequest.mockResolvedValue(
         createConversationVariableResponse([
           {
             ...createConversationVariable({

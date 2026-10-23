@@ -22,6 +22,7 @@ from dify_agent.protocol import (
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
 from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
+from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
     AgentBackendInternalEventType,
@@ -58,7 +59,15 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 from graphon.runtime import InitParams, RuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
-from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentWorkspaceOwnerType,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
@@ -109,7 +118,9 @@ class FakeVariablePool:
 class FakeBindingResolver(WorkflowAgentBindingResolver):
     def __init__(self):
         self.calls: list[dict[str, object]] = []
-        self.agent = Agent(id="agent-1", tenant_id="tenant-1", name="Agent")
+        self.agent = Agent(
+            scope=AgentScope.ROSTER, source=AgentSource.ROSTER, id="agent-1", tenant_id="tenant-1", name="Agent"
+        )
         self.snapshot = AgentConfigSnapshot(
             id="snapshot-1",
             tenant_id="tenant-1",
@@ -126,6 +137,8 @@ class FakeBindingResolver(WorkflowAgentBindingResolver):
             ),
         )
         self.binding = WorkflowAgentNodeBinding(
+            workflow_version="draft",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
             id="binding-1",
             tenant_id="tenant-1",
             app_id="app-1",
@@ -406,6 +419,7 @@ def _node(
     agent_backend_client: FakeAgentBackendRunClient | None = None,
     binding_resolver: FakeBindingResolver | None = None,
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
+    workflow_tool_invocation_id: str | None = None,
     error_strategy: ErrorStrategy | None = None,
 ) -> DifyAgentNode:
     graph_init_params = InitParams(
@@ -418,6 +432,7 @@ def _node(
                 user_id="user-1",
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
+                workflow_tool_invocation_id=workflow_tool_invocation_id,
             )
         },
         call_depth=0,
@@ -594,6 +609,42 @@ def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution(
     assert binding_resolver.calls[0]["binding_id"] == "binding-1"
     assert binding_resolver.calls[0]["snapshot_id"] == "snapshot-pinned"
     assert binding_resolver.calls[0]["conversation_id"] == "conversation-1"
+
+
+def test_agent_node_workflow_tool_does_not_resolve_outer_conversation_participant(sqlite_session: Session) -> None:
+    binding_resolver = FakeBindingResolver()
+    binding_resolver.agent.scope = AgentScope.WORKFLOW_ONLY
+    binding_resolver.agent.source = AgentSource.WORKFLOW
+    binding_resolver.binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
+    binding_resolver.binding.workflow_version = "draft"
+    sqlite_session.add_all([binding_resolver.binding, binding_resolver.agent, binding_resolver.snapshot])
+    sqlite_session.commit()
+    store = FakeSessionStore()
+    node = _node(
+        binding_resolver=binding_resolver,
+        session_store=store,
+        workflow_tool_invocation_id="tool-call-1",
+    )
+    with (
+        patch.object(binding_resolver, "resolve", wraps=WorkflowAgentBindingResolver().resolve),
+        patch.object(
+            WorkflowAgentWorkspaceStore,
+            "load_active_participant",
+            side_effect=AssertionError("Workflow Tool must not select an outer Chatflow participant"),
+        ) as load_participant,
+    ):
+        events = list(node._run())
+
+    assert cast(StreamCompletedEvent, events[0]).node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    load_participant.assert_not_called()
+    assert store.existing_scope_lookups[0]["conversation_id"] == "conversation-1"
+    assert store.existing_scope_lookups[0]["workflow_tool_invocation_id"] == "tool-call-1"
+    scope = store.resolved_scopes[0]
+    assert scope.agent_config_snapshot_id == "snapshot-1"
+    assert scope.conversation_id == "conversation-1"
+    assert scope.workflow_tool_invocation_id == "tool-call-1"
+    assert scope.workspace_owner.owner_type == AgentWorkspaceOwnerType.WORKFLOW_RUN
+    assert scope.workspace_owner.owner_id == "workflow-run-1"
 
 
 def test_agent_node_maps_persisted_participant_lookup_error_to_node_failure() -> None:
@@ -996,6 +1047,37 @@ def test_agent_node_records_stream_usage_metadata():
     assert agent_backend["last_stream_event_id"] == "1-1"
     assert agent_backend["last_stream_event_kind"] == "model_response"
     assert agent_backend["usage"] == {"prompt_tokens": 3, "completion_tokens": 4, "total_tokens": 7}
+
+
+def test_agent_node_records_only_trusted_knowledge_sources_and_deduplicates():
+    from dify_agent.protocol import PydanticAIStreamRunEvent
+    from pydantic_ai.messages import FunctionToolResultEvent, ToolReturnPart
+
+    citation = {
+        "id": "kfs_" + "a" * 32,
+        "control_space_id": "00000000-0000-4000-8000-000000000001",
+        "space_name": "Docs",
+        "node_id": "node",
+        "document_asset_id": "doc",
+        "artifact_hash": "hash",
+    }
+    metadata = {}
+    for trusted in (False, True, True):
+        part = ToolReturnPart(
+            tool_name="shell_run",
+            tool_call_id="call-1",
+            content={"knowledge_fs_citations": [citation]},
+            metadata={"knowledge_fs_citations": [citation]} if trusted else {},
+        )
+        event = PydanticAIStreamRunEvent(run_id="run-1", data=FunctionToolResultEvent(part=part))
+        DifyAgentNode._record_stream_metadata(
+            metadata, AgentBackendStreamInternalEvent(run_id="run-1", data=event.model_dump(mode="json")["data"])
+        )
+        if not trusted:
+            assert "knowledge_fs_sources" not in metadata
+    sources = metadata["knowledge_fs_sources"]
+    assert len(sources) == 1
+    assert sources[0]["knowledge_fs_citation"]["id"] == citation["id"]
 
 
 @pytest.mark.parametrize(

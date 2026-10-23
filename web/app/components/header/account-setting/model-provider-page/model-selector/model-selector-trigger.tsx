@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import type { ModelSelectorModel, ModelSelectorProvider, ModelSelectorValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -17,7 +18,11 @@ import ModelName from '../model-name'
 import { useCredentialPanelState as useCredentialPanelInfo } from '../provider-added-card/use-credential-panel-state'
 
 type ModelSelectorTriggerProps = {
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
+  ref?: Ref<HTMLButtonElement>
   'aria-labelledby'?: string
+  'aria-required'?: boolean
   currentProvider?: ModelSelectorProvider
   currentModel?: ModelSelectorModel
   defaultModel?: ModelSelectorValue
@@ -35,7 +40,11 @@ type ModelSelectorTriggerProps = {
 }
 
 function ModelSelectorTrigger({
-  'aria-labelledby': labelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-required': ariaRequired,
+  ref,
   currentProvider,
   currentModel,
   defaultModel,
@@ -53,6 +62,7 @@ function ModelSelectorTrigger({
 }: ModelSelectorTriggerProps) {
   const { t } = useTranslation(['common', 'plugin', 'modelProvider'])
   const valueId = useId()
+  const requiredTextId = useId()
 
   const showClear = !!defaultModel && !!onClear
   const isSelected = !!currentProvider && !!currentModel
@@ -103,10 +113,18 @@ function ModelSelectorTrigger({
       : isSelected && !isStatusUnavailable && ((!isActive && statusI18nKey) || !isModelCompatible)
         ? tooltipLabel
         : undefined
+  const configureModelLabel = t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })
+  const requiredText = ariaRequired
+    ? t(($) => $['errorMsg.fieldRequired'], { field: '', ns: 'common' }).trim()
+    : undefined
+  const triggerLabelledBy = [ariaLabelledBy, valueId, requiredText ? requiredTextId : undefined]
+    .filter(Boolean)
+    .join(' ')
 
   const trigger = (
     <Tooltip>
       <TooltipTrigger
+        ref={ref}
         disabled={!triggerTooltipLabel || isDisabled}
         render={
           <PopoverTrigger
@@ -114,9 +132,12 @@ function ModelSelectorTrigger({
             render={
               <button
                 type="button"
-                aria-labelledby={labelledBy ? `${labelledBy} ${valueId}` : undefined}
+                aria-describedby={ariaDescribedBy}
+                aria-labelledby={ariaLabelledBy ? triggerLabelledBy : undefined}
                 data-deprecated={isDeprecated && !isStatusUnavailable ? '' : undefined}
+                data-invalid={ariaInvalid ? '' : undefined}
                 data-model-status={status}
+                data-required={ariaRequired ? '' : undefined}
                 data-shape={shape}
                 data-size={size}
                 data-surface={surface}
@@ -124,6 +145,7 @@ function ModelSelectorTrigger({
                 className={cn(
                   'group/model-selector-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled transition-colors',
                   'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
+                  'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                   'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled motion-reduce:transition-none',
                   'data-[size=small]:h-6 data-[size=small]:gap-px data-[size=small]:rounded-md data-[size=small]:p-0.5',
                   'data-[size=medium]:h-8 data-[size=medium]:gap-0.5 data-[size=medium]:rounded-lg data-[size=medium]:p-1',
@@ -137,6 +159,11 @@ function ModelSelectorTrigger({
               />
             }
           >
+            {requiredText && (
+              <span id={requiredTextId} className="sr-only">
+                {requiredText}
+              </span>
+            )}
             <span
               className={cn(
                 'flex min-w-0 grow items-center gap-0.5',
@@ -196,8 +223,8 @@ function ModelSelectorTrigger({
                   </span>
                 )}
                 {isEmpty && (
-                  <span className="grow truncate text-[13px] text-components-input-text-placeholder">
-                    {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
+                  <span className="grow truncate text-[13px] text-text-secondary group-disabled/model-selector-trigger:text-components-input-text-placeholder">
+                    {configureModelLabel}
                   </span>
                 )}
 
@@ -245,13 +272,11 @@ function ModelSelectorTrigger({
           </PopoverTrigger>
         }
       />
-      {triggerTooltipLabel && (
-        <TooltipContent placement="top">{triggerTooltipLabel}</TooltipContent>
-      )}
+      {triggerTooltipLabel && <TooltipContent>{triggerTooltipLabel}</TooltipContent>}
     </Tooltip>
   )
 
-  if (!showClear) return trigger
+  if (!onClear) return trigger
 
   return (
     <div
@@ -261,19 +286,21 @@ function ModelSelectorTrigger({
       )}
     >
       {trigger}
-      <IconButton
-        aria-label={clearLabel ?? t(($) => $['operation.reset'], { ns: 'common' })}
-        size="sm"
-        disabled={isDisabled}
-        onClick={onClear}
-        className={cn(
-          'pointer-events-none absolute top-1/2 -translate-y-1/2 opacity-0 group-focus-within/model-selector-clearable:pointer-events-auto group-focus-within/model-selector-clearable:opacity-100 group-hover/model-selector-clearable:pointer-events-auto group-hover/model-selector-clearable:opacity-100',
-          'text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset',
-          shape === 'split' ? 'right-1' : size === 'small' ? 'right-4.5' : 'right-5',
-        )}
-      >
-        <span aria-hidden="true" className="i-ri-close-circle-fill size-4" />
-      </IconButton>
+      {showClear && (
+        <IconButton
+          aria-label={clearLabel ?? t(($) => $['operation.reset'], { ns: 'common' })}
+          size="sm"
+          disabled={isDisabled}
+          onClick={onClear}
+          className={cn(
+            'pointer-events-none absolute top-1/2 -translate-y-1/2 opacity-0 group-focus-within/model-selector-clearable:pointer-events-auto group-focus-within/model-selector-clearable:opacity-100 group-hover/model-selector-clearable:pointer-events-auto group-hover/model-selector-clearable:opacity-100',
+            'text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset',
+            shape === 'split' ? 'right-1' : size === 'small' ? 'right-4.5' : 'right-5',
+          )}
+        >
+          <span aria-hidden="true" className="i-ri-close-circle-fill size-4" />
+        </IconButton>
+      )}
     </div>
   )
 }
