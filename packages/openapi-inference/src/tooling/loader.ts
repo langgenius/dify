@@ -1,7 +1,8 @@
 import { readFileSync, statSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, relative, resolve } from 'node:path'
-import { compileRuntime, runtimeConfigFile } from './transform.js'
+import { runtimeConfigFile } from './runtime-config.js'
+import { compileRuntime } from './transform.js'
 
 type LoaderContext = {
   resourcePath: string

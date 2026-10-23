@@ -18,12 +18,18 @@ export function resolveRef(value: unknown, root: unknown): Record<string, unknow
   return result
 }
 
-export function pointer(root: unknown, ref: string): unknown {
+export function pointerPath(ref: string): string[] {
   if (!ref.startsWith('#/'))
     throw new Error(`Only local JSON Pointer references are supported: ${ref}`)
+  return ref
+    .slice(2)
+    .split('/')
+    .map((part) => part.replace(/~1/g, '/').replace(/~0/g, '~'))
+}
+
+export function pointer(root: unknown, ref: string): unknown {
   let value = root
-  for (const part of ref.slice(2).split('/')) {
-    const key = part.replace(/~1/g, '/').replace(/~0/g, '~')
+  for (const key of pointerPath(ref)) {
     if (value === null || typeof value !== 'object' || !Object.hasOwn(value, key))
       throw new Error(`Unresolved reference: ${ref}`)
     value = (value as Record<string, unknown>)[key]

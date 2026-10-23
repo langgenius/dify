@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 import { QueryClient } from '@tanstack/query-core'
-import { invokeOperation, invokeRpcOperation } from '../dist/client.js'
+import { invokeRpcOperation } from '../dist/client.js'
 import { ApiError, createClient, client as defaultClient } from '../dist/index.js'
 import { describeOperations } from '../dist/operation.js'
 import { createQueryKey, createQueryOperation } from '../dist/query-runtime.js'
@@ -91,7 +91,7 @@ test('document configuration shares transport and keys without leaking per-call 
       config,
     ),
     query.queryOptions({ context: { user: 'bob' } }).queryFn({ signal: controller.signal }),
-    invokeOperation(operation, { context: { user: 'carol' } }, config),
+    invokeRpcOperation(operation, {}, { context: { user: 'carol' } }, config),
   ])
   assert.deepEqual(seen.map(([url]) => url).sort(), [
     'https://alice.example.test/pets',

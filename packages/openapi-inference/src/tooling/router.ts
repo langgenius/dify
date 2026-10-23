@@ -76,22 +76,20 @@ export function routerModule(
     if (!child) throw new Error(`Unknown virtual router path: ${path.join('.')}`)
     node = child
   }
-  let text = 'import { invokeRpcOperation } from "@dify/openapi-inference/runtime";\n'
+  let text = query
+    ? 'import { createQueryOperation, createQueryKey } from "@dify/openapi-inference/query-runtime";\n'
+    : 'import { invokeRpcOperation } from "@dify/openapi-inference/runtime";\n'
   if (runtimeModule) text += `import runtime from ${JSON.stringify(runtimeModule)};\n`
   const runtime = runtimeModule ? ', runtime' : ''
-  if (query) {
-    text +=
-      'import { createQueryOperation, createQueryKey } from "@dify/openapi-inference/query-runtime";\n'
+  if (query)
     text += `export const key = /* @__PURE__ */ createQueryKey(${JSON.stringify(path)}${runtime});\n`
-  }
   let index = 0
   for (const [method, op] of node.methods) {
     const binding = `operation${index++}`
-    const callable = `(input, options) => invokeRpcOperation(${JSON.stringify(op)}, input, options${runtime})`
     text += `const ${binding} = ${
       query
         ? `/* @__PURE__ */ createQueryOperation(${JSON.stringify(op)}, ${JSON.stringify([...path, method])}${runtime})`
-        : callable
+        : `(input, options) => invokeRpcOperation(${JSON.stringify(op)}, input, options${runtime})`
     };\nexport { ${binding} as ${JSON.stringify(method)} };\n`
   }
   for (const key of node.children.keys()) {

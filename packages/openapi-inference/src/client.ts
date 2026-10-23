@@ -218,21 +218,7 @@ export function createClient(initial: ClientOptions = {}): HttpClient {
 
 export const client = /* @__PURE__ */ createClient()
 
-export async function invokeOperation(
-  operation: OperationDescriptor,
-  options: RuntimeOptions = {},
-  runtime?: RuntimeConfig,
-): Promise<unknown> {
-  try {
-    const transport = options.client ?? runtime?.createClient?.(options) ?? client
-    return await transport.request(operation, options)
-  } catch (error) {
-    runtime?.onError?.(error)
-    throw error
-  }
-}
-
-export function invokeRpcOperation(
+export async function invokeRpcOperation(
   operation: OperationDescriptor,
   input: Omit<RuntimeOptions, 'path' | 'header' | 'headers'> & {
     params?: Record<string, unknown>
@@ -242,9 +228,12 @@ export function invokeRpcOperation(
   runtime?: RuntimeConfig,
 ): Promise<unknown> {
   const { params, headers, ...request } = input
-  return invokeOperation(
-    operation,
-    { ...request, path: params, ...options, header: headers },
-    runtime,
-  )
+  const call = { ...request, path: params, ...options, header: headers }
+  try {
+    const transport = call.client ?? runtime?.createClient?.(call) ?? client
+    return await transport.request(operation, call)
+  } catch (error) {
+    runtime?.onError?.(error)
+    throw error
+  }
 }

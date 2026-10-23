@@ -8,7 +8,6 @@ import { createRouter, routerModule, routerModuleId } from './router.js'
 import { runtimeConfigFile } from './runtime-config.js'
 import { schemaTypes } from './schema-types.js'
 import { typeDocument } from './type-document.js'
-export { runtimeConfigFile } from './runtime-config.js'
 
 // Positions use UTF-16, as do YAML's ranges and JavaScript string offsets.
 export type Mapping = [number, number, number, number, 0 | 1, number]
@@ -77,22 +76,20 @@ export function transformSpec(content: string, fileName: string): Transform {
     function emit(node: Node | null | undefined, selected: Selection, path: string[] = []): void {
       if (isMap(node)) {
         text += '{'
-        const pairs = node.items.filter(
-          (pair) => selected.all || selected.children.has(String((pair.key as Scalar).value)),
-        )
-        pairs.forEach((pair, index) => {
-          if (index) text += ','
+        let separator = ''
+        for (const pair of node.items) {
           assertObjectKey(pair.key)
           const key = String(pair.key.value)
+          const child = selected.all ? selected : selected.children.get(key)
+          if (!child) continue
+          text += separator
+          separator = ','
           if (path.length === 2 && path[0] === 'paths')
             methodNodes.set(`${path[1]} ${key}`, pair.key)
           token(JSON.stringify(key), pair.key)
           text += ':'
-          emit(pair.value as Node | null, selected.all ? selected : selected.children.get(key)!, [
-            ...path,
-            key,
-          ])
-        })
+          emit(pair.value as Node | null, child, [...path, key])
+        }
         text += '}'
       } else if (isSeq(node)) {
         text += '['

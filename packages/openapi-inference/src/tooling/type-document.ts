@@ -1,4 +1,4 @@
-import { pointer, record } from '../document.js'
+import { pointer, pointerPath, record } from '../document.js'
 
 export type Selection = { all?: boolean; children: Map<string, Selection> }
 type Kind =
@@ -83,11 +83,7 @@ export function typeDocument(root: unknown): Selection {
     // use SchemaDocument's alias map instead of needing a second raw copy.
     if (fields[kind] && kind !== 'media' && kind !== 'schema' && typeof object.$ref === 'string') {
       select([...path, '$ref'], object.$ref, true)
-      const target = object.$ref
-        .slice(2)
-        .split('/')
-        .map((part) => part.replace(/~1/g, '/').replace(/~0/g, '~'))
-      select(target, pointer(root, object.$ref), kind)
+      select(pointerPath(object.$ref), pointer(root, object.$ref), kind)
       return
     }
     const item = items[kind]
