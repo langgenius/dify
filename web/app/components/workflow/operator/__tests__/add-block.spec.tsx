@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CanvasNodesCatalogProbe } from '../../__tests__/canvas-nodes-catalog-probe'
 import { createNode } from '../../__tests__/fixtures'
@@ -54,15 +54,11 @@ describe('AddBlock', () => {
     renderWithReactFlow()
 
     const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' })
-    expect(trigger).not.toHaveAttribute('data-block-selector-open')
-
-    await user.hover(trigger)
-    await waitFor(() => expect(trigger).toHaveAttribute('data-popup-open', ''))
-    expect(trigger).not.toHaveAttribute('data-block-selector-open')
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
 
     await user.click(trigger)
 
-    expect(trigger).toHaveAttribute('data-block-selector-open', '')
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('dialog', { name: 'workflow.common.addBlock' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'workflow.blocks.answer' })).toBeInTheDocument()
   })
