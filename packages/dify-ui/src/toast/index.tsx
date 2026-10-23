@@ -24,7 +24,7 @@ type ToastActionProps = React.ComponentPropsWithoutRef<'button'> & Pick<ButtonPr
 
 type ToastAddOptions = Omit<
   ToastManagerAddOptions<ToastData>,
-  'actionProps' | 'data' | 'positionerProps' | 'type'
+  'data' | 'positionerProps' | 'type'
 > & {
   actionProps?: ToastActionProps
   type?: ToastType
@@ -32,7 +32,7 @@ type ToastAddOptions = Omit<
 
 type ToastUpdateOptions = Omit<
   ToastManagerUpdateOptions<ToastData>,
-  'actionProps' | 'data' | 'positionerProps' | 'type'
+  'data' | 'positionerProps' | 'type'
 > & {
   actionProps?: ToastActionProps
   type?: ToastType
