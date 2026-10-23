@@ -57,10 +57,11 @@ export const zApiKeyItem = z.object({
 })
 
 /**
- * ApiKeyList
+ * ApiKeyListWithLimitResponse
  */
-export const zApiKeyList = z.object({
+export const zApiKeyListWithLimitResponse = z.object({
   data: z.array(zApiKeyItem),
+  max_keys: z.int().gt(0),
 })
 
 /**
@@ -502,6 +503,13 @@ export const zDocumentRetryPayload = z.object({
  */
 export const zUsageCheckResponse = z.object({
   is_using: z.boolean(),
+})
+
+/**
+ * ApiKeyList
+ */
+export const zApiKeyList = z.object({
+  data: z.array(zApiKeyItem),
 })
 
 /**
@@ -1875,7 +1883,7 @@ export const zGetDatasetsApiBaseInfoResponse = zApiBaseUrlResponse
 /**
  * API keys retrieved successfully
  */
-export const zGetDatasetsApiKeysResponse = zApiKeyList
+export const zGetDatasetsApiKeysResponse = zApiKeyListWithLimitResponse
 
 export const zPostDatasetsApiKeysBody = zDatasetApiKeyCreatePayload
 

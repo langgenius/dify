@@ -1,20 +1,31 @@
-import type { ApiKeyList as AppApiKeyList } from '@dify/contracts/api/console/apps/types.gen'
+import type { ApiKeyListWithLimitResponse as AppApiKeyList } from '@dify/contracts/api/console/apps/types.gen'
 import type { ApiKeyList as DatasetApiKeyList } from '@dify/contracts/api/console/datasets/types.gen'
 import type { EnvironmentApiKey } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ApiSecretKeyButton } from '@/app/components/app/access-point/built-in-access-points/api-secret-key-button'
 import { EnvironmentApiKeyButton } from '@/app/components/app/access-point/deployed-environment-access-points/environment-api-key-button'
 import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
+import { AgentApiKeyDialogContent } from '@/features/agent-v2/agent-detail/access/components/agent-api-key-dialog-content'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return createReactI18nextMock({
+    'appApi.apiKeyModal.keyLimit': 'App limit {{limit}}',
+    'appApi.apiKeyModal.workspaceKeyLimit': 'Workspace limit {{limit}}',
+  })
+})
 
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
 }))
 
 const apiMocks = vi.hoisted(() => ({
+  maxKeys: 10,
   appKeys: [] as AppApiKeyList['data'],
   datasetKeys: [] as DatasetApiKeyList['data'],
   environmentKeys: [] as EnvironmentApiKey[],
@@ -33,9 +44,10 @@ vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
     call: async (path: string[], input: unknown) => {
       switch (path.join('.')) {
+        case 'agent.byAgentId.apiKeys.get':
         case 'apps.byResourceId.apiKeys.get':
           await apiMocks.listApp(input)
-          return { data: apiMocks.appKeys }
+          return { data: apiMocks.appKeys, max_keys: apiMocks.maxKeys }
         case 'apps.byResourceId.apiKeys.post':
           return apiMocks.createApp(input)
         case 'apps.byResourceId.apiKeys.byApiKeyId.delete':
@@ -50,7 +62,7 @@ vi.mock('@/service/console/browser', () => ({
         }
         case 'datasets.apiKeys.get':
           await apiMocks.listDataset()
-          return { data: apiMocks.datasetKeys }
+          return { data: apiMocks.datasetKeys, max_keys: apiMocks.maxKeys }
         case 'datasets.apiKeys.post':
           return apiMocks.createDataset(input)
         case 'datasets.apiKeys.byApiKeyId.delete':
@@ -69,6 +81,7 @@ vi.mock('@/service/console/browser', () => ({
   },
 }))
 
+const agentScope = { type: 'agent' } as const
 const appScope = { type: 'app', appId: 'app-123' } as const
 const datasetScope = { type: 'dataset' } as const
 const environmentScope = {
@@ -78,7 +91,7 @@ const environmentScope = {
 } as const
 
 async function renderDialog(
-  scope: typeof appScope | typeof datasetScope | typeof environmentScope,
+  scope: typeof appScope | typeof datasetScope | typeof environmentScope | typeof agentScope,
 ) {
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['dataset.api_key.manage'],
@@ -87,7 +100,19 @@ async function renderDialog(
   const user = userEvent.setup()
   render(
     <Wrapper>
-      {scope.type === 'dataset' ? (
+      {scope.type === 'agent' ? (
+        <Dialog defaultOpen>
+          <AgentApiKeyDialogContent
+            agentId="agent-1"
+            canManage
+            isCreating={false}
+            isDeleting={false}
+            createdKey={undefined}
+            onCreate={() => {}}
+            onDelete={() => {}}
+          />
+        </Dialog>
+      ) : scope.type === 'dataset' ? (
         <ServiceApi apiBaseUrl="https://api.example.com" />
       ) : scope.type === 'environment' ? (
         <EnvironmentApiKeyButton
@@ -103,7 +128,7 @@ async function renderDialog(
   if (scope.type === 'dataset') {
     await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.title' }))
     await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' }))
-  } else {
+  } else if (scope.type !== 'agent') {
     await user.click(screen.getByRole('button', { name: /^appApi.apiKeyModal.apiSecretKey/ }))
   }
   await screen.findByRole('button', {
@@ -124,6 +149,7 @@ describe('API key management', () => {
     apiMocks.listApp.mockReset()
     apiMocks.listDataset.mockReset()
     apiMocks.listEnvironment.mockReset()
+    apiMocks.maxKeys = 10
     apiMocks.appKeys = []
     apiMocks.datasetKeys = []
     apiMocks.environmentKeys = []
@@ -138,6 +164,68 @@ describe('API key management', () => {
       created_at: 1,
     })
     apiMocks.deleteEnvironment.mockResolvedValue(undefined)
+  })
+
+  it.each(
+    [appScope, datasetScope, agentScope].flatMap((scope) =>
+      [3, 10, 1000].flatMap((limit) =>
+        [-1, 0, 1].map((offset) => ({ scope, limit, count: limit + offset })),
+      ),
+    ),
+  )(
+    'uses server limit $limit for $scope.type with $count keys',
+    async ({ scope, limit, count }) => {
+      apiMocks.maxKeys = limit
+      const keys = Array.from({ length: count }, (_, index) => ({
+        id: `key-${index}`,
+        token: `token-${index}`,
+        type: scope.type,
+      }))
+      if (scope.type !== 'dataset') apiMocks.appKeys = keys
+      else apiMocks.datasetKeys = keys
+      await renderDialog(scope)
+      expect(
+        await screen.findByText(`${scope.type === 'dataset' ? 'Workspace' : 'App'} limit ${limit}`),
+      ).toBeInTheDocument()
+      const button = screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' })
+      if (count >= limit) expect(button).toHaveAttribute('aria-disabled', 'true')
+      else expect(button).not.toHaveAttribute('aria-disabled', 'true')
+    },
+    // Render real list rows at the 1000-key boundary, including their copy/delete controls.
+    15_000,
+  )
+
+  it('allows an eleventh key with a server limit of 1000', async () => {
+    const user = userEvent.setup()
+    apiMocks.maxKeys = 1000
+    apiMocks.appKeys = Array.from({ length: 10 }, (_, i) => ({
+      id: `key-${i}`,
+      token: `token-${i}`,
+      type: 'app',
+    }))
+    await renderDialog(appScope)
+    await user.click(screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }))
+    expect(
+      await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
+    ).toHaveValue('new-app-token-123')
+  })
+
+  it('does not show a guessed limit or allow creation before the list loads', async () => {
+    let resolve!: () => void
+    apiMocks.listApp.mockReturnValue(
+      new Promise<void>((done) => {
+        resolve = done
+      }),
+    )
+    const opening = renderDialog(appScope)
+    await screen.findByRole('status')
+    expect(screen.queryByText(/App limit/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+    ).not.toBeInTheDocument()
+    await act(async () => resolve())
+    await opening
+    expect(await screen.findByText('App limit 10')).toBeInTheDocument()
   })
 
   it('masks app keys visually while copying the complete value', async () => {
@@ -409,9 +497,10 @@ describe('API key management', () => {
       apiMocks[remove].mockImplementationOnce(async () => {
         apiMocks[keys] = []
       })
+      const previousFetches = apiMocks[list].mock.calls.length
       await user.click(confirm)
       await waitFor(() => expect(dialog).not.toBeInTheDocument())
-      await waitFor(() => expect(apiMocks[list]).toHaveBeenCalledTimes(2))
+      await waitFor(() => expect(apiMocks[list].mock.calls.length).toBeGreaterThan(previousFetches))
       expect(
         screen.queryByRole('button', { name: 'common.operation.delete key-s...cret' }),
       ).not.toBeInTheDocument()
@@ -503,6 +592,64 @@ describe('API key management', () => {
       await screen.findByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
     ).toBeEnabled()
     expect(screen.getByText('appApi.apiKeyModal.emptyState')).toBeInTheDocument()
+  })
+
+  it.each([appScope, datasetScope])(
+    'refreshes $type limits after the server rejects stale capacity',
+    async (scope) => {
+      const user = userEvent.setup()
+      apiMocks.maxKeys = 1000
+      await renderDialog(scope)
+      const create = scope.type === 'app' ? apiMocks.createApp : apiMocks.createDataset
+      create.mockImplementationOnce(async () => {
+        apiMocks.maxKeys = 3
+        const keys = Array.from({ length: 3 }, (_, i) => ({
+          id: `key-${i}`,
+          token: `token-${i}`,
+          type: scope.type,
+        }))
+        if (scope.type === 'app') apiMocks.appKeys = keys
+        else apiMocks.datasetKeys = keys
+        throw Object.assign(new Error('Limit exceeded'), { code: 'max_keys_exceeded', status: 400 })
+      })
+      await user.click(
+        screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+      )
+      if (scope.type === 'dataset') {
+        await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+        await waitFor(() =>
+          expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeDisabled(),
+        )
+        await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      }
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+        ).toHaveAttribute('aria-disabled', 'true'),
+      )
+      expect(
+        screen.queryByRole('dialog', { name: 'appApi.apiKeyModal.createdTitle' }),
+      ).not.toBeInTheDocument()
+    },
+  )
+
+  it('refreshes on reopen and blocks creation after a background error until retry', async () => {
+    const user = userEvent.setup()
+    await renderDialog(appScope)
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    apiMocks.listApp.mockRejectedValueOnce(new Error('Background failed'))
+    await user.click(screen.getByRole('button', { name: /^appApi.apiKeyModal.apiSecretKey/ }))
+    await screen.findByRole('button', { name: 'common.operation.retry' })
+    expect(
+      screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+      ).not.toHaveAttribute('aria-disabled', 'true'),
+    )
   })
 
   it('starts a fresh knowledge scope selection after cancelling and reopening', async () => {

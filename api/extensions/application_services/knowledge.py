@@ -78,6 +78,7 @@ def build_dataset_api_key_service(
     return DatasetApiKeyService(
         keys=DatasetApiKeyRepository(session_factory=database_client),
         cache=ApiTokenCache,
+        workspace_max_keys=dify_config.DATASET_API_KEY_MAX_KEYS_PER_WORKSPACE,
         access=dataset_access,
         rbac_enabled=lambda: dify_config.RBAC_ENABLED,
     )

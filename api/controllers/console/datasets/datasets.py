@@ -31,7 +31,7 @@ from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.constant.query_type import QueryType
 from extensions.ext_application_services import application_services
-from fields.api_key_fields import ApiKeyItem, ApiKeyList, build_masked_api_key_list
+from fields.api_key_fields import ApiKeyItem, ApiKeyListWithLimitResponse, build_masked_api_key_list
 from fields.base import ResponseModel
 from fields.dataset_fields import (
     DatasetDetailResponse,
@@ -607,7 +607,9 @@ class DatasetIndexingStatusApi(Resource):
 class DatasetApiKeyApi(Resource):
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get dataset API keys")
-    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
+    @console_ns.response(
+        200, "API keys retrieved successfully", console_ns.models[ApiKeyListWithLimitResponse.__name__]
+    )
     @console_account_admission(
         allowed_roles=API_KEY_DELETE_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()),),
@@ -615,7 +617,13 @@ class DatasetApiKeyApi(Resource):
     def get(self, request_context: RequestContext):
         with api_key_errors():
             keys = application_services().dataset_api_keys.list_workspace_keys(request_context)
-        return dump_response(ApiKeyList, build_masked_api_key_list(keys))
+        return dump_response(
+            ApiKeyListWithLimitResponse,
+            {
+                "data": build_masked_api_key_list(keys).data,
+                "max_keys": application_services().dataset_api_keys.workspace_max_keys,
+            },
+        )
 
     @error_responses(ApiKeyLimitExceededHTTPError)
     @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])

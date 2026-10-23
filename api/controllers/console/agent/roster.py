@@ -71,7 +71,7 @@ from fields.agent_fields import (
     AgentRosterListResponse,
     AgentStatisticSummaryEnvelopeResponse,
 )
-from fields.api_key_fields import ApiKeyItem, ApiKeyList
+from fields.api_key_fields import ApiKeyItem, ApiKeyListWithLimitResponse
 from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
 from libs.external_api import error_responses
@@ -1088,7 +1088,7 @@ class AgentApiStatusApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys")
 class AgentApiKeyListApi(Resource):
-    @console_ns.response(200, "Agent service API keys", console_ns.models[ApiKeyList.__name__])
+    @console_ns.response(200, "Agent service API keys", console_ns.models[ApiKeyListWithLimitResponse.__name__])
     @console_account_admission(
         allowed_roles=API_KEY_EDIT_ROLES,
         rbac_checks=[RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentId())],
@@ -1096,7 +1096,9 @@ class AgentApiKeyListApi(Resource):
     def get(self, request_context: RequestContext, agent_id: UUID) -> dict[str, object]:
         with api_key_errors():
             keys = application_services().app_api_keys.list_agent_keys(request_context, str(agent_id))
-        return dump_response(ApiKeyList, {"data": keys})
+        return dump_response(
+            ApiKeyListWithLimitResponse, {"data": keys, "max_keys": application_services().app_api_keys.max_keys}
+        )
 
     @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.response(201, "Agent service API key created", console_ns.models[ApiKeyItem.__name__])

@@ -90,8 +90,9 @@ export type ApiBaseUrlResponse = {
   api_base_url: string
 }
 
-export type ApiKeyList = {
+export type ApiKeyListWithLimitResponse = {
   data: Array<ApiKeyItem>
+  max_keys: number
 }
 
 export type DatasetApiKeyCreatePayload = {
@@ -675,6 +676,10 @@ export type DocumentRetryPayload = {
 
 export type UsageCheckResponse = {
   is_using: boolean
+}
+
+export type ApiKeyList = {
+  data: Array<ApiKeyItem>
 }
 
 export type DatasetListItemResponse = {
@@ -1374,7 +1379,7 @@ export type GetDatasetsApiKeysErrors = {
 export type GetDatasetsApiKeysError = GetDatasetsApiKeysErrors[keyof GetDatasetsApiKeysErrors]
 
 export type GetDatasetsApiKeysResponses = {
-  200: ApiKeyList
+  200: ApiKeyListWithLimitResponse
 }
 
 export type GetDatasetsApiKeysResponse =

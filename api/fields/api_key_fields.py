@@ -3,7 +3,7 @@
 from collections.abc import Iterable, Mapping
 from datetime import datetime
 
-from pydantic import field_validator
+from pydantic import PositiveInt, field_validator
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
@@ -27,6 +27,10 @@ class ApiKeyItem(ResponseModel):
 
 class ApiKeyList(ResponseModel):
     data: list[ApiKeyItem]
+
+
+class ApiKeyListWithLimitResponse(ApiKeyList):
+    max_keys: PositiveInt
 
 
 def mask_api_token(token: str) -> str:

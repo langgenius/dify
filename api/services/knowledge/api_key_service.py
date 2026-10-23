@@ -44,11 +44,17 @@ class DatasetApiKeyService:
         cache: ApiKeyCache,
         access: DatasetAccess,
         rbac_enabled: Callable[[], bool],
+        workspace_max_keys: int,
     ) -> None:
         self._keys = keys
         self._cache = cache
         self._access = access
         self._rbac_enabled = rbac_enabled
+        self._workspace_max_keys = workspace_max_keys
+
+    @property
+    def workspace_max_keys(self) -> int:
+        return self._workspace_max_keys
 
     def list_keys(self, context: RequestContext, dataset_id: str) -> tuple[ApiKeyRecord, ...]:
         self._check_access(context, dataset_id)
@@ -78,7 +84,10 @@ class DatasetApiKeyService:
 
     def create_workspace_key(self, context: RequestContext, dataset_ids: tuple[str, ...]) -> ApiKeyRecord:
         return self._keys.create_workspace_key(
-            context.active_workspace_id, tuple(dict.fromkeys(dataset_ids)), max_keys=self.MAX_KEYS, prefix="dataset-"
+            context.active_workspace_id,
+            tuple(dict.fromkeys(dataset_ids)),
+            max_keys=self.workspace_max_keys,
+            prefix="dataset-",
         )
 
     def delete_workspace_key(self, context: RequestContext, key_id: str) -> None:
