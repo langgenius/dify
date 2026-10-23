@@ -224,6 +224,34 @@ class TestArrayTruncation:
             assert isinstance(item, str)
         assert VariableTruncator.calculate_json_size(result.value) <= 50
 
+    def test_array_budget_break_sets_truncated_flag(self):
+        """Budget break drops trailing elements, so it must report truncated=True.
+
+        Regression for a defect where ``_truncate_array`` ``break``ed on the size
+        budget without flagging truncation, unlike the length-based path.
+        """
+        truncator = VariableTruncator(array_element_limit=20, max_size_bytes=1000)
+        # Each int fits individually, but the running total exceeds target_size=12,
+        # so the loop breaks at the 5th element and discards it.
+        result = truncator._truncate_array([10, 20, 30, 40, 50], 12)
+        assert result.value == [10, 20, 30, 40]  # trailing 50 was dropped
+        assert result.truncated is True
+
+    def test_array_truncated_flag_not_reset_by_later_untruncated_element(self):
+        """A later element that fits must not reset the flag set by an earlier one.
+
+        Regression for a defect where the per-element ``truncated`` flag was
+        overwritten instead of accumulated.
+        """
+        truncator = VariableTruncator(array_element_limit=20, max_size_bytes=1000, string_length_limit=10)
+        # Element 0 (long string) gets truncated; element 1 (short string) fits and
+        # must not flip the flag back to False. Both elements share one type, as
+        # real array variables are homogeneously typed.
+        result = truncator._truncate_array(["x" * 60, "a"], 60)
+        assert result.value[0] == "xxxxxxxxxx..."  # long string was truncated
+        assert result.value[1] == "a"  # short string kept intact
+        assert result.truncated is True
+
     def test_array_with_nested_objects(self, small_truncator):
         """Test array truncation with nested objects."""
         nested_array = [
