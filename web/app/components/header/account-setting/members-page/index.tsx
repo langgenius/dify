@@ -19,7 +19,6 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -51,7 +50,7 @@ const MembersPage = () => {
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { data, refetch } = useQuery(
+  const { data } = useQuery(
     consoleQuery.workspaces.current.members.get.queryOptions({ input: { query: { language } } }),
   )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -86,7 +85,9 @@ const MembersPage = () => {
     : t(($) => $['members.role'], { ns: 'workspaceMembers' })
 
   const { mutateAsync: updateRolesOfMember, isPending: isSavingMember } = useMutation(
-    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions(),
+    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
+      context: { silent: true },
+    }),
   )
 
   const handleAssignRolesSubmit = (member: AccountWithRoleResponse, roles: Role[]) => {
@@ -94,15 +95,10 @@ const MembersPage = () => {
       ? roles.map((role) => role.id)
       : roles.slice(0, 1).map((role) => role.id)
 
-    return updateRolesOfMember(
-      { params: { member_id: member.id }, body: { role_ids: roleIds } },
-      {
-        onSuccess: async () => {
-          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-          await refetch()
-        },
-      },
-    )
+    return updateRolesOfMember({
+      params: { member_id: member.id },
+      body: { role_ids: roleIds },
+    })
   }
 
   return (

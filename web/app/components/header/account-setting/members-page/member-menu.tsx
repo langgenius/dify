@@ -23,7 +23,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { createSelectedRolePlaceholder } from '../workspace-role-list-query'
 import AssignRolesContent from './assign-roles-content'
@@ -64,32 +63,33 @@ const MemberMenu = ({
     ? t(($) => $['members.assignRoles'], { ns: 'workspaceMembers', defaultValue: 'Assign Roles' })
     : t(($) => $['members.editRole'], { ns: 'workspaceMembers', defaultValue: 'Edit Role' })
 
-  const handleOpenAssignRoles = useCallback(() => {
+  const {
+    mutate: updateRolesOfMember,
+    isPending: isSavingRoles,
+    isError: roleSaveFailed,
+    reset: resetRoleSave,
+  } = useMutation(
+    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+
+  const handleOpenAssignRoles = () => {
+    resetRoleSave()
     setAssignModalOpen(true)
-  }, [])
+  }
 
-  const { mutateAsync: updateRolesOfMember } = useMutation(
-    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions(),
-  )
+  const handleAssignRolesSubmit = (roles: Role[]) => {
+    if (isSavingRoles) return
+    const roleIds = allowMultipleRoles
+      ? roles.map((role) => role.id)
+      : roles.slice(0, 1).map((role) => role.id)
 
-  const handleAssignRolesSubmit = useCallback(
-    (roles: Role[]) => {
-      const roleIds = allowMultipleRoles
-        ? roles.map((role) => role.id)
-        : roles.slice(0, 1).map((role) => role.id)
-
-      setAssignModalOpen(false)
-      updateRolesOfMember(
-        { params: { member_id: member.id }, body: { role_ids: roleIds } },
-        {
-          onSuccess: () => {
-            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-          },
-        },
-      )
-    },
-    [allowMultipleRoles, member.id, t, updateRolesOfMember],
-  )
+    updateRolesOfMember(
+      { params: { member_id: member.id }, body: { role_ids: roleIds } },
+      { onSuccess: () => setAssignModalOpen(false) },
+    )
+  }
 
   const handleOpenRemoveConfirm = useCallback(() => {
     setRemoveConfirmOpen(true)
@@ -131,6 +131,7 @@ const MemberMenu = ({
           {canAssignRoles && (
             <DropdownMenuItem
               className="system-sm-medium text-text-secondary"
+              disabled={isSavingRoles}
               onClick={handleOpenAssignRoles}
             >
               {assignRolesLabel}
@@ -156,6 +157,11 @@ const MemberMenu = ({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      {roleSaveFailed && !assignModalOpen && (
+        <p role="alert" className="mt-1 system-xs-regular text-text-destructive">
+          {t(($) => $['api.actionFailed'], { ns: 'common' })}
+        </p>
+      )}
       <AlertDialog
         open={removeConfirmOpen}
         onOpenChange={(open) => !open && setRemoveConfirmOpen(false)}
@@ -192,6 +198,8 @@ const MemberMenu = ({
             searchInputRef={searchInputRef}
             selectedRoles={selectedRoles}
             allowMultipleRoles={allowMultipleRoles}
+            isSubmitting={isSavingRoles}
+            hasSubmitError={roleSaveFailed}
             onSubmit={handleAssignRolesSubmit}
           />
         </DialogContent>
