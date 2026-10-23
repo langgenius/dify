@@ -55,16 +55,11 @@ stylesheet:
 
 ## Writing direction
 
-Use logical classes on the inline axis: `ps-*`/`pe-*`, `ms-*`/`me-*`, `inset-s-*`/`inset-e-*`,
-`border-s`/`border-e`, `rounded-s-*`/`rounded-e-*`, `text-start`/`text-end`. They render the same
-pixels as the physical classes under `dir="ltr"` and mirror under `dir="rtl"`. `cn` treats `pl-*`
-and `ps-*` as different properties, so a caller override must use the same family as the primitive.
-Block-axis classes (`pt`, `mb`, `top`) and sizes stay physical. A class names a physical side only
-when the side is physical by nature: under `rtl:`/`ltr:` or Base UI `data-[swipe-direction=left|right]`
-variants, in the `left-1/2 -translate-x-1/2` centering idiom, or in a layout tied to a physical
-swipe or transform such as the toast stack. `better-tailwindcss/enforce-logical-properties`
-enforces this in `packages/dify-ui` without a bulk-suppression baseline; a deliberate physical class carries a described
-`oxlint-disable-next-line` directive.
+Use logical inline-direction utilities for spacing, offsets, borders, corners, and alignment.
+Caller overrides must use the same family: `cn` does not merge `pl-*` with `ps-*`.
+
+Keep block-axis and sizing utilities unchanged. Preserve physical directions for swipe geometry
+and transform-based centering; explain deliberate physical exceptions with a scoped lint directive.
 
 ## Border radius
 

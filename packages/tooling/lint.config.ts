@@ -400,8 +400,8 @@ const tailwindLogicalPropertiesOverride = {
           // Direction variants and Base UI swipe directions name the physical side on purpose.
           '(?:^|:)(?:rtl|ltr):',
           'swipe-direction=(?:left|right)\\]:',
-          // `left-1/2` and `right-1/2` pair with the physical `-translate-x-1/2` centering
-          // idiom; `inset-s-1/2` would move the element off-center under `dir="rtl"`.
+          // Half-width offsets paired with physical horizontal translations must stay
+          // physical to remain centered under `dir="rtl"`.
           '(?:^|[:!])-?(?:left|right)-1/2$',
         ],
       },
