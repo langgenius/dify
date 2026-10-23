@@ -2,7 +2,7 @@
 
 For an existing REST backend, this package provides direct OpenAPI imports, nested calls and automatic pruning of statically unused operations. Direct oRPC offers a broader transport and error-handling ecosystem without requiring this package's beta compiler integration. Both can produce smaller bundles when unused contract information is removed.
 
-This comparison describes the Dify pilot and oRPC **1.15.7**, not every oRPC version or application. Measurements were taken on 2026-10-23 at Dify revision [`b14efc01d3`].
+This comparison describes the Dify pilot and oRPC **1.15.7**, not every oRPC version or application. Bundle and runtime measurements were taken on 2026-10-23 at Dify revision [`b14efc01d3`].
 
 ## Calling model and tooling
 
@@ -44,6 +44,22 @@ oRPC officially supports [`minifyContractRouter`]. Pre-minifying the group subst
 - Minified contracts are computed before bundling, rather than shipping the minification implementation to the browser. Their preparation and oRPC code generation are outside the measurement.
 - Sizes are the emitted JavaScript byte length and Node's default `gzipSync` output. They are isolated artifacts, not incremental application costs or page-load measurements. Dify already loads oRPC contracts lazily by group.
 - The SDK implements a smaller runtime feature set. Smaller output is not evidence of full behavioral equivalence. No end-to-end build-speed, editor-performance or runtime-throughput claim is made.
+
+## Incremental type checking
+
+A later 2026-10-23 benchmark compares the full console OpenAPI import with the generated community console oRPC router, using the same metadata call. The SDK measurements include serialized mapper caching and virtual-document pruning. The preceding SDK baseline is revision `05cc9491d5`.
+
+| CLI measurement                       | Previous SDK | Optimized SDK | Direct oRPC |
+| ------------------------------------- | -----------: | ------------: | ----------: |
+| No-change incremental, median of five |       574 ms |    **336 ms** |  **250 ms** |
+| Edit one argument, single observation |       589 ms |        346 ms |    1,231 ms |
+| No-change compiler-reported memory    |    117.2 MiB |      86.8 MiB |    80.9 MiB |
+
+No-change checking improved by 41%, but still trails direct oRPC by 86 ms (34%). The compiler reports zero type instantiations for both no-change cases. The remaining cost includes starting the mapper process and transferring/loading its virtual file. The SDK's virtual TypeScript shrank from 2.90 MB to 1.55 MB; source mappings fell from 143,155 to 48,113 as unused metadata and duplicate schema representations were removed. Existing completion, hover, operation-definition and live-edit tests pass.
+
+These are isolated CLI consumer measurements, not whole-application or editor latency. Each observation starts a new compiler process with the existing `.tsbuildinfo`; the SDK also has a warm mapper cache. Node 24.22.1, TypeScript 7.1.0-beta and oRPC 1.15.7 run on macOS arm64, serially with `GOMAXPROCS=1` and a 768 MiB Go memory target. Memory figures come from compiler diagnostics and exclude the mapper process; they are not peak RSS. Code generation, package builds and OS cache eviction are outside the measurement. The oRPC router excludes enterprise contracts, and known schema-representation differences remain. Before/after runs use the same flags; the earlier oRPC control median was 260 ms.
+
+All seven repository OpenAPI documents (1,560 operations) also passed a separate bidirectional assignment check between full and pruned virtual `api` and `query` types. This checks the pruning change against the SDK's previous representation, not equality with every generated oRPC procedure.
 
 ## Types and runtime behavior
 

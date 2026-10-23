@@ -9,6 +9,6 @@ Initial experimental release. Requires TypeScript 7.1.0-beta for native content 
 - Integrate with Vite, Next.js Turbopack/Webpack and Node module hooks.
 - Support local schema references, recursive types, JSON, explicit multipart alternatives, binary bodies and raw SSE responses.
 - Preserve JSON wire strings for binary-formatted response fields and require explicit media selection for non-default alternatives.
-- Resolve API/query types lazily and cache mapper transforms across compiler processes, with invalidation for document, implementation and sidecar changes.
+- Resolve API/query types lazily, omit redundant schema representations and cache serialized mapper results across compiler processes, with invalidation for document, implementation and sidecar changes.
 
 The beta API and compiler protocol may change between prereleases. See the README for supported scope and compatibility limits.

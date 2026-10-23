@@ -12,63 +12,57 @@ import {
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { record } from '../document.js'
-import { runtimeConfigFile, transformSpec } from './transform.js'
+import { runtimeConfigFile } from './runtime-config.js'
 
 const maxEntries = 64
 const digest = (value: string) => createHash('sha256').update(value).digest('hex')
-
-function isTransform(value: unknown): value is Transform {
-  const result = record(value)
-  return (
-    result.extension === '.ts' &&
-    typeof result.text === 'string' &&
-    result.diagnostics === undefined &&
-    Array.isArray(result.mappings) &&
-    result.mappings.every(
-      (mapping) =>
-        Array.isArray(mapping) &&
-        mapping.length === 6 &&
-        (mapping[4] === 0 || mapping[4] === 1) &&
-        mapping.every((part) => Number.isSafeInteger(part) && part >= 0),
-    )
-  )
-}
 
 /** One slot per document, bounded across projects; cache failures never break compilation. */
 export function createCachedTransform(
   directory: string,
   revision: string,
-  transform = transformSpec,
+  transform: (content: string, fileName: string) => Transform | Promise<Transform> = async (
+    content,
+    fileName,
+  ) => (await import('./transform.js')).transformSpec(content, fileName),
 ) {
-  return (content: string, fileName: string): Transform => {
-    // The generated text imports Context by path. Its contents are checked by TS;
-    // adding/removing the sidecar changes the generated import itself.
-    const key = digest(JSON.stringify([revision, fileName, runtimeConfigFile(fileName), content]))
-    const file = join(directory, `${digest(fileName)}.json`)
+  return async (content: string, fileName: string): Promise<string> => {
+    // Sidecar contents are checked by TS; its presence changes the generated import.
+    const key = createHash('sha256')
+      .update(JSON.stringify([revision, fileName, runtimeConfigFile(fileName)]))
+      .update('\n')
+      .update(content)
+      .digest('hex')
+    const file = join(directory, `${digest(fileName)}.cache`)
     try {
-      const entry = record(JSON.parse(readFileSync(file, 'utf8')))
+      // Store the already serialized result. A checksum over these exact bytes
+      // avoids parsing and rebuilding every source mapping on each compiler run.
+      const entry = readFileSync(file, 'utf8')
+      const serialized = entry.slice(130)
       if (
-        entry.key === key &&
-        isTransform(entry.result) &&
-        entry.checksum === digest(JSON.stringify(entry.result))
+        entry.slice(0, 65) === `${key}\n` &&
+        entry[129] === '\n' &&
+        entry.slice(65, 129) === digest(serialized)
       )
-        return entry.result
+        return serialized
     } catch {
       // Missing, corrupt or inaccessible caches are equivalent to a cache miss.
     }
-    const result = transform(content, fileName)
-    if (result.diagnostics) return result
+    const result = await transform(content, fileName)
+    const serialized = JSON.stringify(result)
+    if (result.diagnostics) return serialized
     const temporary = `${file}.${randomUUID()}.tmp`
     try {
       mkdirSync(directory, { recursive: true, mode: 0o700 })
-      const checksum = digest(JSON.stringify(result))
-      writeFileSync(temporary, JSON.stringify({ key, checksum, result }), {
+      const checksum = digest(serialized)
+      writeFileSync(temporary, `${key}\n${checksum}\n${serialized}`, {
         mode: 0o600,
         flag: 'wx',
       })
       renameSync(temporary, file)
-      const entries = readdirSync(directory).filter((name) => /^[a-f\d]{64}\.json$/.test(name))
+      const entries = readdirSync(directory).filter((name) =>
+        /^[a-f\d]{64}\.(?:cache|json)$/.test(name),
+      )
       if (entries.length > maxEntries) {
         const oldest = entries
           .map((name) => ({ name, time: statSync(join(directory, name)).mtimeMs }))
@@ -85,7 +79,7 @@ export function createCachedTransform(
         // Another process or filesystem policy may prevent cleanup.
       }
     }
-    return result
+    return serialized
   }
 }
 
@@ -95,6 +89,8 @@ export function mapperTransform() {
   const files = [
     'mapper-cache.js',
     'transform.js',
+    'runtime-config.js',
+    'type-document.js',
     'schema-types.js',
     'router.js',
     '../document.js',

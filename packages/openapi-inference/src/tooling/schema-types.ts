@@ -86,8 +86,10 @@ export function schemaTypes(root: unknown): string {
   collect(root)
   for (const [path, index] of references) {
     const schema = pointer(root, path)
-    declarations.push(`type Schema${index} = ${render(schema, false)};`)
-    declarations.push(`type JsonSchema${index} = ${render(schema, true)};`)
+    const ordinary = render(schema, false)
+    const json = render(schema, true)
+    declarations.push(`type Schema${index} = ${ordinary};`)
+    declarations.push(`type JsonSchema${index} = ${json === ordinary ? `Schema${index}` : json};`)
   }
   declarations.push(
     'type ReadonlyDocument<T> = { readonly [K in keyof T]: T[K] extends object ? ReadonlyDocument<T[K]> : T[K] };',

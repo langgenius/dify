@@ -109,11 +109,11 @@ For VS Code, install Microsoft's TypeScript 7 extension (`TypeScriptTeam.native-
 
 ### Type-checking performance
 
-API and query signatures are resolved as routes are accessed. The mapper emits a literal type declaration instead of making the compiler check a full specification object initializer. This reduces type instantiation work; the compiler still needs to load the document, so runtime tree-shaking does not imply zero type-checking cost for unused operations.
+API and query signatures are resolved as routes are accessed. The mapper emits a literal type declaration instead of making the compiler check a full specification object initializer. The virtual document retains fields used by inference, inline schemas and structural reference targets; referenced schemas use type aliases without a second raw copy. Identical JSON and non-JSON aliases share their definition. The complete source is still validated. The compiler still needs to load the virtual document, so runtime tree-shaking does not imply zero type-checking cost for unused operations.
 
 Successful mapper transforms are cached across compiler processes in the current user's system temporary directory, under `dify-openapi-inference-<user>`. The cache retains up to 64 documents, replacing each document's previous revision. Document content, logical filename, mapper implementation, YAML package metadata and configuration-sidecar presence participate in invalidation. Sidecar contents remain normal TypeScript imports and are checked by the compiler. Sidecar presence is rechecked when the compiler requests a transform.
 
-The cache can be deleted safely. Invalid entries or unavailable cache storage fall back to transformation; diagnostics are not cached. No cache files are written beside the imported document or shipped to the browser.
+Cache hits verify the serialized result checksum and send it directly to the compiler, without reparsing the mappings or loading the YAML transformer. Framed input is assembled once per request. The cache can be deleted safely. Invalid entries or unavailable cache storage fall back to transformation; diagnostics are not cached. No cache files are written beside the imported document or shipped to the browser.
 
 ### Existing JSON files
 

@@ -1,11 +1,14 @@
 import type { Node, Scalar } from 'yaml'
 import type { RouterNode } from './router.js'
-import { existsSync } from 'node:fs'
+import type { Selection } from './type-document.js'
 import { isMap, isScalar, isSeq, parseDocument, visit } from 'yaml'
 import { assertDocument, pointer } from '../document.js'
 import { describeOperations } from '../operation.js'
 import { createRouter, routerModule, routerModuleId } from './router.js'
+import { runtimeConfigFile } from './runtime-config.js'
 import { schemaTypes } from './schema-types.js'
+import { typeDocument } from './type-document.js'
+export { runtimeConfigFile } from './runtime-config.js'
 
 // Positions use UTF-16, as do YAML's ranges and JavaScript string offsets.
 export type Mapping = [number, number, number, number, 0 | 1, number]
@@ -14,11 +17,6 @@ export type Transform = {
   extension: '.ts'
   mappings: Mapping[]
   diagnostics?: { messageText: string; start: number; length: number; code: number }[]
-}
-
-export function runtimeConfigFile(fileName: string): string | undefined {
-  const config = `${fileName}.config.ts`
-  return existsSync(config.startsWith('file:') ? new URL(config) : config) ? config : undefined
 }
 
 function assertObjectKey(node: unknown): asserts node is Scalar<string | number> {
@@ -76,10 +74,13 @@ export function transformSpec(content: string, fileName: string): Transform {
         ])
       }
     }
-    function emit(node: Node | null | undefined, path: string[] = []): void {
+    function emit(node: Node | null | undefined, selected: Selection, path: string[] = []): void {
       if (isMap(node)) {
         text += '{'
-        node.items.forEach((pair, index) => {
+        const pairs = node.items.filter(
+          (pair) => selected.all || selected.children.has(String((pair.key as Scalar).value)),
+        )
+        pairs.forEach((pair, index) => {
           if (index) text += ','
           assertObjectKey(pair.key)
           const key = String(pair.key.value)
@@ -87,14 +88,19 @@ export function transformSpec(content: string, fileName: string): Transform {
             methodNodes.set(`${path[1]} ${key}`, pair.key)
           token(JSON.stringify(key), pair.key)
           text += ':'
-          emit(pair.value as Node | null, [...path, key])
+          emit(pair.value as Node | null, selected.all ? selected : selected.children.get(key)!, [
+            ...path,
+            key,
+          ])
         })
         text += '}'
       } else if (isSeq(node)) {
         text += '['
         node.items.forEach((item, index) => {
           if (index) text += ','
-          emit(item as Node | null, [...path, String(index)])
+          const child = selected.all ? selected : selected.children.get(String(index))
+          if (child) emit(item as Node | null, child, [...path, String(index)])
+          else text += 'null'
         })
         text += ']'
       } else if (isScalar(node)) {
@@ -103,7 +109,7 @@ export function transformSpec(content: string, fileName: string): Transform {
         text += 'null'
       }
     }
-    emit(document.contents)
+    emit(document.contents, typeDocument(value))
     text += ';\n'
     text += schemaTypes(value)
     const config = runtimeConfigFile(fileName)
