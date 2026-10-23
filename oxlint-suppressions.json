@@ -7393,16 +7393,6 @@
       "count": 1
     }
   },
-  "web/features/home/banner/banner-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/features/home/banner/banner.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
-    }
-  },
   "web/features/home/continue-work/continue-work.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
