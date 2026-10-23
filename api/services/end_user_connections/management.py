@@ -28,6 +28,7 @@ from services.end_user_connections.policy import (
     connection_mutation_guard,
     require_creation_target,
     require_owned_connection,
+    require_personal_connection_access,
 )
 
 
@@ -106,6 +107,7 @@ class ConnectionService:
         self._oauth = oauth
 
     def list_connections(self, context: WebConnectionContext, query: ListConnectionsInput) -> ConnectionPage:
+        require_personal_connection_access(context)
         try:
             after_id = str(UUID(query.cursor)) if query.cursor is not None else None
         except ValueError:
@@ -116,6 +118,7 @@ class ConnectionService:
         return self._load(context, connection_id).summary
 
     def create_api_key(self, context: WebConnectionContext, command: CreateApiKeyConnectionInput) -> ConnectionSummary:
+        require_personal_connection_access(context)
         target = self._targets.resolve(context, command)
         require_creation_target(
             context,
@@ -198,6 +201,7 @@ class ConnectionService:
         )
 
     def _load(self, context: WebConnectionContext, connection_id: str) -> StoredConnection:
+        require_personal_connection_access(context)
         record = self._store.find(context, connection_id)
         if record is None or record.access.id != connection_id:
             raise ConnectionNotFoundError()

@@ -1543,7 +1543,7 @@ export type PostChatMessagesErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
   404: ConnectionNotFoundError | ErrorResponse
   409:
     | ConnectionConflictError
@@ -1756,6 +1756,7 @@ export type PostConnectionsPreflightData = {
 
 export type PostConnectionsPreflightErrors = {
   400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
   409:
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
@@ -2911,7 +2912,7 @@ export type PostWorkflowsRunErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
   403: TriggerWorkflowServiceModeUnavailableError | ErrorResponse
   404: ConnectionNotFoundError | ErrorResponse
   409:

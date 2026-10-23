@@ -19,7 +19,11 @@ from services.end_user_connections.errors import (
     ConnectionReauthorizationRequiredError,
 )
 from services.end_user_connections.management import ConnectionChanges, ConnectionCipher, ConnectionStore
-from services.end_user_connections.policy import connection_mutation_guard, require_applicable_connection
+from services.end_user_connections.policy import (
+    connection_mutation_guard,
+    require_applicable_connection,
+    require_personal_connection_access,
+)
 from services.end_user_connections.status import resolve_node_connection_state
 
 
@@ -38,6 +42,7 @@ class ConnectionRuntimeService:
     def resolve(
         self, context: WebConnectionContext, *, connection: ConnectionAccessRecord, target: ToolConnectionTarget
     ) -> ResolvedConnectionCredentials:
+        require_personal_connection_access(context)
         connection_id = connection.id
         access = require_applicable_connection(
             context,

@@ -184,7 +184,9 @@ class ConnectionTargetResolver(Protocol):
 
 
 class ConnectionManagement(Protocol):
-    """Owner-scoped management; App Access/Guest entry policy is enforced upstream.
+    """Owner-scoped management with deployment-level personal Connection admission.
+
+    Web App entry admission is enforced upstream.
 
     Missing and foreign IDs both raise ConnectionNotFoundError. Do not require
     workspace membership or an existing default/Session selection to manage an

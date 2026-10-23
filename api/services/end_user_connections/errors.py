@@ -16,6 +16,11 @@ class ConnectionIdentityError(ConnectionError):
         super().__init__("Invalid connection identity.")
 
 
+class ConnectionAccountRequiredError(ConnectionError):
+    def __init__(self) -> None:
+        super().__init__("Sign in to use personal connections.")
+
+
 class ConnectionNotFoundError(ConnectionError):
     def __init__(self) -> None:
         super().__init__("Connection not found.")

@@ -562,7 +562,7 @@ export const zEmailSendIpLimitError = zErrorResponse.and(
 /**
  * EndUserLoginRequiredError
  *
- * Sign in to manage personal connections.
+ * Sign in to use personal connections.
  */
 export const zEndUserLoginRequiredError = zErrorResponse.and(
   z.object({

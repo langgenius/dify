@@ -61,7 +61,9 @@ class AppMetaResponse(BaseModel):
 
 class WebAppParametersResponse(Parameters, ResponseModel):
     account_login_url: str | None = Field(description="Account-origin sign-in page for the existing Web App login flow")
-    allow_anonymous_end_user_auth: bool = Field(description="Deployment policy for anonymous EndUser authentication.")
+    allow_anonymous_end_user_auth: bool = Field(
+        description="Whether Guest identities may manage and use personal Connections; does not control App entry."
+    )
     account_login_enabled: bool = Field(description="Whether explicit Account login and Passport exchange are enabled.")
     workflow_id: str | None = Field(
         description=(

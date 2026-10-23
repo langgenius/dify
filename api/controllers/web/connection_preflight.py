@@ -7,6 +7,7 @@ from controllers.common.end_user_connections import (
     ConnectionCheckUnavailableHTTPError,
     ConnectionConfigurationHTTPError,
     ConnectionConflictHTTPError,
+    ConnectionLoginRequiredError,
     ConnectionReauthorizationHTTPError,
     ConnectionSecretUnavailableHTTPError,
     ConnectionWorkflowChangedHTTPError,
@@ -48,6 +49,7 @@ class EndUserConnectionPreflightApi(WebApiResource):
     )
     @error_responses(
         ConnectionConfigurationHTTPError,
+        ConnectionLoginRequiredError,
         ConnectionConflictHTTPError,
         ConnectionWorkflowChangedHTTPError,
         ConnectionReauthorizationHTTPError,
