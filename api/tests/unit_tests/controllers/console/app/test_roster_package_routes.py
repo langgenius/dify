@@ -308,7 +308,7 @@ def test_ordinary_package_import_uses_dsl_permissions_and_confirmation(
 ) -> None:
     imports.status = status
     dsl = "kind: app\nversion: 99.0.0\napp:\n  mode: workflow\n"
-    with AppPackageService().export(dsl=dsl, name="Workflow") as package:
+    with AppPackageService().export(dsl=dsl, name="Workflow", workflow_tools=[]) as package:
         form: dict[str, object] = {"file": (package.archive, "workflow.ifpkg"), "name": "Renamed"}
         if app_id:
             form["app_id"] = app_id
@@ -514,7 +514,9 @@ def test_ordinary_package_import_checks_permission_and_quota(
     )
     features = FeatureModel(apps=LimitationModel(size=1, limit=1))
     monkeypatch.setattr("services.app_dsl_service.FeatureService.get_features", lambda *_a, **_k: features)
-    with AppPackageService().export(dsl="kind: app\napp: {mode: workflow}\n", name="Workflow") as package:
+    with AppPackageService().export(
+        dsl="kind: app\napp: {mode: workflow}\n", name="Workflow", workflow_tools=[]
+    ) as package:
         with pytest.raises(Forbidden):
             _post(app, imports, data={"file": (package.archive, "workflow.ifpkg")})
     assert imports.dsl_calls == []

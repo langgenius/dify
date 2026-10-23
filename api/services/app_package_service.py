@@ -1,4 +1,4 @@
-"""Package App DSLs with Site icons and node-bound Agent resources."""
+"""Package App DSLs with Site icons, node-bound Agent resources and the workflows called as Workflow Tools."""
 
 from __future__ import annotations
 
@@ -7,18 +7,24 @@ import re
 import tempfile
 import zipfile
 import zlib
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import Any, BinaryIO, Literal, Self, cast
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from sqlalchemy import select
 
+from configs import dify_config
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import session_factory
+from core.tools.entities.tool_entities import ToolProviderType, emoji_icon_adapter
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from models.agent import WorkflowAgentBindingType
 from models.agent_config_entities import WorkflowNodeJobConfig
-from models.model import App
+from models.model import App, AppMode
+from models.tools import ToolLabelBinding, WorkflowToolProvider
+from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
@@ -35,21 +41,30 @@ from services.agent.roster_package_entities import (
     validate_icon_references,
 )
 from services.agent.roster_package_reader import RosterAgentPackageReader
+from services.app_dsl_service import AppDslService
 from services.dsl_content import DSL_MAX_SIZE
-from services.entities.dsl_entities import DslImportWarning
+from services.dsl_version import check_version_compatibility
+from services.entities.dsl_entities import AppDslExportData, DslImportWarning, ImportStatus, PackagedWorkflowTool
 from services.entities.site_dsl import SiteDsl
+from services.workflow_tool_references import iter_workflow_tool_references
+
+_COPY_CHUNK_SIZE = 1024 * 1024
 
 
 class AppPackageManifest(BaseModel):
-    """Index Agent resources by the same package references used in the workflow DSL."""
+    """Index Agent resources by the same package references used in the workflow DSL.
+
+    Version 2 also bundles the workflows the App calls through Workflow Tools; other packages stay version 1.
+    """
 
     model_config = ConfigDict(extra="ignore")
 
     format: Literal["dify.app"]
-    format_version: Literal[1]
+    format_version: Literal[1, 2]
     apps: list[RosterAgentPackageApp] = Field(min_length=1, max_length=1)
     agent_resources: dict[str, AgentPackageResources] = Field(default_factory=dict)
     icons: list[PackageIcon] = Field(default_factory=list)
+    workflow_tools: list[PackagedWorkflowTool] = Field(default_factory=list)
 
     def iter_resources(self) -> Iterator[RosterAgentPackageSkill | RosterAgentPackageFile | PackageIcon]:
         yield from self.icons
@@ -59,11 +74,15 @@ class AppPackageManifest(BaseModel):
 
     @model_validator(mode="after")
     def validate_resource_paths(self) -> Self:
-        resources = list(self.iter_resources())
+        resources = [*self.iter_resources(), *self.workflow_tools]
         paths = [item.path.casefold() for item in [*self.apps, *resources]]
         ids = [item.id for item in resources]
         if len(paths) != len(set(paths)) or len(ids) != len(set(ids)):
             raise ValueError("App package resources must have unique paths and ids")
+        if len({tool.provider_id for tool in self.workflow_tools}) != len(self.workflow_tools):
+            raise ValueError("App package workflow tools must have unique provider ids")
+        if (self.format_version == 2) != bool(self.workflow_tools):
+            raise ValueError("App package format version 2 is used exactly when workflow tools are bundled")
         return self
 
 
@@ -72,6 +91,7 @@ class PreparedAppPackage(PreparedPackageArchive):
     dsl: str
     agents: dict[str, AgentPackage]
     agent_resources: dict[str, AgentPackageResources]
+    workflow_tools: list[PackagedWorkflowTool]
     icons: list[PackageIcon] = field(default_factory=list)
 
     @property
@@ -110,12 +130,54 @@ class PreparedAppPackage(PreparedPackageArchive):
             )
         return {ref: agent.model_dump(mode="json") for ref, agent in agents.items()}, warnings
 
+    def open_workflow_tool(self, tool: PackagedWorkflowTool) -> PreparedAppPackage:
+        return AppPackageService().read_workflow_tool(self, tool)
+
+
+@dataclass(frozen=True)
+class _WorkflowToolExport:
+    definition: dict[str, Any]
+    package: RosterAgentPackageExport
+
 
 class AppPackageService(RosterAgentPackageReader):
     """Reuse the bounded ZIP reader; Apps retain DSL import semantics."""
 
     def read_package(self, source: BinaryIO) -> PreparedAppPackage | None:
         """Validate an App archive, or rewind a Roster package for its importer."""
+        return self._read_package(source, bundled=False)
+
+    def read_workflow_tool(self, package: PreparedPackageArchive, tool: PackagedWorkflowTool) -> PreparedAppPackage:
+        """Validate the nested archive of a workflow called through a packaged Workflow Tool."""
+        # The nested archive is validated, and later imported, from its own spooled copy.
+        member = cast(BinaryIO, tempfile.SpooledTemporaryFile(max_size=16 * 1024 * 1024, mode="w+b"))  # noqa: SIM115
+        try:
+            package.archive.seek(0)
+            with zipfile.ZipFile(package.archive) as archive:
+                digest = hashlib.sha256()
+                size = 0
+                with archive.open(archive.getinfo(tool.path)) as source:
+                    while chunk := source.read(_COPY_CHUNK_SIZE):
+                        size += len(chunk)
+                        if size > tool.size:
+                            raise InvalidRosterAgentPackageError("App package workflow tool failed integrity checks")
+                        digest.update(chunk)
+                        member.write(chunk)
+            if size != tool.size or digest.hexdigest() != tool.sha256:
+                raise InvalidRosterAgentPackageError("App package workflow tool failed integrity checks")
+            member.seek(0)
+            nested = self._read_package(member, bundled=True)
+            if nested is None:
+                raise InvalidRosterAgentPackageError("App package workflow tool must be an App package")
+            return nested
+        except (KeyError, OSError, zipfile.BadZipFile, EOFError, RuntimeError, zlib.error) as exc:
+            raise InvalidRosterAgentPackageError("App package workflow tool is not a valid ZIP") from exc
+        finally:
+            member.close()
+            package.archive.seek(0)
+
+    def _read_package(self, source: BinaryIO, *, bundled: bool) -> PreparedAppPackage | None:
+        """Read an App archive; a ``bundled`` one is the workflow behind a packaged Workflow Tool."""
         spool = cast(BinaryIO, tempfile.SpooledTemporaryFile(max_size=16 * 1024 * 1024, mode="w+b"))  # noqa: SIM115
         try:
             self._copy_bounded(source, spool)
@@ -130,9 +192,19 @@ class AppPackageService(RosterAgentPackageReader):
                     manifest = AppPackageManifest.model_validate(data)
                 except ValidationError as exc:
                     raise InvalidRosterAgentPackageError("App package manifest is invalid") from exc
+                if bundled and manifest.workflow_tools:
+                    raise InvalidRosterAgentPackageError("App package workflow tools must not bundle workflow tools")
+                if len(manifest.workflow_tools) > dify_config.APP_PACKAGE_MAX_WORKFLOW_TOOLS:
+                    raise RosterAgentPackageTooLargeError("App package bundles too many workflow tools")
                 resource = manifest.apps[0]
                 resources = list(manifest.iter_resources())
-                if set(infos) != {"manifest.yaml", resource.path, *(item.path for item in resources)}:
+                expected_members = {
+                    "manifest.yaml",
+                    resource.path,
+                    *(item.path for item in resources),
+                    *(tool.path for tool in manifest.workflow_tools),
+                }
+                if set(infos) != expected_members:
                     raise InvalidRosterAgentPackageError("App package members do not match the manifest")
                 app_data, app_size = self._read_yaml_document(
                     archive, infos, resource.path, resource=resource, max_bytes=DSL_MAX_SIZE
@@ -143,8 +215,11 @@ class AppPackageService(RosterAgentPackageReader):
                     or not isinstance(app_data.get("app"), dict)
                     or app_data["app"].get("mode")
                     not in {"workflow", "advanced-chat", "chat", "completion", "agent-chat", "channel", "rag-pipeline"}
+                    or (bundled and app_data["app"]["mode"] != AppMode.WORKFLOW)
                 ):
                     raise InvalidRosterAgentPackageError("App package DSL is invalid")
+                if bundled or manifest.workflow_tools:
+                    self._require_confirmed_version(app_data)
                 agents = self._validate_agents(app_data, manifest)
                 site_data = app_data.get("site")
                 if site_data is not None:
@@ -176,11 +251,12 @@ class AppPackageService(RosterAgentPackageReader):
                 # Preserve the original text for version confirmation and legacy DSL handling.
                 dsl = archive.read(resource.path).decode("utf-8")
             spool.seek(0)
-            return PreparedAppPackage(
+            package = PreparedAppPackage(
                 archive=spool,
                 dsl=dsl,
                 agents=agents,
                 agent_resources=manifest.agent_resources,
+                workflow_tools=manifest.workflow_tools,
                 icons=manifest.icons,
                 members=members,
                 invalid_skills=invalid_skills,
@@ -196,6 +272,36 @@ class AppPackageService(RosterAgentPackageReader):
             raise
         finally:
             source.seek(0)
+        try:
+            self._validate_workflow_tools(package)
+        except BaseException:
+            package.close()
+            raise
+        return package
+
+    def _validate_workflow_tools(self, package: PreparedAppPackage) -> None:
+        # Each nested archive is bounded on its own, so also bound what all of them expand to.
+        expanded_size = 0
+        for tool in package.workflow_tools:
+            with self.read_workflow_tool(package, tool) as nested:
+                expanded_size += len(nested.dsl.encode("utf-8")) + sum(
+                    member.size for member in nested.members.values()
+                )
+            if expanded_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
+                raise RosterAgentPackageTooLargeError("App package workflow tools exceed the size limit")
+
+    @staticmethod
+    def _require_confirmed_version(app_data: dict[str, Any]) -> None:
+        # Packages with workflow tools import every App at once, so none may wait for version confirmation.
+        version = app_data.get("version") or "0.1.0"
+        if not isinstance(version, str) or check_version_compatibility(version, CURRENT_APP_DSL_VERSION) in {
+            ImportStatus.PENDING,
+            ImportStatus.FAILED,
+        }:
+            raise InvalidRosterAgentPackageError(
+                f"App package DSL version {version} needs confirmation, "
+                "which is not supported for packages with workflow tools"
+            )
 
     @staticmethod
     def _validate_agents(data: dict[str, Any], manifest: AppPackageManifest) -> dict[str, AgentPackage]:
@@ -225,8 +331,27 @@ class AppPackageService(RosterAgentPackageReader):
     def export_app(
         self, *, app_model: App, include_secret: bool = False, workflow_id: str | None = None
     ) -> RosterAgentPackageExport:
-        from services.app_dsl_service import AppDslService
+        prepared, resources = self._prepare_export(
+            app_model=app_model, include_secret=include_secret, workflow_id=workflow_id
+        )
+        workflow_tools = self._export_workflow_tools(
+            app_model=app_model, data=prepared.data, include_secret=include_secret
+        )
+        try:
+            return self.export(
+                dsl=AppDslService.serialize_export_data(prepared),
+                name=app_model.name,
+                resources=resources,
+                workflow_tools=workflow_tools,
+            )
+        finally:
+            for workflow_tool in workflow_tools:
+                workflow_tool.package.close()
 
+    @staticmethod
+    def _prepare_export(
+        *, app_model: App, include_secret: bool, workflow_id: str | None
+    ) -> tuple[AppDslExportData, AgentPackageResourceExporter]:
         resources = AgentPackageResourceExporter()
         with session_factory.create_session() as session:
             prepared = AppDslService.load_export_data(
@@ -244,10 +369,100 @@ class AppPackageService(RosterAgentPackageReader):
             prepared.data["agent_packages"] = {
                 ref: package.model_dump(mode="json") for ref, package in resources.packages.items()
             }
-        return self.export(dsl=AppDslService.serialize_export_data(prepared), name=app_model.name, resources=resources)
+        return prepared, resources
+
+    def _export_workflow_tools(
+        self, *, app_model: App, data: dict[str, Any], include_secret: bool
+    ) -> list[_WorkflowToolExport]:
+        """Package every workflow reachable through Workflow Tools, at the version each tool runs."""
+        exports: list[_WorkflowToolExport] = []
+        visited: set[str] = set()
+        pending = [data]
+        try:
+            while pending:
+                provider_ids = {
+                    reference.provider_id for item in pending for reference in iter_workflow_tool_references(item)
+                } - visited
+                visited |= provider_ids
+                pending = []
+                for provider, app, workflow, labels in self._load_workflow_tools(
+                    tenant_id=app_model.tenant_id, provider_ids=provider_ids
+                ):
+                    if len(exports) >= dify_config.APP_PACKAGE_MAX_WORKFLOW_TOOLS:
+                        raise RosterAgentPackageTooLargeError("App package calls too many workflow tools")
+                    prepared, resources = self._prepare_export(
+                        app_model=app, include_secret=include_secret, workflow_id=workflow.id
+                    )
+                    pending.append(prepared.data)
+                    package = self.export(
+                        dsl=AppDslService.serialize_export_data(prepared),
+                        name=app.name,
+                        resources=resources,
+                        workflow_tools=[],
+                    )
+                    exports.append(
+                        _WorkflowToolExport(
+                            definition={
+                                "provider_id": provider.id,
+                                "name": provider.name,
+                                "label": provider.label,
+                                "icon": emoji_icon_adapter.validate_json(provider.icon),
+                                "description": provider.description,
+                                "parameters": provider.parameter_configurations,
+                                "labels": labels,
+                                "privacy_policy": provider.privacy_policy or "",
+                            },
+                            package=package,
+                        )
+                    )
+        except BaseException:
+            for workflow_tool in exports:
+                workflow_tool.package.close()
+            raise
+        return exports
+
+    @staticmethod
+    def _load_workflow_tools(
+        *, tenant_id: str, provider_ids: set[str]
+    ) -> list[tuple[WorkflowToolProvider, App, Workflow, list[str]]]:
+        # Snippet-backed and unavailable tools have no workflow App here and stay plain references.
+        if not provider_ids:
+            return []
+        with session_factory.create_session() as session:
+            rows = session.execute(
+                select(WorkflowToolProvider, App, Workflow)
+                .join(App, (App.id == WorkflowToolProvider.app_id) & (App.tenant_id == tenant_id))
+                .join(
+                    Workflow,
+                    (Workflow.app_id == WorkflowToolProvider.app_id)
+                    & (Workflow.version == WorkflowToolProvider.version)
+                    & (Workflow.tenant_id == tenant_id),
+                )
+                .where(
+                    WorkflowToolProvider.tenant_id == tenant_id,
+                    WorkflowToolProvider.id.in_(sorted(provider_ids)),
+                    App.mode == AppMode.WORKFLOW,
+                    Workflow.version != Workflow.VERSION_DRAFT,
+                )
+                .order_by(WorkflowToolProvider.id)
+            ).all()
+            labels: dict[str, list[str]] = {}
+            for tool_id, label_name in session.execute(
+                select(ToolLabelBinding.tool_id, ToolLabelBinding.label_name).where(
+                    ToolLabelBinding.tool_id.in_([provider.id for provider, _, _ in rows]),
+                    ToolLabelBinding.tool_type == ToolProviderType.WORKFLOW,
+                )
+            ):
+                labels.setdefault(tool_id, []).append(label_name)
+        return [(provider, app, workflow, labels.get(provider.id, [])) for provider, app, workflow in rows]
 
     def export(
-        self, *, dsl: str, name: str, resources: AgentPackageResourceExporter | None = None
+        self,
+        *,
+        dsl: str,
+        name: str,
+        resources: AgentPackageResourceExporter | None = None,
+        workflow_tools: Sequence[_WorkflowToolExport],
     ) -> RosterAgentPackageExport:
         payload = dsl.encode("utf-8")
         if len(payload) > DSL_MAX_SIZE:
@@ -257,9 +472,13 @@ class AppPackageService(RosterAgentPackageReader):
             with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as package:
                 agent_resources, total_size = resources.write_resources(package) if resources is not None else ({}, 0)
                 icons, _ = resources.write_icons(package, total_size=total_size) if resources is not None else ([], 0)
+                packaged_tools = [
+                    self._write_workflow_tool(package, workflow_tool, resource_id=f"w_{index:06d}")
+                    for index, workflow_tool in enumerate(workflow_tools, start=1)
+                ]
                 manifest = AppPackageManifest(
                     format="dify.app",
-                    format_version=1,
+                    format_version=2 if packaged_tools else 1,
                     apps=[
                         RosterAgentPackageApp(
                             path="app.yaml", size=len(payload), sha256=hashlib.sha256(payload).hexdigest()
@@ -267,6 +486,7 @@ class AppPackageService(RosterAgentPackageReader):
                     ],
                     agent_resources=agent_resources,
                     icons=icons,
+                    workflow_tools=packaged_tools,
                 )
                 package.writestr(
                     "manifest.yaml", yaml.safe_dump(manifest.model_dump(mode="json", exclude_defaults=True))
@@ -284,3 +504,21 @@ class AppPackageService(RosterAgentPackageReader):
         except Exception:
             archive.close()
             raise
+
+    @staticmethod
+    def _write_workflow_tool(
+        package: zipfile.ZipFile, workflow_tool: _WorkflowToolExport, *, resource_id: str
+    ) -> PackagedWorkflowTool:
+        path = f"{resource_id}.ifpkg"
+        digest = hashlib.sha256()
+        size = 0
+        workflow_tool.package.archive.seek(0)
+        # Nested archives are already compressed.
+        with package.open(zipfile.ZipInfo(path), "w") as member:
+            while chunk := workflow_tool.package.archive.read(_COPY_CHUNK_SIZE):
+                size += len(chunk)
+                digest.update(chunk)
+                member.write(chunk)
+        return PackagedWorkflowTool.model_validate(
+            {**workflow_tool.definition, "id": resource_id, "path": path, "size": size, "sha256": digest.hexdigest()}
+        )

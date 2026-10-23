@@ -3,7 +3,7 @@ import hashlib
 import json
 import logging
 import uuid
-from collections.abc import Iterator, Mapping
+from collections.abc import Mapping
 from typing import Any, cast
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -54,7 +54,6 @@ from models import Account, App, AppMode
 from models.agent import AgentScope, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
-from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
@@ -168,12 +167,19 @@ class AppDslService:
         tenant_id = account.current_tenant_id
         if tenant_id is None:
             raise ValueError("Current tenant is not set")
+        AppDslService.check_app_quota(tenant_id=tenant_id, new_apps=1)
+
+    @staticmethod
+    def check_app_quota(*, tenant_id: str, new_apps: int) -> None:
+        """Reject an import on Cloud when creating ``new_apps`` more Apps would exceed the plan's limit."""
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return
         try:
             apps = FeatureService.get_features(tenant_id, exclude_vector_space=True).apps
         except Exception as error:
             # A failed lookup is a server failure, not an invalid DSL or exhausted quota.
             raise AppQuotaCheckError("Unable to check the app quota.") from error
-        if 0 < apps.limit <= apps.size:
+        if 0 < apps.limit < apps.size + new_apps:
             raise NoPermissionError("The number of apps has reached the limit of your subscription.")
 
     def import_app(
@@ -689,7 +695,6 @@ class AppDslService:
         target_tenant_id = app.tenant_id if app is not None else account.current_tenant_id
         if target_tenant_id is None:
             raise ValueError("Current tenant is not set")
-        self._warnings.extend(self._unavailable_workflow_tool_warnings(tenant_id=target_tenant_id, data=data))
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
@@ -884,88 +889,6 @@ class AppDslService:
             case _:
                 raise ValueError("Invalid app mode")
         return app
-
-    def _unavailable_workflow_tool_warnings(self, *, tenant_id: str, data: Mapping[str, Any]) -> list[DslImportWarning]:
-        """Warn about Workflow Tool references that the target workspace cannot resolve.
-
-        DSLs carry only the source workspace's provider id, so a cross-workspace import
-        otherwise keeps a reference that fails when the workflow runs.
-        """
-        references = list(self._iter_workflow_tool_references(data))
-        if not references:
-            return []
-        candidate_ids = {provider_id for _, provider_id, _ in references if self._is_valid_uuid(provider_id)}
-        existing_ids = (
-            set(
-                self._session.scalars(
-                    select(WorkflowToolProvider.id).where(
-                        WorkflowToolProvider.tenant_id == tenant_id,
-                        WorkflowToolProvider.id.in_(candidate_ids),
-                    )
-                )
-            )
-            if candidate_ids
-            else set()
-        )
-        return [
-            DslImportWarning(
-                code="workflow_tool_unavailable",
-                path=path,
-                message=f"Workflow tool {label!r} is unavailable in the target workspace.",
-                details={"provider_id": provider_id, "name": label},
-            )
-            for path, provider_id, label in references
-            if provider_id not in existing_ids
-        ]
-
-    @staticmethod
-    def _iter_workflow_tool_references(data: Mapping[str, Any]) -> Iterator[tuple[str, str, str]]:
-        """Yield ``(path, provider_id, label)`` for each Workflow Tool referenced by the DSL."""
-        tool_configs: list[tuple[str, Mapping[str, Any]]] = []
-        workflow = data.get("workflow")
-        graph = workflow.get("graph") if isinstance(workflow, Mapping) else None
-        nodes = graph.get("nodes") if isinstance(graph, Mapping) else None
-        for node_index, node in enumerate(nodes if isinstance(nodes, list) else []):
-            node_data = node.get("data") if isinstance(node, Mapping) else None
-            if not isinstance(node_data, Mapping):
-                continue
-            node_path = f"workflow.graph.nodes.{node_index}"
-            if node_data.get("type") == BuiltinNodeTypes.TOOL:
-                tool_configs.append((node_path, node_data))
-            agent_parameters = node_data.get("agent_parameters")
-            if node_data.get("type") == BuiltinNodeTypes.AGENT and isinstance(agent_parameters, Mapping):
-                for name, parameter in agent_parameters.items():
-                    value = parameter.get("value") if isinstance(parameter, Mapping) else None
-                    tool_configs.extend(
-                        (f"{node_path}.data.agent_parameters.{name}.value.{tool_index}", tool)
-                        for tool_index, tool in enumerate(value if isinstance(value, list) else [])
-                        if isinstance(tool, Mapping)
-                    )
-        model_config = data.get("model_config")
-        agent_mode = model_config.get("agent_mode") if isinstance(model_config, Mapping) else None
-        agent_tools = agent_mode.get("tools") if isinstance(agent_mode, Mapping) else None
-        tool_configs.extend(
-            (f"model_config.agent_mode.tools.{tool_index}", tool)
-            for tool_index, tool in enumerate(agent_tools if isinstance(agent_tools, list) else [])
-            if isinstance(tool, Mapping)
-        )
-
-        for path, config in tool_configs:
-            # Agent node tools name the provider type ``type`` and the provider id ``provider_name``.
-            if config.get("provider_type", config.get("type")) != ToolProviderType.WORKFLOW:
-                continue
-            provider_id = config.get("provider_id") or config.get("provider_name")
-            if not isinstance(provider_id, str) or not provider_id:
-                continue
-            label = next(
-                (
-                    value
-                    for value in (config.get("tool_label"), config.get("tool_name"))
-                    if isinstance(value, str) and value
-                ),
-                provider_id,
-            )
-            yield path, provider_id, label
 
     @staticmethod
     def _workflow_agent_bindings(*, workflow: Workflow, session: Session) -> list[WorkflowAgentNodeBinding]:

@@ -24,7 +24,9 @@ from services.app_package_service import AppPackageService
 
 def _icon_archive(*, payload: bytes = b"image", digest: str | None = None, reference: str = "i_000001") -> io.BytesIO:
     dsl = yaml.safe_dump({"kind": "app", "app": {"mode": "chat", "icon_type": "image", "icon": reference}})
-    with AppPackageService().export(dsl=dsl.replace(reference, "legacy-id"), name="Example") as exported:
+    with AppPackageService().export(
+        dsl=dsl.replace(reference, "legacy-id"), name="Example", workflow_tools=[]
+    ) as exported:
         with zipfile.ZipFile(exported.archive) as package:
             manifest = yaml.safe_load(package.read("manifest.yaml"))
     app_bytes = dsl.encode()
@@ -62,7 +64,7 @@ def test_app_icon_export_deduplicates_uploads_and_restores_references(monkeypatc
     assert upload_lookup.call_args.kwargs["tenant_id"] == "source-tenant"
     assert upload_lookup.call_count == 1
     dsl = yaml.safe_dump({"kind": "app", "app": metadata})
-    with AppPackageService().export(dsl=dsl, name="Example", resources=exporter) as exported:
+    with AppPackageService().export(dsl=dsl, name="Example", resources=exporter, workflow_tools=[]) as exported:
         with zipfile.ZipFile(exported.archive) as package:
             assert package.read("i_000001.png") == payload
         exported.archive.seek(0)
@@ -96,7 +98,7 @@ def test_app_package_restores_independent_site_image_icon(monkeypatch: pytest.Mo
     exporter.collect_icon(session=Mock(), tenant_id="source", metadata=app)
     exporter.collect_icon(session=Mock(), tenant_id="source", metadata=site)
     with AppPackageService().export(
-        dsl=yaml.safe_dump({"kind": "app", "app": app, "site": site}), name="App", resources=exporter
+        dsl=yaml.safe_dump({"kind": "app", "app": app, "site": site}), name="App", resources=exporter, workflow_tools=[]
     ) as exported:
         prepared = AppPackageService().read_package(exported.archive)
         assert prepared is not None

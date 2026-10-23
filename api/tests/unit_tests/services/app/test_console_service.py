@@ -61,8 +61,10 @@ from services.entities.dsl_entities import (
     CheckDependenciesResult,
     Import,
     ImportStatus,
+    PackagedWorkflowTool,
 )
 from services.model_provider.service import ModelProviderService
+from services.workflow_tool_references import WorkflowToolTarget
 
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
 RECORD = AppRecord(id="app", name="Example", mode_compatible_with_agent="chat")
@@ -193,6 +195,18 @@ class Transfers:
     def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult:
         del context, app_id
         pytest.fail("Unexpected dependency check")
+
+    def plan_workflow_tools(
+        self, context: RequestContext, tools: Sequence[PackagedWorkflowTool], *, creates_root_app: bool
+    ) -> dict[str, WorkflowToolTarget]:
+        del context, tools, creates_root_app
+        pytest.fail("Unexpected workflow tool planning")
+
+    def create_workflow_tool(
+        self, context: RequestContext, *, app_id: str, tool: PackagedWorkflowTool, target: WorkflowToolTarget
+    ) -> None:
+        del context, app_id, tool, target
+        pytest.fail("Unexpected workflow tool creation")
 
     def import_dsl(
         self,

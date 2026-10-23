@@ -19,7 +19,6 @@ from enums import DeploymentEdition
 from models import Account, App, AppMode
 from models.enums import CustomizeTokenStrategy
 from models.model import AppModelConfig, AppModelConfigDict, IconType, Site
-from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage
 from services.agent.roster_package_entities import PackageIcon
@@ -38,7 +37,6 @@ _OVERWRITE_APP_ID = "11111111-1111-4111-8111-111111111111"
 _TENANT_ID = "22222222-2222-4222-8222-222222222222"
 _CALLER_ID = "33333333-3333-4333-8333-333333333333"
 _OTHER_ACCOUNT_ID = "44444444-4444-4444-8444-444444444444"
-_FOREIGN_TENANT_ID = "55555555-5555-4555-8555-000000000000"
 _WORKFLOW_TOOL_PROVIDER_ID = "77777777-7777-4777-8777-000000000000"
 _API_TOOL_PROVIDER_ID = "88888888-8888-4888-8888-000000000000"
 _PENDING_WORKFLOW_DSL = "version: 99.0.0\nkind: app\napp: {name: Test, mode: workflow}\n"
@@ -129,6 +127,7 @@ def test_import_rejects_cloud_app_quota_before_side_effects(
         dsl="",
         agents={},
         agent_resources={},
+        workflow_tools=[],
         icons=[PackageIcon(id="i_000001", path="i_000001.png", size=0, sha256="0" * 64)],
     )
     monkeypatch.setattr(package, "materialize_icons", unexpected_side_effect)
@@ -268,22 +267,6 @@ def _tool_node_data(*, provider_type: str, provider_id: str, **extra: str) -> di
     }
 
 
-def _workflow_tool_provider(*, provider_id: str, tenant_id: str) -> WorkflowToolProvider:
-    provider = WorkflowToolProvider(
-        name="summarize",
-        label="Summarize",
-        icon="{}",
-        app_id="66666666-6666-4666-8666-666666666666",
-        version="1",
-        user_id=_CALLER_ID,
-        tenant_id=tenant_id,
-        description="",
-        parameter_configuration="[]",
-    )
-    provider.id = provider_id
-    return provider
-
-
 def test_extract_workflow_dependencies_includes_plugin_nodes() -> None:
     graph = {
         "nodes": [
@@ -398,105 +381,6 @@ def test_extract_model_config_dependencies_skips_workspace_tool_providers() -> N
     }
 
     assert AppDslService._extract_dependencies_from_model_config(model_config) == ["langgenius/time"]
-
-
-def test_workflow_tool_references_resolve_only_in_the_target_workspace(sqlite_session: Session) -> None:
-    local_provider_id = "77777777-7777-4777-8777-777777777777"
-    foreign_provider_id = "88888888-8888-4888-8888-888888888888"
-    missing_provider_id = "99999999-9999-4999-8999-999999999999"
-    sqlite_session.add_all(
-        [
-            _workflow_tool_provider(provider_id=local_provider_id, tenant_id=_TENANT_ID),
-            _workflow_tool_provider(provider_id=foreign_provider_id, tenant_id=_FOREIGN_TENANT_ID),
-        ]
-    )
-    sqlite_session.commit()
-    data = {
-        "workflow": {
-            "graph": {
-                "nodes": [
-                    {"data": _tool_node_data(provider_type="workflow", provider_id=local_provider_id)},
-                    {
-                        "data": _tool_node_data(
-                            provider_type="workflow", provider_id=foreign_provider_id, tool_label="Summarize"
-                        )
-                    },
-                    {"data": _tool_node_data(provider_type="builtin", provider_id="time")},
-                    {
-                        "data": {
-                            "type": "agent",
-                            "agent_parameters": {
-                                "tools": {
-                                    "type": "constant",
-                                    "value": [
-                                        {"type": "workflow", "provider_name": missing_provider_id, "tool_name": "rank"},
-                                        {"type": "builtin", "provider_name": "time", "tool_name": "current_time"},
-                                    ],
-                                }
-                            },
-                        }
-                    },
-                    {"data": _tool_node_data(provider_type="workflow", provider_id="not-a-uuid")},
-                    {"id": "node-without-data"},
-                    {"data": _tool_node_data(provider_type="workflow", provider_id="")},
-                ]
-            }
-        }
-    }
-
-    warnings = AppDslService(session=sqlite_session)._unavailable_workflow_tool_warnings(
-        tenant_id=_TENANT_ID, data=data
-    )
-
-    assert [(warning.code, warning.path, warning.details) for warning in warnings] == [
-        (
-            "workflow_tool_unavailable",
-            "workflow.graph.nodes.1",
-            {"provider_id": foreign_provider_id, "name": "Summarize"},
-        ),
-        (
-            "workflow_tool_unavailable",
-            "workflow.graph.nodes.3.data.agent_parameters.tools.value.0",
-            {"provider_id": missing_provider_id, "name": "rank"},
-        ),
-        (
-            "workflow_tool_unavailable",
-            "workflow.graph.nodes.4",
-            {"provider_id": "not-a-uuid", "name": "Run"},
-        ),
-    ]
-    assert warnings[0].message == "Workflow tool 'Summarize' is unavailable in the target workspace."
-
-
-def test_create_or_update_app_warns_about_unavailable_agent_chat_workflow_tools(sqlite_session: Session) -> None:
-    app = _app(tenant_id=_TENANT_ID, mode=AppMode.AGENT_CHAT)
-    service = AppDslService(session=sqlite_session)
-
-    service._create_or_update_app(
-        app=app,
-        data={
-            "app": {"mode": AppMode.AGENT_CHAT.value},
-            "model_config": {
-                "agent_mode": {
-                    "enabled": True,
-                    "tools": [
-                        {
-                            "provider_type": "workflow",
-                            "provider_id": _WORKFLOW_TOOL_PROVIDER_ID,
-                            "tool_name": "summarize",
-                            "tool_parameters": {},
-                            "enabled": True,
-                        }
-                    ],
-                }
-            },
-        },
-        account=_account(tenant_id=_TENANT_ID),
-    )
-
-    assert [(warning.code, warning.path) for warning in service._warnings] == [
-        ("workflow_tool_unavailable", "model_config.agent_mode.tools.0")
-    ]
 
 
 def test_import_app_rejects_oversized_yaml_content_before_parsing(
