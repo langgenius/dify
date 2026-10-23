@@ -42,9 +42,9 @@ def clean_oauth_access_tokens_task():
         if not ids:
             break
         # Re-check: a login may have reused one of these rows since the select.
-        db.session.execute(delete(OAuthAccessToken).where(OAuthAccessToken.id.in_(ids), candidates))
+        result = db.session.execute(delete(OAuthAccessToken).where(OAuthAccessToken.id.in_(ids), candidates))
         db.session.commit()
-        total += len(ids)
+        total += result.rowcount  # type: ignore[attr-defined]
 
     end_at = time.perf_counter()
     click.echo(
