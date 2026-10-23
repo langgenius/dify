@@ -59,7 +59,9 @@ export function DeleteKnowledgeAction() {
       onOpenChange={(nextOpen, details) => {
         if (!nextOpen && mutation.isPending && details.reason !== 'imperative-action')
           details.cancel()
-        else if (nextOpen) mutation.reset()
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) mutation.reset()
       }}
     >
       <div className="h-px bg-divider-subtle" />
