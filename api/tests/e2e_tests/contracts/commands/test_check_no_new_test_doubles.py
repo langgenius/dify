@@ -209,6 +209,37 @@ def test_replacing_one_mock_with_another_is_not_grandfathered(repo: Path) -> Non
     assert result.returncode == 1, result.stderr
 
 
+def test_patched_method_invocations_are_not_mock_constructors(repo: Path) -> None:
+    write_source(repo, "def setup(client):\n    client.run = Mock()\n")
+    baseline = commit(repo)
+    write_source(repo, "def setup(client):\n    client.run = Mock()\n\ndef invoke(client):\n    client.run()\n")
+    commit(repo)
+
+    result = run_guard(repo, "--base-rev", baseline)
+
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("change_value", [False, True])
+def test_consolidation_preserves_import_aliases_but_rejects_changed_arguments(repo: Path, change_value: bool) -> None:
+    source = "import datetime\nfrom unittest.mock import Mock\nvalue = Mock(return_value=datetime.timedelta(days=1))\n"
+    write_source(repo, source)
+    baseline = commit(repo)
+    (repo / TEST_PATH).unlink()
+    moved = source.replace("import datetime", "import datetime as dates").replace(
+        "datetime.timedelta", "dates.timedelta"
+    )
+    moved = moved.replace("import Mock", "import Mock as Factory").replace("= Mock(", "= Factory(")
+    if change_value:
+        moved = moved.replace("days=1", "days=2")
+    write_source(repo, moved, "api/tests/unit_tests/test_moved.py")
+    commit(repo)
+
+    result = run_guard(repo, "--base-rev", baseline)
+
+    assert result.returncode == int(change_value), result.stderr
+
+
 @pytest.mark.parametrize(("reason", "expected"), [(" -- abstract adapter contract", 0), ("", 1)])
 def test_subclass_exception_requires_a_reason(repo: Path, reason: str, expected: int) -> None:
     source = (
@@ -269,6 +300,37 @@ def test_invalid_revision_fails_closed(repo: Path) -> None:
     result = run_guard(repo, "--base-rev", "missing-revision")
     assert result.returncode == 2
     assert result.stderr
+
+
+@pytest.mark.parametrize("mode", ["staged", "base"])
+@pytest.mark.parametrize("change", ["move", "copy", "duplicate", "different"])
+@pytest.mark.parametrize("kind", ["mock", "subclass"])
+def test_consolidation_keeps_only_removed_matching_baselines(repo: Path, mode: str, change: str, kind: str) -> None:
+    source = (
+        'def legacy():\n    return Mock(\n        name="legacy",\n    )\n'
+        if kind == "mock"
+        else "class Legacy(ModelInstance):\n    def __init__(self): self.calls = []\n"
+    )
+    write_source(repo, source)
+    baseline = commit(repo)
+    if change != "copy":
+        (repo / TEST_PATH).unlink()
+    moved = source.replace("legacy", "new").replace("Legacy", "New") if change == "different" else source
+    consolidated = "class TestConsolidated:\n" + textwrap.indent(moved, "    ")
+    if change == "duplicate":
+        consolidated += textwrap.indent(source, "    ")
+    destination = "api/tests/unit_tests/test_consolidated.py"
+    write_source(repo, consolidated, destination)
+    git(repo, "add", ".")
+    if mode == "base":
+        commit(repo)
+        result = run_guard(repo, "--base-rev", baseline)
+    else:
+        result = run_guard(repo, "--staged")
+
+    assert result.returncode == int(change != "move"), result.stderr
+    if change != "move":
+        assert destination in result.stderr
 
 
 def test_requires_an_explicit_diff_source(repo: Path) -> None:

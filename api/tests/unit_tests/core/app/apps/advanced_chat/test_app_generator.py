@@ -121,7 +121,7 @@ def _make_end_user(*, end_user_id: str = "end-user-id", session_id: str = "sessi
     )
 
 
-def _app_generator_make_conversation(*, conversation_id: str = "conversation-id", app_id: str = "app") -> Conversation:
+def _make_conversation(*, conversation_id: str = "conversation-id", app_id: str = "app") -> Conversation:
     return Conversation(
         id=conversation_id,
         app_id=app_id,
@@ -132,7 +132,7 @@ def _app_generator_make_conversation(*, conversation_id: str = "conversation-id"
     )
 
 
-def _app_generator_make_message(
+def _make_message(
     *, message_id: str = "message-id", conversation_id: str = "conversation-id", app_id: str = "app"
 ) -> Message:
     return Message(
@@ -252,7 +252,7 @@ class TestAdvancedChatAppGeneratorInternals:
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
         app_config = self._build_app_config()
 
-        conversation = _app_generator_make_conversation()
+        conversation = _make_conversation()
         built_files: list[object] = []
         build_files_called = {"called": False}
         captured: dict[str, object] = {}
@@ -366,8 +366,8 @@ class TestAdvancedChatAppGeneratorInternals:
             app_model=_app_generator_make_app(app_id="app-id"),
             workflow=_app_generator_make_workflow(),
             user=_make_end_user(),
-            conversation=_app_generator_make_conversation(),
-            message=_app_generator_make_message(),
+            conversation=_make_conversation(),
+            message=_make_message(),
             session=unbound_session,
             application_generate_entity=application_generate_entity,
             workflow_execution_repository=SimpleNamespace(),
@@ -530,8 +530,8 @@ class TestAdvancedChatAppGeneratorInternals:
 
         app = _app_generator_make_app()
         workflow = _app_generator_make_workflow(workflow_id="wf-1", features={"feature": True})
-        conversation = _app_generator_make_conversation(conversation_id="conv-1")
-        message = _app_generator_make_message(message_id="msg-1", conversation_id=conversation.id)
+        conversation = _make_conversation(conversation_id="conv-1")
+        message = _make_message(message_id="msg-1", conversation_id=conversation.id)
         sqlite_session.add_all([app, workflow, conversation, message])
         sqlite_session.commit()
         commit_count = 0
@@ -645,8 +645,8 @@ class TestAdvancedChatAppGeneratorInternals:
 
         app = _app_generator_make_app()
         workflow = _app_generator_make_workflow(workflow_id="wf-2")
-        conversation = _app_generator_make_conversation(conversation_id="conv-2")
-        message = _app_generator_make_message(message_id="msg-2", conversation_id=conversation.id)
+        conversation = _make_conversation(conversation_id="conv-2")
+        message = _make_message(message_id="msg-2", conversation_id=conversation.id)
         sqlite_session.add_all([app, workflow, conversation, message])
         sqlite_session.commit()
         commit_count = 0
@@ -747,10 +747,8 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow_run_id="run-id",
         )
 
-        generator._get_conversation = MagicMock(return_value=_app_generator_make_conversation(conversation_id="conv"))
-        generator._get_message = MagicMock(
-            return_value=_app_generator_make_message(message_id="msg", conversation_id="conv")
-        )
+        generator._get_conversation = MagicMock(return_value=_make_conversation(conversation_id="conv"))
+        generator._get_message = MagicMock(return_value=_make_message(message_id="msg", conversation_id="conv"))
 
         @contextmanager
         def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
@@ -798,10 +796,8 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow_run_id="run-id",
         )
 
-        generator._get_conversation = MagicMock(return_value=_app_generator_make_conversation(conversation_id="conv"))
-        generator._get_message = MagicMock(
-            return_value=_app_generator_make_message(message_id="msg", conversation_id="conv")
-        )
+        generator._get_conversation = MagicMock(return_value=_make_conversation(conversation_id="conv"))
+        generator._get_message = MagicMock(return_value=_make_message(message_id="msg", conversation_id="conv"))
         sqlite_session.add(_app_generator_make_workflow())
         sqlite_session.commit()
 
@@ -852,10 +848,8 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         queue_manager = MagicMock()
-        generator._get_conversation = MagicMock(return_value=_app_generator_make_conversation(conversation_id="conv"))
-        generator._get_message = MagicMock(
-            return_value=_app_generator_make_message(message_id="msg", conversation_id="conv")
-        )
+        generator._get_conversation = MagicMock(return_value=_make_conversation(conversation_id="conv"))
+        generator._get_message = MagicMock(return_value=_make_message(message_id="msg", conversation_id="conv"))
 
         @contextmanager
         def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
@@ -930,10 +924,8 @@ class TestAdvancedChatAppGeneratorInternals:
             raise AssertionError("validation error should be created")
 
         queue_manager = MagicMock()
-        generator._get_conversation = MagicMock(return_value=_app_generator_make_conversation(conversation_id="conv"))
-        generator._get_message = MagicMock(
-            return_value=_app_generator_make_message(message_id="msg", conversation_id="conv")
-        )
+        generator._get_conversation = MagicMock(return_value=_make_conversation(conversation_id="conv"))
+        generator._get_message = MagicMock(return_value=_make_message(message_id="msg", conversation_id="conv"))
         sqlite_session.add_all([_app_generator_make_app(), _app_generator_make_workflow()])
         sqlite_session.commit()
 
@@ -1010,12 +1002,8 @@ class TestAdvancedChatAppGeneratorInternals:
             )
 
             queue_manager = MagicMock()
-            generator._get_conversation = MagicMock(
-                return_value=_app_generator_make_conversation(conversation_id="conv")
-            )
-            generator._get_message = MagicMock(
-                return_value=_app_generator_make_message(message_id="msg", conversation_id="conv")
-            )
+            generator._get_conversation = MagicMock(return_value=_make_conversation(conversation_id="conv"))
+            generator._get_message = MagicMock(return_value=_make_message(message_id="msg", conversation_id="conv"))
 
             monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
             monkeypatch.setattr(
@@ -1179,10 +1167,8 @@ class TestAdvancedChatAppGeneratorInternals:
 
         queue_manager = MagicMock()
 
-        generator._get_conversation = MagicMock(return_value=_app_generator_make_conversation(conversation_id="conv"))
-        generator._get_message = MagicMock(
-            return_value=_app_generator_make_message(message_id="msg", conversation_id="conv")
-        )
+        generator._get_conversation = MagicMock(return_value=_make_conversation(conversation_id="conv"))
+        generator._get_message = MagicMock(return_value=_make_message(message_id="msg", conversation_id="conv"))
         sqlite_session.add_all([_app_generator_make_app(), _app_generator_make_workflow(), _make_end_user()])
         sqlite_session.commit()
 
@@ -1430,8 +1416,8 @@ class TestAdvancedChatAppGeneratorResume:
             app_model=_app_generator_make_app(app_id="app-id"),
             workflow=_app_generator_make_workflow(),
             user=_make_end_user(),
-            conversation=_app_generator_make_conversation(),
-            message=_app_generator_make_message(),
+            conversation=_make_conversation(),
+            message=_make_message(),
             session=unbound_session,
             application_generate_entity=application_generate_entity,
             workflow_execution_repository=SimpleNamespace(),
@@ -1478,8 +1464,8 @@ class TestAdvancedChatAppGeneratorResume:
             app_model=_app_generator_make_app(app_id="app-id"),
             workflow=_app_generator_make_workflow(),
             user=_make_end_user(),
-            conversation=_app_generator_make_conversation(),
-            message=_app_generator_make_message(),
+            conversation=_make_conversation(),
+            message=_make_message(),
             session=unbound_session,
             application_generate_entity=application_generate_entity,
             workflow_execution_repository=SimpleNamespace(),

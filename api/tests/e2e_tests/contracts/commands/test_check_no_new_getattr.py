@@ -805,6 +805,52 @@ def test_modified_hunk_with_increased_getattr_count_fails(tmp_path: Path) -> Non
     assert "net-new getattr" in result.stderr
 
 
+@pytest.mark.parametrize("mode", ["staged", "base"])
+@pytest.mark.parametrize("change", ["move", "copy", "duplicate", "different"])
+@pytest.mark.parametrize(
+    ("script", "statement"),
+    [
+        ("check_no_new_getattr.py", 'return getattr(obj, "legacy", None)'),
+        ("check_no_new_session_mock.py", 'session = MagicMock(name="legacy")'),
+    ],
+)
+def test_consolidation_preserves_only_removed_matching_calls(
+    tmp_path: Path, mode: str, change: str, script: str, statement: str
+) -> None:
+    init_repo(tmp_path)
+    source_path = "api/tests/unit_tests/test_legacy.py"
+    destination = "api/tests/unit_tests/test_consolidated.py"
+    source = f"def legacy(obj):\n    {statement}\n"
+    write_repo_file(tmp_path, source_path, source)
+    commit_all(tmp_path, "baseline")
+    baseline = main_branch_rev(tmp_path)
+
+    if change != "copy":
+        (tmp_path / source_path).unlink()
+    moved = source.replace('"legacy"', '"new"') if change == "different" else source
+    consolidated = "class TestConsolidated:\n" + textwrap.indent(moved, "    ")
+    if change == "duplicate":
+        consolidated += textwrap.indent(source.replace("def legacy", "def duplicate"), "    ")
+    write_repo_file(tmp_path, destination, consolidated)
+    git(tmp_path, "add", ".")
+    arguments = ["--staged"]
+    if mode == "base":
+        commit_all(tmp_path, "consolidate")
+        arguments = ["--base-rev", baseline]
+
+    result = subprocess.run(
+        [sys.executable, str(SCRIPTS_DIR / script), *arguments],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == int(change != "move"), result.stderr
+    if change != "move":
+        assert destination in result.stderr
+
+
 def test_inline_guard_ignore_with_explanatory_text_skips_added_getattr(tmp_path: Path) -> None:
     init_repo(tmp_path)
     write_repo_file(

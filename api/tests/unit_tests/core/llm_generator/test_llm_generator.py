@@ -43,7 +43,7 @@ from tests.helpers.unit.model_factories import make_dataset
 """Tests for LLM generation and database-backed instruction modification."""
 
 
-def _llm_generator_llm_result(content: str) -> LLMResult:
+def _llm_result(content: str) -> LLMResult:
     return LLMResult(
         model="test-model",
         message=AssistantPromptMessage(content=content),
@@ -171,7 +171,7 @@ class TestLlmGeneratorCases:
     @pytest.fixture
     def llm_invocation(monkeypatch: pytest.MonkeyPatch) -> Mock:
         model_instance = make_model_instance(provider="openai", model="gpt-4")
-        invocation = Mock(return_value=_llm_generator_llm_result('{"modified": "workflow"}'))
+        invocation = Mock(return_value=_llm_result('{"modified": "workflow"}'))
         monkeypatch.setattr(model_instance, "invoke_llm", invocation)
         model_manager = create_plugin_model_manager(tenant_id="tenant")
         monkeypatch.setattr(model_manager, "get_model_instance", Mock(return_value=model_instance))
@@ -504,7 +504,7 @@ class TestLlmGeneratorCases:
                 timeout = _get_plugin_daemon_request_timeout()
                 assert timeout is not None
                 assert timeout.read == 30.0
-                return _llm_generator_llm_result('["Next question?"]')
+                return _llm_result('["Next question?"]')
 
             invocation.side_effect = invoke
             model_config = (
@@ -683,7 +683,7 @@ class TestLlmGeneratorCases:
             assert "Random error" in result["error"]
 
         def test_generate_qa_document_success(self, mock_model_instance):
-            mock_response = _llm_generator_llm_result("QA Document Content")
+            mock_response = _llm_result("QA Document Content")
             mock_model_instance.invoke_llm.return_value = mock_response
 
             result = LLMGenerator.generate_qa_document("tenant_id", "query", "English")
@@ -746,7 +746,7 @@ class TestLlmGeneratorCases:
             model_config_entity: ModelConfig,
         ):
             app = _persist_app(database)
-            llm_invocation.return_value = _llm_generator_llm_result('{"modified": "prompt"}')
+            llm_invocation.return_value = _llm_result('{"modified": "prompt"}')
 
             result = LLMGenerator.instruction_modify_legacy(
                 app.tenant_id,
@@ -791,7 +791,7 @@ class TestLlmGeneratorCases:
                 query="other tenant question",
                 created_at=datetime(2026, 1, 3),
             )
-            llm_invocation.return_value = _llm_generator_llm_result('{"modified": "prompt"}')
+            llm_invocation.return_value = _llm_result('{"modified": "prompt"}')
 
             result = LLMGenerator.instruction_modify_legacy(
                 app.tenant_id, app.id, "current", "instruction", model_config_entity, "ideal", session=database
@@ -950,7 +950,7 @@ class TestLlmGeneratorCases:
             app = _persist_app(database)
             _persist_workflow(database, app, node_type=node_type)
             workflow_service = WorkflowService(sqlite_session_factory)
-            llm_invocation.return_value = _llm_generator_llm_result('{"modified": "fallback"}')
+            llm_invocation.return_value = _llm_result('{"modified": "fallback"}')
 
             result = LLMGenerator.instruction_modify_workflow(
                 app.tenant_id,
@@ -1054,7 +1054,7 @@ class TestLlmGeneratorCases:
 
         @patch("core.llm_generator.llm_generator.telemetry_emit")
         def test_generate_code_emits_on_success(self, mock_emit: MagicMock) -> None:
-            self.llm_invocation.return_value = _llm_generator_llm_result("print('hello')")
+            self.llm_invocation.return_value = _llm_result("print('hello')")
             model_cfg = ModelConfig(provider="openai", name="gpt-4", mode="chat", completion_params={})
             args = RuleCodeGeneratePayload(
                 instruction="write hello world", model_config=model_cfg, code_language="python"
@@ -1089,7 +1089,7 @@ class TestLlmGeneratorCases:
 
         @patch("core.llm_generator.llm_generator.telemetry_emit")
         def test_generate_rule_config_no_variable_emits(self, mock_emit: MagicMock) -> None:
-            self.llm_invocation.return_value = _llm_generator_llm_result("generated prompt")
+            self.llm_invocation.return_value = _llm_result("generated prompt")
             model_cfg = ModelConfig(provider="anthropic", name="claude-3", mode="chat", completion_params={})
             args = RuleGeneratePayload(instruction="be helpful", model_config=model_cfg, no_variable=True)
 

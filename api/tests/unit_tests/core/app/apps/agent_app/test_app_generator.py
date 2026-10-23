@@ -88,7 +88,7 @@ def _app_generator_app(*, app_model_config_id: str | None = None) -> App:
     )
 
 
-def _app_generator_agent(*, agent_id: str = "agent1") -> Agent:
+def _agent(*, agent_id: str = "agent1") -> Agent:
     return Agent(
         id=agent_id,
         tenant_id="tenant",
@@ -111,7 +111,7 @@ def _app_generator_snapshot(*, snapshot_id: str = "snap1", agent_id: str = "agen
     )
 
 
-def _app_generator_conversation(*, invoke_from: InvokeFrom = InvokeFrom.WEB_APP) -> Conversation:
+def _conversation(*, invoke_from: InvokeFrom = InvokeFrom.WEB_APP) -> Conversation:
     conversation = Conversation(
         id="conv",
         app_id="app1",
@@ -126,7 +126,7 @@ def _app_generator_conversation(*, invoke_from: InvokeFrom = InvokeFrom.WEB_APP)
     return conversation
 
 
-def _app_generator_message(*, query: str = "query") -> Message:
+def _message(*, query: str = "query") -> Message:
     message = Message(
         id="msg",
         app_id="app1",
@@ -226,13 +226,9 @@ class TestAppGeneratorCases:
             app_model = _app_generator_app(app_model_config_id=config.id)
             user = _app_generator_account()
 
-            generator._resolve_agent = mocker.MagicMock(
-                return_value=(_app_generator_agent(), "snap1", "snapshot", AgentSoulConfig())
-            )
+            generator._resolve_agent = mocker.MagicMock(return_value=(_agent(), "snap1", "snapshot", AgentSoulConfig()))
             generator._prepare_user_inputs = mocker.MagicMock(return_value={"x": 1})
-            generator._init_generate_records = mocker.MagicMock(
-                return_value=(_app_generator_conversation(), _app_generator_message())
-            )
+            generator._init_generate_records = mocker.MagicMock(return_value=(_conversation(), _message()))
             generator._handle_response = mocker.MagicMock(return_value="raw-response")
 
             mocker.patch(
@@ -292,16 +288,12 @@ class TestAppGeneratorCases:
         def test_generate_loads_existing_conversation(self, generator: AgentAppGenerator, mocker: MockerFixture):
             app_model = _app_generator_app()
             generator._resolve_agent = mocker.MagicMock(
-                return_value=(_app_generator_agent(agent_id="a"), "snap1", "snapshot", AgentSoulConfig())
+                return_value=(_agent(agent_id="a"), "snap1", "snapshot", AgentSoulConfig())
             )
             generator._prepare_user_inputs = mocker.MagicMock(return_value={})
-            generator._init_generate_records = mocker.MagicMock(
-                return_value=(_app_generator_conversation(), _app_generator_message())
-            )
+            generator._init_generate_records = mocker.MagicMock(return_value=(_conversation(), _message()))
             generator._handle_response = mocker.MagicMock(return_value="raw")
-            get_conv = mocker.patch(
-                f"{MODULE}.ConversationService.get_conversation", return_value=_app_generator_conversation()
-            )
+            get_conv = mocker.patch(f"{MODULE}.ConversationService.get_conversation", return_value=_conversation())
             mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
             mocker.patch(f"{MODULE}.load_annotation_reply_config", return_value={"enabled": False})
             mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock())
@@ -337,13 +329,9 @@ class TestAppGeneratorCases:
             app_model = _app_generator_app()
             user = _app_generator_account()
 
-            generator._resolve_agent = mocker.MagicMock(
-                return_value=(_app_generator_agent(), "snap1", "snapshot", AgentSoulConfig())
-            )
+            generator._resolve_agent = mocker.MagicMock(return_value=(_agent(), "snap1", "snapshot", AgentSoulConfig()))
             generator._prepare_user_inputs = mocker.MagicMock(return_value={})
-            generator._init_generate_records = mocker.MagicMock(
-                return_value=(_app_generator_conversation(), _app_generator_message())
-            )
+            generator._init_generate_records = mocker.MagicMock(return_value=(_conversation(), _message()))
             generator._handle_response = mocker.MagicMock(return_value="raw-response")
 
             mocker.patch(
@@ -388,10 +376,10 @@ class TestAppGeneratorCases:
             handled=False,
             guard_query="query",
         ):
-            generator._get_conversation = mocker.MagicMock(return_value=_app_generator_conversation())
-            generator._get_message = mocker.MagicMock(return_value=_app_generator_message())
+            generator._get_conversation = mocker.MagicMock(return_value=_conversation())
+            generator._get_message = mocker.MagicMock(return_value=_message())
             generator._run_input_guards = mocker.MagicMock(return_value=(handled, guard_query, None))
-            resolved_agent = _app_generator_agent(agent_id="a")
+            resolved_agent = _agent(agent_id="a")
             resolved_config = _app_generator_snapshot(snapshot_id="s", agent_id="a")
             resolver_sessions: list[Session] = []
 
