@@ -42,9 +42,16 @@ _SSRF_CLIENT_LIMITS = httpx.Limits(
 
 
 class MaxRetriesExceededError(ValueError):
-    """Raised when the maximum number of retries is exceeded."""
+    """Raised when the maximum number of retries is exceeded.
 
-    pass
+    'status_code' is the status of the last response that was received, so a
+    caller can report what the upstream actually answered. It stays None when
+    every attempt failed before a response arrived.
+    """
+
+    def __init__(self, message: str, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class ResponseLimitError(ValueError):
@@ -224,6 +231,7 @@ def make_request(
         send_kwargs["follow_redirects"] = kwargs.pop("follow_redirects")
 
     retries = 0
+    last_status: int | None = None
     while retries <= max_retries:
         try:
             # Preserve the user-provided Host header
@@ -237,6 +245,8 @@ def make_request(
                 response = client.send(request, stream=True, **send_kwargs)
             else:
                 response = client.send(request, **send_kwargs)
+
+            last_status = response.status_code
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):
@@ -281,7 +291,10 @@ def make_request(
         retries += 1
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
-    raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
+    raise MaxRetriesExceededError(
+        f"Reached maximum retries ({max_retries}) for URL {url}",
+        status_code=last_status,
+    )
 
 
 def buffer_response(response: httpx.Response, *, max_response_bytes: int) -> httpx.Response:
