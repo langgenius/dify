@@ -12,8 +12,8 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.models.document import Document
 from models.model import UploadFile
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def _upload_file(*, key: str, file_id: str = "upload-file-1") -> UploadFile:

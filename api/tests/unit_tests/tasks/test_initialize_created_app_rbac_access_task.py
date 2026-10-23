@@ -17,7 +17,7 @@ from tasks.initialize_created_app_rbac_access_task import (
     initialize_created_app_rbac_access_task,
     sync_joined_workspace_member_rbac_access_task,
 )
-from tests.unit_tests.rbac_fakes import RBACDomain
+from tests.helpers.unit.rbac_fakes import RBACDomain
 
 
 class _TaskWithQueue(Protocol):
