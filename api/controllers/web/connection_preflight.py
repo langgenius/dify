@@ -44,7 +44,7 @@ class EndUserConnectionPreflightApi(WebApiResource):
     @web_ns.expect(web_ns.models[EndUserConnectionPreflightPayload.__name__])
     @web_ns.response(
         200,
-        "Explicit connection requirements and readiness",
+        "Connection statuses and preflight readiness",
         web_ns.models[EndUserConnectionPreflightResponse.__name__],
     )
     @error_responses(

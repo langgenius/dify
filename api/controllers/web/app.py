@@ -35,6 +35,7 @@ from services.webapp_access_query_service import (
     WebAppAccessReferenceRequiredError,
     WebAppAccessUnavailableError,
 )
+from services.workflow.tool_credentials import ToolConnectionRequirement
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,10 @@ class WebAppParametersResponse(Parameters, ResponseModel):
     )
     requires_end_user_connections: bool = Field(
         description="Whether this published version declares EndUser tool connections, independent of user readiness.",
+    )
+
+    connection_requirements: tuple[ToolConnectionRequirement, ...] = Field(
+        description="Static authorization requirements for this published version, without personal connection state."
     )
 
 

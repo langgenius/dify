@@ -236,15 +236,6 @@ export const zEmailCodeLoginVerifyPayload = z.object({
 })
 
 /**
- * EndUserConnectionCheckResponse
- */
-export const zEndUserConnectionCheckResponse = z.object({
-  check: zCredentialCheckResult,
-  connection_id: z.string(),
-  credential_status: zConnectionCredentialStatus,
-})
-
-/**
  * EndUserConnectionListQuery
  */
 export const zEndUserConnectionListQuery = z.object({
@@ -1000,26 +991,21 @@ export const zNodeConnectionStatus = z.enum([
 ])
 
 /**
- * ConnectionPreflightRequirement
+ * ConnectionPreflightStatus
  */
-export const zConnectionPreflightRequirement = z.object({
-  allowed_credential_types: z.array(zConnectionCredentialType),
+export const zConnectionPreflightStatus = z.object({
   check: zCredentialCheckResult.nullable(),
   connection_id: z.string().nullable(),
   node_id: z.string(),
-  node_ids: z.array(z.string()),
-  provider: z.string(),
-  purpose: z.string(),
   status: zNodeConnectionStatus.nullable(),
-  title: z.string(),
 })
 
 /**
  * EndUserConnectionPreflightResponse
  */
 export const zEndUserConnectionPreflightResponse = z.object({
+  connections: z.array(zConnectionPreflightStatus),
   ready: z.boolean().readonly(),
-  requirements: z.array(zConnectionPreflightRequirement),
   workflow_id: z.string(),
 })
 
@@ -1457,6 +1443,20 @@ export const zTooManyFilesError = zErrorResponse.and(
 )
 
 /**
+ * ToolConnectionRequirement
+ *
+ * Published authorization requirements, independent of personal connection readiness.
+ */
+export const zToolConnectionRequirement = z.object({
+  allowed_credential_types: z.array(zConnectionCredentialType),
+  node_id: z.string(),
+  node_ids: z.array(z.string()),
+  provider: z.string(),
+  purpose: z.string(),
+  title: z.string(),
+})
+
+/**
  * TriggerWorkflowServiceModeUnavailableError
  *
  * This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
@@ -1684,6 +1684,7 @@ export const zWebAppParametersResponse = z.object({
   annotation_reply: z.object({
     enabled: z.boolean().optional(),
   }),
+  connection_requirements: z.array(zToolConnectionRequirement),
   file_upload: z.object({
     allowed_file_extensions: z.array(z.string()).optional(),
     allowed_file_types: z
@@ -2187,7 +2188,7 @@ export const zWorkflowRunPayload = z.object({
  * EndUserConnectionPreflightResponse
  */
 export const zEndUserConnectionPreflightResponseWritable = z.object({
-  requirements: z.array(zConnectionPreflightRequirement),
+  connections: z.array(zConnectionPreflightStatus),
   workflow_id: z.string(),
 })
 
@@ -2313,7 +2314,7 @@ export const zPostConnectionsOauthAuthorizationUrlResponse = zEndUserConnectionO
 export const zPostConnectionsPreflightBody = zEndUserConnectionPreflightPayload
 
 /**
- * Explicit connection requirements and readiness
+ * Connection statuses and preflight readiness
  */
 export const zPostConnectionsPreflightResponse = zEndUserConnectionPreflightResponse
 
@@ -2345,15 +2346,6 @@ export const zPatchConnectionsByConnectionIdPath = z.object({
  * Connection updated
  */
 export const zPatchConnectionsByConnectionIdResponse = zEndUserConnectionResponse
-
-export const zPostConnectionsByConnectionIdCheckPath = z.object({
-  connection_id: z.uuid(),
-})
-
-/**
- * Credential check result
- */
-export const zPostConnectionsByConnectionIdCheckResponse = zEndUserConnectionCheckResponse
 
 export const zPostConnectionsByConnectionIdReauthorizePath = z.object({
   connection_id: z.uuid(),
