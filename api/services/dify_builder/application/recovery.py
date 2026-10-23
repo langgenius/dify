@@ -139,6 +139,7 @@ def apply_recovery_action(
         fc.recovery_class = ""
         return s.current_state, []
     if kind == "recovery_restart":
+        fc.task_control["generation"] = int(fc.task_control.get("generation", 0)) + 1
         fc.recovery_class = ""
         _reset_working_fields(fc)
         graph, cur_hash = dify.read_graph(s.app_id, turn.actor)
