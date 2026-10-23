@@ -35,6 +35,8 @@ import {
   zTriggerWorkflowServiceModeUnavailableError,
   zUnsupportedAudioTypeError,
   zUnsupportedFileTypeError,
+  zWorkflowRunFileNotReferencedError,
+  zWorkflowRunFileNotRetainedError,
   zWorkflowVersionExecutionNotAllowedError,
 } from './zod.gen.ts'
 import {
@@ -120,6 +122,9 @@ import {
   zGetWorkflowByWorkflowRunIdEventsResponse,
   zGetWorkflowsLogsQuery,
   zGetWorkflowsLogsResponse,
+  zGetWorkflowsRunByWorkflowRunIdFilesByFileIdPath,
+  zGetWorkflowsRunByWorkflowRunIdFilesByFileIdQuery,
+  zGetWorkflowsRunByWorkflowRunIdFilesByFileIdResponse,
   zGetWorkflowsRunByWorkflowRunIdPath,
   zGetWorkflowsRunByWorkflowRunIdResponse,
   zGetWorkspacesCurrentModelsModelTypesByModelTypePath,
@@ -2581,11 +2586,50 @@ export const logs = {
 }
 
 /**
+ * Download a Workflow Run File
+ *
+ * Download a file referenced by the inputs, outputs, or a submitted Human Input form of the selected workflow run. Access is limited to the authenticated app and files retained by Dify.
+ */
+export const get32 = oc
+  .route({
+    description:
+      'Download a file referenced by the inputs, outputs, or a submitted Human Input form of the selected workflow run. Access is limited to the authenticated app and files retained by Dify.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkflowsRunByWorkflowRunIdFilesByFileId',
+    path: '/workflows/run/{workflow_run_id}/files/{file_id}',
+    summary: 'Download a Workflow Run File',
+    tags: ['Files', 'Workflows'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkflowsRunByWorkflowRunIdFilesByFileIdPath,
+      query: zGetWorkflowsRunByWorkflowRunIdFilesByFileIdQuery.optional(),
+    }),
+  )
+  .output(zGetWorkflowsRunByWorkflowRunIdFilesByFileIdResponse)
+  .errors({
+    file_access_denied: { status: 403, data: zFileAccessDeniedError },
+    file_not_found: { status: 404, data: zFileNotFoundError },
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    workflow_run_file_not_referenced: { status: 404, data: zWorkflowRunFileNotReferencedError },
+    workflow_run_file_not_retained: { status: 410, data: zWorkflowRunFileNotRetainedError },
+  })
+
+export const byFileId2 = {
+  get: get32,
+}
+
+export const files2 = {
+  byFileId: byFileId2,
+}
+
+/**
  * Get Workflow Run Detail
  *
  * Retrieve the current execution results of a workflow task based on the workflow execution ID.
  */
-export const get32 = oc
+export const get33 = oc
   .route({
     description:
       'Retrieve the current execution results of a workflow task based on the workflow execution ID.',
@@ -2601,7 +2645,8 @@ export const get32 = oc
   .errors({ not_workflow_app: { status: 400, data: zNotWorkflowAppError } })
 
 export const byWorkflowRunId2 = {
-  get: get32,
+  get: get33,
+  files: files2,
 }
 
 /**
@@ -2735,7 +2780,7 @@ export const workflows = {
  *
  * Retrieve the list of available models by type. Primarily used to query `text-embedding` and `rerank` models for knowledge base configuration.
  */
-export const get33 = oc
+export const get34 = oc
   .route({
     description:
       'Retrieve the list of available models by type. Primarily used to query `text-embedding` and `rerank` models for knowledge base configuration.',
@@ -2750,7 +2795,7 @@ export const get33 = oc
   .output(zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse)
 
 export const byModelType = {
-  get: get33,
+  get: get34,
 }
 
 export const modelTypes = {

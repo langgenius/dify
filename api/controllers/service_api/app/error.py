@@ -123,3 +123,15 @@ class FileAccessDeniedError(BaseHTTPException):
     error_code = "file_access_denied"
     description = "Access to the requested file is denied."
     code = 403
+
+
+class WorkflowRunFileNotReferencedError(BaseHTTPException):
+    error_code = "workflow_run_file_not_referenced"
+    description = "The workflow run does not reference the requested file."
+    code = 404
+
+
+class WorkflowRunFileNotRetainedError(BaseHTTPException):
+    error_code = "workflow_run_file_not_retained"
+    description = "The workflow run referenced this file, but it is no longer retained."
+    code = 410

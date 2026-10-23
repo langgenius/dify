@@ -2106,6 +2106,31 @@ Preview or download uploaded files previously uploaded via the [Upload File](/ap
 | 404 | `file_not_found` : The requested file was not found. | **application/json**: [FileNotFoundError](#filenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /workflows/run/{workflow_run_id}/files/{file_id}
+**Download a Workflow Run File**
+
+Download a file referenced by the inputs, outputs, or a submitted Human Input form of the selected workflow run. Access is limited to the authenticated app and files retained by Dify.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| as_attachment | query | If `true`, forces the file to download as an attachment instead of previewing in browser. | No | boolean |
+| file_id | path |  | Yes | string (uuid) |
+| workflow_run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Returns the raw file content. | `*/*`: binary<br> |
+| 400 | `not_workflow_app` : App mode does not match the workflow route. | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `file_access_denied` : The file is outside the authenticated app or run owner scope. | **application/json**: [FileAccessDeniedError](#fileaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : The workflow run does not exist in this app. `workflow_run_file_not_referenced` : The file is not referenced by this run. | **application/json**: [FileNotFoundError](#filenotfounderror)<br>[WorkflowRunFileNotReferencedError](#workflowrunfilenotreferencederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 410 | `workflow_run_file_not_retained` : The run referenced the file, but its bytes are no longer retained. | **application/json**: [WorkflowRunFileNotRetainedError](#workflowrunfilenotretainederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ---
 ## default
 
@@ -2321,6 +2346,31 @@ Retrieve the current execution results of a workflow task based on the workflow 
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workflows/run/{workflow_run_id}/files/{file_id}
+**Download a Workflow Run File**
+
+Download a file referenced by the inputs, outputs, or a submitted Human Input form of the selected workflow run. Access is limited to the authenticated app and files retained by Dify.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| as_attachment | query | If `true`, forces the file to download as an attachment instead of previewing in browser. | No | boolean |
+| file_id | path |  | Yes | string (uuid) |
+| workflow_run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Returns the raw file content. | `*/*`: binary<br> |
+| 400 | `not_workflow_app` : App mode does not match the workflow route. | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `file_access_denied` : The file is outside the authenticated app or run owner scope. | **application/json**: [FileAccessDeniedError](#fileaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : The workflow run does not exist in this app. `workflow_run_file_not_referenced` : The file is not referenced by this run. | **application/json**: [FileNotFoundError](#filenotfounderror)<br>[WorkflowRunFileNotReferencedError](#workflowrunfilenotreferencederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 410 | `workflow_run_file_not_retained` : The run referenced the file, but its bytes are no longer retained. | **application/json**: [WorkflowRunFileNotRetainedError](#workflowrunfilenotretainederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/tasks/{task_id}/stop
@@ -4824,6 +4874,22 @@ Public pause reason emitted by a blocking Workflow execution.
 | data | [WorkflowPausedBlockingDataResponse](#workflowpausedblockingdataresponse) |  | Yes |
 | task_id | string |  | Yes |
 | workflow_run_id | string |  | Yes |
+
+#### WorkflowRunFileNotReferencedError
+
+The workflow run does not reference the requested file.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowRunFileNotReferencedError |  | The workflow run does not reference the requested file. |  |
+
+#### WorkflowRunFileNotRetainedError
+
+The workflow run referenced this file, but it is no longer retained.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowRunFileNotRetainedError |  | The workflow run referenced this file, but it is no longer retained. |  |
 
 #### WorkflowRunForLogResponse
 

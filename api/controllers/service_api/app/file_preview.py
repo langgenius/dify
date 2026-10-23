@@ -13,16 +13,29 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     FileAccessDeniedError,
     FileNotFoundError,
+    NotWorkflowAppError,
+)
+from controllers.service_api.app.error import (
+    WorkflowRunFileNotReferencedError as WorkflowRunFileNotReferencedHttpError,
+)
+from controllers.service_api.app.error import (
+    WorkflowRunFileNotRetainedError as WorkflowRunFileNotRetainedHttpError,
 )
 from controllers.service_api.schema import binary_response
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
-from models.model import App, EndUser
+from models.model import App, AppMode, EndUser
 from services.message_file_preview_service import (
     MessageFilePreview,
     MessageFilePreviewAccessDeniedError,
     MessageFilePreviewNotFoundError,
+)
+from services.workflow_run_file_download_service import (
+    WorkflowRunFileAccessDeniedError,
+    WorkflowRunFileNotFoundError,
+    WorkflowRunFileNotReferencedError,
+    WorkflowRunFileNotRetainedError,
 )
 
 
@@ -168,4 +181,80 @@ class FilePreviewApi(Resource):
         # Add caching headers for performance
         response.headers["Cache-Control"] = "public, max-age=3600"  # Cache for 1 hour
 
+        return response
+
+
+@service_api_ns.route("/workflows/run/<uuid:workflow_run_id>/files/<uuid:file_id>")
+class WorkflowRunFileDownloadApi(Resource):
+    """Download one file explicitly referenced by a workflow run."""
+
+    @error_responses(
+        FileAccessDeniedError,
+        FileNotFoundError,
+        NotWorkflowAppError,
+        WorkflowRunFileNotReferencedHttpError,
+        WorkflowRunFileNotRetainedHttpError,
+    )
+    @service_api_ns.doc(
+        summary="Download a Workflow Run File",
+        description=(
+            "Download a file referenced by the inputs, outputs, or a submitted Human Input form of the selected "
+            "workflow run. Access is limited to the authenticated app and files retained by Dify."
+        ),
+        tags=["Files", "Workflows"],
+        responses={
+            200: "Returns the raw file content.",
+            401: "Unauthorized - invalid API token",
+            400: "`not_workflow_app` : App mode does not match the workflow route.",
+            403: "`file_access_denied` : The file is outside the authenticated app or run owner scope.",
+            404: (
+                "`not_found` : The workflow run does not exist in this app. "
+                "`workflow_run_file_not_referenced` : The file is not referenced by this run."
+            ),
+            410: (
+                "`workflow_run_file_not_retained` : The run referenced the file, but its bytes are no longer retained."
+            ),
+        },
+    )
+    @service_api_ns.doc(params=query_params_from_model(FilePreviewQuery))
+    @binary_response(service_api_ns, FILE_PREVIEW_RESPONSE_MEDIA_TYPE)
+    @service_api_ns.response(200, "File retrieved successfully")
+    @validate_app_token
+    @model_validate(FilePreviewQuery)
+    def get(
+        self,
+        args: FilePreviewQuery,
+        app_model: App,
+        workflow_run_id: UUID,
+        file_id: UUID,
+    ) -> Response:
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
+            raise NotWorkflowAppError()
+
+        try:
+            download = application_services().workflow_run_file_downloads.get_file(
+                file_id=str(file_id),
+                run_id=str(workflow_run_id),
+                app_id=app_model.id,
+                tenant_id=app_model.tenant_id,
+            )
+        except WorkflowRunFileNotFoundError as error:
+            raise FileNotFoundError() from error
+        except WorkflowRunFileNotReferencedError as error:
+            raise WorkflowRunFileNotReferencedHttpError() from error
+        except WorkflowRunFileAccessDeniedError as error:
+            raise FileAccessDeniedError() from error
+        except WorkflowRunFileNotRetainedError as error:
+            raise WorkflowRunFileNotRetainedHttpError() from error
+
+        file = download.file
+        response = Response(download.content, mimetype=file.mime_type, direct_passthrough=True, headers={})
+        if file.size > 0:
+            response.headers["Content-Length"] = str(file.size)
+        if args.as_attachment and file.name:
+            response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(file.name)}"
+            response.headers["Content-Type"] = "application/octet-stream"
+        enforce_download_for_html(response, mime_type=file.mime_type, filename=file.name, extension=file.extension)
+        response.headers["Cache-Control"] = "private, no-store"
         return response

@@ -3356,6 +3356,30 @@ export const zPipelineRunJsonResponse = z.union([
 ])
 
 /**
+ * WorkflowRunFileNotReferencedError
+ *
+ * The workflow run does not reference the requested file.
+ */
+export const zWorkflowRunFileNotReferencedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_run_file_not_referenced'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * WorkflowRunFileNotRetainedError
+ *
+ * The workflow run referenced this file, but it is no longer retained.
+ */
+export const zWorkflowRunFileNotRetainedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_run_file_not_retained'),
+    status: z.literal(410),
+  }),
+)
+
+/**
  * WorkflowRunForLogResponse
  */
 export const zWorkflowRunForLogResponse = z.object({
@@ -4551,6 +4575,22 @@ export const zGetWorkflowsRunByWorkflowRunIdPath = z.object({
  * Successfully retrieved workflow run details.
  */
 export const zGetWorkflowsRunByWorkflowRunIdResponse = zWorkflowRunResponse
+
+export const zGetWorkflowsRunByWorkflowRunIdFilesByFileIdPath = z.object({
+  file_id: z.uuid(),
+  workflow_run_id: z.uuid(),
+})
+
+export const zGetWorkflowsRunByWorkflowRunIdFilesByFileIdQuery = z.object({
+  as_attachment: z.boolean().optional().default(false),
+})
+
+/**
+ * Returns the raw file content.
+ */
+export const zGetWorkflowsRunByWorkflowRunIdFilesByFileIdResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zPostWorkflowsTasksByTaskIdStopBody = zWorkflowTaskStopPayload
 

@@ -86,6 +86,7 @@ from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
+from repositories.workflow_run_file_download_repository import WorkflowRunFileDownloadQueryRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import (
     InstallationTelemetryGateway,
@@ -208,6 +209,7 @@ from services.web_passport_service import WebPassportService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from services.workflow_run_file_download_service import WorkflowRunFileDownloadService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tasks.mail_inner_task import enqueue_inner_mail
@@ -295,6 +297,7 @@ class ApplicationServices:
     files: FileService
     human_input_file_uploads: HumanInputFileUploadService
     message_file_previews: MessageFilePreviewService
+    workflow_run_file_downloads: WorkflowRunFileDownloadService
     message_suggested_questions: MessageSuggestedQuestions
     plugin_file_uploads: PluginFileUploadService
     tool_file_downloads: ToolFileDownloadService
@@ -651,6 +654,10 @@ def build_application_services(
         ),
         message_file_previews=MessageFilePreviewService(
             files=MessageFilePreviewQueryRepository(session_factory=database_client),
+            storage=storage,
+        ),
+        workflow_run_file_downloads=WorkflowRunFileDownloadService(
+            files=WorkflowRunFileDownloadQueryRepository(session_factory=database_client),
             storage=storage,
         ),
         message_suggested_questions=MessageSuggestedQuestionsRuntime(session_factory=database_client),
