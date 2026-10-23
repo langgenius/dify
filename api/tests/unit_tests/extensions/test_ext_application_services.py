@@ -1015,6 +1015,10 @@ def test_build_application_services_wires_credential_query(
     assert [(record.id, record.name) for record in records] == [(credential_id, "Team")]
     assert services.workspaces.trigger_subscriptions._credentials is services.credential_queries
     assert services.workspaces.trigger_events._subscriptions is services.workspaces.trigger_subscriptions
+    assert (
+        services.workspaces.trigger_binding_queries
+        is services.workspaces.trigger_subscription_management._subscriptions
+    )
     assert services.workspaces.trigger_events._requests is services.workspaces.trigger_endpoints._requests
     assert services.workspaces.plugin_parameters._credentials is services.credential_queries
     assert services.workspaces.plugin_parameters._builders is services.workspaces.trigger_builders

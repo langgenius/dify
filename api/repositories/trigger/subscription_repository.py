@@ -2,7 +2,7 @@
 
 import logging
 import sqlite3
-from collections.abc import Generator, Mapping
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import AbstractContextManager, contextmanager
 from copy import deepcopy
 from typing import Any, override
@@ -15,8 +15,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_redis import RedisClientWrapper
+from models.enums import AppTriggerStatus
 from models.provider_ids import TriggerProviderID
-from models.trigger import TriggerSubscription, WorkflowPluginTrigger
+from models.trigger import AppTrigger, TriggerSubscription, WorkflowPluginTrigger
+from services.trigger.subscription_binding_service import TriggerSubscriber, TriggerSubscriptionBinding
 from services.trigger.subscription_service import (
     TriggerSubscriptionChangedError,
     TriggerSubscriptionLimitError,
@@ -55,6 +57,73 @@ def _is_name_conflict(error: IntegrityError) -> bool:
 class TriggerSubscriptionRepository(TriggerSubscriptionStore):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def sync_workflow_bindings(
+        self,
+        *,
+        session: Session,
+        tenant_id: str,
+        app_id: str,
+        bindings: Sequence[TriggerSubscriptionBinding],
+    ) -> None:
+        """Write the binding delta without committing the caller's publication transaction.
+
+        Publication already serializes versions for an app and updates its workflow pointer
+        in this session. Opening a second transaction here would leave bindings committed
+        when publication rolls back. TODO: Remove this session parameter when the publisher
+        owns an injected unit of work covering workflows and their subscription bindings.
+        """
+        rows = session.scalars(
+            select(WorkflowPluginTrigger).where(
+                WorkflowPluginTrigger.tenant_id == tenant_id, WorkflowPluginTrigger.app_id == app_id
+            )
+        ).all()
+        existing = {row.node_id: row for row in rows}
+        desired_node_ids = {binding.node_id for binding in bindings}
+        for row in rows:
+            if row.node_id not in desired_node_ids:
+                session.delete(row)
+        for binding in bindings:
+            row = existing.get(binding.node_id)
+            if row is None:
+                session.add(
+                    WorkflowPluginTrigger(
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                        node_id=binding.node_id,
+                        provider_id=binding.provider_id,
+                        event_name=binding.event_name,
+                        subscription_id=binding.subscription_id,
+                    )
+                )
+            else:
+                row.provider_id = binding.provider_id
+                row.event_name = binding.event_name
+                row.subscription_id = binding.subscription_id
+
+    def get_subscriber_triggers(
+        self, *, tenant_id: str, subscription_id: str, event_name: str
+    ) -> tuple[TriggerSubscriber, ...]:
+        with self._session_factory() as session:
+            rows = session.scalars(
+                select(WorkflowPluginTrigger)
+                .join(
+                    AppTrigger,
+                    (AppTrigger.tenant_id == WorkflowPluginTrigger.tenant_id)
+                    & (AppTrigger.app_id == WorkflowPluginTrigger.app_id)
+                    & (AppTrigger.node_id == WorkflowPluginTrigger.node_id),
+                )
+                .where(
+                    WorkflowPluginTrigger.tenant_id == tenant_id,
+                    WorkflowPluginTrigger.subscription_id == subscription_id,
+                    WorkflowPluginTrigger.event_name == event_name,
+                    AppTrigger.status == AppTriggerStatus.ENABLED,
+                )
+            ).all()
+            return tuple(
+                TriggerSubscriber(id=row.id, tenant_id=row.tenant_id, app_id=row.app_id, node_id=row.node_id)
+                for row in rows
+            )
 
     @override
     def get(self, *, tenant_id: str, subscription_id: str) -> TriggerSubscriptionSnapshot | None:

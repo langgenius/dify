@@ -33,15 +33,15 @@ from models.enums import (
     WorkflowTriggerStatus,
 )
 from models.model import App, EndUser
-from models.trigger import WorkflowPluginTrigger, WorkflowTriggerLog
+from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun
 from services.async_workflow_service import AsyncWorkflowService
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService, unlimited
 from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.event_service import TriggerEventService
+from services.trigger.subscription_binding_service import TriggerSubscriber, TriggerSubscriptionBindingQuery
 from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
-from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
 from services.workflow.entities import PluginTriggerData, PluginTriggerDispatchData, PluginTriggerMetadata
 from services.workflow.queue_dispatcher import QueueDispatcherManager
 
@@ -105,7 +105,7 @@ def dispatch_trigger_debug_event(
 
 
 def _get_published_workflows_by_app_ids(
-    session: Session, subscribers: Sequence[WorkflowPluginTrigger]
+    session: Session, subscribers: Sequence[TriggerSubscriber]
 ) -> Mapping[str, Workflow]:
     """Get current published workflows through apps.workflow_id."""
     app_ids = {trigger.app_id for trigger in subscribers}
@@ -132,7 +132,7 @@ def _record_trigger_failure_log(
     *,
     session: Session,
     workflow: Workflow,
-    plugin_trigger: WorkflowPluginTrigger,
+    plugin_trigger: TriggerSubscriber,
     subscription: TriggerSubscriptionRuntime,
     trigger_metadata: PluginTriggerMetadata,
     end_user: EndUser | None,
@@ -242,6 +242,7 @@ def dispatch_triggered_workflow(
     *,
     end_users: TriggerEndUserProvisioner,
     events: TriggerEventService,
+    bindings: TriggerSubscriptionBindingQuery,
 ) -> int:
     """Process triggered workflows.
 
@@ -252,11 +253,12 @@ def dispatch_triggered_workflow(
         request_id: The ID of the stored request in storage system
         end_users: Provisioner that resolves or creates the end users for each app
         events: Shared plugin event preparation and invocation
+        bindings: Workspace-scoped subscriber lookup
 
     Returns:
         The number of workflows dispatched for the event
     """
-    subscribers: list[WorkflowPluginTrigger] = TriggerSubscriptionOperatorService.get_subscriber_triggers(
+    subscribers = bindings.get_subscriber_triggers(
         tenant_id=subscription.tenant_id, subscription_id=subscription.id, event_name=event_name
     )
     if not subscribers:
@@ -411,6 +413,7 @@ def dispatch_triggered_workflows(
     *,
     end_users: TriggerEndUserProvisioner,
     event_service: TriggerEventService,
+    bindings: TriggerSubscriptionBindingQuery,
 ) -> int:
     dispatched_count = 0
     for event_name in events:
@@ -422,6 +425,7 @@ def dispatch_triggered_workflows(
                 request_id=request_id,
                 end_users=end_users,
                 events=event_service,
+                bindings=bindings,
             )
         except Exception:
             logger.exception(
@@ -494,6 +498,7 @@ def dispatch_triggered_workflows_async(
             request_id=request_id,
             end_users=application_services().app_scoped_end_users.commands,
             event_service=application_services().workspaces.trigger_events,
+            bindings=application_services().workspaces.trigger_binding_queries,
         )
 
         debug_dispatched = dispatch_trigger_debug_event(

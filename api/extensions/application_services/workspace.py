@@ -1,6 +1,8 @@
 """Compose workspace use cases with the shared account and workspace repositories."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -34,6 +36,10 @@ from services.trigger.oauth_gateway import (
 from services.trigger.oauth_service import TriggerOAuthService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
 from services.trigger.provider_query import TriggerProviderQuery
+from services.trigger.subscription_binding_service import (
+    TriggerSubscriptionBindingQuery,
+    TriggerSubscriptionBindingService,
+)
 from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway, invalidate_subscription_properties
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
 from services.trigger.subscription_renewal_service import TriggerSubscriptionRenewalService
@@ -78,6 +84,8 @@ class WorkspaceServices:
     plugin_parameters: PluginParameterService
     trigger_providers: TriggerProviderQuery
     trigger_subscriptions: TriggerSubscriptionQueryService
+    trigger_binding_queries: TriggerSubscriptionBindingQuery
+    create_trigger_binding_service: Callable[[Session], TriggerSubscriptionBindingService]
     trigger_subscription_management: TriggerSubscriptionService
     trigger_subscription_renewal: TriggerSubscriptionRenewalService
     trigger_builders: TriggerSubscriptionBuilderService
@@ -185,6 +193,11 @@ def build_workspace_services(
         ),
         trigger_providers=trigger_providers,
         trigger_subscriptions=trigger_subscriptions,
+        trigger_binding_queries=subscriptions,
+        # Bind only for the duration of the caller's publication transaction.
+        create_trigger_binding_service=lambda session: TriggerSubscriptionBindingService(
+            sync_bindings=partial(subscriptions.sync_workflow_bindings, session=session)
+        ),
         trigger_events=TriggerEventService(
             subscriptions=trigger_subscriptions,
             plugins=PluginTriggerEventGateway(),
