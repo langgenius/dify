@@ -90,7 +90,8 @@ export function schemaTypes(root: unknown): string {
     declarations.push(`type JsonSchema${index} = ${render(schema, true)};`)
   }
   declarations.push(
-    'type Document = import("@dify/openapi-inference").SchemaDocument<typeof document, {',
+    'type ReadonlyDocument<T> = { readonly [K in keyof T]: T[K] extends object ? ReadonlyDocument<T[K]> : T[K] };',
+    'type Document = import("@dify/openapi-inference").SchemaDocument<ReadonlyDocument<typeof document>, {',
   )
   for (const json of [false, true]) {
     declarations.push(`${json ? 'json' : 'default'}: {`)

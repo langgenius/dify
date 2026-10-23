@@ -1,4 +1,5 @@
 import type { ClientPromiseResult } from '@orpc/client'
+import type { GeneralUtils, RouterUtils } from '@orpc/tanstack-query'
 import type { HttpClient } from './client.js'
 
 declare const schemaTypeMap: unique symbol
@@ -255,6 +256,24 @@ type RpcInput<O> = O extends unknown
           : unknown)
   : never
 type RpcResponse<T> = T extends undefined ? void : T
+/** Resolve operation signatures only when a consumer accesses their route. */
+export type RpcRouter<S, Routes, Context extends object = object> = {
+  [K in keyof Routes]: Routes[K] extends readonly [
+    infer P extends keyof Paths<S>,
+    infer M extends Method,
+  ]
+    ? RpcOperation<S, P, M, Context>
+    : RpcRouter<S, Routes[K], Context>
+}
+/** Apply oRPC's helper types per procedure without checking the entire client tree. */
+export type RpcQueryRouter<S, Routes, Context extends object = object> = {
+  [K in keyof Routes]: Routes[K] extends readonly [
+    infer P extends keyof Paths<S>,
+    infer M extends Method,
+  ]
+    ? RouterUtils<RpcOperation<S, P, M, Context>>
+    : RpcQueryRouter<S, Routes[K], Context>
+} & GeneralUtils<unknown>
 export type RpcOperation<
   S,
   P extends keyof Paths<S>,

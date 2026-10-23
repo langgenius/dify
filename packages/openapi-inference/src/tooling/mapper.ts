@@ -1,11 +1,12 @@
 import { Buffer } from 'node:buffer'
 import { record } from '../document.js'
-import { transformSpec } from './transform.js'
+import { mapperTransform } from './mapper-cache.js'
 
 // TS 7.1 content mapper JSON-RPC, framed with byte-counted Content-Length.
 const projects = new Set<string>()
 let initialized = false
 let buffer: Buffer = Buffer.alloc(0)
+const transform = mapperTransform()
 
 function dispatch(method: string, params: Record<string, unknown>): unknown {
   switch (method) {
@@ -26,7 +27,7 @@ function dispatch(method: string, params: Record<string, unknown>): unknown {
       if (!projects.has(String(params.projectHandle))) throw new Error('Unknown projectHandle')
       if (typeof params.content !== 'string' || typeof params.fileName !== 'string')
         throw new Error('Expected content and fileName strings')
-      return transformSpec(params.content, params.fileName)
+      return transform(params.content, params.fileName)
     default:
       throw new Error(`Unknown method: ${method}`)
   }

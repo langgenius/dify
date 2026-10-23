@@ -14,10 +14,11 @@ test('native TS 7.1 LSP: operation completions, hover, definition into YAML, liv
   const dir = mkdtempSync(join(root, 'test/.lsp-'))
   const spec = readFileSync(join(root, 'examples/petstore/pets.openapi.yaml'), 'utf8')
   const source = [
-    "import { api } from './pets.yaml';",
+    "import { api, query } from './pets.yaml';",
     '// SDK inferred by the content mapper',
     'const pet = await api.pets.byPetId.get({ params: { petId: 1 } });',
     'pet.name;',
+    'query.pets.byPetId.get.queryOptions({input: {params: {petId: 1}}});',
     'api.pets.byPetId.',
   ].join('\n')
   writeFileSync(join(dir, 'pets.yaml'), spec)
@@ -60,7 +61,7 @@ test('native TS 7.1 LSP: operation completions, hover, definition into YAML, liv
     })
     const completions = await rpc.request('textDocument/completion', {
       textDocument: { uri },
-      position: { line: 4, character: source.split('\n')[4].length },
+      position: { line: 5, character: source.split('\n')[5].length },
     })
     const labels = (completions.items ?? completions).map((item) => item.label)
     assert(labels.includes('get'), JSON.stringify(completions))
@@ -75,6 +76,11 @@ test('native TS 7.1 LSP: operation completions, hover, definition into YAML, liv
       position: { line: 2, character: source.split('\n')[2].indexOf('.get') + 2 },
     })
     assert.match(JSON.stringify(definitions), /pets.yaml/)
+    const queryDefinition = await rpc.request('textDocument/definition', {
+      textDocument: { uri },
+      position: { line: 4, character: source.split('\n')[4].indexOf('.get') + 2 },
+    })
+    assert.match(JSON.stringify(queryDefinition), /pets.yaml/)
     rpc.notify('textDocument/didOpen', {
       textDocument: { uri: specUri, languageId: 'yaml', version: 1, text: spec },
     })

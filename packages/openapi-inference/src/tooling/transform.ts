@@ -56,7 +56,9 @@ function parseSpec(content: string, fileName: string) {
 export function transformSpec(content: string, fileName: string): Transform {
   try {
     const { document, value, router } = parseSpec(content, fileName)
-    let text = 'const document = '
+    // Only the literal type is needed. An initializer makes TS check the entire
+    // object expression as well as constructing its type, even for unused routes.
+    let text = 'declare const document: '
     const mappings: Mapping[] = []
     const methodNodes = new Map<string, Node>()
     function token(encoded: string, node: Node | null | undefined) {
@@ -83,10 +85,8 @@ export function transformSpec(content: string, fileName: string): Transform {
           const key = String(pair.key.value)
           if (path.length === 2 && path[0] === 'paths')
             methodNodes.set(`${path[1]} ${key}`, pair.key)
-          // Computed keys preserve __proto__ as a data property at runtime.
-          text += '['
           token(JSON.stringify(key), pair.key)
-          text += ']:'
+          text += ':'
           emit(pair.value as Node | null, [...path, key])
         })
         text += '}'
@@ -104,7 +104,7 @@ export function transformSpec(content: string, fileName: string): Transform {
       }
     }
     emit(document.contents)
-    text += ' as const;\n'
+    text += ';\n'
     text += schemaTypes(value)
     const config = runtimeConfigFile(fileName)
     text += config
@@ -114,7 +114,7 @@ export function transformSpec(content: string, fileName: string): Transform {
       text += '{\n'
       for (const [method, op] of node.methods) {
         token(JSON.stringify(method), methodNodes.get(`${op.path} ${method}`))
-        text += `: import("@dify/openapi-inference").RpcOperation<Document, ${JSON.stringify(op.path)}, ${JSON.stringify(method)}, Context>;\n`
+        text += `: readonly [${JSON.stringify(op.path)}, ${JSON.stringify(method)}];\n`
       }
       for (const [key, child] of node.children) {
         text += `${JSON.stringify(key)}: `
@@ -123,10 +123,13 @@ export function transformSpec(content: string, fileName: string): Transform {
       }
       text += '}'
     }
-    text += 'export declare const api: '
+    text += 'type Routes = '
     emitRouter(router)
     text += ';\n'
-    text += 'export declare const query: import("@orpc/tanstack-query").RouterUtils<typeof api>;\n'
+    text +=
+      'export declare const api: import("@dify/openapi-inference").RpcRouter<Document, Routes, Context>;\n'
+    text +=
+      'export declare const query: import("@dify/openapi-inference").RpcQueryRouter<Document, Routes, Context>;\n'
     return { text, extension: '.ts', mappings }
   } catch (error) {
     const position =

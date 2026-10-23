@@ -70,10 +70,10 @@ function project(files, run) {
       }),
     )
     for (const [file, content] of Object.entries(files)) writeFileSync(join(dir, file), content)
-    run(dir, () => {
+    run(dir, (...flags) => {
       const result = spawnSync(
         process.execPath,
-        [compiler, '-p', dir, '--runExternalCode', '--pretty', 'false'],
+        [compiler, '-p', dir, '--runExternalCode', '--pretty', 'false', ...flags],
         { cwd: root, encoding: 'utf8', timeout: 20000 },
       )
       assert.ifError(result.error)
@@ -99,6 +99,8 @@ import * as document from './pets.${extension}';
 document.getPet;
 import { createTanstackQueryUtils } from '@orpc/tanstack-query';
 const wrappedQuery = createTanstackQueryUtils(api);
+const fromWrapped: typeof query = wrappedQuery;
+const toWrapped: typeof wrappedQuery = query;
 const generatedOptions = query.pets.byPetId.get.queryOptions({ input: { params: { petId: 1 } } });
 const generatedKey = query.pets.key();
 // @ts-expect-error generated query helpers retain parameter types
@@ -176,6 +178,63 @@ const id: number = pet.id;
   )
 })
 
+test('unused operations do not eagerly instantiate API or query signatures', () => {
+  const instantiations = []
+  for (const count of [0, 1000]) {
+    const spec = parse(yaml)
+    for (let i = 0; i < count; i++) {
+      spec.paths[`/unused-${i}`] = {
+        get: {
+          parameters: [{ name: 'id', in: 'query', required: true, schema: { type: 'integer' } }],
+          responses: {
+            200: {
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/Pet' } } },
+            },
+          },
+        },
+      }
+    }
+    project(
+      {
+        'spec.openapi': JSON.stringify(spec),
+        'index.ts': `import { api, query } from './spec.openapi';
+const name: string = (await api.pets.byPetId.get({params: {petId: 1}})).name;
+query.pets.byPetId.get.queryOptions({input: {params: {petId: 1}}});`,
+      },
+      (_dir, check) => {
+        const result = check('--extendedDiagnostics')
+        assert.equal(result.status, 0, result.output)
+        const match = result.output.match(/Instantiations:\s+(\d+)/)
+        assert(match, result.output)
+        instantiations.push(Number(match[1]))
+      },
+    )
+  }
+  assert(instantiations[1] - instantiations[0] < 1000, JSON.stringify(instantiations))
+})
+
+test('cached mapper output follows sidecar additions, edits and removals', () => {
+  project(
+    {
+      'pets.yaml': yaml,
+      'index.ts': `import { api } from './pets.yaml';
+api.pets.get(undefined, {context: {token: 'secret'}});`,
+    },
+    (dir, check) => {
+      assert.equal(check().status, 0)
+      const sidecar = join(dir, 'pets.yaml.config.ts')
+      writeFileSync(sidecar, 'export type Context = { token: number };')
+      assert.notEqual(check().status, 0)
+      writeFileSync(sidecar, 'export type Context = { token: string };')
+      const edited = check()
+      assert.equal(edited.status, 0, edited.output)
+      rmSync(sidecar)
+      const removed = check()
+      assert.equal(removed.status, 0, removed.output)
+    },
+  )
+})
+
 test('invalid specs and unresolved refs are compiler diagnostics, not any', () => {
   for (const content of [
     'openapi: [',
@@ -217,6 +276,17 @@ test('schema composition, nullable, parameter overrides, dictionaries and escape
   spec.paths['/pets/{petId}'].get.parameters = [
     { name: 'petId', in: 'path', required: true, schema: { type: 'string' } },
   ]
+  spec.paths['/literal'] = {
+    get: {
+      responses: {
+        200: {
+          content: {
+            'application/json': { schema: { const: { name: 'fixed', values: [1, true] } } },
+          },
+        },
+      },
+    },
+  }
   project(
     {
       'spec.openapi': JSON.stringify(spec),
@@ -227,6 +297,13 @@ const id: number = pet.id;
 const choice: 'yes' | number = pet.choice;
 const nullable: string | null = pet.nullable;
 const dict: number | undefined = pet.dictionary.a;
+const literal = await api.literal.get();
+const fixed: 'fixed' = literal.name;
+const first: 1 = literal.values[0];
+// @ts-expect-error literal objects retain their original readonly semantics
+literal.name = 'fixed';
+// @ts-expect-error nested literal tuples remain readonly too
+literal.values.push(1);
 // @ts-expect-error operation-level parameter overrides path-level parameter
 api.pets.byPetId.get({params: {petId: 1}});
 // @ts-expect-error composition retains actual types

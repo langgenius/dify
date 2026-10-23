@@ -6,5 +6,7 @@ export type {
   RequestOptions,
   ResponseFor,
   RpcOperation,
+  RpcQueryRouter,
+  RpcRouter,
   SchemaDocument,
 } from './types.js'

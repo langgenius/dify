@@ -107,6 +107,14 @@ Run `npx tsc --runExternalCode --noEmit`. The compiler supplies types; the Vite 
 
 For VS Code, install Microsoft's TypeScript 7 extension (`TypeScriptTeam.native-preview`), select the workspace TypeScript 7.1 compiler, trust the workspace and enable content mappers. Open a consuming `.ts` file so the language server discovers its config.
 
+### Type-checking performance
+
+API and query signatures are resolved as routes are accessed. The mapper emits a literal type declaration instead of making the compiler check a full specification object initializer. This reduces type instantiation work; the compiler still needs to load the document, so runtime tree-shaking does not imply zero type-checking cost for unused operations.
+
+Successful mapper transforms are cached across compiler processes in the current user's system temporary directory, under `dify-openapi-inference-<user>`. The cache retains up to 64 documents, replacing each document's previous revision. Document content, logical filename, mapper implementation, YAML package metadata and configuration-sidecar presence participate in invalidation. Sidecar contents remain normal TypeScript imports and are checked by the compiler. Sidecar presence is rechecked when the compiler requests a transform.
+
+The cache can be deleted safely. Invalid entries or unavailable cache storage fall back to transformation; diagnostics are not cached. No cache files are written beside the imported document or shipped to the browser.
+
 ### Existing JSON files
 
 The TS 7.1 beta cannot register mappers for built-in `.json` imports, including `.openapi.json`. Store JSON in a file ending in `.openapi`, or symlink an existing JSON file:
