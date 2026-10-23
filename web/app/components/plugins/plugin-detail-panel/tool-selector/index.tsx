@@ -167,12 +167,7 @@ function ToolSelector({
         />
       ) : null}
 
-      <PopoverContent
-        side="left"
-        align="center"
-        sideOffset={4}
-        className="border-none bg-transparent shadow-none"
-      >
+      <PopoverContent side="left" sideOffset={4} className="border-none bg-transparent shadow-none">
         <div
           className={cn(
             'relative max-h-160.5 min-h-20 w-90.25 rounded-xl',

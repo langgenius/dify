@@ -71,7 +71,6 @@ const AddVariable = ({
         <PopoverContent
           ref={popupRef}
           side="right"
-          align="center"
           sideOffset={4}
           className="border-none bg-transparent shadow-none"
         >

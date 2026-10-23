@@ -147,7 +147,7 @@ function Chip<T extends ItemValue>({
           </button>
         )}
         <SelectPortal>
-          <SelectPositioner side="bottom" align="start" sideOffset={4}>
+          <SelectPositioner>
             <SelectPopup
               className={cn(
                 'relative w-60 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden',

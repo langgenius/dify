@@ -370,7 +370,7 @@ export const CreateSubscriptionButton = ({
             </Tooltip>
           )}
         </SelectTrigger>
-        <SelectContent side="bottom" align="start" sideOffset={4}>
+        <SelectContent>
           {visibleOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               <div className="mr-8 flex grow items-center gap-1 truncate px-1">

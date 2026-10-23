@@ -50,7 +50,6 @@ const ShareQRCode = ({ content, downloadLabel, scanLabel, triggerLabel }: Props)
       </Tooltip>
       <PopoverContent
         ref={qrCodeRef}
-        side="bottom"
         align="end"
         className="flex w-58 flex-col items-center rounded-lg p-4 shadow-xs"
       >

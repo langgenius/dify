@@ -80,7 +80,7 @@ function TabHeaderItem({
   return (
     <Tooltip>
       <TooltipTrigger render={tabElement} />
-      <TooltipContent side="top" align="center" className="max-w-57.5">
+      <TooltipContent className="max-w-57.5">
         {tab.disabledTip || fallbackDisabledTip}
       </TooltipContent>
     </Tooltip>

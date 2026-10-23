@@ -226,7 +226,6 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
         )}
       </PopoverTrigger>
       <PopoverContent
-        side="bottom"
         align="end"
         sideOffset={12}
         className="border-none bg-transparent shadow-none"

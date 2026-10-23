@@ -43,7 +43,6 @@ const FontSizeSelector = () => {
         }
       />
       <PopoverContent
-        side="bottom"
         align="start"
         sideOffset={2}
         className="border-none bg-transparent shadow-none"

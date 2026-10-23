@@ -88,12 +88,7 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
           )}
         />
         <PopoverPortal>
-          <PopoverPositioner
-            side="bottom"
-            align="start"
-            sideOffset={4}
-            className="w-[calc(100%-32px)] max-w-xl"
-          >
+          <PopoverPositioner align="start" sideOffset={4} className="w-[calc(100%-32px)] max-w-xl">
             <PopoverPopup className="rounded-xl border-0 bg-transparent p-0 shadow-none backdrop-blur-none">
               <div className="z-10 w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
                 <div className="p-1">

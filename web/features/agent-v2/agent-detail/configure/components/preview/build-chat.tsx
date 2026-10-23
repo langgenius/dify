@@ -57,12 +57,7 @@ function AgentBuildChatEmptyState({
         <div className="min-w-0 truncate system-md-medium text-text-secondary">
           {t(($) => $['agentDetail.configure.build.empty.title'])}
         </div>
-        <CommunityEditionTip
-          tip={communityEditionBuildModeTip}
-          side="top"
-          align="center"
-          className="max-w-85"
-        />
+        <CommunityEditionTip tip={communityEditionBuildModeTip} side="top" className="max-w-85" />
       </div>
       <p className="mt-1 max-w-full body-md-regular text-text-tertiary">
         {t(($) => $['agentDetail.configure.build.empty.description'])}

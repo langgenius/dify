@@ -36,7 +36,6 @@ const SnippetCreateButton = () => {
           }
         />
         <PopoverContent
-          side="bottom"
           align="end"
           sideOffset={6}
           className="w-57 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs"

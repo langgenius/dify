@@ -87,10 +87,10 @@ type PopoverContentProps = Omit<PopoverPopupProps, 'children'> &
 
 function PopoverContent({
   children,
-  side = 'bottom',
-  align = 'center',
-  sideOffset = 8,
-  alignOffset = 0,
+  side,
+  align,
+  sideOffset,
+  alignOffset,
   className,
   ...props
 }: PopoverContentProps) {

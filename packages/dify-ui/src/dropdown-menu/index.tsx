@@ -289,10 +289,10 @@ type DropdownMenuContentProps = Omit<DropdownMenuPopupProps, 'children'> &
 
 function DropdownMenuContent({
   children,
-  side = 'bottom',
+  side,
   align = 'end',
-  sideOffset = 4,
-  alignOffset = 0,
+  sideOffset,
+  alignOffset,
   className,
   ...props
 }: DropdownMenuContentProps) {
@@ -344,13 +344,12 @@ function DropdownMenuSubTrigger({
 
 type DropdownMenuSubContentProps = DropdownMenuContentProps
 
-// Base UI's own submenu default: it opens away from the trigger and follows the text direction.
 function DropdownMenuSubContent({
   children,
-  side = 'inline-end',
-  align = 'start',
-  sideOffset = 4,
-  alignOffset = 0,
+  side,
+  align,
+  sideOffset,
+  alignOffset,
   className,
   ...props
 }: DropdownMenuSubContentProps) {

@@ -38,7 +38,6 @@ const VoiceSettings = ({
       />
       <PopoverContent
         side={placementLeft ? 'left' : 'top'}
-        align="center"
         sideOffset={placementLeft ? 32 : 4}
         className="border-none bg-transparent shadow-none"
       >

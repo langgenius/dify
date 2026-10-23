@@ -190,7 +190,7 @@ export const EnvironmentVariableField = memo(
             >
               {sourceLabel}
             </SelectTrigger>
-            <SelectContent side="bottom" align="end" className="w-52">
+            <SelectContent align="end" className="w-52">
               {availableSources.map((option) => (
                 <SelectItem key={option} value={option}>
                   <SelectItemText>{sourceLabels[option]}</SelectItemText>

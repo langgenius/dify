@@ -48,7 +48,7 @@ const SortDropdown = () => {
         <span className="system-sm-medium text-text-primary">{selectedOption.text}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-text-tertiary" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="bottom" align="start" sideOffset={4} className="px-1">
+      <DropdownMenuContent align="start" className="px-1">
         <DropdownMenuRadioGroup
           value={`${selectedOption.value}-${selectedOption.order}`}
           onValueChange={(nextValue) => {

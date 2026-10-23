@@ -50,12 +50,7 @@ export default function AppSelector() {
           <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
         </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        side="bottom"
-        align="end"
-        sideOffset={4}
-        className="w-60 max-w-80 divide-y divide-divider-subtle bg-components-panel-bg-blur p-0"
-      >
+      <DropdownMenuContent className="w-60 max-w-80 divide-y divide-divider-subtle bg-components-panel-bg-blur p-0">
         <div className="p-1">
           <div className="flex flex-nowrap items-center px-3 py-2">
             <div className="min-w-0 grow">

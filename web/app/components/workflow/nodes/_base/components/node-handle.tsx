@@ -122,7 +122,6 @@ export const NodeTargetHandle = memo(
               }}
               triggerStyle={{ scale: 'var(--workflow-control-scale, 1)' }}
               side="left"
-              align="center"
               showStartTab
               triggerClassName={`
                 absolute -left-1 -top-1 opacity-0 pointer-events-none transition-opacity duration-150

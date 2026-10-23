@@ -57,7 +57,6 @@ export function VersionLabel({
         />
         <PopoverContent
           side="top"
-          align="center"
           className="w-74 max-w-[calc(100vw-32px)] border-0 bg-components-tooltip-bg px-4 py-3.5 text-start inset-ring-[0.5px] inset-ring-components-panel-border backdrop-blur-[5px]"
         >
           <div className="flex flex-col gap-1">

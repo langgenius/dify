@@ -1143,7 +1143,7 @@ export function FileTree({
                 </button>
               }
             />
-            <TooltipContent side="right" align="center">
+            <TooltipContent side="right">
               {t(($) => $['skillManagement.detail.expandSidebar'])}
             </TooltipContent>
           </Tooltip>
@@ -1260,7 +1260,7 @@ export function FileTree({
                   />
                 }
               />
-              <TooltipContent side="bottom" align="center" className="flex items-center gap-1">
+              <TooltipContent side="bottom" className="flex items-center gap-1">
                 <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
                 <KbdGroup>
                   {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
@@ -1292,7 +1292,7 @@ export function FileTree({
                   </button>
                 }
               />
-              <TooltipContent side="bottom" align="center">
+              <TooltipContent side="bottom">
                 {t(($) => $['skillManagement.detail.collapseSidebar'])}
               </TooltipContent>
             </Tooltip>
@@ -1364,8 +1364,6 @@ export function FileTree({
                 <DropdownMenuContent
                   data-skill-file-menu
                   onKeyDown={handleRootMenuKeyDown}
-                  side="bottom"
-                  align="end"
                   className={skillFileMenuPopupClassName}
                 >
                   <RootFileActionMenuItems

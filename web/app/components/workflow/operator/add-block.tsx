@@ -105,7 +105,6 @@ const AddBlock = ({
       onOpenChange={handleOpenChange}
       disabled={nodesReadOnly}
       onSelect={handleSelect}
-      side="right"
       align="start"
       sideOffset={sideOffset ?? 4}
       alignOffset={alignOffset ?? -8}

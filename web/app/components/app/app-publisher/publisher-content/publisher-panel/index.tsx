@@ -24,7 +24,7 @@ type PublisherPanelProps = Pick<AppPublisherProps, 'alignOffset' | 'disabled'> &
 
 export function PublisherPanel({
   builtInPublisher,
-  alignOffset = 0,
+  alignOffset,
   disabled = false,
   environmentPublisher,
   environmentPublisherKey,
@@ -60,7 +60,6 @@ export function PublisherPanel({
       />
       <PopoverContent
         ref={popupRef}
-        side="bottom"
         align="end"
         sideOffset={4}
         alignOffset={alignOffset}

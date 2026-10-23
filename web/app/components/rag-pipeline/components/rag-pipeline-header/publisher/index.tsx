@@ -113,7 +113,6 @@ const Publisher = () => {
           }
         />
         <PopoverContent
-          side="bottom"
           align="end"
           sideOffset={4}
           alignOffset={40}

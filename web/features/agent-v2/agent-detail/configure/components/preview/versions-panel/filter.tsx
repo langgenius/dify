@@ -61,7 +61,6 @@ export function VersionFilter({
         }
       />
       <PopoverContent
-        side="bottom"
         align="end"
         sideOffset={4}
         alignOffset={55}

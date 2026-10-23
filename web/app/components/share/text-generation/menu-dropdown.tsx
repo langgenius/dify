@@ -64,12 +64,7 @@ function MenuDropdown({ data, side, align, hideLogout }: Props) {
             </IconButton>
           }
         />
-        <DropdownMenuContent
-          side={side ?? 'bottom'}
-          align={align ?? 'end'}
-          sideOffset={4}
-          className="w-56"
-        >
+        <DropdownMenuContent side={side} align={align} className="w-56">
           <DropdownMenuRadioGroup
             value={theme ?? 'system'}
             onValueChange={setTheme}

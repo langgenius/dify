@@ -379,12 +379,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
                   </IconButton>
                 }
               />
-              <DropdownMenuContent
-                side="bottom"
-                align="end"
-                sideOffset={4}
-                className="w-max min-w-40"
-              >
+              <DropdownMenuContent className="w-max min-w-40">
                 <AgentCardActionMenuItems
                   kind="dropdown"
                   isExporting={isExporting}

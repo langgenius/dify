@@ -102,7 +102,6 @@ const AddCredentialInLoadBalancing = ({
       currentCustomConfigurationModelFixedFields={currentCustomConfigurationModelFixedFields}
       onItemClick={onSelectCredential}
       hideAddAction={!canCreateCredential}
-      side="bottom"
       align="start"
       popupTitle={
         isCustomModel

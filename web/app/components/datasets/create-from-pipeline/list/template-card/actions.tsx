@@ -54,7 +54,7 @@ const Actions = ({
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="bottom" align="end" sideOffset={4} className="min-w-40">
+          <DropdownMenuContent className="min-w-40">
             <DropdownMenuItem
               onClick={() => {
                 openEditModal()

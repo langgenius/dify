@@ -215,8 +215,6 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
         }
       />
       <PopoverContent
-        side="bottom"
-        align="center"
         sideOffset={0}
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >

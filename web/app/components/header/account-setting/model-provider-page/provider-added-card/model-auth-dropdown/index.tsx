@@ -54,7 +54,7 @@ function ModelAuthDropdown({
           </Button>
         }
       />
-      <PopoverContent side="bottom" align="end">
+      <PopoverContent align="end">
         <PopoverTitle className="sr-only">{buttonConfig.text}</PopoverTitle>
         {currentProvider ? (
           <DropdownContent

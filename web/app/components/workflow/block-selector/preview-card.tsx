@@ -12,7 +12,6 @@ export function BlockSelectorPreviewCardContent({ children }: { children: ReactN
     <PreviewCardPortal>
       <PreviewCardPositioner
         side="right"
-        align="center"
         className="h-(--positioner-height) w-(--positioner-width) max-w-(--available-width) transition-[top,left,right,bottom,transform] duration-180 ease-[cubic-bezier(0.22,1,0.36,1)] data-instant:transition-none motion-reduce:transition-none"
       >
         <PreviewCardPopup className="relative h-(--popup-height,auto) w-(--popup-width,auto) overflow-hidden rounded-xl bg-components-panel-bg shadow-lg transition-[width,height,transform,scale,opacity] duration-180 ease-[cubic-bezier(0.22,1,0.36,1)] data-instant:transition-none motion-reduce:transition-none">

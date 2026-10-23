@@ -161,10 +161,9 @@ export function JsonSchemaGenerator({ onApply, alignOffset }: JsonSchemaGenerato
         }
       />
       <PopoverContent
-        side="bottom"
         align="end"
         sideOffset={4}
-        alignOffset={alignOffset ?? 0}
+        alignOffset={alignOffset}
         className="border-none bg-transparent shadow-none"
       >
         {view === GENERATOR_VIEWS.promptEditor && (

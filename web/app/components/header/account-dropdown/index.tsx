@@ -84,12 +84,7 @@ function AppearanceSubmenu() {
           label={t(($) => $['account.appearanceLabel'], { ns: 'accountSettings' })}
         />
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent
-        side="right"
-        align="start"
-        sideOffset={6}
-        className="max-h-90 w-34.75 px-1"
-      >
+      <DropdownMenuSubContent side="right" sideOffset={6} className="max-h-90 w-34.75 px-1">
         <DropdownMenuRadioGroup<Theme>
           value={currentTheme}
           onValueChange={(nextTheme) => setTheme(nextTheme)}

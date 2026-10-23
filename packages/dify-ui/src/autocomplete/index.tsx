@@ -269,14 +269,12 @@ type AutocompletePositionerProps = BaseAutocomplete.Positioner.Props
 
 function AutocompletePositioner({
   className,
-  side = 'bottom',
   align = 'start',
   sideOffset = 4,
   ...props
 }: AutocompletePositionerProps) {
   return (
     <BaseAutocomplete.Positioner
-      side={side}
       align={align}
       sideOffset={sideOffset}
       className={(state) => cn(positionerClassName, resolveClassName(className, state))}

@@ -159,7 +159,7 @@ export function EnvironmentRowActions({
             </IconButton>
           }
         />
-        <DropdownMenuContent side="bottom" align="end" sideOffset={4} className="w-50">
+        <DropdownMenuContent className="w-50">
           {moreActions.map((action, index) => (
             <Fragment key={action.kind}>
               {action.kind === 'undeploy' && index > 0 && <DropdownMenuSeparator />}

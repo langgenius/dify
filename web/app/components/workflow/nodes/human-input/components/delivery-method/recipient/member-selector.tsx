@@ -49,7 +49,6 @@ const MemberSelector: FC<Props> = ({ value, email, onSelect, list = [] }) => {
         }
       />
       <PopoverContent
-        side="bottom"
         align="end"
         sideOffset={4}
         alignOffset={35}

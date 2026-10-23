@@ -112,7 +112,6 @@ function UnauthorizedCredentialStatus({
       isOpen={isOpen}
       onOpenChange={setIsOpen}
       sideOffset={4}
-      side="bottom"
       align="end"
       triggerPopupSameWidth={false}
       popupClassName="w-[360px]"
@@ -337,7 +336,7 @@ export const AgentProviderToolItem = memo(
                 </span>
                 <span aria-hidden className="i-ri-more-fill size-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent side="bottom" align="end" sideOffset={4} className="w-44">
+              <DropdownMenuContent className="w-44">
                 <DropdownMenuItem
                   variant="destructive"
                   className="gap-2"

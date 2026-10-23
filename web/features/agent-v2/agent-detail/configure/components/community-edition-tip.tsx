@@ -15,12 +15,7 @@ type CommunityEditionTipProps = Pick<PopoverContentProps, 'className' | 'side' |
  * Renders nothing on enterprise or cloud deployments, so callers do not repeat
  * the edition check.
  */
-export function CommunityEditionTip({
-  tip,
-  side = 'bottom',
-  align = 'center',
-  className,
-}: CommunityEditionTipProps) {
+export function CommunityEditionTip({ tip, side, align, className }: CommunityEditionTipProps) {
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

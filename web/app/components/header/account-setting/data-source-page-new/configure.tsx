@@ -66,7 +66,6 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
           }
         />
         <PopoverContent
-          side="bottom"
           align="end"
           sideOffset={4}
           alignOffset={-4}

@@ -291,14 +291,12 @@ type ComboboxPositionerProps = BaseCombobox.Positioner.Props
 
 function ComboboxPositioner({
   className,
-  side = 'bottom',
   align = 'start',
   sideOffset = 4,
   ...props
 }: ComboboxPositionerProps) {
   return (
     <BaseCombobox.Positioner
-      side={side}
       align={align}
       sideOffset={sideOffset}
       className={(state) => cn(positionerClassName, resolveClassName(className, state))}

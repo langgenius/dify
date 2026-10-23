@@ -59,8 +59,8 @@ type AgentSelectorMenuContentProps = Pick<DropdownMenuContentProps, 'side' | 'al
 }
 
 export function AgentSelectorMenuContent({
-  side = 'bottom',
-  align = 'end',
+  side,
+  align,
   onSelect,
   onStartFromScratch,
 }: AgentSelectorMenuContentProps) {
@@ -70,7 +70,6 @@ export function AgentSelectorMenuContent({
     <DropdownMenuContent
       side={side}
       align={align}
-      sideOffset={4}
       aria-label={t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
       className="w-60"
     >

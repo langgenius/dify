@@ -131,7 +131,6 @@ export default function AddMemberOrGroupDialog({
         }
       />
       <PopoverContent
-        side="bottom"
         align="end"
         alignOffset={300}
         className="relative w-100 overflow-hidden bg-components-panel-bg-blur p-0 backdrop-blur-[5px]"

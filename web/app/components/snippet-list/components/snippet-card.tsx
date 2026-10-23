@@ -206,7 +206,7 @@ const SnippetCard = ({
                     <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
                   </div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent side="bottom" align="end" sideOffset={4} className="w-54">
+                <DropdownMenuContent className="w-54">
                   {canCreateAndModifySnippet && (
                     <>
                       <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenEditDialog}>

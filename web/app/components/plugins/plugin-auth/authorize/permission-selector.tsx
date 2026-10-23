@@ -74,12 +74,7 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
           className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-data-disabled/permission-trigger:text-components-input-text-placeholder! group-data-popup-open/permission-trigger:text-text-secondary"
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        side="bottom"
-        align="start"
-        sideOffset={4}
-        className="w-(--anchor-width) max-w-(--available-width)"
-      >
+      <DropdownMenuContent align="start" className="w-(--anchor-width) max-w-(--available-width)">
         <DropdownMenuRadioGroup<CredentialPermission>
           value={permission}
           onValueChange={onChange}

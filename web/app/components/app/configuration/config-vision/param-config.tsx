@@ -20,12 +20,7 @@ const ParamsConfig: FC = () => {
           </Button>
         }
       />
-      <PopoverContent
-        side="bottom"
-        align="end"
-        sideOffset={4}
-        className="border-none bg-transparent shadow-none"
-      >
+      <PopoverContent align="end" sideOffset={4} className="border-none bg-transparent shadow-none">
         <div className="w-80 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-lg sm:w-103">
           <PopoverTitle className="text-base/6 font-semibold text-text-primary">
             {t(($) => $['vision.visionSettings.title'], { ns: 'fileUpload' })}

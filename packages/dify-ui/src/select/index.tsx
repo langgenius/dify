@@ -157,20 +157,16 @@ type SelectPortalProps = BaseSelect.Portal.Props
 type SelectPositionerProps = BaseSelect.Positioner.Props
 
 function SelectPositioner({
-  side = 'bottom',
   align = 'start',
   sideOffset = 4,
-  alignOffset = 0,
   alignItemWithTrigger = false,
   className,
   ...props
 }: SelectPositionerProps) {
   return (
     <BaseSelect.Positioner
-      side={side}
       align={align}
       sideOffset={sideOffset}
-      alignOffset={alignOffset}
       alignItemWithTrigger={alignItemWithTrigger}
       className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
@@ -218,10 +214,10 @@ type SelectContentProps = Omit<SelectPopupProps, 'children'> &
 
 function SelectContent({
   children,
-  side = 'bottom',
-  align = 'start',
-  sideOffset = 4,
-  alignOffset = 0,
+  side,
+  align,
+  sideOffset,
+  alignOffset,
   className,
   ...props
 }: SelectContentProps) {

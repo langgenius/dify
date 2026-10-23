@@ -41,6 +41,14 @@ describe('context-menu wrapper', () => {
 
       await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'bottom')
       await expect.element(screen.getByRole('menu')).toHaveAttribute('data-align', 'start')
+      const triggerRect = screen.getByLabelText('context trigger').element().getBoundingClientRect()
+      await expect
+        .poll(() => screen.getByRole('menu').element().getBoundingClientRect().left)
+        .toBeCloseTo(triggerRect.left + 8, 0)
+      await expect
+        .poll(() => screen.getByRole('menu').element().getBoundingClientRect().top)
+        .toBeCloseTo(triggerRect.top + 8, 0)
+
       await expect
         .element(screen.getByRole('menuitem', { name: 'Content action' }))
         .toBeInTheDocument()

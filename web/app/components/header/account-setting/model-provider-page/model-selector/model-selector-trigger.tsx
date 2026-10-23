@@ -250,11 +250,7 @@ function ModelSelectorTrigger({
           </PopoverTrigger>
         }
       />
-      {triggerTooltipLabel && (
-        <TooltipContent side="top" align="center">
-          {triggerTooltipLabel}
-        </TooltipContent>
-      )}
+      {triggerTooltipLabel && <TooltipContent>{triggerTooltipLabel}</TooltipContent>}
     </Tooltip>
   )
 

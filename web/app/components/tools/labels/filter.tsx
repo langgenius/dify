@@ -64,7 +64,6 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
           </button>
         )}
         <PopoverContent
-          side="bottom"
           align="start"
           sideOffset={4}
           className="w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"

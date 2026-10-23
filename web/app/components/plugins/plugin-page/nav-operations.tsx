@@ -109,11 +109,11 @@ export function SubmitRequestDropdownMenu({
             />
           }
         />
-        <TooltipContent side="bottom" align="center" role="tooltip">
+        <TooltipContent side="bottom" role="tooltip">
           {guideLabel}
         </TooltipContent>
       </Tooltip>
-      <DropdownMenuContent side="bottom" align="end" sideOffset={4} className="min-w-50 p-1">
+      <DropdownMenuContent className="min-w-50 p-1">
         {options.map((option, index) => (
           <Fragment key={option.href}>
             {dividerAfterFirst && index === 1 && <DropdownMenuSeparator className="my-1" />}

@@ -79,7 +79,6 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
         </Tooltip>
       )}
       <PopoverContent
-        side="bottom"
         align={withText ? 'start' : 'end'}
         sideOffset={4}
         alignOffset={withText ? -8 : 10}

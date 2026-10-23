@@ -63,7 +63,6 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
             }
           />
           <PopoverContent
-            side="bottom"
             align="end"
             sideOffset={3}
             alignOffset={-147}

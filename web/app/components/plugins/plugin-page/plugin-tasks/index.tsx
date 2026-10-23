@@ -136,7 +136,7 @@ const PluginTasks = ({ animatedSlot = false, anchor }: PluginTasksProps) => {
           disabled={!canOpenPopover}
         />
         <PopoverPortal>
-          <PopoverPositioner side="bottom" align="start" sideOffset={4} anchor={anchor}>
+          <PopoverPositioner align="start" sideOffset={4} anchor={anchor}>
             <PopoverPopup aria-label={tip}>
               <PluginTaskList
                 runningPlugins={runningPlugins}

@@ -143,7 +143,6 @@ function VersionFilter({
         }
       />
       <PopoverContent
-        side="bottom"
         align="end"
         sideOffset={4}
         alignOffset={55}
@@ -323,7 +322,7 @@ function VersionRow({
             >
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="bottom" align="end" sideOffset={4} className="w-46">
+            <DropdownMenuContent className="w-46">
               <DropdownMenuItem onClick={() => setRestoreOpen(true)}>
                 {t(($) => $['skillManagement.detail.restoreVersion'])}
               </DropdownMenuItem>

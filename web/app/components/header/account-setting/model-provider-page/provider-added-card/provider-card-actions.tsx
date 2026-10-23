@@ -254,7 +254,6 @@ function ProviderCardActions(props: Props) {
           ))}
         <DropdownMenuContent
           className="max-h-[min(16rem,var(--available-height))]"
-          side="bottom"
           align="start"
           aria-labelledby={versionMenuLabelId}
         >
@@ -339,7 +338,6 @@ function ProviderCardActions(props: Props) {
         onCheckVersion={handleUpdate}
         onRemove={() => setShowDeleteConfirm(true)}
         detailUrl={detailUrl}
-        side="bottom"
         align="start"
         destructiveRemove
         showCheckVersion={canUpdatePlugin}

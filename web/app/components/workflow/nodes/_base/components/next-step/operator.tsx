@@ -97,7 +97,7 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
         }
       />
       <DropdownMenuPortal>
-        <DropdownMenuPositioner side="bottom" align="end" sideOffset={4} alignOffset={-4}>
+        <DropdownMenuPositioner align="end" alignOffset={-4}>
           <DropdownMenuPopup>
             <div className="min-w-30 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
               <div className="p-1">

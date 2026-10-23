@@ -242,7 +242,7 @@ export function SkillTagsEditor({
               </span>
             </ComboboxTrigger>
             <ComboboxPortal>
-              <ComboboxPositioner side="bottom" align="start" sideOffset={4}>
+              <ComboboxPositioner>
                 <ComboboxPopup className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]">
                   <TagSearchContentView
                     type="skill"

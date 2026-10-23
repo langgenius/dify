@@ -70,7 +70,7 @@ function BlockSelector({
   triggerRef,
   finalFocus,
   side = 'right',
-  align = 'center',
+  align,
   sideOffset,
   alignOffset,
   triggerClassName,

@@ -80,9 +80,9 @@ type InfotipContentProps = Omit<BasePopover.Popup.Props, 'children'> &
 
 function InfotipContent({
   side = 'top',
-  align = 'center',
+  align,
   sideOffset = 8,
-  alignOffset = 0,
+  alignOffset,
   className,
   ...props
 }: InfotipContentProps) {

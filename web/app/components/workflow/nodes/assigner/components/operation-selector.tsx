@@ -81,12 +81,7 @@ function OperationSelector({
         />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent
-        side="bottom"
-        align="start"
-        sideOffset={4}
-        className={cn('w-35', popupClassName)}
-      >
+      <DropdownMenuContent align="start" className={cn('w-35', popupClassName)}>
         <DropdownMenuGroup>
           <DropdownMenuGroupLabel>
             {t(($) => $['nodes.assigner.operations.title'], { ns: 'workflowLogic' })}

@@ -59,7 +59,7 @@ const Operator = ({
           </IconButton>
         }
       />
-      <DropdownMenuContent side="bottom" align="end" sideOffset={4} className="min-w-50">
+      <DropdownMenuContent className="min-w-50">
         <DropdownMenuItem
           disabled={!canUseCredential}
           className="h-auto gap-2 py-2"

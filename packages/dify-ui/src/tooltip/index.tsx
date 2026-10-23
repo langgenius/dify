@@ -25,10 +25,10 @@ type TooltipContentProps = Omit<BaseTooltip.Popup.Props, 'children'> &
 
 function TooltipContent({
   children,
-  side = 'top',
-  align = 'center',
+  side,
+  align,
   sideOffset = 8,
-  alignOffset = 0,
+  alignOffset,
   className,
   ...props
 }: TooltipContentProps) {

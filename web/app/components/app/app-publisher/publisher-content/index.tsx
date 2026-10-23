@@ -43,7 +43,7 @@ type PublisherContentProps = AppPublisherProps & {
 export function PublisherContent({
   appDetail,
   canViewAccessPoint,
-  alignOffset = 0,
+  alignOffset,
   debugWithMultipleModel = false,
   disabled = false,
   draftUpdatedAt,

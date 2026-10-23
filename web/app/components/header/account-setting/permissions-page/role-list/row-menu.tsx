@@ -117,7 +117,7 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
             </IconButton>
           }
         />
-        <DropdownMenuContent side="bottom" align="end" sideOffset={4} className="min-w-40">
+        <DropdownMenuContent className="min-w-40">
           {hasViewAction && (
             <DropdownMenuItem
               className="system-sm-semibold text-text-secondary"

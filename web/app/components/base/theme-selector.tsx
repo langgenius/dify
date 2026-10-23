@@ -48,7 +48,7 @@ export default function ThemeSelector() {
           </IconButton>
         }
       />
-      <DropdownMenuContent side="bottom" align="end" sideOffset={6} className="w-36">
+      <DropdownMenuContent sideOffset={6} className="w-36">
         <DropdownMenuRadioGroup<Theme>
           value={currentTheme}
           onValueChange={(nextTheme) => setTheme(nextTheme)}

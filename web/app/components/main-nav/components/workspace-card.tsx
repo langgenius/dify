@@ -330,7 +330,6 @@ export function WorkspaceCard() {
           onPlanClick={() => setPricing('open')}
         />
         <PopoverContent
-          side="bottom"
           align="start"
           sideOffset={-workspaceMenuTriggerHeight}
           alignOffset={workspaceMenuAlignOffset}

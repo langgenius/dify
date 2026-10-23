@@ -58,8 +58,8 @@ type ContextMenuContentProps = Omit<BaseContextMenu.Popup.Props, 'children'> &
 
 function ContextMenuContent({
   children,
-  side = 'bottom',
-  align = 'start',
+  side,
+  align,
   sideOffset = 0,
   alignOffset = 0,
   className,
@@ -223,13 +223,12 @@ function ContextMenuSubTrigger({
 
 type ContextMenuSubContentProps = ContextMenuContentProps
 
-// Base UI's own submenu default: it opens away from the trigger and follows the text direction.
 function ContextMenuSubContent({
   children,
-  side = 'inline-end',
-  align = 'start',
+  side,
+  align,
   sideOffset = 4,
-  alignOffset = 0,
+  alignOffset,
   className,
   ...props
 }: ContextMenuSubContentProps) {

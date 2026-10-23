@@ -173,11 +173,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                       </button>
                     }
                   />
-                  <PopoverContent
-                    side="bottom"
-                    align="center"
-                    className="flex w-[320px] items-center self-stretch px-3 py-2"
-                  >
+                  <PopoverContent className="flex w-[320px] items-center self-stretch px-3 py-2">
                     <div className="p-1">
                       <div className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-2">
                         <div className="system-xs-medium-uppercase text-text-tertiary">{`${datasetBindings?.length} ${t(($) => $.editExternalAPITooltipTitle, { ns: 'dataset' })}`}</div>

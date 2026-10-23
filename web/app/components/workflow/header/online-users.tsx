@@ -163,7 +163,7 @@ const OnlineUsers = () => {
                     )
                   }
                 />
-                <TooltipContent side="bottom" align="center" sideOffset={4} className="max-w-55">
+                <TooltipContent side="bottom" sideOffset={4} className="max-w-55">
                   {displayName}
                   {isCurrentUser && (
                     <span className="ml-1 text-text-quaternary">{currentUserSuffix}</span>
@@ -190,9 +190,7 @@ const OnlineUsers = () => {
                 }
               />
               <PopoverContent
-                side="bottom"
                 align="start"
-                sideOffset={8}
                 alignOffset={-48}
                 className={cn(
                   'mt-1.5 flex max-h-50 w-60 flex-col overflow-y-auto',

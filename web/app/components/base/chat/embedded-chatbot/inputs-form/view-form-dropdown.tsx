@@ -28,7 +28,6 @@ const ViewFormDropdown = ({ iconColor }: Props) => {
         }
       />
       <PopoverContent
-        side="bottom"
         align="end"
         sideOffset={4}
         alignOffset={4}

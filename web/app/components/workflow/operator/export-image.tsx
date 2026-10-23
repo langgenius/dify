@@ -170,7 +170,7 @@ const ExportImage = memo(() => {
             }
           />
         </TipPopup>
-        <DropdownMenuContent side="right" align="end" className="min-w-45">
+        <DropdownMenuContent side="right" className="min-w-45">
           <DropdownMenuGroup>
             <DropdownMenuGroupLabel>
               {t(($) => $['common.currentView'], { ns: 'workflow' })}

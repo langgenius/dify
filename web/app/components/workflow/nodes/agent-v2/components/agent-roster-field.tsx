@@ -214,12 +214,7 @@ function AgentRosterDrawer({
                           >
                             <span aria-hidden className="i-ri-more-fill size-4" />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            side="bottom"
-                            align="end"
-                            sideOffset={4}
-                            className="w-max min-w-44"
-                          >
+                          <DropdownMenuContent className="w-max min-w-44">
                             <DropdownMenuItem
                               className="gap-2 whitespace-nowrap"
                               onClick={onSaveInlineToRoster}
@@ -449,12 +444,7 @@ export function AgentRosterField({
           >
             {t(($) => $[`${i18nPrefix}.roster.change`], { ns: 'workflowAgent' })}
           </AgentSelectorMenuTrigger>
-          <AgentSelectorMenuContent
-            side="bottom"
-            align="end"
-            onSelect={onChange}
-            onStartFromScratch={onStartFromScratch}
-          />
+          <AgentSelectorMenuContent onSelect={onChange} onStartFromScratch={onStartFromScratch} />
         </AgentSelectorMenu>
       </div>
       {errorMessage ? (

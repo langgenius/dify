@@ -274,7 +274,6 @@ const DetailHeader = ({
               )}
               <DropdownMenuContent
                 className="max-h-[min(16rem,var(--available-height))]"
-                side="bottom"
                 align="start"
                 aria-labelledby={versionMenuLabelId}
               >

@@ -32,7 +32,7 @@ const Dropdown = ({ startIndex, breadcrumbs, onBreadcrumbClick }: DropdownProps)
               </IconButton>
             }
           />
-          <DropdownMenuContent side="bottom" align="start" className="w-34 px-1">
+          <DropdownMenuContent align="start" className="w-34 px-1">
             {breadcrumbs.map((breadcrumb, index) => (
               <DropdownMenuItem
                 key={breadcrumbs.slice(0, index + 1).join('/')}

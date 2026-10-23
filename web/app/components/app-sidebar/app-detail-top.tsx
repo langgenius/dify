@@ -90,7 +90,7 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
               />
             }
           />
-          <TooltipContent side="bottom" align="center" className="flex items-center gap-1">
+          <TooltipContent side="bottom" className="flex items-center gap-1">
             <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
             <KbdGroup>
               {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (

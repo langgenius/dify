@@ -128,7 +128,7 @@ export function AppPicker({
         {trigger}
       </ComboboxTrigger>
       <ComboboxPortal>
-        <ComboboxPositioner side="bottom" align="center" sideOffset={4}>
+        <ComboboxPositioner align="center">
           <ComboboxPopup
             aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
             className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"

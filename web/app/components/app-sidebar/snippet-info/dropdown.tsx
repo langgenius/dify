@@ -134,7 +134,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
             </IconButton>
           }
         />
-        <DropdownMenuContent side="bottom" align="end" sideOffset={4} className="w-45 p-1">
+        <DropdownMenuContent className="w-45 p-1">
           {canCreateAndModifySnippet && (
             <>
               <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>

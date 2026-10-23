@@ -152,13 +152,7 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
               onKeyDown={handleKeyDown}
             />
             <PopoverPortal>
-              <PopoverPositioner
-                side="bottom"
-                align="start"
-                sideOffset={4}
-                alignOffset={-40}
-                anchor={inputRef}
-              >
+              <PopoverPositioner align="start" sideOffset={4} alignOffset={-40} anchor={inputRef}>
                 <PopoverPopup
                   className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
                   initialFocus={false}

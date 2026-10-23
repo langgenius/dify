@@ -77,7 +77,6 @@ const Add = ({ nodeId, nodeData, sourceHandle, isParallel, isFailBranch }: AddPr
         prevNodeSourceHandle: sourceHandle,
       }}
       side="top"
-      align="center"
       sideOffset={0}
       trigger={triggerElement}
       popupClassName="w-[328px]!"

@@ -40,7 +40,7 @@ export function DetailSidebarToggleButton({
           </IconButton>
         }
       />
-      <TooltipContent side="right" align="center" className="flex items-center gap-1">
+      <TooltipContent side="right" className="flex items-center gap-1">
         <span className="px-0.5">{label}</span>
         <KbdGroup>
           {formatForDisplay(DETAIL_SIDEBAR_TOGGLE_HOTKEY, { parts: true }).map((key) => (

@@ -68,7 +68,7 @@ const Authorized = ({
   renderTrigger,
   isOpen,
   onOpenChange,
-  side = 'bottom',
+  side,
   align = 'end',
   popupClassName,
   showItemSelectedIcon,

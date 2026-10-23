@@ -136,7 +136,6 @@ const RetrievalConfig: FC<Props> = ({
         }
       />
       <PopoverContent
-        side="bottom"
         align="end"
         sideOffset={0}
         alignOffset={-2}

@@ -395,12 +395,7 @@ const Operations = ({
                 />
               </div>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side="bottom"
-              align="end"
-              sideOffset={4}
-              className={cn('w-50', className)}
-            >
+            <DropdownMenuContent className={cn('w-50', className)}>
               {canShowPrimarySection && (
                 <>
                   {canShowRenameAction && (

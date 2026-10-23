@@ -81,9 +81,7 @@ function KeyValueItem({
               </IconButton>
             }
           />
-          <TooltipContent side="top" align="center">
-            {tooltipLabel}
-          </TooltipContent>
+          <TooltipContent>{tooltipLabel}</TooltipContent>
         </Tooltip>
       </div>
       <span role="status" aria-atomic="true" className="sr-only">

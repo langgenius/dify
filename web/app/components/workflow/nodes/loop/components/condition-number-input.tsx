@@ -61,7 +61,6 @@ const ConditionNumberInput = ({
           <RiArrowDownSLine className="size-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          side="bottom"
           align="start"
           sideOffset={2}
           className="w-28 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
@@ -110,7 +109,6 @@ const ConditionNumberInput = ({
             </PopoverTrigger>
             <PopoverContent
               initialFocus={searchInputRef}
-              side="bottom"
               align="start"
               sideOffset={2}
               className="border-none bg-transparent shadow-none"

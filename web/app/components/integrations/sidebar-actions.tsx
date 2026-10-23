@@ -47,9 +47,7 @@ function PermissionTooltipWrapper({
   return (
     <Tooltip>
       <TooltipTrigger render={trigger} />
-      <TooltipContent side="bottom" sideOffset={8}>
-        {content}
-      </TooltipContent>
+      <TooltipContent side="bottom">{content}</TooltipContent>
     </Tooltip>
   )
 }
