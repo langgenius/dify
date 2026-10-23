@@ -12,8 +12,10 @@ from configs import dify_config
 from constants.end_user_connections import ConnectionCredentialStatus
 from context.connection_execution import ConnectionExecutionContext, ExecutionConnectionSelection
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.plugin.plugin_service import PluginService
 from core.tools.entities.tool_entities import ToolParameter
 from core.tools.tool_manager import ToolManager
+from core.tools.utils.system_encryption import encrypt_system_params
 from core.workflow.node_runtime import DifyToolNodeRuntime
 from extensions import ext_application_services
 from graphon.nodes.tool.entities import ToolNodeData
@@ -21,7 +23,8 @@ from graphon.nodes.tool.exc import ToolRuntimeResolutionError
 from graphon.runtime import VariablePool
 from models.end_user_connection import EndUserConnection
 from models.model import App, EndUser
-from models.tools import ToolOAuthTenantClient
+from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
+from models.workflow import Workflow
 from services import end_user_connection_runtime_adapters as adapters
 from services.end_user_connections.contracts import UpdateConnectionInput
 from services.end_user_connections.runtime import ConnectionRuntimeService
@@ -55,7 +58,11 @@ def node_data(**updates: object) -> dict[str, object]:
         "tool_configurations": {},
         "tool_parameters": {},
         "credential_source": "end_user",
-        "end_user_auth": {"allowed_credential_types": ["api-key", "oauth2"], "purpose": "Read calendar"},
+        "end_user_auth": {
+            "allowed_credential_types": ["api-key", "oauth2"],
+            "oauth_client_type": "custom",
+            "purpose": "Read calendar",
+        },
         **updates,
     }
 
@@ -235,6 +242,42 @@ def test_oauth_refresh_preserves_connection_id_and_checks_current_client(harness
         )
     with pytest.raises(ToolRuntimeResolutionError, match="OAuth client"):
         loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
+
+
+def test_runtime_respects_fixed_graph_client_selection(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> None:
+    custom = harness.finish(harness.start())
+    with harness.base.sessions.begin() as session:
+        session.add(
+            ToolOAuthSystemClient(
+                plugin_id="vendor/calendar",
+                provider="calendar",
+                encrypted_oauth_params=encrypt_system_params({"client_id": "platform-client"}),
+            )
+        )
+        workflow = session.get(Workflow, harness.base.workflow_id)
+        assert workflow is not None
+        graph = workflow.graph_dict
+        graph["nodes"][0]["data"]["end_user_auth"]["oauth_client_type"] = "default"
+        workflow.graph = json.dumps(graph)
+    monkeypatch.setattr(PluginService, "is_plugin_verified", lambda _tenant_id, _unique_id: True)
+    default = harness.finish(harness.start())
+    data = node_data(
+        end_user_auth={"allowed_credential_types": ["oauth2"], "oauth_client_type": "default", "purpose": "Read"}
+    )
+    for selected in (default, custom):
+        loader = DifyToolNodeRuntime(
+            context(harness, {"tool-1": selected.id}),
+            workflow_id=harness.base.workflow_id,
+            graph={"nodes": [{"id": "tool-1", "data": data}]},
+        )
+        if selected == custom:
+            with pytest.raises(ToolRuntimeResolutionError, match="OAuth client"):
+                loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(data), variable_pool=None)
+        else:
+            handle = loader.get_runtime(
+                node_id="tool-1", node_data=ToolNodeData.model_validate(data), variable_pool=None
+            )
+            assert loader._tool_from_handle(handle).runtime.connection_id == default.id
 
 
 @pytest.mark.parametrize("failure", ["tenant", "app", "user", "workflow", "debugger"])

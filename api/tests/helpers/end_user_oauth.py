@@ -157,7 +157,9 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
         workflow = session.get(Workflow, base.workflow_id)
         assert workflow is not None
         graph = workflow.graph_dict
-        graph["nodes"][0]["data"]["end_user_auth"]["allowed_credential_types"] = ["api-key", "oauth2"]
+        graph["nodes"][0]["data"]["end_user_auth"].update(
+            allowed_credential_types=["api-key", "oauth2"], oauth_client_type="custom"
+        )
         workflow.graph = json.dumps(graph)
         config = ToolOAuthTenantClient(
             tenant_id=base.context.tenant_id, plugin_id="vendor/calendar", provider="calendar"

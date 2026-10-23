@@ -66,7 +66,9 @@ def require_creation_target(
         or credential_type not in target.provider_credential_types
     ):
         raise ConnectionConfigurationError()
-    if credential_type == ConnectionCredentialType.OAUTH2 and target.oauth_client is None:
+    if credential_type == ConnectionCredentialType.OAUTH2 and (
+        target.oauth_client is None or target.oauth_client.source != target.oauth_client_source
+    ):
         raise ConnectionConfigurationError()
 
 
@@ -92,8 +94,13 @@ def require_applicable_connection(
         or owned.credential_type not in target.provider_credential_types
     ):
         raise ConnectionConfigurationError()
-    if owned.credential_type == ConnectionCredentialType.OAUTH2 and owned.oauth_client != target.oauth_client:
-        raise ConnectionReauthorizationRequiredError()
+    if owned.credential_type == ConnectionCredentialType.OAUTH2:
+        if (
+            target.oauth_client is None
+            or target.oauth_client.source != target.oauth_client_source
+            or owned.oauth_client != target.oauth_client
+        ):
+            raise ConnectionReauthorizationRequiredError()
     return owned
 
 

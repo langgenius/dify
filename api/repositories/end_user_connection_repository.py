@@ -494,9 +494,11 @@ class EndUserConnectionRepository:
             if result.rowcount != 1:
                 raise ConnectionConflictError()
 
-    def oauth_client_configuration(self, tenant_id: str, provider: str) -> StoredOAuthClientConfiguration:
+    def oauth_client_configuration(
+        self, tenant_id: str, provider: str, source: OAuthClientSource
+    ) -> StoredOAuthClientConfiguration:
         with self._sessions() as session:
-            return self._oauth_client_configuration(session, tenant_id, provider, lock=False)
+            return self._oauth_client_configuration(session, tenant_id, provider, source, lock=False)
 
     def oauth_grant_client_configuration(
         self, tenant_id: str, provider: str, reference: ConnectionOAuthClient
@@ -550,7 +552,9 @@ class EndUserConnectionRepository:
             )
             if row is None:
                 raise ConnectionConflictError()
-            current_client = self._oauth_client_configuration(session, context.tenant_id, row.provider, lock=True)
+            current_client = self._oauth_client_configuration(
+                session, context.tenant_id, row.provider, client.reference.source, lock=True
+            )
             if (
                 current_client.source != client.reference.source
                 or current_client.configuration_id != client.reference.configuration_id
@@ -578,37 +582,30 @@ class EndUserConnectionRepository:
 
     @staticmethod
     def _oauth_client_configuration(
-        session: Session, tenant_id: str, provider: str, *, lock: bool
+        session: Session, tenant_id: str, provider: str, source: OAuthClientSource, *, lock: bool
     ) -> StoredOAuthClientConfiguration:
         identity = ToolProviderID(provider)
-        tenant_stmt = sa.select(ToolOAuthTenantClient).where(
-            ToolOAuthTenantClient.tenant_id == tenant_id,
-            ToolOAuthTenantClient.plugin_id == identity.plugin_id,
-            ToolOAuthTenantClient.provider == identity.provider_name,
-            ToolOAuthTenantClient.enabled.is_(True),
-        )
-        if lock:
-            tenant_stmt = tenant_stmt.with_for_update()
-        tenant_client = session.scalar(tenant_stmt)
-        if tenant_client is not None:
-            return StoredOAuthClientConfiguration(
-                source=OAuthClientSource.WORKSPACE,
-                configuration_id=tenant_client.id,
-                encrypted_parameters=tenant_client.encrypted_oauth_params,
+        if source == OAuthClientSource.WORKSPACE:
+            stmt = sa.select(ToolOAuthTenantClient).where(
+                ToolOAuthTenantClient.tenant_id == tenant_id,
+                ToolOAuthTenantClient.plugin_id == identity.plugin_id,
+                ToolOAuthTenantClient.provider == identity.provider_name,
+                ToolOAuthTenantClient.enabled.is_(True),
             )
-        system_stmt = sa.select(ToolOAuthSystemClient).where(
-            ToolOAuthSystemClient.plugin_id == identity.plugin_id,
-            ToolOAuthSystemClient.provider == identity.provider_name,
-        )
+        else:
+            stmt = sa.select(ToolOAuthSystemClient).where(
+                ToolOAuthSystemClient.plugin_id == identity.plugin_id,
+                ToolOAuthSystemClient.provider == identity.provider_name,
+            )
         if lock:
-            system_stmt = system_stmt.with_for_update()
-        system_client = session.scalar(system_stmt)
-        if system_client is None:
+            stmt = stmt.with_for_update()
+        client = session.scalar(stmt)
+        if client is None:
             raise ConnectionReauthorizationRequiredError()
         return StoredOAuthClientConfiguration(
-            source=OAuthClientSource.PLATFORM,
-            configuration_id=system_client.id,
-            encrypted_parameters=system_client.encrypted_oauth_params,
+            source=source,
+            configuration_id=client.id,
+            encrypted_parameters=client.encrypted_oauth_params,
         )
 
     def save_oauth(
@@ -622,8 +619,10 @@ class EndUserConnectionRepository:
         context = attempt.context
         with self._sessions.begin() as session:
             app = self._require_context(session, context, lock=True)
-            current = self._oauth_client_configuration(session, context.tenant_id, attempt.provider, lock=True)
             client = attempt.client.reference
+            current = self._oauth_client_configuration(
+                session, context.tenant_id, attempt.provider, client.source, lock=True
+            )
             if (
                 current.source != client.source
                 or current.configuration_id != client.configuration_id
