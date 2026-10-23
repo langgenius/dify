@@ -152,6 +152,8 @@ def test_agent_stub_file_download_and_config_routes_return_structured_401_for_ex
             json={"file": {"transfer_method": "tool_file", "reference": _reference("tool-file-1")}},
         ),
         client.get("/agent-stub/config/manifest", headers=headers),
+        client.get("/agent-stub/config/prompt", headers=headers),
+        client.put("/agent-stub/config/prompt", headers=headers, json={"prompt": "new"}),
     ]
 
     for response in responses:

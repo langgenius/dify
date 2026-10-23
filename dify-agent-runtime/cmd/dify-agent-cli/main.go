@@ -31,8 +31,8 @@ func main() {
 
 func runCLI(args []string) error {
 	// Hidden developer intercept: emit the JSON help snapshot from the cobra
-	// tree. Not registered as a cobra command, so the visible command surface
-	// stays identical to the Python CLI. See dumphelp.go.
+	// tree. It is not registered as a cobra command, so developer-only help
+	// generation stays out of the visible CLI. See dumphelp.go.
 	if len(args) == 1 && args[0] == "__dump-cli-help" {
 		return dumpCLIHelp(os.Stdout)
 	}
@@ -163,6 +163,7 @@ func newConfigCommand() *cobra.Command {
 		newConfigFilePullAliasCommand(),
 		newConfigEnvCommand(),
 		newConfigNoteCommand(),
+		newConfigPromptCommand(),
 	)
 	return cmd
 }
@@ -291,6 +292,45 @@ func newConfigEnvCommand() *cobra.Command {
 		}),
 	}
 	cmd.AddCommand(push)
+	return cmd
+}
+
+func newConfigPromptCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "prompt",
+		Short: "Pull or replace the raw system prompt, including mention markers.",
+	}
+
+	var pullTo string
+	pull := &cobra.Command{
+		Use:   "pull",
+		Short: "Export the raw system prompt into ./.dify_conf/prompt.md by default.",
+		Args:  cobra.NoArgs,
+		RunE: withEnv(func(env *agentcli.Environment, _ []string, _ *cobra.Command) error {
+			return agentcli.RunConfigPromptPull(env, pullTo)
+		}),
+	}
+	pull.Flags().StringVar(&pullTo, "to", "", "Local UTF-8 text file path.")
+
+	push := &cobra.Command{
+		Use:   "push [PATH|-]",
+		Short: "Replace the build-draft prompt from a UTF-8 file or stdin; empty text clears it.",
+		Long: "Replace the build-draft system prompt from a UTF-8 file or stdin (-). " +
+			"Defaults to ./.dify_conf/prompt.md and prints the saved prompt as JSON. " +
+			"Empty text clears the prompt. " +
+			"Only subsequent run requests built from this draft use the saved prompt; " +
+			"already-built run requests keep their prompt.",
+		Args: cobra.MaximumNArgs(1),
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			localPath := ""
+			if len(args) > 0 {
+				localPath = args[0]
+			}
+			return agentcli.RunConfigPromptPush(env, localPath)
+		}),
+	}
+
+	cmd.AddCommand(pull, push)
 	return cmd
 }
 
