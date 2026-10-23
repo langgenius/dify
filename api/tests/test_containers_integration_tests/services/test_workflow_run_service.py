@@ -16,6 +16,7 @@ from models.model import (
     Message,
 )
 from models.workflow import WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app_service import AppService, CreateAppParams
@@ -146,7 +147,7 @@ class TestWorkflowRunService:
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=str(uuid.uuid4()),
-            type="chat",
+            type=ModelWorkflowType("chat"),
             triggered_from=triggered_from,
             version="1.0.0",
             graph=json.dumps({"nodes": [], "edges": []}),
@@ -158,9 +159,9 @@ class TestWorkflowRunService:
             total_steps=3,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=created_time,
             finished_at=created_time,
         )
+        workflow_run.created_at = created_time
 
         db_session_with_containers.add(workflow_run)
         db_session_with_containers.commit()
@@ -526,8 +527,8 @@ class TestWorkflowRunService:
                 execution_metadata=json.dumps({"tokens": 50}),
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC),
             )
+            node_execution.created_at = datetime.now(UTC)
             db_session_with_containers.add(node_execution)
             node_executions.append(node_execution)
 
@@ -548,8 +549,8 @@ class TestWorkflowRunService:
             execution_metadata=json.dumps({"tokens": 0}),
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
         )
+        paused_node_execution.created_at = datetime.now(UTC)
         db_session_with_containers.add(paused_node_execution)
 
         db_session_with_containers.commit()

@@ -16,6 +16,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, AppMode, InstalledApp, Tenant
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -114,7 +115,7 @@ def runtime(
                 app_id=harness.target_app.id,
                 workflow_id="workflow-1",
                 task_id=_TASK_ID,
-                type=WorkflowType.WORKFLOW,
+                type=ModelWorkflowType(WorkflowType.WORKFLOW),
                 triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
                 version="1",
                 status=WorkflowExecutionStatus.RUNNING,

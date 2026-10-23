@@ -118,10 +118,10 @@ def test_persisted_workflow_uses_one_acknowledged_protobuf_batch_and_preserves_b
         total_tokens=32,
         created_by=account.id,
         created_by_role=CreatorUserRole.ACCOUNT,
-        created_at=START,
         finished_at=START + timedelta(seconds=1),
         elapsed_time=1,
     )
+    run.created_at = START
     sqlite_session.add_all([tenant, account, app, membership, run])
     nodes = [
         WorkflowNodeExecutionModel(
@@ -142,7 +142,6 @@ def test_persisted_workflow_uses_one_acknowledged_protobuf_batch_and_preserves_b
             outputs=json.dumps(
                 {"text": "ok", "usage": {"prompt_tokens": 21, "completion_tokens": 11, "total_tokens": 32}}
             ),
-            created_at=START + timedelta(milliseconds=i),
             finished_at=START + timedelta(milliseconds=i + 100),
             elapsed_time=0.1,
             process_data=json.dumps(
@@ -155,6 +154,8 @@ def test_persisted_workflow_uses_one_acknowledged_protobuf_batch_and_preserves_b
             [("Start", BuiltinNodeTypes.START), ("LLM", BuiltinNodeTypes.LLM), ("End", BuiltinNodeTypes.END)]
         )
     ]
+    for trace_node_index, trace_node_record in enumerate(nodes):
+        trace_node_record.created_at = START + timedelta(milliseconds=trace_node_index)
     sqlite_session.add_all(nodes)
     sqlite_session.commit()
     info = WorkflowTraceInfo(

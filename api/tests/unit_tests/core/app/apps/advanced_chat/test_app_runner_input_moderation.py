@@ -50,7 +50,7 @@ def build_runner(sqlite_session: Session):
         type=WorkflowType.CHAT,
         version=Workflow.VERSION_DRAFT,
         graph=json.dumps(MINIMAL_GRAPH),
-        features="{}",
+        _features="{}",
         created_by=str(uuid4()),
     )
 

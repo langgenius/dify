@@ -14,6 +14,7 @@ from models import App
 from models.enums import EndUserType
 from models.model import EndUser
 from models.workflow import Workflow
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -218,7 +219,7 @@ class TestAppGenerateService:
             app_id=app.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             status="published",
         )
 

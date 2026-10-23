@@ -26,6 +26,7 @@ from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFro
 from models.execution_extra_content import HumanInputContent
 from models.model import AppMode, EndUser, Message
 from models.workflow import WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
 
@@ -119,7 +120,7 @@ def test_handle_workflow_paused_event_does_not_overwrite_a_concurrent_stop(
         app_id="app-1",
         workflow_id="workflow-1",
         task_id="task-1",
-        type=WorkflowType.CHAT,
+        type=ModelWorkflowType(WorkflowType.CHAT),
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         status=WorkflowExecutionStatus.PAUSED,

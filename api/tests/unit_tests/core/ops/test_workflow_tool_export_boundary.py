@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from core.ops.entities.trace_entity import WorkflowTraceInfo
 from core.ops.unified_trace.trace_builder import CanonicalTraceBuilder, RepositoryWorkflowExecutionLoader
 from extensions.ext_database import db
+from graphon.enums import WorkflowNodeExecutionStatus
 from models import Account
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
@@ -39,38 +40,37 @@ def test_external_workflow_trace_omits_source_internals(
         ]
     ):
         is_outer = execution_id == "outer-tool"
-        sqlite_session.add(
-            WorkflowNodeExecutionModel(
-                id=execution_id,
-                tenant_id="tenant-1",
-                app_id=app_id,
-                workflow_id=f"{app_id}-workflow",
-                workflow_run_id="run-1",
-                triggered_from_workflow_id=None if is_outer else "caller-app-workflow",
-                triggered_from_node_execution_id=None if is_outer else "outer-tool",
-                triggered_from=origin,
-                index=index,
-                node_execution_id=execution_id,
-                node_id=execution_id,
-                node_type="tool" if is_outer else "llm",
-                title=execution_id,
-                inputs=json.dumps(public_inputs if is_outer else {"secret": "private source input"}),
-                outputs=json.dumps(public_outputs if is_outer else {"text": "private source output"}),
-                process_data=json.dumps(
-                    {}
-                    if is_outer
-                    else {
-                        "prompts": [{"role": "system", "text": "private source prompt"}],
-                        "workflow_tool_root_app_id": "caller-app",
-                    }
-                ),
-                status="succeeded",
-                elapsed_time=1,
-                created_at=started_at,
-                created_by_role=CreatorUserRole.ACCOUNT,
-                created_by="account-1",
-            )
+        execution = WorkflowNodeExecutionModel(
+            id=execution_id,
+            tenant_id="tenant-1",
+            app_id=app_id,
+            workflow_id=f"{app_id}-workflow",
+            workflow_run_id="run-1",
+            triggered_from_workflow_id=None if is_outer else "caller-app-workflow",
+            triggered_from_node_execution_id=None if is_outer else "outer-tool",
+            triggered_from=origin,
+            index=index,
+            node_execution_id=execution_id,
+            node_id=execution_id,
+            node_type="tool" if is_outer else "llm",
+            title=execution_id,
+            inputs=json.dumps(public_inputs if is_outer else {"secret": "private source input"}),
+            outputs=json.dumps(public_outputs if is_outer else {"text": "private source output"}),
+            process_data=json.dumps(
+                {}
+                if is_outer
+                else {
+                    "prompts": [{"role": "system", "text": "private source prompt"}],
+                    "workflow_tool_root_app_id": "caller-app",
+                }
+            ),
+            status=WorkflowNodeExecutionStatus("succeeded"),
+            elapsed_time=1,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account-1",
         )
+        execution.created_at = started_at
+        sqlite_session.add(execution)
     sqlite_session.commit()
     info = WorkflowTraceInfo(
         tenant_id="tenant-1",

@@ -20,6 +20,7 @@ from models.human_input import HumanInputForm
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.agent.workspace_service import AgentWorkspaceService
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.core.app.apps.pipeline.test_pipeline_runner import (
@@ -63,10 +64,10 @@ def _pipeline_tool_runner(
                 id="source-workflow",
                 tenant_id="tenant",
                 app_id="source-app",
-                type="workflow",
+                type=ModelWorkflowType("workflow"),
                 version="v1",
                 graph=json.dumps(source_graph),
-                features="{}",
+                _features="{}",
                 created_by="user",
             )
         )

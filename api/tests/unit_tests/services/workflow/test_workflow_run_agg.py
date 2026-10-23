@@ -49,6 +49,7 @@ from models.workflow import (
     WorkflowPause,
     WorkflowRun,
 )
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow_run_agg import WorkflowRunAgg
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity
@@ -90,10 +91,10 @@ def make_workflow_runner(
         id=workflow_id,
         tenant_id=tenant_id,
         app_id=app_id,
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph=json.dumps(graph),
-        features="{}",
+        _features="{}",
         created_by=user_id,
     )
     entity = WorkflowAppGenerateEntity(
@@ -421,9 +422,9 @@ def test_pause_before_first_tool_call_preserves_its_published_definition(sqlite_
                     app_id=source_app_id,
                     tenant_id=tenant_id,
                     created_by=original_entity.user_id,
-                    type="workflow",
+                    type=ModelWorkflowType("workflow"),
                     version=version,
-                    features="{}",
+                    _features="{}",
                     graph=json.dumps(
                         {
                             "nodes": [

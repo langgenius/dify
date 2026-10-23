@@ -24,7 +24,14 @@ from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, WorkflowNodeExecutionModel
+from models.workflow import (
+    Workflow,
+    WorkflowDraftVariable,
+    WorkflowDraftVariableFile,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionStatus,
+    WorkflowNodeExecutionTriggeredFrom,
+)
 from services.workflow_draft_variable_service import (
     DraftVariableSaver,
     DraftVarLoader,
@@ -606,7 +613,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
             tenant_id=self._test_tenant_id,
             app_id=self._test_app_id,
             workflow_id=self._test_workflow_id,
-            triggered_from="workflow-run",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=str(uuid.uuid4()),
             index=1,
             node_execution_id=str(uuid.uuid4()),
@@ -616,7 +623,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
             inputs='{"input": "test input"}',
             process_data='{"test_var": "process_value", "other_var": "other_process"}',
             outputs='{"test_var": "output_value", "other_var": "other_output"}',
-            status="succeeded",
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
             elapsed_time=1.5,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid.uuid4()),

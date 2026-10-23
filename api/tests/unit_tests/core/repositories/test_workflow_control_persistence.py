@@ -22,6 +22,7 @@ from libs.datetime_utils import naive_utc_now
 from models import Account, WorkflowRun
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.entities.workflow_execution import WorkflowExecution
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.workflow_run_control import apply_workflow_stop_to_node
@@ -304,7 +305,7 @@ def test_stop_preserves_completed_node_history(status: WorkflowNodeExecutionStat
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.WORKFLOW,
+        type=ModelWorkflowType.WORKFLOW,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         status=WorkflowExecutionStatus.STOPPED,

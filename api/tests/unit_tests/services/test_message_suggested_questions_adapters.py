@@ -438,7 +438,7 @@ def test_advanced_chat_debugger_uses_draft_while_explore_uses_published_workflow
                 type=WorkflowType.CHAT,
                 version=version,
                 graph='{"nodes":[],"edges":[]}',
-                features=json.dumps({"suggested_questions_after_answer": {"enabled": True, "prompt": prompt}}),
+                _features=json.dumps({"suggested_questions_after_answer": {"enabled": True, "prompt": prompt}}),
                 created_by=harness.account.id,
             )
             session.add(workflow)

@@ -67,28 +67,27 @@ class ArchiveDatabase:
     ) -> str:
         run_id = str(uuid4())
         with self.session_maker.begin() as session:
-            session.add(
-                WorkflowRun(
-                    id=run_id,
-                    tenant_id=tenant_id,
-                    app_id=str(uuid4()),
-                    workflow_id=str(uuid4()),
-                    type=run_type,
-                    triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
-                    version="1",
-                    graph="{}",
-                    inputs="{}",
-                    status=status,
-                    outputs="{}",
-                    error=None,
-                    elapsed_time=0,
-                    total_tokens=0,
-                    total_steps=1,
-                    created_by_role=CreatorUserRole.ACCOUNT,
-                    created_by=str(uuid4()),
-                    created_at=created_at or self.end_before - datetime.timedelta(days=1),
-                )
+            workflow_run = WorkflowRun(
+                id=run_id,
+                tenant_id=tenant_id,
+                app_id=str(uuid4()),
+                workflow_id=str(uuid4()),
+                type=run_type,
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+                version="1",
+                graph="{}",
+                inputs="{}",
+                status=status,
+                outputs="{}",
+                error=None,
+                elapsed_time=0,
+                total_tokens=0,
+                total_steps=1,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=str(uuid4()),
             )
+            workflow_run.created_at = created_at or self.end_before - datetime.timedelta(days=1)
+            session.add(workflow_run)
         return run_id
 
     def add_node(self, run_id: str, tenant_id: str, *, index: int) -> None:

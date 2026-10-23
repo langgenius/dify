@@ -84,12 +84,12 @@ def _seed_pause(
         status=WorkflowExecutionStatus.PAUSED,
         created_by_role=CreatorUserRole.END_USER,
         created_by="user-1",
-        created_at=datetime(2026, 10, 10),
         elapsed_time=0,
         total_tokens=0,
         total_steps=1,
         exceptions_count=0,
     )
+    run.created_at = datetime(2026, 10, 10)
     pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key=f"pause/{run.id}")
     if pause_id is not None:
         pause.id = pause_id

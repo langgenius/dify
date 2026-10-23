@@ -1,10 +1,12 @@
 import dataclasses
 import json
+from datetime import datetime
 from unittest import mock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy import inspect
+from sqlalchemy.orm import Session, configure_mappers
 
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
@@ -15,13 +17,59 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from graphon.variables.segments import IntegerSegment, Segment
 from models.account import Account
+from models.base import Base, TypeBase
 from models.tools import WorkflowToolProvider
 from models.workflow import (
     Workflow,
     WorkflowDraftVariable,
     WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowRun,
+    WorkflowVersionCounter,
     is_system_variable_editable,
 )
+from models.workflow import WorkflowType as ModelWorkflowType
+
+
+def test_workflow_models_use_typebase_registry_and_generated_defaults() -> None:
+    models = (
+        Workflow,
+        WorkflowVersionCounter,
+        WorkflowRun,
+        WorkflowNodeExecutionModel,
+        WorkflowDraftVariable,
+    )
+
+    typebase_models = {mapper.class_ for mapper in TypeBase.registry.mappers}
+    base_models = {mapper.class_ for mapper in Base.registry.mappers}
+
+    assert all(model in typebase_models for model in models)
+    assert all(model not in base_models for model in models)
+
+    instances = (Workflow(), WorkflowRun(), WorkflowNodeExecutionModel(), WorkflowDraftVariable())
+    assert all(instance.id for instance in instances)
+    assert len({instance.id for instance in instances}) == len(instances)
+    assert isinstance(instances[0].created_at, datetime)
+    assert isinstance(instances[-1].created_at, datetime)
+
+
+def test_workflow_constructor_serializes_variable_collections_and_configures_offload_relationship() -> None:
+    workflow = Workflow(
+        _features="{}",
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
+    )
+
+    assert workflow._features == "{}"
+    assert json.loads(workflow._environment_variables) == {}
+    assert json.loads(workflow._conversation_variables) == {}
+    assert json.loads(workflow._rag_pipeline_variables) == {}
+
+    configure_mappers()
+    relationship = inspect(WorkflowNodeExecutionModel).relationships["offload_data"]
+    assert relationship.mapper.class_ is WorkflowNodeExecutionOffload
+    assert relationship.back_populates == "execution"
 
 
 def test_environment_variables():
@@ -31,13 +79,13 @@ def test_environment_variables():
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="account_id",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
 
     # Create some EnvironmentVariable instances
@@ -62,13 +110,13 @@ def test_llm_environment_variable_round_trip():
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="account_id",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
     variable = LLMEnvironmentVariable(
         name="for_research",
@@ -91,13 +139,13 @@ def test_update_environment_variables():
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="account_id",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
 
     # Create some EnvironmentVariable instances
@@ -144,13 +192,13 @@ def test_to_dict():
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="account_id",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
 
     # Create some EnvironmentVariable instances
@@ -185,13 +233,13 @@ def test_workflow_account_accessors_use_caller_session(sqlite_session: Session):
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="created-account-id",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
         updated_by="updated-account-id",
     )
     sqlite_session.add_all([decoy_account, updated_account, workflow, created_account])
@@ -206,13 +254,13 @@ def test_workflow_tool_published_accessor_uses_caller_session(sqlite_session: Se
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="account_id",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
     matching_provider = WorkflowToolProvider(
         name="matching-provider",

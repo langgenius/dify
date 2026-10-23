@@ -13,7 +13,7 @@ from core.ops.entities.trace_entity import WorkflowTraceInfo
 from core.ops.unified_trace.trace_builder import CanonicalTraceBuilder
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models.application_trace import ApplicationTraceRun
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, TraceAppConfig
@@ -23,6 +23,7 @@ from models.workflow import (
     WorkflowRun,
     WorkflowRunTriggeredFrom,
 )
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.application_trace_repository import ApplicationTraceRepository
 from services.tracing import runtime_bridge
 from services.tracing.normalization import remap_outer_trace
@@ -100,58 +101,56 @@ def seed(
                     tracing_config={"project_url": "https://tracing.test/" + app},
                 )
             )
-        session.add(
-            WorkflowRun(
-                id=ids["run"],
-                tenant_id=ids["tenant"],
-                app_id=ids["root"],
-                workflow_id=ids["root_workflow"],
-                type=WorkflowType.WORKFLOW,
-                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
-                version="1",
-                graph=json.dumps(root_graph),
-                inputs="{}",
-                status=WorkflowExecutionStatus.SUCCEEDED,
-                created_by=ids["actor"],
-                created_by_role=CreatorUserRole.ACCOUNT,
-                created_at=now,
-                finished_at=now + timedelta(seconds=3),
-            )
+        trace_workflow_record = WorkflowRun(
+            id=ids["run"],
+            tenant_id=ids["tenant"],
+            app_id=ids["root"],
+            workflow_id=ids["root_workflow"],
+            type=ModelWorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            version="1",
+            graph=json.dumps(root_graph),
+            inputs="{}",
+            status=WorkflowExecutionStatus.SUCCEEDED,
+            created_by=ids["actor"],
+            created_by_role=CreatorUserRole.ACCOUNT,
+            finished_at=now + timedelta(seconds=3),
         )
+        trace_workflow_record.created_at = now
+        session.add(trace_workflow_record)
         for key, node_type in [("root_agent", "agent"), ("root_tool", "tool"), ("child", "agent")]:
             child = key == "child"
             app = "source" if child else "root"
-            session.add(
-                WorkflowNodeExecutionModel(
-                    id=ids[key],
-                    tenant_id=ids["tenant"],
-                    app_id=ids[app],
-                    workflow_id=ids[app + "_workflow"],
-                    workflow_run_id=ids["run"],
-                    triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
-                    if child
-                    else WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-                    triggered_from_workflow_id=ids["root_workflow"] if child else None,
-                    triggered_from_node_execution_id=ids["root_tool"] if child else None,
-                    node_execution_id=ids[key],
-                    index=1,
-                    node_id=key,
-                    node_type=node_type,
-                    title=key,
-                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    created_by=ids["actor"],
-                    created_by_role=CreatorUserRole.ACCOUNT,
-                    created_at=now,
-                    finished_at=now + timedelta(seconds=2),
-                    inputs="{}",
-                    outputs="{}",
-                    process_data=json.dumps(
-                        {"workflow_tool_root_app_id": ids["root"], "workflow_tool_invocation_id": "tool-call"}
-                    )
-                    if child
-                    else "{}",
+            trace_node_record = WorkflowNodeExecutionModel(
+                id=ids[key],
+                tenant_id=ids["tenant"],
+                app_id=ids[app],
+                workflow_id=ids[app + "_workflow"],
+                workflow_run_id=ids["run"],
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+                if child
+                else WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                triggered_from_workflow_id=ids["root_workflow"] if child else None,
+                triggered_from_node_execution_id=ids["root_tool"] if child else None,
+                node_execution_id=ids[key],
+                index=1,
+                node_id=key,
+                node_type=node_type,
+                title=key,
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                created_by=ids["actor"],
+                created_by_role=CreatorUserRole.ACCOUNT,
+                finished_at=now + timedelta(seconds=2),
+                inputs="{}",
+                outputs="{}",
+                process_data=json.dumps(
+                    {"workflow_tool_root_app_id": ids["root"], "workflow_tool_invocation_id": "tool-call"}
                 )
+                if child
+                else "{}",
             )
+            trace_node_record.created_at = now
+            session.add(trace_node_record)
     service = ApplicationTracingService(ApplicationTraceRepository(sessions))
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     monkeypatch.setattr(runtime_bridge, "_service", lambda: service)
