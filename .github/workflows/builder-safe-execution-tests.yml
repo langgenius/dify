@@ -781,7 +781,7 @@ jobs:
           for module, functions in {'tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion': {'test_actual_native_failure_closes_old_run_without_diagnosis_or_new_execution': 1,
                                                                                                      'test_concurrent_terminal_observers_commit_one_result_on_the_same_attempt': 1,
                                                                                                      'test_inflight_builder_command_keeps_its_session_lease': 1,
-                                                                                                     'test_resume_finalizes_actual_c03_before_closing_original_builder_run': 1,
+                                                                                                     'test_resume_finalizes_actual_c03_before_closing_original_builder_run': 2,
                                                                                                      'test_terminal_projection_refuses_stale_or_unsettled_original_attempt': 7,
                                                                                                      'test_terminal_public_read_closes_same_builder_run_and_review_without_dispatch': 1,
                                                                                                      'test_user_session_cas_wins_during_terminal_result_read': 1}}.items():
@@ -1827,6 +1827,8 @@ jobs:
               'test_native_control_receipt_cannot_hide_an_intervening_user_change': 1,
               'test_paused_initial_ack_without_dispatch_is_selected_for_worker_recovery': 1,
           })
+          a4_expected.setdefault('tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion', {}).update({'test_expired_terminal_context_requires_actual_owned_terminal_workflow': 7})
+          a4_expected.setdefault('tests.unit_tests.services.dify_builder.test_agent_operation_owner', {}).update({'test_expired_completed_receipt_requires_exact_original_permit_and_result': 1})
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:
@@ -2909,6 +2911,9 @@ jobs:
               'test_service_driver_emits_workflow_span': 1,
               'test_marked_native_driver_does_not_emit_workflow_span': 1,
           })
+          new_expected.setdefault('tests.unit_tests.controllers.inner_api.test_agent_runtime_lineage', {}).update({'test_expired_runtime_only_admits_existing_result_ack_and_outcome': 4})
+          new_expected.setdefault('tests.unit_tests.services.dify_builder.test_agent_endpoint_lineage', {}).update({'test_real_s1_config_and_final_resource_recheck_composes_with_lineage': 6})
+          new_expected.setdefault('tests.unit_tests.services.dify_builder.native_testing.test_node_inputs', {}).update({'test_expired_context_read_for_settlement_preserves_cancelled_and_owner_refusals': 1})
           new_actual = {module: Counter() for module in new_expected}
           expected = {path.removeprefix("api/").removesuffix(".py").replace("/", ".") for path in files}
           expected = physical_owner_baseline_expected | set(new_expected)

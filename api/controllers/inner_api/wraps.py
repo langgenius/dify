@@ -241,7 +241,7 @@ def agent_runtime_api_only(boundary: str):
                 )
                 if context is None:
                     if (
-                        boundary in {"prepare-run", "prepared-config", "native-control"}
+                        boundary in {"prepare-run", "prepared-config", "native-control", "native-settlement"}
                         or raw.get("native_dispatch") is not None
                         or "X-Dify-Agent-Dispatch" in request.headers
                     ):
@@ -270,7 +270,7 @@ def agent_runtime_api_only(boundary: str):
                         raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
                     if boundary == "prepared-config" and raw.get("config_ref") != context.config.config_ref:
                         raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
-                elif boundary == "native-control":
+                elif boundary in {"native-control", "native-settlement"}:
                     if raw.get("ref") != context.ref.model_dump(mode="json"):
                         raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
                 elif boundary in {

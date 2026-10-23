@@ -131,6 +131,16 @@ def owner(
     store.load_context = load_context
     store.load_prepared_config = load_prepared_config
     store.discover_agent_run = discover_agent_run
+
+    def settlement_identity(
+        **kwargs: object,
+    ) -> tuple[ResolvedNativeTestContext, AgentPreparedConfig, AgentNodeAssociation]:
+        saved = discover_agent_run(**kwargs)
+        if saved is None:
+            raise BuilderExecutionPolicyError("native_agent_identity_mismatch")
+        return load_context(**kwargs), load_prepared_config(**kwargs), saved
+
+    store.load_agent_settlement_identity = settlement_identity
     backend = Client(base_url="http://agent.invalid")
     patch.object(backend, "read_run_identity_sync", side_effect=read_run_identity_sync).start()
     preparation = AgentPreparationService(state_store=store, backend=backend, workspace=None, config_builder=None)
@@ -284,8 +294,13 @@ def test_validated_native_context_checks_exact_effect_but_never_spends_permit(ch
 
 
 @pytest.mark.parametrize("mutation", ["none", "identity-io", "object-io"])
+@pytest.mark.parametrize("boundary", ["model", "native-settlement"])
 def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(
-    monkeypatch: pytest.MonkeyPatch, mutation: str, operations_service: AgentOperationService, preparation_sql: Session
+    monkeypatch: pytest.MonkeyPatch,
+    mutation: str,
+    operations_service: AgentOperationService,
+    preparation_sql: Session,
+    boundary: str,
 ) -> None:
     """Real protected read/recheck; SQL/access/storage/backend are explicit doubles."""
     from dify_agent.protocol.native_testing import AgentRunTransportSelection
@@ -304,6 +319,7 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(
     monkeypatch.setattr(store.loader, "session_factory", lambda: sql)
     monkeypatch.setattr(store.loader, "_load", lambda *_args, **_kwargs: (owned, scope))
     prepared = prepared_state()
+    prepared.settlement = boundary == "native-settlement"
     context = prepared.context
     value: dict[str, JsonValue] = {
         "schema": "agent-config-v2",
@@ -340,11 +356,14 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(
     reads = []
 
     def read(*args: object, **kwargs: object) -> dict[str, JsonValue]:
-        del args, kwargs
+        del kwargs
         assert not sql.info["locked"]
         reads.append("object")
         if mutation == "object-io" and len(reads) > 1:
             resource["stamp"] = "f" * 64
+        receipt = args[0]
+        if isinstance(receipt, state.ObjectReceipt) and receipt.logical_key.startswith("agent-bind:"):
+            return association.model_dump(mode="json")
         return value
 
     monkeypatch.setattr(store, "_read_object", read)
@@ -359,6 +378,20 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(
         home_snapshot_id="home",
     )
     monkeypatch.setattr(store, "discover_agent_run", lambda **_kwargs: association)
+    sql.add(
+        state.NativePayloadObject(
+            id="association",
+            tenant_id="tenant",
+            request_id="req",
+            invocation_id="inv",
+            kind="result",
+            logical_key=store._agent_key("agent-bind", PARENT),
+            storage_key="association-key",
+            payload_digest="b" * 64,
+            value_digest=canonical_digest(association.model_dump(mode="json")),
+        )
+    )
+    sql.commit()
 
     def read_run_identity_sync(run_id: object, selection: object) -> AgentRuntimeIdentity:
         del run_id, selection
@@ -386,7 +419,7 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(
         agent_generation=0,
     )
     if mutation == "none":
-        resolved = lineage.resolve(principal=AgentServicePrincipal(), selection=selection, boundary="model", caller={})
+        resolved = lineage.resolve(principal=AgentServicePrincipal(), selection=selection, boundary=boundary, caller={})
         assert resolved is not None
         assert resolved.association == association
     else:
@@ -394,7 +427,7 @@ def test_real_s1_config_and_final_resource_recheck_composes_with_lineage(
             lineage.resolve(
                 principal=AgentServicePrincipal(),
                 selection=selection,
-                boundary="model",
+                boundary=boundary,
                 caller={},
             )
     assert not sql.info["locked"]

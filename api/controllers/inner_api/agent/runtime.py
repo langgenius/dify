@@ -278,7 +278,7 @@ document_errors(AgentRuntimeNativeBeforeApi, AgentRuntimeRefused)
     },
 )
 class AgentRuntimeNativeOutcomeApi(native_testing.AgentNativeOutcomeApi):
-    method_decorators = [agent_runtime_api_only("native-control")]
+    method_decorators = [agent_runtime_api_only("native-settlement")]
 
 
 document_errors(AgentRuntimeNativeOutcomeApi, AgentRuntimeRefused)
@@ -348,7 +348,7 @@ document_errors(AgentRuntimeNativeIntentApi, AgentRuntimeRefused)
 
 @inner_api_ns.route("/agent/runtime/native-testing/results")
 class AgentRuntimeNativeStoreResultApi(native_testing.AgentNativeStoreResultApi):
-    method_decorators = [agent_runtime_api_only("native-control")]
+    method_decorators = [agent_runtime_api_only("native-settlement")]
 
 
 document_errors(AgentRuntimeNativeStoreResultApi, AgentRuntimeRefused)

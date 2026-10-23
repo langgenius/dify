@@ -547,3 +547,19 @@ def test_failed_storage_or_ack_never_returns_reference_or_leaks_inputs(
     assert CANARY not in caplog.text
     assert len(case.loader.rows) == 1
     assert not case.loader.writing
+
+
+def test_expired_context_read_for_settlement_preserves_cancelled_and_owner_refusals(case: NodeInputsCase) -> None:
+    case.loader.scope.expires_at = datetime.now(UTC) - timedelta(seconds=1)
+    with pytest.raises(BuilderExecutionPolicyError, match="native_expired"):
+        case.store.load_context(ref=case.ref)
+    retained = case.store._load_context(ref=case.ref, recovery=False, allow_expired=True)
+    assert retained == case.context
+    case.loader.scope.cancelled = True
+    with pytest.raises(BuilderExecutionPolicyError, match="native_cancelled"):
+        case.store._load_context(ref=case.ref, recovery=False, allow_expired=True)
+    case.loader.scope.cancelled = False
+    with pytest.raises(BuilderExecutionPolicyError):
+        case.store._load_context(
+            ref=case.ref.model_copy(update={"request_id": "foreign"}), recovery=False, allow_expired=True
+        )

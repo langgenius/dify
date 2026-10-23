@@ -553,8 +553,9 @@ def test_completion_uses_the_immutable_admitted_revision_basis(
     assert (owner.repo.get_run(owner.verify_id).status == "succeeded") is expected
 
 
+@pytest.mark.parametrize("expired", [False, True])
 def test_resume_finalizes_actual_c03_before_closing_original_builder_run(
-    mocker: pytest_mock.MockerFixture, completed: CompletedOwner
+    mocker: pytest_mock.MockerFixture, completed: CompletedOwner, expired: bool
 ) -> None:
     from contextlib import contextmanager
 
@@ -607,7 +608,18 @@ def test_resume_finalizes_actual_c03_before_closing_original_builder_run(
 
     loader = owner.commands.api.loader
     mocker.patch.object(loader, "locked", side_effect=locked)
-    mocker.patch.object(owner.commands.api.store, "load_context", return_value=_context(owner))
+    mocker.patch.object(
+        owner.commands.api.store,
+        "load_context",
+        return_value=_context(owner),
+        side_effect=BuilderExecutionPolicyError("native_expired") if expired else None,
+    )
+    mocker.patch.object(owner.commands.api.store, "load_terminal_context", return_value=_context(owner), create=True)
+    if expired:
+        with owner.factory.begin() as sql:
+            scope = sql.get(NativeTestScope, owner.request_id)
+            assert scope is not None
+            scope.expires_at = datetime(2000, 1, 1)
     owner.commands.api.lifecycle = NativeTestLifecycleService(loader, state_store=owner.commands.api.store)
     owner.commands.finish_resume(ref=owner.ref, generation=1, dispatch_id="original-dispatch")
     assert owner.repo.get_run(owner.verify_id).status == "succeeded"
@@ -2232,3 +2244,26 @@ def test_delayed_cancel_is_settled_by_worker_without_get_or_another_cancel(
         if item.kind == "test_result"
     ]
     assert len(cards) == 1
+
+
+@pytest.mark.parametrize(
+    "status", ["succeeded", "failed", "partial-succeeded", "stopped", "paused", "running", "foreign-owner"]
+)
+def test_expired_terminal_context_requires_actual_owned_terminal_workflow(
+    completed: CompletedOwner, mocker: pytest_mock.MockerFixture, status: str
+) -> None:
+    owner = completed
+    store = owner.commands.api.store
+    context = _context(owner)
+    mocker.patch.object(store, "_load_context", return_value=context)
+    with owner.factory.begin() as sql:
+        run = sql.get(WorkflowRun, owner.native_id)
+        assert run is not None
+        run.status = WorkflowExecutionStatus("succeeded" if status == "foreign-owner" else status)
+        if status == "foreign-owner":
+            run.created_by = "foreign-actor"
+    if status in {"succeeded", "failed", "partial-succeeded", "stopped"}:
+        assert store.load_terminal_context(ref=owner.ref) == context
+    else:
+        with pytest.raises(BuilderExecutionPolicyError, match="native_expired"):
+            store.load_terminal_context(ref=owner.ref)
