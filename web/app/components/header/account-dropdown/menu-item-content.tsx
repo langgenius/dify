@@ -27,5 +27,13 @@ export function MenuItemContent({ iconClassName, label, trailing }: MenuItemCont
 }
 
 export function ExternalLinkIndicator() {
-  return <span aria-hidden className={cn('i-ri-arrow-right-up-line', menuTrailingIconClassName)} />
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'i-ri-arrow-right-up-line [&:dir(rtl)]:-scale-x-100',
+        menuTrailingIconClassName,
+      )}
+    />
+  )
 }
