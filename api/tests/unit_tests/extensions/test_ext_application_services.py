@@ -2063,7 +2063,7 @@ def test_account_passport_exchange_is_controlled_by_configuration_in_every_editi
     )
     account = Account(name="Consumer", email="consumer@example.com")
     sqlite_session.add(account)
-    app_model = App(tenant_id=str(uuid4()), name="Rollout", mode="chat", enable_site=True, enable_api=False)
+    app_model = App(tenant_id=str(uuid4()), name="Rollout", mode=AppMode.CHAT, enable_site=True, enable_api=False)
     sqlite_session.add(app_model)
     sqlite_session.flush()
     config = AppModelConfig(app_id=app_model.id)
