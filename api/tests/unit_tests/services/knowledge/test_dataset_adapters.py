@@ -21,8 +21,6 @@ from models.dataset import (
     DatasetQuery,
     DocumentSegment,
 )
-from models.enums import CreatorUserRole, DatasetQuerySource, IndexingStatus, SegmentStatus
-from models.model import AppMode
 from models.enums import (
     CreatorUserRole,
     DatasetQuerySource,
@@ -31,6 +29,7 @@ from models.enums import (
     IndexingStatus,
     SegmentStatus,
 )
+from models.model import AppMode
 from repositories.app.console_repository import ConsoleAppRepository
 from services.enterprise import rbac_service
 from services.knowledge.dataset_access import DatasetNotFoundError
