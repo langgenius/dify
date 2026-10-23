@@ -19,7 +19,6 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
   const setSearchMode = useSetAtom(searchModeAtom)
   const isHero = variant === 'hero'
   const isHome = variant === 'home'
-  const iconClassName = 'size-4'
 
   const options: Array<{
     value: ActivePluginType
@@ -33,47 +32,40 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
         : t(($) => $['category.all'], { ns: 'plugin' }),
       icon:
         isHero || isHome ? (
-          <span aria-hidden className={cn('i-custom-vender-plugin-plugin size-4', iconClassName)} />
+          <span aria-hidden className="i-custom-vender-plugin-plugin size-4" />
         ) : null,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
       text: t(($) => $['category.models'], { ns: 'plugin' }),
-      icon: <span aria-hidden className={cn('i-ri-brain-2-line', iconClassName)} />,
+      icon: <span aria-hidden className="i-ri-brain-2-line size-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
       text: t(($) => $['category.tools'], { ns: 'plugin' }),
-      icon: <span aria-hidden className={cn('i-ri-hammer-line', iconClassName)} />,
+      icon: <span aria-hidden className="i-ri-hammer-line size-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
       text: t(($) => $[isHome ? 'categorySingle.datasource' : 'category.datasources'], {
         ns: 'plugin',
       }),
-      icon: <span aria-hidden className={cn('i-ri-database-2-line', iconClassName)} />,
+      icon: <span aria-hidden className="i-ri-database-2-line size-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
       text: t(($) => $[isHome ? 'categorySingle.agent' : 'category.agents'], { ns: 'plugin' }),
-      icon: (
-        <span
-          aria-hidden
-          className={cn('i-custom-vender-integrations-agent-strategy', iconClassName)}
-        />
-      ),
+      icon: <span aria-hidden className="i-custom-vender-integrations-agent-strategy size-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.trigger,
       text: t(($) => $['category.triggers'], { ns: 'plugin' }),
-      icon: (
-        <span aria-hidden className={cn('i-custom-vender-integrations-trigger', iconClassName)} />
-      ),
+      icon: <span aria-hidden className="i-custom-vender-integrations-trigger size-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
       text: t(($) => $['category.extensions'], { ns: 'plugin' }),
-      icon: <span aria-hidden className={cn('i-ri-puzzle-2-line', iconClassName)} />,
+      icon: <span aria-hidden className="i-ri-puzzle-2-line size-4" />,
     },
   ]
 
