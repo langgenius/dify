@@ -11,13 +11,13 @@
   "namePlaceholder": "Məsələn, müştəri dəstəyi təlimatı",
   "nameRequired": "Bilik bazasının adını daxil edin.",
   "retryRemainingFiles": "Qalan faylları yenidən sınayın",
-  "selectedFiles": "Selected files ({{valid}} of {{total}} valid)",
+  "selectedFiles": "Seçilmiş fayllar ({{total}} fayldan {{valid}} etibarlıdır)",
   "startWith": "Başlanğıc seçimi",
   "startWithHelp": "İstənilən vaxt daha çox mənbə və ya sənəd əlavə edə bilərsiniz.",
   "uploadCharactersUnavailable": "Simvol sayı: məlum deyil",
   "uploadCompleted": "Əlavə edildi",
   "uploadDocuments": "Sənədləri yüklə",
-  "uploadDropZoneTitle": "Drag and drop files, or browse",
+  "uploadDropZoneTitle": "Faylları sürükləyib buraxın və ya seçin",
   "uploadFilesDescription": "Kompüterinizdən fayl əlavə edin. Sənədlər bilik bazası yaradıldıqdan sonra emal olunur.",
   "uploadingFiles": "Yüklənir…"
 }
