@@ -1,6 +1,7 @@
 'use client'
 
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { SortType } from '@/service/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { Pagination } from '@langgenius/dify-ui/pagination'
@@ -43,7 +44,7 @@ type DocumentListProps = {
   onUpdate: () => void
   onManageMetadata: () => void
   remoteSortValue: string
-  onSortChange: (value: string) => void
+  onSortChange: (value: SortType) => void
 }
 
 /**
@@ -61,7 +62,7 @@ const DocumentList = ({
   remoteSortValue,
   onSortChange,
 }: DocumentListProps) => {
-  const { t } = useTranslation(['common', 'datasetDocuments', 'dataset'])
+  const { t } = useTranslation(['common', 'datasetDocuments', 'dataset', 'knowledgeSpace'])
   const pageSize = pagination.limit ?? 10
   const totalPages = Math.max(Math.ceil(pagination.total / pageSize), 1)
   const datasetConfig = useDatasetDetailContext((s) => s.dataset)
@@ -143,8 +144,8 @@ const DocumentList = ({
   return (
     <div className="relative mt-3 flex size-full flex-col">
       <div role="status" aria-atomic="true" className="sr-only">
-        {t(($) => $['newKnowledge.documentsSelected'], {
-          ns: 'dataset',
+        {t(($) => $.documentsSelected, {
+          ns: 'knowledgeSpace',
           count: selectedIds.length,
         })}
       </div>

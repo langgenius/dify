@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import DatasetEntity, DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document as RagDocument
 from core.rag.retrieval import dataset_retrieval as retrieval_module
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -35,7 +36,7 @@ def graph(sqlite_session: Session) -> tuple[Dataset, Document, DocumentSegment, 
         name="Document",
         created_from=DocumentCreatedFrom.WEB,
         created_by="admin",
-        doc_form="text_model",
+        doc_form=IndexStructureType("text_model"),
         doc_metadata={},
     )
     segment = DocumentSegment(

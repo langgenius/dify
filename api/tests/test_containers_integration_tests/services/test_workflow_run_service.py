@@ -9,8 +9,10 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole
 from models.model import (
+    AppMode,
+    Conversation,
     Message,
 )
 from models.workflow import WorkflowRun
@@ -182,14 +184,12 @@ class TestWorkflowRunService:
         fake = Faker()
 
         # Create conversation first (required for message)
-        from models.model import Conversation
-
         conversation = Conversation(
             app_id=app.id,
             name=fake.sentence(),
-            inputs={},
-            status="normal",
-            mode="chat",
+            _inputs={},
+            status=ConversationStatus.NORMAL,
+            mode=AppMode.CHAT,
             from_source=ConversationFromSource.CONSOLE,
             from_account_id=account.id,
         )

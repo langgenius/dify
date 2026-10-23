@@ -27,6 +27,7 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
     WorkflowAgentRuntimeRequestBuildError,
+    build_knowledge_layer_config,
     build_shell_layer_config,
 )
 from graphon.file import File, FileTransferMethod, FileType
@@ -51,6 +52,7 @@ from models.agent_config_entities import (
 )
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
 
 
 @pytest.fixture(autouse=True)
@@ -226,6 +228,7 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
             user_id="user-1",
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            trace_session_id="trace-session-1",
         ),
         workflow_id="workflow-1",
         workflow_run_id="run-1",
@@ -778,6 +781,7 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer(monkeypatch: p
     # quotas / rate limits / audit tags to the real call site instead of a
     # hard-coded ``VALIDATION`` placeholder.
     assert dify_tools_builder.last_invoke_from == context.dify_context.invoke_from
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["trace_id"] == "trace-session-1"
 
 
 def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
@@ -862,11 +866,8 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
     context = replace(context, snapshot=snapshot)
 
     result = WorkflowAgentRuntimeRequestBuilder().build(context)
-
-    dumped = result.request.model_dump(mode="json")
-    layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
-    knowledge_layer = layers["knowledge"]
-    assert knowledge_layer["config"]["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    layers = result.request.model_dump(mode="json")["composition"]["layers"]
+    knowledge_layer = next(layer for layer in layers if layer["name"] == "knowledge")
     assert knowledge_layer["config"]["sets"] == [
         {
             "id": "support",
@@ -971,11 +972,57 @@ def test_build_knowledge_layer_maps_disabled_score_threshold_to_zero():
     )
     context = replace(context, snapshot=snapshot)
 
-    result = WorkflowAgentRuntimeRequestBuilder().build(context)
+    legacy = build_knowledge_layer_config(AgentSoulConfig.model_validate(snapshot.config_snapshot_dict))
+    assert legacy is not None
+    assert legacy.model_dump(mode="json")["sets"][0]["retrieval"]["score_threshold"] == 0.0
 
-    dumped = result.request.model_dump(mode="json")
-    knowledge_layer = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "knowledge")
-    assert knowledge_layer["config"]["sets"][0]["retrieval"]["score_threshold"] == 0.0
+
+def test_build_runs_classic_and_agent_knowledge_together(monkeypatch: pytest.MonkeyPatch):
+    apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
+    monkeypatch.setattr(
+        "services.agent.knowledge_runtime_config.DifyModelFactory",
+        RecordingModelFactory(schema=llm_schema(features=[])),
+    )
+    context = _context()
+    soul = AgentSoulConfig.model_validate(context.snapshot.config_snapshot_dict)
+    soul.knowledge = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "classic",
+                        "name": "Classic Docs",
+                        "datasets": [{"id": "dataset-1"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 3},
+                    }
+                ],
+                "spaces": [
+                    {
+                        "id": "new",
+                        "name": "New Docs",
+                        "control_space_id": "00000000-0000-4000-8000-000000000001",
+                    }
+                ],
+            }
+        }
+    ).knowledge
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=soul,
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder().build(replace(context, snapshot=snapshot))
+
+    layers = {layer.name: layer for layer in result.request.composition.layers}
+    assert layers["knowledge"].config["sets"][0]["id"] == "classic"
+    assert layers["knowledge_fs"].config["spaces"][0]["id"] == "new"
+    assert result.metadata["runtime_support"]["reserved_status"]["knowledge"] == (
+        "supported_by_legacy_retrieval_and_knowledge_fs_cli"
+    )
 
 
 def test_build_skips_knowledge_layer_when_agent_soul_has_no_sets():
@@ -1726,7 +1773,7 @@ def test_feature_manifest_marks_knowledge_supported_without_warning_when_configu
     manifest = build_runtime_feature_manifest(soul)
     assert "knowledge" in manifest["supported"]
     assert "knowledge" not in manifest["reserved"]
-    assert manifest["reserved_status"]["knowledge"] == "supported_by_knowledge_layer"
+    assert manifest["reserved_status"]["knowledge"] == "supported_by_legacy_retrieval"
     assert all("knowledge" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
 
 

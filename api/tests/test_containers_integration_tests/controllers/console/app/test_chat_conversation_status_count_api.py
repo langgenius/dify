@@ -71,7 +71,7 @@ def _create_conversation(db_session: Session, app_id: str, account_id: str) -> C
     conversation = Conversation(
         app_id=app_id,
         name="Test Conversation",
-        inputs={},
+        _inputs={},
         status="normal",
         mode=AppMode.CHAT,
         from_source=ConversationFromSource.CONSOLE,
@@ -126,7 +126,7 @@ def _create_message(
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=account_id,
         workflow_run_id=workflow_run_id,
-        inputs={"query": "Hello"},
+        _inputs={"query": "Hello"},
     )
     db_session.add(message)
     db_session.commit()

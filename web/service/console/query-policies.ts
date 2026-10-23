@@ -22,6 +22,20 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
     path: ['console'],
     experimental_defaults: {
       workflowRunArchives: {
+        downloads: {
+          post: {
+            mutationOptions: {
+              onSuccess: (task, _variables, _onMutateResult, context) => {
+                context.client.setQueryData(
+                  consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryKey({
+                    input: { params: { download_id: task.download_id } },
+                  }),
+                  task,
+                )
+              },
+            },
+          },
+        },
         byYear: {
           byMonth: {
             delete: {

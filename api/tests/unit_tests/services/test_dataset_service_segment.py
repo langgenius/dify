@@ -59,7 +59,7 @@ def _document(
     doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
     word_count: int = 20,
 ) -> Document:
-    return Document(
+    document = Document(
         id=document_id,
         tenant_id=tenant_id,
         dataset_id=dataset_id,
@@ -69,12 +69,14 @@ def _document(
         name="Document",
         created_from=DocumentCreatedFrom.API,
         created_by="user-1",
-        created_at=datetime(2026, 1, 1),
-        updated_at=datetime(2026, 1, 2),
         indexing_status="completed",
         doc_form=doc_form,
         word_count=word_count,
     )
+
+    document.created_at = datetime(2026, 1, 1)
+    document.updated_at = datetime(2026, 1, 2)
+    return document
 
 
 def _segment(

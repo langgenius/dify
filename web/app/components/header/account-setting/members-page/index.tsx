@@ -109,73 +109,79 @@ const MembersPage = () => {
   return (
     <>
       <div className="flex flex-col">
-        <div className="mb-6 flex items-center gap-3 rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-subtle bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 py-2 pr-5 pl-2">
-          <WorkspaceAvatar name={currentWorkspace.name} size="2xl" />
-          <div className="grow">
-            <div className="flex items-center gap-1 system-md-semibold text-text-secondary">
-              <span>{currentWorkspace?.name}</span>
-              {isCurrentWorkspaceOwner && (
-                <span>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <button
-                          type="button"
-                          aria-label={t(($) => $['account.editWorkspaceInfo'], {
-                            ns: 'accountSettings',
-                          })}
-                          className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-black/5"
-                          onClick={() => {
-                            setEditWorkspaceModalVisible(true)
-                          }}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className="i-ri-pencil-line size-4 text-text-tertiary"
-                          />
-                        </button>
-                      }
-                    />
-                    <TooltipContent>
-                      {t(($) => $['account.editWorkspaceInfo'], { ns: 'accountSettings' })}
-                    </TooltipContent>
-                  </Tooltip>
-                </span>
-              )}
-            </div>
-            <div className="mt-1 system-xs-medium text-text-tertiary">
-              {isNotUnlimitedMemberPlan ? (
-                <div className="flex space-x-1">
-                  <div>
-                    {t(($) => $['plansCommon.member'], { ns: 'billing' })}
-                    {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
+        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-subtle bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 py-2 pr-5 pl-2">
+          <div className="flex min-w-0 grow basis-48 items-center gap-3">
+            <WorkspaceAvatar name={currentWorkspace.name} size="2xl" className="shrink-0" />
+            <div className="min-w-0 grow">
+              <div className="flex items-center gap-1 system-md-semibold text-text-secondary">
+                <span className="min-w-0 wrap-anywhere">{currentWorkspace?.name}</span>
+                {isCurrentWorkspaceOwner && (
+                  <span className="shrink-0">
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <button
+                            type="button"
+                            aria-label={t(($) => $['account.editWorkspaceInfo'], {
+                              ns: 'accountSettings',
+                            })}
+                            className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-black/5"
+                            onClick={() => {
+                              setEditWorkspaceModalVisible(true)
+                            }}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="i-ri-pencil-line size-4 text-text-tertiary"
+                            />
+                          </button>
+                        }
+                      />
+                      <TooltipContent>
+                        {t(($) => $['account.editWorkspaceInfo'], { ns: 'accountSettings' })}
+                      </TooltipContent>
+                    </Tooltip>
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 system-xs-medium text-text-tertiary">
+                {isNotUnlimitedMemberPlan ? (
+                  <div className="flex flex-wrap gap-x-1">
+                    <div>
+                      {t(($) => $['plansCommon.member'], { ns: 'billing' })}
+                      {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
+                    </div>
+                    <div className="flex gap-x-1">
+                      <span>{accounts.length}</span>
+                      <span>/</span>
+                      <span>
+                        {features.members.limit === 0
+                          ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
+                          : features.members.limit}
+                      </span>
+                    </div>
                   </div>
-                  <div className="">{accounts.length}</div>
-                  <div>/</div>
-                  <div>
-                    {features.members.limit === 0
-                      ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
-                      : features.members.limit}
+                ) : (
+                  <div className="flex gap-x-1">
+                    <div className="shrink-0">{accounts.length}</div>
+                    <div>
+                      {t(($) => $['plansCommon.memberAfter'], { ns: 'billing' })}
+                      {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex space-x-1">
-                  <div>{accounts.length}</div>
-                  <div>
-                    {t(($) => $['plansCommon.memberAfter'], { ns: 'billing' })}
-                    {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-          {isMemberFull && <UpgradeBtn className="mr-2" loc="member-invite" />}
-          <div className="shrink-0">
+          <div className="flex flex-wrap items-center gap-3">
+            {isMemberFull && <UpgradeBtn className="shrink-0" loc="member-invite" />}
             {canManageMembers && (
-              <InviteModal
-                isEmailSetup={systemFeatures.is_email_setup}
-                onSend={setInvitationResults}
-              />
+              <div className="shrink-0">
+                <InviteModal
+                  isEmailSetup={systemFeatures.is_email_setup}
+                  onSend={setInvitationResults}
+                />
+              </div>
             )}
           </div>
         </div>

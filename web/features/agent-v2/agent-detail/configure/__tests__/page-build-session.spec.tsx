@@ -161,11 +161,9 @@ describe('Starting Build', () => {
 })
 
 describe('Leaving Build', () => {
-  it('confirms an existing draft, allows cancellation, and stops streaming before discarding and changing URL', async () => {
+  it('keeps the streaming draft and URL when leaving Build is cancelled', async () => {
     const user = userEvent.setup()
-    const discard = createDeferred<{ result: string }>()
     const view = createEnvironment({ buildDraft: createBuildDraft() }).render()
-    api.discard.mockReturnValueOnce(discard.promise)
     await send(user)
     await receive()
     await changeMode(user, 'preview')
@@ -178,6 +176,19 @@ describe('Leaving Build', () => {
     )
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(await screen.findByText('Built answer')).toBeVisible()
+    expect(modeButton('build')).toBeChecked()
+    expect(api.stop).not.toHaveBeenCalled()
+    expect(api.discard).not.toHaveBeenCalled()
+    expect(view.onUrlUpdate).not.toHaveBeenCalled()
+  })
+
+  it('stops streaming before discarding, waits to change URL, and ignores late completion', async () => {
+    const user = userEvent.setup()
+    const discard = createDeferred<{ result: string }>()
+    const view = createEnvironment({ buildDraft: createBuildDraft() }).render()
+    api.discard.mockReturnValueOnce(discard.promise)
+    await send(user)
+    await receive()
     await changeMode(user, 'preview')
     await confirm(user)
     expect(api.stop).toHaveBeenCalledWith(

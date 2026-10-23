@@ -13,6 +13,7 @@ from core.rag.models.document import Document as RetrievedDocument
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom
 from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
 
 
@@ -24,10 +25,10 @@ def test_source_citations_do_not_fetch_unused_document_fields(sqlite_session: Se
         tenant_id=tenant_id,
         dataset_id=dataset_id,
         position=1,
-        data_source_type="upload_file",
+        data_source_type=DataSourceType("upload_file"),
         batch="batch-1",
         name="source.txt",
-        created_from="web",
+        created_from=DocumentCreatedFrom("web"),
         created_by=creator_id,
         enabled=True,
         archived=False,
@@ -112,10 +113,10 @@ def test_source_document_read_is_scoped_and_has_no_lazy_queries(sqlite_session: 
             tenant_id=owner,
             dataset_id=dataset,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType("upload_file"),
             batch="batch-1",
             name="source.txt",
-            created_from="web",
+            created_from=DocumentCreatedFrom("web"),
             created_by=str(uuid4()),
             doc_metadata=None,
         )
