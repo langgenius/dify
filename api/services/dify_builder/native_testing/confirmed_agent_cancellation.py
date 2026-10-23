@@ -20,6 +20,7 @@ from models.dify_builder_native_tests import (
     NativeEffectOperation,
     NativeInvocationState,
     NativePayloadObject,
+    NativeTestInvocation,
 )
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
@@ -205,6 +206,53 @@ class ConfirmedAgentCancellation:
             and self._objects(sql, ref, owned.tenant_id) == proof["objects"]
             and [list(source) for source in self._sources(sql, ref)] == proof["sources"]
         )
+
+    def initial_stop_is_saved(self, *, ref):
+        """Read the initial ordinary owner's saved stop, not physical cleanup.
+
+        Initial runs have no native dispatch source. The sealed terminal proof
+        may close their logical receipt while C02 still retains cleanup facts.
+        """
+        with self.loader.session_factory() as sql:
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            if request is None or request.state != "sealed":
+                return False
+            states = sql.scalars(
+                select(NativeInvocationState).where(NativeInvocationState.request_id == ref.request_id)
+            ).all()
+            invocations = sql.scalars(
+                select(NativeTestInvocation).where(NativeTestInvocation.request_id == ref.request_id)
+            ).all()
+            if len(states) != 1 or len(invocations) != 1:
+                return False
+            state, invocation = states[0], invocations[0]
+            if (
+                (state.tenant_id, state.invocation_id, state.parent_invocation_id, state.generation)
+                != (self.commands.actor.tenant_id, ref.invocation_id, None, 0)
+                or (invocation.tenant_id, invocation.invocation_id)
+                != (self.commands.actor.tenant_id, ref.invocation_id)
+                or invocation.active
+                or (state.app_id, state.workflow_id) != (request.app_id, request.workflow_id)
+                or sql.scalar(select(NativeDispatch.id).where(NativeDispatch.request_id == ref.request_id)) is not None
+                or sql.scalar(
+                    owner_query(NativePayloadObject, ref, request.tenant_id).where(
+                        NativePayloadObject.id == state.context_object_id, NativePayloadObject.kind == "context"
+                    )
+                )
+                is None
+            ):
+                return False
+            operations = sql.scalars(
+                select(NativeEffectOperation).where(NativeEffectOperation.request_id == ref.request_id)
+            ).all()
+            if any(
+                (operation.tenant_id, operation.invocation_id) != (request.tenant_id, ref.invocation_id)
+                or operation.state not in {"completed", "failed", "not_dispatched"}
+                for operation in operations
+            ):
+                return False
+            outcome = _terminal_proof(sql, request=request, ref=ref)
+            return outcome is not None and outcome.status == "stopped" and outcome.reason_code == "effect_denied"
 
     def retry_children(self, *, ref):
         """Targets for an explicit cancel only; revoked scopes gain no read/run grant.
