@@ -391,7 +391,8 @@ describe('MarkdownForm', () => {
         />,
       )
       await user.click(screen.getByText('Departure', { exact: true }))
-      const trigger = screen.getByRole('button', { name: 'Departure' })
+      const placeholder = type === 'time' ? 'time.title.pickTime' : 'time.operation.pickDate'
+      const trigger = screen.getByRole('button', { name: `Departure ${placeholder}` })
       expect(trigger).toHaveFocus()
       expect(trigger).toHaveAttribute('aria-expanded', 'false')
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
