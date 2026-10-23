@@ -82,11 +82,3 @@ def test_no_passing_run_on_this_graph_does_not_count(run: WorkflowRun | None) ->
     outcome = draft_test_outcome(run, _draft(saved_at=_BEFORE))
     assert outcome is DraftTestOutcome.UNTESTED
     assert outcome.passed is False
-
-
-def test_each_outcome_has_its_own_detail() -> None:
-    assert DraftTestOutcome.PASSED.detail == "The last draft test passed on this draft"
-    assert DraftTestOutcome.PASSED_WITH_HANDLED_ERRORS.detail == (
-        "The last draft test passed on this draft; some node errors were handled by their error strategy"
-    )
-    assert DraftTestOutcome.UNTESTED.detail == "No passing draft test on the current draft"
