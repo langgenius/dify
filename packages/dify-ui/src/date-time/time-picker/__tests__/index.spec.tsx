@@ -36,7 +36,10 @@ it('allows a valid time to be reached through temporarily unavailable combinatio
     .getByRole('option', { name: '00', exact: true })
     .click()
   await screen.getByRole('button', { name: 'OK' }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('10:00')
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    '10:00',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })
 
 it('starts a fresh draft when controlled open changes without an open request', async () => {
@@ -89,7 +92,10 @@ it('honors canceled close requests without discarding the active draft', async (
     .element(screen.getByRole('dialog', { name: 'Time', exact: true }))
     .toBeInTheDocument()
   await screen.getByRole('button', { name: 'OK' }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('14:30')
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    '14:30',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })
 
 it('supports 24-hour navigation and numeric minute locating', async () => {
@@ -106,7 +112,10 @@ it('supports 24-hour navigation and numeric minute locating', async () => {
   await userEvent.tab()
   await userEvent.keyboard('45')
   await screen.getByRole('button', { name: 'OK' }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('23:45')
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    '23:45',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })
 
 it('isolates draft option names and values from an enclosing field', async () => {
@@ -185,7 +194,10 @@ it('keeps a quarter-hour field reachable and rounds Now down to its current inte
     .element(screen.getByRole('listbox', { name: 'Minute' }).getByRole('option', { name: '30' }))
     .toHaveAttribute('aria-selected', 'true')
   await screen.getByRole('button', { name: 'OK', exact: true }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('13:30')
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    '13:30',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
   vi.restoreAllMocks()
 })
 
@@ -286,7 +298,10 @@ it('preserves draft selection after focus leaves and does not select hovered opt
     .toHaveAttribute('aria-selected', 'false')
   expect(changed).not.toHaveBeenCalled()
   await screen.getByRole('button', { name: 'OK', exact: true }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('14:30')
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    '14:30',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })
 
 it('announces the complete custom displayed value including its timezone', async () => {

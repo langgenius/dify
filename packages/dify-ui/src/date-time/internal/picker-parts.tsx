@@ -1,5 +1,7 @@
 'use client'
 
+import type { Field } from '@base-ui/react/field'
+import type { BaseUIComponentProps } from '@base-ui/react/internals/types'
 import type { TextDirection } from '../../direction-provider'
 import type { IconButtonProps } from '../../icon-button'
 import type {
@@ -9,14 +11,39 @@ import type {
   PopoverProps,
   PopoverTriggerProps,
 } from '../../popover'
+import type { PickerChangeEventDetails } from './use-picker-value'
+import { createChangeEventDetails } from '@base-ui/react/internals/createBaseUIEventDetails'
+import {
+  DEFAULT_VALIDITY_STATE,
+  fieldValidityMapping,
+} from '@base-ui/react/internals/field-constants'
+import { useRegisterFieldControl } from '@base-ui/react/internals/field-register-control'
+import { useFieldRootContext } from '@base-ui/react/internals/field-root-context'
+import { useFormContext } from '@base-ui/react/internals/form-context'
+import { getStateAttributesProps } from '@base-ui/react/internals/getStateAttributesProps'
+import {
+  useLabel,
+  useLabelableContext,
+  useLabelableId,
+} from '@base-ui/react/internals/labelable-provider'
+import { useRenderElement } from '@base-ui/react/internals/useRenderElement'
+import { useValueChanged } from '@base-ui/react/internals/useValueChanged'
+import { ownerDocument, ownerWindow } from '@base-ui/utils/owner'
+import { activeElement, contains, getTarget } from '@base-ui/utils/shadowDom'
+import { useIsoLayoutEffect } from '@base-ui/utils/useIsoLayoutEffect'
+import { useStableCallback } from '@base-ui/utils/useStableCallback'
+import { useTimeout } from '@base-ui/utils/useTimeout'
+import { visuallyHidden, visuallyHiddenInput } from '@base-ui/utils/visuallyHidden'
 import * as React from 'react'
 import { cn } from '../../cn'
 import { DirectionProvider, useDirection } from '../../direction-provider'
 import { IconButton } from '../../icon-button'
 import { formLabelClassName } from '../../internal/form-control'
 import { resolveClassName } from '../../internal/resolve-class-name'
+import { mergeProps } from '../../merge-props'
 import { Popover, PopoverContent, PopoverTrigger } from '../../popover'
 import { useMergedRefs } from '../../use-merged-refs'
+import { arePickerValuesEqual } from './use-picker-value'
 
 type PickerOpenChangeDetails = Omit<PopoverChangeEventDetails, 'preventUnmountOnClose'>
 
@@ -39,14 +66,20 @@ type PickerFieldProps = Pick<PopoverProps, 'open' | 'defaultOpen'> & {
 type PickerContextValue = Omit<PickerFieldProps, 'children'> & {
   displayValue: string
   serializedValue: string
-  triggerId: string
+  triggerId: string | undefined
   valueId: string
   labelId: string | undefined
   setLabelId: React.Dispatch<React.SetStateAction<string | undefined>>
   errorId: string
   requiredId: string
   triggerRef: React.RefObject<HTMLButtonElement | null>
-  clear: () => void
+  clear: (event: React.MouseEvent<HTMLButtonElement>) => void
+  canEdit: () => boolean
+  focus: (element: HTMLElement) => void
+  releaseFocus: (element?: HTMLElement) => void
+  blur: (nextTarget: Element | null) => void
+  popupRef: React.RefObject<HTMLDivElement | null>
+  clearRef: React.RefObject<HTMLButtonElement | null>
   close: () => void
 }
 
@@ -58,7 +91,25 @@ function usePickerContext() {
   return context
 }
 
+function usePickerFocusRef<ElementType extends HTMLElement>(
+  elementRef: React.RefObject<ElementType | null>,
+  disabled = false,
+) {
+  const { focus, releaseFocus } = usePickerContext()
+  useIsoLayoutEffect(() => {
+    if (disabled && elementRef.current) releaseFocus(elementRef.current)
+  }, [disabled, elementRef, releaseFocus])
+  return React.useCallback(
+    (element: ElementType) => {
+      if (contains(element, activeElement(ownerDocument(element)))) focus(element)
+      return () => releaseFocus(element)
+    },
+    [focus, releaseFocus],
+  )
+}
+
 function PickerRoot({
+  value,
   displayValue,
   serializedValue,
   onClear,
@@ -66,92 +117,236 @@ function PickerRoot({
   children,
   ...props
 }: PickerFieldProps & {
+  value: string | Date | null
   displayValue: string
   serializedValue: string
-  onClear: () => void
-  onReset: () => void
+  onClear: (details: PickerChangeEventDetails) => boolean
+  onReset: (details: PickerChangeEventDetails) => boolean
 }) {
   const inheritedDirection = useDirection()
   const direction = props.direction ?? inheritedDirection
+  const field = useFieldRootContext()
+  const { clearErrors, elementRef: formElementRef, formRef } = useFormContext()
+  const { labelId: fieldLabelId } = useLabelableContext()
+  const triggerId = useLabelableId()
   const id = React.useId()
   const [labelId, setLabelId] = React.useState<string>()
   const triggerRef = React.useRef<HTMLButtonElement>(null)
+  const clearRef = React.useRef<HTMLButtonElement>(null)
+  const popupRef = React.useRef<HTMLDivElement>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const focusedPartRef = React.useRef<HTMLElement | null>(null)
   const actionsRef = React.useRef<PopoverActions>(null)
+  const disabled = Boolean(field.disabled || props.disabled)
+  const name = field.name ?? props.name
+  const [eligible, setEligible] = React.useState(false)
   const [validationAttempted, setValidationAttempted] = React.useState(false)
+  const [resetVersion, setResetVersion] = React.useState(0)
+  const handledResetVersionRef = React.useRef(0)
   const errorMessage = props.invalid
     ? (props.validationMessage ?? 'Choose a valid value.')
     : validationAttempted && props.required && !serializedValue
       ? (props.validationMessage ?? 'Choose a value.')
       : undefined
-  const invalid = Boolean(errorMessage)
-  React.useEffect(() => {
-    inputRef.current?.setCustomValidity(
-      props.invalid ? (props.validationMessage ?? 'Choose a valid value.') : '',
+  const invalid = Boolean(errorMessage || field.state.valid === false)
+  const canEdit = useStableCallback(
+    () => !disabled && !props.readOnly && !inputRef.current?.matches(':disabled'),
+  )
+  const formValue = useStableCallback(() => serializedValue)
+  useRegisterFieldControl(triggerRef, triggerId, value, formValue, eligible, props.name)
+
+  // Registration follows the proxy input's native form owner, including disabled fieldsets.
+  useIsoLayoutEffect(() => {
+    const input = inputRef.current
+    if (!input) return
+    function updateEligibility() {
+      const form = formElementRef.current
+      setEligible(
+        Boolean(
+          input &&
+          !input.matches(':disabled') &&
+          (!form || input.form === form || (!input.form && !input.hasAttribute('form'))),
+        ),
+      )
+    }
+    updateEligibility()
+    const observer = new (ownerWindow(input).MutationObserver)(updateEligibility)
+    for (let ancestor: Element | null = input; ancestor; ancestor = ancestor.parentElement)
+      observer.observe(ancestor, { attributes: true, attributeFilter: ['disabled', 'form'] })
+    return () => observer.disconnect()
+  }, [disabled, props.form, formElementRef])
+  const { registerInput: registerFieldInput } = field.validation
+  const { setFilled } = field
+  const registerInput = React.useCallback(
+    (input: HTMLInputElement) =>
+      registerFieldInput(input, { controlRef: triggerRef, value: undefined }),
+    [registerFieldInput],
+  )
+  const mergedInputRef = useMergedRefs(inputRef, field.validation.inputRef, registerInput)
+
+  const customValidationMessage = props.invalid
+    ? (props.validationMessage ?? 'Choose a valid value.').replace(/\r\n?/g, '\n')
+    : ''
+  useIsoLayoutEffect(() => {
+    inputRef.current?.setCustomValidity(customValidationMessage)
+  }, [customValidationMessage])
+  useValueChanged(customValidationMessage, () => {
+    // Replace the native constraint before Field clears its cached custom error, so it cannot
+    // restore an obsolete picker message. Previously validated fields need a fresh verdict.
+    if (resetVersion !== handledResetVersionRef.current) return
+    if (field.validityData.state.valid !== null || field.shouldValidateOnChange()) {
+      field.validation.commit(value)
+      // Barred inputs hide validationMessage, so Field restores its displaced message regardless
+      // of ownership. Retire that stale constraint after its synchronous cleanup as well.
+      const input = inputRef.current
+      if (input && !input.willValidate) input.setCustomValidity(customValidationMessage)
+    } else field.validation.change(undefined, true)
+  })
+  useIsoLayoutEffect(() => {
+    setFilled(Boolean(serializedValue))
+  }, [setFilled, serializedValue])
+  useValueChanged(serializedValue, () => {
+    clearErrors(name)
+    field.setDirty(!arePickerValuesEqual(value, field.validityData.initialValue))
+    field.validation.change(value, resetVersion !== handledResetVersionRef.current)
+  })
+
+  const focus = useStableCallback((element: HTMLElement) => {
+    if (disabled || element.matches(':disabled')) return
+    focusedPartRef.current = element
+    field.focusOwnerRef.current = triggerRef
+    field.setFocused(true)
+  })
+  const releaseFocus = useStableCallback((element?: HTMLElement) => {
+    if (element && focusedPartRef.current !== element) return
+    if (field.focusOwnerRef.current !== triggerRef) return
+    focusedPartRef.current = null
+    field.focusOwnerRef.current = undefined
+    field.setFocused(false)
+  })
+  const blur = useStableCallback((nextTarget: Element | null) => {
+    if (
+      contains(triggerRef.current, nextTarget) ||
+      contains(clearRef.current, nextTarget) ||
+      contains(popupRef.current, nextTarget)
     )
-  }, [props.invalid, props.validationMessage])
-  const onResetEvent = React.useEffectEvent(onReset)
+      return
+    if (field.focusOwnerRef.current !== triggerRef) return
+    releaseFocus()
+    field.setTouched(true)
+    if (field.validationMode === 'onBlur') field.validation.commit(value)
+  })
+  useIsoLayoutEffect(() => {
+    if (disabled || !eligible) releaseFocus()
+    return releaseFocus
+  }, [disabled, eligible, releaseFocus])
+
+  const resetTimeout = useTimeout()
+  const resetPicker = useStableCallback((event: Event) => {
+    if (event.defaultPrevented) return
+    const details = createChangeEventDetails('reset', event)
+    if (!onReset(details)) return
+    setValidationAttempted(false)
+    setResetVersion((version) => version + 1)
+  })
+  const resetFieldFeedback = useStableCallback(() => {
+    clearErrors(name)
+    field.validation.change(undefined, true)
+    field.setTouched(false)
+    field.setDirty(!arePickerValuesEqual(value, field.validityData.initialValue))
+    inputRef.current?.setCustomValidity(customValidationMessage)
+    field.setValidityData((previous) => ({
+      ...previous,
+      state: DEFAULT_VALIDITY_STATE,
+      error: '',
+      errors: [],
+    }))
+    actionsRef.current?.close()
+  })
+  useIsoLayoutEffect(() => {
+    if (resetVersion === handledResetVersionRef.current) return
+    handledResetVersionRef.current = resetVersion
+    resetFieldFeedback()
+  }, [resetVersion, resetFieldFeedback])
   React.useEffect(() => {
-    const form = inputRef.current?.form
+    const input = inputRef.current
+    const form = input?.form ?? (!input?.hasAttribute('form') ? formElementRef.current : null)
     if (!form) return
     function reset(event: Event) {
-      queueMicrotask(() => {
-        if (event.defaultPrevented) return
-        setValidationAttempted(false)
-        onResetEvent()
-        actionsRef.current?.close()
-      })
+      // Wait for delegated React onReset handlers to be able to cancel the native reset.
+      resetTimeout.start(0, () => resetPicker(event))
     }
     form.addEventListener('reset', reset)
-    return () => form.removeEventListener('reset', reset)
-  }, [props.form])
+    return () => {
+      form.removeEventListener('reset', reset)
+      resetTimeout.clear()
+    }
+  }, [props.form, formElementRef, resetPicker, resetTimeout])
 
   return (
     <DirectionProvider direction={direction}>
       <PickerContext.Provider
         value={{
           ...props,
+          disabled,
           direction,
           invalid,
           displayValue,
           serializedValue,
-          triggerId: `${id}-trigger`,
+          triggerId,
           valueId: `${id}-value`,
-          labelId,
+          labelId:
+            Array.from(new Set([fieldLabelId, labelId].filter(Boolean))).join(' ') || undefined,
           setLabelId,
-          errorId: `${id}-error`,
+          errorId: errorMessage ? `${id}-error` : '',
           requiredId: `${id}-required`,
           triggerRef,
-          clear: () => {
-            if (props.disabled || props.readOnly) return
+          clearRef,
+          popupRef,
+          canEdit,
+          focus,
+          releaseFocus,
+          blur,
+          clear: (event) => {
+            if (!canEdit()) return
+            const details = createChangeEventDetails(
+              'clear-press',
+              event.nativeEvent,
+              event.currentTarget,
+            )
+            if (!onClear(details)) return
             triggerRef.current?.focus()
-            onClear()
             actionsRef.current?.close()
           },
           close: () => actionsRef.current?.close(),
         }}
       >
         {props.required && (
-          <span id={`${id}-required`} className="sr-only">
+          <span id={`${id}-required`} style={visuallyHidden}>
             {props.requiredLabel ?? 'Required'}
           </span>
         )}
         <input
-          ref={inputRef}
-          hidden
+          {...field.validation.getValidationProps(disabled)}
+          ref={mergedInputRef}
+          style={name ? visuallyHiddenInput : visuallyHidden}
+          aria-hidden="true"
           tabIndex={-1}
           type="text"
           autoComplete="off"
-          name={props.name}
+          name={name}
           form={props.form}
           value={serializedValue}
           required={props.required}
-          disabled={props.disabled}
+          disabled={disabled}
           readOnly={props.readOnly}
           onChange={() => {}}
+          onFocus={() => triggerRef.current?.focus({ focusVisible: true })}
           onInvalid={(event) => {
             event.preventDefault()
             setValidationAttempted(true)
+            field.setTouched(true)
+            if (triggerId) formRef.current.fields.get(triggerId)?.validate()
             const firstInvalid = inputRef.current?.form
               ? Array.from(inputRef.current.form.elements).find((element) =>
                   element.matches('input:invalid, select:invalid, textarea:invalid'),
@@ -164,8 +359,35 @@ function PickerRoot({
           open={props.open}
           defaultOpen={props.defaultOpen}
           onOpenChange={(open, details) => {
-            if (open && (props.disabled || props.readOnly)) details.cancel()
+            if (open && !canEdit()) details.cancel()
             props.onOpenChange?.(open, details)
+            if (
+              !details.isCanceled &&
+              !open &&
+              (details.reason === 'focus-out' || details.reason === 'outside-press')
+            ) {
+              if (details.reason === 'outside-press') {
+                const document = ownerDocument(inputRef.current)
+                const pressedLabel = [fieldLabelId, labelId].some((id) => {
+                  const label = id ? document.getElementById(id) : null
+                  return (
+                    label &&
+                    isLabelTextInteraction({
+                      nativeEvent: details.event,
+                      currentTarget: label,
+                    })
+                  )
+                })
+                if (pressedLabel) return
+              }
+              const target =
+                details.reason === 'outside-press'
+                  ? getTarget(details.event)
+                  : 'relatedTarget' in details.event
+                    ? details.event.relatedTarget
+                    : null
+              blur(target instanceof ownerWindow(inputRef.current).Element ? target : null)
+            }
           }}
           actionsRef={actionsRef}
         >
@@ -181,9 +403,11 @@ function PickerRoot({
   )
 }
 
-type PickerLabelProps = Omit<React.ComponentProps<'div'>, 'id'>
+type PickerLabelProps = Omit<BaseUIComponentProps<'div', Field.Root.State>, 'id' | 'render'>
 
-function isLabelTextInteraction(event: React.SyntheticEvent<HTMLDivElement>) {
+function isLabelTextInteraction(
+  event: Pick<React.SyntheticEvent<Element>, 'nativeEvent' | 'currentTarget'>,
+) {
   const path = event.nativeEvent.composedPath()
   const boundary = path.indexOf(event.currentTarget)
   const ElementConstructor = event.currentTarget.ownerDocument.defaultView?.Element
@@ -199,39 +423,48 @@ function isLabelTextInteraction(event: React.SyntheticEvent<HTMLDivElement>) {
     )
 }
 
-function PickerLabel({ children, className, onClick, onPointerDown, ...props }: PickerLabelProps) {
-  const { disabled, triggerRef, setLabelId } = usePickerContext()
-  const id = React.useId()
-  React.useLayoutEffect(() => {
-    setLabelId(id)
-    return () => setLabelId(undefined)
-  }, [id, setLabelId])
-
-  return (
-    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- The label only forwards focus; the native trigger owns keyboard activation.
-    <div
-      {...props}
-      id={id}
-      data-disabled={disabled || undefined}
-      className={cn(formLabelClassName, className)}
-      onPointerDown={(event) => {
-        onPointerDown?.(event)
-        if (
-          !event.defaultPrevented &&
-          !disabled &&
-          event.button === 0 &&
-          isLabelTextInteraction(event)
-        )
-          event.preventDefault()
-      }}
-      onClick={(event) => {
-        onClick?.(event)
-        if (event.defaultPrevented || disabled || !isLabelTextInteraction(event)) return
+function PickerLabel({ className, style, ...props }: PickerLabelProps) {
+  const { disabled, triggerId, triggerRef, setLabelId } = usePickerContext()
+  const field = useFieldRootContext()
+  const labelProps = useLabel({
+    fallbackControlId: triggerId,
+    setLabelId,
+    focusControl(event) {
+      if (!event.defaultPrevented && !disabled && isLabelTextInteraction(event))
         triggerRef.current?.focus({ focusVisible: true })
-      }}
-    >
-      {children}
-    </div>
+    },
+  })
+  return useRenderElement(
+    'div',
+    {
+      ...props,
+      style,
+      className: (state: Field.Root.State) =>
+        cn(formLabelClassName, resolveClassName(className, state)),
+    },
+    {
+      state: { ...field.state, disabled: Boolean(disabled) },
+      stateAttributesMapping: fieldValidityMapping,
+      props: [
+        {
+          ...labelProps,
+          onClick(event: React.MouseEvent<HTMLDivElement>) {
+            if (!event.defaultPrevented && !disabled && isLabelTextInteraction(event))
+              labelProps.onClick?.(event)
+          },
+          onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+            if (
+              !event.defaultPrevented &&
+              !disabled &&
+              event.button === 0 &&
+              isLabelTextInteraction(event)
+            )
+              labelProps.onPointerDown?.(event)
+          },
+        },
+        props,
+      ],
+    },
   )
 }
 
@@ -243,6 +476,7 @@ type PickerTriggerProps = Omit<
 }
 function PickerTrigger({
   ref,
+  id,
   children,
   className,
   disabled,
@@ -252,11 +486,14 @@ function PickerTrigger({
   ...props
 }: PickerTriggerProps) {
   const field = usePickerContext()
-  const mergedRef = useMergedRefs(field.triggerRef, ref)
+  const baseField = useFieldRootContext()
+  const triggerId = useLabelableId({ id })
+  const focusRef = usePickerFocusRef(field.triggerRef, Boolean(field.disabled || disabled))
+  const mergedRef = useMergedRefs(field.triggerRef, ref, focusRef)
   const labelId = ariaLabelledBy ?? (ariaLabel ? undefined : field.labelId)
   return (
     <PopoverTrigger
-      id={field.triggerId}
+      id={triggerId}
       dir={field.direction}
       aria-label={ariaLabel}
       aria-labelledby={
@@ -264,18 +501,29 @@ function PickerTrigger({
           ? [labelId, field.serializedValue ? field.valueId : undefined].filter(Boolean).join(' ')
           : undefined
       }
-      aria-describedby={
-        [
-          ariaDescribedBy,
-          field.required ? field.requiredId : undefined,
-          field.invalid ? field.errorId : undefined,
-        ]
-          .filter(Boolean)
-          .join(' ') || undefined
-      }
+      {...getStateAttributesProps(
+        {
+          ...baseField.state,
+          disabled: Boolean(field.disabled || disabled),
+          valid: field.invalid ? false : baseField.state.valid,
+        },
+        fieldValidityMapping,
+      )}
+      data-readonly={field.readOnly || undefined}
+      data-required={field.required || undefined}
       aria-invalid={field.invalid || undefined}
       aria-disabled={field.readOnly || undefined}
-      {...props}
+      {...mergeProps(
+        baseField.validation.getValidationProps(Boolean(field.disabled), {
+          'aria-describedby':
+            [ariaDescribedBy, field.required ? field.requiredId : undefined, field.errorId]
+              .filter(Boolean)
+              .join(' ') || undefined,
+          onFocus: (event) => field.focus(event.currentTarget),
+          onBlur: (event) => field.blur(event.relatedTarget),
+        }),
+        props,
+      )}
       ref={mergedRef}
       disabled={field.disabled || disabled}
       className={(state) =>
@@ -325,17 +573,37 @@ type PickerClearProps = DistributiveOmit<
 > & {
   ref?: React.Ref<HTMLButtonElement>
 }
-function PickerClear({ onClick, disabled, ...props }: PickerClearProps) {
+function PickerClear({ onClick, disabled, ref, ...props }: PickerClearProps) {
   const field = usePickerContext()
+  const focusRef = usePickerFocusRef(field.clearRef, Boolean(field.disabled || disabled))
+  const mergedRef = useMergedRefs(field.clearRef, ref, focusRef)
   if (!field.serializedValue || field.readOnly) return null
   return (
     <IconButton
       {...props}
+      onFocus={
+        mergeProps(
+          {
+            onFocus: (event: React.FocusEvent<HTMLButtonElement>) =>
+              field.focus(event.currentTarget),
+          },
+          props,
+        ).onFocus
+      }
+      onBlur={
+        mergeProps(
+          {
+            onBlur: (event: React.FocusEvent<HTMLButtonElement>) => field.blur(event.relatedTarget),
+          },
+          props,
+        ).onBlur
+      }
+      ref={mergedRef}
       size="lg"
       disabled={field.disabled || disabled}
       onClick={(event) => {
         onClick?.(event)
-        if (!event.defaultPrevented) field.clear()
+        if (!event.defaultPrevented && !event.baseUIHandlerPrevented) field.clear(event)
       }}
     >
       <span
@@ -355,17 +623,23 @@ function PickerContent({
   'aria-labelledby': ariaLabelledBy,
   ...props
 }: PickerContentProps & { children: React.ReactNode }) {
-  const { labelId } = usePickerContext()
+  const { labelId, popupRef, focus, blur } = usePickerContext()
   const direction = useDirection()
-  const popupRef = React.useRef<HTMLDivElement>(null)
-  const mergedRef = useMergedRefs(popupRef, ref)
+  const focusRef = usePickerFocusRef(popupRef)
+  const mergedRef = useMergedRefs(popupRef, ref, focusRef)
   return (
     <PopoverContent
       placement="bottom-start"
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy ?? (ariaLabel ? undefined : labelId)}
       dir={direction}
-      {...props}
+      {...mergeProps(
+        {
+          onFocus: (event: React.FocusEvent<HTMLDivElement>) => focus(event.currentTarget),
+          onBlur: (event: React.FocusEvent<HTMLDivElement>) => blur(event.relatedTarget),
+        },
+        props,
+      )}
       ref={mergedRef}
       className={(state) =>
         cn(

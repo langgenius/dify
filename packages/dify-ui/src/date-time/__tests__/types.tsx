@@ -1,3 +1,9 @@
+import type {
+  DatePickerChangeEventDetails,
+  DatePickerChangeEventReason,
+} from '@langgenius/dify-ui/date-picker'
+import type { DateTimePickerChangeEventDetails } from '@langgenius/dify-ui/date-time-picker'
+import type { TimePickerChangeEventDetails } from '@langgenius/dify-ui/time-picker'
 import type * as React from 'react'
 import {
   DatePicker,
@@ -28,12 +34,23 @@ export function pickerTypeContracts(
   const date = (
     <DatePicker
       value="2026-09-28"
-      onValueChange={(value) => {
+      onValueChange={(value, details) => {
         expectTypeOf(value).toEqualTypeOf<string | null>()
+        expectTypeOf(details).toEqualTypeOf<DatePickerChangeEventDetails>()
+        expectTypeOf(details.reason).toEqualTypeOf<DatePickerChangeEventReason>()
+        if (details.reason === 'item-press') {
+          expectTypeOf(details.event).toEqualTypeOf<MouseEvent | KeyboardEvent | PointerEvent>()
+        }
+        if (details.reason === 'reset') expectTypeOf(details.event).toEqualTypeOf<Event>()
+        details.cancel()
         value?.toUpperCase()
       }}
     >
-      <DatePickerLabel ref={contentRef} className="mb-1">
+      <DatePickerLabel
+        ref={contentRef}
+        className={(state) => (state.valid === false ? 'text-text-destructive' : 'mb-1')}
+        style={(state) => ({ opacity: state.disabled ? 0.5 : 1 })}
+      >
         Date
       </DatePickerLabel>
       <DatePickerTrigger
@@ -49,8 +66,9 @@ export function pickerTypeContracts(
     <TimePicker
       locale="zh-CN"
       value="22:23"
-      onValueChange={(value) => {
+      onValueChange={(value, details) => {
         expectTypeOf(value).toEqualTypeOf<string | null>()
+        expectTypeOf(details).toEqualTypeOf<TimePickerChangeEventDetails>()
         value?.toUpperCase()
       }}
     >
@@ -63,8 +81,9 @@ export function pickerTypeContracts(
     <DateTimePicker
       timeZone="Asia/Shanghai"
       value={new Date()}
-      onValueChange={(value) => {
+      onValueChange={(value, details) => {
         expectTypeOf(value).toEqualTypeOf<Date | null>()
+        expectTypeOf(details).toEqualTypeOf<DateTimePickerChangeEventDetails>()
         value?.toISOString()
       }}
     >

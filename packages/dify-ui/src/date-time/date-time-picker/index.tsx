@@ -10,8 +10,12 @@ import type {
   PickerValueProps,
 } from '../internal/picker-parts'
 import type { TimePanelLabels, TimePanelProps } from '../internal/time-panel'
+import type {
+  PickerChangeEventDetails,
+  PickerChangeEventReason,
+} from '../internal/use-picker-value'
 import type { ZonedWallTime } from './zoned-value'
-import { useControlled } from '@base-ui/utils/useControlled'
+import { createChangeEventDetails } from '@base-ui/react/internals/createBaseUIEventDetails'
 import { enUS } from '@daypicker/react/locale/en-US'
 import * as React from 'react'
 import { Button } from '../../button'
@@ -28,10 +32,14 @@ import {
   usePickerContext,
 } from '../internal/picker-parts'
 import { TimePanel } from '../internal/time-panel'
+import { usePickerValue } from '../internal/use-picker-value'
 import { getZonedWallTime, resolveZonedWallTime } from './zoned-value'
 
 type DateTimePickerLabels = CalendarPanelLabels &
   TimePanelLabels & { pickTime: string; backToDate: string; now: string }
+type DateTimePickerChangeEventReason = PickerChangeEventReason
+type DateTimePickerChangeEventDetails = PickerChangeEventDetails
+
 type DateTimePickerProps = PickerFieldProps &
   Pick<CalendarPanelProps, 'locale' | 'minDate' | 'maxDate' | 'isDateUnavailable'> &
   Pick<TimePanelProps, 'hourCycle'> & {
@@ -39,7 +47,7 @@ type DateTimePickerProps = PickerFieldProps &
     value?: Date | null
     defaultValue?: Date | null
     /** Called on OK, clearing or form reset; popup draft edits do not emit changes. */
-    onValueChange?: (value: Date | null) => void
+    onValueChange?: (value: Date | null, details: DateTimePickerChangeEventDetails) => void
     timeZone: string
     isTimeUnavailable?: (wall: Readonly<ZonedWallTime>) => boolean
     labels?: Partial<DateTimePickerLabels>
@@ -49,7 +57,7 @@ type ContextValue = Omit<
   'value' | 'defaultValue' | 'onValueChange' | 'children'
 > & {
   value: Exclude<DateTimePickerProps['value'], undefined>
-  commit: NonNullable<DateTimePickerProps['onValueChange']>
+  commit: (value: Date | null, details: DateTimePickerChangeEventDetails) => boolean
 }
 const Context = React.createContext<ContextValue | null>(null)
 function useContext() {
@@ -83,9 +91,12 @@ function DateTimePicker({
   children,
   ...props
 }: DateTimePickerProps) {
-  const [value, setValue] = useControlled({
-    controlled: valueProp,
-    default: defaultValue,
+  const { value, commit } = usePickerValue<Date>({
+    value: valueProp,
+    defaultValue,
+    onValueChange,
+    disabled: props.disabled,
+    readOnly: props.readOnly,
     name: 'DateTimePicker',
   })
   if (value && Number.isNaN(value.getTime())) throw new RangeError('Invalid DateTimePicker value')
@@ -101,13 +112,7 @@ function DateTimePicker({
       props.isDateUnavailable?.(wall.date) ||
       props.isTimeUnavailable?.(wall)),
   )
-  function commit(next: Date | null) {
-    if (props.disabled || props.readOnly) return
-    if (next?.getTime() !== value?.getTime()) {
-      setValue(next)
-      onValueChange?.(next)
-    }
-  }
+
   return (
     <Context.Provider value={{ ...props, value, commit }}>
       <PickerRoot
@@ -133,12 +138,10 @@ function DateTimePicker({
               }).format(value)
             : ''
         }
+        value={value}
         serializedValue={value?.toISOString() ?? ''}
-        onClear={() => commit(null)}
-        onReset={() => {
-          setValue(defaultValue)
-          if (defaultValue?.getTime() !== value?.getTime()) onValueChange?.(defaultValue)
-        }}
+        onClear={(details) => commit(null, details)}
+        onReset={(details) => commit(defaultValue, details)}
       >
         {children}
       </PickerRoot>
@@ -175,7 +178,7 @@ function Session() {
     labels,
     hourCycle,
   } = useContext()
-  const { close } = usePickerContext()
+  const { close, canEdit } = usePickerContext()
   const [draft, setDraft] = React.useState(() => getZonedWallTime(value ?? new Date(), timeZone))
   const [displayMonth, setDisplayMonth] = React.useState(() =>
     getInitialMonth(draft.date, minDate, maxDate),
@@ -233,12 +236,17 @@ function Session() {
       size="small"
       disabled={unavailable}
       aria-describedby={unavailable ? errorId : undefined}
-      onClick={() => {
+      onClick={(event) => {
         const instant = availableInstant(draft)
-        if (instant) {
-          commit(instant)
+        if (
+          instant &&
+          canEdit() &&
+          commit(
+            instant,
+            createChangeEventDetails('item-press', event.nativeEvent, event.currentTarget),
+          )
+        )
           close()
-        }
       }}
     >
       {text.apply}
@@ -342,6 +350,8 @@ export {
   DateTimePickerValue,
 }
 export type {
+  DateTimePickerChangeEventDetails,
+  DateTimePickerChangeEventReason,
   DateTimePickerClearProps,
   DateTimePickerContentProps,
   DateTimePickerLabelProps,

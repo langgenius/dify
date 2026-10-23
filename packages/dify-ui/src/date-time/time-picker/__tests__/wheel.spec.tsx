@@ -31,7 +31,10 @@ it('selects the row a scroll rests on, moves focus there and does not commit', a
   expect(column.scrollTop).toBe(78)
   expect(changed).not.toHaveBeenCalled()
   await screen.getByRole('button', { name: 'OK', exact: true }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('16:30')
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    '16:30',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })
 
 it('keeps a clicked target selected throughout positioning after a scroll', async () => {
@@ -46,7 +49,10 @@ it('keeps a clicked target selected throughout positioning after a scroll', asyn
   await expect.poll(() => column.scrollTop).toBe(130)
   await expect.element(target).toHaveAttribute('aria-selected', 'true')
   await screen.getByRole('button', { name: 'OK', exact: true }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('18:30')
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    '18:30',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })
 
 it('aligns AM and PM to the same top anchor for keyboard, click and scroll selection', async () => {
@@ -68,7 +74,10 @@ it('aligns AM and PM to the same top anchor for keyboard, click and scroll selec
   expect(column.scrollTop).toBe(0)
   expect(changed).not.toHaveBeenCalled()
   await screen.getByRole('button', { name: 'OK', exact: true }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('01:30')
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    '01:30',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })
 
 it('applies both scrolled columns when OK is clicked', async () => {
@@ -77,7 +86,10 @@ it('applies both scrolled columns when OK is clicked', async () => {
   scrollColumn(column, 67)
   scrollColumn(minutes, 1050)
   await screen.getByRole('button', { name: 'OK', exact: true }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('16:40')
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    '16:40',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })
 
 it('continues keyboard navigation from the scrolled row', async () => {
@@ -141,7 +153,10 @@ it('commits the highlighted row when OK is clicked while a column is still scrol
     requestAnimationFrame(frame)
   })
   expect(seen.top).toBeGreaterThan(0)
-  expect(changed).toHaveBeenCalledExactlyOnceWith(`13:${seen.minute}`)
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    `13:${seen.minute}`,
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })
 
 it('settles through the quiet fallback when scrollend is unavailable', async () => {

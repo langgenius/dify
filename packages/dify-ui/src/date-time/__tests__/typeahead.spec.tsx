@@ -93,5 +93,8 @@ it('preserves repeated digits and starts fresh after returning to a time column'
   expect(changed).not.toHaveBeenCalled()
   await expect.element(trigger).toHaveTextContent('1:30 PM')
   await screen.getByRole('button', { name: 'OK', exact: true }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('14:55')
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    '14:55',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })
