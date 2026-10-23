@@ -2456,44 +2456,14 @@
       "count": 3
     }
   },
-  "web/app/components/datasets/documents/components/document-list/components/document-source-icon.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
-  "web/app/components/datasets/documents/components/document-list/components/document-table-row.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 8
-    }
-  },
   "web/app/components/datasets/documents/components/document-list/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 2
-    }
-  },
-  "web/app/components/datasets/documents/components/document-list/components/sort-header.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 2
     }
   },
   "web/app/components/datasets/documents/components/document-list/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 4
-    }
-  },
-  "web/app/components/datasets/documents/components/empty-element.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/documents/components/list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/app/components/datasets/documents/components/operations.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/app/components/datasets/documents/create-from-pipeline/__tests__/index.spec.tsx": {
@@ -2733,11 +2703,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/documents/detail/completed/common/batch-action.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/datasets/documents/detail/completed/common/chunk-content.tsx": {
     "jsx-a11y/no-autofocus": {
       "count": 2
@@ -2904,11 +2869,6 @@
   "web/app/components/datasets/documents/detail/settings/pipeline-settings/process-documents/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/datasets/documents/status-item/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
     }
   },
   "web/app/components/datasets/external-api/external-api-modal/Form.tsx": {
