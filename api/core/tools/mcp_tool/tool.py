@@ -38,20 +38,49 @@ FORWARDED_IDENTITY_HEADER = "X-Dify-SSO-Token"
 
 
 def schema_accepts_multiple_types(schema: Mapping[str, Any]) -> bool:
-    """Whether a JSON schema property accepts more than one JSON type, e.g. `string` or `array`."""
-    branches = [schema]
-    for union_key in ("anyOf", "oneOf"):
-        union_schemas = schema.get(union_key)
-        if isinstance(union_schemas, list):
-            branches.extend(branch for branch in union_schemas if isinstance(branch, Mapping))
+    """Whether a JSON schema property can accept more than one JSON type."""
+    all_non_null_types = {"array", "boolean", "number", "object", "string"}
 
-    type_names: set[str] = set()
-    for branch in branches:
-        declared = branch.get("type")
-        for type_name in declared if isinstance(declared, list) else [declared]:
-            if isinstance(type_name, str) and type_name != "null":
-                type_names.add("number" if type_name in ("integer", "float") else type_name)
-    return len(type_names) > 1
+    def possible_types(current: Mapping[str, Any], depth: int = 0, ancestors: frozenset[int] = frozenset()) -> set[str]:
+        # MCP schemas are JSON and cannot be cyclic, but keep this bounded for malformed/deep input.
+        if depth >= 10:
+            return all_non_null_types
+        current_id = id(current)
+        if current_id in ancestors:
+            return set()
+        ancestors = ancestors | {current_id}
+
+        constraints: list[set[str]] = []
+        declared = current.get("type")
+        declared_types = declared if isinstance(declared, list) else [declared]
+        type_names = {
+            "number" if type_name in ("integer", "float") else type_name
+            for type_name in declared_types
+            if isinstance(type_name, str) and type_name != "null"
+        }
+        if type_names or isinstance(declared, str) or isinstance(declared, list) and declared:
+            constraints.append(type_names)
+
+        for union_key in ("anyOf", "oneOf"):
+            branches = current.get(union_key)
+            if isinstance(branches, list):
+                branch_types = [
+                    possible_types(branch, depth + 1, ancestors) for branch in branches if isinstance(branch, Mapping)
+                ]
+                constraints.append(set().union(*branch_types))
+
+        all_of = current.get("allOf")
+        if isinstance(all_of, list):
+            constraints.extend(
+                possible_types(branch, depth + 1, ancestors) for branch in all_of if isinstance(branch, Mapping)
+            )
+
+        if not constraints:
+            return all_non_null_types
+        return set.intersection(*constraints)
+
+    types = possible_types(schema)
+    return len(types) > 1
 
 
 class MCPTool(Tool):

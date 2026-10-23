@@ -457,46 +457,71 @@ class ToolTransformService:
         :return: list of ToolParameter instances
         """
 
-        def resolve_property_type(prop: dict[str, Any], depth: int = 0) -> str:
+        supported_types = {"array", "boolean", "float", "integer", "number", "object", "string"}
+
+        def resolve_property_types(prop: dict[str, Any], depth: int = 0) -> list[str] | None:
             """
-            Resolve a JSON schema property type while guarding against cyclic or deeply nested unions.
+            Resolve the possible JSON types while guarding against deeply nested schemas.
             """
             if depth >= ToolTransformService._MCP_SCHEMA_TYPE_RESOLUTION_MAX_DEPTH:
-                return "string"
+                return None
+
+            constraints: list[list[str]] = []
             prop_type = prop.get("type")
-            match prop_type:
-                case list():
-                    non_null_types = [type_name for type_name in prop_type if type_name != "null"]
-                    if non_null_types:
-                        return non_null_types[0]
-                    if prop_type:
-                        return "string"
-                case str():
-                    if prop_type == "null":
-                        return "string"
-                    return prop_type
+            if isinstance(prop_type, list):
+                declared_types = [
+                    type_name
+                    for type_name in prop_type
+                    if isinstance(type_name, str) and type_name != "null" and type_name in supported_types
+                ]
+                if prop_type:
+                    constraints.append(
+                        ["number" if type_name in ("integer", "float") else type_name for type_name in declared_types]
+                    )
+            elif isinstance(prop_type, str):
+                declared_types = [prop_type] if prop_type != "null" and prop_type in supported_types else []
+                constraints.append(
+                    ["number" if type_name in ("integer", "float") else type_name for type_name in declared_types]
+                )
 
             for union_key in ("anyOf", "oneOf"):
                 union_schemas = prop.get(union_key)
                 if not isinstance(union_schemas, list):
                     continue
 
-                for union_schema in union_schemas:
-                    if not isinstance(union_schema, dict):
-                        continue
-                    union_type = resolve_property_type(union_schema, depth + 1)
-                    if union_type != "null":
-                        return union_type
+                branch_types = [
+                    resolve_property_types(union_schema, depth + 1)
+                    for union_schema in union_schemas
+                    if isinstance(union_schema, dict)
+                ]
+                # A branch without a resolvable type is unconstrained. Keep the other
+                # constraints, but do not claim that the union narrows accepted types.
+                if all(types is not None for types in branch_types):
+                    union_types = list(dict.fromkeys(type_name for types in branch_types for type_name in types or []))
+                    constraints.append(union_types)
 
             all_of_schemas = prop.get("allOf")
             if isinstance(all_of_schemas, list):
                 for all_of_schema in all_of_schemas:
                     if not isinstance(all_of_schema, dict):
                         continue
-                    all_of_type = resolve_property_type(all_of_schema, depth + 1)
-                    if all_of_type != "null":
-                        return all_of_type
-            return "string"
+                    all_of_types = resolve_property_types(all_of_schema, depth + 1)
+                    if all_of_types is not None:
+                        constraints.append(all_of_types)
+
+            if not constraints:
+                return None
+
+            first_constraint, *remaining_constraints = constraints
+            return [
+                type_name
+                for type_name in first_constraint
+                if all(type_name in constraint for constraint in remaining_constraints)
+            ]
+
+        def resolve_property_type(prop: dict[str, Any]) -> str:
+            possible_types = resolve_property_types(prop)
+            return possible_types[0] if possible_types else "string"
 
         def create_parameter(
             name: str, description: str, param_type: str, required: bool, input_schema: dict[str, Any] | None = None
@@ -518,15 +543,12 @@ class ToolTransformService:
             props: dict[str, dict[str, Any]], required: list[str], prefix: str = ""
         ) -> list[ToolParameter]:
             """Process properties recursively"""
-            type_mapping = {"integer": "number", "float": "number"}
             complex_types = ["array", "object"]
 
             parameters = []
             for name, prop in props.items():
                 current_description = prop.get("description", "")
                 prop_type = resolve_property_type(prop)
-                if prop_type in type_mapping:
-                    prop_type = type_mapping[prop_type]
                 # Keep the raw schema for multi-type unions so the LLM sees every accepted type, not just prop_type.
                 input_schema = prop if prop_type in complex_types or schema_accepts_multiple_types(prop) else None
                 parameters.append(
