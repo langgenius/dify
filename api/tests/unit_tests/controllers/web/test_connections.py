@@ -75,7 +75,6 @@ def test_http_api_key_management_round_trip(
     changed = client.patch(f"/api/connections/{connection_id}", json={"credentials": {"api_key": "replacement-secret"}})
     assert changed.status_code == 200
     assert "replacement-secret" not in changed.get_data(as_text=True)
-    assert client.post(f"/api/connections/{connection_id}/check").get_json()["check"]["status"] == "valid"
     deleted = client.delete(f"/api/connections/{connection_id}")
     assert deleted.status_code == 204
     assert deleted.data == b""
@@ -137,7 +136,6 @@ def test_disabling_anonymous_connections_blocks_existing_guest_management(
         ("GET", "/api/connections", None),
         ("GET", f"/api/connections/{connection_id}", None),
         ("PATCH", f"/api/connections/{connection_id}", {"credentials": {"api_key": "replacement"}}),
-        ("POST", f"/api/connections/{connection_id}/check", None),
         ("DELETE", f"/api/connections/{connection_id}", None),
     ]:
         response = client.open(path, method=method, json=payload)
@@ -158,7 +156,7 @@ def test_stale_workflow_request_is_rejected_before_plugin_calls(
     assert harness.auth.calls == []
 
 
-def test_lost_check_race_returns_conflict(client: FlaskClient, harness: ConnectionHarness) -> None:
+def test_lost_update_race_returns_conflict(client: FlaskClient, harness: ConnectionHarness) -> None:
     created = harness.service.create_api_key(harness.context, harness.command())
 
     def change() -> None:
@@ -166,7 +164,7 @@ def test_lost_check_race_returns_conflict(client: FlaskClient, harness: Connecti
             session.execute(sa.update(EndUserConnection).where(EndUserConnection.id == created.id).values(revision=2))
 
     harness.auth.on_check = change
-    response = client.post(f"/api/connections/{created.id}/check")
+    response = client.patch(f"/api/connections/{created.id}", json={"credentials": {"api_key": "replacement"}})
     assert response.status_code == 409
     assert response.get_json()["code"] == "connection_conflict"
 
@@ -197,3 +195,10 @@ def test_public_schemas_match_patch_and_timestamp_semantics() -> None:
     assert "default" not in payload["properties"]["credentials"]
     response = connections.EndUserConnectionResponse.model_json_schema(mode="serialization")
     assert response["properties"]["created_at"]["type"] == "integer"
+
+
+def test_standalone_check_route_is_removed(client: FlaskClient, harness: ConnectionHarness) -> None:
+    created = harness.service.create_api_key(harness.context, harness.command())
+    harness.auth.calls.clear()
+    assert client.post(f"/api/connections/{created.id}/check").status_code == 404
+    assert harness.auth.calls == []

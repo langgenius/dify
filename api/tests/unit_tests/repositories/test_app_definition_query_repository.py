@@ -1063,6 +1063,7 @@ def test_web_parameters_derive_connection_requirements_from_selected_published_g
     assert result.workflow_id == _WORKFLOW_ID
     assert result.parameters.features_dict["opening_statement"] == "Published"
     assert result.requires_end_user_connections == (root_source == "end_user")
+    assert result.graph == {"nodes": nodes}
     assert repository.get_web_parameter_config(_APP_ID, _OTHER_TENANT_ID) is None
 
 
@@ -1127,6 +1128,7 @@ def test_publish_during_parameter_mapping_does_not_mix_versions(
     assert result is not None
     assert result.workflow_id == _WORKFLOW_ID
     assert result.parameters.features_dict["opening_statement"] == "First"
+    assert result.graph == {"nodes": [{"id": "tool", "data": {"type": "tool", "credential_source": "workspace"}}]}
     assert result.requires_end_user_connections is False
 
 
@@ -1141,5 +1143,6 @@ def test_web_model_app_parameters_have_no_workflow_requirements(sqlite_session_f
     )
     assert result is not None
     assert result.workflow_id is None
+    assert result.graph is None
     assert result.requires_end_user_connections is False
     assert result.parameters.features_dict["opening_statement"] == "Hello"

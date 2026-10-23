@@ -14,11 +14,13 @@ from werkzeug.test import TestResponse
 from clients.plugin.auth_entities import OAuthRevokeResult
 from controllers.common import end_user_connection_oauth
 from controllers.console import bp as console_bp
-from controllers.web import bp, connection_oauth, connections, wraps
+from controllers.web import bp, connection_oauth, connection_preflight, connections, wraps
 from enums import DeploymentEdition
 from models.end_user_connection import EndUserConnection
 from models.model import App, EndUser
 from models.tools import ToolOAuthTenantClient
+from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
+from services.end_user_connections.preflight import ConnectionPreflightService
 from tests.helpers.end_user_api_key import PROVIDER
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
@@ -41,7 +43,18 @@ def client(
             return app, user
 
     monkeypatch.setattr(wraps, "decode_jwt_token", identity)
-    services = SimpleNamespace(end_user_connection_oauth=harness.service, end_user_connections=harness.base.service)
+    services = SimpleNamespace(
+        end_user_connection_oauth=harness.service,
+        end_user_connections=harness.base.service,
+        end_user_connection_preflight=ConnectionPreflightService(
+            connections=harness.base.repository,
+            checks=harness.base.service,
+            requirements=PublishedPreflightRequirements(
+                workflows=harness.base.repository, providers=harness.providers, oauth=harness.gateway
+            ),
+        ),
+    )
+    monkeypatch.setattr(connection_preflight, "application_services", lambda: services)
     monkeypatch.setattr(connection_oauth, "application_services", lambda: services)
     monkeypatch.setattr(end_user_connection_oauth, "application_services", lambda: services)
     monkeypatch.setattr(connections, "application_services", lambda: services)
@@ -152,7 +165,7 @@ def test_guest_cannot_start_authorization(
     assert response.get_json()["code"] == "end_user_login_required"
 
 
-def test_oauth_check_and_delete_use_existing_management_routes(client: FlaskClient, harness: OAuthHarness) -> None:
+def test_oauth_preflight_refresh_and_delete(client: FlaskClient, harness: OAuthHarness) -> None:
     connection = harness.finish(harness.start())
     with harness.base.sessions.begin() as session:
         session.execute(
@@ -160,10 +173,13 @@ def test_oauth_check_and_delete_use_existing_management_routes(client: FlaskClie
             .where(EndUserConnection.id == connection.id)
             .values(expires_at=datetime(2000, 1, 1))
         )
-    response = client.post(f"/api/connections/{connection.id}/check")
+    response = client.post(
+        "/api/connections/preflight",
+        json={"workflow_id": harness.base.workflow_id, "connections": {"tool-1": connection.id}},
+    )
     assert response.status_code == 200
-    assert response.get_json()["check"]["status"] == "valid"
-    assert response.get_json()["credential_status"] == "connected"
+    assert response.get_json()["connections"][0]["check"]["status"] == "valid"
+    assert response.get_json()["connections"][0]["status"] == "connected"
     assert "secret" not in response.get_data(as_text=True)
     assert len(harness.handler.refreshes) == 1
     harness.base.auth.revoke_result = OAuthRevokeResult(
@@ -176,7 +192,7 @@ def test_oauth_check_and_delete_use_existing_management_routes(client: FlaskClie
 
 
 @pytest.mark.parametrize("change", ["changed", "deleted"])
-def test_oauth_client_change_is_a_documented_check_error(
+def test_oauth_client_change_requires_reconnection_in_preflight(
     client: FlaskClient, harness: OAuthHarness, change: str
 ) -> None:
     connection = harness.finish(harness.start())
@@ -189,9 +205,13 @@ def test_oauth_client_change_is_a_documented_check_error(
                 .where(ToolOAuthTenantClient.id == harness.client_id)
                 .values(encrypted_oauth_params='{"client_id":"changed"}')
             )
-    response = client.post(f"/api/connections/{connection.id}/check")
-    assert response.status_code == 409
-    assert response.get_json()["code"] == "connection_reauthorization_required"
+    response = client.post(
+        "/api/connections/preflight",
+        json={"workflow_id": harness.base.workflow_id, "connections": {"tool-1": connection.id}},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["ready"] is False
+    assert response.get_json()["connections"][0]["status"] == "reconnect_required"
     assert client.delete(f"/api/connections/{connection.id}").status_code == 204
 
 
@@ -206,10 +226,14 @@ def test_refresh_timeout_is_a_check_result_without_invalidating_connection(
             .values(expires_at=datetime(2000, 1, 1))
         )
     harness.handler.refresh_error = ValueError("private-provider-response")
-    response = client.post(f"/api/connections/{connection.id}/check")
+    response = client.post(
+        "/api/connections/preflight",
+        json={"workflow_id": harness.base.workflow_id, "connections": {"tool-1": connection.id}},
+    )
     assert response.status_code == 200
-    assert response.get_json()["check"]["status"] == "temporarily_unavailable"
-    assert response.get_json()["credential_status"] == "connected"
+    assert response.get_json()["connections"][0]["check"]["status"] == "temporarily_unavailable"
+    assert response.get_json()["connections"][0]["status"] is None
+    assert response.get_json()["ready"] is False
     assert "private-provider-response" not in response.get_data(as_text=True)
 
 

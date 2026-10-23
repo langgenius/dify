@@ -67,7 +67,7 @@ class ConnectionExecutionService:
             ),
         )
         selections: list[ExecutionConnectionSelection] = []
-        for requirement in result.requirements:
+        for requirement in result.connections:
             match requirement.status:
                 case NodeConnectionStatus.DISCONNECTED:
                     if (command.connections or {}).get(requirement.node_id) is not None:

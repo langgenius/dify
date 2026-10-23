@@ -178,16 +178,40 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
         parameters=parameters,
         workflow_id="published-version",
         requires_end_user_connections=True,
+        graph={
+            "nodes": [
+                {
+                    "id": "tool-1",
+                    "data": {
+                        "type": "tool",
+                        "credential_source": "end_user",
+                        "provider_id": "vendor/calendar/calendar",
+                        "end_user_auth": {"allowed_credential_types": ["api-key"], "purpose": "Read events"},
+                    },
+                },
+                {
+                    "id": "tool-2",
+                    "data": {"type": "tool", "credential_source": "reuse_node", "reuse_node_id": "tool-1"},
+                },
+            ]
+        },
     )
     definitions.get_published_parameter_config.return_value = parameters
     result = service.get_web_parameters("app-1", "tenant-1")
     assert result["workflow_id"] == "published-version"
     assert result["requires_end_user_connections"] is True
+    requirement = result["connection_requirements"][0]
+    assert requirement.node_id == "tool-1"
+    assert requirement.node_ids == ("tool-1", "tool-2")
+    assert requirement.provider == "vendor/calendar/calendar"
+    assert requirement.title == "tool-1"
+    assert requirement.purpose == "Read events"
     assert result["opening_statement"] == "Hello"
     definitions.get_web_parameter_config.assert_called_once_with("app-1", "tenant-1")
     public = service.get_public_parameters("app-1")
     assert "workflow_id" not in public
     assert "requires_end_user_connections" not in public
+    assert "connection_requirements" not in public
 
 
 @pytest.mark.parametrize(
@@ -203,4 +227,30 @@ def test_web_parameters_preserve_agent_publication_errors(
     service, definitions = _service()
     definitions.get_web_parameter_config.side_effect = source_error
     with pytest.raises(expected_error):
+        service.get_web_parameters("app-1", "tenant-1")
+
+
+@pytest.mark.parametrize("graph", [None, {"nodes": []}])
+def test_web_parameters_without_personal_tools_have_empty_requirements(graph: dict[str, object] | None) -> None:
+    service, definitions = _service()
+    definitions.get_web_parameter_config.return_value = module.WebAppParameterConfig(
+        parameters=AppParameterConfig(features_dict={}, user_input_form=[]),
+        workflow_id="published-version" if graph is not None else None,
+        requires_end_user_connections=False,
+        graph=graph,
+    )
+
+    assert service.get_web_parameters("app-1", "tenant-1")["connection_requirements"] == ()
+
+
+def test_incomplete_published_connection_requirement_is_not_reported_as_connection_free() -> None:
+    service, definitions = _service()
+    definitions.get_web_parameter_config.return_value = module.WebAppParameterConfig(
+        parameters=AppParameterConfig(features_dict={}, user_input_form=[]),
+        workflow_id="published-version",
+        requires_end_user_connections=True,
+        graph={"nodes": [{"id": "tool", "data": {"type": "tool", "credential_source": "end_user"}}]},
+    )
+
+    with pytest.raises(AppDefinitionUnavailableError):
         service.get_web_parameters("app-1", "tenant-1")

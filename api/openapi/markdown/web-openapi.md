@@ -213,7 +213,7 @@ Read saved App or Conversation choices without validating or refreshing credenti
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Explicit connection requirements and readiness | **application/json**: [EndUserConnectionPreflightResponse](#enduserconnectionpreflightresponse)<br> |
+| 200 | Connection statuses and preflight readiness | **application/json**: [EndUserConnectionPreflightResponse](#enduserconnectionpreflightresponse)<br> |
 | 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[WorkflowChangedError](#workflowchangederror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -277,25 +277,6 @@ Read saved App or Conversation choices without validating or refreshing credenti
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /connections/{connection_id}/check
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| connection_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Credential check result | **application/json**: [EndUserConnectionCheckResponse](#enduserconnectioncheckresponse)<br> |
-| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1461,19 +1442,14 @@ OAuth authorization could not be completed. Start authorization again.
 | ---- | ---- | ----------- | -------- |
 | ConnectionOauthFailedError |  | OAuth authorization could not be completed. Start authorization again. |  |
 
-#### ConnectionPreflightRequirement
+#### ConnectionPreflightStatus
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| allowed_credential_types | [ [ConnectionCredentialType](#connectioncredentialtype) ] |  | Yes |
 | check | [CredentialCheckResult](#credentialcheckresult) |  | Yes |
 | connection_id | string |  | Yes |
 | node_id | string | Independent authorization node ID to use as the selection key. | Yes |
-| node_ids | [ string ] | The authorization node and all nodes explicitly reusing it. | Yes |
-| provider | string |  | Yes |
-| purpose | string |  | Yes |
 | status | [NodeConnectionStatus](#nodeconnectionstatus) | Effective node status; null when availability cannot be determined. | Yes |
-| title | string |  | Yes |
 
 #### ConnectionReauthorizationRequiredError
 
@@ -1579,14 +1555,6 @@ Too many emails have been sent from this IP address recently. Please try again l
 | ---- | ---- | ----------- | -------- |
 | EmailSendIpLimitError |  | Too many emails have been sent from this IP address recently. Please try again later. |  |
 
-#### EndUserConnectionCheckResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| check | [CredentialCheckResult](#credentialcheckresult) |  | Yes |
-| connection_id | string |  | Yes |
-| credential_status | [ConnectionCredentialStatus](#connectioncredentialstatus) |  | Yes |
-
 #### EndUserConnectionCreatePayload
 
 | Name | Type | Description | Required |
@@ -1638,8 +1606,8 @@ Too many emails have been sent from this IP address recently. Please try again l
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| connections | [ [ConnectionPreflightStatus](#connectionpreflightstatus) ] |  | Yes |
 | ready | boolean |  | Yes |
-| requirements | [ [ConnectionPreflightRequirement](#connectionpreflightrequirement) ] |  | Yes |
 | workflow_id | string | Connection contract revision evaluated by this preflight. | Yes |
 
 #### EndUserConnectionResponse
@@ -2487,6 +2455,19 @@ Only one file is allowed.
 | ---- | ---- | ----------- | -------- |
 | TooManyFilesError |  | Only one file is allowed. |  |
 
+#### ToolConnectionRequirement
+
+Published authorization requirements, independent of personal connection readiness.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_credential_types | [ [ConnectionCredentialType](#connectioncredentialtype) ] |  | Yes |
+| node_id | string | Independent authorization node ID to use as the selection key. | Yes |
+| node_ids | [ string ] | The authorization node and all nodes explicitly reusing it. | Yes |
+| provider | string |  | Yes |
+| purpose | string |  | Yes |
+| title | string |  | Yes |
+
 #### TriggerWorkflowServiceModeUnavailableError
 
 This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
@@ -2578,6 +2559,7 @@ in form definition, or a variable while the workflow is running.
 | account_login_url | string | Account-origin sign-in page for the existing Web App login flow | Yes |
 | allow_anonymous_end_user_auth | boolean | Whether Guest identities may manage and use personal Connections; does not control App entry. | Yes |
 | annotation_reply | { **"enabled"**: boolean } |  | Yes |
+| connection_requirements | [ [ToolConnectionRequirement](#toolconnectionrequirement) ] | Static authorization requirements for this published version, without personal connection state. | Yes |
 | file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
 | more_like_this | { **"enabled"**: boolean } |  | Yes |
 | opening_statement | string |  | No |

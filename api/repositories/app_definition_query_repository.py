@@ -167,6 +167,7 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                     ),
                     workflow_id=workflow.id,
                     requires_end_user_connections=requires_end_user_connections(workflow.graph_dict),
+                    graph=workflow.graph_dict,
                 )
             config = (
                 _get_public_agent_parameter_config(app, session=session)
@@ -175,7 +176,9 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
             )
             if config is None:
                 return None
-            return WebAppParameterConfig(parameters=config, workflow_id=None, requires_end_user_connections=False)
+            return WebAppParameterConfig(
+                parameters=config, workflow_id=None, requires_end_user_connections=False, graph=None
+            )
 
     @override
     def get_tool_icon_sources(self, app_id: str) -> tuple[AppToolIconSource, ...] | None:
