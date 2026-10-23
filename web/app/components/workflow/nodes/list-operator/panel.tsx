@@ -19,7 +19,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.listFilter'
 
 const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
 
   const {
     readOnly,
@@ -56,7 +56,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({ id, data }) => {
         </Field>
 
         <Field
-          title={t(($) => $[`${i18nPrefix}.filterCondition`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.filterCondition`], { ns: 'workflowLogic' })}
           operations={
             <Switch
               checked={inputs.filter_by?.enabled}
@@ -79,7 +79,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({ id, data }) => {
         </Field>
         <Split />
         <Field
-          title={t(($) => $[`${i18nPrefix}.extractsCondition`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.extractsCondition`], { ns: 'workflowLogic' })}
           operations={
             <Switch
               checked={inputs.extract_by?.enabled}
@@ -106,7 +106,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({ id, data }) => {
         <LimitConfig config={inputs.limit} onChange={handleLimitChange} readonly={readOnly} />
         <Split />
         <Field
-          title={t(($) => $[`${i18nPrefix}.orderBy`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.orderBy`], { ns: 'workflowLogic' })}
           operations={
             <Switch
               checked={inputs.order_by?.enabled}
@@ -132,12 +132,12 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({ id, data }) => {
                 }
               >
                 <OptionCard
-                  title={t(($) => $[`${i18nPrefix}.asc`], { ns: 'workflow' })}
+                  title={t(($) => $[`${i18nPrefix}.asc`], { ns: 'workflowLogic' })}
                   onSelect={handleOrderByTypeChange(OrderBy.ASC)}
                   selected={inputs.order_by.value === OrderBy.ASC}
                 />
                 <OptionCard
-                  title={t(($) => $[`${i18nPrefix}.desc`], { ns: 'workflow' })}
+                  title={t(($) => $[`${i18nPrefix}.desc`], { ns: 'workflowLogic' })}
                   onSelect={handleOrderByTypeChange(OrderBy.DESC)}
                   selected={inputs.order_by.value === OrderBy.DESC}
                 />
@@ -153,17 +153,21 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({ id, data }) => {
             <VarItem
               name="result"
               type={`Array[${itemVarTypeShowName}]`}
-              description={t(($) => $[`${i18nPrefix}.outputVars.result`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.result`], { ns: 'workflowLogic' })}
             />
             <VarItem
               name="first_record"
               type={itemVarTypeShowName}
-              description={t(($) => $[`${i18nPrefix}.outputVars.first_record`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.first_record`], {
+                ns: 'workflowLogic',
+              })}
             />
             <VarItem
               name="last_record"
               type={itemVarTypeShowName}
-              description={t(($) => $[`${i18nPrefix}.outputVars.last_record`], { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.last_record`], {
+                ns: 'workflowLogic',
+              })}
             />
           </>
         </OutputVars>

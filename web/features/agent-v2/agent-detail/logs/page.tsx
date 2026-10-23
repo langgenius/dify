@@ -11,14 +11,23 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { Pagination } from '@langgenius/dify-ui/pagination'
+import {
+  PaginationContent,
+  PaginationNavigation,
+  PaginationNext,
+  PaginationPageJump,
+  PaginationPageList,
+  PaginationPageSize,
+  PaginationPrevious,
+  PaginationRoot,
+} from '@langgenius/dify-ui/pagination'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
-import Sort from '@/app/components/base/sort'
+import { Sort } from '@/app/components/base/sort'
 import { useDocLink } from '@/context/i18n'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/console'
@@ -54,16 +63,6 @@ const getPeriodQuery = (period: PeriodKey) => {
   return {
     start: dayjs().subtract(days, 'day').format(queryDateFormat),
     end: dayjs().add(1, 'minute').format(queryDateFormat),
-  }
-}
-
-const parseSortValue = (value: string): AgentLogsSort => {
-  const isDescending = value.startsWith('-')
-  const field = isDescending ? value.slice(1) : value
-
-  return {
-    field: field === 'updated_at' ? 'updated_at' : 'created_at',
-    order: isDescending ? 'desc' : 'asc',
   }
 }
 
@@ -124,8 +123,11 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
   }
 
   return (
-    <AgentDetailSectionSurface label={t(($) => $['agentDetail.sections.logs'])}>
-      <header className="h-26.5 shrink-0 px-6 pt-3 pb-2">
+    <AgentDetailSectionSurface
+      label={t(($) => $['agentDetail.sections.logs'])}
+      panelClassName="max-lg:overflow-y-auto"
+    >
+      <header className="h-auto shrink-0 px-3 pt-3 pb-2 lg:h-26.5 lg:px-6">
         <div className="min-w-0">
           <h2 className="system-xl-semibold text-text-primary">
             {t(($) => $['agentDetail.logs.title'])}
@@ -144,73 +146,72 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
           </p>
         </div>
 
-        <div className="mt-3 flex min-w-0 items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <Chip
-              value={period}
-              items={periodItems}
-              leftIcon={
-                <span aria-hidden className="i-ri-calendar-line block size-4 text-text-secondary" />
-              }
-              className="min-w-32"
-              onSelect={(item) => {
-                setPage(1)
-                setPeriod(item.value)
-              }}
-              onClear={() => {
-                setPage(1)
-                setPeriod('allTime')
-              }}
-            />
+        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
+          <Chip
+            value={period}
+            items={periodItems}
+            leftIcon={
+              <span aria-hidden className="i-ri-calendar-line block size-4 text-text-secondary" />
+            }
+            className="min-w-32"
+            onSelect={(item) => {
+              setPage(1)
+              setPeriod(item.value)
+            }}
+            onClear={() => {
+              setPage(1)
+              setPeriod('allTime')
+            }}
+          />
 
-            <AgentLogSourcePicker
-              value={source}
-              groups={logSourcesQuery.data?.groups ?? []}
-              isLoading={logSourcesQuery.isPending}
-              isError={logSourcesQuery.isError}
-              onRetry={() => {
-                void logSourcesQuery.refetch()
-              }}
-              onChange={(nextSource) => {
-                setPage(1)
-                setSource(nextSource)
-              }}
-            />
+          <AgentLogSourcePicker
+            value={source}
+            groups={logSourcesQuery.data?.groups ?? []}
+            isLoading={logSourcesQuery.isPending}
+            isError={logSourcesQuery.isError}
+            onRetry={() => {
+              void logSourcesQuery.refetch()
+            }}
+            onChange={(nextSource) => {
+              setPage(1)
+              setSource(nextSource)
+            }}
+          />
 
-            <SearchInput
-              aria-label={t(($) => $['agentDetail.logs.filters.search.label'])}
-              value={keyword}
-              placeholder={t(($) => $['agentDetail.logs.filters.search.placeholder'])}
-              className="w-50 shrink-0"
-              onValueChange={(nextKeyword) => {
+          <SearchInput
+            aria-label={t(($) => $['agentDetail.logs.filters.search.label'])}
+            value={keyword}
+            placeholder={t(($) => $['agentDetail.logs.filters.search.placeholder'])}
+            className="w-full min-w-0 sm:w-50"
+            onValueChange={(nextKeyword) => {
+              setPage(1)
+              setKeyword(nextKeyword)
+            }}
+          />
+
+          <div className="ml-auto max-w-full">
+            <Sort
+              value={sort}
+              items={[
+                {
+                  value: 'created_at',
+                  name: t(($) => $['agentDetail.logs.filters.sort.lastCreatedTime']),
+                },
+                {
+                  value: 'updated_at',
+                  name: t(($) => $['agentDetail.logs.filters.sort.lastUpdatedTime']),
+                },
+              ]}
+              onValueChange={(nextSortValue) => {
                 setPage(1)
-                setKeyword(nextKeyword)
+                setSort(nextSortValue)
               }}
             />
           </div>
-
-          <Sort
-            order={sort.order === 'desc' ? '-' : ''}
-            value={sort.field}
-            items={[
-              {
-                value: 'created_at',
-                name: t(($) => $['agentDetail.logs.filters.sort.lastCreatedTime']),
-              },
-              {
-                value: 'updated_at',
-                name: t(($) => $['agentDetail.logs.filters.sort.lastUpdatedTime']),
-              },
-            ]}
-            onSelect={(nextSortValue) => {
-              setPage(1)
-              setSort(parseSortValue(nextSortValue))
-            }}
-          />
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 px-6 pt-2 pb-3">
+      <div className="min-h-40 flex-1 px-3 pt-2 pb-3 lg:min-h-0 lg:px-6">
         <AgentLogsTable
           logs={logs}
           isPending={logsQuery.isPending}
@@ -245,29 +246,38 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
         </DrawerPortal>
       </Drawer>
 
-      <Pagination
+      <PaginationRoot
         page={currentPage}
         totalPages={totalPages}
         onPageChange={setPage}
-        className="h-14 shrink-0 px-6 py-3"
-        labels={{
-          previous: tCommon(($) => $['pagination.previous']),
-          next: tCommon(($) => $['pagination.next']),
-          editPageNumber: (page, totalPages) =>
-            tCommon(($) => $['pagination.editPageNumber'], { page, totalPages }),
-          pageNumberInput: tCommon(($) => $['pagination.pageNumber']),
-        }}
-        pageSize={{
-          value: limit,
-          options: [10, 25, 50],
-          onValueChange: (nextLimit) => {
-            setPage(1)
-            setLimit(nextLimit)
-          },
-          label: tCommon(($) => $['pagination.perPage']),
-          ariaLabel: tCommon(($) => $['pagination.perPage']),
-        }}
-      />
+        className="h-auto shrink-0 px-3 py-3 lg:h-14 lg:px-6"
+      >
+        <PaginationContent className="max-lg:grid-cols-1 max-lg:justify-items-start">
+          <PaginationNavigation>
+            <PaginationPrevious aria-label={tCommon(($) => $['pagination.previous'])} />
+            <PaginationPageJump
+              aria-label={tCommon(($) => $['pagination.editPageNumber'], {
+                page: currentPage,
+                totalPages,
+              })}
+              inputLabel={tCommon(($) => $['pagination.pageNumber'])}
+            />
+            <PaginationNext aria-label={tCommon(($) => $['pagination.next'])} />
+          </PaginationNavigation>
+          <PaginationPageList className="max-lg:hidden" />
+          <PaginationPageSize
+            value={limit}
+            options={[10, 25, 50]}
+            onValueChange={(nextLimit) => {
+              setPage(1)
+              setLimit(nextLimit)
+            }}
+            label={tCommon(($) => $['pagination.perPage'])}
+            aria-label={tCommon(($) => $['pagination.perPage'])}
+            className="max-lg:col-start-1 max-lg:justify-self-start"
+          />
+        </PaginationContent>
+      </PaginationRoot>
     </AgentDetailSectionSurface>
   )
 }

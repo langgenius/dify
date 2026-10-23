@@ -1,21 +1,23 @@
 'use client'
 
 import type * as React from 'react'
-import type { MenuItemVariant } from '../overlay-shared'
-import type { Placement } from '../placement'
+import type { MenuItemVariant } from '../internal/menu'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import {
+  menuItemClassName,
+  menuItemDestructiveClassName,
+  menuPopupBaseClassName,
+  menuPopupSurfaceClassName,
+} from '../internal/menu'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-  menuItemClassName,
-  menuItemDestructiveClassName,
-  menuPopupClassName,
-} from '../overlay-shared'
-import { parsePlacement } from '../placement'
+  positionerClassName,
+} from '../internal/overlay'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const ContextMenu = BaseContextMenu.Root
 const ContextMenuTrigger = BaseContextMenu.Trigger
@@ -23,18 +25,21 @@ const ContextMenuSub = BaseContextMenu.SubmenuRoot
 const ContextMenuGroup = BaseContextMenu.Group
 type ContextMenuProps = BaseContextMenu.Root.Props
 type ContextMenuActions = BaseContextMenu.Root.Actions
+type ContextMenuChangeEventReason = BaseContextMenu.Root.ChangeEventReason
+type ContextMenuChangeEventDetails = BaseContextMenu.Root.ChangeEventDetails
 type ContextMenuTriggerProps = BaseContextMenu.Trigger.Props
 type ContextMenuSubProps = BaseContextMenu.SubmenuRoot.Props
+type ContextMenuSubChangeEventReason = BaseContextMenu.SubmenuRoot.ChangeEventReason
+type ContextMenuSubChangeEventDetails = BaseContextMenu.SubmenuRoot.ChangeEventDetails
 type ContextMenuGroupProps = BaseContextMenu.Group.Props
+type ContextMenuRadioGroupChangeEventReason = BaseContextMenu.RadioGroup.ChangeEventReason
+type ContextMenuRadioGroupChangeEventDetails = BaseContextMenu.RadioGroup.ChangeEventDetails
 type ContextMenuRadioGroupProps<Value = unknown> = Omit<
   BaseContextMenu.RadioGroup.Props,
   'defaultValue' | 'onValueChange' | 'value'
 > & {
   defaultValue?: Value
-  onValueChange?: (
-    value: Value,
-    eventDetails: BaseContextMenu.RadioGroup.ChangeEventDetails,
-  ) => void
+  onValueChange?: (value: Value, eventDetails: ContextMenuRadioGroupChangeEventDetails) => void
   value?: Value
 }
 type ContextMenuItemVariant = MenuItemVariant
@@ -47,21 +52,19 @@ function ContextMenuRadioGroup<Value = unknown>(
 }
 
 type ContextMenuContentProps = Omit<BaseContextMenu.Popup.Props, 'children'> &
-  Pick<BaseContextMenu.Positioner.Props, 'sideOffset' | 'alignOffset'> & {
+  Pick<BaseContextMenu.Positioner.Props, 'side' | 'align' | 'sideOffset' | 'alignOffset'> & {
     children: React.ReactNode
-    placement?: Placement
   }
 
 function ContextMenuContent({
   children,
-  placement = 'bottom-start',
+  side,
+  align,
   sideOffset = 0,
   alignOffset = 0,
   className,
   ...props
 }: ContextMenuContentProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <BaseContextMenu.Portal>
       <BaseContextMenu.Positioner
@@ -69,12 +72,13 @@ function ContextMenuContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className="z-50 outline-hidden"
+        className={positionerClassName}
       >
         <BaseContextMenu.Popup
           className={(state) =>
             cn(
-              menuPopupClassName,
+              menuPopupBaseClassName,
+              menuPopupSurfaceClassName,
               floatingPopupAnimationClassName,
               resolveClassName(className, state),
             )
@@ -152,6 +156,8 @@ function ContextMenuCheckboxItem({ className, ...props }: ContextMenuCheckboxIte
 }
 
 type ContextMenuCheckboxItemProps = BaseContextMenu.CheckboxItem.Props
+type ContextMenuCheckboxItemChangeEventReason = BaseContextMenu.CheckboxItem.ChangeEventReason
+type ContextMenuCheckboxItemChangeEventDetails = BaseContextMenu.CheckboxItem.ChangeEventDetails
 
 function ContextMenuCheckboxItemIndicator({
   className,
@@ -209,7 +215,7 @@ function ContextMenuSubTrigger({
       {children}
       <span
         aria-hidden
-        className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
+        className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary [&:dir(rtl)]:-scale-x-100"
       />
     </BaseContextMenu.SubmenuTrigger>
   )
@@ -219,14 +225,13 @@ type ContextMenuSubContentProps = ContextMenuContentProps
 
 function ContextMenuSubContent({
   children,
-  placement = 'right-start',
+  side,
+  align,
   sideOffset = 4,
-  alignOffset = 0,
+  alignOffset,
   className,
   ...props
 }: ContextMenuSubContentProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <BaseContextMenu.Portal>
       <BaseContextMenu.Positioner
@@ -234,12 +239,13 @@ function ContextMenuSubContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className="z-50 outline-hidden"
+        className={positionerClassName}
       >
         <BaseContextMenu.Popup
           className={(state) =>
             cn(
-              menuPopupClassName,
+              menuPopupBaseClassName,
+              menuPopupSurfaceClassName,
               floatingPopupAnimationClassName,
               resolveClassName(className, state),
             )
@@ -253,12 +259,14 @@ function ContextMenuSubContent({
   )
 }
 
-type ContextMenuLabelProps = BaseContextMenu.GroupLabel.Props
+type ContextMenuGroupLabelProps = BaseContextMenu.GroupLabel.Props
 
-function ContextMenuLabel({ className, ...props }: ContextMenuLabelProps) {
+function ContextMenuGroupLabel({ className, ...props }: ContextMenuGroupLabelProps) {
   return (
     <BaseContextMenu.GroupLabel
-      className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
+      className={(state) =>
+        cn(floatingGroupLabelClassName, 'px-3', resolveClassName(className, state))
+      }
       {...props}
     />
   )
@@ -281,8 +289,8 @@ export {
   ContextMenuCheckboxItemIndicator,
   ContextMenuContent,
   ContextMenuGroup,
+  ContextMenuGroupLabel,
   ContextMenuItem,
-  ContextMenuLabel,
   ContextMenuLinkItem,
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
@@ -296,18 +304,26 @@ export {
 
 export type {
   ContextMenuActions,
+  ContextMenuChangeEventDetails,
+  ContextMenuChangeEventReason,
+  ContextMenuCheckboxItemChangeEventDetails,
+  ContextMenuCheckboxItemChangeEventReason,
   ContextMenuCheckboxItemIndicatorProps,
   ContextMenuCheckboxItemProps,
   ContextMenuContentProps,
+  ContextMenuGroupLabelProps,
   ContextMenuGroupProps,
   ContextMenuItemProps,
-  ContextMenuLabelProps,
   ContextMenuLinkItemProps,
   ContextMenuProps,
+  ContextMenuRadioGroupChangeEventDetails,
+  ContextMenuRadioGroupChangeEventReason,
   ContextMenuRadioGroupProps,
   ContextMenuRadioItemIndicatorProps,
   ContextMenuRadioItemProps,
   ContextMenuSeparatorProps,
+  ContextMenuSubChangeEventDetails,
+  ContextMenuSubChangeEventReason,
   ContextMenuSubContentProps,
   ContextMenuSubProps,
   ContextMenuSubTriggerProps,

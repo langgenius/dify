@@ -1,28 +1,30 @@
-import { act, renderHook } from '@testing-library/react'
+// oxlint-disable-next-line no-restricted-imports -- The SSE boundary fixture uses the transport callback contract; it does not issue HTTP requests.
+import type { IOtherOptions } from '@/service/base'
+import { act } from '@testing-library/react'
+import {
+  baseRunningData,
+  renderWorkflowFlowHook as renderHook,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useChat } from '../../hooks'
 
 const mockHandleRun = vi.fn()
 const mockNotify = vi.fn()
 const mockFetchInspectVars = vi.fn()
 const mockInvalidAllLastRun = vi.fn()
-const mockSetIterTimes = vi.fn()
-const mockSetLoopTimes = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
-const mockGetNodes = vi.fn((): any[] => [])
-
-let mockWorkflowRunningData: any = null
 
 vi.mock('@/service/base', () => ({
-  sseGet: (...args: any[]) => mockSseGet(...args),
+  sseGet: (...args: unknown[]) => mockSseGet(...args),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
 vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
+  submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -30,16 +32,8 @@ vi.mock('@/app/notifications', () => ({
     success: vi.fn(),
     error: vi.fn(),
     warning: vi.fn(),
-    info: (...args: any[]) => mockNotify(...args),
+    info: (...args: unknown[]) => mockNotify(...args),
   },
-}))
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: mockGetNodes,
-    }),
-  }),
 }))
 
 vi.mock('../../../../hooks/use-workflow-run', () => ({
@@ -50,40 +44,29 @@ vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
   useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 
-vi.mock('../../../../hooks-store', () => ({
-  useHooksStore: () => null,
-}))
-
-vi.mock('../../../../store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({
-      setIterTimes: mockSetIterTimes,
-      setLoopTimes: mockSetLoopTimes,
-      inputs: {},
-      workflowRunningData: mockWorkflowRunningData,
-    }),
-  }),
-  useStore: () => vi.fn(),
-}))
-
-const resetMocksAndWorkflowState = () => {
-  vi.clearAllMocks()
-  mockWorkflowRunningData = null
+// Event fixtures omit unrelated protocol fields while preserving the real callback names.
+type EventFixture<T> = T extends object ? { [K in keyof T]?: EventFixture<T[K]> } : T
+type SSECallbacks = {
+  [K in keyof IOtherOptions]-?: NonNullable<IOtherOptions[K]> extends (...args: infer A) => infer R
+    ? (...args: { [I in keyof A]: EventFixture<A[I]> }) => R
+    : never
 }
 
 describe('useChat – handleSend SSE callbacks', () => {
-  let capturedCallbacks: any
+  let capturedCallbacks: SSECallbacks
 
   beforeEach(() => {
-    resetMocksAndWorkflowState()
+    vi.clearAllMocks()
     mockHandleRun.mockReset()
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
-      capturedCallbacks = callbacks
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
+      capturedCallbacks = callbacks as SSECallbacks
     })
   })
 
-  function setupAndSend(config: any = {}) {
-    const hook = renderHook(() => useChat(config))
+  function setupAndSend(config: Parameters<typeof useChat>[0] = {}) {
+    const hook = renderHook(() => useChat(config), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     act(() => {
       hook.result.current.handleSend(
         { query: 'test' },
@@ -95,19 +78,19 @@ describe('useChat – handleSend SSE callbacks', () => {
     return hook
   }
 
-  function startWorkflow(overrides: Record<string, any> = {}) {
+  function startWorkflow(overrides: Record<string, unknown> = {}) {
     act(() => {
       capturedCallbacks.onWorkflowStarted({
         workflow_run_id: 'wfr-1',
         task_id: 'task-1',
-        conversation_id: null,
-        message_id: null,
+        conversation_id: undefined,
+        message_id: undefined,
         ...overrides,
       })
     })
   }
 
-  function startNode(nodeId: string, traceId: string, extra: Record<string, any> = {}) {
+  function startNode(nodeId: string, traceId: string, extra: Record<string, unknown> = {}) {
     act(() => {
       capturedCallbacks.onNodeStarted({
         data: { node_id: nodeId, id: traceId, ...extra },
@@ -116,116 +99,59 @@ describe('useChat – handleSend SSE callbacks', () => {
   }
 
   describe('onData', () => {
-    it('should append message content', () => {
+    it('accumulates chunks and establishes question, answer and conversation IDs', () => {
       const { result } = setupAndSend()
-
       act(() => {
         capturedCallbacks.onData('Hello', true, {
-          conversationId: 'conv-1',
-          messageId: 'msg-1',
-          taskId: 'task-1',
+          conversationId: 'c1',
+          messageId: 'm1',
+          taskId: 't1',
+        })
+        capturedCallbacks.onData(' world', false, {
+          conversationId: 'other-conversation',
+          messageId: 'm1',
+          taskId: 't1',
         })
       })
-
-      const answer = result.current.chatList.find(
-        (item) => item.isAnswer && !item.isOpeningStatement,
-      )
-      expect(answer!.content).toContain('Hello')
+      expect(result.current.conversationId).toBe('c1')
+      expect(result.current.chatList).toEqual([
+        expect.objectContaining({ id: 'question-m1', content: 'test', isAnswer: false }),
+        expect.objectContaining({
+          id: 'm1',
+          content: 'Hello world',
+          isAnswer: true,
+          parentMessageId: 'question-m1',
+        }),
+      ])
     })
 
-    it('should set response id from messageId on first call', () => {
+    it('adopts a late message ID without losing earlier content', () => {
       const { result } = setupAndSend()
-
       act(() => {
-        capturedCallbacks.onData('Hi', true, {
-          conversationId: 'conv-1',
-          messageId: 'msg-123',
-          taskId: 'task-1',
-        })
-      })
-
-      const answer = result.current.chatList.find((item) => item.id === 'msg-123')
-      expect(answer).toBeDefined()
-    })
-
-    it('should set conversationId on first message with newConversationId', () => {
-      const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onData('Hi', true, {
-          conversationId: 'new-conv-id',
-          messageId: 'msg-1',
-          taskId: 'task-1',
-        })
-      })
-
-      expect(result.current.conversationId).toBe('new-conv-id')
-    })
-
-    it('should not set conversationId when isFirstMessage is false', () => {
-      const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onData('Hi', false, {
-          conversationId: 'conv-should-not-set',
-          messageId: 'msg-1',
-          taskId: 'task-1',
-        })
-      })
-
-      expect(result.current.conversationId).toBe('')
-    })
-
-    it('should not update hasSetResponseId when messageId is empty', () => {
-      const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onData('msg1', true, {
+        capturedCallbacks.onData('first ', true, {
           conversationId: '',
           messageId: '',
-          taskId: 'task-1',
+          taskId: 't1',
         })
-      })
-
-      act(() => {
-        capturedCallbacks.onData('msg2', false, {
-          conversationId: '',
+        capturedCallbacks.onData('second', false, {
+          conversationId: 'ignored',
           messageId: 'late-id',
-          taskId: 'task-1',
+          taskId: 't1',
         })
       })
-
-      const answer = result.current.chatList.find((item) => item.id === 'late-id')
-      expect(answer).toBeDefined()
-    })
-
-    it('should only set hasSetResponseId once', () => {
-      const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onData('msg1', true, {
-          conversationId: 'c1',
-          messageId: 'msg-first',
-          taskId: 'task-1',
-        })
+      expect(result.current.conversationId).toBe('')
+      expect(result.current.chatList).toHaveLength(2)
+      expect(result.current.chatList[1]).toMatchObject({
+        id: 'late-id',
+        content: 'first second',
+        parentMessageId: 'question-late-id',
       })
-
-      act(() => {
-        capturedCallbacks.onData('msg2', false, {
-          conversationId: 'c1',
-          messageId: 'msg-second',
-          taskId: 'task-1',
-        })
-      })
-
-      const question = result.current.chatList.find((item) => !item.isAnswer)
-      expect(question!.id).toBe('question-msg-first')
     })
   })
 
   describe('onReasoning', () => {
-    const findAnswer = (result: any) =>
-      result.current.chatList.find((item: any) => item.isAnswer && !item.isOpeningStatement)
+    const findAnswer = (result: { current: ReturnType<typeof useChat> }) =>
+      result.current.chatList.find((item) => item.isAnswer && !item.isOpeningStatement)
 
     it('should accumulate reasoning per node without leaking into content', () => {
       const { result } = setupAndSend()
@@ -280,30 +206,28 @@ describe('useChat – handleSend SSE callbacks', () => {
   })
 
   describe('onCompleted', () => {
-    it('should set isResponding to false', async () => {
+    it('should call fetchInspectVars and invalidAllLastRun when not paused', async () => {
       const { result } = setupAndSend()
+      expect(result.current.isResponding).toBe(true)
       await act(async () => {
         await capturedCallbacks.onCompleted(false)
       })
       expect(result.current.isResponding).toBe(false)
-    })
-
-    it('should call fetchInspectVars and invalidAllLastRun when not paused', async () => {
-      setupAndSend()
-      await act(async () => {
-        await capturedCallbacks.onCompleted(false)
-      })
       expect(mockFetchInspectVars).toHaveBeenCalledWith({})
       expect(mockInvalidAllLastRun).toHaveBeenCalled()
     })
 
     it('should not call fetchInspectVars when workflow is paused', async () => {
-      mockWorkflowRunningData = { result: { status: 'paused' } }
-      setupAndSend()
+      const { store, result } = setupAndSend()
+      store.setState({
+        workflowRunningData: baseRunningData({ result: { status: WorkflowRunningStatus.Paused } }),
+      })
       await act(async () => {
         await capturedCallbacks.onCompleted(false)
       })
       expect(mockFetchInspectVars).not.toHaveBeenCalled()
+      expect(mockInvalidAllLastRun).not.toHaveBeenCalled()
+      expect(result.current.isResponding).toBe(false)
     })
 
     it('should set error content on response item when hasError with errorMessage', async () => {
@@ -328,23 +252,38 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should not set error content when hasError is true but errorMessage is empty', async () => {
       const { result } = setupAndSend()
+      act(() =>
+        capturedCallbacks.onData('Partial response', true, {
+          messageId: 'partial',
+          taskId: 't1',
+          conversationId: 'c1',
+        }),
+      )
       await act(async () => {
         await capturedCallbacks.onCompleted(true)
       })
       expect(result.current.isResponding).toBe(false)
+      expect(result.current.chatList[1]).toMatchObject({
+        id: 'partial',
+        content: 'Partial response',
+      })
     })
 
     it('should fetch suggested questions when enabled and invoke abort controller callback', async () => {
-      const mockGetSuggested = vi.fn().mockImplementation((_id: string, getAbortCtrl: any) => {
-        getAbortCtrl(new AbortController())
-        return Promise.resolve({ data: ['suggestion1'] })
-      })
-      const hook = renderHook(() =>
-        useChat({ suggested_questions_after_answer: { enabled: true } }),
+      const cancelSuggested = vi.fn()
+      const mockGetSuggested = vi
+        .fn()
+        .mockImplementation((_id: string, onCancel: (cancel: () => void) => void) => {
+          onCancel(cancelSuggested)
+          return Promise.resolve({ data: ['suggestion1'] })
+        })
+      const hook = renderHook(
+        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
-      mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
-        capturedCallbacks = callbacks
+      mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
+        capturedCallbacks = callbacks as SSECallbacks
       })
 
       act(() => {
@@ -360,17 +299,20 @@ describe('useChat – handleSend SSE callbacks', () => {
         await capturedCallbacks.onCompleted(false)
       })
 
-      expect(mockGetSuggested).toHaveBeenCalled()
+      expect(hook.result.current.suggestedQuestions).toEqual(['suggestion1'])
+      act(() => hook.result.current.handleStop())
+      expect(cancelSuggested).toHaveBeenCalledTimes(1)
     })
 
     it('should set suggestedQuestions to empty array when fetch fails', async () => {
       const mockGetSuggested = vi.fn().mockRejectedValue(new Error('fail'))
-      const hook = renderHook(() =>
-        useChat({ suggested_questions_after_answer: { enabled: true } }),
+      const hook = renderHook(
+        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
-      mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
-        capturedCallbacks = callbacks
+      mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
+        capturedCallbacks = callbacks as SSECallbacks
       })
 
       act(() => {
@@ -394,7 +336,7 @@ describe('useChat – handleSend SSE callbacks', () => {
     it('should set isResponding to false', () => {
       const { result } = setupAndSend()
       act(() => {
-        capturedCallbacks.onError()
+        capturedCallbacks.onError('Stream failed')
       })
       expect(result.current.isResponding).toBe(false)
     })
@@ -414,13 +356,13 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onMessageEnd({
-          metadata: { retriever_resources: [{ id: 'r1' }] },
+          metadata: { retriever_resources: [{ document_id: 'r1' }] },
           files: [],
         })
       })
 
       const answer = result.current.chatList.find((item) => item.id === 'msg-1')
-      expect(answer!.citation).toEqual([{ id: 'r1' }])
+      expect(answer!.citation).toEqual([{ document_id: 'r1' }])
     })
 
     it('should default citation to empty array when no retriever_resources', () => {
@@ -459,10 +401,6 @@ describe('useChat – handleSend SSE callbacks', () => {
         capturedCallbacks.onMessageReplace({ answer: 'replaced' })
       })
 
-      act(() => {
-        capturedCallbacks.onMessageEnd({ metadata: {}, files: [] })
-      })
-
       const answer = result.current.chatList.find((item) => item.id === 'msg-1')
       expect(answer!.content).toBe('replaced')
     })
@@ -484,23 +422,14 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(
         (item) => item.isAnswer && !item.isOpeningStatement,
       )
+      expect(answer).toMatchObject({
+        id: 'msg-1',
+        workflow_run_id: 'wfr-1',
+        parentMessageId: 'question-msg-1',
+      })
+      expect(result.current.conversationId).toBe('conv-1')
       expect(answer!.workflowProcess!.status).toBe('running')
       expect(answer!.workflowProcess!.tracing).toEqual([])
-    })
-
-    it('should set conversationId when provided', () => {
-      const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: 'from-workflow',
-          message_id: null,
-        })
-      })
-
-      expect(result.current.conversationId).toBe('from-workflow')
     })
 
     it('should not override existing conversationId when conversation_id is null', () => {
@@ -519,23 +448,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         (item) => item.isAnswer && !item.isOpeningStatement,
       )
       expect(answer!.workflowProcess!.status).toBe('running')
-      expect(answer!.workflowProcess!.tracing.length).toBe(1)
-    })
-
-    it('should replace placeholder answer id with real message_id from server', () => {
-      const { result } = setupAndSend()
-
-      act(() => {
-        capturedCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: null,
-          message_id: 'wf-msg-id',
-        })
-      })
-
-      const answer = result.current.chatList.find((item) => item.id === 'wf-msg-id')
-      expect(answer).toBeDefined()
+      expect(answer!.workflowProcess!.tracing).toEqual([
+        expect.objectContaining({ id: 'trace-1', node_id: 'n1', status: 'running' }),
+      ])
     })
   })
 
@@ -572,163 +487,48 @@ describe('useChat – handleSend SSE callbacks', () => {
     })
   })
 
-  describe('onIterationStart / onIterationFinish', () => {
-    it('should push tracing entry on start', () => {
+  it.each([
+    ['iteration', 'onIterationStart', 'onIterationFinish'],
+    ['loop', 'onLoopStart', 'onLoopFinish'],
+  ] as const)(
+    'updates only the matching %s trace through its lifecycle',
+    (_kind, start, finish) => {
       const { result } = setupAndSend()
       startWorkflow()
-
-      act(() => {
-        capturedCallbacks.onIterationStart({
-          data: { id: 'iter-1', node_id: 'n-iter' },
-        })
-      })
-
-      const answer = result.current.chatList.find(
-        (item) => item.isAnswer && !item.isOpeningStatement,
+      act(() => capturedCallbacks[start]({ data: { id: 'trace-1', node_id: 'container' } }))
+      const traces = () =>
+        result.current.chatList.find((item) => item.isAnswer)!.workflowProcess!.tracing
+      expect(traces()).toEqual([
+        expect.objectContaining({ id: 'trace-1', node_id: 'container', status: 'running' }),
+      ])
+      const initial = structuredClone(traces())
+      act(() =>
+        capturedCallbacks[finish]({
+          data: { id: 'unknown', node_id: 'other', status: 'succeeded' },
+        }),
       )
-      expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace!.id).toBe('iter-1')
-      expect(trace!.node_id).toBe('n-iter')
-      expect(trace!.status).toBe('running')
-    })
-
-    it('should update matching tracing on finish', () => {
-      const { result } = setupAndSend()
-      startWorkflow()
-
-      act(() => {
-        capturedCallbacks.onIterationStart({
-          data: { id: 'iter-1', node_id: 'n-iter' },
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onIterationFinish({
-          data: { id: 'iter-1', node_id: 'n-iter', output: 'done' },
-        })
-      })
-
-      const answer = result.current.chatList.find(
-        (item) => item.isAnswer && !item.isOpeningStatement,
+      expect(traces()).toEqual(initial)
+      act(() =>
+        capturedCallbacks[finish]({
+          data: {
+            id: 'trace-1',
+            node_id: 'container',
+            status: 'succeeded',
+            outputs: { result: 'done' },
+          },
+        }),
       )
-      const trace = answer!.workflowProcess!.tracing.find((t: any) => t.id === 'iter-1')
-      expect(trace).toBeDefined()
-      expect(trace!.node_id).toBe('n-iter')
-      expect((trace as any).output).toBe('done')
-    })
-
-    it('should not update tracing on finish when id does not match', () => {
-      const { result } = setupAndSend()
-      startWorkflow()
-
-      act(() => {
-        capturedCallbacks.onIterationStart({
-          data: { id: 'iter-1', node_id: 'n-iter' },
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onIterationFinish({
-          data: { id: 'iter-nonexistent', node_id: 'n-other' },
-        })
-      })
-
-      const answer = result.current.chatList.find(
-        (item) => item.isAnswer && !item.isOpeningStatement,
-      )
-      expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      expect((answer!.workflowProcess!.tracing[0] as any).output).toBeUndefined()
-    })
-  })
-
-  describe('onLoopStart / onLoopFinish', () => {
-    it('should push tracing entry on start', () => {
-      const { result } = setupAndSend()
-      startWorkflow()
-
-      act(() => {
-        capturedCallbacks.onLoopStart({
-          data: { id: 'loop-1', node_id: 'n-loop' },
-        })
-      })
-
-      const answer = result.current.chatList.find(
-        (item) => item.isAnswer && !item.isOpeningStatement,
-      )
-      expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace!.id).toBe('loop-1')
-      expect(trace!.node_id).toBe('n-loop')
-      expect(trace!.status).toBe('running')
-    })
-
-    it('should update matching tracing on finish', () => {
-      const { result } = setupAndSend()
-      startWorkflow()
-
-      act(() => {
-        capturedCallbacks.onLoopStart({
-          data: { id: 'loop-1', node_id: 'n-loop' },
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onLoopFinish({
-          data: { id: 'loop-1', node_id: 'n-loop', output: 'done' },
-        })
-      })
-
-      const answer = result.current.chatList.find(
-        (item) => item.isAnswer && !item.isOpeningStatement,
-      )
-      expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace!.id).toBe('loop-1')
-      expect(trace!.node_id).toBe('n-loop')
-      expect((trace as any).output).toBe('done')
-    })
-
-    it('should not update tracing on finish when id does not match', () => {
-      const { result } = setupAndSend()
-      startWorkflow()
-
-      act(() => {
-        capturedCallbacks.onLoopStart({
-          data: { id: 'loop-1', node_id: 'n-loop' },
-        })
-      })
-
-      act(() => {
-        capturedCallbacks.onLoopFinish({
-          data: { id: 'loop-nonexistent', node_id: 'n-other' },
-        })
-      })
-
-      const answer = result.current.chatList.find(
-        (item) => item.isAnswer && !item.isOpeningStatement,
-      )
-      expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      expect((answer!.workflowProcess!.tracing[0] as any).output).toBeUndefined()
-    })
-  })
+      expect(traces()).toEqual([
+        expect.objectContaining({
+          id: 'trace-1',
+          status: 'succeeded',
+          outputs: { result: 'done' },
+        }),
+      ])
+    },
+  )
 
   describe('onNodeStarted / onNodeRetry / onNodeFinished', () => {
-    it('should add new tracing entry', () => {
-      const { result } = setupAndSend()
-      startWorkflow()
-      startNode('node-1', 'trace-1')
-
-      const answer = result.current.chatList.find(
-        (item) => item.isAnswer && !item.isOpeningStatement,
-      )
-      expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace!.id).toBe('trace-1')
-      expect(trace!.node_id).toBe('node-1')
-      expect(trace!.status).toBe('running')
-    })
-
     it('should update existing tracing entry with same node_id', () => {
       const { result } = setupAndSend()
       startWorkflow()
@@ -762,7 +562,7 @@ describe('useChat – handleSend SSE callbacks', () => {
       const trace = answer!.workflowProcess!.tracing[0]
       expect(trace!.id).toBe('retry-1')
       expect(trace!.node_id).toBe('node-1')
-      expect((trace as any).retry_index).toBe(1)
+      expect(trace!.retry_index).toBe(1)
     })
 
     it('should update tracing entry on finish by id', () => {
@@ -788,7 +588,7 @@ describe('useChat – handleSend SSE callbacks', () => {
       const trace = answer!.workflowProcess!.tracing[0]
       expect(trace!.id).toBe('trace-1')
       expect(trace!.status).toBe('succeeded')
-      expect((trace as any).outputs).toEqual({ text: 'done' })
+      expect(trace!.outputs).toEqual({ text: 'done' })
     })
 
     it('should not update tracing on finish when id does not match', () => {
@@ -812,94 +612,34 @@ describe('useChat – handleSend SSE callbacks', () => {
     })
   })
 
-  describe('onAgentLog', () => {
-    function setupWithNode() {
-      const hook = setupAndSend()
+  it.each([undefined, { parallel_id: 'p1' }])(
+    'accumulates agent logs by message ID without losing metadata: %j',
+    (metadata) => {
+      const { result } = setupAndSend()
       startWorkflow()
-      return hook
-    }
-
-    it('should create execution_metadata.agent_log when no execution_metadata exists', () => {
-      const { result } = setupWithNode()
-      startNode('agent-node', 'trace-agent')
-
+      startNode('agent-node', 'trace-agent', { execution_metadata: metadata })
       act(() => {
         capturedCallbacks.onAgentLog({
-          data: { node_id: 'agent-node', message_id: 'log-1', content: 'init' },
+          data: { node_id: 'agent-node', message_id: 'log-1', data: { text: 'initial' } },
         })
-      })
-
-      const answer = result.current.chatList.find(
-        (item) => item.isAnswer && !item.isOpeningStatement,
-      )
-      const agentTrace = answer!.workflowProcess!.tracing.find(
-        (t: any) => t.node_id === 'agent-node',
-      )
-      expect(agentTrace!.execution_metadata!.agent_log).toHaveLength(1)
-    })
-
-    it('should create agent_log array when execution_metadata exists but no agent_log', () => {
-      const { result } = setupWithNode()
-      startNode('agent-node', 'trace-agent', { execution_metadata: { parallel_id: 'p1' } })
-
-      act(() => {
         capturedCallbacks.onAgentLog({
-          data: { node_id: 'agent-node', message_id: 'log-1', content: 'step1' },
+          data: { node_id: 'agent-node', message_id: 'log-2', data: { text: 'second' } },
         })
-      })
-
-      const answer = result.current.chatList.find(
-        (item) => item.isAnswer && !item.isOpeningStatement,
-      )
-      const agentTrace = answer!.workflowProcess!.tracing.find(
-        (t: any) => t.node_id === 'agent-node',
-      )
-      expect(agentTrace!.execution_metadata!.agent_log).toHaveLength(1)
-    })
-
-    it('should update existing agent_log entry by message_id', () => {
-      const { result } = setupWithNode()
-      startNode('agent-node', 'trace-agent', {
-        execution_metadata: { agent_log: [{ message_id: 'log-1', content: 'v1' }] },
-      })
-
-      act(() => {
         capturedCallbacks.onAgentLog({
-          data: { node_id: 'agent-node', message_id: 'log-1', content: 'v2' },
+          data: { node_id: 'agent-node', message_id: 'log-1', data: { text: 'updated' } },
         })
       })
-
-      const answer = result.current.chatList.find(
-        (item) => item.isAnswer && !item.isOpeningStatement,
-      )
-      const agentTrace = answer!.workflowProcess!.tracing.find(
-        (t: any) => t.node_id === 'agent-node',
-      )
-      expect(agentTrace!.execution_metadata!.agent_log).toHaveLength(1)
-      expect((agentTrace!.execution_metadata!.agent_log as any[])[0].content).toBe('v2')
-    })
-
-    it('should push new agent_log entry when message_id does not match', () => {
-      const { result } = setupWithNode()
-      startNode('agent-node', 'trace-agent', {
-        execution_metadata: { agent_log: [{ message_id: 'log-1', content: 'v1' }] },
+      const trace = result.current.chatList.find((item) => item.isAnswer)!.workflowProcess!
+        .tracing[0]!
+      expect(trace.execution_metadata).toEqual({
+        ...metadata,
+        agent_log: [
+          { node_id: 'agent-node', message_id: 'log-1', data: { text: 'updated' } },
+          { node_id: 'agent-node', message_id: 'log-2', data: { text: 'second' } },
+        ],
       })
-
-      act(() => {
-        capturedCallbacks.onAgentLog({
-          data: { node_id: 'agent-node', message_id: 'log-2', content: 'new' },
-        })
-      })
-
-      const answer = result.current.chatList.find(
-        (item) => item.isAnswer && !item.isOpeningStatement,
-      )
-      const agentTrace = answer!.workflowProcess!.tracing.find(
-        (t: any) => t.node_id === 'agent-node',
-      )
-      expect(agentTrace!.execution_metadata!.agent_log).toHaveLength(2)
-    })
-  })
+    },
+  )
 
   describe('onHumanInputRequired', () => {
     it('should add form data to humanInputFormDataList', () => {
@@ -910,6 +650,7 @@ describe('useChat – handleSend SSE callbacks', () => {
       act(() => {
         capturedCallbacks.onHumanInputRequired({
           data: {
+            form_id: 'form-human-node',
             node_id: 'human-node',
             form_token: 'token-1',
             form_content: '{{#$output.answer#}}',
@@ -923,7 +664,11 @@ describe('useChat – handleSend SSE callbacks', () => {
       )
       expect(answer!.humanInputFormDataList).toHaveLength(1)
       expect(answer!.humanInputFormDataList![0]!.node_id).toBe('human-node')
-      expect((answer!.humanInputFormDataList![0] as any).form_token).toBe('token-1')
+      expect(answer!.humanInputFormDataList![0]!.form_token).toBe('token-1')
+      expect(answer!.workflowProcess!.tracing[0]).toMatchObject({
+        node_id: 'human-node',
+        status: 'paused',
+      })
     })
 
     it('should update existing form for same node_id', () => {
@@ -934,6 +679,7 @@ describe('useChat – handleSend SSE callbacks', () => {
       act(() => {
         capturedCallbacks.onHumanInputRequired({
           data: {
+            form_id: 'form-human-node',
             node_id: 'human-node',
             form_token: 'token-1',
             form_content: '{{#$output.answer#}}',
@@ -944,7 +690,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-2' },
+          data: { form_id: 'form-human-node', node_id: 'human-node', form_token: 'token-2' },
         })
       })
 
@@ -952,7 +698,7 @@ describe('useChat – handleSend SSE callbacks', () => {
         (item) => item.isAnswer && !item.isOpeningStatement,
       )
       expect(answer!.humanInputFormDataList).toHaveLength(1)
-      expect((answer!.humanInputFormDataList![0] as any).form_token).toBe('token-2')
+      expect(answer!.humanInputFormDataList![0]!.form_token).toBe('token-2')
     })
 
     it('should push new form data for different node_id', () => {
@@ -961,13 +707,13 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node-1', form_token: 'token-1' },
+          data: { form_id: 'form-human-node-1', node_id: 'human-node-1', form_token: 'token-1' },
         })
       })
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node-2', form_token: 'token-2' },
+          data: { form_id: 'form-human-node-2', node_id: 'human-node-2', form_token: 'token-2' },
         })
       })
 
@@ -977,24 +723,6 @@ describe('useChat – handleSend SSE callbacks', () => {
       expect(answer!.humanInputFormDataList).toHaveLength(2)
       expect(answer!.humanInputFormDataList![0]!.node_id).toBe('human-node-1')
       expect(answer!.humanInputFormDataList![1]!.node_id).toBe('human-node-2')
-    })
-
-    it('should set tracing node status to Paused when tracing index found', () => {
-      const { result } = setupAndSend()
-      startWorkflow()
-      startNode('human-node', 'trace-human')
-
-      act(() => {
-        capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
-        })
-      })
-
-      const answer = result.current.chatList.find(
-        (item) => item.isAnswer && !item.isOpeningStatement,
-      )
-      const trace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'human-node')
-      expect(trace!.status).toBe('paused')
     })
   })
 
@@ -1006,6 +734,7 @@ describe('useChat – handleSend SSE callbacks', () => {
       act(() => {
         capturedCallbacks.onHumanInputRequired({
           data: {
+            form_id: 'form-human-node',
             node_id: 'human-node',
             form_token: 'token-1',
             form_content: '{{#$output.answer#}}',
@@ -1016,7 +745,11 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputFormFilled({
-          data: { node_id: 'human-node', submitted_data: { answer: 'yes' } },
+          data: {
+            form_id: 'form-human-node',
+            node_id: 'human-node',
+            submitted_data: { answer: 'yes' },
+          },
         })
       })
 
@@ -1043,21 +776,21 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
+          data: { form_id: 'form-human-node', node_id: 'human-node', form_token: 'token-1' },
         })
       })
 
       act(() => {
         capturedCallbacks.onHumanInputFormTimeout({
-          data: { node_id: 'human-node', expiration_time: '2025-01-01T00:00:00Z' },
+          data: { form_id: 'form-human-node', node_id: 'human-node', expiration_time: 1735689600 },
         })
       })
 
       const answer = result.current.chatList.find(
         (item) => item.isAnswer && !item.isOpeningStatement,
       )
-      const form = answer!.humanInputFormDataList!.find((f: any) => f.node_id === 'human-node')
-      expect(form!.expiration_time).toBe('2025-01-01T00:00:00Z')
+      const form = answer!.humanInputFormDataList!.find((f) => f.node_id === 'human-node')
+      expect(form!.expiration_time).toBe(1735689600)
     })
   })
 

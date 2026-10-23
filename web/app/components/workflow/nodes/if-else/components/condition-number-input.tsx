@@ -41,7 +41,7 @@ const ConditionNumberInput = ({
   unit,
 }: ConditionNumberInputProps) => {
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowLogic'])
   const [variableSelectorVisible, setVariableSelectorVisible] = useState(false)
   const [isFocus, { setTrue: setFocus, setFalse: setBlur }] = useBoolean()
 
@@ -61,7 +61,7 @@ const ConditionNumberInput = ({
           <RiArrowDownSLine className="size-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          placement="bottom-start"
+          align="start"
           sideOffset={2}
           className="w-28 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
         >
@@ -102,14 +102,14 @@ const ConditionNumberInput = ({
                     className="mr-1 i-custom-vender-solid-development-variable-02 size-4 shrink-0"
                   />
                   <div className="w-0 grow truncate">
-                    {t(($) => $['nodes.ifElse.selectVariable'], { ns: 'workflow' })}
+                    {t(($) => $['nodes.ifElse.selectVariable'], { ns: 'workflowLogic' })}
                   </div>
                 </div>
               )}
             </PopoverTrigger>
             <PopoverContent
               initialFocus={searchInputRef}
-              placement="bottom-start"
+              align="start"
               sideOffset={2}
               className="border-none bg-transparent shadow-none"
             >
@@ -138,7 +138,7 @@ const ConditionNumberInput = ({
               type="number"
               value={value}
               onChange={(e) => onValueChange(e.target.value)}
-              placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflow' }) || ''}
+              placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflowLogic' }) || ''}
               onFocus={setFocus}
               onBlur={setBlur}
             />

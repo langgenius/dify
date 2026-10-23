@@ -53,6 +53,8 @@ vi.mock('@/next/script', async () => {
 describe('Turnstile', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.render.mockReset()
+    mocks.remove.mockReset()
     mocks.scriptIsCached = false
     mocks.scriptProps = undefined
     turnstileOptions = undefined

@@ -11,7 +11,13 @@ from services.installed_app_access_service import (
     InstalledAppRef,
 )
 
-_REF = InstalledAppRef(id="installation-1", app_id="app-1", tenant_id="workspace-1", app_mode="completion")
+_REF = InstalledAppRef(
+    id="installation-1",
+    app_id="app-1",
+    tenant_id="workspace-1",
+    app_owner_tenant_id="owner-workspace",
+    app_mode="completion",
+)
 
 
 class _Store:

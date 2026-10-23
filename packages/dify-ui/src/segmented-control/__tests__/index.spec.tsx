@@ -1,11 +1,11 @@
-import type * as React from 'react'
+import * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '../index'
 
 function SegmentedControlTypeExamples() {
   return (
-    <>
+    <React.Fragment>
       <SegmentedControl<number> value={10} onValueChange={() => {}} aria-label="Page size">
         <SegmentedControlItem<number> value={10}>10</SegmentedControlItem>
         <SegmentedControlItem<number> value={20}>20</SegmentedControlItem>
@@ -14,7 +14,7 @@ function SegmentedControlTypeExamples() {
       <SegmentedControl aria-label="Missing value">
         <SegmentedControlItem value="one">One</SegmentedControlItem>
       </SegmentedControl>
-    </>
+    </React.Fragment>
   )
 }
 

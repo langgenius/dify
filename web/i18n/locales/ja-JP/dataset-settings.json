@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "埋め込みモデルがマルチモーダルに対応している場合、より高い性能を得るためにマルチモーダル再ランキングモデルを選択してください。",
   "form.retrievalSetting.title": "検索設定",
   "form.save": "保存",
-  "form.searchModel": "検索モデル",
   "form.summaryAutoGen": "要約自動生成",
   "form.summaryAutoGenEnableTip": "有効にすると、新しく追加されたドキュメントの要約が自動的に生成されます。既存のドキュメントは引き続き手動で要約できます。",
   "form.summaryAutoGenTip": "新しく追加されたドキュメントの要約は自動的に生成されます。既存のドキュメントは引き続き手動で要約できます。",

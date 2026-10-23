@@ -17,7 +17,7 @@ type InstallPluginButtonProps = Omit<ButtonProps, 'children' | 'loading'> & {
 
 export const InstallPluginButton = (props: InstallPluginButtonProps) => {
   const { className, uniqueIdentifier, extraIdentifiers = [], onSuccess, ...rest } = props
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowAgent'])
   const { canInstallPlugin } = useWorkspacePluginInstallPermission()
   const identifiers = Array.from(
     new Set(
@@ -97,8 +97,8 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
       className={cn('flex items-center', className)}
     >
       {!isLoading
-        ? t(($) => $['nodes.agent.pluginInstaller.install'], { ns: 'workflow' })
-        : t(($) => $['nodes.agent.pluginInstaller.installing'], { ns: 'workflow' })}
+        ? t(($) => $['nodes.agent.pluginInstaller.install'], { ns: 'workflowAgent' })
+        : t(($) => $['nodes.agent.pluginInstaller.installing'], { ns: 'workflowAgent' })}
       {!isLoading ? (
         <span className="i-ri-install-line size-3.5" />
       ) : (

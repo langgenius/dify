@@ -46,6 +46,7 @@
     "Öncelikli E-posta ve Sohbet Desteği"
   ],
   "plans.premium.includesTitle": "Topluluktan her şey, artı:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Premium",
   "plans.premium.price": "Ölçeklenebilir",
   "plans.premium.priceTip": "Bulut Pazarına Dayalı",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "Planları ve özellikleri karşılaştır",
   "plansCommon.currentPlan": "Mevcut Plan",
   "plansCommon.days": "gün",
+  "plansCommon.discountedAnnualPrice": "İndirimli yıllık fiyat: ",
   "plansCommon.documentProcessingPriority": "Doküman İşleme Önceliği",
   "plansCommon.documentProcessingPriorityTip": "Daha yüksek belge işleme önceliği için lütfen planınızı yükseltin.",
   "plansCommon.documentProcessingPriorityUpgrade": "Daha fazla veriyi daha yüksek doğrulukla ve daha hızlı işleyin.",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate Desteği",
   "plansCommon.month": "ay",
   "plansCommon.mostPopular": "En Popüler",
+  "plansCommon.originalAnnualPrice": "Orijinal yıllık fiyat: ",
   "plansCommon.priceTip": "iş alanı başına/",
   "plansCommon.priority.priority": "Öncelikli",
   "plansCommon.priority.standard": "Standart",

@@ -8,15 +8,20 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { BlockEnum } from '../../types'
 import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from '../constants'
 import DataSources from '../data-sources'
+import { createPlugin } from './factories'
 
 const { marketplaceQuery, language, trackEvent } = vi.hoisted(() => ({
-  marketplaceQuery: vi.fn((_params?: Parameters<typeof useMarketplacePlugins>[0]) => ({
-    data: undefined,
-  })),
+  marketplaceQuery: vi.fn(
+    (
+      _params?: Parameters<typeof useMarketplacePlugins>[0],
+    ): ReturnType<typeof useMarketplacePlugins> =>
+      ({ data: undefined }) as ReturnType<typeof useMarketplacePlugins>,
+  ),
   language: { value: 'en_US' },
   trackEvent: vi.fn(),
 }))
-vi.mock('@/app/components/plugins/marketplace/query', () => ({
+vi.mock('@/app/components/plugins/marketplace/query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/plugins/marketplace/query')>()),
   useMarketplacePlugins: marketplaceQuery,
 }))
 vi.mock('@/context/i18n', () => ({ useGetLanguage: () => language.value }))
@@ -40,6 +45,7 @@ const namedProvider = (name: string): RagPipelineDatasourceProviderResponse => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  marketplaceQuery.mockReturnValue({ data: undefined } as ReturnType<typeof useMarketplacePlugins>)
   language.value = 'en_US'
 })
 
@@ -208,6 +214,32 @@ it('debounces marketplace search while datasource filtering remains immediate', 
   await waitFor(() =>
     expect(marketplaceQuery).toHaveBeenLastCalledWith({ query: 'invoice', category: 'datasource' }),
   )
+})
+
+it('shows installed datasources once and keeps other marketplace results available', async () => {
+  const provider = namedProvider('source')
+  marketplaceQuery.mockReturnValue({
+    data: {
+      pages: [
+        {
+          plugins: [
+            createPlugin({ plugin_id: provider.plugin_id, label: { en_US: 'Installed Source' } }),
+            createPlugin({ plugin_id: 'dify/other', label: { en_US: 'Other Source' } }),
+          ],
+          page: 1,
+          page_size: 40,
+          total: 2,
+        },
+      ],
+      pageParams: [1],
+    },
+  } as ReturnType<typeof useMarketplacePlugins>)
+
+  render(<DataSources searchText="source" onSelect={vi.fn()} dataSources={[provider]} />, true)
+
+  expect(await screen.findByRole('button', { name: 'source' })).toBeInTheDocument()
+  expect(screen.queryByText('Installed Source')).not.toBeInTheDocument()
+  expect(screen.getByText('Other Source')).toBeInTheDocument()
 })
 
 it('keeps an expanded datasource open when the language changes its sort letter', async () => {

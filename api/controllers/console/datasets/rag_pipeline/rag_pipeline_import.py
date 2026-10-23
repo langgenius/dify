@@ -28,8 +28,10 @@ from libs.helper import dump_response
 from libs.login import login_required
 from models.account import Account
 from models.dataset import Pipeline
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.dsl_entities import ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
+from services.rbac import contracts as rbac_contracts
 
 
 class RagPipelineImportPayload(BaseModel):
@@ -107,6 +109,19 @@ class RagPipelineImportApi(Resource):
             else:
                 session.commit()
 
+        if (
+            result.status in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}
+            and result.dataset_created
+            and result.dataset_id
+        ):
+            assert current_user.current_tenant_id is not None
+            enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+                current_user.current_tenant_id,
+                current_user.id,
+                rbac_contracts.RBACResourceType.DATASET,
+                result.dataset_id,
+            )
+
         # Return appropriate status code based on result
         status = result.status
         match status:
@@ -137,6 +152,19 @@ class RagPipelineImportConfirmApi(Resource):
                 session.rollback()
             else:
                 session.commit()
+
+        if (
+            result.status in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}
+            and result.dataset_created
+            and result.dataset_id
+        ):
+            assert current_user.current_tenant_id is not None
+            enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+                current_user.current_tenant_id,
+                current_user.id,
+                rbac_contracts.RBACResourceType.DATASET,
+                result.dataset_id,
+            )
 
         # Return appropriate status code based on result
         if result.status == ImportStatus.FAILED:

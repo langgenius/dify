@@ -28,7 +28,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
   userActions,
   onClose,
 }) => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflowHumanInput'])
   const panelWidth = useStore((state) => state.panelWidth)
   const nodes = useNodes()
 
@@ -67,7 +67,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
     >
       <div className="flex h-6.5 items-center justify-between px-4">
         <Badge uppercase className="border-text-accent-secondary text-text-accent-secondary">
-          {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflowHumanInput' })}
         </Badge>
         <IconButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} onClick={onClose}>
           <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
@@ -99,7 +99,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
           ))}
         </div>
         <div className="mt-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['nodes.humanInput.editor.previewTip'], { ns: 'workflow' })}
+          {t(($) => $['nodes.humanInput.editor.previewTip'], { ns: 'workflowHumanInput' })}
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Button } from '../../button'
@@ -157,7 +158,7 @@ describe('Invalid focus colors', () => {
       document.documentElement.dataset.theme = theme
       try {
         const screen = await render(
-          <>
+          <React.Fragment>
             <Button>Before</Button>
             <Field invalid>
               <FieldLabel>Invalid value</FieldLabel>
@@ -166,7 +167,7 @@ describe('Invalid focus colors', () => {
                 <InputGroupAddon>suffix</InputGroupAddon>
               </InputGroup>
             </Field>
-          </>,
+          </React.Fragment>,
         )
         const input = screen.getByRole('textbox', { name: 'Invalid value' })
         const surface = screen.getByTestId('invalid-surface').element()

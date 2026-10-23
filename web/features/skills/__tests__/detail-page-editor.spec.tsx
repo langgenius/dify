@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   createSkillDetail,
   getFileTreeButton,
@@ -13,8 +13,10 @@ const mocks = getMocks()
 
 describe('SkillDetailPage editor', () => {
   beforeEach(resetDetailPageFixture)
+  afterEach(() => vi.restoreAllMocks())
 
   it('does not render the markdown editor before external file content loads', async () => {
+    const user = userEvent.setup()
     mocks.fetchSkillFileBlob.mockImplementation(() => new Promise<Blob>(() => undefined))
     mocks.skillDetail = createSkillDetail({
       files: [
@@ -35,7 +37,7 @@ describe('SkillDetailPage editor', () => {
     const { container } = renderSkillDetailPage()
 
     await screen.findByText('skill.skillManagement.detail.builder.title')
-    fireEvent.click(getFileTreeButton('references/guide.md'))
+    await user.click(getFileTreeButton('references/guide.md'))
 
     await waitFor(() => {
       expect(mocks.fetchSkillFileBlob).toHaveBeenCalledOnce()
@@ -91,6 +93,7 @@ describe('SkillDetailPage editor', () => {
   })
 
   it('does not render the code editor when external file content fails to load', async () => {
+    const user = userEvent.setup()
     mocks.fetchSkillFileBlob.mockRejectedValue(new Error('content unavailable'))
     mocks.skillDetail = createSkillDetail({
       files: [
@@ -111,7 +114,7 @@ describe('SkillDetailPage editor', () => {
     renderSkillDetailPage()
 
     await screen.findByText('skill.skillManagement.detail.builder.title')
-    fireEvent.click(getFileTreeButton('scripts/action.ts'))
+    await user.click(getFileTreeButton('scripts/action.ts'))
 
     expect(await screen.findByText('skill.skillManagement.detail.loadFailed')).toBeInTheDocument()
     expect(screen.queryByLabelText('code-editor')).not.toBeInTheDocument()
@@ -287,7 +290,6 @@ describe('SkillDetailPage editor', () => {
 
     const preview = await screen.findByAltText('assets/logo.png')
     const activePreviewUrl = createObjectURL.mock.results.at(-1)?.value
-    expect(preview).toBeInTheDocument()
     expect(preview).toHaveAttribute('src', activePreviewUrl)
     expect(revokeObjectURL).not.toHaveBeenCalledWith(activePreviewUrl)
     expect(mocks.fetchSkillFileBlob).toHaveBeenCalledWith({
@@ -359,6 +361,8 @@ describe('SkillDetailPage editor', () => {
     if (!liveEditor) throw new Error('live editor not found')
 
     await user.click(liveEditor)
+    expect(fireEvent.keyDown(liveEditor, { key: 'Enter', isComposing: true })).toBe(true)
+    expect(liveEditor.textContent).toBe('')
     await user.type(liveEditor, 'First line{Enter}Second line')
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),

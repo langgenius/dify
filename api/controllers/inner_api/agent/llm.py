@@ -73,7 +73,7 @@ class AgentLLMInvokeApi(Resource):
                 status_code=400,
             ) from exc
 
-        def generate() -> Generator[str, None, None]:
+        def generate() -> Generator[str]:
             try:
                 for chunk in service.invoke(prepared):
                     envelope = {"code": 0, "message": "", "data": chunk.model_dump(mode="json")}

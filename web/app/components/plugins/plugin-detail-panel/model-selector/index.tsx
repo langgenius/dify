@@ -50,7 +50,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   isInWorkflow,
   scope = ModelTypeEnum.textGeneration,
 }) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const [open, setOpen] = useState(false)
   const scopeArray = scope.split('&')
   const scopeFeatures = useMemo((): ModelFeatureEnum[] => {
@@ -171,7 +171,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         const keys = Object.keys(removedDetails || {})
         if (keys.length) {
           toast.warning(
-            `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
+            `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
           )
         }
       } catch {
@@ -238,7 +238,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           />
         </div>
         <PopoverContent
-          placement={isInWorkflow ? 'left' : 'bottom-end'}
+          side={isInWorkflow ? 'left' : 'bottom'}
+          align={isInWorkflow ? 'center' : 'end'}
           sideOffset={4}
           className={cn(popupClassName, 'w-97.25 rounded-2xl')}
         >

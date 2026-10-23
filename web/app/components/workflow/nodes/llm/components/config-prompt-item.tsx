@@ -12,7 +12,7 @@ import { PromptRole } from '@/models/debug'
 import { useWorkflowStore } from '../../../store'
 import { EditionType } from '../../../types'
 
-const roleDescriptionSelectors: Record<PromptRole, SelectorParam<'workflow'>> = {
+const roleDescriptionSelectors: Record<PromptRole, SelectorParam<'workflowModels'>> = {
   [PromptRole.system]: ($) => $['nodes.llm.roleDescription.system'],
   [PromptRole.user]: ($) => $['nodes.llm.roleDescription.user'],
   [PromptRole.assistant]: ($) => $['nodes.llm.roleDescription.assistant'],
@@ -88,9 +88,9 @@ const ConfigPromptItem: FC<Props> = ({
   handleAddVariable,
   modelConfig,
 }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const roleDescription = payload.role
-    ? t(roleDescriptionSelectors[payload.role], { ns: 'workflow' })
+    ? t(roleDescriptionSelectors[payload.role], { ns: 'workflowModels' })
     : undefined
   const workflowStore = useWorkflowStore()
   const { setControlPromptEditorRerenderKey } = workflowStore.getState()

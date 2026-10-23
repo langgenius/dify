@@ -1,9 +1,9 @@
 import type { WorkflowHistoryEventMeta } from '../store/workflow/history-slice'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { debounce } from 'es-toolkit/compat'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 
 /**

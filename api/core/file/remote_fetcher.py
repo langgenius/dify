@@ -143,10 +143,7 @@ def _parse_signed_file_path(path: str) -> _SignedFileUrl | None:
     upload_match = _UPLOAD_FILE_PATH_PATTERN.match(path)
     if upload_match:
         preview_kind: Literal["file-preview", "image-preview"]
-        if upload_match.group("preview_kind") == "image-preview":
-            preview_kind = "image-preview"
-        else:
-            preview_kind = "file-preview"
+        preview_kind = "image-preview" if upload_match.group("preview_kind") == "image-preview" else "file-preview"
 
         return _SignedFileUrl(
             file_id=upload_match.group("file_id"),

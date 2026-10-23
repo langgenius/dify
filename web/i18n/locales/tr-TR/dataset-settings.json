@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "Embedding modeli çok modlu destekliyorsa, daha iyi performans için çok modlu bir yeniden sıralama modeli seçin.",
   "form.retrievalSetting.title": "Geri Alım Ayarı",
   "form.save": "Kaydet",
-  "form.searchModel": "Model Ara",
   "form.summaryAutoGen": "Özet Otomatik Oluşturma",
   "form.summaryAutoGenEnableTip": "Etkinleştirildiğinde, yeni eklenen belgeler için özetler otomatik olarak oluşturulacaktır. Mevcut belgeler hala manuel olarak özetlenebilir.",
   "form.summaryAutoGenTip": "Yeni eklenen belgeler için özetler otomatik olarak oluşturulur. Mevcut belgeler hala manuel olarak özetlenebilir.",

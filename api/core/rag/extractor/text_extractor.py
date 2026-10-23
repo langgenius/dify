@@ -42,7 +42,9 @@ class TextExtractor(BaseExtractor):
                         f"Decode failed: {self._file_path}, all detected encodings failed. Original error: {e}"
                     )
             else:
-                raise RuntimeError(f"Decode failed: {self._file_path}, specified encoding failed. Original error: {e}")
+                raise RuntimeError(
+                    f"Decode failed: {self._file_path}, specified encoding failed. Original error: {e}"
+                ) from e
         except Exception as e:
             raise RuntimeError(f"Error loading {self._file_path}") from e
 

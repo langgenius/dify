@@ -32,13 +32,13 @@ const ConditionOperator = ({
   value,
   onSelect,
 }: ConditionOperatorProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
 
   const options = useMemo(() => {
     return getOperators(varType, file).map((o) => {
       return {
         label: isComparisonOperatorNeedTranslate(o)
-          ? t(($) => $[`${i18nPrefix}.comparisonOperator.${o}`], { ns: 'workflow' })
+          ? t(($) => $[`${i18nPrefix}.comparisonOperator.${o}`], { ns: 'workflowLogic' })
           : o,
         value: o,
       }
@@ -61,14 +61,10 @@ const ConditionOperator = ({
       >
         {selectedOption
           ? selectedOption.label
-          : t(($) => $[`${i18nPrefix}.select`], { ns: 'workflow' })}
+          : t(($) => $[`${i18nPrefix}.select`], { ns: 'workflowLogic' })}
         <RiArrowDownSLine className="size-3.5" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        className="rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
-      >
+      <DropdownMenuContent className="rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1">
         <DropdownMenuRadioGroup value={selectedOption?.value} onValueChange={onSelect}>
           {options.map((option) => (
             <DropdownMenuRadioItem

@@ -78,6 +78,8 @@ export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {
   }, [apiBasedExtensions, keywords])
   const hasApiBasedExtensions = apiBasedExtensions.length > 0
   const hasSearchKeywords = keywords.trim().length > 0
+  const hasNoSearchResults =
+    !isLoading && hasApiBasedExtensions && hasSearchKeywords && !filteredApiBasedExtensions.length
 
   const handleOpenApiBasedExtensionModal = () => {
     if (!canManage) return
@@ -115,14 +117,17 @@ export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {
     <>
       {isLoading && <ApiBasedExtensionListSkeleton />}
       {!isLoading && !hasApiBasedExtensions && <Empty />}
-      {!isLoading &&
-        hasApiBasedExtensions &&
-        hasSearchKeywords &&
-        !filteredApiBasedExtensions.length && (
-          <div className="py-10 text-center system-sm-regular text-text-tertiary">
-            {t(($) => $['dataSource.notion.selector.noSearchResult'], { ns: 'common' })}
-          </div>
-        )}
+      <div
+        role="status"
+        aria-atomic="true"
+        className={
+          hasNoSearchResults ? 'py-10 text-center system-sm-regular text-text-tertiary' : 'sr-only'
+        }
+      >
+        {hasNoSearchResults
+          ? t(($) => $['dataSource.notion.selector.noSearchResult'], { ns: 'common' })
+          : ''}
+      </div>
       {!isLoading &&
         !!filteredApiBasedExtensions.length &&
         filteredApiBasedExtensions.map((item, index) => (

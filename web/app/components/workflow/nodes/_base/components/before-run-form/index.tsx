@@ -61,7 +61,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   handleSubmitHumanInputForm,
   handleAfterHumanInputStepRun,
 }) => {
-  const { t } = useTranslation(['appDebug', 'workflow'])
+  const { t } = useTranslation(['appDebug', 'workflow', 'workflowHumanInput'])
   const isHumanInput = nodeType === BlockEnum.HumanInput
   const showBackButton = filteredExistVarForms.length > 0
 
@@ -144,7 +144,9 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
                 className="w-0 grow"
                 onClick={handleRunOrGenerateForm}
               >
-                <div>{t(($) => $['nodes.humanInput.singleRun.button'], { ns: 'workflow' })}</div>
+                <div>
+                  {t(($) => $['nodes.humanInput.singleRun.button'], { ns: 'workflowHumanInput' })}
+                </div>
               </Button>
             )}
           </div>

@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "Khi mô hình nhúng hỗ trợ đa phương thức, vui lòng chọn một mô hình sắp xếp lại đa phương thức để hiệu suất tốt hơn.",
   "form.retrievalSetting.title": "Cài đặt truy xuất",
   "form.save": "Lưu",
-  "form.searchModel": "Tìm kiếm mô hình",
   "form.summaryAutoGen": "Tự động Tạo Tóm tắt",
   "form.summaryAutoGenEnableTip": "Sau khi bật, tóm tắt sẽ được tạo tự động cho các tài liệu mới được thêm. Các tài liệu hiện có vẫn có thể được tóm tắt thủ công.",
   "form.summaryAutoGenTip": "Tóm tắt được tạo tự động cho các tài liệu mới được thêm. Các tài liệu hiện có vẫn có thể được tóm tắt thủ công.",

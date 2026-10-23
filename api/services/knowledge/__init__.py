@@ -1,1 +1,1 @@
-"""Knowledge base application services."""
+"""Knowledge-domain application services and adapters."""

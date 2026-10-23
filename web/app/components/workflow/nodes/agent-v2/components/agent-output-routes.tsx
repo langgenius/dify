@@ -19,7 +19,7 @@ const filterVar = (variable: Var) =>
   variable.type === VarType.string || variable.type === VarType.number
 
 export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowAgent'])
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const { removeBranchEdges } = useEdgesInteractions()
   const { handleNodeDataUpdate } = useNodeDataUpdate()
@@ -72,7 +72,7 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
   }
 
   return (
-    <div className="border-b border-divider-subtle px-4 py-3">
+    <div className="px-4 py-3">
       <BranchList
         nodeId={id}
         list={list}
@@ -95,9 +95,9 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
         filterVar={filterVar}
         labels={{
           title: t(($) => $['nodes.agent.outputRoutes.title'], { ns: 'workflow' }),
-          add: t(($) => $['nodes.agent.outputRoutes.add'], { ns: 'workflow' }),
-          placeholder: t(($) => $['nodes.agent.outputRoutes.placeholder'], { ns: 'workflow' }),
-          renameHint: t(($) => $['nodes.agent.outputRoutes.renameHint'], { ns: 'workflow' }),
+          add: t(($) => $['nodes.agent.outputRoutes.add'], { ns: 'workflowAgent' }),
+          placeholder: t(($) => $['nodes.agent.outputRoutes.placeholder'], { ns: 'workflowAgent' }),
+          renameHint: t(($) => $['nodes.agent.outputRoutes.renameHint'], { ns: 'workflowAgent' }),
           defaultLabel,
         }}
       />

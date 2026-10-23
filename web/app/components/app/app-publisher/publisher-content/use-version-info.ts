@@ -1,5 +1,4 @@
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppModeEnum } from '@/types/app'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -13,18 +12,16 @@ type VersionInfoUpdate = {
 
 export function useVersionInfo({
   appId,
-  appMode,
   publishedWorkflow,
   onClosePublisher,
 }: {
   appId?: string
-  appMode?: AppModeEnum
   publishedWorkflow?: WorkflowResponse | null
   onClosePublisher: () => void
 }) {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowHistory'])
   const [isOpen, setIsOpen] = useState(false)
-  const { mutate: updateWorkflow } = useUpdateWorkflow()
+  const { mutateAsync: updateWorkflow } = useUpdateWorkflow()
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
 
   function openEditor() {
@@ -34,30 +31,23 @@ export function useVersionInfo({
     setIsOpen(true)
   }
 
-  function updateVersionInfo(params: VersionInfoUpdate) {
+  async function updateVersionInfo(params: VersionInfoUpdate) {
     if (!appId || !params.id) return
 
-    updateWorkflow(
-      {
-        appId,
-        appMode,
-        url: `/apps/${appId}/workflows/${params.id}`,
+    try {
+      await updateWorkflow({
+        resource: { kind: 'app', appId },
+        versionId: params.id,
         title: params.title,
         releaseNotes: params.releaseNotes,
-      },
-      {
-        onSuccess: () => {
-          toast.success(t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflow' }))
-          invalidateAppWorkflow(appId)
-        },
-        onError: () => {
-          toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflow' }))
-        },
-        onSettled: () => {
-          setIsOpen(false)
-        },
-      },
-    )
+      })
+      toast.success(t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflowHistory' }))
+      invalidateAppWorkflow(appId)
+    } catch {
+      toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }))
+    } finally {
+      setIsOpen(false)
+    }
   }
 
   return {

@@ -1,4 +1,5 @@
 from datetime import datetime
+from http import HTTPStatus
 from typing import cast
 
 from flask_restx import Namespace, Resource
@@ -60,7 +61,7 @@ class BannerApi(Resource):
     """Resource for banner list."""
 
     @api.doc(params=query_params_from_model(BannerListQuery))
-    @api.response(200, "Success", api.models[BannerListResponse.__name__])
+    @api.response(HTTPStatus.OK, "Success", api.models[BannerListResponse.__name__])
     @model_validate(BannerListQuery)
     def get(self, req_data: BannerListQuery):
         """Get banner list."""

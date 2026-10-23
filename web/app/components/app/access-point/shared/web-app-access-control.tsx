@@ -45,14 +45,16 @@ export function WebAppAccessControlEntry({
     <div className="-mt-1 px-4 pb-3">
       <button
         type="button"
-        className="flex h-9 w-full cursor-pointer items-center gap-x-0.5 rounded-lg border-[0.5px] border-divider-subtle bg-background-section py-1 pr-2 pl-2.5 text-left outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:hover:bg-background-section"
+        className="flex min-h-9 w-full cursor-pointer items-center gap-x-0.5 rounded-lg border-[0.5px] border-divider-subtle bg-background-section py-1 pr-2 pl-2.5 text-left outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:hover:bg-background-section"
         disabled={disabled}
         onClick={onClick}
       >
         <div className="flex grow items-center gap-x-1.5 overflow-hidden pr-1">
           <span aria-hidden className={`${accessIcon} size-4 shrink-0 text-text-secondary`} />
-          <div className="grow truncate">
-            <span className="system-sm-regular text-text-secondary">{accessLabel}</span>
+          <div className="min-w-0 grow">
+            <span className="system-sm-regular wrap-break-word text-text-secondary">
+              {accessLabel}
+            </span>
           </div>
         </div>
         {!accessConfigured && (

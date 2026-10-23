@@ -145,8 +145,8 @@ visited earlier in the session. Previously loaded bundles remain cached. There i
 no route policy that resets `i18n.options.ns` on navigation.
 
 Server metadata requests still use the request-scoped server instance and load
-exactly their requested namespace. Existing server consumers without a namespace
-retain their full-catalog behavior.
+exactly their requested namespace. Server translation consumers must declare their namespaces explicitly. Locale-only
+consumers subscribe to language changes without requesting a dictionary.
 
 The build analyzer continues to report route usage and check unused keys. Its
 route report is diagnostic and is not a runtime resource manifest or an allowlist.
@@ -156,39 +156,33 @@ Tests cover on-demand feature loading, navigation state, language persistence,
 English fallback, and concurrent streaming SSR in different locales. Production
 Vinext/browser checks are also needed when changing the Provider or loading strategy.
 
-### Provider trial verification
+### Namespace ownership
 
-On 2026-09-23, the production Vinext standalone build was checked in fresh
-Chromium contexts using local system-features and unauthenticated API fixtures.
-English and Simplified Chinese sign-in rendered correctly after hydration without
-runtime or hydration errors. The raw HTML contains the shell and a loading spinner,
-not the login form: `NormalForm` waits for the client account-profile probe. This
-browser check does not establish that the complete login form is server-rendered.
-English hydration requested `en-US/login`; Chinese hydration
-requested `zh-Hans/login` and `en-US/login`. Switching English to Chinese requested
-only `zh-Hans/common` and `zh-Hans/login`. Navigation to sign-up and back preserved
-Chinese and requested no additional translation modules. These counts use the
-client build manifest, exclude loader modules, and are not backend latency metrics.
-Authenticated feature navigation remains unverified.
+Keep `common` limited to shared operations, statuses, and basic controls. Navigation
+and route titles belong to `navigation`; account settings, workspace members,
+model providers, and the step-by-step tour own `accountSettings`,
+`workspaceMembers`, `modelProvider`, and `onboarding` respectively. Model selection
+copy is shared with model configuration, not owned by dataset settings.
 
-### Streaming resource verification
+The workflow editor keeps canvas labels, shared validation, and editor-wide hook
+messages in `workflow`. Optional surfaces own `workflowGenerator`,
+`workflowDebug`, `workflowHistory`, and `workflowComments`. Node configuration
+families own `workflowModels`, `workflowAgent`, `workflowHumanInput`,
+`workflowIntegrations`, and `workflowLogic`. Keep globally executed validation
+and accessible edge labels in the core even when their keys have a node prefix;
+a key prefix alone does not define a loading boundary.
 
-The Chromium hydration regression renders the real creation menu on the server,
-collects its dictionaries, and hydrates with client backend requests held pending.
-Its first click opens the menu without disabling the trigger or retrying the click.
-It also verifies that a later resource update reaches the mounted Provider before
-its feature renders. Unit coverage checks incremental collection, fallback
-languages, Provider isolation, and inline-script escaping.
+Agent roster pages, selectors, and metadata use `agentRoster`; agent detail copy
+stays in `agentV2`. Shared upload configuration uses `fileUpload`, and prompt/code
+generation uses `appGeneration`, without requesting the complete `appDebug`
+dictionary. Runtime loading remains locale/namespace based; these boundaries do
+not introduce route preloading or per-key transport.
 
-A production Next.js sign-in check with controlled unauthenticated API fixtures
-confirmed English and Chinese `login` resources in the HTML stream, no repeated
-login translation chunk requests, and no browser hydration errors. Production
-Vinext validation remains pending; its build was stopped to limit local resource
-usage. The complete authenticated Agent creation journey must still pass CI.
-
-Empty-store coverage also verifies shell rendering without an enclosing Suspense
-boundary, concurrent locale/fallback rendering, and hydration of both `common`
-and feature namespaces without duplicate backend requests.
+Declare resources at the component that renders them. A hidden feature should not
+request its dictionary just because its controller is mounted. The tour keeps its
+session controller mounted and renders its translation consumer only when the
+checklist, guide, or recovery prompt is visible. Preserve all existing locale
+values and language-specific plural forms when moving keys.
 
 [`i18next-resources-for-ts`]: https://github.com/i18next/i18next-resources-for-ts
 [official TypeScript guidance]: https://www.i18next.com/overview/typescript

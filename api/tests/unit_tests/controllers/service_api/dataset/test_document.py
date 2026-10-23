@@ -20,6 +20,7 @@ import json
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
+from typing import cast
 from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
@@ -60,12 +61,12 @@ from models.enums import (
     SegmentStatus,
 )
 from models.model import ApiToken, UploadFile
-from services.dataset_ref_service import DatasetRef
-from services.dataset_service import DocumentService
-from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account, make_upload_file
+from services.knowledge.dataset_service import DocumentService
+from services.knowledge.entities.knowledge_entities import ProcessRule, RetrievalModel
+from services.knowledge.resource_scope import DatasetRef
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_account, make_upload_file
 
 
 def _document_data_source_info() -> dict[str, str]:
@@ -184,7 +185,11 @@ def make_serializable_document(**overrides: object) -> Document:
         "word_count": None,
     }
     attrs.update(overrides)
+    created_at = cast(datetime, attrs.pop("created_at"))
+    updated_at = cast(datetime, attrs.pop("updated_at"))
     document = Document(**attrs)
+    document.created_at = created_at
+    document.updated_at = updated_at
     document.summary_index_status = summary_index_status  # type: ignore[attr-defined]
     return document
 
@@ -639,8 +644,8 @@ class TestDocumentServiceBatchMethods:
 class TestDocumentServiceFileOperations:
     """Test DocumentService file related operations."""
 
-    @patch("services.dataset_service.file_helpers.get_signed_file_url")
-    @patch("services.dataset_service.DocumentService._get_upload_file_for_upload_file_document")
+    @patch("services.knowledge.dataset_service.file_helpers.get_signed_file_url")
+    @patch("services.knowledge.dataset_service.DocumentService._get_upload_file_for_upload_file_document")
     def test_get_document_download_url(self, mock_get_file, mock_signed_url, sqlite_session: Session):
         """Test generation of download URL."""
         mock_doc = make_serializable_document()
@@ -661,8 +666,8 @@ class TestDocumentServiceSaveValidation:
     """Test validations during document saving."""
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    @patch("services.dataset_service.DatasetService.check_doc_form")
-    @patch("services.dataset_service.FeatureService.get_features")
+    @patch("services.knowledge.dataset_service.DatasetService.check_doc_form")
+    @patch("services.knowledge.dataset_service.FeatureService.get_features")
     def test_save_document_validates_doc_form(self, mock_features, mock_check_form, sqlite_session: Session):
         """Test that doc_form is validated during save."""
         dataset = make_dataset(tenant_id="tenant_id")

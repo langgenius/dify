@@ -1,9 +1,9 @@
 'use client'
-import type { MailSendResponse, MailValidityResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
@@ -11,7 +11,7 @@ import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { useMailValidity, useSendMail } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 
 type CheckCodeFormValues = {
   code: string
@@ -25,8 +25,12 @@ export default function CheckCode() {
   const [token, setToken] = useState(() => decodeURIComponent(searchParams.get('token') as string))
   const [loading, setLoading] = useState(false)
   const locale = useLocale()
-  const { mutateAsync: submitMail } = useSendMail()
-  const { mutateAsync: verifyCode } = useMailValidity()
+  const { mutateAsync: submitMail } = useMutation(
+    consoleQuery.emailRegister.sendEmail.post.mutationOptions(),
+  )
+  const { mutateAsync: verifyCode } = useMutation(
+    consoleQuery.emailRegister.validity.post.mutationOptions(),
+  )
   const pageTitle = t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })
   useDocumentTitle(pageTitle)
 
@@ -34,10 +38,10 @@ export default function CheckCode() {
     if (loading) return
     try {
       setLoading(true)
-      const res = await verifyCode({ email, code, token })
-      if ((res as MailValidityResponse).is_valid) {
+      const res = await verifyCode({ body: { email, code, token } })
+      if (res.is_valid) {
         const params = new URLSearchParams(searchParams)
-        params.set('token', encodeURIComponent((res as MailValidityResponse).token))
+        params.set('token', encodeURIComponent(res.token))
         router.push(`/signup/set-password?${params.toString()}`)
       } else {
         toast.error(t(($) => $['checkCode.invalidCode'], { ns: 'login' }))
@@ -51,10 +55,10 @@ export default function CheckCode() {
 
   const resendCode = async () => {
     try {
-      const res = await submitMail({ email, language: locale })
-      if ((res as MailSendResponse).result === 'success') {
+      const res = await submitMail({ body: { email, language: locale } })
+      if (res.result === 'success') {
         const params = new URLSearchParams(searchParams)
-        const newToken = (res as MailSendResponse)?.data
+        const newToken = res.data
         params.set('token', encodeURIComponent(newToken))
         setToken(newToken)
         router.replace(`/signup/check-code?${params.toString()}`)

@@ -1,24 +1,19 @@
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
+import { getAvatarInitial } from '@/utils/avatar'
 
 const UserInfo = () => {
-  const router = useRouter()
   const { t } = useTranslation(['common', 'education'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
 
-  const { mutateAsync: logout } = useLogout()
-  const handleLogout = async () => {
-    await logout()
-    router.push('/signin')
-  }
+  const { mutate: logout } = useLogout()
 
   return (
     <div className="relative flex items-center justify-between rounded-xl border-4 border-components-panel-on-panel-item-bg bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 pt-9 pr-8 pb-6 pl-6 shadow-shadow-shadow-5">
@@ -32,18 +27,16 @@ const UserInfo = () => {
         />
       </div>
       <div className="flex items-center">
-        <Avatar
-          className="mr-4"
-          avatar={userProfile.avatar_url}
-          name={userProfile.name}
-          size="2xl"
-        />
+        <Avatar className="mr-4" size="2xl" aria-hidden="true">
+          <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+          <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+        </Avatar>
         <div className="pt-1.5">
           <div className="system-md-semibold text-text-primary">{userProfile.name}</div>
           <div className="system-sm-regular text-text-secondary">{userProfile.email}</div>
         </div>
       </div>
-      <Button variant="secondary" onClick={handleLogout}>
+      <Button variant="secondary" onClick={() => logout()}>
         {t(($) => $['userProfile.logout'], { ns: 'common' })}
       </Button>
     </div>

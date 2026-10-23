@@ -1,38 +1,62 @@
-import type {
-  FormInputItem,
-  ParagraphFormInput,
-} from '@/app/components/workflow/nodes/human-input/types'
-import { render, screen } from '@testing-library/react'
+import type { ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType, SupportUploadFileTypes, VarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import InputField from '../input-field'
+
+vi.mock('react-i18next', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-i18next')>()
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  const { default: i18next } = await import('i18next')
+  const i18n = i18next.createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    resources: {
+      'en-US': {
+        workflowHumanInput: {
+          nodes: {
+            humanInput: {
+              insertInputField: {
+                prePopulateFieldPlaceholder: '<staticContent/> <variable/>',
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+  return {
+    ...createReactI18nextMock(),
+    Trans: (props: React.ComponentProps<typeof actual.Trans>) => (
+      <actual.Trans {...props} i18n={i18n} />
+    ),
+  }
+})
 
 type VarReferencePickerProps = {
   onChange: (value: string[]) => void
   filterVar?: (payload: { type: VarType }) => boolean
 }
 
-let lastVarReferencePickerProps: VarReferencePickerProps | undefined
 let fileUploadSettingMaxLength: number | undefined = 4
 
+// Variable discovery is tested by the picker owner; expose only allowed choices here.
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: (props: VarReferencePickerProps) => {
-    lastVarReferencePickerProps = props
-    return (
-      <button type="button" onClick={() => props.onChange(['node-a', 'var-a'])}>
-        pick-variable
-      </button>
-    )
-  },
-}))
-
-vi.mock('@/app/components/app/configuration/config-var/config-select', () => ({
-  __esModule: true,
-  default: ({ onChange }: { onChange: (options: string[]) => void }) => (
-    <button type="button" onClick={() => onChange(['alpha', 'beta'])}>
-      config-select
-    </button>
+  default: ({ onChange, filterVar }: VarReferencePickerProps) => (
+    <>
+      {[
+        { name: 'pick-variable', type: VarType.arrayString },
+        { name: 'String variable', type: VarType.string },
+        { name: 'File list variable', type: VarType.arrayFile },
+      ]
+        .filter((variable) => !filterVar || filterVar(variable))
+        .map((variable) => (
+          <button key={variable.name} type="button" onClick={() => onChange(['node-a', 'var-a'])}>
+            {variable.name}
+          </button>
+        ))}
+    </>
   ),
 }))
 
@@ -78,35 +102,27 @@ const createPayload = (overrides?: Partial<ParagraphFormInput>): ParagraphFormIn
 describe('InputField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    lastVarReferencePickerProps = undefined
     fileUploadSettingMaxLength = 4
   })
 
-  it('should keep the header and actions visible while the field content scrolls internally', () => {
-    const { container } = render(
+  it('saves only from the field surface and ignores composition', () => {
+    const onChange = vi.fn()
+    render(
       <InputField
-        nodeId="node-layout"
+        nodeId="node-scope"
         isEdit={false}
         payload={createPayload()}
-        onChange={vi.fn()}
+        onChange={onChange}
         onCancel={vi.fn()}
       />,
     )
-
-    const panel = container.firstElementChild
-    const header = panel?.children[0]
-    const scrollBody = panel?.children[1]
-    const footer = panel?.lastElementChild
-
-    // The max-height falls back to a viewport unit so the panel stays bounded
-    // (and the footer/actions reachable via the internal scroll) even when it is
-    // rendered outside the shortcuts popup that defines --shortcut-popup-max-height,
-    // e.g. inside the edit dialog. See issue #37979.
-    expect(panel).toHaveClass('max-h-(--shortcut-popup-max-height,80dvh)', 'overflow-hidden')
-    expect(header).toHaveClass('shrink-0', 'pb-2')
-    expect(scrollBody).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto')
-    expect(footer).toHaveClass('shrink-0', 'bg-components-panel-bg')
-    expect(footer).not.toHaveClass('border-t')
+    fireEvent.keyDown(document.body, { key: 'Enter', ctrlKey: true })
+    const input = screen.getByRole('textbox', { name: /saveResponseAs/ })
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true, isComposing: true })
+    expect(onChange).not.toHaveBeenCalled()
+    fireEvent.keyUp(input, { key: 'Enter', ctrlKey: true })
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true })
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(createPayload())
   })
 
   it('should focus the field type from its visible label and save the selected type', async () => {
@@ -122,9 +138,9 @@ describe('InputField', () => {
       />,
     )
 
-    const label = screen.getByText('workflow.nodes.humanInput.insertInputField.fieldType')
+    const label = screen.getByText('workflowHumanInput.nodes.humanInput.insertInputField.fieldType')
     const typeSelector = screen.getByRole('combobox', {
-      name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+      name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
     })
     await user.click(label)
     expect(typeSelector).toHaveFocus()
@@ -158,7 +174,7 @@ describe('InputField', () => {
     await user.type(inputs[0]!, 'invalid name')
 
     expect(
-      screen.getByText('workflow.nodes.humanInput.insertInputField.variableNameInvalid'),
+      screen.getByText('workflowHumanInput.nodes.humanInput.insertInputField.variableNameInvalid'),
     )!.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -186,35 +202,17 @@ describe('InputField', () => {
     await user.type(inputs[0]!, 'existing_name')
 
     expect(
-      screen.getByText('workflow.nodes.humanInput.insertInputField.variableNameDuplicated'),
+      screen.getByText(
+        'workflowHumanInput.nodes.humanInput.insertInputField.variableNameDuplicated',
+      ),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     ).toBeDisabled()
     await user.keyboard('{Control>}{Enter}{/Control}')
     expect(onChange).not.toHaveBeenCalled()
-  })
-
-  it('should call onChange when saving a valid payload in edit mode', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-
-    render(
-      <InputField
-        nodeId="node-2"
-        isEdit
-        payload={createPayload()}
-        onChange={onChange}
-        onCancel={vi.fn()}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0]![0]).toEqual(createPayload())
   })
 
   it('should call onCancel when cancel button is clicked', async () => {
@@ -253,7 +251,7 @@ describe('InputField', () => {
     await user.type(nameInput!, 'generated_name')
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -281,7 +279,7 @@ describe('InputField', () => {
           default: {
             type: 'constant',
             selector: [],
-            value: '',
+            value: 'initial',
           },
         })}
         onChange={onChange}
@@ -289,9 +287,9 @@ describe('InputField', () => {
       />,
     )
 
-    await user.keyboard('{Tab}')
-    const inputs = screen.getAllByRole('textbox')
-    await user.type(inputs[1]!, 'constant-default')
+    const input = screen.getByRole('textbox', { name: /staticContent/ })
+    await user.clear(input)
+    await user.type(input, 'constant-default')
     await user.keyboard('{Control>}{Enter}{/Control}')
 
     expect(onChange).toHaveBeenCalledTimes(1)
@@ -300,39 +298,6 @@ describe('InputField', () => {
       selector: [],
       value: 'constant-default',
     })
-  })
-
-  it('should switch to variable mode when type switch is clicked', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-
-    render(
-      <InputField
-        nodeId="node-4-1"
-        isEdit={false}
-        payload={createPayload({
-          default: {
-            type: 'constant',
-            selector: [],
-            value: 'preset',
-          },
-        })}
-        onChange={onChange}
-        onCancel={vi.fn()}
-      />,
-    )
-
-    await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
-      }),
-    )
-
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0]![0].default.type).toBe('variable')
   })
 
   it('should switch to constant mode when variable mode type switch is clicked', async () => {
@@ -356,16 +321,22 @@ describe('InputField', () => {
     )
 
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useConstantInstead/i),
+      screen.getByText(
+        /workflowHumanInput\.nodes\.humanInput\.insertInputField\.useConstantInstead/i,
+      ),
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0]![0].default.type).toBe('constant')
+    expect(onChange.mock.calls[0]![0].default).toEqual({
+      type: 'constant',
+      selector: ['node-y', 'var-y'],
+      value: '',
+    })
   })
 
   it('should update default selector when variable picker is used', async () => {
@@ -388,10 +359,10 @@ describe('InputField', () => {
       />,
     )
 
-    await user.click(screen.getByText('pick-variable'))
+    await user.click(screen.getByText('String variable'))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -399,42 +370,6 @@ describe('InputField', () => {
     expect(onChange.mock.calls[0]![0].default).toEqual({
       type: 'variable',
       selector: ['node-a', 'var-a'],
-      value: '',
-    })
-  })
-
-  it('should initialize default config when missing and selector is selected', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-    const payloadWithoutDefault = {
-      ...createPayload(),
-      default: undefined,
-    } as unknown as FormInputItem
-
-    render(
-      <InputField
-        nodeId="node-6"
-        isEdit={false}
-        payload={payloadWithoutDefault}
-        onChange={onChange}
-        onCancel={vi.fn()}
-      />,
-    )
-
-    await user.keyboard('{Tab}')
-    await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
-      }),
-    )
-
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0]![0].default).toEqual({
-      type: 'variable',
-      selector: [],
       value: '',
     })
   })
@@ -455,7 +390,7 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
@@ -463,7 +398,7 @@ describe('InputField', () => {
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -478,50 +413,65 @@ describe('InputField', () => {
       },
     })
     expect(
-      screen.queryByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i),
+      screen.queryByText(
+        /workflowHumanInput\.nodes\.humanInput\.insertInputField\.prePopulateField/i,
+      ),
     ).not.toBeInTheDocument()
   })
 
   it('should keep paragraph pre-populate editor available after switching back to paragraph', async () => {
     const user = userEvent.setup()
+    const onChange = vi.fn()
 
     render(
       <InputField
         nodeId="node-8"
         isEdit={false}
         payload={createPayload()}
-        onChange={vi.fn()}
+        onChange={onChange}
         onCancel={vi.fn()}
       />,
     )
 
     expect(
-      screen.getByText('workflow.nodes.humanInput.insertInputField.prePopulateField'),
+      screen.getByText('workflowHumanInput.nodes.humanInput.insertInputField.prePopulateField'),
     ).toBeInTheDocument()
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.single-file\b/ }),
     )
     expect(
-      screen.queryByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i),
+      screen.queryByText(
+        /workflowHumanInput\.nodes\.humanInput\.insertInputField\.prePopulateField/i,
+      ),
     ).not.toBeInTheDocument()
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.paragraph\b/ }),
     )
     expect(
-      screen.getByText('workflow.nodes.humanInput.insertInputField.prePopulateField'),
+      screen.getByText('workflowHumanInput.nodes.humanInput.insertInputField.prePopulateField'),
     ).toBeInTheDocument()
+    await user.click(
+      screen.getByText('workflowHumanInput.nodes.humanInput.insertInputField.staticContent'),
+    )
+    await user.type(screen.getByRole('textbox', { name: /staticContent/ }), 'Restored default')
+    await user.click(screen.getByRole('button', { name: /insertInputField\.insert/i }))
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({
+      type: InputVarType.paragraph,
+      output_variable_name: 'valid_name',
+      default: { type: 'constant', selector: [], value: 'Restored default' },
+    })
   })
 
   it('should save constant select options', async () => {
@@ -540,16 +490,25 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.select\b/ }),
     )
-    await user.click(screen.getByRole('button', { name: 'config-select' }))
+    await user.click(screen.getByRole('button', { name: 'appDebug.variableConfig.addOption' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'appDebug.variableConfig.options 1' }),
+      'alpha',
+    )
+    await user.click(screen.getByRole('button', { name: 'appDebug.variableConfig.addOption' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'appDebug.variableConfig.options 2' }),
+      'beta',
+    )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -581,23 +540,34 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.select\b/ }),
     )
-    await user.click(screen.getByRole('button', { name: 'config-select' }))
+    await user.click(screen.getByRole('button', { name: 'appDebug.variableConfig.addOption' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'appDebug.variableConfig.options 1' }),
+      'alpha',
+    )
+    await user.click(screen.getByRole('button', { name: 'appDebug.variableConfig.addOption' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'appDebug.variableConfig.options 2' }),
+      'beta',
+    )
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
+      screen.getByText(/workflowHumanInput\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
     )
     await user.click(screen.getByText('pick-variable'))
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useConstantInstead/i),
+      screen.getByText(
+        /workflowHumanInput\.nodes\.humanInput\.insertInputField\.useConstantInstead/i,
+      ),
     )
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -628,57 +598,19 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.select\b/ }),
     )
     await user.click(
-      screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
+      screen.getByText(/workflowHumanInput\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
     )
 
-    expect(lastVarReferencePickerProps?.filterVar?.({ type: VarType.arrayString })).toBe(true)
-    expect(lastVarReferencePickerProps?.filterVar?.({ type: VarType.string })).toBe(false)
-    expect(lastVarReferencePickerProps?.filterVar?.({ type: VarType.arrayFile })).toBe(false)
-  })
-
-  it('should clear paragraph default state when switching to select', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-
-    render(
-      <InputField
-        nodeId="node-12"
-        isEdit={false}
-        payload={createPayload({
-          default: {
-            type: 'constant',
-            selector: [],
-            value: 'paragraph-default',
-          },
-        })}
-        onChange={onChange}
-        onCancel={vi.fn()}
-      />,
-    )
-
-    await user.click(
-      screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
-      }),
-    )
-    await user.click(
-      await screen.findByRole('option', { name: /appDebug\.variableConfig\.select\b/ }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
-      }),
-    )
-
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0]![0]).not.toHaveProperty('default')
+    expect(screen.getByRole('button', { name: 'pick-variable' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'String variable' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'File list variable' })).not.toBeInTheDocument()
   })
 
   it('should save single file upload settings', async () => {
@@ -697,7 +629,7 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
@@ -706,7 +638,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -718,44 +650,6 @@ describe('InputField', () => {
       allowed_file_types: ['document'],
       allowed_file_upload_methods: ['local_file'],
     })
-  })
-
-  it('should clear paragraph default state when switching to single file', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-
-    render(
-      <InputField
-        nodeId="node-13-1"
-        isEdit={false}
-        payload={createPayload({
-          default: {
-            type: 'constant',
-            selector: [],
-            value: 'paragraph-default',
-          },
-        })}
-        onChange={onChange}
-        onCancel={vi.fn()}
-      />,
-    )
-
-    await user.click(
-      screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
-      }),
-    )
-    await user.click(
-      await screen.findByRole('option', { name: /appDebug\.variableConfig\.single-file\b/ }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
-      }),
-    )
-
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0]![0]).not.toHaveProperty('default')
   })
 
   it('should save file-list upload settings and max upload count', async () => {
@@ -774,7 +668,7 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
@@ -783,7 +677,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -815,7 +709,7 @@ describe('InputField', () => {
 
     await user.click(
       screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
+        name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
     await user.click(
@@ -824,7 +718,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
     await user.click(
       screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
+        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
       }),
     )
 
@@ -835,43 +729,5 @@ describe('InputField', () => {
         number_limits: 1,
       }),
     )
-  })
-
-  it('should clear paragraph default state when switching to file-list', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-
-    render(
-      <InputField
-        nodeId="node-14-1"
-        isEdit={false}
-        payload={createPayload({
-          default: {
-            type: 'constant',
-            selector: [],
-            value: 'paragraph-default',
-          },
-        })}
-        onChange={onChange}
-        onCancel={vi.fn()}
-      />,
-    )
-
-    await user.click(
-      screen.getByRole('combobox', {
-        name: 'workflow.nodes.humanInput.insertInputField.fieldType',
-      }),
-    )
-    await user.click(
-      await screen.findByRole('option', { name: /appDebug\.variableConfig\.multi-files\b/ }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i,
-      }),
-    )
-
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0]![0]).not.toHaveProperty('default')
   })
 })

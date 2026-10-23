@@ -3,6 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
+from core.mcp.entities import SUPPORTED_PROTOCOL_VERSIONS
 from core.mcp.types import (
     DEFAULT_NEGOTIATED_VERSION,
     INTERNAL_ERROR,
@@ -58,14 +59,18 @@ from core.mcp.types import (
 class TestConstants:
     """Test module constants."""
 
-    def test_protocol_versions(self):
+    def test_protocol_versions(self) -> None:
         """Test protocol version constants."""
-        assert LATEST_PROTOCOL_VERSION == "2025-06-18"
+        assert LATEST_PROTOCOL_VERSION == "2025-11-25"
+        assert "2025-11-25" in SUPPORTED_PROTOCOL_VERSIONS
+        assert "2025-06-18" in SUPPORTED_PROTOCOL_VERSIONS
+        assert "2025-03-26" in SUPPORTED_PROTOCOL_VERSIONS
+        assert "2024-11-05" in SUPPORTED_PROTOCOL_VERSIONS
         assert SERVER_LATEST_PROTOCOL_VERSION == "2025-06-18"
         assert DEFAULT_NEGOTIATED_VERSION == "2025-03-26"
         assert sorted(SERVER_SUPPORTED_PROTOCOL_VERSIONS) == ["2024-11-05", "2025-03-26", "2025-06-18"]
 
-    def test_error_codes(self):
+    def test_error_codes(self) -> None:
         """Test JSON-RPC error code constants."""
         assert PARSE_ERROR == -32700
         assert INVALID_REQUEST == -32600
@@ -77,25 +82,25 @@ class TestConstants:
 class TestRequestParams:
     """Test RequestParams and related classes."""
 
-    def test_request_params_basic(self):
+    def test_request_params_basic(self) -> None:
         """Test basic RequestParams creation."""
         params = RequestParams()
         assert params.meta is None
 
-    def test_request_params_with_meta(self):
+    def test_request_params_with_meta(self) -> None:
         """Test RequestParams with meta."""
         meta = RequestParams.Meta(progressToken="test-token")
         params = RequestParams(_meta=meta)
         assert params.meta is not None
         assert params.meta.progressToken == "test-token"
 
-    def test_request_params_meta_extra_fields(self):
+    def test_request_params_meta_extra_fields(self) -> None:
         """Test RequestParams.Meta allows extra fields."""
         meta = RequestParams.Meta(progressToken="token", customField="value")
         assert meta.progressToken == "token"
         assert meta.customField == "value"  # type: ignore
 
-    def test_request_params_serialization(self):
+    def test_request_params_serialization(self) -> None:
         """Test RequestParams serialization with _meta alias."""
         meta = RequestParams.Meta(progressToken="test")
         params = RequestParams(_meta=meta)
@@ -110,7 +115,7 @@ class TestRequestParams:
 class TestJSONRPCMessages:
     """Test JSON-RPC message types."""
 
-    def test_jsonrpc_request(self):
+    def test_jsonrpc_request(self) -> None:
         """Test JSONRPCRequest creation and validation."""
         request = JSONRPCRequest(jsonrpc="2.0", id="test-123", method="test_method", params={"key": "value"})
 
@@ -119,12 +124,12 @@ class TestJSONRPCMessages:
         assert request.method == "test_method"
         assert request.params == {"key": "value"}
 
-    def test_jsonrpc_request_numeric_id(self):
+    def test_jsonrpc_request_numeric_id(self) -> None:
         """Test JSONRPCRequest with numeric ID."""
         request = JSONRPCRequest(jsonrpc="2.0", id=123, method="test", params=None)
         assert request.id == 123
 
-    def test_jsonrpc_notification(self):
+    def test_jsonrpc_notification(self) -> None:
         """Test JSONRPCNotification creation."""
         notification = JSONRPCNotification(jsonrpc="2.0", method="notification_method", params={"data": "test"})
 
@@ -132,7 +137,7 @@ class TestJSONRPCMessages:
         assert notification.method == "notification_method"
         assert not hasattr(notification, "id")  # Notifications don't have ID
 
-    def test_jsonrpc_response(self):
+    def test_jsonrpc_response(self) -> None:
         """Test JSONRPCResponse creation."""
         response = JSONRPCResponse(jsonrpc="2.0", id="req-123", result={"success": True})
 
@@ -140,7 +145,7 @@ class TestJSONRPCMessages:
         assert response.id == "req-123"
         assert response.result == {"success": True}
 
-    def test_jsonrpc_error(self):
+    def test_jsonrpc_error(self) -> None:
         """Test JSONRPCError creation."""
         error_data = ErrorData(code=INVALID_PARAMS, message="Invalid parameters", data={"field": "missing"})
 
@@ -152,7 +157,7 @@ class TestJSONRPCMessages:
         assert error.error.message == "Invalid parameters"
         assert error.error.data == {"field": "missing"}
 
-    def test_jsonrpc_message_parsing(self):
+    def test_jsonrpc_message_parsing(self) -> None:
         """Test JSONRPCMessage parsing different message types."""
         # Parse request
         request_json = '{"jsonrpc": "2.0", "id": 1, "method": "test", "params": null}'
@@ -173,7 +178,7 @@ class TestJSONRPCMessages:
 class TestCapabilities:
     """Test capability classes."""
 
-    def test_client_capabilities(self):
+    def test_client_capabilities(self) -> None:
         """Test ClientCapabilities creation."""
         caps = ClientCapabilities(
             experimental={"feature": {"enabled": True}},
@@ -185,7 +190,7 @@ class TestCapabilities:
         assert caps.sampling is not None
         assert caps.roots.listChanged is True  # type: ignore
 
-    def test_server_capabilities(self):
+    def test_server_capabilities(self) -> None:
         """Test ServerCapabilities creation."""
         caps = ServerCapabilities(
             tools={"listChanged": True},
@@ -203,7 +208,7 @@ class TestCapabilities:
 class TestInitialization:
     """Test initialization request/response types."""
 
-    def test_initialize_request(self):
+    def test_initialize_request(self) -> None:
         """Test InitializeRequest creation."""
         client_info = Implementation(name="test-client", version="1.0.0")
         capabilities = ClientCapabilities()
@@ -218,7 +223,7 @@ class TestInitialization:
         assert request.params.protocolVersion == LATEST_PROTOCOL_VERSION
         assert request.params.clientInfo.name == "test-client"
 
-    def test_initialize_result(self):
+    def test_initialize_result(self) -> None:
         """Test InitializeResult creation."""
         server_info = Implementation(name="test-server", version="1.0.0")
         capabilities = ServerCapabilities()
@@ -238,7 +243,7 @@ class TestInitialization:
 class TestTools:
     """Test tool-related types."""
 
-    def test_tool_creation(self):
+    def test_tool_creation(self) -> None:
         """Test Tool creation with all fields."""
         tool = Tool(
             name="test_tool",
@@ -255,9 +260,10 @@ class TestTools:
         assert tool.title == "Test Tool"
         assert tool.description == "A tool for testing"
         assert tool.inputSchema["properties"]["input"]["type"] == "string"
+        assert tool.annotations is not None
         assert tool.annotations.idempotentHint is True
 
-    def test_call_tool_request(self):
+    def test_call_tool_request(self) -> None:
         """Test CallToolRequest creation."""
         params = CallToolRequestParams(name="test_tool", arguments={"input": "test value"})
 
@@ -267,7 +273,7 @@ class TestTools:
         assert request.params.name == "test_tool"
         assert request.params.arguments == {"input": "test value"}
 
-    def test_call_tool_result(self):
+    def test_call_tool_result(self) -> None:
         """Test CallToolResult creation."""
         result = CallToolResult(
             content=[TextContent(type="text", text="Tool executed successfully")],
@@ -280,12 +286,12 @@ class TestTools:
         assert result.structuredContent == {"status": "success", "data": "test"}
         assert result.isError is False
 
-    def test_list_tools_request(self):
+    def test_list_tools_request(self) -> None:
         """Test ListToolsRequest creation."""
         request = ListToolsRequest()
         assert request.method == "tools/list"
 
-    def test_list_tools_result(self):
+    def test_list_tools_result(self) -> None:
         """Test ListToolsResult creation."""
         tool1 = Tool(name="tool1", inputSchema={})
         tool2 = Tool(name="tool2", inputSchema={})
@@ -300,7 +306,7 @@ class TestTools:
 class TestContent:
     """Test content types."""
 
-    def test_text_content(self):
+    def test_text_content(self) -> None:
         """Test TextContent creation."""
         annotations = Annotations(audience=["user"], priority=0.8)
         content = TextContent(type="text", text="Hello, world!", annotations=annotations)
@@ -310,7 +316,7 @@ class TestContent:
         assert content.annotations is not None
         assert content.annotations.priority == 0.8
 
-    def test_image_content(self):
+    def test_image_content(self) -> None:
         """Test ImageContent creation."""
         content = ImageContent(type="image", data="base64encodeddata", mimeType="image/png")
 
@@ -322,7 +328,7 @@ class TestContent:
 class TestOAuth:
     """Test OAuth-related types."""
 
-    def test_oauth_client_metadata(self):
+    def test_oauth_client_metadata(self) -> None:
         """Test OAuthClientMetadata creation."""
         metadata = OAuthClientMetadata(
             client_name="Test Client",
@@ -336,23 +342,24 @@ class TestOAuth:
 
         assert metadata.client_name == "Test Client"
         assert len(metadata.redirect_uris) == 1
+        assert metadata.grant_types is not None
         assert "authorization_code" in metadata.grant_types
 
-    def test_oauth_client_information(self):
+    def test_oauth_client_information(self) -> None:
         """Test OAuthClientInformation creation."""
         info = OAuthClientInformation(client_id="test-client-id", client_secret="test-secret")
 
         assert info.client_id == "test-client-id"
         assert info.client_secret == "test-secret"
 
-    def test_oauth_client_information_without_secret(self):
+    def test_oauth_client_information_without_secret(self) -> None:
         """Test OAuthClientInformation without secret."""
         info = OAuthClientInformation(client_id="public-client")
 
         assert info.client_id == "public-client"
         assert info.client_secret is None
 
-    def test_oauth_tokens(self):
+    def test_oauth_tokens(self) -> None:
         """Test OAuthTokens creation."""
         tokens = OAuthTokens(
             access_token="access-token-123",
@@ -368,7 +375,7 @@ class TestOAuth:
         assert tokens.refresh_token == "refresh-token-456"
         assert tokens.scope == "read write"
 
-    def test_oauth_metadata(self):
+    def test_oauth_metadata(self) -> None:
         """Test OAuthMetadata creation."""
         metadata = OAuthMetadata(
             authorization_endpoint="https://auth.example.com/authorize",
@@ -381,13 +388,14 @@ class TestOAuth:
 
         assert metadata.authorization_endpoint == "https://auth.example.com/authorize"
         assert "code" in metadata.response_types_supported
+        assert metadata.code_challenge_methods_supported is not None
         assert "S256" in metadata.code_challenge_methods_supported
 
 
 class TestNotifications:
     """Test notification types."""
 
-    def test_progress_notification(self):
+    def test_progress_notification(self) -> None:
         """Test ProgressNotification creation."""
         params = ProgressNotificationParams(
             progressToken="progress-123", progress=50.0, total=100.0, message="Processing... 50%"
@@ -401,7 +409,7 @@ class TestNotifications:
         assert notification.params.total == 100.0
         assert notification.params.message == "Processing... 50%"
 
-    def test_ping_request(self):
+    def test_ping_request(self) -> None:
         """Test PingRequest creation."""
         request = PingRequest()
         assert request.method == "ping"
@@ -411,24 +419,24 @@ class TestNotifications:
 class TestCompletion:
     """Test completion-related types."""
 
-    def test_completion_context(self):
+    def test_completion_context(self) -> None:
         """Test CompletionContext creation."""
         context = CompletionContext(arguments={"template_var": "value"})
         assert context.arguments == {"template_var": "value"}
 
-    def test_resource_template_reference(self):
+    def test_resource_template_reference(self) -> None:
         """Test ResourceTemplateReference creation."""
         ref = ResourceTemplateReference(type="ref/resource", uri="file:///path/to/{filename}")
         assert ref.type == "ref/resource"
         assert ref.uri == "file:///path/to/{filename}"
 
-    def test_prompt_reference(self):
+    def test_prompt_reference(self) -> None:
         """Test PromptReference creation."""
         ref = PromptReference(type="ref/prompt", name="test_prompt")
         assert ref.type == "ref/prompt"
         assert ref.name == "test_prompt"
 
-    def test_complete_request(self):
+    def test_complete_request(self) -> None:
         """Test CompleteRequest creation."""
         ref = PromptReference(type="ref/prompt", name="test_prompt")
         arg = CompletionArgument(name="arg1", value="val")
@@ -441,7 +449,7 @@ class TestCompletion:
         assert request.params.ref.name == "test_prompt"  # type: ignore
         assert request.params.argument.name == "arg1"
 
-    def test_complete_result(self):
+    def test_complete_result(self) -> None:
         """Test CompleteResult creation."""
         completion = Completion(values=["option1", "option2", "option3"], total=10, hasMore=True)
 
@@ -455,16 +463,16 @@ class TestCompletion:
 class TestValidation:
     """Test validation of various types."""
 
-    def test_invalid_jsonrpc_version(self):
+    def test_invalid_jsonrpc_version(self) -> None:
         """Test invalid JSON-RPC version validation."""
         with pytest.raises(ValidationError):
             JSONRPCRequest(
-                jsonrpc="1.0",  # Invalid version
+                jsonrpc="1.0",  # pyrefly: ignore[bad-argument-type]
                 id=1,
                 method="test",
             )
 
-    def test_tool_annotations_validation(self):
+    def test_tool_annotations_validation(self) -> None:
         """Test ToolAnnotations with invalid values."""
         # Valid annotations
         annotations = ToolAnnotations(
@@ -472,7 +480,7 @@ class TestValidation:
         )
         assert annotations.title == "Test"
 
-    def test_extra_fields_allowed(self):
+    def test_extra_fields_allowed(self) -> None:
         """Test that extra fields are allowed in models."""
         # Most models should allow extra fields
         tool = Tool(
@@ -482,7 +490,7 @@ class TestValidation:
         )
         assert tool.customField == "allowed"  # type: ignore
 
-    def test_result_meta_alias(self):
+    def test_result_meta_alias(self) -> None:
         """Test Result model with _meta alias."""
         # Create with the field name (not alias)
         result = Result(_meta={"key": "value"})

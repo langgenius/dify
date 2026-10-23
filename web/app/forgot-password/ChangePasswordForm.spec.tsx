@@ -1,8 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import useDocumentTitle from '@/hooks/use-document-title'
-import { changePasswordWithToken } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ChangePasswordForm from './ChangePasswordForm'
 
 const mockReplace = vi.fn()
@@ -15,21 +15,19 @@ vi.mock('@/service/use-common', () => ({
   useVerifyForgotPasswordToken: vi.fn(),
 }))
 
-vi.mock('@/service/common', () => ({
-  changePasswordWithToken: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-document-title', () => ({
-  __esModule: true,
-  default: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: (await import('@/test/console/service-responses')).withConsoleClientResponses(
+    (await importOriginal<typeof import('@/service/console')>()).consoleClient,
+    { 'forgotPassword.resets.post': vi.fn() },
+  ),
 }))
 
 vi.mock('@/utils/var', () => ({ basePath: '' }))
 
 type UseVerifyResult = ReturnType<typeof useVerifyForgotPasswordToken>
 const mockUseVerify = vi.mocked(useVerifyForgotPasswordToken)
-const mockChangePassword = vi.mocked(changePasswordWithToken)
-const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
+const mockChangePassword = vi.mocked(consoleClient.forgotPassword.resets.post)
 
 const VALID_PASSWORD = 'ValidPass123!'
 
@@ -46,7 +44,7 @@ describe('ChangePasswordForm', () => {
 
     render(<ChangePasswordForm />)
 
-    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('common.loading')
+    expect(document.title).toBe('common.loading - Dify')
   })
 
   describe('when token is valid', () => {
@@ -59,27 +57,20 @@ describe('ChangePasswordForm', () => {
       } as unknown as UseVerifyResult)
     })
 
-    it('renders the password form', () => {
-      render(<ChangePasswordForm />)
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.changePassword')
-      expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.changePassword')
-    })
-
-    it('submits with T2 (from validity response), NOT T1 (from URL)', async () => {
+    it('submits the verified token and shows successful password change', async () => {
       const user = userEvent.setup()
       mockChangePassword.mockResolvedValue({ result: 'success' })
 
       render(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('common.account.newPassword')
-      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
+      const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
       await user.type(passwordInput, VALID_PASSWORD)
       await user.type(confirmPasswordInput, VALID_PASSWORD)
       await user.keyboard('{Enter}')
 
       await waitFor(() => {
         expect(mockChangePassword).toHaveBeenCalledWith({
-          url: '/forgot-password/resets',
           body: {
             token: T2,
             new_password: VALID_PASSWORD,
@@ -87,29 +78,17 @@ describe('ChangePasswordForm', () => {
           },
         })
       })
-    })
-
-    it('uses the success title after the password is changed', async () => {
-      const user = userEvent.setup()
-      mockChangePassword.mockResolvedValue({ result: 'success' })
-
-      render(<ChangePasswordForm />)
-
-      await user.type(screen.getByLabelText('common.account.newPassword'), VALID_PASSWORD)
-      await user.type(screen.getByLabelText('common.account.confirmPassword'), VALID_PASSWORD)
-      await user.click(screen.getByRole('button', { name: /common\.operation\.reset/ }))
-
       expect(
-        await screen.findByRole('heading', { level: 1, name: 'login.passwordChangedTip' }),
+        await screen.findByRole('heading', { name: 'login.passwordChangedTip' }),
       ).toBeInTheDocument()
-      expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.passwordChangedTip')
+      expect(document.title).toBe('login.passwordChangedTip - Dify')
     })
 
     it('keeps one associated error when an invalid password is cleared', async () => {
       const user = userEvent.setup()
       render(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
       expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
 
       await user.type(passwordInput, 'weak')
@@ -138,12 +117,12 @@ describe('ChangePasswordForm', () => {
       const user = userEvent.setup()
       render(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
       await user.type(passwordInput, VALID_PASSWORD)
-      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+      const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
       await user.type(confirmPasswordInput, 'DifferentPass123!{Enter}')
 
-      const error = await screen.findByText('common.account.notEqual')
+      const error = await screen.findByText('accountSettings.account.notEqual')
       expect(confirmPasswordInput).toHaveAttribute('aria-invalid', 'true')
       expect(confirmPasswordInput).toHaveAccessibleDescription(error.textContent ?? '')
       expect(confirmPasswordInput).toHaveFocus()
@@ -153,7 +132,7 @@ describe('ChangePasswordForm', () => {
       await user.type(passwordInput, 'DifferentPass123!')
 
       await waitFor(() => {
-        expect(screen.queryByText('common.account.notEqual')).not.toBeInTheDocument()
+        expect(screen.queryByText('accountSettings.account.notEqual')).not.toBeInTheDocument()
       })
       expect(confirmPasswordInput).not.toHaveAttribute('aria-invalid', 'true')
       expect(mockChangePassword).not.toHaveBeenCalled()
@@ -162,7 +141,7 @@ describe('ChangePasswordForm', () => {
     it('prevents duplicate submissions while the password is changing', async () => {
       const user = userEvent.setup()
       let resolveRequest:
-        | ((value: Awaited<ReturnType<typeof changePasswordWithToken>>) => void)
+        | ((value: Awaited<ReturnType<typeof consoleClient.forgotPassword.resets.post>>) => void)
         | undefined
       mockChangePassword.mockReturnValue(
         new Promise((resolve) => {
@@ -172,8 +151,11 @@ describe('ChangePasswordForm', () => {
 
       render(<ChangePasswordForm />)
 
-      await user.type(screen.getByLabelText('common.account.newPassword'), VALID_PASSWORD)
-      await user.type(screen.getByLabelText('common.account.confirmPassword'), VALID_PASSWORD)
+      await user.type(screen.getByLabelText('accountSettings.account.newPassword'), VALID_PASSWORD)
+      await user.type(
+        screen.getByLabelText('accountSettings.account.confirmPassword'),
+        VALID_PASSWORD,
+      )
 
       const submitButton = screen.getByRole('button', { name: /common\.operation\.reset/ })
       await user.click(submitButton)
@@ -200,7 +182,7 @@ describe('ChangePasswordForm', () => {
     it('shows invalid token state and no form', () => {
       render(<ChangePasswordForm />)
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.invalid')
-      expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.invalid')
+      expect(document.title).toBe('login.invalid - Dify')
       expect(
         screen.queryByRole('button', { name: /common\.operation\.reset/ }),
       ).not.toBeInTheDocument()

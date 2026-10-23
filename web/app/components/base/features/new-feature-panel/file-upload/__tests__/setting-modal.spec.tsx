@@ -1,12 +1,14 @@
 import type { Features } from '../../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { TransferMethod } from '@/types/app'
 import { FeaturesProvider } from '../../../context'
+import { useFeatures } from '../../../hooks'
 import FileUploadSettings from '../setting-modal'
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({ data: undefined }),
-}))
 
 const defaultFeatures: Features = {
   moreLikeThis: { enabled: false },
@@ -26,106 +28,65 @@ const defaultFeatures: Features = {
   annotationReply: { enabled: false },
 }
 
-const renderWithProvider = (ui: React.ReactNode) => {
-  return render(<FeaturesProvider features={defaultFeatures}>{ui}</FeaturesProvider>)
+function Harness({ onChange, disabled = false }: { onChange: () => void; disabled?: boolean }) {
+  const [open, setOpen] = useState(false)
+  const limit = useFeatures((state) => state.features.file?.number_limits)
+  return (
+    <>
+      <output aria-label="Saved file limit">{limit}</output>
+      <FileUploadSettings open={open} onOpen={setOpen} onChange={onChange} disabled={disabled}>
+        <button type="button">Upload Settings</button>
+      </FileUploadSettings>
+    </>
+  )
+}
+function setup(disabled = false) {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture(),
+  )
+  const onChange = vi.fn()
+  renderWithConsoleQuery(
+    <FeaturesProvider features={defaultFeatures}>
+      <Harness onChange={onChange} disabled={disabled} />
+    </FeaturesProvider>,
+    { queryClient },
+  )
+  return onChange
 }
 
-describe('FileUploadSettings (setting-modal)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+it('discards cancelled edits and saves the next edit to feature state before closing', async () => {
+  const user = userEvent.setup()
+  const onChange = setup()
+  await user.click(screen.getByRole('button', { name: 'Upload Settings' }))
+  const input = screen.getByRole('spinbutton', {
+    name: 'appDebug.variableConfig.maxNumberOfUploads',
   })
+  await user.clear(input)
+  await user.type(input, '6')
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument())
+  expect(screen.getByLabelText('Saved file limit')).toHaveTextContent('5')
+  expect(onChange).not.toHaveBeenCalled()
 
-  it('should render children in trigger', () => {
-    renderWithProvider(
-      <FileUploadSettings open={false} onOpen={vi.fn()}>
-        <button>Upload Settings</button>
-      </FileUploadSettings>,
-    )
-
-    expect(screen.getByText('Upload Settings'))!.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Upload Settings' }))
+  const reopened = screen.getByRole('spinbutton', {
+    name: 'appDebug.variableConfig.maxNumberOfUploads',
   })
+  expect(reopened).toHaveValue(5)
+  await user.clear(reopened)
+  await user.type(reopened, '6')
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument())
+  expect(screen.getByLabelText('Saved file limit')).toHaveTextContent('6')
+  expect(onChange).toHaveBeenCalledOnce()
+})
 
-  it('should render SettingContent in portal', async () => {
-    renderWithProvider(
-      <FileUploadSettings open={true} onOpen={vi.fn()}>
-        <button>Upload Settings</button>
-      </FileUploadSettings>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText(/feature\.fileUpload\.modalTitle/))!.toBeInTheDocument()
-    })
-  })
-
-  it('should call onOpen with true when trigger is clicked', () => {
-    const onOpen = vi.fn()
-    renderWithProvider(
-      <FileUploadSettings open={false} onOpen={onOpen}>
-        <button>Upload Settings</button>
-      </FileUploadSettings>,
-    )
-
-    fireEvent.click(screen.getByText('Upload Settings'))
-
-    expect(onOpen).toHaveBeenCalledWith(true)
-  })
-
-  it('should not call onOpen when disabled', () => {
-    const onOpen = vi.fn()
-    renderWithProvider(
-      <FileUploadSettings open={false} onOpen={onOpen} disabled>
-        <button>Upload Settings</button>
-      </FileUploadSettings>,
-    )
-
-    fireEvent.click(screen.getByText('Upload Settings'))
-
-    expect(onOpen).not.toHaveBeenCalled()
-  })
-
-  it('should call onOpen with false when cancel is clicked', async () => {
-    const onOpen = vi.fn()
-    renderWithProvider(
-      <FileUploadSettings open={true} onOpen={onOpen}>
-        <button>Upload Settings</button>
-      </FileUploadSettings>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText(/operation\.cancel/))!.toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/ }))
-
-    expect(onOpen).toHaveBeenCalledWith(false)
-  })
-
-  it('should call onChange and close when save is clicked', async () => {
-    const onChange = vi.fn()
-    const onOpen = vi.fn()
-    renderWithProvider(
-      <FileUploadSettings open={true} onOpen={onOpen} onChange={onChange}>
-        <button>Upload Settings</button>
-      </FileUploadSettings>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText(/operation\.save/))!.toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByRole('button', { name: /operation\.save/ }))
-
-    expect(onChange).toHaveBeenCalled()
-    expect(onOpen).toHaveBeenCalledWith(false)
-  })
-
-  it('should pass imageUpload prop to SettingContent', async () => {
-    renderWithProvider(
-      <FileUploadSettings open={true} onOpen={vi.fn()} imageUpload>
-        <button>Upload Settings</button>
-      </FileUploadSettings>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText(/feature\.imageUpload\.modalTitle/))!.toBeInTheDocument()
-    })
-  })
+it('keeps settings closed when editing is disabled', async () => {
+  const user = userEvent.setup()
+  const onChange = setup(true)
+  await user.click(screen.getByRole('button', { name: 'Upload Settings' }))
+  expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
+  expect(onChange).not.toHaveBeenCalled()
 })

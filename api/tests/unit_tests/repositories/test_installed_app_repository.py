@@ -4,7 +4,10 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import event, inspect
+from sqlalchemy.dialects import mysql, postgresql
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.sql import Select
 
 from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp
 from models.workflow import Workflow, WorkflowKind, WorkflowType
@@ -29,7 +32,7 @@ def _installation(*, app_id: str) -> InstalledApp:
 
 
 @pytest.mark.parametrize("app_mode", list(AppMode))
-def test_resolve_returns_pure_reference_to_cross_workspace_app(
+def test_resolve_returns_actual_owner_despite_stale_cross_workspace_installation(
     sqlite_session_factory: sessionmaker[Session],
     app_mode: AppMode,
 ) -> None:
@@ -46,6 +49,7 @@ def test_resolve_returns_pure_reference_to_cross_workspace_app(
         session.add(app)
         session.flush()
         installed_app = _installation(app_id=app.id)
+        installed_app.app_owner_tenant_id = _VIEWER_TENANT_ID
         session.add(installed_app)
         session.flush()
         installed_app_id = installed_app.id
@@ -63,9 +67,13 @@ def test_resolve_returns_pure_reference_to_cross_workspace_app(
     result = repository.resolve(installed_app_id=installed_app_id, tenant_id=_VIEWER_TENANT_ID)
 
     assert result == InstalledAppRef(
-        id=installed_app_id, app_id=app_id, tenant_id=_VIEWER_TENANT_ID, app_mode=app_mode.value
+        id=installed_app_id,
+        app_id=app_id,
+        tenant_id=_VIEWER_TENANT_ID,
+        app_owner_tenant_id=_OWNER_TENANT_ID,
+        app_mode=app_mode.value,
     )
-    # The app existence read also supplies its mode; no separate mode query.
+    # Ownership and mode come from App, not the installation snapshot.
     assert select_count == 2
     assert inspect(result, raiseerr=False) is None
     with sqlite_session_factory() as session:
@@ -141,7 +149,11 @@ def installed_app(sqlite_session_factory: sessionmaker[Session]) -> InstalledApp
 
 def _reference(installation: InstalledApp) -> InstalledAppRef:
     return InstalledAppRef(
-        id=installation.id, app_id=installation.app_id, tenant_id=installation.tenant_id, app_mode="completion"
+        id=installation.id,
+        app_id=installation.app_id,
+        tenant_id=installation.tenant_id,
+        app_owner_tenant_id=installation.app_owner_tenant_id,
+        app_mode="completion",
     )
 
 
@@ -375,6 +387,25 @@ def test_candidates_order_and_cursor_cover_pin_groups_ties_and_null_dates(
         repository.get_candidates(tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=2, app_id=None, name=None)
         == all_rows[:2]
     )
+
+
+@pytest.mark.parametrize("dialect", [mysql.dialect(), postgresql.dialect()], ids=["mysql", "postgresql"])
+def test_candidates_order_compiles_without_nulls_last_for_every_dialect(
+    sqlite_session_factory: sessionmaker[Session], dialect: Dialect
+) -> None:
+    statements: list[Select[tuple[InstalledApp, App]]] = []
+
+    @event.listens_for(sqlite_session_factory, "do_orm_execute")
+    def capture(state: ORMExecuteState) -> None:
+        if isinstance(state.statement, Select):
+            statements.append(state.statement)
+
+    repository = SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory)
+    repository.get_candidates(tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=20, app_id=None, name=None)
+
+    assert len(statements) == 1
+    # MySQL rejects NULLS LAST, so null dates must sort last through a portable key.
+    assert "NULLS" not in str(statements[0].compile(dialect=dialect)).upper()
 
 
 @pytest.mark.parametrize("search", ["  50%_\\  ", "50%_\\", "literal"])

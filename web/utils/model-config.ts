@@ -1,5 +1,6 @@
 import type { PromptVariable } from '@/models/debug'
 import type { UserInputFormItem } from '@/types/app'
+import { zAppExternalDataToolPayload } from '@dify/contracts/api/console/apps/zod.gen'
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -33,18 +34,21 @@ const getStringArray = (value: unknown) => {
     : []
 }
 
-const getStringRecord = (value: unknown) => {
-  if (!isRecord(value)) return undefined
-
-  const record: Record<string, string | undefined> = {}
-  Object.entries(value).forEach(([key, item]) => {
-    if (typeof item === 'string') record[key] = item
-  })
-  return record
-}
-
 const getRecord = (value: unknown) => {
   return isRecord(value) ? value : {}
+}
+
+const getFileInputConfig = (content: Record<string, unknown>, numberLimits?: number) => {
+  const config: Record<string, unknown> = {}
+  for (const key of [
+    'allowed_file_types',
+    'allowed_file_extensions',
+    'allowed_file_upload_methods',
+  ] as const) {
+    if (content[key] !== undefined) config[key] = content[key]
+  }
+  if (numberLimits !== undefined) config.number_limits = numberLimits
+  return config
 }
 
 const getInputFormContent = (item: Record<string, unknown>) => {
@@ -128,12 +132,7 @@ export const userInputsFormToPromptVariables = (
         name: getString(content.label),
         required: getBoolean(content.required, true),
         type,
-        config: {
-          allowed_file_types: content.allowed_file_types,
-          allowed_file_extensions: content.allowed_file_extensions,
-          allowed_file_upload_methods: content.allowed_file_upload_methods,
-          number_limits: 1,
-        },
+        config: getFileInputConfig(content, 1),
         hide: getBoolean(content.hide),
         default: getDefaultValue(content.default),
       })
@@ -143,14 +142,22 @@ export const userInputsFormToPromptVariables = (
         name: getString(content.label),
         required: getBoolean(content.required, true),
         type,
-        config: {
-          allowed_file_types: content.allowed_file_types,
-          allowed_file_extensions: content.allowed_file_extensions,
-          allowed_file_upload_methods: content.allowed_file_upload_methods,
-          number_limits: getNumber(content.max_length),
-        },
+        config: getFileInputConfig(content, getNumber(content.max_length)),
         hide: getBoolean(content.hide),
         default: getDefaultValue(content.default),
+      })
+    } else if (type === 'json_object') {
+      promptVariables.push({
+        key: variable,
+        name: getString(content.label),
+        required: getBoolean(content.required, true),
+        type,
+        hide: getBoolean(content.hide),
+        default: getOptionalString(content.default),
+        json_schema:
+          typeof content.json_schema === 'string' || isRecord(content.json_schema)
+            ? content.json_schema
+            : undefined,
       })
     } else {
       promptVariables.push({
@@ -184,7 +191,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             variable: item.key,
             required: item.required !== false, // default true
             max_length: item.max_length,
-            default: '',
+            default: getString(item.default),
             hide: item.hide,
           },
         })
@@ -197,7 +204,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             variable: item.key,
             required: item.required !== false, // default true
             max_length: item.max_length,
-            default: '',
+            default: getString(item.default),
             hide: item.hide,
           },
         })
@@ -209,7 +216,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             label: item.name,
             variable: item.key,
             required: item.required !== false, // default true
-            default: '',
+            default: typeof item.default === 'number' ? item.default : getString(item.default),
             hide: item.hide,
           },
         })
@@ -219,7 +226,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             label: item.name,
             variable: item.key,
             required: item.required !== false, // default true
-            default: '',
+            default: typeof item.default === 'boolean' ? item.default : getString(item.default),
             hide: item.hide,
           },
         })
@@ -234,6 +241,34 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             hide: item.hide,
           },
         })
+      } else if (item.type === 'file' || item.type === 'file-list') {
+        const config = item.config ?? {}
+        const field = {
+          label: item.name,
+          variable: item.key,
+          required: item.required !== false,
+          hide: item.hide,
+          default: getString(item.default),
+          allowed_file_types: config.allowed_file_types,
+          allowed_file_extensions: config.allowed_file_extensions,
+          allowed_file_upload_methods: config.allowed_file_upload_methods,
+        }
+        userInputs.push(
+          item.type === 'file'
+            ? { file: field }
+            : { 'file-list': { ...field, max_length: config.number_limits } },
+        )
+      } else if (item.type === 'json_object') {
+        userInputs.push({
+          json_object: {
+            label: item.name,
+            variable: item.key,
+            required: item.required !== false,
+            default: getString(item.default),
+            hide: item.hide,
+            json_schema: item.json_schema,
+          },
+        })
       } else {
         userInputs.push({
           external_data_tool: {
@@ -241,7 +276,9 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             variable: item.key,
             enabled: item.enabled,
             type: item.type,
-            config: getStringRecord(item.config),
+            config: item.config
+              ? (zAppExternalDataToolPayload.parse({ config: item.config }).config ?? undefined)
+              : undefined,
             required: item.required,
             icon: item.icon,
             icon_background: item.icon_background,

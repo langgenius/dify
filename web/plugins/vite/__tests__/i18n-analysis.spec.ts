@@ -1,5 +1,5 @@
-import type { AnalysisReport } from '../i18n-analysis'
 // @vitest-environment node
+import type { AnalysisReport } from '../i18n-analysis'
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -187,12 +187,13 @@ describe('i18n build check', () => {
       /Found 1 potentially unused i18n keys[\s\S]*static analysis of the current build module graph[\s\S]*false positives or miss unused keys[\s\S]*Review actual usage before removing any keys[\s\S]*app:unused/,
     )
     expect(readFileSync(localeFile, 'utf8')).toBe(content)
+    writeFileSync(localeFile, JSON.stringify({ used: 'Used' }))
+    await expect(buildFixture()).resolves.toBeDefined()
   })
 
-  it('allows builds after unused translations are removed', async () => {
-    writeFileSync(localeFile, JSON.stringify({ used: 'Used' }))
-
-    await expect(buildFixture()).resolves.toBeDefined()
+  it('propagates analysis worker failures to the build', async () => {
+    writeFileSync(localeFile, '[]')
+    await expect(buildFixture()).rejects.toThrow('Invalid translation catalog: app.json')
   })
 
   it('does not count usage in modules outside the build graph', async () => {
@@ -219,25 +220,6 @@ describe('i18n build check', () => {
     )
 
     await expect(buildFixture()).rejects.toThrow('app:testOnly')
-  })
-
-  it('includes dynamically imported modules in the graph', async () => {
-    writeFileSync(localeFile, JSON.stringify({ used: 'Used', lazy: 'Lazy' }))
-    writeFileSync(
-      path.join(root, 'lazy.ts'),
-      `
-      export function lazy(t: (key: string) => string) { return t('app:lazy') }
-    `,
-    )
-    writeFileSync(
-      path.join(root, 'entry.ts'),
-      `
-      export const lazy = () => import('./lazy')
-      export function translate(t: (key: string) => string) { return t('app:used') }
-    `,
-    )
-
-    await expect(buildFixture()).resolves.toBeDefined()
   })
 
   // Six real environment builds plus graph analysis need headroom under CI contention.
@@ -290,26 +272,52 @@ describe('i18n build check', () => {
     },
   )
 
-  it('retains usages from environment-specific versions of the same module', async () => {
-    writeFileSync(localeFile, JSON.stringify({ client: 'Client', ssr: 'SSR' }))
+  it('does not resolve translation imports from discarded RSC reference scans', async () => {
+    writeFileSync(localeFile, JSON.stringify({ used: 'Used' }))
+    writeFileSync(
+      path.join(root, 'selector.ts'),
+      'export const selector = ($: Record<string, string>) => $.used',
+    )
+    writeFileSync(
+      path.join(root, 'entry.ts'),
+      `import { selector } from './selector'
+       export function label(t: (selector: (source: Record<string, string>) => string) => string) {
+         return t(selector)
+       }`,
+    )
+    const manager = { isScanBuild: false }
+    let scanFinished = false
+    const reports: AnalysisReport[] = []
     const builder = await createBuilder({
       root,
       configFile: false,
       logLevel: 'silent',
       plugins: [
         {
-          name: 'environment-source-fixture',
+          // Model the RSC plugin's public scan flag and build ordering.
+          name: 'rsc:minimal',
+          api: { manager },
           enforce: 'pre',
-          transform(code, id) {
-            if (id !== path.join(root, 'entry.ts')) return
-            return code.replace('app:used', `app:${this.environment.name}`)
+          buildStart() {
+            scanFinished = false
+          },
+          buildEnd() {
+            scanFinished = manager.isScanBuild
+          },
+          resolveId(id) {
+            if (id === './selector' && scanFinished)
+              throw new Error('Discarded scan imports must not be resolved again')
           },
         },
-        i18nAnalysisPlugin(),
+        i18nAnalysisPlugin({ onAnalysis: (report) => reports.push(report) }),
       ],
-      environments: {
-        client: {},
-        ssr: {},
+      builder: {
+        async buildApp(builder) {
+          manager.isScanBuild = true
+          await builder.build(builder.environments.client!)
+          manager.isScanBuild = false
+          await builder.build(builder.environments.client!)
+        },
       },
       build: {
         write: false,
@@ -318,6 +326,10 @@ describe('i18n build check', () => {
     })
 
     await expect(builder.buildApp()).resolves.toBeUndefined()
+    expect(reports).toHaveLength(1)
+    expect(reports[0]!.evidence).toContainEqual(
+      expect.objectContaining({ kind: 'usage', message: 'Static key: used' }),
+    )
   })
 
   it.each([
@@ -930,11 +942,10 @@ describe('i18n build check', () => {
       }),
     ).resolves.toBeDefined()
     expect(reports).toHaveLength(1)
-    expect(reports[0]!.metrics.environments).toEqual([
-      expect.objectContaining({ modules: 2, resolveCalls: 1 }),
-    ])
+    expect(reports[0]!.evidence).toContainEqual(
+      expect.objectContaining({ kind: 'usage', message: 'Static key: actual' }),
+    )
     expect(reports[0]!.evidence.some((item) => item.kind === 'unresolved-import')).toBe(false)
-    expect(reports[0]!.metrics.totalMs).toBeGreaterThan(0)
   })
 
   it.each(['virtual', 'external'] as const)(

@@ -60,10 +60,14 @@ def _installed_app_cursor_filter(cursor: InstalledAppCursor) -> ColumnElement[bo
     return and_(same_pin_group, later_in_pin_group)
 
 
-def _installed_app_order_by() -> tuple[UnaryExpression[bool], UnaryExpression[datetime | None], UnaryExpression[str]]:
+def _installed_app_order_by() -> tuple[
+    UnaryExpression[bool], UnaryExpression[bool], UnaryExpression[datetime | None], UnaryExpression[str]
+]:
+    # Sort null dates last with a boolean key: MySQL has no NULLS LAST.
     return (
         InstalledApp.is_pinned.desc(),
-        InstalledApp.last_used_at.desc().nulls_last(),
+        InstalledApp.last_used_at.is_(None).asc(),
+        InstalledApp.last_used_at.desc(),
         InstalledApp.id.asc(),
     )
 
@@ -104,14 +108,20 @@ class SQLAlchemyInstalledAppRepository(InstalledAppAccessStore, InstalledAppUsag
 
             # An installed public app can belong to another workspace. Admission
             # preserves the existence check; publication policy belongs to its callers.
-            app = session.execute(select(App.id, App.mode).where(App.id == installed_app.app_id).limit(1)).first()
+            app = session.execute(
+                select(App.id, App.tenant_id, App.mode).where(App.id == installed_app.app_id).limit(1)
+            ).first()
             if app is None:
                 session.delete(installed_app)
                 session.commit()
                 return None
 
             return InstalledAppRef(
-                id=installed_app.id, app_id=app.id, tenant_id=installed_app.tenant_id, app_mode=app.mode.value
+                id=installed_app.id,
+                app_id=app.id,
+                tenant_id=installed_app.tenant_id,
+                app_owner_tenant_id=app.tenant_id,
+                app_mode=app.mode.value,
             )
 
     @override

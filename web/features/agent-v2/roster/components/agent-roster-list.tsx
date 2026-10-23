@@ -1,7 +1,6 @@
 'use client'
 
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import { zAgentIconType } from '@dify/contracts/api/console/agent/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -171,9 +170,9 @@ function AgentCardActionMenuItems({
   onEdit,
   onExport,
 }: AgentCardActionMenuItemsProps) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
-  const { t: tApp } = useTranslation(['app'])
+  const { t: tAgent } = useTranslation(['agentV2'])
   const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
   const MenuSeparator = kind === 'context' ? ContextMenuSeparator : DropdownMenuSeparator
 
@@ -182,7 +181,7 @@ function AgentCardActionMenuItems({
       {onEdit && (
         <MenuItem className="gap-2" onClick={onEdit}>
           <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-          <span>{t(($) => $['roster.editInfo'])}</span>
+          <span>{t(($) => $['roster.editInfo'], { ns: 'agentRoster' })}</span>
         </MenuItem>
       )}
       {onDuplicate && (
@@ -194,7 +193,7 @@ function AgentCardActionMenuItems({
       {onExport && (
         <MenuItem className="gap-2" disabled={isExporting} onClick={onExport}>
           <span aria-hidden className="i-ri-download-line size-4 shrink-0 text-text-tertiary" />
-          <span>{tApp(($) => $.exportApp)}</span>
+          <span>{tAgent(($) => $.exportAgent)}</span>
         </MenuItem>
       )}
       {onDelete && (onEdit || onDuplicate || onExport) && <MenuSeparator />}
@@ -209,7 +208,7 @@ function AgentCardActionMenuItems({
 }
 
 function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentRoster'])
   const { t: tApp } = useTranslation(['app'])
   const { formatTime } = useTimestamp()
   const nameId = useId()
@@ -230,7 +229,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
     agent.updated_at != null
       ? formatTime(
           agent.updated_at,
-          t(($) => $['roster.dateTimeFormat']),
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
         )
       : null
   const referenceCount = agent.published_reference_count ?? 0
@@ -243,14 +242,6 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   ]
     .filter(Boolean)
     .join(' ')
-  const parsedIconType = zAgentIconType.safeParse(agent.icon_type).data
-  const imageUrl =
-    parsedIconType === 'image'
-      ? (agent.icon_url ?? agent.icon)
-      : parsedIconType === 'link'
-        ? agent.icon
-        : undefined
-  const iconType = parsedIconType === 'link' ? 'image' : parsedIconType
 
   const handleEditOpen = () => {
     setActiveDialog('edit')
@@ -271,7 +262,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const handleExport = () => {
     if (!capabilities.canImportExportDSL) return
     if (!agent.app_id) {
-      toast.error(tApp(($) => $.exportAppFailed))
+      toast.error(tApp(($) => $.exportFailed))
       return
     }
 
@@ -290,14 +281,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
     <>
       <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
         <span aria-hidden className="shrink-0">
-          <AppIcon
-            size="xl"
-            rounded
-            iconType={iconType}
-            icon={agent.icon ?? undefined}
-            background={agent.icon_background}
-            imageUrl={imageUrl}
-          />
+          <AppIcon size="xl" shape="circle" icon={agent} />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
           <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
@@ -318,7 +302,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
             id={draftStatusId}
             className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary"
           >
-            {t(($) => $['roster.usageStatus.draft'])}
+            {t(($) => $['roster.usageStatus.draft'], { ns: 'agentRoster' })}
           </div>
         </div>
       )}
@@ -384,7 +368,10 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
               <DropdownMenuTrigger
                 render={
                   <IconButton
-                    aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
+                    aria-label={t(($) => $['roster.moreActions'], {
+                      ns: 'agentRoster',
+                      name: agent.name,
+                    })}
                     size="lg"
                     className="data-popup-open:bg-state-base-hover"
                   >
@@ -392,7 +379,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
                   </IconButton>
                 }
               />
-              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-max min-w-40">
+              <DropdownMenuContent className="w-max min-w-40">
                 <AgentCardActionMenuItems
                   kind="dropdown"
                   isExporting={isExporting}
@@ -421,7 +408,8 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
                 className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary"
               />
               <span className="sr-only">
-                {t(($) => $['roster.references.trigger'], { name: agent.name })}:{' '}
+                {t(($) => $['roster.references.trigger'], { ns: 'agentRoster', name: agent.name })}
+                :{' '}
               </span>
               <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
             </div>
@@ -463,7 +451,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
 }
 
 export function AgentRosterList({ label, state }: AgentRosterListProps) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
 
@@ -478,7 +466,7 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
         <AgentRosterPlaceholderState
           onRetry={state.onRetry}
           role="alert"
-          title={t(($) => $['roster.loadingError'])}
+          title={t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}
         />
       )}
       {state.status === 'ready' && state.agents.length === 0 && (
@@ -486,8 +474,8 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
           role={state.emptyState === 'filtered' ? 'status' : undefined}
           title={
             state.emptyState === 'filtered'
-              ? t(($) => $['roster.emptySearch'])
-              : t(($) => $['roster.empty'])
+              ? t(($) => $['roster.emptySearch'], { ns: 'agentRoster' })
+              : t(($) => $['roster.empty'], { ns: 'agentRoster' })
           }
         />
       )}
@@ -505,7 +493,7 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
           className="flex items-center justify-center gap-3 pt-1 system-xs-regular text-text-destructive"
           role="alert"
         >
-          <span>{t(($) => $['roster.loadingError'])}</span>
+          <span>{t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}</span>
           <Button size="small" variant="secondary" onClick={state.footer.onRetry}>
             {tCommon(($) => $['operation.retry'])}
           </Button>
@@ -514,7 +502,7 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
       {state.status === 'ready' && state.footer.status === 'load-more' && (
         <div className="flex justify-center pt-1">
           <Button loading={state.footer.isLoading} onClick={state.footer.onLoadMore}>
-            {t(($) => $['roster.loadMore'])}
+            {t(($) => $['roster.loadMore'], { ns: 'agentRoster' })}
           </Button>
         </div>
       )}

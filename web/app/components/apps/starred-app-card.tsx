@@ -1,7 +1,6 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -12,8 +11,8 @@ import AppIcon from '@/app/components/base/app-icon'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { StudioListLink } from '@/features/studio-list-navigation/navigation'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { hasOnlyAppPreviewPermission } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
@@ -36,7 +35,6 @@ export const StarredAppCard = memo(
     const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
     const isRbacEnabled = systemFeatures.rbac_enabled
     const isPreviewOnly = hasOnlyAppPreviewPermission(app.permission_keys)
-    const appIconType = zIconType.safeParse(app.icon_type).data ?? null
 
     const editTimeText = useMemo(() => {
       const timestamp = app.updated_at || app.created_at
@@ -65,14 +63,7 @@ export const StarredAppCard = memo(
     const cardContent = (
       <>
         <div className="relative shrink-0">
-          <AppIcon
-            size="large"
-            iconType={appIconType}
-            icon={app.icon ?? undefined}
-            background={app.icon_background}
-            imageUrl={app.icon_url}
-            decorative
-          />
+          <AppIcon size="large" icon={app} />
           <AppTypeIcon
             type={app.mode}
             wrapperClassName="absolute -right-0.5 -bottom-0.5 h-4 w-4 shadow-sm"
@@ -113,7 +104,7 @@ export const StarredAppCard = memo(
           </button>
         ) : (
           <AppCardInteractions app={app}>
-            <Link
+            <StudioListLink
               href={href}
               aria-labelledby={appNameId}
               data-step-by-step-tour-target={stepByStepTourCardTarget}
@@ -121,7 +112,7 @@ export const StarredAppCard = memo(
               className={cardClassName}
             >
               {cardContent}
-            </Link>
+            </StudioListLink>
           </AppCardInteractions>
         )}
       </li>

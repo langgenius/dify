@@ -4,11 +4,12 @@ import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/con
 import type { ReactNode } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -41,7 +42,7 @@ export function AgentVersionRestore({
   onBeforeRestore?: () => void | Promise<void>
   onRestored?: () => void | Promise<void>
 }) {
-  const { t } = useTranslation(['agentV2', 'billing', 'common', 'workflow'])
+  const { t } = useTranslation(['agentV2', 'billing', 'common', 'workflowHistory'])
   const queryClient = useQueryClient()
   const { canReleaseAndVersion: canRestore } = useAgentPermissions(agentId)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
@@ -132,16 +133,16 @@ export function AgentVersionRestore({
         }}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {`${t(($) => $['agentDetail.versionHistory.restore'])} ${versionLabel}`}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-secondary">
-              {t(($) => $['versionHistory.restorationTip'], { ns: 'workflow' })}
+            <AlertDialogDescription>
+              {t(($) => $['versionHistory.restorationTip'], { ns: 'workflowHistory' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton variant="secondary" disabled={mutation.isPending}>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton disabled={mutation.isPending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
@@ -152,7 +153,7 @@ export function AgentVersionRestore({
             >
               {t(($) => $['agentDetail.versionHistory.restore'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

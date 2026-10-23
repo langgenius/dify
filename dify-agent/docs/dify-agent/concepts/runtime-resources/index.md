@@ -10,7 +10,7 @@ Dify separates persistent product resources from request-time execution:
 - a **RuntimeLease** is operation-scoped access to the physical Binding.
 
 `AgentWorkspaceBinding.id` is the participant, materialized Home, and persisted
-Agenton session identity. `agent_id` identifies the source Agent. The same
+module session identity. `agent_id` identifies the source Agent. The same
 Agent can therefore have multiple active Bindings in one Workspace:
 each has an independent Home and session, while all may share Workspace files.
 
@@ -19,11 +19,11 @@ physical representation. For example, current E2B maps one Binding and its
 Workspace to one E2B resource, while Local can attach multiple materialized
 Homes to one shared Workspace.
 
-## Runtime layer graph
+## Runtime modules
 
 Agent requests do not expose separate Home, Workspace, or Sandbox layers. Dify
 API resolves the Binding selected by the product flow and sends its opaque
-backend ref to the `dify.runtime` layer:
+backend ref to the `runtime` module:
 
 ```mermaid
 flowchart LR
@@ -35,13 +35,13 @@ flowchart LR
     RT --> SH
 ```
 
-`DifyRuntimeLayer` calls the selected `ExecutionBindingBackend.acquire()` when
-its resource context opens and `release()` when the operation ends. It exposes
-the resulting `RuntimeLease` only while that context is active. The layer does
+`runtime.Capability` calls the selected `ExecutionBindingBackend.acquire()` when
+its native `wrap_run` scope opens and `release()` when the operation ends. It exposes
+the resulting `RuntimeLease` only while that context is active. The module does
 not create, retire, or destroy persistent resources, and it stores no backend
-SDK object in an Agenton session snapshot.
+SDK object in an module session snapshot.
 
-The Shell layer consumes `RuntimeLease.commands` and `RuntimeLease.layout`. It
+The Shell module consumes `RuntimeLease.commands` and `RuntimeLease.layout`. It
 tracks only request-local shell job ids and offsets.
 Closing a run clears that job state; it does not retire the Binding.
 
@@ -56,7 +56,7 @@ Dify API is the lifecycle ledger. It stores three resource records:
 | `agent_workspace_bindings` | One materialized participant, private Home, and resumable session attached to a Workspace. | `backend_binding_ref` |
 
 Backend refs are opaque strings interpreted only by the selected backend
-adapter. Dify API stores the latest Agenton session snapshot on the Binding, but
+adapter. Dify API stores the latest module session snapshot on the Binding, but
 it does not serialize `RuntimeLease`, SDK clients, credentials, or temporary
 access tokens.
 
@@ -99,7 +99,6 @@ composition contains:
 ```json
 {
   "name": "runtime",
-  "type": "dify.runtime",
   "config": {"backend_binding_ref": "opaque-backend-binding-ref"}
 }
 ```
@@ -227,7 +226,7 @@ remain independently configurable. Runtime resources pause on timeout, but this
 resource setting does not own the Agent run terminal state. It is not a retention
 TTL and does not delete paused resources or immutable snapshots.
 
-See the [Shell layer](../../user-manual/shell-layer/index.md) for request
+See the [Shell module](../../user-manual/shell-layer/index.md) for request
 composition, the [Operations Guide](../../guide/index.md) for Local and E2B
 validation, and the [OpenShell guide](../../guide/openshell.md) for OpenShell
 configuration and validation.

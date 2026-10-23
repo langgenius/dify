@@ -8,10 +8,6 @@ vi.mock('../index', () => ({
 }))
 
 describe('ResponsiveMainNav', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   afterEach(() => {
     vi.restoreAllMocks()
   })

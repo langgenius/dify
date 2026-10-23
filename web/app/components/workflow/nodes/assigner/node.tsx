@@ -13,7 +13,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 const i18nPrefix = 'nodes.assigner'
 
 const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({ data }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowLogic'])
   const nodes: Node[] = useNodes()
   if (data.version === '2') {
     const { items: operationItems } = data
@@ -28,7 +28,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({ data }) => {
           <div className="flex flex-col items-start gap-1 self-stretch">
             <div className="flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg px-1.25 py-1">
               <div className="flex-1 system-xs-medium text-text-tertiary">
-                {t(($) => $[`${i18nPrefix}.varNotSet`], { ns: 'workflow' })}
+                {t(($) => $[`${i18nPrefix}.varNotSet`], { ns: 'workflowLogic' })}
               </div>
             </div>
           </div>
@@ -55,7 +55,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({ data }) => {
                   <Badge
                     className="ml-auto! shrink-0"
                     text={t(($) => $[`${i18nPrefix}.operations.${value.operation}`], {
-                      ns: 'workflow',
+                      ns: 'workflowLogic',
                     })}
                   />
                 )
@@ -87,7 +87,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({ data }) => {
           writeMode && (
             <Badge
               className="ml-auto! shrink-0"
-              text={t(($) => $[`nodes.assigner.operations.${writeMode}`], { ns: 'workflow' })}
+              text={t(($) => $[`nodes.assigner.operations.${writeMode}`], { ns: 'workflowLogic' })}
             />
           )
         }

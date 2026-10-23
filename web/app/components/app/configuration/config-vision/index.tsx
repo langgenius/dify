@@ -21,7 +21,7 @@ import ParamConfig from './param-config'
 const ConfigVision: FC = () => {
   const resolutionLabelId = React.useId()
 
-  const { t } = useTranslation(['appDebug'])
+  const { t } = useTranslation(['fileUpload'])
   const titleId = useId()
   const { isShowVisionConfig, isAllowVideoUpload, readonly } = useContext(ConfigContext)
   const file = useFeatures((s) => s.features.file)
@@ -77,12 +77,12 @@ const ConfigVision: FC = () => {
       </div>
       <div className="flex grow items-center">
         <h2 id={titleId} className="mr-1 system-sm-semibold text-text-secondary">
-          {t(($) => $['vision.name'], { ns: 'appDebug' })}
+          {t(($) => $['vision.name'], { ns: 'fileUpload' })}
         </h2>
         <Infotip>
           <InfotipTrigger aria-labelledby={titleId} />
           <InfotipContent aria-labelledby={titleId} className="w-45">
-            {t(($) => $['vision.description'], { ns: 'appDebug' })}
+            {t(($) => $['vision.description'], { ns: 'fileUpload' })}
           </InfotipContent>
         </Infotip>
       </div>
@@ -91,7 +91,7 @@ const ConfigVision: FC = () => {
           <>
             <div className="mr-2 flex items-center gap-0.5">
               <div id={resolutionLabelId} className="system-xs-medium-uppercase text-text-tertiary">
-                {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
+                {t(($) => $['vision.visionSettings.resolution'], { ns: 'fileUpload' })}
               </div>
               <Infotip>
                 <InfotipTrigger aria-labelledby={resolutionLabelId} />
@@ -99,13 +99,13 @@ const ConfigVision: FC = () => {
                   aria-labelledby={resolutionLabelId}
                   className="w-45 whitespace-pre-wrap"
                 >
-                  {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })}
+                  {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'fileUpload' })}
                 </InfotipContent>
               </Infotip>
             </div>
             <div className="flex items-center gap-1">
               <OptionCard
-                title={t(($) => $['vision.visionSettings.high'], { ns: 'appDebug' })}
+                title={t(($) => $['vision.visionSettings.high'], { ns: 'fileUpload' })}
                 selected={file?.image?.detail === Resolution.high}
                 onSelect={noop}
                 className={cn(
@@ -115,7 +115,7 @@ const ConfigVision: FC = () => {
                 )}
               />
               <OptionCard
-                title={t(($) => $['vision.visionSettings.low'], { ns: 'appDebug' })}
+                title={t(($) => $['vision.visionSettings.low'], { ns: 'fileUpload' })}
                 selected={file?.image?.detail === Resolution.low}
                 onSelect={noop}
                 className={cn(

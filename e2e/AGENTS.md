@@ -23,6 +23,8 @@ Run commands from the repository root. Install dependencies and browsers once wi
 
 The runner reuses `web/.next/BUILD_ID` when present. Set `E2E_FORCE_WEB_BUILD=1` to force a frontend rebuild. Use `E2E_BROWSER=webkit` for focused cross-browser runs and `E2E_SLOW_MO=500` with a headed command for local action debugging.
 
+Core CI runs add `--download-web-build` before the Cucumber `--` separator. The runner downloads the current workflow's shared Web artifact while starting middleware and backend services, then joins before starting the frontend. This mode requires GitHub Actions run metadata, `GH_TOKEN` with Actions read access, and the `gh` CLI; ordinary local runs do not use it.
+
 ## Runtime Ownership
 
 - `scripts/setup.ts` owns reset, middleware, backend, and frontend startup.

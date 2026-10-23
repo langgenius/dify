@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
+import { useStudioListHref } from '@/features/studio-list-navigation'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 
@@ -25,8 +26,9 @@ type SnippetDetailTopProps = {
 }
 
 export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopProps) {
-  const { t } = useTranslation(['app', 'common', 'workflow'])
+  const { t } = useTranslation(['app', 'common', 'workflow', 'navigation'])
   const router = useRouter()
+  const snippetsHref = useStudioListHref('/snippets')
 
   if (!expand) {
     return (
@@ -58,7 +60,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
             </IconButton>
             <BreadcrumbLink
               render={<Link href="/" />}
-              aria-label={t(($) => $['mainNav.home'], { ns: 'common' })}
+              aria-label={t(($) => $['mainNav.home'], { ns: 'navigation' })}
               className="size-4 justify-center"
             >
               <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
@@ -67,7 +69,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
           <BreadcrumbSeparator className="system-md-regular" />
           <BreadcrumbItem className="shrink-0">
             <BreadcrumbLink
-              render={<Link href="/snippets" />}
+              render={<Link href={snippetsHref} />}
               className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
             >
               {t(($) => $['tabs.snippets'], { ns: 'workflow' })}
@@ -84,7 +86,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
                 <button
                   type="button"
                   aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
                 >
                   <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
                 </button>
@@ -92,11 +94,11 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
             />
           }
         />
-        <TooltipContent placement="bottom" className="flex items-center gap-1">
+        <TooltipContent side="bottom" className="flex items-center gap-1">
           <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
           <KbdGroup>
-            {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
-              <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+            {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+              <Kbd key={key}>{key}</Kbd>
             ))}
           </KbdGroup>
         </TooltipContent>

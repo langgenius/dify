@@ -7,8 +7,9 @@ import { renderToString } from 'react-dom/server'
 import { useTranslation } from 'react-i18next'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import { I18nServerProvider } from '@/app/components/provider/i18n-server'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { changeLanguage } from '../client'
+import { useLocale } from '../lib.client'
 
 vi.unmock('react-i18next')
 const mocks = vi.hoisted(() => ({ pathname: '/signin', loadResource: vi.fn() }))
@@ -50,6 +51,21 @@ describe('on-demand translation loading', () => {
         default: resources[locale]?.[namespace as 'common'] ?? {},
       }),
     )
+  })
+
+  it('reads and updates the locale without loading any translation namespace', async () => {
+    function LocaleLabel() {
+      return <span>{useLocale()}</span>
+    }
+    render(
+      <I18nClientProvider locale="en-US" resource={{}}>
+        <LocaleLabel />
+      </I18nClientProvider>,
+    )
+    expect(await screen.findByText('en-US')).toBeVisible()
+    await act(() => changeLanguage('zh-Hans'))
+    expect(await screen.findByText('zh-Hans')).toBeVisible()
+    expect(mocks.loadResource).not.toHaveBeenCalled()
   })
 
   it('renders localized text and fallback without requesting missing unrelated namespaces', async () => {
@@ -167,7 +183,7 @@ describe('on-demand translation loading', () => {
     const toast = createToast(manager)
     const content = () => (
       <I18nClientProvider locale="en-US" resource={{ 'en-US': resources['en-US'] }}>
-        <AppToastHost manager={manager} timeout={0} />
+        <AppToaster manager={manager} timeout={0} />
         <input aria-label="Shared draft" />
         {mocks.pathname === '/signin' ? <Label /> : <Destination />}
       </I18nClientProvider>

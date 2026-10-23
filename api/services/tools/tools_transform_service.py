@@ -24,6 +24,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
     emoji_icon_adapter,
 )
+from core.tools.mcp_tool.tool import schema_accepts_multiple_types
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
@@ -291,7 +292,10 @@ class ToolTransformService:
             ToolApiEntity(
                 author=user_name or "Anonymous",
                 name=tool.name,
-                label=I18nObject(en_US=tool.name, zh_Hans=tool.name),
+                # Prefer the server-provided human-readable title and fall back
+                # to the programmatic name when the server omitted the title
+                # or returned ``title: null`` (e.g. Exa's MCP server).
+                label=I18nObject(en_US=tool.title or tool.name, zh_Hans=tool.title or tool.name),
                 description=I18nObject(en_US=tool.description or "", zh_Hans=tool.description or ""),
                 parameters=ToolTransformService.convert_mcp_schema_to_parameter(tool.inputSchema),
                 labels=[],
@@ -514,16 +518,17 @@ class ToolTransformService:
             props: dict[str, dict[str, Any]], required: list[str], prefix: str = ""
         ) -> list[ToolParameter]:
             """Process properties recursively"""
-            TYPE_MAPPING = {"integer": "number", "float": "number"}
-            COMPLEX_TYPES = ["array", "object"]
+            type_mapping = {"integer": "number", "float": "number"}
+            complex_types = ["array", "object"]
 
             parameters = []
             for name, prop in props.items():
                 current_description = prop.get("description", "")
                 prop_type = resolve_property_type(prop)
-                if prop_type in TYPE_MAPPING:
-                    prop_type = TYPE_MAPPING[prop_type]
-                input_schema = prop if prop_type in COMPLEX_TYPES else None
+                if prop_type in type_mapping:
+                    prop_type = type_mapping[prop_type]
+                # Keep the raw schema for multi-type unions so the LLM sees every accepted type, not just prop_type.
+                input_schema = prop if prop_type in complex_types or schema_accepts_multiple_types(prop) else None
                 parameters.append(
                     create_parameter(name, current_description, prop_type, name in required, input_schema)
                 )

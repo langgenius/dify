@@ -1,7 +1,7 @@
-"""Validation for effective user prompts produced by Agenton runs.
+"""Validation for effective user input assembled from module configuration.
 
-Validation happens after safe compositor construction and run entry so runtime
-execution uses the same transformed prompts as the actual pydantic-ai input.
+The runner validates assembled current prompt content before resource acquisition.
+Knowledge user-query retrieval can also provide input through its native hook.
 Blank string fragments do not count as meaningful input; non-string
 ``UserContent`` is treated as intentional content because rich media/message
 parts do not have a universal whitespace representation.

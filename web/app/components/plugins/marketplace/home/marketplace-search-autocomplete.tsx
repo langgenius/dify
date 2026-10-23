@@ -13,6 +13,7 @@ import {
   AutocompleteItem,
   AutocompleteItemText,
   AutocompleteList,
+  AutocompletePopup,
   AutocompletePortal,
   AutocompletePositioner,
   AutocompleteSeparator,
@@ -20,9 +21,10 @@ import {
   useAutocompleteFilteredItems,
 } from '@langgenius/dify-ui/autocomplete'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery } from '@tanstack/react-query'
-import { useDebounce } from 'ahooks'
-import { useEffect, useRef, useState } from 'react'
+import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
+import { useState } from 'react'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { renderI18nObject } from '@/i18n/metadata'
@@ -98,17 +100,26 @@ const toPluginSuggestion = (plugin: MarketplacePlugin, locale: string): Marketpl
 })
 
 function MarketplaceSuggestionList({
+  pending,
   onSelect,
 }: {
+  pending: boolean
   onSelect: (selection: MarketplaceSearchSelection) => void
 }) {
   const groups = useAutocompleteFilteredItems<MarketplaceSuggestionGroup>()
 
   return (
-    <AutocompleteList className="max-h-none overflow-visible p-0 data-empty:p-0">
+    // The list is the scroll container. Its scroll padding matches the group label height so
+    // keyboard navigation keeps the label above a group's first item in view.
+    <AutocompleteList
+      className={cn(
+        'scroll-pt-9 transition-opacity motion-reduce:transition-none',
+        pending && 'opacity-60',
+      )}
+    >
       {groups.map((group, groupIndex) => (
-        <AutocompleteGroup key={group.id} items={group.items} className="p-1">
-          {groupIndex > 0 && <AutocompleteSeparator className="-mx-1 mb-1" />}
+        <AutocompleteGroup key={group.id} items={group.items}>
+          {groupIndex > 0 && <AutocompleteSeparator />}
           <AutocompleteGroupLabel className="px-3 pt-3 pb-2 system-xs-semibold-uppercase text-text-primary">
             {group.label}
           </AutocompleteGroupLabel>
@@ -117,7 +128,7 @@ function MarketplaceSuggestionList({
               <AutocompleteItem
                 key={item.id}
                 value={item}
-                className="mx-0 items-start gap-1 rounded-lg py-1 pr-1 pl-3 hover:bg-state-base-hover data-highlighted:bg-state-base-hover"
+                className="items-start gap-1 py-1 pr-1 pl-3"
                 onClick={() => onSelect(item.selection)}
               >
                 <span className="flex shrink-0 items-start py-1">
@@ -148,7 +159,7 @@ function MarketplaceSuggestionList({
                   )}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5 p-1">
-                  <AutocompleteItemText className="px-0 system-md-medium text-text-primary">
+                  <AutocompleteItemText className="system-md-medium text-text-primary">
                     {item.label}
                   </AutocompleteItemText>
                   {!!item.description && (
@@ -184,33 +195,20 @@ export function MarketplaceSearchAutocomplete({
   const { t } = useTranslation(['app'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tPlugin } = useTranslation(['plugin'])
-  const [isOpen, setIsOpen] = useState(false)
-  const searchRootRef = useRef<HTMLDivElement>(null)
-  const resultsPanelRef = useRef<HTMLDivElement>(null)
-  const keyboardHighlightedRef = useRef(false)
-
-  const submitSearchForm = () => {
-    const form = searchRootRef.current?.closest('form')
-    if (form instanceof HTMLFormElement) form.requestSubmit()
-  }
   const openSuggestion = (selection: MarketplaceSearchSelection) => {
     if (onSuggestionSelect) {
       const result = onSuggestionSelect(selection)
-      queueMicrotask(() => {
-        if (!result?.preserveQuery) onValueChange('')
-        setIsOpen(false)
-      })
+      if (!result?.preserveQuery) onValueChange('')
       return
     }
 
-    const href =
+    window.location.assign(
       selection.kind === 'plugin'
         ? getPluginDetailLinkInMarketplace(selection.plugin)
-        : getTemplateDetailLinkInMarketplace(selection.template)
-    setIsOpen(false)
-    window.location.assign(href)
+        : getTemplateDetailLinkInMarketplace(selection.template),
+    )
   }
-  const debouncedSearch = useDebounce(value.trim(), { wait: 300 })
+  const debouncedSearch = useDebouncedValue(value.trim(), 300)
   const hasQuery = Boolean(debouncedSearch)
   const searchesPlugins = scope === 'all' || scope === 'plugins'
   const searchesTemplates = scope === 'all' || scope === 'templates'
@@ -230,8 +228,10 @@ export function MarketplaceSearchAutocomplete({
       },
       retry: false,
     }),
-    // No placeholderData here: showing the previous term's suggestions would
-    // leave stale items keyboard-selectable while the new request is pending.
+    // While a query is active, the previous term's suggestions stay listed under a loading
+    // status until the next term loads, so the popup does not collapse on every keystroke.
+    // Clearing the input drops them.
+    placeholderData: hasQuery ? keepPreviousData : undefined,
     enabled: hasQuery && searchesPlugins,
     staleTime: 60_000,
   })
@@ -249,23 +249,19 @@ export function MarketplaceSearchAutocomplete({
       },
       retry: false,
     }),
+    placeholderData: hasQuery ? keepPreviousData : undefined,
     enabled: hasQuery && searchesTemplates,
     staleTime: 60_000,
   })
-  // While the edited value is still debouncing, the queries above still hold
-  // the previous term's data; gate the suggestions until both agree so stale
-  // options are never visible or keyboard-selectable.
   const isDebouncing = value.trim() !== debouncedSearch
-  const pluginSuggestions =
-    !isDebouncing && searchesPlugins
-      ? (pluginQuery.data?.data.bundles ?? pluginQuery.data?.data.plugins ?? []).map((plugin) =>
-          toPluginSuggestion(plugin, locale),
-        )
-      : []
-  const templateSuggestions =
-    !isDebouncing && searchesTemplates
-      ? (templateQuery.data?.data?.templates ?? []).map(toTemplateSuggestion)
-      : []
+  const pluginSuggestions = searchesPlugins
+    ? (pluginQuery.data?.data.bundles ?? pluginQuery.data?.data.plugins ?? []).map((plugin) =>
+        toPluginSuggestion(plugin, locale),
+      )
+    : []
+  const templateSuggestions = searchesTemplates
+    ? (templateQuery.data?.data?.templates ?? []).map(toTemplateSuggestion)
+    : []
   const suggestions = [...templateSuggestions, ...pluginSuggestions]
   const suggestionGroups: MarketplaceSuggestionGroup[] = [
     ...(templateSuggestions.length
@@ -287,11 +283,8 @@ export function MarketplaceSearchAutocomplete({
         ]
       : []),
   ]
-  const isSearching = isDebouncing || pluginQuery.isFetching || templateQuery.isFetching
-  // Keep open tied to the typing session so outside-press can dismiss during
-  // debounce/fetch. Pending, empty, and error copy live inside the popup.
-  const hasTypedQuery = Boolean(value.trim())
-  const isPopupOpen = isOpen && hasTypedQuery
+  const isFetching = pluginQuery.isFetching || templateQuery.isFetching
+  const isSearching = isDebouncing || isFetching
   // A failed request must not read as "nothing matched"; when every source in
   // scope errored and nothing is displayable, surface a load failure instead.
   const hasLoadError =
@@ -304,87 +297,80 @@ export function MarketplaceSearchAutocomplete({
       ? t(($) => $['newApp.noTemplateFound'], { ns: 'app' })
       : tPlugin(($) => $['marketplace.noPluginFound'], { ns: 'plugin' })
 
-  useEffect(() => {
-    if (!isPopupOpen) return
-
-    const handleOutsidePress = (event: MouseEvent) => {
-      const target = event.target
-      if (!(target instanceof Node)) return
-      if (searchRootRef.current?.contains(target) || resultsPanelRef.current?.contains(target))
-        return
-      setIsOpen(false)
-    }
-
-    document.addEventListener('click', handleOutsidePress)
-    return () => document.removeEventListener('click', handleOutsidePress)
-  }, [isPopupOpen])
-
+  // Base UI owns opening on input, outside-press and Escape dismissal, and Enter: it selects the
+  // highlighted item or leaves the key to the browser, which submits the form when nothing is
+  // highlighted.
   return (
-    <div ref={searchRootRef} className="relative">
-      <Autocomplete
-        filter={null}
-        itemToStringValue={(item) => item.label}
-        items={suggestionGroups}
-        mode="list"
-        name={inputName}
-        onOpenChange={setIsOpen}
-        onValueChange={(nextValue) => {
-          onValueChange(nextValue)
-          setIsOpen(Boolean(nextValue.trim()))
-        }}
-        open={isPopupOpen}
-        openOnInputClick
-        submitOnItemClick={false}
-        value={value}
-        onItemHighlighted={(item, details) => {
-          keyboardHighlightedRef.current = Boolean(item) && details.reason === 'keyboard'
-        }}
-      >
-        <AutocompleteInputGroup size="large">
-          <span
-            aria-hidden
-            className="ml-3 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
-          />
-          <AutocompleteInput
-            aria-label={placeholder}
-            className="px-2 text-sm"
-            placeholder={placeholder}
+    <Autocomplete
+      filter={null}
+      itemToStringValue={(item) => item.label}
+      items={suggestionGroups}
+      name={inputName}
+      onOpenChange={(nextOpen, details) => {
+        // Base UI also opens on arrow keys; with no query there is nothing to show, so that
+        // open is cancelled. Typing opens and emptying the input closes.
+        if (nextOpen && details.reason !== 'input-change' && !value.trim()) details.cancel()
+      }}
+      onValueChange={(nextValue, details) => {
+        // Choosing a suggestion opens it instead of filling the input, so its label never
+        // replaces the typed query.
+        if (details.reason !== 'item-press') onValueChange(nextValue)
+      }}
+      value={value}
+    >
+      <AutocompleteInputGroup size="large">
+        <span
+          aria-hidden
+          className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+        />
+        <AutocompleteInput
+          aria-label={placeholder}
+          placeholder={placeholder}
+          size="large"
+          type="text"
+        />
+        {!!value && (
+          <AutocompleteClear
+            aria-label={tPlugin(($) => $.clearSearch, { ns: 'plugin', label: placeholder })}
             size="large"
-            type="text"
-            onKeyDownCapture={(event) => {
-              if (event.key !== 'Enter' || !inputName) return
-              if (keyboardHighlightedRef.current) return
-              event.preventDefault()
-              event.stopPropagation()
-              if (value.trim()) submitSearchForm()
-            }}
           />
-          {!!value && (
-            <AutocompleteClear
-              aria-label={tPlugin(($) => $.clearSearch, { ns: 'plugin', label: placeholder })}
-              size="large"
+        )}
+      </AutocompleteInputGroup>
+      {/* Base UI adds its own text input to the owning form, which blocks the browser's implicit
+          submission, so a form field brings the submit button Enter needs. */}
+      {inputName && (
+        <button type="submit" className="sr-only" tabIndex={-1} aria-hidden>
+          {placeholder}
+        </button>
+      )}
+      <AutocompletePortal>
+        <AutocompletePositioner sideOffset={8}>
+          <AutocompletePopup
+            className="max-h-[min(20rem,var(--available-height))] max-w-(--available-width) bg-components-panel-bg-blur shadow-xl backdrop-blur-sm"
+            aria-busy={isSearching || undefined}
+          >
+            {/* The previous suggestions stay listed while the next term loads, dimmed only while a
+                request is in flight so a cached result does not flicker; the loading row follows
+                them so nothing on screen moves, and it is the content on the first search. */}
+            <MarketplaceSuggestionList
+              pending={isFetching && suggestions.length > 0}
+              onSelect={openSuggestion}
             />
-          )}
-        </AutocompleteInputGroup>
-        <AutocompletePortal hidden={!isPopupOpen}>
-          <AutocompletePositioner anchor={searchRootRef} sideOffset={8}>
-            <div
-              ref={resultsPanelRef}
-              className="max-h-[min(20rem,var(--available-height))] w-(--anchor-width) max-w-(--available-width) overflow-y-auto overscroll-contain rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl outline-hidden backdrop-blur-sm"
-              aria-busy={isSearching || undefined}
-            >
-              <MarketplaceSuggestionList onSelect={openSuggestion} />
-              <AutocompleteEmpty>
-                {!isSearching && suggestions.length === 0 ? emptyText : null}
-              </AutocompleteEmpty>
-              <AutocompleteStatus className="empty:h-0 empty:p-0">
-                {isSearching ? tCommon(($) => $.loading, { ns: 'common' }) : null}
-              </AutocompleteStatus>
-            </div>
-          </AutocompletePositioner>
-        </AutocompletePortal>
-      </Autocomplete>
-    </div>
+            <AutocompleteStatus className="flex items-center gap-2">
+              {isSearching ? (
+                <>
+                  <SpinnerIcon />
+                  {tCommon(($) => $.loading, { ns: 'common' })}
+                </>
+              ) : null}
+            </AutocompleteStatus>
+            <AutocompleteEmpty>
+              {!isSearching && suggestions.length === 0 ? emptyText : null}
+            </AutocompleteEmpty>
+          </AutocompletePopup>
+        </AutocompletePositioner>
+      </AutocompletePortal>
+    </Autocomplete>
   )
 }
 

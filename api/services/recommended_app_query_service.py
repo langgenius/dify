@@ -41,6 +41,8 @@ class RecommendedAppDetailRecord(NamedTuple):
     icon_background: str | None
     mode: str
     export_data: str
+    package_url: str | None = None
+    version_id: str | None = None
 
 
 class RecommendedAppCatalogQuery(Protocol):
@@ -89,6 +91,8 @@ class RecommendedAppDetailSummary(NamedTuple):
     mode: str
     export_data: str
     can_trial: bool
+    package_url: str | None = None
+    version_id: str | None = None
 
 
 class RecommendedAppNotFoundError(Exception):
@@ -154,6 +158,8 @@ class RecommendedAppQueryService:
             mode=detail.mode,
             export_data=detail.export_data,
             can_trial=can_trial,
+            package_url=detail.package_url,
+            version_id=detail.version_id,
         )
 
     def _with_trial_status(self, apps: Sequence[RecommendedAppRecord]) -> tuple[RecommendedAppSummary, ...]:

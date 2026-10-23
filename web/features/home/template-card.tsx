@@ -1,4 +1,5 @@
 'use client'
+
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -8,7 +9,6 @@ import { AppTypeIcon } from '@/app/components/app/type-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { AppModeEnum } from '@/types/app'
 
 type TemplateCardProps = {
   app: RecommendedAppResponse
@@ -18,22 +18,18 @@ type TemplateCardProps = {
 }
 
 export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardProps) {
-  const { t } = useTranslation(['app'])
+  const { t } = useTranslation(['app', 'explore'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
   const nameId = useId()
+  const actionDescriptionId = useId()
   const descriptionId = useId()
   const appBasicInfo = app.app
   const appName = appBasicInfo?.name ?? ''
   const appMode = appBasicInfo?.mode ?? ''
-  const appIconType =
-    appBasicInfo?.icon_type === 'image' ||
-    appBasicInfo?.icon_type === 'emoji' ||
-    appBasicInfo?.icon_type === 'link'
-      ? appBasicInfo.icon_type
-      : null
+
   const canViewApp = deploymentEdition === 'CLOUD'
   const isClickable = canViewApp || canCreate
   const handleTryApp = () => {
@@ -56,9 +52,9 @@ export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardPr
   }
 
   return (
-    <div
+    <li
       className={cn(
-        'group relative col-span-1 flex h-35.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 text-left shadow-xs shadow-shadow-shadow-3',
+        'group relative isolate col-span-1 flex h-35.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 text-left shadow-xs shadow-shadow-shadow-3',
         isClickable && 'cursor-pointer',
       )}
     >
@@ -67,19 +63,21 @@ export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardPr
           type="button"
           className="absolute inset-0 z-10 cursor-pointer appearance-none rounded-xl border-0 bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
           aria-labelledby={nameId}
-          aria-describedby={app.description ? descriptionId : undefined}
+          aria-describedby={
+            app.description ? `${actionDescriptionId} ${descriptionId}` : actionDescriptionId
+          }
           onClick={handleCardClick}
-        />
+        >
+          <span id={actionDescriptionId} className="sr-only">
+            {canViewApp
+              ? t(($) => $['appCard.try'], { ns: 'explore' })
+              : t(($) => $['tryApp.createFromSampleApp'], { ns: 'explore' })}
+          </span>
+        </button>
       )}
       <div className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
         <div className="relative shrink-0">
-          <AppIcon
-            size="large"
-            iconType={appIconType}
-            icon={appBasicInfo?.icon ?? undefined}
-            background={appBasicInfo?.icon_background ?? undefined}
-            imageUrl={appBasicInfo?.icon_url ?? undefined}
-          />
+          <AppIcon size="large" icon={appBasicInfo} />
           <AppTypeIcon
             wrapperClassName="absolute -right-0.5 -bottom-0.5 size-4 rounded-sm border-components-panel-on-panel-item-bg shadow-sm"
             className="size-3"
@@ -93,27 +91,27 @@ export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardPr
             </div>
           </div>
           <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
-            {appMode === AppModeEnum.ADVANCED_CHAT && (
+            {appMode === 'advanced-chat' && (
               <div className="truncate">
                 {t(($) => $['types.advanced'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {appMode === AppModeEnum.CHAT && (
+            {appMode === 'chat' && (
               <div className="truncate">
                 {t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {appMode === AppModeEnum.AGENT_CHAT && (
+            {(appMode === 'agent-chat' || appMode === 'agent') && (
               <div className="truncate">
                 {t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {appMode === AppModeEnum.WORKFLOW && (
+            {appMode === 'workflow' && (
               <div className="truncate">
                 {t(($) => $['types.workflow'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {appMode === AppModeEnum.COMPLETION && (
+            {appMode === 'completion' && (
               <div className="truncate">
                 {t(($) => $['types.completion'], { ns: 'app' }).toUpperCase()}
               </div>
@@ -129,6 +127,6 @@ export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardPr
           {app.description}
         </div>
       </div>
-    </div>
+    </li>
   )
 }

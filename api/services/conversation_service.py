@@ -49,7 +49,7 @@ class ConversationService:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
 
         stmt = select(Conversation).where(
-            Conversation.is_deleted == False,
+            Conversation.is_deleted.is_(False),
             Conversation.app_id == app_model.id,
             Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
             Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
@@ -183,7 +183,7 @@ class ConversationService:
                 Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
                 Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
                 Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
-                Conversation.is_deleted == False,
+                Conversation.is_deleted.is_(False),
             )
             .limit(1)
         )
@@ -295,6 +295,7 @@ class ConversationService:
                 "created_at": row.created_at,
                 "updated_at": row.updated_at,
                 **row.to_variable().model_dump(),
+                "id": row.id,
             }
             for row in rows
         ]
@@ -379,4 +380,5 @@ class ConversationService:
             "created_at": existing_variable.created_at,
             "updated_at": naive_utc_now(),  # Update timestamp
             **updated_variable.model_dump(),
+            "id": existing_variable.id,
         }

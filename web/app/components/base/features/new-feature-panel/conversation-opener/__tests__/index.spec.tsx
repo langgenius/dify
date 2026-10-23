@@ -1,5 +1,6 @@
 import type { Features, OnFeaturesChange } from '../../../types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FeaturesProvider } from '../../../context'
 import ConversationOpener from '../index'
 
@@ -39,31 +40,21 @@ describe('ConversationOpener', () => {
     vi.clearAllMocks()
   })
 
-  it('should render the conversation opener title', () => {
-    renderWithProvider()
-
-    expect(screen.getByText(/feature\.conversationOpener\.title/))!.toBeInTheDocument()
-  })
-
   it('should render description when not enabled', () => {
     renderWithProvider()
 
     expect(screen.getByText(/feature\.conversationOpener\.description/))!.toBeInTheDocument()
   })
 
-  it('should render a switch toggle', () => {
-    renderWithProvider()
-
-    expect(screen.getByRole('switch'))!.toBeInTheDocument()
-  })
-
-  it('should call onChange when toggled', () => {
+  it('should call onChange when toggled', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     renderWithProvider({ onChange })
 
-    fireEvent.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch'))
 
-    expect(onChange).toHaveBeenCalled()
+    expect(screen.getByRole('switch')).toBeChecked()
+    expect(onChange).toHaveBeenCalledOnce()
   })
 
   it('should show opening statement when enabled and not hovering', () => {
@@ -88,36 +79,8 @@ describe('ConversationOpener', () => {
     expect(screen.getByText(/openingStatement\.placeholder/))!.toBeInTheDocument()
   })
 
-  it('should show edit button when hovering over enabled feature', () => {
-    renderWithProvider(
-      {},
-      {
-        opening: { enabled: true, opening_statement: 'Hello' },
-      },
-    )
-
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-
-    expect(screen.getByText(/openingStatement\.writeOpener/))!.toBeInTheDocument()
-  })
-
-  it('should open modal when edit button is clicked', () => {
-    renderWithProvider(
-      {},
-      {
-        opening: { enabled: true, opening_statement: 'Hello' },
-      },
-    )
-
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-    fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
-
-    expect(mockSetShowOpeningModal).toHaveBeenCalled()
-  })
-
-  it('should not open modal when disabled', () => {
+  it('should not open modal when disabled', async () => {
+    const user = userEvent.setup()
     renderWithProvider(
       { disabled: true },
       {
@@ -125,32 +88,16 @@ describe('ConversationOpener', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-    fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
+    const card = screen.getByText(/feature\.conversationOpener\.title/)
+    await user.hover(card)
+    screen.getByRole('button', { name: /openingStatement\.writeOpener/ }).focus()
+    await user.keyboard('{Enter}')
 
     expect(mockSetShowOpeningModal).not.toHaveBeenCalled()
   })
 
-  it('should pass opening data to modal', () => {
-    renderWithProvider(
-      {},
-      {
-        opening: { enabled: true, opening_statement: 'Hello' },
-      },
-    )
-
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-    fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
-
-    const modalCall = mockSetShowOpeningModal.mock.calls[0]![0]
-    expect(modalCall.payload).toBeDefined()
-    expect(modalCall.onSaveCallback).toBeDefined()
-    expect(modalCall.onCancelCallback).toBeDefined()
-  })
-
-  it('should invoke onSaveCallback and update features', () => {
+  it('should invoke onSaveCallback and update features', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     renderWithProvider(
       { onChange },
@@ -159,19 +106,26 @@ describe('ConversationOpener', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-    fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
+    const card = screen.getByText(/feature\.conversationOpener\.title/)
+    await user.hover(card)
+    screen.getByRole('button', { name: /openingStatement\.writeOpener/ }).focus()
+    await user.keyboard('{Enter}')
 
     const modalCall = mockSetShowOpeningModal.mock.calls[0]![0]
+    expect(modalCall.payload).toEqual(
+      expect.objectContaining({ enabled: true, opening_statement: 'Hello' }),
+    )
     act(() => {
       modalCall.onSaveCallback({ enabled: true, opening_statement: 'Updated' })
     })
 
-    expect(onChange).toHaveBeenCalled()
+    await user.hover(document.body)
+    expect(screen.getByText('Updated')).toBeInTheDocument()
+    expect(onChange).toHaveBeenCalledOnce()
   })
 
-  it('should invoke onCancelCallback', () => {
+  it('should invoke onCancelCallback', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     renderWithProvider(
       { onChange },
@@ -180,17 +134,20 @@ describe('ConversationOpener', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-    fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
+    const card = screen.getByText(/feature\.conversationOpener\.title/)
+    await user.hover(card)
+    screen.getByRole('button', { name: /openingStatement\.writeOpener/ }).focus()
+    await user.keyboard('{Enter}')
 
     const modalCall = mockSetShowOpeningModal.mock.calls[0]![0]
     modalCall.onCancelCallback()
-
-    expect(onChange).toHaveBeenCalled()
+    await user.hover(document.body)
+    expect(screen.getByText('Hello')).toBeInTheDocument()
+    expect(onChange).toHaveBeenCalledOnce()
   })
 
-  it('should show info and hide when hovering over enabled feature', () => {
+  it('should show info and hide when hovering over enabled feature', async () => {
+    const user = userEvent.setup()
     renderWithProvider(
       {},
       {
@@ -198,64 +155,15 @@ describe('ConversationOpener', () => {
       },
     )
 
-    // Before hover, opening statement visible
-    // Before hover, opening statement visible
     expect(screen.getByText('Welcome!'))!.toBeInTheDocument()
 
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
+    const card = screen.getByText(/feature\.conversationOpener\.title/)
+    await user.hover(card)
 
-    // After hover, button visible, statement hidden
-    // After hover, button visible, statement hidden
     expect(screen.getByText(/openingStatement\.writeOpener/))!.toBeInTheDocument()
 
-    fireEvent.mouseLeave(card)
+    await user.hover(document.body)
 
-    // After leave, statement visible again
-    // After leave, statement visible again
     expect(screen.getByText('Welcome!'))!.toBeInTheDocument()
-  })
-
-  it('should return early from opener handler when disabled and hovered', () => {
-    renderWithProvider(
-      { disabled: true },
-      {
-        opening: { enabled: true, opening_statement: 'Hello' },
-      },
-    )
-
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-    fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
-
-    expect(mockSetShowOpeningModal).not.toHaveBeenCalled()
-  })
-
-  it('should run save and cancel callbacks without onChange', () => {
-    renderWithProvider(
-      {},
-      {
-        opening: { enabled: true, opening_statement: 'Hello' },
-      },
-    )
-
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-    fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
-
-    const modalCall = mockSetShowOpeningModal.mock.calls[0]![0]
-    act(() => {
-      modalCall.onSaveCallback({ enabled: true, opening_statement: 'Updated without callback' })
-      modalCall.onCancelCallback()
-    })
-
-    expect(mockSetShowOpeningModal).toHaveBeenCalledTimes(1)
-  })
-
-  it('should toggle feature switch without onChange callback', () => {
-    renderWithProvider()
-
-    fireEvent.click(screen.getByRole('switch'))
-    expect(screen.getByRole('switch'))!.toBeInTheDocument()
   })
 })

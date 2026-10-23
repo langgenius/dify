@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import type { MainNavItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useStudioListHref } from '@/features/studio-list-navigation'
 import Link from '@/next/link'
 
 const NavIcon = ({ icon, className }: { icon: string; className?: string }) => (
@@ -17,10 +18,11 @@ type MainNavLinkProps = {
 
 const MainNavLink = ({ item, pathname, children }: MainNavLinkProps) => {
   const activated = item.active(pathname)
+  const appsHref = useStudioListHref('/apps')
 
   return (
     <Link
-      href={item.href}
+      href={item.href === '/apps' ? appsHref : item.href}
       aria-current={activated ? 'page' : undefined}
       title={item.label}
       className={cn(

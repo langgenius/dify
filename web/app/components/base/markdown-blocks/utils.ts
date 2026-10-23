@@ -19,7 +19,7 @@ export const isValidUrl = (url: string): boolean => {
 }
 
 export const getMarkdownImageURL = (url: string, pathname?: string) => {
-  const regex = /(^\.\/_assets|^_assets)/
+  const regex = /^(?:\.\/|\/)?_assets(?=\/)/
   if (regex.test(url))
     return `${MARKETPLACE_API_PREFIX}${MARKETPLACE_API_PREFIX.endsWith('/') ? '' : '/'}plugins/${pathname ?? ''}${url.replace(regex, '/_assets')}`
   return url

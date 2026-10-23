@@ -3,7 +3,7 @@
 from typing import cast, override
 
 from pydantic import JsonValue
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
@@ -65,12 +65,19 @@ class SQLAlchemyInstalledAppMessageRepository(InstalledAppMessageStore):
                         f"The first_id cursor {first_id} does not belong to conversation {conversation_id}."
                     )
                 statement = statement.where(
-                    Message.created_at < first_message.created_at, Message.id != first_message.id
+                    or_(
+                        Message.created_at < first_message.created_at,
+                        and_(
+                            Message.created_at == first_message.created_at,
+                            Message.id < first_message.id,
+                        ),
+                    )
                 )
-            messages = list(session.scalars(statement.order_by(Message.created_at.desc()).limit(limit + 1)).all())
+            messages = list(
+                session.scalars(statement.order_by(Message.created_at.desc(), Message.id.desc()).limit(limit + 1)).all()
+            )
             has_more = len(messages) > limit
-            # Preserve ascending presentation of each newest-first page and the
-            # existing strict timestamp cursor, including tied timestamps.
+            # Preserve ascending presentation of each newest-first page.
             messages = messages[:limit]
             messages.reverse()
             return MessagePage(

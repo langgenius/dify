@@ -23,13 +23,13 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document, ParentChildStructureChunk
+from extensions.ext_login import load_account
 from libs import helper
 from models import Account
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import ProcessRuleMode
-from services.account_service import AccountService
-from services.summary_index_service import SummaryIndexService
+from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -99,11 +99,16 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             page_content = page_content
                         if len(page_content) > 0:
                             document_node.page_content = page_content
-                            multimodel_documents = self._get_content_files(document_node, current_user, session=session)
+                            multimodel_documents = self._get_content_files(
+                                document_node,
+                                current_user,
+                                tenant_id=kwargs["tenant_id"],
+                                session=session,
+                            )
                             if multimodel_documents:
                                 document_node.attachments = multimodel_documents
                             # parse document to child nodes
-                            child_nodes = self._split_child_nodes(
+                            child_nodes = self.split_child_nodes(
                                 document_node, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")
                             )
                             document_node.children = child_nodes
@@ -112,11 +117,15 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         elif rules.parent_mode == ParentMode.FULL_DOC:
             page_content = "\n".join([document.page_content for document in documents])
             document = Document(page_content=page_content, metadata=documents[0].metadata)
-            multimodel_documents = self._get_content_files(document, session=session)
+            multimodel_documents = self._get_content_files(
+                document,
+                tenant_id=kwargs["tenant_id"],
+                session=session,
+            )
             if multimodel_documents:
                 document.attachments = multimodel_documents
             # parse document to child nodes
-            child_nodes = self._split_child_nodes(
+            child_nodes = self.split_child_nodes(
                 document, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")
             )
             if kwargs.get("preview"):
@@ -176,10 +185,10 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 ).all()
                 segment_ids = [segment.id for segment in segments]
                 if segment_ids:
-                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids, session=session)
+                    SummaryIndexAdapter.delete_summaries_for_segments(dataset, segment_ids, session=session)
             else:
                 # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None, session=session)
+                SummaryIndexAdapter.delete_summaries_for_segments(dataset, None, session=session)
 
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             delete_child_chunks = kwargs.get("delete_child_chunks") or False
@@ -227,7 +236,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     )
                     session.flush()
 
-    def _split_child_nodes(
+    def split_child_nodes(
         self,
         document_node: Document,
         rules: Rule,
@@ -298,11 +307,15 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     attachments.append(file_document)
                 doc.attachments = attachments
             else:
-                with session_factory.create_session() as account_session:
-                    account = AccountService.load_user(document.created_by, account_session)
+                account = load_account(document.created_by)
                 if not account:
                     raise ValueError("Invalid account")
-                doc.attachments = self._get_content_files(doc, current_user=account, session=session)
+                doc.attachments = self._get_content_files(
+                    doc,
+                    current_user=account,
+                    tenant_id=dataset.tenant_id,
+                    session=session,
+                )
             documents.append(doc)
         if documents:
             token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)

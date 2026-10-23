@@ -46,6 +46,7 @@
     "Dukungan Email & Obrolan Prioritas"
   ],
   "plans.premium.includesTitle": "Semuanya dari Komunitas, ditambah:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Premi",
   "plans.premium.price": "Scalable",
   "plans.premium.priceTip": "Berdasarkan Cloud Marketplace",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "Bandingkan paket & fitur",
   "plansCommon.currentPlan": "Rencana Saat Ini",
   "plansCommon.days": "Hari",
+  "plansCommon.discountedAnnualPrice": "Harga tahunan setelah diskon: ",
   "plansCommon.documentProcessingPriority": "Pemrosesan Dokumen",
   "plansCommon.documentProcessingPriorityTip": "Untuk prioritas pemrosesan dokumen yang lebih tinggi, silakan tingkatkan paket Anda.",
   "plansCommon.documentProcessingPriorityUpgrade": "Proses lebih banyak data dengan akurasi yang lebih tinggi pada kecepatan yang lebih tinggi.",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "Mendukung OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replite",
   "plansCommon.month": "bulan",
   "plansCommon.mostPopular": "Populer",
+  "plansCommon.originalAnnualPrice": "Harga tahunan awal: ",
   "plansCommon.priceTip": "per ruang kerja/",
   "plansCommon.priority.priority": "Prioritas",
   "plansCommon.priority.standard": "Standar",

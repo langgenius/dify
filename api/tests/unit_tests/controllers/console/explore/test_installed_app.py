@@ -19,7 +19,7 @@ from models.account import TenantAccountRole
 from models.model import AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
-from repositories.workspace_query_repository import WorkspaceQueryRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_service import InstalledAppService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
@@ -35,8 +35,13 @@ _USED_AT = datetime(2024, 1, 1)
 
 
 @dataclass
+class _InstalledAppServices:
+    management: InstalledAppService
+
+
+@dataclass
 class _Services:
-    installed_apps: InstalledAppService
+    installed_apps: _InstalledAppServices
 
 
 @dataclass
@@ -110,10 +115,12 @@ def management(
         sessions.append(session)
 
     services = _Services(
-        installed_apps=InstalledAppService(
-            installed_apps=SQLAlchemyInstalledAppRepository(session_factory=factory),
-            get_workspace_role=WorkspaceQueryRepository(factory).get_account_role,
-            get_visible_app_ids=None,
+        installed_apps=_InstalledAppServices(
+            management=InstalledAppService(
+                installed_apps=SQLAlchemyInstalledAppRepository(session_factory=factory),
+                get_workspace_role=WorkspaceRepository(factory).get_account_role,
+                get_visible_app_ids=None,
+            )
         )
     )
     management = _Management(harness, factory, services, sessions)
@@ -213,9 +220,9 @@ def _enable_visibility(management: _Management) -> None:
         get_access_modes=management.get_access_modes,
         get_user_permissions=management.get_user_permissions,
     )
-    management.services.installed_apps = InstalledAppService(
+    management.services.installed_apps.management = InstalledAppService(
         installed_apps=repository,
-        get_workspace_role=WorkspaceQueryRepository(management.session_factory).get_account_role,
+        get_workspace_role=WorkspaceRepository(management.session_factory).get_account_role,
         get_visible_app_ids=access.get_visible_app_ids,
     )
 

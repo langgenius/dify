@@ -44,7 +44,6 @@
   "form.retrievalSetting.multiModalTip": "Saat model embedding mendukung multi-modal, harap pilih model rerank multi-modal untuk kinerja yang lebih baik.",
   "form.retrievalSetting.title": "Pengaturan Pengambilan",
   "form.save": "Simpan",
-  "form.searchModel": "Model pencarian",
   "form.summaryAutoGen": "Pembuatan Ringkasan Otomatis",
   "form.summaryAutoGenEnableTip": "Setelah diaktifkan, ringkasan akan dibuat secara otomatis untuk dokumen yang baru ditambahkan. Dokumen yang ada masih dapat diringkas secara manual.",
   "form.summaryAutoGenTip": "Ringkasan dibuat secara otomatis untuk dokumen yang baru ditambahkan. Dokumen yang ada masih dapat diringkas secara manual.",

@@ -60,4 +60,12 @@ class SMTPClient:
             raise
         finally:
             if smtp:
-                smtp.quit()
+                # Cleanup must not replace a send failure or turn an accepted send into a failure.
+                try:
+                    smtp.quit()
+                except Exception:
+                    logger.warning("Failed to quit SMTP connection", exc_info=True)
+                    try:
+                        smtp.close()
+                    except Exception:
+                        logger.warning("Failed to close SMTP connection", exc_info=True)

@@ -1,14 +1,16 @@
+import type { ChildChunkResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { ChildChunkDetail, SegmentUpdater } from '@/models/datasets'
+import type { SegmentUpdater } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
-import { memo, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { memo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { ChunkingMode } from '@/models/datasets'
 import { useParams } from '@/next/navigation'
-import { useAddChildSegment } from '@/service/knowledge/use-segment'
+import { consoleQuery } from '@/service/console'
 import { formatNumber } from '@/utils/format'
 import { useDocumentContext } from '../context'
 import { ActionButtons } from './common/action-buttons'
@@ -21,7 +23,7 @@ import { useSegmentListContext } from './index'
 type NewChildSegmentModalProps = {
   chunkId: string
   onCancel: () => void
-  onSave: (ChildChunk?: ChildChunkDetail) => void
+  onSave: (ChildChunk?: ChildChunkResponse) => void
   viewNewlyAddedChildChunk?: () => void
 }
 
@@ -31,6 +33,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   onSave,
   viewNewlyAddedChildChunk,
 }) => {
+  const editorRef = useRef<HTMLDivElement>(null)
   const { t } = useTranslation(['common', 'datasetDocuments'])
   const [content, setContent] = useState('')
   const { datasetId, documentId } = useParams<{ datasetId: string; documentId: string }>()
@@ -46,7 +49,9 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
     if (actionType === 'esc' || !addAnother) onCancel()
   }
 
-  const { mutateAsync: addChildSegment } = useAddChildSegment()
+  const { mutateAsync: addChildSegment } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.post.mutationOptions(),
+  )
 
   const handleSave = async () => {
     const params: SegmentUpdater = { content: '' }
@@ -58,7 +63,10 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
 
     setLoading(true)
     await addChildSegment(
-      { datasetId, documentId, segmentId: chunkId, body: params },
+      {
+        params: { dataset_id: datasetId, document_id: documentId, segment_id: chunkId },
+        body: params,
+      },
       {
         onSuccess(res) {
           toast.success(
@@ -91,7 +99,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   const wordCountText = `${formatNumber(count)} ${t(($) => $['segment.characters'], { ns: 'datasetDocuments', count })}`
 
   return (
-    <div className="flex h-full flex-col">
+    <div ref={editorRef} className="flex h-full flex-col">
       <div
         className={cn(
           'flex items-center justify-between',
@@ -115,6 +123,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
             <>
               <AddAnother className="mr-3" checked={addAnother} onCheckedChange={setAddAnother} />
               <ActionButtons
+                target={editorRef}
                 handleCancel={handleCancel.bind(null, 'esc')}
                 handleSave={handleSave}
                 loading={loading}
@@ -166,6 +175,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
         <div className="flex items-center justify-between border-t border-t-divider-subtle p-4 pt-3">
           <AddAnother checked={addAnother} onCheckedChange={setAddAnother} />
           <ActionButtons
+            target={editorRef}
             handleCancel={handleCancel.bind(null, 'esc')}
             handleSave={handleSave}
             loading={loading}

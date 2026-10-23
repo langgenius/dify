@@ -109,39 +109,43 @@ export const LinkPreview: Story = {
   render: () => <LinkPreviewDemo />,
 }
 
-type PreviewCardPlacement = NonNullable<PreviewCardContentProps['placement']>
+const POSITIONS = [
+  { side: 'top', align: 'start' },
+  { side: 'top', align: 'center' },
+  { side: 'top', align: 'end' },
+  { side: 'right', align: 'start' },
+  { side: 'right', align: 'center' },
+  { side: 'right', align: 'end' },
+  { side: 'bottom', align: 'start' },
+  { side: 'bottom', align: 'center' },
+  { side: 'bottom', align: 'end' },
+  { side: 'left', align: 'start' },
+  { side: 'left', align: 'center' },
+  { side: 'left', align: 'end' },
+  { side: 'inline-start', align: 'start' },
+  { side: 'inline-start', align: 'center' },
+  { side: 'inline-start', align: 'end' },
+  { side: 'inline-end', align: 'start' },
+  { side: 'inline-end', align: 'center' },
+  { side: 'inline-end', align: 'end' },
+] satisfies Array<Pick<PreviewCardContentProps, 'side' | 'align'>>
 
-const PLACEMENTS: PreviewCardPlacement[] = [
-  'top-start',
-  'top',
-  'top-end',
-  'right-start',
-  'right',
-  'right-end',
-  'bottom-start',
-  'bottom',
-  'bottom-end',
-  'left-start',
-  'left',
-  'left-end',
-]
-
-const PlacementsDemo = () => {
-  const [placement, setPlacement] = React.useState<PreviewCardPlacement>('bottom')
+function PlacementsDemo() {
+  const [position, setPosition] = React.useState(POSITIONS[7]!)
 
   return (
     <div className="flex flex-col items-center gap-4 p-20">
       <div className="grid grid-cols-3 gap-2 text-xs">
-        {PLACEMENTS.map((value) => (
+        {POSITIONS.map((value) => (
           <button
-            key={value}
+            key={`${value.side}-${value.align}`}
             type="button"
-            onClick={() => setPlacement(value)}
+            onClick={() => setPosition(value)}
             className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden ${
-              placement === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
+              position === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
             }`}
           >
-            {value}
+            {value.side} / {value.align}
           </button>
         ))}
       </div>
@@ -149,11 +153,10 @@ const PlacementsDemo = () => {
         <PreviewCardTrigger href="#preview-card-placement" className={triggerButtonClassName}>
           Hover me
         </PreviewCardTrigger>
-        <PreviewCardContent placement={placement} className="w-56 p-3">
+        <PreviewCardContent side={position.side} align={position.align} className="w-56 p-3">
           <div className="flex flex-col gap-1">
             <div className="text-sm font-semibold text-text-primary">
-              placement="
-              {placement}"
+              {`side="${position.side}" align="${position.align}"`}
             </div>
             <div className="text-xs text-text-secondary">
               Preview positions itself relative to the trigger.
@@ -172,27 +175,29 @@ export const Placements: Story = {
   render: () => <PlacementsDemo />,
 }
 
-const CustomDelayDemo = () => (
-  <PreviewCard>
-    <PreviewCardTrigger
-      delay={100}
-      closeDelay={100}
-      href="#preview-card-delay"
-      className={triggerButtonClassName}
-    >
-      Snappy trigger
-    </PreviewCardTrigger>
-    <PreviewCardContent className="w-64 p-3">
-      <div className="flex flex-col gap-1">
-        <div className="text-sm font-semibold text-text-primary">Fast hover</div>
-        <div className="text-xs text-text-secondary">
-          Base UI defaults (600ms / 300ms) are tuned for link previews. Override per trigger for
-          denser UIs.
+function CustomDelayDemo() {
+  return (
+    <PreviewCard>
+      <PreviewCardTrigger
+        delay={100}
+        closeDelay={100}
+        href="#preview-card-delay"
+        className={triggerButtonClassName}
+      >
+        Snappy trigger
+      </PreviewCardTrigger>
+      <PreviewCardContent className="w-64 p-3">
+        <div className="flex flex-col gap-1">
+          <div className="text-sm font-semibold text-text-primary">Fast hover</div>
+          <div className="text-xs text-text-secondary">
+            Base UI defaults (600ms / 300ms) are tuned for link previews. Override per trigger for
+            denser UIs.
+          </div>
         </div>
-      </div>
-    </PreviewCardContent>
-  </PreviewCard>
-)
+      </PreviewCardContent>
+    </PreviewCard>
+  )
+}
 
 export const CustomDelays: Story = {
   render: () => <CustomDelayDemo />,

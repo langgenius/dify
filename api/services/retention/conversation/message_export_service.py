@@ -164,7 +164,7 @@ class AppMessageExportService:
         self._finalize_stats(stats)
         return stats
 
-    def iter_records(self) -> Generator[AppMessageExportRecord, None, None]:
+    def iter_records(self) -> Generator[AppMessageExportRecord]:
         for batch in self._iter_record_batches():
             yield from batch
 
@@ -189,7 +189,7 @@ class AppMessageExportService:
         storage.save(self.output_gz_name, data)
         logger.info("export_app_messages: uploaded %d bytes to cloud key=%s", len(data), self.output_gz_name)
 
-    def _iter_records_with_stats(self, stats: AppMessageExportStats) -> Generator[AppMessageExportRecord, None, None]:
+    def _iter_records_with_stats(self, stats: AppMessageExportStats) -> Generator[AppMessageExportRecord]:
         for record in self.iter_records():
             self._update_stats(stats, record)
             yield record
@@ -207,7 +207,7 @@ class AppMessageExportService:
             return
         stats.batches = (stats.total_messages + self._batch_size - 1) // self._batch_size
 
-    def _iter_record_batches(self) -> Generator[list[AppMessageExportRecord], None, None]:
+    def _iter_record_batches(self) -> Generator[list[AppMessageExportRecord]]:
         cursor: tuple[datetime.datetime, str] | None = None
         while True:
             rows, cursor = self._fetch_batch(cursor)

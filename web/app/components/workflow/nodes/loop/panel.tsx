@@ -15,7 +15,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.loop'
 
 const Panel: FC<NodePanelProps<LoopNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowLogic'])
 
   const {
     readOnly,
@@ -42,7 +42,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({ id, data }) => {
         <Field
           title={
             <div className="pl-3">
-              {t(($) => $['nodes.loop.loopVariables'], { ns: 'workflow' })}
+              {t(($) => $['nodes.loop.loopVariables'], { ns: 'workflowLogic' })}
             </div>
           }
           operations={
@@ -67,10 +67,10 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({ id, data }) => {
         <Field
           title={
             <div className="pl-3">
-              {t(($) => $[`${i18nPrefix}.breakCondition`], { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.breakCondition`], { ns: 'workflowLogic' })}
             </div>
           }
-          tooltip={t(($) => $[`${i18nPrefix}.breakConditionTip`], { ns: 'workflow' })}
+          tooltip={t(($) => $[`${i18nPrefix}.breakConditionTip`], { ns: 'workflowLogic' })}
         >
           <ConditionWrap
             nodeId={id}
@@ -96,13 +96,13 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({ id, data }) => {
           <Field
             title={
               <div className="pl-3">
-                {t(($) => $[`${i18nPrefix}.loopMaxCount`], { ns: 'workflow' })}
+                {t(($) => $[`${i18nPrefix}.loopMaxCount`], { ns: 'workflowLogic' })}
               </div>
             }
           >
             <div className="px-3 py-2">
               <InputNumberWithSlider
-                label={t(($) => $[`${i18nPrefix}.loopMaxCount`], { ns: 'workflow' })}
+                label={t(($) => $[`${i18nPrefix}.loopMaxCount`], { ns: 'workflowLogic' })}
                 min={1}
                 max={LOOP_NODE_MAX_COUNT}
                 value={inputs.loop_count}
