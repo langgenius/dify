@@ -15,7 +15,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 type Props = Readonly<{
   className?: string
   label?: string
-  value?: number
+  value?: number | null
   readOnly?: boolean
   onChange: (date: number | null) => void
 }>
@@ -31,7 +31,7 @@ function WrappedDatePicker({ className, label, value, readOnly, onChange }: Prop
     <DateTimePicker
       readOnly={readOnly}
       placeholder={placeholder}
-      value={value === undefined ? null : new Date(value * 1000)}
+      value={value == null ? null : new Date(value * 1000)}
       timeZone={timezone}
       onValueChange={(next) => onChange(next ? Math.floor(next.getTime() / 1000) : null)}
     >
@@ -44,7 +44,7 @@ function WrappedDatePicker({ className, label, value, readOnly, onChange }: Prop
       >
         <DateTimePickerTrigger className="h-full min-w-0 flex-1 bg-transparent px-1 text-xs">
           <DateTimePickerValue>
-            {value === undefined
+            {value == null
               ? placeholder
               : formatTime(
                   value,

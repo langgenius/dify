@@ -9,7 +9,11 @@ import type {
   PickerValueProps,
 } from '../internal/picker-parts'
 import type { TimePanelLabels, TimePanelProps } from '../internal/time-panel'
-import { useControlled } from '@base-ui/utils/useControlled'
+import type {
+  PickerChangeEventDetails,
+  PickerChangeEventReason,
+} from '../internal/use-picker-value'
+import { createChangeEventDetails } from '@base-ui/react/internals/createBaseUIEventDetails'
 import { TZDate } from '@date-fns/tz'
 import * as React from 'react'
 import { Button } from '../../button'
@@ -25,6 +29,7 @@ import {
 } from '../internal/picker-parts'
 import { TimePanel } from '../internal/time-panel'
 import { formatTimeValue, requireTimeValue } from '../internal/time-value'
+import { usePickerValue } from '../internal/use-picker-value'
 
 type TimePickerLabels = TimePanelLabels & {
   title: string
@@ -32,13 +37,16 @@ type TimePickerLabels = TimePanelLabels & {
   apply: string
   unavailable: string
 }
+type TimePickerChangeEventReason = PickerChangeEventReason
+type TimePickerChangeEventDetails = PickerChangeEventDetails
+
 type TimePickerProps = PickerFieldProps &
   Pick<TimePanelProps, 'hourCycle' | 'minuteStep'> & {
     /** A 24-hour HH:mm wall time, independent of a date or time zone. */
     value?: string | null
     defaultValue?: string | null
     /** Called on OK, clearing or form reset; popup draft edits do not emit changes. */
-    onValueChange?: (value: string | null) => void
+    onValueChange?: (value: string | null, details: TimePickerChangeEventDetails) => void
     isTimeUnavailable?: (value: string) => boolean
     locale?: Intl.LocalesArgument
     /** IANA zone used for Now and the initial empty draft; it does not convert value. */
@@ -50,7 +58,7 @@ type ContextValue = Omit<
   'value' | 'defaultValue' | 'onValueChange' | 'children'
 > & {
   value: Exclude<TimePickerProps['value'], undefined>
-  commit: NonNullable<TimePickerProps['onValueChange']>
+  commit: (value: string | null, details: TimePickerChangeEventDetails) => boolean
 }
 const Context = React.createContext<ContextValue | null>(null)
 function useContext() {
@@ -77,9 +85,12 @@ function TimePicker({
   children,
   ...props
 }: TimePickerProps) {
-  const [value, setValue] = useControlled({
-    controlled: valueProp,
-    default: defaultValue,
+  const { value, commit } = usePickerValue<string>({
+    value: valueProp,
+    defaultValue,
+    onValueChange,
+    disabled: props.disabled,
+    readOnly: props.readOnly,
     name: 'TimePicker',
   })
   requireTimeValue(value)
@@ -87,13 +98,7 @@ function TimePicker({
     value &&
     (props.isTimeUnavailable?.(value) || Number(value.slice(3)) % (props.minuteStep ?? 1) !== 0),
   )
-  function commit(next: string | null) {
-    if (props.disabled || props.readOnly) return
-    if (next !== value) {
-      setValue(next)
-      onValueChange?.(next)
-    }
-  }
+
   return (
     <Context.Provider value={{ ...props, value, commit }}>
       <PickerRoot
@@ -115,12 +120,10 @@ function TimePicker({
               }).format(new Date(`2025-01-01T${value}:00Z`))
             : ''
         }
+        value={value}
         serializedValue={value ?? ''}
-        onClear={() => commit(null)}
-        onReset={() => {
-          setValue(defaultValue)
-          if (defaultValue !== value) onValueChange?.(defaultValue)
-        }}
+        onClear={(details) => commit(null, details)}
+        onReset={(details) => commit(defaultValue, details)}
       >
         {children}
       </PickerRoot>
@@ -176,7 +179,7 @@ function Session() {
     timeZone,
     minuteStep = 1,
   } = useContext()
-  const { close } = usePickerContext()
+  const { close, canEdit } = usePickerContext()
   const [draft, setDraft] = React.useState(() => value ?? currentTime(timeZone, minuteStep))
   const text = { ...defaultLabels, ...labels }
   const unavailable = Boolean(
@@ -212,9 +215,15 @@ function Session() {
             size="small"
             disabled={unavailable}
             aria-describedby={unavailable ? errorId : undefined}
-            onClick={() => {
-              commit(draft)
-              close()
+            onClick={(event) => {
+              if (
+                canEdit() &&
+                commit(
+                  draft,
+                  createChangeEventDetails('item-press', event.nativeEvent, event.currentTarget),
+                )
+              )
+                close()
             }}
           >
             {text.apply}
@@ -244,6 +253,8 @@ export {
   TimePickerValue,
 }
 export type {
+  TimePickerChangeEventDetails,
+  TimePickerChangeEventReason,
   TimePickerClearProps,
   TimePickerContentProps,
   TimePickerLabelProps,
