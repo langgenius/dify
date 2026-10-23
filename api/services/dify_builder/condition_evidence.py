@@ -42,14 +42,26 @@ class HistoricalRunReader(Protocol):
 @runtime_checkable
 class EvidenceDiagnoser(Protocol):
     def diagnose_with_evidence(
-        self, run: Run, graph: Graph, outputs: list[NodeOutput], evidence: dict[str, Any]
+        self,
+        run: Run,
+        graph: Graph,
+        outputs: list[NodeOutput],
+        evidence: dict[str, Any],
+        *,
+        reply_language: str | None = None,
     ) -> Diagnosis: ...
 
 
 @runtime_checkable
 class EvidenceRepairProposer(Protocol):
     def propose_with_evidence(
-        self, diagnosis: Diagnosis, current: Graph, safe_graph: Graph, redact_text: Callable[[str], str]
+        self,
+        diagnosis: Diagnosis,
+        current: Graph,
+        safe_graph: Graph,
+        redact_text: Callable[[str], str],
+        *,
+        reply_language: str | None = None,
     ) -> tuple[list[MutationIntent], Risk]: ...
 
 
@@ -502,9 +514,13 @@ def diagnose_failure(
     safe_run, safe_graph, safe_outputs, evidence = build_evidence(raw_run, current, historical, outputs)
     _add_business_failure(evidence, raw_run, current, historical, outputs, task)
     if isinstance(env.agent, EvidenceDiagnoser):
-        diagnosis = env.agent.diagnose_with_evidence(safe_run, safe_graph, safe_outputs, evidence)
+        diagnosis = env.agent.diagnose_with_evidence(
+            safe_run, safe_graph, safe_outputs, evidence, reply_language=task[1].reply_language if task else None
+        )
     else:
-        diagnosis = env.agent.diagnose(safe_run, safe_graph, safe_outputs)
+        diagnosis = env.agent.diagnose(
+            safe_run, safe_graph, safe_outputs, reply_language=task[1].reply_language if task else None
+        )
     diagnosis.condition_evidence = evidence
     diagnosis.root_cause = diagnostic_context.redact_diagnostic_text(
         diagnosis.root_cause, raw_run, {"current": current, "historical": historical}, outputs
@@ -647,5 +663,7 @@ def propose_failure(
         )
 
     if isinstance(env.agent, EvidenceRepairProposer):
-        return env.agent.propose_with_evidence(diagnosis, current, safe_graph, redact_text)
-    return env.agent.propose_repair(diagnosis, current)
+        return env.agent.propose_with_evidence(
+            diagnosis, current, safe_graph, redact_text, reply_language=task[1].reply_language if task else None
+        )
+    return env.agent.propose_repair(diagnosis, current, reply_language=task[1].reply_language if task else None)

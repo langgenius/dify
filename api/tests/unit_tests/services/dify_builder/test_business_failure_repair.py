@@ -39,19 +39,34 @@ class EvidenceAgent(StubAgent):
         super().__init__(risk_level="high")
         self.diagnosed: list[tuple[str, str, dict[str, JsonValue]]] = []
         self.proposed: list[dict[str, JsonValue]] = []
+        self.reply_languages: list[str | None] = []
 
     def diagnose_with_evidence(
-        self, run: Run, graph: Graph, outputs: list[NodeOutput], evidence: dict[str, JsonValue]
+        self,
+        run: Run,
+        graph: Graph,
+        outputs: list[NodeOutput],
+        evidence: dict[str, JsonValue],
+        *,
+        reply_language: str | None = None,
     ) -> Diagnosis:
         del graph, outputs
+        self.reply_languages.append(reply_language)
         self.diagnosed.append((run.id, run.status, deepcopy(evidence)))
         return Diagnosis(culprit_node_id="output", root_cause="The confirmed paid total is unmet.", severity="high")
 
     def propose_with_evidence(
-        self, diagnosis: Diagnosis, current: Graph, safe_graph: Graph, redact_text: Callable[[str], str]
+        self,
+        diagnosis: Diagnosis,
+        current: Graph,
+        safe_graph: Graph,
+        redact_text: Callable[[str], str],
+        *,
+        reply_language: str | None = None,
     ) -> tuple[list[MutationIntent], Risk]:
         del current, safe_graph, redact_text
         assert diagnosis.condition_evidence is not None
+        self.reply_languages.append(reply_language)
         self.proposed.append(deepcopy(diagnosis.condition_evidence))
         return [], Risk(level="high", reason="Manual review required", has_external_side_effect=False)
 
@@ -108,6 +123,7 @@ def test_native_success_with_current_business_failure_reaches_existing_repair_ga
     case: tuple[AcceptanceSetup, EvidenceAgent], handler: Handler, expected_state: PcState
 ) -> None:
     fixture, agent = case
+    fixture.context.reply_language = "zh-Hans"
     turn = prepare(fixture)
     result = handler(fixture.env, turn, fixture.session, fixture.context)
     assert result.run is not None
@@ -119,6 +135,7 @@ def test_native_success_with_current_business_failure_reaches_existing_repair_ga
     assert result_card.payload["status"] == "succeeded"
     assert result_card.payload.get("failure_reason") is None
     assert len(agent.diagnosed) == len(agent.proposed) == 1
+    assert agent.reply_languages == ["zh-Hans", "zh-Hans"]
     business = agent.diagnosed[0][2]["business_failure"]
     assert isinstance(business, dict)
     assert business["goal_text"] == fixture.context.goal_text
@@ -711,8 +728,14 @@ def test_repair_checkpoint_restores_pre_repair_graph_and_preserves_run_oracle(
     before_oracle = deepcopy(fixture.context.business_acceptance_contract)
 
     def proposal(
-        _diagnosis: Diagnosis, _current: Graph, _safe: Graph, _redact: Callable[[str], str]
+        _diagnosis: Diagnosis,
+        _current: Graph,
+        _safe: Graph,
+        _redact: Callable[[str], str],
+        *,
+        reply_language: str | None = None,
     ) -> tuple[list[MutationIntent], Risk]:
+        assert reply_language == fixture.context.reply_language
         return [
             MutationIntent(op="set_node_config", args={"node_id": "output", "path": "title", "value": "Reviewed"})
         ], Risk(level="high", has_external_side_effect=False)

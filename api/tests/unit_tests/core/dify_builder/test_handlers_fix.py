@@ -154,7 +154,10 @@ def test_handle_propose_empty_intents_explains_the_missing_repair() -> None:
     s = _session()
     fc = DifyBuilderContext()
 
-    def propose_repair(diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]:
+    def propose_repair(
+        diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
+    ) -> tuple[list[MutationIntent], Risk]:
+        del reply_language
         _ = diagnosis, graph
         return ([], Risk(level="high", reason="none", has_external_side_effect=False))
 
@@ -1533,7 +1536,10 @@ def test_a_repair_the_guards_condemned_reaches_the_gate_with_its_reason(
     written: list[object] = []
     mocker.patch.object(env.fake_dify, "apply_repair", side_effect=lambda *a, **k: written.append((a, k)))
 
-    def propose_repair(diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]:
+    def propose_repair(
+        diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
+    ) -> tuple[list[MutationIntent], Risk]:
+        del reply_language
         _ = diagnosis, graph
         return ([], Risk(level="high", reason=_UNFED_AGGREGATOR_REASON, has_external_side_effect=False))
 
@@ -1559,7 +1565,10 @@ def test_a_staged_repair_still_carries_no_error_card() -> None:
     fc = DifyBuilderContext()
     from core.dify_builder.models import MutationIntent
 
-    def propose_repair(diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]:
+    def propose_repair(
+        diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
+    ) -> tuple[list[MutationIntent], Risk]:
+        del reply_language
         _ = diagnosis, graph
         return (
             [MutationIntent(op="set_node_config", args={"node_id": "code1", "path": "code", "value": "x"})],
@@ -1623,3 +1632,19 @@ def test_confirmed_fix_without_saved_input_refuses_instead_of_generating_mocks()
     assert (result.context.confirmed_consent_id, result.context.confirmed_command_id) == ("", "")
     assert result.run is not None
     assert result.run.execution_refusal is not None
+
+
+def test_checklist_diagnosis_and_repair_use_persisted_reply_language(mocker: pytest_mock.MockerFixture) -> None:
+    from services.dify_builder.application.handlers_fix import handle_checklist_diagnose
+
+    env, _ = _new_env()
+    session = _session(current_state=PcState.CHECKLIST_DIAGNOSE)
+    context = DifyBuilderContext(source="checklist", reply_language="zh-Hans")
+    diagnose = mocker.spy(env.agent, "diagnose_checklist")
+    propose = mocker.spy(env.agent, "propose_repair")
+
+    handle_checklist_diagnose(env, Turn(actor=_actor()), session, context)
+    handle_propose(env, Turn(actor=_actor()), session, context)
+
+    assert diagnose.call_args.kwargs["reply_language"] == "zh-Hans"
+    assert propose.call_args.kwargs["reply_language"] == "zh-Hans"

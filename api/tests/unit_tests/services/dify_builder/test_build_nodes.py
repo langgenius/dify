@@ -1919,3 +1919,12 @@ def test_build_nodes_passes_confirmed_failure_policy_to_generator() -> None:
     instruction = generate.call_args.kwargs["instruction"]
     assert trusted_text in instruction
     assert "follow the original source" in instruction
+
+
+def test_build_nodes_forwards_session_reply_language() -> None:
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("p", "m")),
+        patch.object(build.WorkflowGeneratorService, "generate_workflow_graph", return_value=_GEN_GRAPH) as generate,
+    ):
+        build.build_nodes("t1", {}, ["Return customer_id"], reply_language="zh-CN")
+    assert generate.call_args.kwargs["reply_language"] == "zh-CN"

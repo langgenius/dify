@@ -141,6 +141,7 @@ def diagnose(
     on_reasoning: Callable[[str], None] | None = None,
     *,
     evidence: dict[str, Any] | None = None,
+    reply_language: str | None = None,
 ) -> Diagnosis:
     if evidence is None:
         _, _, _, evidence = condition_evidence.build_evidence(failed_run, graph, None, node_outputs)
@@ -162,7 +163,7 @@ def diagnose(
         )
         + condition_evidence.SYSTEM_RULES
         + TOOL_OUTPUT_SEMANTICS_RULES
-        + llm.json_language_instruction("root_cause")
+        + llm.json_language_instruction("root_cause", reply_language=reply_language)
     )
     failed_desc = "\n".join(
         f"- {o.node_id} ({o.title}) status={o.status} error={o.error!r} "
@@ -196,6 +197,8 @@ def diagnose_checklist(
     errors: list[ChecklistError],
     graph: Graph,
     on_reasoning: Callable[[str], None] | None = None,
+    *,
+    reply_language: str | None = None,
 ) -> Diagnosis:
     if model is None:
         return _degraded_checklist(errors)
@@ -204,7 +207,7 @@ def diagnose_checklist(
         "most important node to fix and the root cause. Reply with ONLY a JSON object: "
         '{"culprit_node_id": "<an existing node id>", "root_cause": "<concise explanation>", '
         '"severity": "low|medium|high"}.'
-    ) + llm.json_language_instruction("root_cause")
+    ) + llm.json_language_instruction("root_cause", reply_language=reply_language)
     errs = (
         "\n".join(
             f"- {e.node_id} ({e.node_type}) {e.title}: {'; '.join(e.messages)} "
@@ -228,10 +231,9 @@ def diagnose_checklist(
 # engine refusal the re-prompt could not answer -- ends here.
 _NO_FIX_REASON = NO_REPAIR_REASON
 
-# ...and what it says when there IS something specific. A would-run-wrong
-# verdict is the only refusal that describes the batch STILL ON THE TABLE rather
-# than one intent that was dropped, so it is the only one worth putting in front
-# of the human in place of the sentence above.
+# ...and what it says when a would-run-wrong verdict describes the batch
+# STILL ON THE TABLE rather than one intent that was dropped. Explained empty
+# proposals preserve their own sanitized reason through ``_empty_repair``.
 _WOULD_RUN_WRONG_REASON = "No safe automatic fix found — the repair would have applied cleanly and then not worked:\n"
 
 
@@ -240,11 +242,32 @@ def _no_fix(reason: str = "") -> tuple[list[MutationIntent], Risk]:
     reason the gate shows.
 
     ``reason`` replaces the generic sentence when this module knows something
-    specific -- which today means a ``would_run_wrong`` verdict. Parameterised
-    rather than joined by a second dead-end path, so there stays exactly one
+    specific -- a ``would_run_wrong`` verdict or an explained empty proposal.
+    Parameterised rather than joined by a second dead-end path, so there stays one
     place that says "no fix" and one shape for callers to recognise.
     """
     return [], Risk(level="high", reason=reason or _NO_FIX_REASON, has_external_side_effect=False)
+
+
+def _empty_repair(
+    risk: Risk, graph: Graph, redact_text: Callable[[str], str] | None
+) -> tuple[list[MutationIntent], Risk]:
+    """Keep an explained abstention distinct from an invalid proposed change.
+
+    The model reason is surface text, never Trace metadata or execution authority.
+    Redact full graph and caller-owned runtime provenance before bounding it, so
+    a credential crossing the display limit cannot leave a visible prefix.
+    """
+    # The caller owns the complete graph/runtime profile. Sequential redaction
+    # could hide a graph-secret prefix before that profile sees a longer secret.
+    reason = (
+        redact_text(risk.reason)
+        if redact_text is not None
+        else diagnostic_context.redact_diagnostic_text(risk.reason, Run(), graph, [])
+    )
+    diagnostics.report("repair_not_proposed")
+    reason = reason.strip()
+    return _no_fix(reason if len(reason) <= 2000 else reason[:1999] + "…")
 
 
 def _judged_wrong_reason(vetted: preflight.VettedIntents) -> str:
@@ -365,6 +388,7 @@ def propose_repair(
     prompt_graph: Graph | None = None,
     redact_text: Callable[[str], str] | None = None,
     tool_context: str = "",
+    reply_language: str | None = None,
 ) -> tuple[list[MutationIntent], Risk]:
     if model is None:
         return _no_fix()
@@ -384,7 +408,7 @@ def propose_repair(
         )
         + condition_evidence.SYSTEM_RULES
         + TOOL_OUTPUT_SEMANTICS_RULES
-        + llm.json_language_instruction("risk.reason")
+        + llm.json_language_instruction("risk.reason", reply_language=reply_language)
     )
     visible_graph = prompt_graph if prompt_graph is not None else graph
     user = (
@@ -408,6 +432,8 @@ def propose_repair(
     intents, risk = _invoke_repair(model, system, user, on_reasoning)
     if intents is None:
         return _no_fix()
+    if not intents:
+        return _empty_repair(risk, graph, redact_text)
     # Structure AND node data, the same two checks ``apply_repair`` makes: a
     # repair that applies cleanly but leaves a node ``Graph.init`` refuses is the
     # worst outcome there is here -- it reaches the approval gate as a real fix,
@@ -427,6 +453,8 @@ def propose_repair(
             # been asked about. Say what was wrong with it.
             return _no_fix(_judged_wrong_reason(vetted))
         intents, risk = retried, retried_risk
+        if not intents:
+            return _empty_repair(risk, graph, redact_text)
         vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES, evidence=diagnosis.condition_evidence)
     # Parity with Edit (``agent.edit._refuse_a_batch_already_judged_wrong``), and
     # written as its own check rather than left to the broader one below.
@@ -440,7 +468,10 @@ def propose_repair(
     # not.
     if vetted.would_run_wrong:
         return _no_fix(_judged_wrong_reason(vetted))
-    if vetted.rejections or not vetted.applicable:
+    if vetted.rejections:
         diagnostics.report("validation_refused")
+        return _no_fix()
+    if not vetted.applicable:
+        diagnostics.report("repair_not_applicable")
         return _no_fix()
     return vetted.applicable, _shape_risk(vetted.applicable, graph, risk)
