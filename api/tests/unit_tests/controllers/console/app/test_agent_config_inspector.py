@@ -32,7 +32,7 @@ from controllers.console.app.agent_config_inspector import (
 from models.account import Account
 from models.model import App, AppMode
 from services.agent_config_service import AgentConfigServiceError
-from tests.unit_tests.controllers.error_body import raised_error
+from tests.helpers.unit.controllers.error_body import raised_error
 
 _MOD = "controllers.console.app.agent_config_inspector"
 app = Flask(__name__)

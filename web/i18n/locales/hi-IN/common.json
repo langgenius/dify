@@ -168,6 +168,7 @@
   "operation.deSelectAll": "सभी चयन हटाएँ",
   "operation.decreaseValue": "मान घटाएँ",
   "operation.delete": "हटाएं",
+  "operation.deleteConfirmTitle": "हटाएं?",
   "operation.download": "डाउनलोड करें",
   "operation.downloadFailed": "डाउनलोड विफल। कृपया बाद में पुनः प्रयास करें।",
   "operation.downloadSuccess": "डाउनलोड पूरा हुआ।",

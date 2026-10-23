@@ -2,6 +2,7 @@ import type { ThemeProviderProps } from 'next-themes'
 import type { Metadata, Viewport } from '@/next'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { HydrationBoundary } from '@tanstack/react-query'
+import { dir } from 'i18next'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
@@ -24,6 +25,7 @@ import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
 import { TanStackQueryProvider } from './query-provider'
+import { QueryStateProvider } from './query-state-provider'
 import '@/service/console/server'
 import './styles/globals.css'
 import './styles/markdown.css'
@@ -72,7 +74,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const dehydratedState = errorDocument ? undefined : dehydrateSystemFeatures()
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} dir={dir(locale)} suppressHydrationWarning>
       <head>{!errorDocument && <ReactScanLoader />}</head>
       <body className="bg-background-body" {...datasetMap}>
         {!errorDocument && <CloudAnalytics />}
@@ -83,18 +85,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {errorDocument ? (
                   children
                 ) : (
-                  <TanStackQueryProvider>
-                    <HydrationBoundary state={dehydratedState}>
-                      <I18nServerProvider>
-                        <AppToaster timeout={5000} limit={3} />
-                        <SystemFeaturesBootstrapBoundary>
-                          <TooltipProvider delay={300} closeDelay={200}>
-                            <AppAccessBoundary>{children}</AppAccessBoundary>
-                          </TooltipProvider>
-                        </SystemFeaturesBootstrapBoundary>
-                      </I18nServerProvider>
-                    </HydrationBoundary>
-                  </TanStackQueryProvider>
+                  <QueryStateProvider>
+                    <TanStackQueryProvider>
+                      <HydrationBoundary state={dehydratedState}>
+                        <I18nServerProvider>
+                          <AppToaster timeout={5000} limit={3} />
+                          <SystemFeaturesBootstrapBoundary>
+                            <TooltipProvider delay={300} closeDelay={200}>
+                              <AppAccessBoundary>{children}</AppAccessBoundary>
+                            </TooltipProvider>
+                          </SystemFeaturesBootstrapBoundary>
+                        </I18nServerProvider>
+                      </HydrationBoundary>
+                    </TanStackQueryProvider>
+                  </QueryStateProvider>
                 )}
               </NuqsAdapter>
             </ThemeProvider>

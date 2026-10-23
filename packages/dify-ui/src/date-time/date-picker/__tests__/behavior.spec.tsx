@@ -254,7 +254,10 @@ describe('DatePicker keyboard and form contract', () => {
         </DatePicker>,
       )
       await screen.getByRole('button', { name: 'Clear date' }).click()
-      expect(changed).toHaveBeenCalledExactlyOnceWith(null)
+      expect(changed).toHaveBeenCalledExactlyOnceWith(
+        null,
+        expect.objectContaining({ reason: 'clear-press' }),
+      )
       await expect
         .element(screen.getByRole('button', { name: 'Date Select date', exact: true }))
         .toHaveFocus()
@@ -459,5 +462,8 @@ it('keeps Persian month labels in the Gregorian calendar used by the value', asy
   await screen.getByRole('button', { name: 'OK' }).click()
   const dateName = '۱۵: شنبه ۱۵ فوریه ۲۰۲۵'
   await screen.getByRole('button', { name: dateName }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('2025-02-15')
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    '2025-02-15',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })

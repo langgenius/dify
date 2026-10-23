@@ -57,11 +57,7 @@ export function Sort<const Field extends string | number>({
               className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary forced-colors:text-[ButtonText] forced-colors:forced-color-adjust-none"
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            placement="bottom-start"
-            sideOffset={4}
-            className="relative w-60 p-0"
-          >
+          <DropdownMenuContent align="start" className="relative w-60 p-0">
             <DropdownMenuRadioGroup<Field>
               value={value.field}
               onValueChange={(field) => onValueChange({ field, order: value.order })}

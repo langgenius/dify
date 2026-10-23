@@ -107,7 +107,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       : undefined)
   const handleOpenChange = (nextOpen: boolean) => {
     if (saveMutation.isPending) return
-    saveMutation.reset()
     setManuallyOpen(nextOpen)
     if (!nextOpen && activeDialog === 'system-models') void setActiveDialog(null)
   }
@@ -140,6 +139,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           return
         }
         handleOpenChange(nextOpen)
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) saveMutation.reset()
       }}
     >
       <DialogTrigger

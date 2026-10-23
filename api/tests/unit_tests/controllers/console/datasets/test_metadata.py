@@ -21,7 +21,7 @@ from services.errors.metadata import MetadataResourceNotFoundError
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.metadata.application import MetadataService
 from services.knowledge.resource_scope import DatasetRef
-from tests.unit_tests.controllers.rbac_introspection import rbac_checks
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
 
 @pytest.fixture

@@ -202,11 +202,7 @@ function ActionMenu(props: ActionMenuProps) {
           </IconButton>
         }
       />
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        className="w-max max-w-[calc(100vw-24px)] min-w-46 shadow-shadow-shadow-5"
-      >
+      <DropdownMenuContent className="w-max max-w-[calc(100vw-24px)] min-w-46 shadow-shadow-shadow-5">
         {options.map((option) => (
           <ActionMenuItem key={option.key} item={option} onClick={handleAction} />
         ))}

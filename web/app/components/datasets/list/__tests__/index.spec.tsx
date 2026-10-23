@@ -5,15 +5,26 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import { hydrateRoot } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
 import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { useNewKnowledgeGuideDismissedValue } from '@/features/new-rag/list/storage'
+import {
+  createConsoleQueryClient,
+  createConsoleQueryWrapper,
+  renderWithConsoleQuery,
+} from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { mockIntersectionObserver } from '@/test/intersection-observer'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import List from '../index'
 
 const api = vi.hoisted(() => ({
   datasets: vi.fn<typeof consoleClient.datasets.get>(),
+  knowledgeFsFeatures: vi.fn<typeof consoleClient.knowledgeFs.features.get>(),
+  knowledgeSpaces: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>(),
+  members: vi.fn<typeof consoleClient.workspaces.current.members.get>(),
   push: vi.fn(),
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -30,6 +41,10 @@ vi.mock('@/service/console', async (importOriginal) => {
       'datasets.apiBaseInfo.get': async () => ({ api_base_url: 'https://api.example.test' }),
       'datasets.externalKnowledgeApi.get': async () => ({ data: [] }),
       'tags.get': async () => [{ id: 'tag-1', name: 'Research', type: 'knowledge' }],
+      'datasets.knowledgeFsUpgradeJobs.get': async () => ({ data: [] }),
+      'knowledgeFs.features.get': api.knowledgeFsFeatures,
+      'knowledgeFs.spaces.get': api.knowledgeSpaces,
+      'workspaces.current.members.get': api.members,
     }),
   }
 })
@@ -44,15 +59,22 @@ const datasetPage = (data = [createDatasetFixture()], page = 1, hasMore = false)
 
 let intersect: ReturnType<typeof mockIntersectionObserver>
 
-function setup(options: ConsoleQueryTestOptions = {}, tour?: StepByStepTourSessionState) {
+function setup(
+  options: ConsoleQueryTestOptions = {},
+  tour?: StepByStepTourSessionState,
+  searchParams = '',
+) {
   const queryClient = options.queryClient ?? createConsoleQueryClient()
   const store = createStore()
   store.set(queryClientAtom, queryClient)
   if (tour) store.set(stepByStepTourSessionAtom, tour)
+  const { wrapper: Nuqs, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
   const rendered = renderWithConsoleQuery(
-    <JotaiProvider store={store}>
-      <List />
-    </JotaiProvider>,
+    <Nuqs>
+      <JotaiProvider store={store}>
+        <List />
+      </JotaiProvider>
+    </Nuqs>,
     {
       queryClient,
       currentWorkspace: { role: 'owner' },
@@ -65,11 +87,28 @@ function setup(options: ConsoleQueryTestOptions = {}, tour?: StepByStepTourSessi
       ...options,
     },
   )
-  return { ...rendered, user: userEvent.setup() }
+  return { ...rendered, onUrlUpdate, user: userEvent.setup() }
 }
 
 beforeEach(() => {
   api.datasets.mockReset().mockResolvedValue(datasetPage())
+  localStorage.clear()
+  api.members.mockReset().mockResolvedValue({
+    accounts: [
+      {
+        avatar_url: null,
+        email: 'ada@example.com',
+        id: 'creator-1',
+        name: 'Ada',
+        role: 'normal',
+        status: 'active',
+      },
+    ],
+  })
+  api.knowledgeFsFeatures.mockReset()
+  api.knowledgeSpaces
+    .mockReset()
+    .mockResolvedValue({ data: [], has_more: false, limit: 50, page: 1 })
   api.push.mockReset()
   intersect = mockIntersectionObserver()
 })
@@ -309,10 +348,150 @@ it('opens only the first real card menu for the knowledge management walkthrough
   await waitFor(() =>
     expect(
       screen
-        .getAllByRole('button', { name: 'Dataset operations' })
+        .getAllByRole('button', { name: 'common.operation.more' })
         .map((button) => button.getAttribute('aria-expanded')),
     ).toEqual(['true', 'false']),
   )
   expect(screen.getAllByRole('menu', { hidden: true })).toHaveLength(1)
   expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
+})
+
+it('restores creators from the URL and persists new creator selections', async () => {
+  const { onUrlUpdate, user } = setup({}, undefined, '?creator_ids=creator-2')
+  await waitFor(() =>
+    expect(api.datasets).toHaveBeenLastCalledWith({
+      query: expect.objectContaining({ creator_ids: ['creator-2'] }),
+    }),
+  )
+
+  await user.click(screen.getByRole('combobox', { name: 'dataset.creatorFilter.creators: 1' }))
+  await user.click(await screen.findByRole('option', { name: 'Ada' }))
+
+  await waitFor(() =>
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('creator_ids')).toBe(
+      'creator-2;creator-1',
+    ),
+  )
+  await waitFor(() =>
+    expect(api.datasets).toHaveBeenLastCalledWith({
+      query: expect.objectContaining({ creator_ids: ['creator-2', 'creator-1'] }),
+    }),
+  )
+})
+
+describe('KnowledgeFS view', () => {
+  const agentView = { name: 'knowledgeSpace.view.agent knowledgeSpace.view.beta' }
+
+  it('keeps the classic list without requesting KnowledgeFS when it is disabled', async () => {
+    setup({ knowledgeFsFeatures: { enabled: false } }, undefined, '?view=agent')
+
+    expect(await screen.findByRole('link', { name: 'Test Dataset' })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', agentView)).not.toBeInTheDocument()
+    expect(api.knowledgeSpaces).not.toHaveBeenCalled()
+  })
+
+  it('keeps the classic list when KnowledgeFS availability cannot be loaded', async () => {
+    api.knowledgeFsFeatures.mockRejectedValue(new Error('KnowledgeFS availability unavailable'))
+    setup({ knowledgeFsFeatures: null }, undefined, '?view=agent')
+
+    expect(await screen.findByRole('link', { name: 'Test Dataset' })).toBeInTheDocument()
+    await waitFor(() => expect(api.knowledgeFsFeatures).toHaveBeenCalled())
+    expect(screen.queryByRole('radio', agentView)).not.toBeInTheDocument()
+    expect(api.knowledgeSpaces).not.toHaveBeenCalled()
+  })
+
+  it('switches to the Agent view and back while keeping other URL filters', async () => {
+    const { onUrlUpdate, user } = setup(
+      { knowledgeFsFeatures: { enabled: true } },
+      undefined,
+      '?creator_ids=creator-1',
+    )
+    expect(screen.getByRole('radio', { name: 'knowledgeSpace.view.classic' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+
+    await user.click(screen.getByRole('radio', agentView))
+    expect(await screen.findByRole('region', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Test Dataset' })).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('view')).toBe('agent'),
+    )
+
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.view.classic' }))
+    expect(await screen.findByRole('link', { name: 'Test Dataset' })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('view')).toBe(false),
+    )
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('creator_ids')).toBe('creator-1')
+  })
+
+  it('restores the Agent view from the URL', async () => {
+    setup({ knowledgeFsFeatures: { enabled: true } }, undefined, '?view=agent')
+
+    expect(await screen.findByRole('region', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', agentView)).toHaveAttribute('aria-checked', 'true')
+    await waitFor(() => expect(api.knowledgeSpaces).toHaveBeenCalled())
+  })
+
+  it('shows the first-visit guide once and reopens it on request', async () => {
+    const first = setup({ knowledgeFsFeatures: { enabled: true } })
+    const guide = await screen.findByRole('dialog', { name: 'knowledgeSpace.guideTitle' })
+    await first.user.click(within(guide).getByRole('button', { name: 'knowledgeSpace.gotIt' }))
+    first.unmount()
+
+    const { user } = setup({ knowledgeFsFeatures: { enabled: true } })
+    expect(
+      screen.queryByRole('dialog', { name: 'knowledgeSpace.guideTitle' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.guideTitle' }))
+    expect(
+      await screen.findByRole('dialog', { name: 'knowledgeSpace.guideTitle' }),
+    ).toBeInTheDocument()
+  })
+  it('keeps a dismissed guide closed after hydrating a full page reload', async () => {
+    const first = setup({ knowledgeFsFeatures: { enabled: true } })
+    const guide = await screen.findByRole('dialog', { name: 'knowledgeSpace.guideTitle' })
+    await first.user.click(within(guide).getByRole('button', { name: 'knowledgeSpace.gotIt' }))
+    first.unmount()
+
+    function GuideDismissedProbe() {
+      return (
+        <output aria-label="guide dismissed">{String(useNewKnowledgeGuideDismissedValue())}</output>
+      )
+    }
+    const { queryClient, wrapper: QueryWrapper } = createConsoleQueryWrapper({
+      currentWorkspace: { role: 'owner' },
+      knowledgeFsFeatures: { enabled: true },
+    })
+    const store = createStore()
+    store.set(queryClientAtom, queryClient)
+    const { wrapper: Nuqs } = createNuqsTestWrapper()
+    const app = (
+      <QueryWrapper>
+        <Nuqs>
+          <JotaiProvider store={store}>
+            <List />
+            <GuideDismissedProbe />
+          </JotaiProvider>
+        </Nuqs>
+      </QueryWrapper>
+    )
+    const container = document.createElement('div')
+    document.body.append(container)
+    container.innerHTML = renderToString(app)
+    const root = hydrateRoot(container, app)
+    try {
+      await waitFor(() =>
+        expect(screen.getByRole('status', { name: 'guide dismissed' })).toHaveTextContent('true'),
+      )
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.guideTitle' })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      )
+    } finally {
+      act(() => root.unmount())
+      container.remove()
+    }
+  })
 })

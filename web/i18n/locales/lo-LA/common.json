@@ -168,6 +168,7 @@
   "operation.deSelectAll": "ຍົກເລີກການເລືອກທັງໝົດ",
   "operation.decreaseValue": "ຫຼຸດຄ່າ",
   "operation.delete": "ລຶບ",
+  "operation.deleteConfirmTitle": "ລຶບບໍ?",
   "operation.download": "ດາວໂຫຼດ",
   "operation.downloadFailed": "ດາວໂຫຼດບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່ພາຍຫຼັງ.",
   "operation.downloadSuccess": "ດາວໂຫຼດສຳເລັດແລ້ວ.",

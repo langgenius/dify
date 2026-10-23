@@ -1,6 +1,6 @@
 {
   "name": "@langgenius/difyctl",
-  "version": "1.17.1",
+  "version": "1.18.0",
   "description": "Dify command-line interface",
   "license": "Apache-2.0",
   "files": [

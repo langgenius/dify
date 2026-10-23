@@ -1,6 +1,7 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { Window } from 'happy-dom'
 import type { ReactElement } from 'react'
+import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -815,47 +816,56 @@ describe('HomeTrending', () => {
       fireEvent.pointerUp(slide, { ...touch, clientX, clientY })
     }
 
-    const renderCarousel = () =>
-      render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
+    const renderCarousel = (direction: 'ltr' | 'rtl' = 'ltr') =>
+      render(
+        <DirectionProvider direction={direction}>
+          <div dir={direction}>
+            <HomeTrending banners={banners} isMarketplacePlatform page="plugins" />
+          </div>
+        </DirectionProvider>,
+      )
 
     afterEach(() => {
       vi.restoreAllMocks()
     })
 
-    it('switches in both directions without activating a dragged link or clearing Pause', async () => {
-      const user = userEvent.setup()
-      stubViewport(true)
-      renderCarousel()
+    it.each(['ltr', 'rtl'] as const)(
+      'swipes forward and back without activating a link or clearing Pause in %s',
+      async (direction) => {
+        const user = userEvent.setup()
+        stubViewport(true)
+        renderCarousel(direction)
 
-      swipe(screen.getByRole('group', { name: 'Trending' }), [
-        [480, 160],
-        [300, 166],
-      ])
+        swipe(screen.getByRole('group', { name: 'Trending' }), [
+          [direction === 'ltr' ? 480 : 300, 160],
+          [direction === 'ltr' ? 300 : 480, 166],
+        ])
 
-      expect(fireEvent.click(screen.getByRole('link', { name: 'Dropbox', hidden: true }))).toBe(
-        false,
-      )
-      expect(screen.getByRole('button', { name: 'Dify Updates' })).toHaveAttribute(
-        'aria-current',
-        'true',
-      )
+        expect(fireEvent.click(screen.getByRole('link', { name: 'Dropbox', hidden: true }))).toBe(
+          false,
+        )
+        expect(screen.getByRole('button', { name: 'Dify Updates' })).toHaveAttribute(
+          'aria-current',
+          'true',
+        )
 
-      await user.click(
-        screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }),
-      )
-      swipe(screen.getByRole('group', { name: 'Dify Updates' }), [
-        [260, 160],
-        [440, 166],
-      ])
+        await user.click(
+          screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }),
+        )
+        swipe(screen.getByRole('group', { name: 'Dify Updates' }), [
+          [direction === 'ltr' ? 260 : 440, 160],
+          [direction === 'ltr' ? 440 : 260, 166],
+        ])
 
-      expect(screen.getByRole('button', { name: 'Trending' })).toHaveAttribute(
-        'aria-current',
-        'true',
-      )
-      expect(
-        screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPlay' }),
-      ).toBeInTheDocument()
-    })
+        expect(screen.getByRole('button', { name: 'Trending' })).toHaveAttribute(
+          'aria-current',
+          'true',
+        )
+        expect(
+          screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPlay' }),
+        ).toBeInTheDocument()
+      },
+    )
 
     it('suppresses the trailing click when a horizontal drag is pulled back before release', () => {
       stubViewport(true)
