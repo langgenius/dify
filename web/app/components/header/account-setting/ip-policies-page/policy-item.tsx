@@ -93,7 +93,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
         {/* Extend the name button's hit area across the row without nesting the actions. */}
         <Button
           variant="ghost"
-          className="h-auto w-full min-w-0 justify-start gap-0 overflow-visible rounded-none p-0 text-left after:absolute after:inset-0 hover:bg-transparent"
+          className="h-auto w-full min-w-0 justify-start gap-0 overflow-visible rounded-none p-0 text-start after:absolute after:inset-0 hover:bg-transparent"
           onClick={() => onView(group)}
         >
           <span className={`${policyNameColClassName} system-sm-medium text-text-secondary`}>

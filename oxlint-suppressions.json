@@ -3240,36 +3240,6 @@
       "count": 2
     }
   },
-  "web/app/components/header/account-setting/access-rules-page/permission-set-modal/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/api-based-extension-page/modal.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/api-based-extension-page/selector.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 11
-    }
-  },
-  "web/app/components/header/account-setting/collapse/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/header/account-setting/data-source-page-new/card.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/app/components/header/account-setting/data-source-page-new/configure.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/data-source-page-new/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
@@ -3280,26 +3250,6 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/data-source-page-new/install-from-marketplace.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/header/account-setting/data-source-page-new/item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    }
-  },
-  "web/app/components/header/account-setting/data-source-page-new/plugin-actions.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/ip-policies-page/policy-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
   },
@@ -3316,41 +3266,6 @@
   "web/app/components/header/account-setting/model-provider-page/hooks.ts": {
     "typescript/no-deprecated": {
       "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/add-credential-in-load-balancing.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/authorized/authorized-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/authorized/credential-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/config-model.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/credential-selector.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-auth/hooks/index.ts": {
@@ -3373,102 +3288,14 @@
       "count": 7
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/manage-custom-model-credentials.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-modal/Form.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 9
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-modal/Input.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/model-modal/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    },
     "typescript/no-explicit-any": {
       "count": 5
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/model-settings-trigger.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 15
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-selector/marketplace-section.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-selector/model-selector-trigger.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 8
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-selector/popup-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-selector/popup-layout.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/credential-panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/lazy-custom-model-actions.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown/api-key-section.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown/credits-exhausted-alert.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-list-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
     }
   },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-configs.tsx": {
@@ -3490,24 +3317,6 @@
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/provider-card-actions.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 2
-    },
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/quota-panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/system-quota-card.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/system-model-selector/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/utils.ts": {
@@ -3515,33 +3324,8 @@
       "count": 2
     }
   },
-  "web/app/components/header/account-setting/permission-group-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/permissions-page/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/preference-page/__tests__/index.spec.tsx": {
     "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/preference-page/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/header/account-setting/update-setting-dialog-form.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/workflow-log-archives-page/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
   },

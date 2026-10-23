@@ -222,7 +222,7 @@ const ModelProviderPage = ({
         <div
           className={
             showWarning
-              ? 'relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 pr-1 pl-2.5 shadow-xs backdrop-blur-[5px]'
+              ? 'relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 ps-2.5 pe-1 shadow-xs backdrop-blur-[5px]'
               : 'contents'
           }
         >
