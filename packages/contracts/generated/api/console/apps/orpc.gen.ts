@@ -13,6 +13,7 @@ import {
   zAgentVersionNotFoundError,
   zAppNotFoundError,
   zAppSuggestedQuestionsAfterAnswerDisabledError,
+  zAppTriggerNotFoundError,
   zAppUnavailableError,
   zAudioTooLargeError,
   zBindingFileDownloadUnavailableError,
@@ -51,6 +52,7 @@ import {
   zTracingProviderUnavailableError,
   zUnsupportedAudioTypeError,
   zUnsupportedTracingProviderError,
+  zWebhookTriggerNotFoundError,
   zWorkflowRunNotFoundError,
 } from './zod.gen.ts'
 import {
@@ -2834,7 +2836,10 @@ export const post37 = oc
     }),
   )
   .output(zPostAppsByAppIdTriggerEnableResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_trigger_not_found: { status: 404, data: zAppTriggerNotFoundError },
+  })
 
 export const triggerEnable = {
   post: post37,
@@ -4820,7 +4825,10 @@ export const get84 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowsTriggersWebhookResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    webhook_trigger_not_found: { status: 404, data: zWebhookTriggerNotFoundError },
+  })
 
 export const webhook = {
   get: get84,
