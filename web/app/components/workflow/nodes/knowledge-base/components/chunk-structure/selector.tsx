@@ -48,7 +48,7 @@ const Selector = ({ options, value, onChange, readonly, trigger }: SelectorProps
         </PopoverTrigger>
       )}
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={0}
         alignOffset={-8}
         className="border-none bg-transparent shadow-none"

@@ -29,7 +29,7 @@ from services.app_dsl_service import AppDslService
 from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import Import, ImportStatus
 from services.errors.app import AppDiscoveryNotFoundError, IsDraftWorkflowError, WorkflowNotFoundError
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.controllers.conftest import ControllerTestServices
 
 

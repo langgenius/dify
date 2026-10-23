@@ -71,7 +71,7 @@ const MCPToolItem = ({ tool }: Props) => {
         }
       />
       <PopoverContent
-        placement="left"
+        side="left"
         className="w-90! rounded-xl! border-[0.5px]! border-components-panel-border! px-4! py-3.5! shadow-lg!"
       >
         <div>

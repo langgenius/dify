@@ -9,7 +9,11 @@ import type {
   PickerTriggerProps,
   PickerValueProps,
 } from '../internal/picker-parts'
-import { useControlled } from '@base-ui/utils/useControlled'
+import type {
+  PickerChangeEventDetails,
+  PickerChangeEventReason,
+} from '../internal/use-picker-value'
+import { createChangeEventDetails } from '@base-ui/react/internals/createBaseUIEventDetails'
 import { enUS } from '@daypicker/react/locale/en-US'
 import * as React from 'react'
 import { CalendarPanel } from '../internal/calendar-panel'
@@ -23,6 +27,10 @@ import {
   PickerValue,
   usePickerContext,
 } from '../internal/picker-parts'
+import { usePickerValue } from '../internal/use-picker-value'
+
+type DatePickerChangeEventReason = PickerChangeEventReason
+type DatePickerChangeEventDetails = PickerChangeEventDetails
 
 type DatePickerProps = PickerFieldProps &
   Pick<CalendarPanelProps, 'locale' | 'minDate' | 'maxDate' | 'isDateUnavailable'> & {
@@ -30,7 +38,7 @@ type DatePickerProps = PickerFieldProps &
     value?: string | null
     defaultValue?: string | null
     /** Called on day confirmation, clearing or form reset. */
-    onValueChange?: (value: string | null) => void
+    onValueChange?: (value: string | null, details: DatePickerChangeEventDetails) => void
     labels?: Partial<CalendarPanelLabels>
   }
 type ContextValue = Omit<
@@ -38,7 +46,7 @@ type ContextValue = Omit<
   'value' | 'defaultValue' | 'onValueChange' | 'children'
 > & {
   value: Exclude<DatePickerProps['value'], undefined>
-  commit: NonNullable<DatePickerProps['onValueChange']>
+  commit: (value: string | null, details: DatePickerChangeEventDetails) => boolean
 }
 const Context = React.createContext<ContextValue | null>(null)
 function useContext() {
@@ -64,9 +72,12 @@ function DatePicker({
   children,
   ...props
 }: DatePickerProps) {
-  const [value, setValue] = useControlled({
-    controlled: valueProp,
-    default: defaultValue,
+  const { value, commit } = usePickerValue<string>({
+    value: valueProp,
+    defaultValue,
+    onValueChange,
+    disabled: props.disabled,
+    readOnly: props.readOnly,
     name: 'DatePicker',
   })
   const parsedValue = requireDateValue(value)
@@ -80,13 +91,7 @@ function DatePicker({
       (props.maxDate && value > props.maxDate) ||
       props.isDateUnavailable?.(value)),
   )
-  function commit(next: string | null) {
-    if (props.disabled || props.readOnly) return
-    if (next !== value) {
-      setValue(next)
-      onValueChange?.(next)
-    }
-  }
+
   return (
     <Context.Provider value={{ ...props, value, commit }}>
       <PickerRoot
@@ -109,12 +114,10 @@ function DatePicker({
               }).format(parsedValue)
             : ''
         }
+        value={value}
         serializedValue={value ?? ''}
-        onClear={() => commit(null)}
-        onReset={() => {
-          setValue(defaultValue)
-          if (defaultValue !== value) onValueChange?.(defaultValue)
-        }}
+        onClear={(details) => commit(null, details)}
+        onReset={(details) => commit(defaultValue, details)}
       >
         {children}
       </PickerRoot>
@@ -140,16 +143,22 @@ function DatePickerContent(props: DatePickerContentProps) {
 }
 function Session() {
   const { value, commit, locale = enUS, minDate, maxDate, isDateUnavailable, labels } = useContext()
-  const { close } = usePickerContext()
+  const { close, canEdit } = usePickerContext()
   const [displayMonth, setDisplayMonth] = React.useState(() =>
     getInitialMonth(value ?? formatDateValue(new Date()), minDate, maxDate),
   )
   return (
     <CalendarPanel
       value={value}
-      onSelect={(next) => {
-        commit(next)
-        close()
+      onSelect={(next, event) => {
+        if (
+          canEdit() &&
+          commit(
+            next,
+            createChangeEventDetails('item-press', event.nativeEvent, event.currentTarget),
+          )
+        )
+          close()
       }}
       displayMonth={displayMonth}
       onDisplayMonthChange={setDisplayMonth}
@@ -171,6 +180,8 @@ export {
   DatePickerValue,
 }
 export type {
+  DatePickerChangeEventDetails,
+  DatePickerChangeEventReason,
   DatePickerClearProps,
   DatePickerContentProps,
   DatePickerLabelProps,
