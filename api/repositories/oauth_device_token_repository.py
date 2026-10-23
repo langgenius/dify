@@ -1,6 +1,9 @@
 """SQLAlchemy persistence adapter for OAuth device tokens and sessions."""
 
+from __future__ import annotations
+
 import logging
+from dataclasses import dataclass, fields
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select, update
@@ -19,106 +22,123 @@ from services.oauth_device_contracts import (
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True, slots=True)
+class _TokenRowValues:
+    """The columns a rotation overwrites when it reuses a device's row."""
+
+    token_hash: str | None
+    prefix: str
+    account_id: str | None
+    expires_at: datetime
+    revoked_at: datetime | None
+    last_used_at: datetime | None
+    created_at: datetime
+
+    @classmethod
+    def of(cls, record: OAuthAccessToken) -> _TokenRowValues:
+        return cls(**{value_field.name: getattr(record, value_field.name) for value_field in fields(cls)})
+
+    def apply_to(self, record: OAuthAccessToken) -> None:
+        for value_field in fields(self):
+            setattr(record, value_field.name, getattr(self, value_field.name))
+
+
 class SQLAlchemyOAuthDeviceTokenRepository:
     def __init__(self, *, session_factory: sessionmaker[Session], redis: RedisClientWrapper) -> None:
         self._session_factory = session_factory
         self._redis = redis
 
     def rotate_token(self, token: OAuthDeviceTokenWrite) -> OAuthDeviceTokenRotation:
-        old_hash: str | None = None
-        replaced_token_id: str | None = None
+        # MySQL drops the index's WHERE revoked_at IS NULL, so a revoked row on
+        # the same device key would collide with a new insert. Reuse the row.
+        previous: _TokenRowValues | None = None
         with self._session_factory() as session:
-            prior = session.execute(
-                select(OAuthAccessToken.id, OAuthAccessToken.token_hash)
+            record = session.scalar(
+                select(OAuthAccessToken)
                 .where(
                     OAuthAccessToken.subject_email == token.subject_email,
                     OAuthAccessToken.subject_issuer == token.subject_issuer,
                     OAuthAccessToken.client_id == token.client_id,
                     OAuthAccessToken.device_label == token.device_label,
-                    OAuthAccessToken.revoked_at.is_(None),
                 )
+                .order_by(OAuthAccessToken.revoked_at.is_not(None))
                 .limit(1)
                 .with_for_update()
-            ).first()
-            if prior is not None:
-                old_hash = prior.token_hash
-                replaced_token_id = str(prior.id)
-                session.execute(
-                    update(OAuthAccessToken).where(OAuthAccessToken.id == prior.id).values(revoked_at=datetime.now(UTC))
-                )
-
-            record = OAuthAccessToken(
-                subject_email=token.subject_email,
-                subject_issuer=token.subject_issuer,
-                account_id=token.account_id,
-                client_id=token.client_id,
-                device_label=token.device_label,
-                prefix=token.prefix,
-                token_hash=token.token_hash,
-                expires_at=token.expires_at,
             )
-            session.add(record)
+            if record is None:
+                record = OAuthAccessToken(
+                    subject_email=token.subject_email,
+                    subject_issuer=token.subject_issuer,
+                    account_id=token.account_id,
+                    client_id=token.client_id,
+                    device_label=token.device_label,
+                    prefix=token.prefix,
+                    token_hash=token.token_hash,
+                    expires_at=token.expires_at,
+                )
+                session.add(record)
+            else:
+                previous = _TokenRowValues.of(record)
+                _TokenRowValues(
+                    token_hash=token.token_hash,
+                    prefix=token.prefix,
+                    account_id=token.account_id,
+                    expires_at=token.expires_at,
+                    revoked_at=None,
+                    last_used_at=None,
+                    created_at=datetime.now(UTC),
+                ).apply_to(record)
             session.flush()
             token_id = record.id
             session.commit()
 
+        replaced = previous if previous is not None and previous.revoked_at is None else None
         rotation = OAuthDeviceTokenRotation(
             token_id=token_id,
-            replaced_token_id=replaced_token_id,
-            replaced_token_hash=old_hash,
+            replaced_token_id=token_id if replaced is not None else None,
+            replaced_token_hash=replaced.token_hash if replaced is not None else None,
         )
-        if old_hash:
+        if rotation.replaced_token_hash:
             try:
-                self._redis.delete(TOKEN_CACHE_KEY_FMT.format(hash=old_hash))
+                self._redis.delete(TOKEN_CACHE_KEY_FMT.format(hash=rotation.replaced_token_hash))
             except Exception:
-                self.rollback_rotation(rotation)
+                self._rollback_rotation(rotation, new_hash=token.token_hash, previous=previous)
                 raise
         return rotation
 
-    def rollback_rotation(self, rotation: OAuthDeviceTokenRotation) -> bool:
-        new_hash: str | None = None
+    def _rollback_rotation(
+        self,
+        rotation: OAuthDeviceTokenRotation,
+        *,
+        new_hash: str,
+        previous: _TokenRowValues | None,
+    ) -> None:
         with self._session_factory() as session:
-            current = session.scalar(
+            record = session.scalar(
                 select(OAuthAccessToken)
                 .where(
                     OAuthAccessToken.id == rotation.token_id,
-                    OAuthAccessToken.revoked_at.is_(None),
+                    OAuthAccessToken.token_hash == new_hash,
                 )
                 .with_for_update()
             )
-            # A later successful rotation already superseded this token. In
-            # that case restoring its predecessor would create two live rows.
-            if current is None:
-                return False
-
-            new_hash = current.token_hash
-            session.delete(current)
-            session.flush()
-            if rotation.replaced_token_id is not None:
-                predecessor = session.scalar(
-                    select(OAuthAccessToken)
-                    .where(
-                        OAuthAccessToken.id == rotation.replaced_token_id,
-                        OAuthAccessToken.revoked_at.is_not(None),
-                    )
-                    .with_for_update()
-                )
-                if predecessor is None:
-                    raise RuntimeError("OAuth token rotation predecessor could not be restored")
-                predecessor.revoked_at = None
-            session.commit()
+            # A later rotation already replaced this token; leave its row alone.
+            if record is not None:
+                if previous is None:
+                    session.delete(record)
+                else:
+                    previous.apply_to(record)
+                session.commit()
 
         cache_keys = [
             TOKEN_CACHE_KEY_FMT.format(hash=token_hash)
             for token_hash in (new_hash, rotation.replaced_token_hash)
             if token_hash
         ]
-        if cache_keys:
-            try:
-                self._redis.delete(*cache_keys)
-            except Exception:
-                logger.exception("failed to invalidate rolled-back OAuth token caches")
-        return True
+        try:
+            self._redis.delete(*cache_keys)
+        except Exception:
+            logger.exception("failed to invalidate rolled-back OAuth token caches")
 
     def list_account_sessions(
         self,
