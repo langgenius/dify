@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.models import Actor
+from libs.datetime_utils import ensure_naive_utc
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession
 from models.dify_builder_native_tests import (
     NativeEffectGrant,
@@ -394,6 +395,8 @@ class NativeTestApiService:
             if cancellation is None and state.state == "waiting"
             for pending_id in state.pending_ids
         }
+        now = utc_now()
+        scope_expired = scope is not None and ensure_naive_utc(scope.expires_at) <= ensure_naive_utc(now)
         pending = []
         for row in pending_rows:
             if row.id not in active_pending:
@@ -416,8 +419,8 @@ class NativeTestApiService:
                     raise BuilderExecutionPolicyError("native_disclosure_mismatch")
                 if item.approval_limits != self.pending.load_terms(resolved=resolved, for_projection=True):
                     raise BuilderExecutionPolicyError("native_disclosure_mismatch")
-                projected = project_pending_decision(item, grant=grants.get(row.owner_version), now=utc_now())
-                if scope is not None and scope.expires_at <= utc_now() and projected.decision_status != "denied":
+                projected = project_pending_decision(item, grant=grants.get(row.owner_version), now=now)
+                if scope_expired and projected.decision_status != "denied":
                     projected = projected.model_copy(update={"decision_status": "expired"})
                 pending.append(projected)
             else:
@@ -454,7 +457,7 @@ class NativeTestApiService:
                 outcome = "succeeded"
         can_resume, blocked = False, "not_waiting"
         if root.state == "waiting" and cancellation is None:
-            if scope is not None and scope.expires_at <= utc_now():
+            if scope_expired:
                 blocked = "native_expired"
             elif any(item.wait_reason != "approval" for item in pending):
                 blocked = "native_resolution_unavailable"

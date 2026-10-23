@@ -1654,6 +1654,7 @@ jobs:
                                                                               'test_native_change_notification_follows_commit_and_never_rollback': 2,
                                                                               'test_native_idle_stream_waits_for_bus_change_and_hydrates_terminal_projection': 1,
                                                                               'test_native_snapshots_never_call_execution_recovery': 1,
+                                                                              'test_native_snapshot_scope_expiry_preserves_utc_microsecond_boundary': 8,
                                                                               'test_native_stream_continues_after_command_finished': 1,
                                                                               'test_native_stream_does_not_miss_creation_after_initial_snapshot_or_delayed_result': 1,
                                                                               'test_notification_failure_does_not_fail_or_replay_committed_execution': 1,
