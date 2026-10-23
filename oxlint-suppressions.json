@@ -3250,11 +3250,6 @@
       "count": 3
     }
   },
-  "web/app/components/header/account-dropdown/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-dropdown/workplace-selector/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -3366,11 +3361,6 @@
   "web/app/components/header/account-setting/model-provider-page/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/install-from-marketplace.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-auth/add-credential-in-load-balancing.tsx": {

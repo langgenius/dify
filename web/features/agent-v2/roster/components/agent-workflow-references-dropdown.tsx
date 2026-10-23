@@ -71,7 +71,7 @@ export function AgentWorkflowReferencesDropdown({
                 <span className="min-w-0 flex-1 truncate">{reference.app_name}</span>
                 <span
                   aria-hidden
-                  className="i-ri-external-link-line size-3 shrink-0 text-text-quaternary group-data-highlighted:text-text-secondary"
+                  className="i-ri-external-link-line size-3 shrink-0 text-text-quaternary group-data-highlighted:text-text-secondary [&:dir(rtl)]:-scale-x-100"
                 />
               </DropdownMenuLinkItem>
             )
