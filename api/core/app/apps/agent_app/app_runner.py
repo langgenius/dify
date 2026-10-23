@@ -12,10 +12,13 @@ import json
 import logging
 import time
 from collections.abc import Mapping
+from contextlib import suppress
 from decimal import Decimal
 from typing import Any, Literal
 
 from pydantic import JsonValue
+from sqlalchemy import delete, insert, update
+from sqlalchemy import inspect as sa_inspect
 
 from clients.agent_backend import (
     AgentBackendAgentMessageDeltaInternalEvent,
@@ -45,6 +48,7 @@ from core.app.entities.app_invoke_entities import DifyRunContext
 from core.app.entities.queue_entities import (
     QueueAgentMessageEvent,
     QueueAgentThoughtEvent,
+    QueueAgentThoughtSnapshot,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
@@ -65,6 +69,7 @@ from graphon.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
+from libs.datetime_utils import naive_utc_now
 from models.agent import AgentConfigVersionKind
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CreatorUserRole
@@ -250,12 +255,25 @@ class _TextDeltaDebouncer:
 
 
 class _AgentProcessRecorder:
-    """Persist Agent v2 process streams through the legacy thought model.
+    """Record Agent v2 process streams through the legacy thought model.
 
     Thinking and answer rows expose snapshot updates for contiguous model-text
     segments. Tool events close currently open text segments so later model text
     starts a fresh row instead of replaying content that was already streamed
     before the tool.
+
+    Rows live in memory as transient (never session-attached) models and reach
+    clients as inline thought snapshots. Structural changes publish
+    immediately; appended thinking/tool-argument text publishes at most once per
+    ``stream_interval_seconds`` (``publish_pending()`` drains it). Answer text
+    reaches clients only through agent-message deltas, so answer-only changes
+    are never published as thought snapshots.
+
+    Database writes are decoupled from publishing: changed rows are written in
+    one bulk transaction at most once per ``persist_interval_seconds`` so message
+    reads stay roughly current, and the owner must call ``persist()`` when the
+    turn ends to write the remainder. A failed write keeps its rows pending and
+    is retried by the next write.
     """
 
     def __init__(
@@ -264,10 +282,21 @@ class _AgentProcessRecorder:
         dify_context: DifyRunContext,
         message_id: str,
         queue_manager: AppQueueManager,
+        stream_interval_seconds: float,
+        persist_interval_seconds: float,
     ) -> None:
         self._dify_context = dify_context
         self._message_id = message_id
         self._queue_manager = queue_manager
+        self._stream_interval_seconds = stream_interval_seconds
+        self._persist_interval_seconds = persist_interval_seconds
+        self._rows: dict[str, MessageAgentThought] = {}
+        self._unpublished_ids: dict[str, None] = {}
+        self._unpublished_since: float | None = None
+        self._inserted_ids: set[str] = set()
+        self._unpersisted_ids: dict[str, None] = {}
+        self._deleted_ids: set[str] = set()
+        self._unpersisted_since: float | None = None
         self._next_position = 1
         self._thinking_by_index: dict[int, str] = {}
         self._answer_thought_id: str | None = None
@@ -334,13 +363,52 @@ class _AgentProcessRecorder:
         if self._answer_thought_id is None:
             self._answer_thought_id = self._create_thought(answer=content_delta)
             return
-        self._update_thought(self._answer_thought_id, answer_delta=content_delta)
+        self._append_thought_text(self._answer_thought_id, answer=content_delta)
+
+    def publish_pending(self) -> None:
+        """Publish snapshots for rows whose client-visible fields changed since the last publish."""
+        unpublished_ids = self._unpublished_ids
+        self._unpublished_ids = {}
+        self._unpublished_since = None
+        for thought_id in unpublished_ids:
+            self._publish_thought(thought_id)
+
+    def persist(self) -> None:
+        """Write all unpersisted changes in one transaction.
+
+        Rows stay pending if the commit fails; the caller owns rollback.
+        """
+        inserts: list[dict[str, Any]] = []
+        updates: list[dict[str, Any]] = []
+        for thought_id in self._unpersisted_ids:
+            row = self._rows.get(thought_id)
+            if row is None:
+                continue
+            (updates if thought_id in self._inserted_ids else inserts).append(_thought_values(row))
+        deleted_ids = self._deleted_ids & self._inserted_ids
+        if not inserts and not updates and not deleted_ids:
+            self._unpersisted_ids = {}
+            self._deleted_ids = set()
+            return
+
+        if inserts:
+            db.session.execute(insert(MessageAgentThought), inserts)
+        if updates:
+            db.session.execute(update(MessageAgentThought), updates)
+        if deleted_ids:
+            db.session.execute(delete(MessageAgentThought).where(MessageAgentThought.id.in_(deleted_ids)))
+        db.session.commit()
+
+        self._inserted_ids.update(values["id"] for values in inserts)
+        self._inserted_ids.difference_update(deleted_ids)
+        self._unpersisted_ids = {}
+        self._deleted_ids = set()
 
     def trim_answer_suffix(self, final_answer: str) -> None:
         if not final_answer or self._answer_thought_id is None:
             return
 
-        row = db.session.get(MessageAgentThought, self._answer_thought_id)
+        row = self._rows.get(self._answer_thought_id)
         if row is None:
             return
 
@@ -351,15 +419,11 @@ class _AgentProcessRecorder:
 
         row.answer = answer[:-overlap]
         if _is_empty_answer_only_thought(row):
-            db.session.delete(row)
+            del self._rows[self._answer_thought_id]
+            self._deleted_ids.add(self._answer_thought_id)
             self._answer_thought_id = None
-            db.session.commit()
             return
-
-        db.session.commit()
-        self._queue_manager.publish(
-            QueueAgentThoughtEvent(agent_thought_id=self._answer_thought_id), PublishFrom.APPLICATION_MANAGER
-        )
+        self._unpersisted_ids[self._answer_thought_id] = None
 
     def _handle_tool_call_event(self, data: dict[str, Any]) -> None:
         part = data.get("part")
@@ -387,7 +451,7 @@ class _AgentProcessRecorder:
             thought_id = self._create_thought(thought=content_delta)
             self._thinking_by_index[index] = thought_id
             return
-        self._update_thought(thought_id, thought_delta=content_delta)
+        self._append_thought_text(thought_id, thought=content_delta)
 
     def _record_tool_call_delta(self, index: int, delta: dict[str, Any]) -> None:
         self._close_thinking_segments()
@@ -402,11 +466,11 @@ class _AgentProcessRecorder:
             )
             return
 
-        self._update_thought(
-            thought_id,
-            tool=tool_name,
-            tool_input_delta=_json_or_text(args_delta),
-        )
+        if tool_name:
+            self._update_thought(thought_id, tool=tool_name)
+        tool_input_delta = _json_or_text(args_delta)
+        if tool_input_delta:
+            self._append_thought_text(thought_id, tool_input=tool_input_delta)
         self._remember_tool_thought(index=index, tool_call_id=tool_call_id, tool_name=tool_name, thought_id=thought_id)
 
     def _record_tool_call_part(self, index: int, part: dict[str, Any]) -> None:
@@ -519,47 +583,102 @@ class _AgentProcessRecorder:
             created_by_role=self._created_by_role(),
             created_by=self._dify_context.user_id,
         )
+        row.created_at = naive_utc_now()
         self._next_position += 1
-        db.session.add(row)
-        db.session.commit()
         thought_id = str(row.id)
-        self._queue_manager.publish(
-            QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
-        )
+        self._rows[thought_id] = row
+        # Pending rows were queued earlier, so their snapshots still precede this new row.
+        self._record_change(thought_id, visible=True, publish_now=True)
         return thought_id
+
+    def _append_thought_text(
+        self,
+        thought_id: str,
+        *,
+        thought: str = "",
+        tool_input: str = "",
+        answer: str = "",
+    ) -> None:
+        row = self._rows.get(thought_id)
+        if row is None:
+            return
+        if thought:
+            row.thought = f"{row.thought or ''}{thought}"
+        if tool_input:
+            row.tool_input = f"{row.tool_input or ''}{tool_input}"
+        if answer:
+            row.answer = f"{row.answer or ''}{answer}"
+        self._record_change(thought_id, visible=bool(thought or tool_input), publish_now=False)
 
     def _update_thought(
         self,
         thought_id: str,
         *,
-        thought_delta: str | None = None,
         tool: str | None = None,
         tool_input: str | None = None,
-        tool_input_delta: str | None = None,
         observation: str | None = None,
-        answer_delta: str | None = None,
     ) -> None:
-        row = db.session.get(MessageAgentThought, thought_id)
+        row = self._rows.get(thought_id)
         if row is None:
             return
 
-        if thought_delta:
-            row.thought = f"{row.thought or ''}{thought_delta}"
         if tool:
             row.tool = tool
             row.tool_labels_str = _tool_labels(tool)
         if tool_input is not None:
             row.tool_input = tool_input
-        if tool_input_delta:
-            row.tool_input = f"{row.tool_input or ''}{tool_input_delta}"
         if observation is not None:
             row.observation = observation
-        if answer_delta:
-            row.answer = f"{row.answer or ''}{answer_delta}"
 
-        db.session.commit()
+        self._record_change(thought_id, visible=True, publish_now=True)
+
+    def _record_change(self, thought_id: str, *, visible: bool, publish_now: bool) -> None:
+        """Queue a row change, then publish and persist whichever is due (publish first)."""
+        self._unpersisted_ids[thought_id] = None
+        if visible:
+            self._unpublished_ids[thought_id] = None
+
+        now = time.monotonic() if self._stream_interval_seconds > 0 or self._persist_interval_seconds > 0 else 0.0
+        if self._unpublished_ids:
+            if self._unpublished_since is None:
+                self._unpublished_since = now
+            if publish_now or now - self._unpublished_since >= self._stream_interval_seconds:
+                self.publish_pending()
+
+        if self._unpersisted_since is None:
+            self._unpersisted_since = now
+        if now - self._unpersisted_since >= self._persist_interval_seconds:
+            self._persist_periodically(now)
+
+    def _persist_periodically(self, now: float) -> None:
+        try:
+            self.persist()
+        except Exception:
+            db.session.rollback()
+            logger.warning(
+                "Failed to persist Agent App thoughts; retrying later: message_id=%s", self._message_id, exc_info=True
+            )
+            self._unpersisted_since = now
+            return
+        self._unpersisted_since = None
+
+    def _publish_thought(self, thought_id: str) -> None:
+        row = self._rows.get(thought_id)
+        if row is None:
+            return
         self._queue_manager.publish(
-            QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
+            QueueAgentThoughtEvent(
+                agent_thought_id=thought_id,
+                snapshot=QueueAgentThoughtSnapshot(
+                    position=row.position,
+                    thought=row.thought or "",
+                    observation=row.observation or "",
+                    tool=row.tool or "",
+                    tool_labels=row.tool_labels,
+                    tool_input=row.tool_input or "",
+                ),
+            ),
+            PublishFrom.APPLICATION_MANAGER,
         )
 
     def _created_by_role(self) -> CreatorUserRole:
@@ -593,6 +712,11 @@ def _json_or_text(value: Any) -> str | None:
         return str(value)
 
 
+def _thought_values(row: MessageAgentThought) -> dict[str, Any]:
+    """Column values of a transient thought row for ORM bulk insert/update."""
+    return {attr.key: getattr(row, attr.key) for attr in sa_inspect(MessageAgentThought).column_attrs}
+
+
 def _tool_labels(tool: str | None) -> str:
     if not tool:
         return "{}"
@@ -622,12 +746,16 @@ class AgentAppRunner:
         event_adapter: AgentBackendRunEventAdapter,
         session_store: AgentAppWorkspaceStore,
         text_delta_debounce_seconds: float,
+        thought_stream_interval_seconds: float,
+        thought_persist_interval_seconds: float,
     ) -> None:
         self._request_builder = request_builder
         self._agent_backend_client = agent_backend_client
         self._event_adapter = event_adapter
         self._session_store = session_store
         self._text_delta_debounce_seconds = text_delta_debounce_seconds
+        self._thought_stream_interval_seconds = thought_stream_interval_seconds
+        self._thought_persist_interval_seconds = thought_persist_interval_seconds
 
     def run(
         self,
@@ -676,16 +804,30 @@ class AgentAppRunner:
         )
 
         create_response = self._agent_backend_client.create_run(runtime.request)
-        terminal, process_recorder = self._consume_stream(
-            create_response.run_id,
+        process_recorder = _AgentProcessRecorder(
             dify_context=dify_context,
             message_id=message_id,
             queue_manager=queue_manager,
-            model_name=model_name,
-            query=query,
-            session_scope=scope,
-            binding_id=runtime.binding_id,
+            stream_interval_seconds=self._thought_stream_interval_seconds,
+            persist_interval_seconds=self._thought_persist_interval_seconds,
         )
+        try:
+            terminal = self._consume_stream(
+                create_response.run_id,
+                dify_context=dify_context,
+                message_id=message_id,
+                queue_manager=queue_manager,
+                model_name=model_name,
+                query=query,
+                session_scope=scope,
+                binding_id=runtime.binding_id,
+                process_recorder=process_recorder,
+            )
+            if isinstance(terminal, AgentBackendRunSucceededInternalEvent):
+                process_recorder.trim_answer_suffix(self._terminal_output_to_answer(terminal.output))
+        finally:
+            # Write the remaining thought changes before any terminal answer or error.
+            self._persist_process(process_recorder, message_id=message_id)
 
         terminal_usage = None
         if isinstance(
@@ -718,16 +860,6 @@ class AgentAppRunner:
             raise AgentBackendError("Agent backend run did not complete successfully.")
 
         answer = self._terminal_output_to_answer(terminal.output)
-        try:
-            process_recorder.trim_answer_suffix(answer)
-        except Exception:
-            db.session.rollback()
-            logger.warning(
-                "Failed to trim Agent App answer text: run_id=%s message_id=%s",
-                terminal.run_id,
-                message_id,
-                exc_info=True,
-            )
         try:
             self._publish_terminal_answer(
                 queue_manager=queue_manager,
@@ -838,24 +970,27 @@ class AgentAppRunner:
         query: str | None,
         session_scope: AgentAppSessionScope,
         binding_id: str,
+        process_recorder: _AgentProcessRecorder,
+    ) -> (
+        AgentBackendRunSucceededInternalEvent
+        | AgentBackendRunFailedInternalEvent
+        | AgentBackendRunCancelledInternalEvent
+        | None
     ):
-        """Consume backend events while preserving raw recorder granularity."""
+        """Consume backend events while preserving raw recorder granularity.
+
+        The caller owns persisting ``process_recorder`` after this returns or raises.
+        """
         terminal = None
-        process_recorder = _AgentProcessRecorder(
-            dify_context=dify_context,
-            message_id=message_id,
-            queue_manager=queue_manager,
-        )
         text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
         last_event_id: str | None = None
 
-        def persist_answer_text(content_delta: str) -> None:
+        def record_answer_text(content_delta: str) -> None:
             try:
                 process_recorder.append_answer_text(content_delta)
             except Exception:
-                db.session.rollback()
                 logger.warning(
-                    "Failed to persist Agent App answer text: run_id=%s message_id=%s",
+                    "Failed to record Agent App answer text: run_id=%s message_id=%s",
                     run_id,
                     message_id,
                     exc_info=True,
@@ -870,7 +1005,13 @@ class AgentAppRunner:
         def flush_pending_agent_message_text() -> None:
             pending_text = text_delta_debouncer.flush()
             if pending_text:
-                persist_answer_text(pending_text)
+                record_answer_text(pending_text)
+
+        def flush_pending_text() -> None:
+            flush_pending_agent_message_text()
+            # Callers own stop handling; recorded rows are persisted regardless.
+            with suppress(GenerateTaskStoppedError):
+                process_recorder.publish_pending()
 
         try:
             public_events = self._agent_backend_client.stream_events(
@@ -895,7 +1036,7 @@ class AgentAppRunner:
                 if terminal is not None:
                     break
                 if queue_manager.is_stopped():
-                    flush_pending_agent_message_text()
+                    flush_pending_text()
                     self._cancel_run(
                         run_id,
                         after=last_event_id,
@@ -908,7 +1049,7 @@ class AgentAppRunner:
                     raise GenerateTaskStoppedError()
                 for internal_event in internal_events:
                     if queue_manager.is_stopped():
-                        flush_pending_agent_message_text()
+                        flush_pending_text()
                         self._cancel_run(
                             run_id,
                             after=last_event_id,
@@ -927,7 +1068,7 @@ class AgentAppRunner:
                         if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
                             debounced_delta = text_delta_debouncer.push(internal_event.delta)
                             if debounced_delta:
-                                persist_answer_text(debounced_delta)
+                                record_answer_text(debounced_delta)
                             continue
 
                         if isinstance(internal_event, AgentBackendStreamInternalEvent):
@@ -935,9 +1076,8 @@ class AgentAppRunner:
                             try:
                                 process_recorder.handle_stream_event(internal_event)
                             except Exception:
-                                db.session.rollback()
                                 logger.warning(
-                                    "Failed to persist Agent App process event: run_id=%s message_id=%s event_kind=%s",
+                                    "Failed to record Agent App process event: run_id=%s message_id=%s event_kind=%s",
                                     run_id,
                                     message_id,
                                     internal_event.event_kind,
@@ -948,7 +1088,7 @@ class AgentAppRunner:
         except GenerateTaskStoppedError:
             raise
         except Exception as error:
-            flush_pending_agent_message_text()
+            flush_pending_text()
             self._cancel_run(
                 run_id,
                 after=last_event_id,
@@ -962,7 +1102,7 @@ class AgentAppRunner:
                 raise GenerateTaskStoppedError() from error
             raise
         try:
-            flush_pending_agent_message_text()
+            flush_pending_text()
         except GenerateTaskStoppedError:
             if terminal is not None:
                 self._finish_stopped_terminal(
@@ -993,7 +1133,15 @@ class AgentAppRunner:
                     queue_manager=queue_manager,
                 )
             raise GenerateTaskStoppedError()
-        return terminal, process_recorder
+        return terminal
+
+    @staticmethod
+    def _persist_process(process_recorder: _AgentProcessRecorder, *, message_id: str) -> None:
+        try:
+            process_recorder.persist()
+        except Exception:
+            db.session.rollback()
+            logger.warning("Failed to persist Agent App process thoughts: message_id=%s", message_id, exc_info=True)
 
     def _cancel_run(
         self,
