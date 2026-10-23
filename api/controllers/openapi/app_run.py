@@ -86,7 +86,7 @@ from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
 from services.errors.llm import InvokeRateLimitError
-from services.workflow.graph_check import GRAPH_MODES
+from services.workflow.graph_check import GRAPH_MODES, MESSAGE_MODES
 
 logger = logging.getLogger(__name__)
 
@@ -486,7 +486,7 @@ class AppTaskStopApi(Resource):
         returns=(200, TaskStopResponse, "Task stopped"),
     )
     def post(self, ctx: Context, app_id: str, task_id: str):
-        _require_mode(ctx.app, AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION)
+        _require_mode(ctx.app, *MESSAGE_MODES)
         if not application_services().app_tasks.stop_message_task(
             task_id=task_id, caller_role=ctx.subject.caller_role, caller_id=ctx.caller.id
         ):

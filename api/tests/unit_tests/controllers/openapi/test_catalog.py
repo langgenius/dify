@@ -152,8 +152,8 @@ def test_declared_effects_are_exactly_the_reviewed_overrides(app: Flask) -> None
 
 def test_declared_effects_reach_the_catalog_rows(ops: dict[str, CatalogOp]) -> None:
     for op, effect in _DECLARED_EFFECTS.items():
-        if op in ops:
-            assert ops[op]["effect"] == effect.value
+        assert op in ops, f"{op} missing from the catalog"
+        assert ops[op]["effect"] == effect.value
     assert ops["stop.run"]["effect"] == "destructive"
     assert ops["check.console_app.dsl"]["effect"] == "read"
 

@@ -27,6 +27,7 @@ from services.workflow_variable_reference_validator import SOURCE_HANDLE, branch
 logger = logging.getLogger(__name__)
 
 GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
+MESSAGE_MODES: Final = frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION})
 CONTAINER_NODE_TYPES: Final = frozenset({BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP})
 _CANVAS_NOTE_TYPE: Final = "custom-note"
 

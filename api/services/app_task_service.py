@@ -206,7 +206,7 @@ class AppTaskService:
         run_id: str,
         app_mode: AppMode,
         owner: tuple[CreatorUserRole, str] | None,
-        redis: RedisClientWrapper | None = None,
+        redis: RedisClientWrapper,
     ) -> WorkflowStopOutcome:
         repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker(bind=db.engine))
         run = repository.get_workflow_run_by_id_and_tenant_id(tenant_id, run_id)
@@ -218,18 +218,26 @@ class AppTaskService:
             return WorkflowStopOutcome.NOT_FOUND
         if run.task_id is None:
             return WorkflowStopOutcome.NOT_STOPPABLE
-        stopped = AppTaskService.stop_workflow_task(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            task_id=run.task_id,
-            app_mode=app_mode,
-            owner=owner,
-            redis=redis,
-            recover_legacy=False,
+        task_id = AppTaskService._parse_task_id(run.task_id)
+        try:
+            paused_run = repository.stop_paused_workflow_task(
+                tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner
+            )
+        except WorkflowTaskOwnerMismatchError:
+            return WorkflowStopOutcome.NOT_STOPPABLE
+        stopped = AppTaskService._finish_workflow_stop(
+            run=paused_run, tenant_id=tenant_id, app_id=app_id, task_id=task_id, app_mode=app_mode, redis=redis
         )
         if not stopped:
             return WorkflowStopOutcome.NOT_STOPPABLE
         return WorkflowStopOutcome.STOPPED
+
+    @staticmethod
+    def _parse_task_id(task_id: str) -> str:
+        try:
+            return str(UUID(task_id))
+        except ValueError as exc:
+            raise ValueError("Invalid task ID: expected a UUID") from exc
 
     @staticmethod
     def stop_workflow_task(
@@ -240,24 +248,18 @@ class AppTaskService:
         app_mode: AppMode,
         owner: tuple[CreatorUserRole, str] | None,
         redis: RedisClientWrapper | None = None,
-        recover_legacy: bool = True,
     ) -> bool:
         """Stop a persisted pause, or signal its currently executing attempt.
 
         A paused task has no engine consuming Redis commands. Its durable
         transition and form invalidation must complete before acknowledging stop.
         Omitted Redis uses the compatibility transport; injected callers supply theirs.
-        ``recover_legacy=False`` skips the legacy pause scan, for callers whose run
-        already carries its task ID.
         """
-        try:
-            task_id = str(UUID(task_id))
-        except ValueError as exc:
-            raise ValueError("Invalid task ID: expected a UUID") from exc
+        task_id = AppTaskService._parse_task_id(task_id)
         repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker(bind=db.engine))
         try:
             run = repository.stop_paused_workflow_task(tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner)
-            if run is None and recover_legacy:
+            if run is None:
                 AppTaskService._recover_legacy_workflow_task_id(
                     tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner, repository=repository
                 )
@@ -266,6 +268,20 @@ class AppTaskService:
                 )
         except WorkflowTaskOwnerMismatchError:
             return False
+        return AppTaskService._finish_workflow_stop(
+            run=run, tenant_id=tenant_id, app_id=app_id, task_id=task_id, app_mode=app_mode, redis=redis
+        )
+
+    @staticmethod
+    def _finish_workflow_stop(
+        *,
+        run: WorkflowRun | None,
+        tenant_id: str,
+        app_id: str,
+        task_id: str,
+        app_mode: AppMode,
+        redis: RedisClientWrapper | None,
+    ) -> bool:
         if run is not None and run.status == WorkflowExecutionStatus.RUNNING:
             # Resume has claimed the pause, but may not have opened its queue.
             # The repository has already checked the complete app/user owner.

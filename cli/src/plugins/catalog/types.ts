@@ -23,7 +23,7 @@ export type CatalogDoc = Readonly<{ ops: Readonly<Record<string, CatalogOp>> }>
 
 const EXAMPLE_SCHEMA = z.object({ title: z.string(), input: z.record(z.string(), z.unknown()) })
 
-// kind, effect and bind values are unrestricted here: unknown kinds/binds are a forward-compat
+// kind, effect and bind values are unrestricted here: unknown kinds, binds and effects are a forward-compat
 // contract, not a parse error.
 const CATALOG_OP_SCHEMA = z
   .object({
