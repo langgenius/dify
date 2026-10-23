@@ -34,6 +34,9 @@ See Base UI's [styling] and [composition] guides for the upstream contracts.
 
 ## Tailwind CSS v4
 
+When merging default classes with an incoming `className`, use the local `cn(...)` helper and put
+defaults first so callers can override them. Resolve state callbacks before merging their classes.
+
 Import Tailwind from the consumer's root stylesheet as described in the [Tailwind CSS v4 upgrade
 guide], then import the Dify UI CSS entry:
 
