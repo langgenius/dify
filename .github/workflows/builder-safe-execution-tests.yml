@@ -222,6 +222,10 @@ jobs:
                   "test_race_tables_are_built_by_the_actual_migrations": 1,
                   "test_real_postgres_consent_migration_upgrade_downgrade": 1,
               },
+              "test_builder_agent_terminal_scan": {
+                  "test_terminal_scan_accepts_native_uuid_test_input_ids": 1,
+                  "test_terminal_scan_ignores_non_uuid_builder_input_references": 1,
+              },
               "test_builder_confirmed_tool_native": {
                   "test_confirmed_native_run_reads_once_without_refresh": 1,
                   "test_confirmed_native_run_refreshes_once_then_reads": 1,
@@ -330,6 +334,7 @@ jobs:
                   "api/tests/test_containers_integration_tests/core/workflow/test_builder_real_call_consent_persistence.py",
                   "api/tests/test_containers_integration_tests/services/test_workflow_empty_draft.py",
                   "api/tests/test_containers_integration_tests/core/workflow/test_builder_confirmed_tool_native.py",
+                  "api/tests/test_containers_integration_tests/core/workflow/test_builder_agent_terminal_scan.py",
                   f"--junitxml={JUNIT}",
               ],
               plugins=[ImmediateFailureReport()],
@@ -473,6 +478,7 @@ jobs:
           FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/test_agent_confirmed_workspace.py',
            'api/tests/unit_tests/services/dify_builder/test_agent_operation_owner.py'] if path not in FILES]
           FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_completion.py'] if path not in FILES]
+          FILES += ['api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_terminal_scan.py']
           FILES += [path for path in ['api/tests/unit_tests/services/dify_builder/test_agent_model_result_canonical.py'] if path not in FILES]
           FILES += ['api/tests/unit_tests/services/dify_builder/test_test_actions.py']
           FILES += ['api/tests/unit_tests/services/dify_builder/test_advance_task.py']
@@ -1829,6 +1835,7 @@ jobs:
           })
           a4_expected.setdefault('tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion', {}).update({'test_expired_terminal_context_requires_actual_owned_terminal_workflow': 7})
           a4_expected.setdefault('tests.unit_tests.services.dify_builder.test_agent_operation_owner', {}).update({'test_expired_completed_receipt_requires_exact_original_permit_and_result': 1})
+          a4_expected['tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_terminal_scan'] = {'test_terminal_scan_compares_input_ids_as_strings': 2}
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:

@@ -10,7 +10,7 @@ from dataclasses import asdict, replace
 from uuid import NAMESPACE_URL, uuid5
 
 from pydantic import TypeAdapter, ValidationError
-from sqlalchemy import select
+from sqlalchemy import String, cast, select
 
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import Actor, EntryMode
@@ -399,7 +399,7 @@ def reconcile_completed_builder_runs(*, sessions, limit: int = 100) -> int:
             .join(
                 DifyBuilderRun,
                 (DifyBuilderRun.session_id == DifyBuilderExecutionRequest.session_id)
-                & (DifyBuilderRun.inputs_ref == DifyBuilderExecutionRequest.test_input_id)
+                & (DifyBuilderRun.inputs_ref == cast(DifyBuilderExecutionRequest.test_input_id, String))
                 & (DifyBuilderRun.kind == "verify")
                 & (DifyBuilderRun.status == "running"),
             )
