@@ -529,21 +529,39 @@ describe('useChat – handleSend SSE callbacks', () => {
   )
 
   describe('onNodeStarted / onNodeRetry / onNodeFinished', () => {
-    it('should update existing tracing entry with same node_id', () => {
+    it('should update existing tracing entry when the same execution is replayed', () => {
       const { result } = setupAndSend()
       startWorkflow()
       startNode('node-1', 'trace-1')
-      startNode('node-1', 'trace-1-v2')
+      startNode('node-1', 'trace-1')
 
       const answer = result.current.chatList.find(
         (item) => item.isAnswer && !item.isOpeningStatement,
       )
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace!.id).toBe('trace-1-v2')
+      expect(trace!.id).toBe('trace-1')
       expect(trace!.node_id).toBe('node-1')
       expect(trace!.status).toBe('running')
     })
+
+    it.each(['iteration_id', 'loop_id'] as const)(
+      'should keep earlier %s rounds when the same node starts with a new execution id',
+      (executionGroup) => {
+        const { result } = setupAndSend()
+        startWorkflow()
+        startNode('node-1', 'round-1', { [executionGroup]: 'group-1' })
+        startNode('node-1', 'round-2', { [executionGroup]: 'group-1' })
+
+        const answer = result.current.chatList.find(
+          (item) => item.isAnswer && !item.isOpeningStatement,
+        )
+        expect(answer!.workflowProcess!.tracing.map((trace) => trace.id)).toEqual([
+          'round-1',
+          'round-2',
+        ])
+      },
+    )
 
     it('should push retry data to tracing', () => {
       const { result } = setupAndSend()
