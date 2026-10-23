@@ -689,3 +689,117 @@ def test_confirmed_model_exception_never_returns_private_provider_text(
         invoke()
     assert "PRIVATE_MODEL_TOKEN_CANARY" not in str(error.value)
     assert error.value.reason_code == f"native_agent_model_{phase if phase == 'prepare' else 'dispatch'}_failed"
+
+
+def test_expired_completed_receipt_requires_exact_original_permit_and_result(
+    operations_service: AgentOperationService,
+) -> None:
+    from datetime import UTC, datetime
+
+    from sqlalchemy import event, func, select
+
+    from models.dify_builder import DifyBuilderExecutionRequest
+    from models.dify_builder_native_tests import NativeEffectAttempt, NativeEffectDispatchClaim
+    from runtime_contracts.builder.execution import canonical_digest
+
+    service = operations_service
+    pending = envelope()
+    permit = pending.permit.model_copy(update={"expires_at": "2000-01-01T00:00:00Z"})
+
+    def postgres_timestamp(_session: Session, instance: object) -> None:
+        # SQLite drops timezone metadata; production PostgreSQL returns UTC-aware attempts.
+        if isinstance(instance, NativeEffectAttempt) and instance.expires_at.tzinfo is None:
+            instance.expires_at = instance.expires_at.replace(tzinfo=UTC)
+
+    event.listen(service.loader.session_factory, "loaded_as_persistent", postgres_timestamp)
+    with service.loader.session_factory.begin() as sql:
+        sql.add(
+            DifyBuilderExecutionRequest(
+                id="request",
+                tenant_id="tenant",
+                actor_id="actor",
+                app_id="app",
+                workflow_id="workflow",
+                session_id="session",
+                test_input_id="input",
+                context={},
+                context_digest="a" * 64,
+                state="running",
+            )
+        )
+        sql.add(
+            NativeEffectAttempt(
+                id="attempt",
+                tenant_id="tenant",
+                request_id="request",
+                invocation_id="inv",
+                operation_id="operation",
+                grant_id="grant",
+                dispatch_index=1,
+                permit_digest=canonical_digest(permit.permit_id),
+                expires_at=datetime(2000, 1, 1),
+                cost_units=1,
+                budget_reservation_ref="reservation",
+                execution_id="node",
+                invocation_digest="b" * 64,
+                budget={},
+                profile={},
+            )
+        )
+        sql.add(
+            NativeEffectDispatchClaim(
+                id="claim",
+                tenant_id="tenant",
+                request_id="request",
+                invocation_id="inv",
+                operation_id="operation",
+                attempt_id="attempt",
+                claimed_at=datetime(1999, 12, 31),
+            )
+        )
+        sql.add(
+            NativeEffectOutcome(
+                id="outcome",
+                tenant_id="tenant",
+                request_id="request",
+                invocation_id="inv",
+                operation_id="operation",
+                attempt_id="attempt",
+                outcome="completed",
+                result_ref="real-result",
+            )
+        )
+    for _ in range(2):
+        assert (
+            service.settle(ref=pending.ref, permit=permit, outcome="completed", result_ref="real-result").outcome
+            == "completed"
+        )
+    for changes in ({"permit_id": "foreign"}, {"attempt_id": "foreign"}, {"operation_id": "foreign"}):
+        with pytest.raises(BuilderExecutionPolicyError, match="invalid_dispatch_permit"):
+            service.settle(
+                ref=pending.ref, permit=permit.model_copy(update=changes), outcome="completed", result_ref="real-result"
+            )
+    with pytest.raises(BuilderExecutionPolicyError, match="outcome_conflict"):
+        service.settle(ref=pending.ref, permit=permit, outcome="completed", result_ref="fabricated-result")
+    with pytest.raises(BuilderExecutionPolicyError, match="invalid_dispatch_permit"):
+        service.settle(
+            ref=pending.ref.model_copy(update={"request_id": "foreign"}),
+            permit=permit,
+            outcome="completed",
+            result_ref="real-result",
+        )
+    service.loader.actor = Actor(account_id="actor", tenant_id="foreign")
+    with pytest.raises(BuilderExecutionPolicyError, match="invalid_dispatch_permit"):
+        service.settle(ref=pending.ref, permit=permit, outcome="completed", result_ref="real-result")
+    with service.loader.session_factory() as sql:
+        assert sql.scalar(select(func.count()).select_from(NativeEffectDispatchClaim)) == 1
+        assert sql.scalar(select(func.count()).select_from(NativeEffectOutcome)) == 1
+    service.loader.actor = Actor(account_id="actor", tenant_id="tenant")
+    with service.loader.session_factory.begin() as sql:
+        saved = sql.get(NativeEffectOutcome, "outcome")
+        assert saved is not None
+        sql.delete(saved)
+    with pytest.raises(BuilderExecutionPolicyError, match="native_result_unavailable"):
+        service.settle(ref=pending.ref, permit=permit, outcome="completed", result_ref="real-result")
+    with service.loader.session_factory() as sql:
+        assert sql.scalar(select(func.count()).select_from(NativeEffectOutcome)) == 0
