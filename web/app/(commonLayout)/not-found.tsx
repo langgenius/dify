@@ -1,7 +1,5 @@
 import PageUnavailable from '@/app/components/base/page-unavailable'
 
-const IntegrationsNotFound = () => {
+export default function NotFound() {
   return <PageUnavailable className="h-full w-full bg-components-panel-bg" />
 }
-
-export default IntegrationsNotFound
