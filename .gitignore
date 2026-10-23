@@ -230,8 +230,10 @@ node_modules
 # plugin migrate
 plugins.jsonl
 
-# generated API OpenAPI specs
-packages/contracts/openapi/
+# Keep the console snapshot available to the inferred SDK in fresh checkouts.
+# Other generated API OpenAPI specs remain local artifacts.
+packages/contracts/openapi/*
+!packages/contracts/openapi/console-openapi.json
 
 # mise
 mise.toml

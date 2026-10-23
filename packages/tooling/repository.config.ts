@@ -25,6 +25,8 @@ const nonFrontendIgnores = [
 ]
 
 const generatedIgnores = [
+  // Preserve the backend exporter's deterministic JSON snapshot verbatim.
+  'packages/contracts/openapi/console-openapi.json',
   '**/.next/**',
   '**/.vinext/**',
   '**/coverage/**',
