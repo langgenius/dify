@@ -188,9 +188,8 @@ class BaseAgentRunner(AppRunner):
                 "description": parameter.llm_description or "",
             }
 
-            if parameter.required:
-                if parameter.name not in prompt_tool.parameters["required"]:
-                    prompt_tool.parameters["required"].append(parameter.name)
+            if parameter.required and parameter.name not in prompt_tool.parameters["required"]:
+                prompt_tool.parameters["required"].append(parameter.name)
 
         return prompt_tool
 

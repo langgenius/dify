@@ -368,14 +368,13 @@ class QdrantVector(BaseVector):
             ],
         )
         document_ids_filter = kwargs.get("document_ids_filter")
-        if document_ids_filter:
-            if filter.must:
-                filter.must.append(
-                    models.FieldCondition(
-                        key="metadata.document_id",
-                        match=models.MatchAny(any=document_ids_filter),
-                    )
+        if document_ids_filter and filter.must:
+            filter.must.append(
+                models.FieldCondition(
+                    key="metadata.document_id",
+                    match=models.MatchAny(any=document_ids_filter),
                 )
+            )
         results = self._client.search(
             collection_name=self._collection_name,
             query_vector=query_vector,

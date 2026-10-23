@@ -70,16 +70,15 @@ def regenerate_summary_index_task(
             # Check if summary index is enabled (only for summary_model change)
             # For embedding_model change, we still re-vectorize existing summaries even if setting is disabled
             summary_index_setting = dataset.summary_index_setting
-            if not regenerate_vectors_only:
-                # For summary_model change, require summary_index_setting to be enabled
-                if not summary_index_setting or not summary_index_setting.get("enable"):
-                    logger.info(
-                        click.style(
-                            f"Summary index is disabled for dataset {dataset_id}",
-                            fg="cyan",
-                        )
+            # For summary_model change, require summary_index_setting to be enabled
+            if (not regenerate_vectors_only) and (not summary_index_setting or not summary_index_setting.get("enable")):
+                logger.info(
+                    click.style(
+                        f"Summary index is disabled for dataset {dataset_id}",
+                        fg="cyan",
                     )
-                    return
+                )
+                return
 
             total_segments_processed = 0
             total_segments_failed = 0

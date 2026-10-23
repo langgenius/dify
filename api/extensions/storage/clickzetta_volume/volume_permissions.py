@@ -256,12 +256,11 @@ class VolumePermissionManager:
                             and object_name == table_name
                             or object_type == "SCHEMA"
                             and object_name in table_name
-                        ):
-                            if privilege in ["SELECT", "INSERT", "UPDATE", "DELETE", "ALL"]:
-                                if privilege == "ALL":
-                                    permissions.update(["SELECT", "INSERT", "UPDATE", "DELETE"])
-                                else:
-                                    permissions.add(privilege)
+                        ) and privilege in ["SELECT", "INSERT", "UPDATE", "DELETE", "ALL"]:
+                            if privilege == "ALL":
+                                permissions.update(["SELECT", "INSERT", "UPDATE", "DELETE"])
+                            else:
+                                permissions.add(privilege)
 
                 # If no explicit permissions found, try executing a simple query to verify permissions
                 if not permissions:

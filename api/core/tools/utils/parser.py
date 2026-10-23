@@ -325,11 +325,12 @@ class ApiBasedToolSchemaParser:
                 if "operationId" not in operation:
                     raise ToolApiSchemaError(f"No operationId found in operation {method} {path}.")
 
-                if ("summary" not in operation or len(operation["summary"]) == 0) and (
-                    "description" not in operation or len(operation["description"]) == 0
+                if (
+                    ("summary" not in operation or len(operation["summary"]) == 0)
+                    and ("description" not in operation or len(operation["description"]) == 0)
+                    and warning is not None
                 ):
-                    if warning is not None:
-                        warning["missing_summary"] = f"No summary or description found in operation {method} {path}."
+                    warning["missing_summary"] = f"No summary or description found in operation {method} {path}."
 
                 converted_openapi["paths"][path][method] = {
                     "operationId": operation["operationId"],

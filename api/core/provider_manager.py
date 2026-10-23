@@ -772,9 +772,10 @@ class ProviderManager:
                     using_provider_type = ProviderType.CUSTOM
 
             else:
-                if not custom_configuration.provider and not custom_configuration.models:
-                    if system_configuration.enabled and has_valid_quota:
-                        using_provider_type = ProviderType.SYSTEM
+                if (not custom_configuration.provider and not custom_configuration.models) and (
+                    system_configuration.enabled and has_valid_quota
+                ):
+                    using_provider_type = ProviderType.SYSTEM
 
             # Get provider load balancing configs
             provider_model_settings = provider_name_to_provider_model_settings_dict.get(provider_name)
@@ -1202,41 +1203,42 @@ class ProviderManager:
                     provider_quota_to_provider_record_dict[provider_record.quota_type] = provider_record
 
             for quota in configuration.quotas:
-                if quota.quota_type in (ProviderQuotaType.TRIAL, ProviderQuotaType.PAID):
-                    # Init trial provider records if not exists
-                    if quota.quota_type not in provider_quota_to_provider_record_dict:
-                        try:
-                            # FIXME ignore the type error, only TrialHostingQuota has limit need to change the logic
-                            new_provider_record = Provider(
-                                tenant_id=tenant_id,
-                                # TODO: Use provider name with prefix after the data migration.
-                                provider_name=ModelProviderID(provider_name).provider_name,
-                                provider_type=ProviderType.SYSTEM,
-                                quota_type=quota.quota_type,  # type: ignore[arg-type]
-                                quota_limit=0,  # type: ignore
-                                quota_used=0,
-                                is_valid=True,
-                            )
-                            db.session.add(new_provider_record)
+                # Init trial provider records if not exists
+                if (quota.quota_type in (ProviderQuotaType.TRIAL, ProviderQuotaType.PAID)) and (
+                    quota.quota_type not in provider_quota_to_provider_record_dict
+                ):
+                    try:
+                        # FIXME ignore the type error, only TrialHostingQuota has limit need to change the logic
+                        new_provider_record = Provider(
+                            tenant_id=tenant_id,
+                            # TODO: Use provider name with prefix after the data migration.
+                            provider_name=ModelProviderID(provider_name).provider_name,
+                            provider_type=ProviderType.SYSTEM,
+                            quota_type=quota.quota_type,  # type: ignore[arg-type]
+                            quota_limit=0,  # type: ignore
+                            quota_used=0,
+                            is_valid=True,
+                        )
+                        db.session.add(new_provider_record)
+                        db.session.commit()
+                        provider_name_to_provider_records_dict[provider_name].append(new_provider_record)
+                    except IntegrityError:
+                        db.session.rollback()
+                        stmt = select(Provider).where(
+                            Provider.tenant_id == tenant_id,
+                            Provider.provider_name == ModelProviderID(provider_name).provider_name,
+                            Provider.provider_type == ProviderType.SYSTEM.value,
+                            Provider.quota_type == quota.quota_type,
+                        )
+                        existed_provider_record = db.session.scalar(stmt)
+                        if not existed_provider_record:
+                            continue
+
+                        if not existed_provider_record.is_valid:
+                            existed_provider_record.is_valid = True
                             db.session.commit()
-                            provider_name_to_provider_records_dict[provider_name].append(new_provider_record)
-                        except IntegrityError:
-                            db.session.rollback()
-                            stmt = select(Provider).where(
-                                Provider.tenant_id == tenant_id,
-                                Provider.provider_name == ModelProviderID(provider_name).provider_name,
-                                Provider.provider_type == ProviderType.SYSTEM.value,
-                                Provider.quota_type == quota.quota_type,
-                            )
-                            existed_provider_record = db.session.scalar(stmt)
-                            if not existed_provider_record:
-                                continue
 
-                            if not existed_provider_record.is_valid:
-                                existed_provider_record.is_valid = True
-                                db.session.commit()
-
-                            provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
+                        provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
 
         return provider_name_to_provider_records_dict
 
