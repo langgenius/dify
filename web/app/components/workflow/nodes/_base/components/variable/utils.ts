@@ -1214,6 +1214,14 @@ const replaceOldVarInPromptItem = (
     : {}),
 })
 
+export const normalizeValueSelector = (value: unknown): ValueSelector => {
+  if (Array.isArray(value)) return value as ValueSelector
+  if (typeof value !== 'string') return []
+
+  const normalized = value.trim()
+  return normalized ? normalized.split('.').filter(Boolean) : []
+}
+
 /** Include saved references for rename/delete/copy; execution excludes inactive settings. */
 export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): ValueSelector[] => {
   const { data } = node
@@ -1251,9 +1259,10 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
       break
     }
     case BlockEnum.KnowledgeRetrieval: {
-      const { query_variable_selector, query_attachment_selector = [] } =
-        data as KnowledgeRetrievalNodeType
-      res = [query_variable_selector, query_attachment_selector]
+      const payload = data as KnowledgeRetrievalNodeType
+      res = [payload.query_variable_selector, payload.query_attachment_selector]
+        .map(normalizeValueSelector)
+        .filter((selector) => selector.length > 0)
       break
     }
     case BlockEnum.IfElse: {
@@ -1544,9 +1553,10 @@ export const getNodeUsedVarPassToServerKey = (
 
 export const findUsedVarNodes = (varSelector: ValueSelector, availableNodes: Node[]): Node[] => {
   const res: Node[] = []
+  const target = varSelector.join('.')
   availableNodes.forEach((node) => {
     const vars = getNodeUsedVars(node)
-    if (vars.find((v) => v.join('.') === varSelector.join('.'))) res.push(node)
+    if (vars.find((v) => normalizeValueSelector(v).join('.') === target)) res.push(node)
   })
   return res
 }

@@ -3,9 +3,15 @@ import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
+import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ListFilterNodeType } from '@/app/components/workflow/nodes/list-operator/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
-import type { EnvironmentVariable, Node, PromptItem } from '@/app/components/workflow/types'
+import type {
+  EnvironmentVariable,
+  Node,
+  PromptItem,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vite-plus/test'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
@@ -16,6 +22,7 @@ import {
   PromptRole,
   VarType,
 } from '@/app/components/workflow/types'
+import { RETRIEVE_TYPE } from '@/types/app'
 import {
   findUsedVarNodes,
   getNodeUsedVarPassToServerKey,
@@ -386,6 +393,73 @@ describe('variable utils', () => {
       })
 
       expect(getNodeUsedVars(node)).toContainEqual(['start', 'tender'])
+    })
+
+    it('should ignore malformed empty selectors on knowledge retrieval nodes', () => {
+      const node = createNode<KnowledgeRetrievalNodeType>({
+        type: BlockEnum.KnowledgeRetrieval,
+        title: 'Knowledge Retrieval',
+        desc: '',
+        query_variable_selector: '' as unknown as ValueSelector,
+        query_attachment_selector: [],
+        dataset_ids: [],
+        retrieval_mode: RETRIEVE_TYPE.multiWay,
+      })
+
+      expect(getNodeUsedVars(node)).toEqual([])
+    })
+
+    it('should normalize non-empty legacy string selectors on knowledge retrieval nodes', () => {
+      const node = createNode<KnowledgeRetrievalNodeType>({
+        type: BlockEnum.KnowledgeRetrieval,
+        title: 'Knowledge Retrieval',
+        desc: '',
+        query_variable_selector: 'start.problem' as unknown as ValueSelector,
+        query_attachment_selector: [],
+        dataset_ids: [],
+        retrieval_mode: RETRIEVE_TYPE.multiWay,
+      })
+
+      expect(getNodeUsedVars(node)).toEqual([['start', 'problem']])
+    })
+  })
+
+  describe('findUsedVarNodes', () => {
+    it('should ignore malformed selectors while finding valid references', () => {
+      const malformedNode = createNode<KnowledgeRetrievalNodeType>({
+        type: BlockEnum.KnowledgeRetrieval,
+        title: 'Knowledge Retrieval',
+        desc: '',
+        query_variable_selector: '' as unknown as ValueSelector,
+        query_attachment_selector: [],
+        dataset_ids: [],
+        retrieval_mode: RETRIEVE_TYPE.multiWay,
+      })
+      const validNode = createNode<LLMNodeType>(
+        createLLMNodeData([
+          createPromptItem({
+            text: '{{#start.problem#}}',
+          }),
+        ]),
+      )
+
+      expect(findUsedVarNodes(['start', 'problem'], [malformedNode, validNode])).toEqual([
+        validNode,
+      ])
+    })
+
+    it('should find references stored in legacy string form', () => {
+      const legacyNode = createNode<KnowledgeRetrievalNodeType>({
+        type: BlockEnum.KnowledgeRetrieval,
+        title: 'Knowledge Retrieval',
+        desc: '',
+        query_variable_selector: 'start.problem' as unknown as ValueSelector,
+        query_attachment_selector: [],
+        dataset_ids: [],
+        retrieval_mode: RETRIEVE_TYPE.multiWay,
+      })
+
+      expect(findUsedVarNodes(['start', 'problem'], [legacyNode])).toEqual([legacyNode])
     })
   })
 

@@ -249,9 +249,9 @@ const VarReferencePicker: FC<Props> = ({
   )
 
   const handleClearVar = useCallback(() => {
-    if (varKindType === VarKindType.constant) onChange('', varKindType)
+    if (isConstant) onChange('', varKindType)
     else onChange([], varKindType)
-  }, [onChange, varKindType])
+  }, [isConstant, onChange, varKindType])
 
   const handleVariableJump = useCallback(
     (nodeId: string) => {
