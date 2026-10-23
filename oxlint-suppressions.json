@@ -133,16 +133,6 @@
       "count": 1
     }
   },
-  "web/app/components/api-key/api-key-table.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/api-key/dataset-scope-dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/app-sidebar/app-detail-top.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
