@@ -86,13 +86,14 @@ describe('AssignRolesContent', () => {
           />,
         )
         await user.click(
-          await screen.findByRole(allowMultipleRoles ? 'checkbox' : 'radio', {
+          await screen.findByRole('option', {
             name: /Second role/,
           }),
         )
-        expect(
-          screen.getByRole(allowMultipleRoles ? 'checkbox' : 'radio', { name: /First role/ }),
-        ).toHaveAttribute('aria-checked', String(allowMultipleRoles))
+        expect(screen.getByRole('option', { name: /First role/ })).toHaveAttribute(
+          'aria-selected',
+          String(allowMultipleRoles),
+        )
         await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/ }))
         expect(onSubmit).toHaveBeenCalledExactlyOnceWith(allowMultipleRoles ? roles : [roles[1]])
       },
@@ -107,7 +108,7 @@ describe('AssignRolesContent', () => {
 
       expect(confirmButton).toBeEnabled()
 
-      await user.click(await screen.findByRole('checkbox', { name: /First role/i }))
+      await user.click(await screen.findByRole('option', { name: /First role/i }))
 
       expect(confirmButton).toBeDisabled()
     })
