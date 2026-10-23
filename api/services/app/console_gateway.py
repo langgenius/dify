@@ -62,12 +62,14 @@ from services.entities.dsl_entities import (
     AppImportPackage,
     AppImportParams,
     CheckDependenciesResult,
+    DraftDependencyCheck,
     DraftGuardedImportParams,
     Import,
     ImportStatus,
 )
 from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
+from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.rbac import contracts as rbac_contracts
 from services.rbac.members import MemberService
 from services.recommended_app_package_service import RecommendedAppPackageService
@@ -387,7 +389,18 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
 
     @override
     def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult:
+        """Read the dependency list cached by the last import."""
         return AppDslService.check_app_dependencies(tenant_id=context.active_workspace_id, app_id=app_id)
+
+    @override
+    def check_draft_dependencies(self, context: RequestContext, app_id: str) -> DraftDependencyCheck:
+        """Compute the dependencies from the app's current draft."""
+        with self._session_factory() as session:
+            app = require_console_app(session, context, app_id)
+            prepared = self._dsl_factory(session).load_export_data(app_model=app, session=session)
+        return DependenciesAnalysisService.find_missing_dependencies(
+            tenant_id=prepared.tenant_id, plugin_ids=prepared.dependency_identifiers
+        )
 
     @override
     def export_dsl(self, context: RequestContext, app_id: str, options: AppExportOptions) -> str:

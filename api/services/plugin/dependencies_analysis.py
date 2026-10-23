@@ -1,17 +1,21 @@
 import contextlib
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from core.helper import marketplace
+from core.plugin.entities.marketplace import MarketplacePluginDeclaration
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType, PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
+from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.tool_manager import ToolManager
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
 from models.provider_ids import GenericProviderID, ModelProviderID, ToolProviderID
+from services.entities.dsl_entities import DraftDependencyCheck
 
 # Compile regex pattern for version extraction at module level for better performance
 _VERSION_REGEX = re.compile(r":(?P<version>[0-9]+(?:\.[0-9]+){2}(?:[+-][0-9A-Za-z.-]+)?)(?:@|$)")
@@ -23,6 +27,11 @@ class DependenciesAnalysisService:
         if re.fullmatch(r"[a-z0-9_-]+/[a-z0-9_-]+", provider):
             return provider
         return cls.analyze_tool_dependency(provider)
+
+    @staticmethod
+    def is_plugin_backed_tool(provider_type: object) -> bool:
+        """Only builtin and plugin tools come from plugins; api, workflow and mcp providers do not."""
+        return provider_type in (None, ToolProviderType.BUILT_IN, ToolProviderType.PLUGIN)
 
     @classmethod
     def extract_external_node_dependencies(cls, node_data: Mapping[str, Any]) -> list[str]:
@@ -62,7 +71,7 @@ class DependenciesAnalysisService:
                 if not isinstance(tool, Mapping):
                     continue
                 provider_type = tool.get("provider_type", tool.get("type"))
-                if provider_type not in (None, "builtin", "plugin"):
+                if not cls.is_plugin_backed_tool(provider_type):
                     continue
                 plugin_id = tool.get("plugin_id")
                 if isinstance(plugin_id, str) and plugin_id:
@@ -192,10 +201,56 @@ class DependenciesAnalysisService:
         if not dify_config.MARKETPLACE_ENABLED:
             return []
         deps = marketplace.batch_fetch_plugin_manifests(dependencies)
-        return [
-            PluginDependency(
-                type=PluginDependencyType.Marketplace,
-                value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier=dep.latest_package_identifier),
-            )
-            for dep in deps
+        return [cls._marketplace_dependency(dep.latest_package_identifier) for dep in deps]
+
+    @staticmethod
+    def _marketplace_dependency(package_identifier: str, version: str | None = None) -> PluginDependency:
+        return PluginDependency(
+            type=PluginDependencyType.Marketplace,
+            value=PluginDependency.Marketplace(
+                marketplace_plugin_unique_identifier=package_identifier, version=version
+            ),
+        )
+
+    @classmethod
+    def find_missing_dependencies(cls, *, tenant_id: str, plugin_ids: Sequence[str]) -> DraftDependencyCheck:
+        """
+        Report which of the given plugin ids are not installed in the workspace.
+
+        Missing plugins the marketplace knows become leaked dependencies; the rest are unresolved.
+        """
+        sorted_plugin_ids = sorted(set(plugin_ids))
+        if not sorted_plugin_ids:
+            return DraftDependencyCheck()
+
+        installed_plugin_ids = {
+            installation.plugin_id
+            for installation in PluginInstaller().fetch_plugin_installation_by_ids(tenant_id, sorted_plugin_ids)
+        }
+        hardcoded_plugin_ids = {
+            ToolProviderID(provider.entity.identity.name).plugin_id
+            for provider in ToolManager.list_hardcoded_providers()
+        }
+        missing_plugin_ids = [
+            plugin_id
+            for plugin_id in sorted_plugin_ids
+            if plugin_id not in installed_plugin_ids and plugin_id not in hardcoded_plugin_ids
         ]
+
+        manifests: dict[str, MarketplacePluginDeclaration] = {}
+        if missing_plugin_ids and dify_config.MARKETPLACE_ENABLED:
+            manifests = {
+                manifest.plugin_id: manifest
+                for manifest in marketplace.batch_fetch_plugin_manifests(missing_plugin_ids)
+            }
+
+        return DraftDependencyCheck(
+            leaked_dependencies=[
+                cls._marketplace_dependency(
+                    manifests[plugin_id].latest_package_identifier, manifests[plugin_id].latest_version
+                )
+                for plugin_id in missing_plugin_ids
+                if plugin_id in manifests
+            ],
+            unresolved_plugin_ids=[plugin_id for plugin_id in missing_plugin_ids if plugin_id not in manifests],
+        )

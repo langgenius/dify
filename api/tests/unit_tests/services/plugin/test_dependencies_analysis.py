@@ -7,13 +7,25 @@ dependencies via marketplace.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.plugin.entities.plugin import PluginDependency, PluginDependencyType, PluginInstallationSource
+from core.plugin.entities.marketplace import MarketplacePluginDeclaration
+from core.plugin.entities.plugin import (
+    PluginDependency,
+    PluginDependencyType,
+    PluginInstallationSource,
+    PluginResourceRequirements,
+)
+from core.plugin.impl.plugin import PluginInstaller
+from core.tools.entities.common_entities import I18nObject
+from core.tools.tool_manager import ToolManager
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from tests.unit_tests.config_override import apply_config_overrides
+
+_TENANT_ID = "22222222-2222-4222-8222-222222222222"
 
 
 class TestAnalyzeToolDependency:
@@ -246,3 +258,40 @@ class TestGenerateLatestDependencies:
 
         assert len(result) == 1
         assert result[0].type == PluginDependencyType.Marketplace
+
+
+def _manifest(plugin_id: str, version: str) -> MarketplacePluginDeclaration:
+    label = I18nObject(en_US=plugin_id)
+    return MarketplacePluginDeclaration(
+        name=plugin_id.split("/")[-1],
+        org=plugin_id.split("/")[0],
+        plugin_id=plugin_id,
+        icon="icon.png",
+        label=label,
+        brief=label,
+        resource=PluginResourceRequirements(memory=512, permission=None),
+        latest_version=version,
+        latest_package_identifier=f"{plugin_id}:{version}@abc",
+        status="active",
+        deprecated_reason="",
+        alternative_plugin_id="",
+    )
+
+
+def _patch_plugin_world(monkeypatch: pytest.MonkeyPatch, *, marketplace_ids: Sequence[str]) -> None:
+    monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", lambda _self, _tenant_id, _ids: [])
+    monkeypatch.setattr(
+        "services.plugin.dependencies_analysis.marketplace.batch_fetch_plugin_manifests",
+        lambda ids: [_manifest(i, "1.2.0") for i in ids if i in marketplace_ids],
+    )
+    monkeypatch.setattr(ToolManager, "list_hardcoded_providers", classmethod(lambda _cls: iter(())))
+    apply_config_overrides(monkeypatch, MARKETPLACE_ENABLED=True)
+
+
+def test_missing_plugins_without_a_marketplace_match_are_unresolved(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_plugin_world(monkeypatch, marketplace_ids=["acme/a"])
+    result = DependenciesAnalysisService.find_missing_dependencies(
+        tenant_id=_TENANT_ID, plugin_ids=["acme/a", "corp/private"]
+    )
+    assert [d.value.plugin_unique_identifier for d in result.leaked_dependencies] == ["acme/a:1.2.0@abc"]
+    assert result.unresolved_plugin_ids == ["corp/private"]

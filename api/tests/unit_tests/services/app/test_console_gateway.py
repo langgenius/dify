@@ -10,7 +10,7 @@ from zipfile import ZipFile
 import pytest
 import yaml
 from blinker import Namespace
-from sqlalchemy import Engine, event, select
+from sqlalchemy import Engine, event, select, update
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -528,6 +528,134 @@ def test_dsl_export_uses_owned_short_session_and_preserves_selectors(
     assert len(calls) == 1
 
 
+def _transfer_gateway(factory: sessionmaker[Session]) -> AppTransferGateway:
+    return AppTransferGateway(
+        session_factory=factory,
+        dsl_factory=AppDslService,
+        packages=AppPackageService(),
+        agent_packages=RosterAgentPackageExporter(),
+        agent_importer=RosterAgentPackageImporter(),
+        recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
+    )
+
+
+EMPTY_GRAPH = '{"nodes":[],"edges":[]}'
+
+
+def _seed_draft_app(factory: sessionmaker[Session], graph: str) -> tuple[str, str, str]:
+    app_id, workspace, actor = str(uuid4()), str(uuid4()), str(uuid4())
+    with factory.begin() as session:
+        session.add(
+            App(
+                id=app_id, tenant_id=workspace, name="Example", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True
+            )
+        )
+        session.flush()
+        session.add(
+            Workflow(
+                tenant_id=workspace,
+                app_id=app_id,
+                type=WorkflowType.WORKFLOW,
+                version=Workflow.VERSION_DRAFT,
+                graph=graph,
+                features="{}",
+                created_by=actor,
+            )
+        )
+    return app_id, workspace, actor
+
+
+NON_PLUGIN_TOOLS_GRAPH = json.dumps(
+    {
+        "nodes": [
+            {
+                "id": provider_type,
+                "data": {
+                    "type": "tool",
+                    "title": provider_type,
+                    "provider_id": provider_id,
+                    "provider_type": provider_type,
+                    "provider_name": provider_id,
+                    "tool_name": "t",
+                    "tool_label": "t",
+                    "tool_configurations": {},
+                    "tool_parameters": {},
+                },
+            }
+            for provider_type, provider_id in (
+                ("api", "3f2a1b4c-0e5d-4c3a-9b1e-123456789abc"),
+                ("workflow", "9a8b7c6d-0e5d-4c3a-9b1e-123456789abc"),
+                ("mcp", "my-mcp-server"),
+            )
+        ],
+        "edges": [],
+    }
+)
+
+
+def test_draft_dependency_check_ignores_api_workflow_and_mcp_tool_nodes(
+    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
+    app_id, workspace, actor = _seed_draft_app(factory, NON_PLUGIN_TOOLS_GRAPH)
+    monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", lambda *_args: [])
+    config_overrides(MARKETPLACE_ENABLED=False)
+
+    result = _transfer_gateway(factory).check_draft_dependencies(RequestContext("r", None, actor, workspace), app_id)
+
+    assert result.unresolved_plugin_ids == []
+    assert result.leaked_dependencies == []
+
+
+def _plugin_tool_graph(provider_type: str) -> str:
+    return json.dumps(
+        {
+            "nodes": [
+                {
+                    "id": "tool",
+                    "data": {
+                        "type": "tool",
+                        "title": "tool",
+                        "provider_id": "acme/search/search",
+                        "provider_type": provider_type,
+                        "provider_name": "acme/search/search",
+                        "tool_name": "t",
+                        "tool_label": "t",
+                        "tool_configurations": {},
+                        "tool_parameters": {},
+                    },
+                }
+            ],
+            "edges": [],
+        }
+    )
+
+
+@pytest.mark.parametrize("provider_type", ["builtin", "plugin"])
+@pytest.mark.parametrize("added_after_seed", [False, True])
+def test_draft_dependency_check_reports_an_uninstalled_plugin_tool(
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    provider_type: str,
+    added_after_seed: bool,
+    config_overrides: Callable[..., None],
+) -> None:
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
+    graph = _plugin_tool_graph(provider_type)
+    app_id, workspace, actor = _seed_draft_app(factory, EMPTY_GRAPH if added_after_seed else graph)
+    monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", lambda *_args: [])
+    config_overrides(MARKETPLACE_ENABLED=False)
+    gateway = _transfer_gateway(factory)
+    context = RequestContext("r", None, actor, workspace)
+    if added_after_seed:
+        with factory.begin() as session:
+            session.execute(update(Workflow).where(Workflow.app_id == app_id).values(graph=graph))
+
+    result = gateway.check_draft_dependencies(context, app_id)
+
+    assert result.unresolved_plugin_ids == ["acme/search"]
+
+
 @pytest.mark.parametrize(
     "mode",
     [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.AGENT],
@@ -583,14 +711,7 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
         return []
 
     monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", fetch_plugins)
-    gateway = AppTransferGateway(
-        session_factory=factory,
-        dsl_factory=AppDslService,
-        packages=AppPackageService(),
-        agent_packages=RosterAgentPackageExporter(),
-        agent_importer=RosterAgentPackageImporter(),
-        recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
-    )
+    gateway = _transfer_gateway(factory)
     exports = AppExportService(
         apps=AppExportRepository(session_factory=factory), serialize=AppDslService.serialize_export_data
     )

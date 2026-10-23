@@ -105,6 +105,10 @@ class CheckDependenciesResult(BaseModel):
     leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
 
 
+class DraftDependencyCheck(CheckDependenciesResult):
+    unresolved_plugin_ids: list[str] = Field(default_factory=list)
+
+
 def make_app_dsl(app: App) -> dict[str, Any]:
     """Build the shared App DSL envelope for standalone and archive exports."""
     return {

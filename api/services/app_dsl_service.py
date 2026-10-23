@@ -1196,6 +1196,8 @@ class AppDslService:
                 typ = node_data.get("type")
                 match typ:
                     case BuiltinNodeTypes.TOOL:
+                        if not DependenciesAnalysisService.is_plugin_backed_tool(node_data.get("provider_type")):
+                            continue
                         tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
                             node_data.get("plugin_id")
@@ -1297,6 +1299,8 @@ class AppDslService:
             agent_configs = model_config.get("agent_mode", {})
             if agent_configs:
                 for agent_config in agent_configs.get("tools", []):
+                    if not DependenciesAnalysisService.is_plugin_backed_tool(agent_config.get("provider_type")):
+                        continue
                     dependencies.append(
                         DependenciesAnalysisService.analyze_tool_dependency(agent_config.get("provider_id"))
                     )

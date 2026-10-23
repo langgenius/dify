@@ -1296,6 +1296,7 @@ export const zPluginDependency = z.object({
 export const zCheckDependenciesResponse = z.object({
   hints: z.array(zHint).optional(),
   leaked_dependencies: z.array(zPluginDependency).optional(),
+  unresolved_plugin_ids: z.array(z.string()).optional(),
 })
 
 /**

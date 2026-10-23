@@ -12,7 +12,10 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
-from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
+from core.plugin.entities.plugin import (
+    PluginDependency,
+    PluginDependencyType,
+)
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition

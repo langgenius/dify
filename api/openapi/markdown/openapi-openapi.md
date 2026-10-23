@@ -2208,6 +2208,7 @@ mode is a closed enum of listable app types.
 | ---- | ---- | ----------- | -------- |
 | hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 | leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | No |
+| unresolved_plugin_ids | [ string ] |  | No |
 
 #### CheckDependenciesResult
 
