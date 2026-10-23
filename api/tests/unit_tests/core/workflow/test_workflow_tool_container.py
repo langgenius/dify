@@ -87,6 +87,7 @@ from tests.workflow_test_utils import build_test_graph_init_params, build_test_r
 
 
 def _workflow_tool_node(
+    monkeypatch: pytest.MonkeyPatch,
     runtime_state: RuntimeState | None = None,
     *,
     app_id: str = "outer-app",
@@ -153,9 +154,9 @@ def _workflow_tool_node(
         ),
         runtime=ToolRuntime(tenant_id="tenant", invoke_from=InvokeFrom.DEBUGGER),
     )
-    tool.prepare_container_inputs = lambda *_args, **_kwargs: (payload.inputs, [])
+    monkeypatch.setattr(tool, "prepare_container_inputs", lambda *_args, **_kwargs: (payload.inputs, []))
     runtime = DifyToolNodeRuntime(init_params.run_context)
-    runtime.get_runtime = lambda **_kwargs: ToolRuntimeHandle(raw=tool)
+    monkeypatch.setattr(runtime, "get_runtime", lambda **_kwargs: ToolRuntimeHandle(raw=tool))
     node = DifyWorkflowToolNode(
         node_id="tool",
         data=ToolNodeData.model_validate(graph_config["nodes"][0]["data"]),
@@ -178,8 +179,10 @@ def _outer_graph(node: DifyWorkflowToolNode) -> Graph:
     return Graph.new().add_root(start).add_node(node, from_node_id=start.id).build()
 
 
-def test_workflow_tool_node_requests_child_container_and_resumes_successfully(mocker: MockerFixture) -> None:
-    node, runtime, payload = _workflow_tool_node()
+def test_workflow_tool_node_requests_child_container_and_resumes_successfully(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+) -> None:
+    node, runtime, payload = _workflow_tool_node(monkeypatch)
     get_runtime = mocker.spy(runtime, "get_runtime")
     build_payload = mocker.spy(runtime, "build_workflow_tool_container_payload")
 
@@ -219,7 +222,7 @@ def test_workflow_tool_node_requests_child_container_and_resumes_successfully(mo
     assert isinstance(resume_task, ResumeTask)
     assert isinstance(resume_task.result, ContainerExecutionResult)
     assert resume_task.result.node_run_result.outputs["files"].value_type == SegmentType.ARRAY_FILE
-    restored_node, _, _ = _workflow_tool_node(restored_state)
+    restored_node, _, _ = _workflow_tool_node(monkeypatch, restored_state)
 
     resumed_events = list(restored_node._resume_container_events(result=resume_task.result))
 
@@ -250,8 +253,10 @@ def test_workflow_tool_node_requests_child_container_and_resumes_successfully(mo
     }
 
 
-def test_workflow_tool_node_returns_failure_when_runtime_cannot_be_loaded(mocker: MockerFixture) -> None:
-    node, runtime, _ = _workflow_tool_node(version="2")
+def test_workflow_tool_node_returns_failure_when_runtime_cannot_be_loaded(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+) -> None:
+    node, runtime, _ = _workflow_tool_node(monkeypatch, version="2")
     get_runtime = mocker.patch.object(runtime, "get_runtime", side_effect=ToolNodeError("runtime unavailable"))
 
     events = list(node._run())
@@ -269,8 +274,10 @@ def test_workflow_tool_node_returns_failure_when_runtime_cannot_be_loaded(mocker
     )
 
 
-def test_workflow_tool_node_returns_failure_when_payload_cannot_be_built(mocker: MockerFixture) -> None:
-    node, runtime, _ = _workflow_tool_node(tool_node_version="1")
+def test_workflow_tool_node_returns_failure_when_payload_cannot_be_built(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+) -> None:
+    node, runtime, _ = _workflow_tool_node(monkeypatch, tool_node_version="1")
     mocker.patch.object(
         runtime, "build_workflow_tool_container_payload", side_effect=ToolNodeError("invalid source workflow")
     )
@@ -284,8 +291,8 @@ def test_workflow_tool_node_returns_failure_when_payload_cannot_be_built(mocker:
     assert completed.node_run_result.error == "Failed to prepare Workflow Tool: invalid source workflow"
 
 
-def test_workflow_tool_node_rejects_non_execution_result() -> None:
-    node, _, _ = _workflow_tool_node()
+def test_workflow_tool_node_rejects_non_execution_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    node, _, _ = _workflow_tool_node(monkeypatch)
     result = LoopFrameRequest(
         inputs={},
         outputs={},
@@ -300,8 +307,8 @@ def test_workflow_tool_node_rejects_non_execution_result() -> None:
         list(node._resume_container_events(result=result))
 
 
-def test_workflow_tool_node_resumes_failed_result_without_chunks() -> None:
-    node, _, _ = _workflow_tool_node()
+def test_workflow_tool_node_resumes_failed_result_without_chunks(monkeypatch: pytest.MonkeyPatch) -> None:
+    node, _, _ = _workflow_tool_node(monkeypatch)
     result = ContainerExecutionResult(
         metadata={},
         steps=1,
@@ -318,8 +325,8 @@ def test_workflow_tool_node_resumes_failed_result_without_chunks() -> None:
     assert events[0].node_run_result.error == "child failed"
 
 
-def test_workflow_tool_node_resumes_empty_text_with_final_chunk_only() -> None:
-    node, _, _ = _workflow_tool_node()
+def test_workflow_tool_node_resumes_empty_text_with_final_chunk_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    node, _, _ = _workflow_tool_node(monkeypatch)
     result = ContainerExecutionResult(
         metadata={},
         steps=0,
@@ -335,8 +342,8 @@ def test_workflow_tool_node_resumes_empty_text_with_final_chunk_only() -> None:
     assert isinstance(events[1], StreamCompletedEvent)
 
 
-def test_node_factory_can_keep_workflow_tool_direct_for_single_step_debug() -> None:
-    node, _, _ = _workflow_tool_node()
+def test_node_factory_can_keep_workflow_tool_direct_for_single_step_debug(monkeypatch: pytest.MonkeyPatch) -> None:
+    node, _, _ = _workflow_tool_node(monkeypatch)
     factory = DifyNodeFactory(node.init_params, node.runtime_state, use_workflow_tool_containers=True)
     assert (
         factory._resolve_node_class_for_factory(
@@ -457,6 +464,7 @@ def _human_input_workflow_tool_source() -> WorkflowToolSource:
 
 
 def _container_handler(
+    monkeypatch: pytest.MonkeyPatch,
     *,
     inputs: dict[str, object] | None = None,
 ) -> tuple[
@@ -477,7 +485,7 @@ def _container_handler(
         variable_pool=parent_pool,
         start_at=1,
     )
-    parent_node, _, _ = _workflow_tool_node(parent_state)
+    parent_node, _, _ = _workflow_tool_node(monkeypatch, parent_state)
     parent_graph = _outer_graph(parent_node)
     frame_registry = FrameRegistry()
     frame_registry.register(
@@ -540,8 +548,8 @@ def _dispatch_next_node(
         processor.dispatch(NodeEventTask(frame_id=frame.frame_id, event=event))
 
 
-def test_workflow_tool_handler_runs_child_graph_with_internal_name_collision() -> None:
-    handler, frame_registry, runtime_state, request, _ = _container_handler()
+def test_workflow_tool_handler_runs_child_graph_with_internal_name_collision(monkeypatch: pytest.MonkeyPatch) -> None:
+    handler, frame_registry, runtime_state, request, _ = _container_handler(monkeypatch)
     handler.handle_request(invocation_id="invocation", request=request)
     frame_registry["invocation:workflow-tool"].state.variable_pool.add(
         ("__workflow_tool_container__", "failure"),
@@ -588,8 +596,8 @@ def test_workflow_tool_handler_runs_child_graph_with_internal_name_collision() -
         runtime_state.get_container_frame("invocation:workflow-tool")
 
 
-def test_workflow_tool_handler_restores_child_failure() -> None:
-    handler, frame_registry, runtime_state, request, source_repository = _container_handler()
+def test_workflow_tool_handler_restores_child_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    handler, frame_registry, runtime_state, request, source_repository = _container_handler(monkeypatch)
     handler.handle_request(invocation_id="invocation", request=request)
     frame_id = "invocation:workflow-tool"
     frame = frame_registry[frame_id]
@@ -630,8 +638,8 @@ def test_workflow_tool_handler_restores_child_failure() -> None:
     assert resume_task.result.node_run_result.error_type == "RuntimeError"
 
 
-def test_workflow_tool_handler_isolates_child_variable_pool() -> None:
-    handler, frame_registry, _, request, _ = _container_handler()
+def test_workflow_tool_handler_isolates_child_variable_pool(monkeypatch: pytest.MonkeyPatch) -> None:
+    handler, frame_registry, _, request, _ = _container_handler(monkeypatch)
 
     handler.handle_request(invocation_id="invocation", request=request)
 
@@ -647,8 +655,8 @@ def test_workflow_tool_handler_isolates_child_variable_pool() -> None:
     assert child_pool.get(("source-start", "stale")) is None
 
 
-def test_workflow_tool_handler_applies_start_input_defaults() -> None:
-    handler, frame_registry, _, request, _ = _container_handler(inputs={})
+def test_workflow_tool_handler_applies_start_input_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    handler, frame_registry, _, request, _ = _container_handler(monkeypatch, inputs={})
 
     handler.handle_request(invocation_id="invocation", request=request)
 
@@ -657,8 +665,8 @@ def test_workflow_tool_handler_applies_start_input_defaults() -> None:
     assert answer.to_object() == "fallback"
 
 
-def test_workflow_tool_handler_preserves_inputs_when_start_validation_fails() -> None:
-    handler, _, runtime_state, request, _ = _container_handler(inputs={"answer": 42})
+def test_workflow_tool_handler_preserves_inputs_when_start_validation_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    handler, _, runtime_state, request, _ = _container_handler(monkeypatch, inputs={"answer": 42})
 
     handler.handle_request(invocation_id="invocation", request=request)
 
@@ -672,8 +680,8 @@ def test_workflow_tool_handler_preserves_inputs_when_start_validation_fails() ->
     assert resume_task.result.node_run_result.error_type == "ValueError"
 
 
-def test_workflow_tool_nested_handler_hides_and_persists_marked_child_events() -> None:
-    _, frame_registry, _, request, repository = _container_handler()
+def test_workflow_tool_nested_handler_hides_and_persists_marked_child_events(monkeypatch: pytest.MonkeyPatch) -> None:
+    _, frame_registry, _, request, repository = _container_handler(monkeypatch)
     persisted: list[NodeEvent] = []
     event_listeners: dict[str, Callable[[NodeEvent], None]] = {}
     workflow_tool_handler = WorkflowToolContainerHandler(
@@ -735,9 +743,10 @@ def test_workflow_tool_nested_handler_hides_and_persists_marked_child_events() -
     [{}, {WorkflowNodeExecutionMetadataKey.LOOP_ID: "source-loop", WorkflowNodeExecutionMetadataKey.LOOP_INDEX: 1}],
 )
 def test_workflow_tool_persistence_keeps_source_container_metadata(
+    monkeypatch: pytest.MonkeyPatch,
     source_metadata: dict[WorkflowNodeExecutionMetadataKey, str | int],
 ) -> None:
-    _, frames, _, request, repository = _container_handler()
+    _, frames, _, request, repository = _container_handler(monkeypatch)
     persisted: list[NodeEvent] = []
     handler = WorkflowToolContainerHandler(
         frames, sources=repository, event_listener_factory=lambda *_: persisted.append
@@ -845,7 +854,7 @@ def test_workflow_tool_failure_accounting_uses_outer_tool_policy(
     ]
     repository = {}
     repository["source-workflow"] = replace(source, graph_config=source_graph)
-    node, _, _ = _workflow_tool_node()
+    node, _, _ = _workflow_tool_node(monkeypatch)
     node.node_data.error_strategy = tool_error_strategy
     node.node_data.default_value = [DefaultValue(key="text", type=DefaultValueType.STRING, value="tool fallback")]
     start = StartNode(
@@ -969,7 +978,7 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
         variable_pool=outer_pool,
         start_at=1,
     )
-    initial_node, _, _ = _workflow_tool_node(initial_state, app_id="intermediate-app")
+    initial_node, _, _ = _workflow_tool_node(monkeypatch, initial_state, app_id="intermediate-app")
     initial_graph = _outer_graph(initial_node)
     initial_owner_factory = DifyNodeFactory(
         initial_node.init_params, initial_state, human_input_run_context=build_test_run_context(app_id="outer-app")
@@ -1021,7 +1030,7 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
         )
         == "tool"
     )
-    restored_node, _, _ = _workflow_tool_node(restored_state, app_id="intermediate-app")
+    restored_node, _, _ = _workflow_tool_node(monkeypatch, restored_state, app_id="intermediate-app")
     restored_graph = _outer_graph(restored_node)
     restored_owner_factory = DifyNodeFactory(
         restored_node.init_params, restored_state, human_input_run_context=initial_owner_factory.human_input_run_context

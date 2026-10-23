@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 from pytest_mock import MockerFixture
 
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
@@ -53,13 +51,13 @@ def test_get_prompt(mocker: MockerFixture) -> None:
     )
 
     max_token_limit = 5
-    transform._calculate_rest_token = MagicMock(return_value=max_token_limit)
+    mocker.patch.object(transform, "_calculate_rest_token", return_value=max_token_limit)
     result = transform.get_prompt()
 
     assert len(result) == 4
 
     max_token_limit = 20
-    transform._calculate_rest_token = MagicMock(return_value=max_token_limit)
+    mocker.patch.object(transform, "_calculate_rest_token", return_value=max_token_limit)
     result = transform.get_prompt()
 
     assert len(result) == 12

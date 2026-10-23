@@ -60,7 +60,7 @@ def test_workflow_tool_loop_break_does_not_escape_into_enclosing_loop(monkeypatc
     def edge(source: str, target: str, handle: str = "source") -> dict[str, str]:
         return {"id": f"{source}-{target}", "source": source, "target": target, "sourceHandle": handle}
 
-    tool_node, runtime, _ = _workflow_tool_node()
+    tool_node, runtime, _ = _workflow_tool_node(monkeypatch)
     monkeypatch.setattr("core.workflow.node_factory.DifyToolNodeRuntime", lambda _, **_kwargs: runtime)
     outer_graph = {
         "nodes": [
@@ -109,7 +109,7 @@ def test_workflow_tool_loop_break_does_not_escape_into_enclosing_loop(monkeypatc
             edge("condition", "shared-loop-end", "true"),
         ],
     }
-    _, _, _, _, repository = _container_handler()
+    _, _, _, _, repository = _container_handler(monkeypatch)
     repository["source-workflow"] = replace(
         repository["source-workflow"],
         graph_config={
@@ -169,8 +169,8 @@ def test_workflow_tool_loop_break_does_not_escape_into_enclosing_loop(monkeypatc
     ] == [1, 1, 1]
 
 
-def test_workflow_tool_persists_loop_outputs_after_graphon_normalizes_them() -> None:
-    _, frames, state, request, repository = _container_handler()
+def test_workflow_tool_persists_loop_outputs_after_graphon_normalizes_them(monkeypatch: pytest.MonkeyPatch) -> None:
+    _, frames, state, request, repository = _container_handler(monkeypatch)
     source = repository["source-workflow"]
     repository["source-workflow"] = replace(
         source,
@@ -223,9 +223,9 @@ def test_workflow_tool_persists_loop_outputs_after_graphon_normalizes_them() -> 
 
 @pytest.mark.parametrize("listener_fails", [False, True])
 def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_them(
-    listener_fails: bool, caplog: pytest.LogCaptureFixture
+    monkeypatch: pytest.MonkeyPatch, listener_fails: bool, caplog: pytest.LogCaptureFixture
 ) -> None:
-    node, _, payload = _workflow_tool_node()
+    node, _, payload = _workflow_tool_node(monkeypatch)
     source = WorkflowToolSource(
         app_id=payload.source_app_id,
         workflow_id=payload.source_workflow_id,
@@ -324,7 +324,7 @@ def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding
     monkeypatch.setattr(
         "clients.agent_backend.factory.create_agent_backend_run_client", lambda **_kwargs: FakeAgentBackendRunClient()
     )
-    node, _, payload = _workflow_tool_node()
+    node, _, payload = _workflow_tool_node(monkeypatch)
     source = WorkflowToolSource(
         app_id=payload.source_app_id,
         workflow_id=payload.source_workflow_id,

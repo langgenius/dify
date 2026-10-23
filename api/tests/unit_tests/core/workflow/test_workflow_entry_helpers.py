@@ -75,8 +75,8 @@ class TestWorkflowEntryInit:
                 graph_runtime_state=sentinel.graph_runtime_state,
             )
 
-    def test_hidden_workflow_tool_nodes_count_toward_execution_limit(self):
-        tool, _, _ = _workflow_tool_node()
+    def test_hidden_workflow_tool_nodes_count_toward_execution_limit(self, monkeypatch: pytest.MonkeyPatch):
+        tool, _, _ = _workflow_tool_node(monkeypatch)
         source = _workflow_tool_source()
         with config_overrides_context(WORKFLOW_MAX_EXECUTION_STEPS=2, GRAPH_ENGINE_MAX_WORKERS=1):
             entry = workflow_entry.WorkflowEntry(

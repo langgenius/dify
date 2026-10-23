@@ -54,7 +54,7 @@ def test_host_context_preserves_each_engine_file_runtime(monkeypatch: pytest.Mon
                 checked_nodes.append(node.id)
 
         sources = {source.workflow_id: source}
-        tool, _, _ = _workflow_tool_node()
+        tool, _, _ = _workflow_tool_node(monkeypatch)
         engine = Engine(
             graph=_outer_graph(tool),
             runtime_state=tool.runtime_state,
