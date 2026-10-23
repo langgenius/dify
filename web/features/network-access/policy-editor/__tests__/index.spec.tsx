@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { IpPolicyDialog } from '..'
 
 const translations = vi.hoisted(() => ({
@@ -140,7 +141,7 @@ describe('trusted current IP and allowlist editing', () => {
     expect(
       screen.getAllByPlaceholderText('10.0.0.0/8').map((row) => (row as HTMLInputElement).value),
     ).toEqual(['10.0.0.0/8', '203.0.113.42'])
-    expect(screen.getByRole('button', { name: 'Add it' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Add it' })).toHaveAttribute('aria-disabled', 'true')
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(onSubmit).not.toHaveBeenCalled()
   })
@@ -157,7 +158,40 @@ describe('trusted current IP and allowlist editing', () => {
     expect(screen.queryByRole('button', { name: 'Add it' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByText('Your current IP is 203.0.113.42')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add it' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Add it' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+  })
+
+  it('announces current-IP loading, failure, retry, and success through one persistent status', async () => {
+    const user = userEvent.setup()
+    const firstResponse = createDeferred<Response>()
+    const retryResponse = createDeferred<Response>()
+    vi.mocked(globalThis.fetch)
+      .mockReturnValueOnce(firstResponse.promise)
+      .mockReturnValueOnce(retryResponse.promise)
+    render(<DialogHarness />)
+
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('Checking your IP address…')
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
+
+    firstResponse.resolve(Response.json({ message: 'IP unavailable' }, { status: 503 }))
+    const retry = await screen.findByRole('button', { name: 'Retry' })
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent('Unable to check your IP address. Please try again.')
+    expect(status).not.toContainElement(retry)
+
+    await user.click(retry)
+    await waitFor(() => expect(status).toHaveTextContent('Checking your IP address…'))
+    expect(screen.getByRole('status')).toBe(status)
+
+    retryResponse.resolve(Response.json({ client_ip: '203.0.113.42' }))
+    const addCurrentIp = await screen.findByRole('button', { name: 'Add it' })
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent('Your current IP is 203.0.113.42')
+    expect(status).not.toContainElement(addCurrentIp)
   })
 
   it.each(['203.0.113.42/32', '::ffff:203.0.113.42/128'])(
@@ -172,7 +206,10 @@ describe('trusted current IP and allowlist editing', () => {
           onOpenChange={vi.fn()}
         />,
       )
-      expect(await screen.findByRole('button', { name: 'Add it' })).toBeDisabled()
+      expect(await screen.findByRole('button', { name: 'Add it' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
     },
   )
 
@@ -186,7 +223,10 @@ describe('trusted current IP and allowlist editing', () => {
         onOpenChange={vi.fn()}
       />,
     )
-    expect(await screen.findByRole('button', { name: 'Add it' })).toBeDisabled()
+    expect(await screen.findByRole('button', { name: 'Add it' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled()
     expect(screen.getAllByPlaceholderText('10.0.0.0/8')).toHaveLength(100)
   })

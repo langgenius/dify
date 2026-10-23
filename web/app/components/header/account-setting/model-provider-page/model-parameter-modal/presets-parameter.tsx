@@ -22,19 +22,19 @@ const TONE_ICONS: Record<number, ReactNode> = {
   1: (
     <span
       aria-hidden
-      className="mr-2 i-custom-vender-solid-editor-brush-01 h-3.5 w-3.5 text-[#6938EF]"
+      className="me-2 i-custom-vender-solid-editor-brush-01 h-3.5 w-3.5 text-[#6938EF]"
     />
   ),
   2: (
     <span
       aria-hidden
-      className="mr-2 i-custom-vender-solid-FinanceAndECommerce-scales-02 h-3.5 w-3.5 text-indigo-600"
+      className="me-2 i-custom-vender-solid-FinanceAndECommerce-scales-02 h-3.5 w-3.5 text-indigo-600"
     />
   ),
   3: (
     <span
       aria-hidden
-      className="mr-2 i-custom-vender-solid-general-target-04 h-3.5 w-3.5 text-[#107569]"
+      className="me-2 i-custom-vender-solid-general-target-04 h-3.5 w-3.5 text-[#107569]"
     />
   ),
 }

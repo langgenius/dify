@@ -11,9 +11,10 @@ Server-only plugin-daemon settings are injected by the runtime runtime services
 and therefore do not appear in this public schema.
 """
 
-from typing import ClassVar, Literal, TypeAlias
+from typing import Annotated, ClassVar, Literal, TypeAlias
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 DifyExecutionContextAgentMode: TypeAlias = Literal[
@@ -37,6 +38,32 @@ DifyExecutionContextInvokeFrom: TypeAlias = Literal[
 ]
 
 
+class ApplicationTracingContext(BaseModel):
+    """API-issued application tracing policy; never contains exporter credentials.
+
+    ``run_id`` refers to the API's durable tracing run, not the Agent backend's
+    execution id. The parent identifies the owning message or workflow node.
+    """
+
+    version: Literal[1] = 1
+    run_id: UUID
+    invocation_id: UUID
+    trace_id: Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]
+    parent_span_id: Annotated[str, Field(pattern=r"^[0-9a-f]{16}$")]
+    session_id: str
+    capture_content: bool
+    sampled: bool = True
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    @field_validator("trace_id", "parent_span_id")
+    @classmethod
+    def validate_nonzero_id(cls, value: str) -> str:
+        if int(value, 16) == 0:
+            raise ValueError("OpenTelemetry ids must be nonzero")
+        return value
+
+
 class DifyExecutionContextLayerConfig(BaseModel):
     """Public config for Dify execution identity and daemon transport context."""
 
@@ -55,11 +82,13 @@ class DifyExecutionContextLayerConfig(BaseModel):
     agent_mode: DifyExecutionContextAgentMode
     invoke_from: DifyExecutionContextInvokeFrom
     trace_id: str | None = None
+    tracing: ApplicationTracingContext | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
 
 __all__ = [
+    "ApplicationTracingContext",
     "DifyExecutionContextAgentConfigVersionKind",
     "DifyExecutionContextAgentMode",
     "DifyExecutionContextInvokeFrom",

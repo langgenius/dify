@@ -26,7 +26,7 @@ from services.remote_file_service import (
     RemoteFileUploadResult,
     RemoteFileUrlBlockedError,
 )
-from tests.unit_tests.model_factories import make_tenant
+from tests.helpers.unit.model_factories import make_tenant
 
 REMOTE_URL = "https://example.com/files/report.pdf"
 

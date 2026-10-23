@@ -216,7 +216,7 @@
     "test": "vp test --project unit",
     "test:storybook": "vp test --project storybook --run",
     "test:watch": "vp test --project unit --watch",
-    "type-check": "tsc"
+    "type-check": "tsrs --noEmit"
   },
   "dependencies": {
     "@base-ui/utils": "catalog:",
@@ -252,6 +252,7 @@
     "react-dom": "catalog:",
     "storybook": "catalog:",
     "tailwindcss": "catalog:",
+    "tsrs": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",

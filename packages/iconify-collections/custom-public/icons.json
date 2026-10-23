@@ -542,6 +542,21 @@
     "model-checked": {
       "body": "<path fill=\"none\" stroke=\"#155EEF\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M13.333 4L6 11.333L2.667 8\"/>"
     },
+    "new-rag-book-open": {
+      "body": "<g fill=\"none\" stroke=\"#03F\" stroke-width=\"1.65\" display=\"block\"><path stroke-linejoin=\"round\" d=\"M12 6.5C10.4 4.9 8.2 4 5.8 4c-1 0-2 .16-2.8.44V19c.9-.3 1.8-.44 2.8-.44c2.4 0 4.6.9 6.2 2.44c1.6-1.54 3.8-2.44 6.2-2.44c1 0 1.9.14 2.8.44V4.44c-.8-.28-1.8-.44-2.8-.44c-2.4 0-4.6.9-6.2 2.5Z\"/><path d=\"M12 6.5V21\"/></g>",
+      "width": 24,
+      "height": 24
+    },
+    "new-rag-confluence": {
+      "body": "<g fill=\"none\"><path fill=\"url(#svgID0)\" fill-rule=\"evenodd\" d=\"M4.87 22.322c-.248.42-.527.91-.763 1.3a.814.814 0 0 0 .255 1.08l4.965 3.18a.74.74 0 0 0 .583.095a.77.77 0 0 0 .475-.366c.198-.346.454-.794.733-1.275c1.966-3.378 3.944-2.965 7.511-1.193l4.922 2.436a.74.74 0 0 0 .595.028a.78.78 0 0 0 .433-.425l2.364-5.564a.81.81 0 0 0-.382-1.041a589 589 0 0 1-4.965-2.456c-6.69-3.382-12.366-3.164-16.726 4.2\" clip-rule=\"evenodd\"/><path fill=\"url(#svgID1)\" fill-rule=\"evenodd\" d=\"M27.13 9.696c.248-.422.527-.91.764-1.3a.814.814 0 0 0-.256-1.081l-4.964-3.18a.74.74 0 0 0-.6-.114a.77.77 0 0 0-.489.377c-.198.346-.454.795-.733 1.276c-1.966 3.378-3.945 2.964-7.511 1.192L8.434 4.442a.74.74 0 0 0-.595-.028a.78.78 0 0 0-.433.425l-2.363 5.564a.81.81 0 0 0 .382 1.041c1.038.509 3.104 1.522 4.964 2.456c6.706 3.378 12.392 3.152 16.741-4.204\" clip-rule=\"evenodd\"/><defs><linearGradient id=\"svgID0\" x1=\"26.809\" x2=\"20.867\" y1=\"29.523\" y2=\"16.424\" gradientUnits=\"userSpaceOnUse\"><stop offset=\".18\" stop-color=\"#0052CC\"/><stop offset=\"1\" stop-color=\"#2684FF\"/></linearGradient><linearGradient id=\"svgID1\" x1=\"5.192\" x2=\"11.143\" y1=\"2.49\" y2=\"15.596\" gradientUnits=\"userSpaceOnUse\"><stop offset=\".18\" stop-color=\"#0052CC\"/><stop offset=\"1\" stop-color=\"#2684FF\"/></linearGradient></defs></g>",
+      "width": 32,
+      "height": 32
+    },
+    "new-rag-connect-source": {
+      "body": "<path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M11.333 0c.368 0 .667.298.667.667V4a.667.667 0 0 1-.667.667H8A.667.667 0 0 1 7.333 4V3H4.631c-.681 0-.924.902-.334 1.243l4.075 2.36c1.77 1.024 1.042 3.73-1.003 3.73H4.667v1A.667.667 0 0 1 4 12H.667A.667.667 0 0 1 0 11.333V8c0-.368.298-.667.667-.667H4c.368 0 .667.299.667.667v1h2.702c.681 0 .924-.902.335-1.243l-4.075-2.36c-1.77-1.024-1.043-3.73 1.002-3.73h2.702v-1C7.333.298 7.632 0 8 0zm-10 10.667h2v-2h-2zm7.334-7.334h2v-2h-2z\" clip-rule=\"evenodd\" display=\"block\"/>",
+      "width": 12,
+      "height": 12
+    },
     "other-comment": {
       "body": "<path fill=\"currentColor\" d=\"M12.333 4a2.667 2.667 0 0 0-2.666-2.667H4.333A2.667 2.667 0 0 0 1.667 4v6.667h8A2.667 2.667 0 0 0 12.333 8zM7.667 6.667V8H4.333V6.667zm2-2.667v1.333H4.333V4zm4 4a4 4 0 0 1-4 4H.333V4a4 4 0 0 1 4-4h5.334a4 4 0 0 1 4 4z\"/>",
       "width": 14,

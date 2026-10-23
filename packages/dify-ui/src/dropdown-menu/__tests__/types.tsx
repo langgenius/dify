@@ -1,11 +1,15 @@
+import type { Menu } from '@base-ui/react/menu'
 import type {
   DropdownMenuActions,
+  DropdownMenuContentProps,
   DropdownMenuHandle,
   DropdownMenuProps,
+  DropdownMenuSubContentProps,
 } from '@langgenius/dify-ui/dropdown-menu'
 import {
   createDropdownMenuHandle,
   DropdownMenu,
+  DropdownMenuSubContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
@@ -44,4 +48,23 @@ export function dropdownMenuActionsTypeContract() {
     NonNullable<DropdownMenuProps['actionsRef']>['current']
   >()
   return <DropdownMenu actionsRef={actionsRef} />
+}
+
+export function dropdownMenuPositioningTypeContracts() {
+  type Positioning = 'side' | 'align' | 'sideOffset' | 'alignOffset'
+  expectTypeOf<Pick<DropdownMenuContentProps, Positioning>>().toEqualTypeOf<
+    Pick<Menu.Positioner.Props, Positioning>
+  >()
+  expectTypeOf<Pick<DropdownMenuSubContentProps, Positioning>>().toEqualTypeOf<
+    Pick<Menu.Positioner.Props, Positioning>
+  >()
+  const inherited = <DropdownMenuSubContent>Actions</DropdownMenuSubContent>
+  const independent = <DropdownMenuSubContent align="end">Actions</DropdownMenuSubContent>
+  const invalidSide = (
+    // @ts-expect-error Combined placement strings are not valid sides.
+    <DropdownMenuSubContent side="inline-end-start">Actions</DropdownMenuSubContent>
+  )
+  // @ts-expect-error Logical sides are not alignments.
+  const invalidAlign = <DropdownMenuSubContent align="inline-end">Actions</DropdownMenuSubContent>
+  return { inherited, independent, invalidSide, invalidAlign }
 }

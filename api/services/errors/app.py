@@ -6,6 +6,10 @@ class PermittedAppsUnavailableError(Exception):
     pass
 
 
+class AppQuotaCheckError(Exception):
+    """The app quota could not be determined because its lookup failed."""
+
+
 class MoreLikeThisDisabledError(Exception):
     pass
 

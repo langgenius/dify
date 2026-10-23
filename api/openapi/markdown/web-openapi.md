@@ -1510,6 +1510,26 @@ Upload token is invalid or expired.
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
 
+#### KnowledgeFsCitation
+
+Immutable evidence identity; no signed URLs, tokens or storage keys.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| artifact_hash | string |  | Yes |
+| control_space_id | string |  | Yes |
+| document_asset_id | string |  | Yes |
+| document_title | string |  | No |
+| document_version | integer |  | No |
+| end_offset | integer |  | No |
+| id | string |  | Yes |
+| node_id | string |  | Yes |
+| page_number | integer |  | No |
+| parse_artifact_id | string |  | No |
+| section_path | [ string ] |  | No |
+| space_name | string |  | Yes |
+| start_offset | integer |  | No |
+
 #### LicenseStatus
 
 | Name | Type | Description | Required |
@@ -1811,12 +1831,16 @@ The remote file URL is not allowed.
 | dataset_id | string |  | No |
 | dataset_name | string |  | No |
 | doc_metadata | object |  | No |
+| document_asset_id | string |  | No |
 | document_id | string |  | No |
 | document_name | string |  | No |
+| document_revision | integer |  | No |
+| document_version | integer |  | No |
 | files | [ object ] |  | No |
 | hit_count | integer |  | No |
 | id | string (uuid) |  | No |
 | index_node_hash | string |  | No |
+| knowledge_fs_citation | [KnowledgeFsCitation](#knowledgefscitation) |  | No |
 | message_id | string (uuid) |  | No |
 | page | integer |  | No |
 | position | integer |  | Yes |
@@ -1950,6 +1974,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
 | deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |

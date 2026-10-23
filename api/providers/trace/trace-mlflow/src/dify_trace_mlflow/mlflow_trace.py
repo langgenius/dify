@@ -1,13 +1,28 @@
+import json
 import logging
 import os
+from collections.abc import Callable
+from contextvars import ContextVar
 from datetime import datetime, timedelta
 from typing import Any, cast, override
 
 import mlflow
-from mlflow.entities import Document, LiveSpan, Span, SpanEvent, SpanStatusCode, SpanType
+from mlflow.entities import Document, LiveSpan, Span, SpanEvent, SpanStatusCode, SpanType, TraceData, TraceInfo
+from mlflow.entities.span import NoOpSpan
+from mlflow.exceptions import RestException
+from mlflow.tracing.client import TracingClient
 from mlflow.tracing.constant import SpanAttributeKey, TokenUsageKey, TraceMetadataKey
+from mlflow.tracing.export.mlflow_v3 import MlflowV3SpanExporter
 from mlflow.tracing.fluent import start_span_no_context, update_current_trace
+from mlflow.tracing.processor.mlflow_v3 import MlflowV3SpanProcessor
 from mlflow.tracing.provider import detach_span_from_context, set_span_in_context
+from mlflow.tracing.trace_manager import InMemoryTraceManager
+from mlflow.tracing.utils import encode_span_id, get_otel_attribute
+from opentelemetry import trace as otel_trace
+from opentelemetry.context import Context
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.sampling import ALWAYS_ON
 from sqlalchemy import select
 
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -41,42 +56,77 @@ def datetime_to_nanoseconds(dt: datetime | None) -> int | None:
     return int(dt.timestamp() * 1_000_000_000)
 
 
-def _start_span_no_context(
-    *,
-    name: str,
-    span_type: str,
-    parent_span: LiveSpan | None = None,
-    inputs: object | None = None,
-    attributes: SpanAttributes | None = None,
-    start_time_ns: int | None = None,
-) -> LiveSpan:
-    """Start an MLflow span while preserving structured Dify attributes.
+class _CheckedTracingClient(TracingClient):
+    """Remember errors hidden by SDK exporters without changing SDK serialization or I/O."""
 
-    MLflow 3.11 annotates `start_span_no_context(..., attributes=...)` as `dict[str, str]`,
-    but the implementation immediately calls `LiveSpan.set_attributes(dict[str, Any])`.
-    `LiveSpan` JSON-serializes arbitrary values before storing them in OpenTelemetry, and
-    reserved attributes like `mlflow.chat.tokenUsage` are expected to round-trip as dicts.
-    """
-    return start_span_no_context(
-        name=name,
-        span_type=span_type,
-        parent_span=parent_span,
-        inputs=inputs,
-        attributes=cast(dict[str, str] | None, attributes),
-        start_time_ns=start_time_ns,
-    )
+    def __init__(self, tracking_uri: str, failed: ContextVar[bool]):
+        super().__init__(tracking_uri)
+        self._failed = failed
+
+    def _checked[T](self, operation: Callable[[], T]) -> T:
+        try:
+            return operation()
+        except Exception:
+            self._failed.set(True)
+            raise
+
+    @override
+    def start_trace(self, trace_info: TraceInfo) -> TraceInfo:
+        return self._checked(lambda: super(_CheckedTracingClient, self).start_trace(trace_info))
+
+    @override
+    def _upload_trace_data(self, trace_info: TraceInfo, trace_data: TraceData) -> None:
+        self._checked(lambda: super(_CheckedTracingClient, self)._upload_trace_data(trace_info, trace_data))
+
+    @override
+    def log_spans(self, location: str, spans: list[Span]) -> list[Span]:
+        try:
+            return super().log_spans(location, spans)
+        except NotImplementedError:
+            # SDK falls back to the full trace artifact on pre-3.4/file-store servers.
+            raise
+        except RestException as error:
+            if "REST OTLP span logging is not supported" not in error.message:
+                self._failed.set(True)
+            raise
+        except Exception:
+            self._failed.set(True)
+            raise
+
+
+class _SynchronousMlflowExporter(MlflowV3SpanExporter):
+    """Celery owns asynchronous dispatch; no SDK queue may survive adapter LRU eviction."""
+
+    def __init__(self, tracking_uri: str):
+        self.failed: ContextVar[bool] = ContextVar("mlflow_legacy_export_failed", default=False)
+        super().__init__(tracking_uri)
+        self._client = _CheckedTracingClient(tracking_uri, self.failed)
+
+    @override
+    def _should_enable_async_logging(self) -> bool:
+        return False
 
 
 class MLflowDataTrace(BaseTraceInstance):
     def __init__(self, config: MLflowConfig | DatabricksConfig):
         super().__init__(config)
+        self._tracer: otel_trace.Tracer | None = None
+        self._exporter: _SynchronousMlflowExporter | None = None
+        self._experiment_id = config.experiment_id
         if isinstance(config, DatabricksConfig):
+            # Preserve the SDK's existing Databricks/UC destination selection.
             self._setup_databricks(config)
-        else:
-            self._setup_mlflow(config)
+            os.environ["MLFLOW_ENABLE_ASYNC_TRACE_LOGGING"] = "true"
+            return
+        self._setup_mlflow(config)
 
-        # Enable async logging to minimize performance overhead
-        os.environ["MLFLOW_ENABLE_ASYNC_TRACE_LOGGING"] = "true"
+        # The public MLflow destination API still replaces the SDK's shared provider
+        # and can mutate OTEL_RESOURCE_ATTRIBUTES. Keep this legacy SDK pipeline private.
+        # No SDK background queue or atexit callback may retain an evicted adapter.
+        self._provider = TracerProvider(resource=Resource({}), sampler=ALWAYS_ON, shutdown_on_exit=False)
+        self._exporter = _SynchronousMlflowExporter(tracking_uri=self._tracking_uri)
+        self._provider.add_span_processor(MlflowV3SpanProcessor(self._exporter, export_metrics=False))
+        self._tracer = self._provider.get_tracer(__name__)
 
     def _setup_databricks(self, config: DatabricksConfig):
         """Setup connection to Databricks-managed MLflow instances"""
@@ -95,6 +145,7 @@ class MLflowDataTrace(BaseTraceInstance):
                 "See https://docs.databricks.com/aws/en/dev-tools/auth/#what-authorization-option-should-i-choose "
                 "for more information about the authorization options."
             )
+        self._tracking_uri = "databricks"
         mlflow.set_tracking_uri("databricks")
         mlflow.set_experiment(experiment_id=config.experiment_id)
 
@@ -104,8 +155,7 @@ class MLflowDataTrace(BaseTraceInstance):
 
     def _setup_mlflow(self, config: MLflowConfig):
         """Setup connection to MLflow instances"""
-        mlflow.set_tracking_uri(config.tracking_uri)
-        mlflow.set_experiment(experiment_id=config.experiment_id)
+        self._tracking_uri = config.tracking_uri
 
         # Simple auth if provided
         if config.username and config.password:
@@ -114,9 +164,73 @@ class MLflowDataTrace(BaseTraceInstance):
 
         self._project_url = f"{config.tracking_uri}/#/experiments/{config.experiment_id}/traces"
 
+    def _start_span_no_context(
+        self,
+        *,
+        name: str,
+        span_type: str,
+        parent_span: LiveSpan | None = None,
+        inputs: object | None = None,
+        attributes: SpanAttributes | None = None,
+        start_time_ns: int | None = None,
+    ) -> LiveSpan:
+        """Use the real SDK processor without inheriting a process-wide destination.
+
+        Every span needs the experiment attribute: the SDK's incremental exporter
+        resolves each child independently, rather than inheriting the root's location.
+        A missing/nonrecording span is an export failure, never successful dispatch.
+        """
+        if self._tracer is None:
+            span = start_span_no_context(
+                name=name,
+                span_type=span_type,
+                parent_span=parent_span,
+                inputs=inputs,
+                attributes=cast(dict[str, str] | None, attributes),
+                start_time_ns=start_time_ns,
+            )
+            if isinstance(span, NoOpSpan):
+                raise RuntimeError("mlflow_legacy_span_not_recording")
+            return span
+        context = Context()
+        if parent_span is not None:
+            parent = parent_span._span
+            if not isinstance(parent, otel_trace.Span):
+                raise RuntimeError("mlflow_legacy_parent_span_invalid")
+            context = otel_trace.set_span_in_context(parent, context)
+        try:
+            otel_span = self._tracer.start_span(
+                name,
+                context=context,
+                attributes={SpanAttributeKey.EXPERIMENT_ID: json.dumps(self._experiment_id)},
+                start_time=start_time_ns,
+            )
+        except Exception:
+            raise RuntimeError("mlflow_legacy_span_start_failed") from None
+        if not otel_span.is_recording():
+            raise RuntimeError("mlflow_legacy_span_not_recording")
+        trace_id = get_otel_attribute(otel_span, SpanAttributeKey.REQUEST_ID)
+        manager = InMemoryTraceManager.get_instance()
+        span = (
+            manager.get_span_from_id(trace_id, encode_span_id(otel_span.get_span_context().span_id))
+            if trace_id
+            else None
+        )
+        if not isinstance(span, LiveSpan):
+            manager.pop_trace(otel_span.get_span_context().trace_id)
+            otel_span.end()
+            raise RuntimeError("mlflow_legacy_span_not_registered")
+        span.set_span_type(span_type)
+        if inputs is not None:
+            span.set_inputs(inputs)
+        span.set_attributes(attributes or {})
+        span.set_attribute(SpanAttributeKey.EXPERIMENT_ID, self._experiment_id)
+        return span
+
     @override
     def trace(self, trace_info: BaseTraceInfo):
-        """Simple dispatch to trace methods"""
+        """Dispatch legacy data; synchronous OSS export failures must reach the task owner."""
+        failure_token = self._exporter.failed.set(False) if self._exporter is not None else None
         try:
             match trace_info:
                 case WorkflowTraceInfo():
@@ -133,9 +247,14 @@ class MLflowDataTrace(BaseTraceInstance):
                     self.suggested_question_trace(trace_info)
                 case GenerateNameTraceInfo():
                     self.generate_name_trace(trace_info)
+            if self._exporter is not None and self._exporter.failed.get():
+                raise RuntimeError("mlflow_legacy_export_failed")
         except Exception:
             logger.exception("[MLflow] Trace error")
             raise
+        finally:
+            if self._exporter is not None and failure_token is not None:
+                self._exporter.failed.reset(failure_token)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         """Create workflow span as root, with node spans as children"""
@@ -147,7 +266,7 @@ class MLflowDataTrace(BaseTraceInstance):
         if trace_info.query:
             workflow_inputs["query"] = trace_info.query
 
-        workflow_span = _start_span_no_context(
+        workflow_span = self._start_span_no_context(
             name=TraceTaskName.WORKFLOW_TRACE.value,
             span_type=SpanType.CHAIN,
             inputs=workflow_inputs,
@@ -185,7 +304,7 @@ class MLflowDataTrace(BaseTraceInstance):
                 if not inputs:
                     inputs = JSON_DICT_ADAPTER.validate_json(node.inputs) if node.inputs else {}
 
-                node_span = _start_span_no_context(
+                node_span = self._start_span_no_context(
                     name=node.title,
                     span_type=self._get_node_span_type(node.node_type),
                     parent_span=workflow_span,
@@ -294,7 +413,7 @@ class MLflowDataTrace(BaseTraceInstance):
             base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
             file_list.append(f"{base_url}/{message_file_data.url}")
 
-        span = _start_span_no_context(
+        span = self._start_span_no_context(
             name=TraceTaskName.MESSAGE_TRACE.value,
             span_type=SpanType.LLM,
             inputs=self._parse_prompts(trace_info.inputs),
@@ -358,7 +477,7 @@ class MLflowDataTrace(BaseTraceInstance):
         return metadata.get("from_account_id")  # type: ignore[return-value]
 
     def tool_trace(self, trace_info: ToolTraceInfo):
-        span = _start_span_no_context(
+        span = self._start_span_no_context(
             name=trace_info.tool_name,
             span_type=SpanType.TOOL,
             inputs=trace_info.tool_inputs,
@@ -395,7 +514,7 @@ class MLflowDataTrace(BaseTraceInstance):
             return
 
         start_time = trace_info.start_time or trace_info.message_data.created_at
-        span = _start_span_no_context(
+        span = self._start_span_no_context(
             name=TraceTaskName.MODERATION_TRACE.value,
             span_type=SpanType.TOOL,
             inputs=trace_info.inputs or {},
@@ -419,7 +538,7 @@ class MLflowDataTrace(BaseTraceInstance):
         if trace_info.message_data is None:
             return
 
-        span = _start_span_no_context(
+        span = self._start_span_no_context(
             name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
             span_type=SpanType.RETRIEVER,
             inputs=trace_info.inputs,
@@ -438,7 +557,7 @@ class MLflowDataTrace(BaseTraceInstance):
         start_time = trace_info.start_time or trace_info.message_data.created_at
         end_time = trace_info.end_time or trace_info.message_data.updated_at
 
-        span = _start_span_no_context(
+        span = self._start_span_no_context(
             name=TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
             span_type=SpanType.TOOL,
             inputs=trace_info.inputs,
@@ -467,7 +586,7 @@ class MLflowDataTrace(BaseTraceInstance):
         span.end(outputs=trace_info.suggested_question, end_time_ns=datetime_to_nanoseconds(end_time))
 
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
-        span = _start_span_no_context(
+        span = self._start_span_no_context(
             name=TraceTaskName.GENERATE_NAME_TRACE.value,
             span_type=SpanType.CHAIN,
             inputs=trace_info.inputs,
@@ -566,7 +685,7 @@ class MLflowDataTrace(BaseTraceInstance):
     def api_check(self):
         """Simple connection test"""
         try:
-            mlflow.search_experiments(max_results=1)
+            mlflow.MlflowClient(tracking_uri=self._tracking_uri).search_experiments(max_results=1)
             return True
         except Exception as e:
             raise ValueError(f"MLflow connection failed: {str(e)}") from e
