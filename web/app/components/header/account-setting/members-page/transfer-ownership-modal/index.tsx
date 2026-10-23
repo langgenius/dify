@@ -125,7 +125,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
       }}
       disablePointerDismissal
     >
-      <DialogContent className="w-105">
+      <DialogContent className="w-105" backdropProps={{ forceRender: true }}>
         {step === STEP.start && (
           <>
             <DialogHeader>
