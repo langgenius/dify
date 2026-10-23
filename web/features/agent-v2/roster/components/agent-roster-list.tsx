@@ -1,8 +1,11 @@
 'use client'
 
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
-import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -21,7 +24,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
-import { useId, useRef, useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import AppIcon from '@/app/components/base/app-icon'
@@ -216,7 +219,7 @@ function AgentRosterItem({
   onDelete,
 }: {
   agent: AgentAppPartial
-  onDelete: (agent: AgentAppPartial, returnFocus: HTMLElement | null) => void
+  onDelete: (agent: AgentAppPartial) => void
 }) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tApp } = useTranslation(['app'])
@@ -225,8 +228,6 @@ function AgentRosterItem({
   const descriptionId = useId()
   const draftStatusId = useId()
   const [activeDialog, setActiveDialog] = useState<'duplicate' | 'edit' | null>(null)
-  const cardLinkRef = useRef<HTMLAnchorElement>(null)
-  const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const { exportAppDsl, isExporting } = useExportAppDsl()
   const capabilities = getAgentACLCapabilities(agent.permission_keys)
   const isPreviewOnly = agent.permission_keys?.length === 1 && capabilities.canPreview
@@ -334,7 +335,6 @@ function AgentRosterItem({
           render={
             defaultSection ? (
               <Link
-                ref={cardLinkRef}
                 href={`/agents/${agent.id}/${defaultSection}`}
                 aria-labelledby={nameId}
                 aria-describedby={accessibleDescriptionIds || undefined}
@@ -365,9 +365,7 @@ function AgentRosterItem({
               onEdit={capabilities.canEdit ? handleEditOpen : undefined}
               onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
               onExport={capabilities.canImportExportDSL ? handleExport : undefined}
-              onDelete={
-                capabilities.canDelete ? () => onDelete(agent, cardLinkRef.current) : undefined
-              }
+              onDelete={capabilities.canDelete ? () => onDelete(agent) : undefined}
             />
           </ContextMenuContent>
         )}
@@ -377,7 +375,6 @@ function AgentRosterItem({
           <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
-                ref={menuTriggerRef}
                 render={
                   <IconButton
                     aria-label={t(($) => $['roster.moreActions'], {
@@ -398,11 +395,7 @@ function AgentRosterItem({
                   onEdit={capabilities.canEdit ? handleEditOpen : undefined}
                   onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
                   onExport={capabilities.canImportExportDSL ? handleExport : undefined}
-                  onDelete={
-                    capabilities.canDelete
-                      ? () => onDelete(agent, menuTriggerRef.current)
-                      : undefined
-                  }
+                  onDelete={capabilities.canDelete ? () => onDelete(agent) : undefined}
                 />
               </DropdownMenuContent>
             </DropdownMenu>
@@ -462,19 +455,15 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
-  const listRef = useRef<HTMLElement>(null)
-  const deleteActionsRef = useRef<AlertDialogActions>(null)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<{
-    agent: Pick<AgentAppPartial, 'id' | 'name'>
-    returnFocus: HTMLElement | null
-  } | null>(null)
+  const [deleteDialog] = useState(() =>
+    createAlertDialogHandle<Pick<AgentAppPartial, 'id' | 'name'>>(),
+  )
   const deletion = useMutation(
     consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
   )
 
   return (
-    <section ref={listRef} tabIndex={-1} aria-label={label} aria-busy={isBusy}>
+    <section aria-label={label} aria-busy={isBusy}>
       {state.status === 'pending' && (
         <div className={AGENT_ROSTER_GRID_CLASS_NAME}>
           <AgentRosterSkeleton />
@@ -505,10 +494,9 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
             <AgentRosterItem
               key={agent.id}
               agent={agent}
-              onDelete={(target, returnFocus) => {
+              onDelete={(target) => {
                 deletion.reset()
-                setDeleteTarget({ agent: target, returnFocus })
-                setDeleteOpen(true)
+                deleteDialog.openWithPayload(target)
               }}
             />
           ))}
@@ -533,35 +521,30 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
         </div>
       )}
       <AlertDialog
-        actionsRef={deleteActionsRef}
-        open={deleteOpen}
+        handle={deleteDialog}
         onOpenChange={(open, details) => {
           if (!open && deletion.isPending && details.reason !== 'imperative-action')
             details.cancel()
-          else setDeleteOpen(open)
         }}
       >
-        <AlertDialogContent
-          initialFocus
-          finalFocus={() =>
-            deleteTarget?.returnFocus?.isConnected ? deleteTarget.returnFocus : listRef.current
-          }
-        >
-          {deleteTarget && (
-            <DeleteAgentForm
-              agentName={deleteTarget.agent.name}
-              isPending={deletion.isPending}
-              error={deletion.isError ? t(($) => $['roster.deleteFailed']) : undefined}
-              onSubmit={() => {
-                if (deletion.isPending) return
-                deletion.mutate(
-                  { params: { agent_id: deleteTarget.agent.id } },
-                  { onSuccess: () => deleteActionsRef.current?.close() },
-                )
-              }}
-            />
-          )}
-        </AlertDialogContent>
+        {({ payload }) => (
+          <AlertDialogContent>
+            {payload && (
+              <DeleteAgentForm
+                agentName={payload.name}
+                isPending={deletion.isPending}
+                error={deletion.isError ? t(($) => $['roster.deleteFailed']) : undefined}
+                onSubmit={() => {
+                  if (deletion.isPending) return
+                  deletion.mutate(
+                    { params: { agent_id: payload.id } },
+                    { onSuccess: () => deleteDialog.close() },
+                  )
+                }}
+              />
+            )}
+          </AlertDialogContent>
+        )}
       </AlertDialog>
     </section>
   )

@@ -4,12 +4,15 @@ import type {
   AppPartial,
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { MouseEvent, ReactElement } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
-import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ContextMenu,
@@ -278,10 +281,8 @@ export function AppCardInteractions({
     consoleQuery.apps.byAppId.put.mutationOptions({ context: { silent: true } }),
   )
   const editNameRef = useRef<HTMLInputElement>(null)
-  const [activeDialog, setActiveDialog] = useState<
-    'delete' | 'duplicate' | 'edit' | 'switch' | null
-  >(null)
-  const deleteActionsRef = useRef<AlertDialogActions>(null)
+  const [activeDialog, setActiveDialog] = useState<'duplicate' | 'edit' | 'switch' | null>(null)
+  const [deleteDialog] = useState(() => createAlertDialogHandle())
   const operationsMenu = useStepByStepTourControlledDropdown({
     allowTriggerCloseWhileControlled: false,
     controlledOpen: stepByStepTourActionMenuOpen,
@@ -339,9 +340,9 @@ export function AppCardInteractions({
   const handleShowDeleteConfirm = useCallback(() => {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
-      setActiveDialog('delete')
+      deleteDialog.open(null)
     })
-  }, [setIsOperationsMenuOpen])
+  }, [deleteDialog, setIsOperationsMenuOpen])
 
   const handleOpenAccessConfig = useCallback(() => {
     setIsOperationsMenuOpen(false)
@@ -610,18 +611,16 @@ export function AppCardInteractions({
         />
       )}
       <AlertDialog
-        actionsRef={deleteActionsRef}
-        open={activeDialog === 'delete'}
+        handle={deleteDialog}
         onOpenChange={(open, details) => {
           if (!open && deletion.isPending && details.reason !== 'imperative-action')
             details.cancel()
-          else if (!open) setActiveDialog(null)
         }}
         onOpenChangeComplete={(open) => {
           if (!open) deletion.reset()
         }}
       >
-        <AlertDialogContent initialFocus>
+        <AlertDialogContent>
           <DeleteAppForm
             appName={app.name}
             isPending={deletion.isPending}
@@ -635,7 +634,7 @@ export function AppCardInteractions({
               deletion.mutate(
                 { params: { app_id: app.id } },
                 {
-                  onSuccess: () => deleteActionsRef.current?.close(),
+                  onSuccess: () => deleteDialog.close(),
                 },
               )
             }}

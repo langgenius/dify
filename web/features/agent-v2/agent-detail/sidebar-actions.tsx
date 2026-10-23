@@ -1,9 +1,12 @@
 'use client'
 
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type { AgentFormSource } from '@/features/agent-v2/roster/components/agent-form'
-import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +16,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { toast } from '@/app/notifications'
@@ -34,9 +37,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
   const { t: tApp } = useTranslation(['app'])
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const deleteActionsRef = useRef<AlertDialogActions>(null)
-  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const [deleteDialog] = useState(() => createAlertDialogHandle())
   const deletion = useMutation(
     consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
   )
@@ -78,7 +79,6 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
-          ref={menuTriggerRef}
           render={
             <IconButton
               aria-label={t(($) => $['roster.moreActions'], {
@@ -127,7 +127,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
               className="gap-2"
               onClick={() => {
                 deletion.reset()
-                setIsDeleteOpen(true)
+                deleteDialog.open(null)
               }}
             >
               <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
@@ -148,15 +148,13 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
       )}
       {capabilities.canDelete && (
         <AlertDialog
-          actionsRef={deleteActionsRef}
-          open={isDeleteOpen}
+          handle={deleteDialog}
           onOpenChange={(open, details) => {
             if (!open && deletion.isPending && details.reason !== 'imperative-action')
               details.cancel()
-            else setIsDeleteOpen(open)
           }}
         >
-          <AlertDialogContent initialFocus finalFocus={menuTriggerRef}>
+          <AlertDialogContent>
             <DeleteAgentForm
               agentName={agent.name}
               isPending={deletion.isPending}
@@ -167,7 +165,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
                   { params: { agent_id: agent.id } },
                   {
                     onSuccess: () => {
-                      deleteActionsRef.current?.close()
+                      deleteDialog.close()
                       router.replace('/agents')
                     },
                   },

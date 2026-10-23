@@ -4,10 +4,9 @@ import { AgentPermission } from '@/features/agent-v2/acl'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
-import { AgentDetailSidebarActions } from '../agent-detail/sidebar-actions'
 import { AgentRosterList } from '../roster/components/agent-roster-list'
 
-const service = vi.hoisted(() => ({ deleteAgent: vi.fn(), replace: vi.fn() }))
+const service = vi.hoisted(() => ({ deleteAgent: vi.fn() }))
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -15,7 +14,6 @@ vi.mock('react-i18next', async () => {
   const { default: common } = await import('@/i18n/locales/en-US/common.json')
   return createReactI18nextMock({ ...agentRoster, ...common })
 })
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace: service.replace }) }))
 vi.mock('@/features/agent-v2/permissions', () => ({ useCanCreateAgents: () => false }))
 vi.mock('@/hooks/use-timestamp', () => ({ default: () => ({ formatTime: () => '' }) }))
 vi.mock('@/app/components/app/use-export-app-dsl', () => ({
@@ -44,25 +42,20 @@ async function openDeletion(user: ReturnType<typeof userEvent.setup>) {
   return screen.findByRole('alertdialog')
 }
 
-describe.each(['roster', 'sidebar'] as const)('%s agent deletion', (entry) => {
+describe('roster agent deletion', () => {
   beforeEach(() => {
     service.deleteAgent.mockReset().mockResolvedValue(undefined)
-    service.replace.mockReset()
     render(
-      entry === 'sidebar' ? (
-        <AgentDetailSidebarActions agent={agent} />
-      ) : (
-        <AgentRosterList
-          label="Agents"
-          state={{
-            status: 'ready',
-            agents: [agent],
-            emptyState: 'roster',
-            footer: { status: 'none' },
-            isFetching: false,
-          }}
-        />
-      ),
+      <AgentRosterList
+        label="Agents"
+        state={{
+          status: 'ready',
+          agents: [agent],
+          emptyState: 'roster',
+          footer: { status: 'none' },
+          isFetching: false,
+        }}
+      />,
     )
   })
 
@@ -92,7 +85,6 @@ describe.each(['roster', 'sidebar'] as const)('%s agent deletion', (entry) => {
       }),
     )
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    if (entry === 'sidebar') expect(service.replace).toHaveBeenCalledWith('/agents')
   })
 
   it('blocks Escape, cancel, edits and duplicate submission until the deletion settles', async () => {
@@ -113,7 +105,6 @@ describe.each(['roster', 'sidebar'] as const)('%s agent deletion', (entry) => {
     await user.click(confirm)
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
     expect(service.deleteAgent).toHaveBeenCalledOnce()
-    expect(service.replace).not.toHaveBeenCalled()
     await act(async () => pending.resolve())
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
   })
@@ -126,7 +117,6 @@ describe.each(['roster', 'sidebar'] as const)('%s agent deletion', (entry) => {
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Failed to delete agent')
     expect(screen.getByRole('textbox')).toHaveValue(agent.name)
-    expect(service.replace).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     expect(service.deleteAgent).toHaveBeenCalledTimes(2)

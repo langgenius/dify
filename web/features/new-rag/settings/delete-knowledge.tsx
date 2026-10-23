@@ -1,11 +1,15 @@
 'use client'
 
 import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
-import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogTrigger,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -21,7 +25,6 @@ export function DeleteKnowledgeAction() {
   const queryClient = useQueryClient()
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const hasPendingSave = useAtomValue(knowledgeSettingsHasPendingSaveAtom)
-  const [open, setOpen] = useState(false)
   const deleteActionsRef = useRef<AlertDialogActions>(null)
   const mutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
@@ -51,7 +54,14 @@ export function DeleteKnowledgeAction() {
   }
 
   return (
-    <>
+    <AlertDialog
+      actionsRef={deleteActionsRef}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && mutation.isPending && details.reason !== 'imperative-action')
+          details.cancel()
+        else if (nextOpen) mutation.reset()
+      }}
+    >
       <div className="h-px bg-divider-subtle" />
       <div className="flex min-w-0 flex-col gap-4 pt-7 sm:flex-row sm:gap-1">
         <h2 className="flex h-8 w-full shrink-0 items-center system-sm-semibold text-text-destructive sm:w-45">
@@ -66,38 +76,22 @@ export function DeleteKnowledgeAction() {
               {t(($) => $['settings.deleteDescription'], { ns: 'knowledgeSettings' })}
             </p>
           </div>
-          <Button
-            type="button"
-            tone="destructive"
-            disabled={hasPendingSave}
-            onClick={() => {
-              mutation.reset()
-              setOpen(true)
-            }}
+          <AlertDialogTrigger
+            render={<Button type="button" tone="destructive" disabled={hasPendingSave} />}
           >
             {tCommon(($) => $['operation.delete'])}
-          </Button>
+          </AlertDialogTrigger>
         </div>
       </div>
 
-      <AlertDialog
-        actionsRef={deleteActionsRef}
-        open={open}
-        onOpenChange={(nextOpen, details) => {
-          if (!nextOpen && mutation.isPending && details.reason !== 'imperative-action')
-            details.cancel()
-          else setOpen(nextOpen)
-        }}
-      >
-        <AlertDialogContent initialFocus>
-          <DeleteKnowledgeForm
-            knowledgeName={name}
-            isPending={mutation.isPending}
-            error={mutation.isError ? tCommon(($) => $['api.actionFailed']) : undefined}
-            onSubmit={deleteKnowledge}
-          />
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+      <AlertDialogContent>
+        <DeleteKnowledgeForm
+          knowledgeName={name}
+          isPending={mutation.isPending}
+          error={mutation.isError ? tCommon(($) => $['api.actionFailed']) : undefined}
+          onSubmit={deleteKnowledge}
+        />
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

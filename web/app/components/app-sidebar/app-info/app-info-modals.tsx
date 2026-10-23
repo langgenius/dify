@@ -164,7 +164,7 @@ export default function AppInfoModals({
           if (!open) deletion.reset()
         }}
       >
-        <AlertDialogContent initialFocus>
+        <AlertDialogContent>
           <DeleteAppForm
             appName={appDetail.name}
             isPending={deletion.isPending}
