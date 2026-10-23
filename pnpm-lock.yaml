@@ -1340,9 +1340,6 @@ importers:
       '@orpc/tanstack-query':
         specifier: 'catalog:'
         version: 1.15.7(@orpc/client@1.15.7)(@tanstack/query-core@5.104.4)
-      vite:
-        specifier: npm:@voidzero-dev/vite-plus-core@1.4.0
-        version: '@voidzero-dev/vite-plus-core@1.4.0(@types/node@25.9.9)(@volar/typescript@2.4.28(typescript@7.1.0-beta))(esbuild@0.28.2)(jiti@2.7.0)(typescript@7.1.0-beta)(yaml@2.9.1)'
       yaml:
         specifier: 'catalog:'
         version: 2.9.1
@@ -1356,6 +1353,9 @@ importers:
       typescript:
         specifier: catalog:ts71
         version: 7.1.0-beta
+      vite:
+        specifier: 'catalog:'
+        version: '@voidzero-dev/vite-plus-core@1.4.0(@types/node@25.9.9)(@volar/typescript@2.4.28(typescript@7.1.0-beta))(esbuild@0.28.2)(jiti@2.7.0)(typescript@7.1.0-beta)(yaml@2.9.1)'
 
   packages/tooling:
     dependencies:

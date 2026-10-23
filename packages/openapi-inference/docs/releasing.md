@@ -15,7 +15,7 @@ pnpm --filter @dify/openapi-inference test:package
 
 `test:package` packs the package and installs it with npm in a temporary directory outside the repository. It checks the file allowlist, resolved dependencies, declarations, license, TS 7.1 mapper, typed document context, Node hooks and tree-shaking with official Vite. It needs network access to install consumer dependencies. Its subprocesses use bounded memory and concurrency.
 
-The dedicated CI job also runs Next.js Turbopack/Webpack fixtures against the full console specification and verifies the production metadata bundle. Keep full application builds in CI on resource-constrained workstations. See the [repository guide](https://github.com/langgenius/dify/blob/main/packages/openapi-inference/docs/repository.md) for Dify-specific checks.
+The dedicated CI job also runs Next.js Turbopack/Webpack fixtures against the full console specification and verifies the production metadata bundle. Keep full application builds in CI on resource-constrained workstations. See the [repository guide] for Dify-specific checks.
 
 ## Pack
 
@@ -26,9 +26,9 @@ OPENAPI_PACKAGE_TARBALL=/tmp/dify-openapi-inference.tgz \
   pnpm --filter @dify/openapi-inference test:package
 ```
 
-`prepack` cleans and rebuilds `dist`. Always use pnpm to create the tarball: it [resolves workspace `catalog:` versions](https://pnpm.io/catalogs) into registry dependencies. Inspect and test the resulting artifact; do not publish the workspace source directory using npm directly.
+`prepack` cleans and rebuilds `dist`. Always use pnpm to create the tarball: it [resolves workspace `catalog:` versions] into registry dependencies. Inspect and test the resulting artifact; do not publish the workspace source directory using npm directly.
 
-The package includes compiled ESM and declaration files, its manifest, README, changelog, license and this guide. It excludes source tests, fixtures, OpenAPI snapshots and application code. Consumers do not build the SDK during installation.
+The package includes compiled ESM and declaration files, its manifest, README, changelog, license, the [oRPC comparison] and this guide. It excludes source tests, fixtures, OpenAPI snapshots and application code. Consumers do not build the SDK during installation.
 
 ## Publish an approved artifact
 
@@ -48,3 +48,7 @@ After publication, verify registry metadata and install that exact version in an
 - Official Vite 8.3.5 is tested independently of the monorepo's Vite Plus alias. Vite is an optional peer because Node and Next.js consumers do not need it.
 - Only `api` and `query` are document exports. Adapter implementation subpaths are not application APIs.
 - The license is copied verbatim from Dify's repository license. Changing the package name or moving it to another repository does not change those terms.
+
+[oRPC comparison]: orpc-comparison.md
+[repository guide]: https://github.com/langgenius/dify/blob/main/packages/openapi-inference/docs/repository.md
+[resolves workspace `catalog:` versions]: https://pnpm.io/catalogs

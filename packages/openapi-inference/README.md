@@ -25,7 +25,7 @@ npm install @dify/openapi-inference@beta
 npm install --save-dev typescript@7.1.0-beta vite@8.3.5
 ```
 
-Before publication, install a locally packed release candidate with `npm install /path/to/dify-openapi-inference-0.1.0-beta.0.tgz`. See [release preparation](docs/releasing.md) for the packaging and independent-consumer checks.
+Before publication, install a locally packed release candidate with `npm install /path/to/dify-openapi-inference-0.1.0-beta.0.tgz`. See [release preparation] for the packaging and independent-consumer checks.
 
 Create `pets.openapi.yaml`:
 
@@ -178,6 +178,12 @@ export { api as apiClient, query as apiQuery } from './pets.openapi.yaml'
 
 Static calls retain only used operations. Dynamic indexing, enumeration or passing whole namespaces to opaque functions can retain other operations. The runtime does not bundle response schemas or the YAML parser. Tests verify that adding 1,000 unused operations does not increase a static consumer's bundle.
 
+### Comparison with oRPC
+
+This package consumes OpenAPI directly and prunes statically used operations while keeping oRPC-shaped calls and reusing its TanStack Query helpers. It requires the TS 7.1 beta toolchain and does not replace oRPC's full Link, interceptor or defined-error capabilities.
+
+In an isolated KnowledgeFS metadata benchmark, API-only output was 2.38 KB gzip, compared with 57.40 KB for the current generated oRPC contract group and 10.08 KB for a pre-minified single-operation oRPC contract. oRPC supports contract minification; these results do not imply that oRPC cannot tree-shake. They do not measure Dify's page load. See the [oRPC comparison] for all measurements, methodology, behavior differences and tradeoffs.
+
 ## Other runtime adapters
 
 ### Node.js
@@ -225,12 +231,18 @@ The loader uses a tiny shared resource for child namespaces so the full specific
 
 External references, Swagger 2, URL-encoded forms, advanced parameter serialization, nested multipart file dictionaries and YAML aliases are unsupported. Inline schema inference has a 24-step fallback; local referenced schemas use recursive aliases. Unsupported request serialization fails explicitly. Missing or inaccurate OpenAPI declarations cannot be repaired by inference.
 
-This is not a drop-in replacement for all oRPC Links, interceptors, typed error maps or application-specific query policies. Browser Fetch governs cookie headers. For the complete supported scope and Dify-specific verification, see the [repository guide](https://github.com/langgenius/dify/blob/main/packages/openapi-inference/docs/repository.md).
+This is not a drop-in replacement for all oRPC Links, interceptors, typed error maps or application-specific query policies. Browser Fetch governs cookie headers. For the complete supported scope and Dify-specific verification, see the [repository guide].
 
 ## Development and release
 
-See [release preparation](docs/releasing.md) and [CHANGELOG](CHANGELOG.md). The independent package check installs a real tarball outside this monorepo and exercises its types, Node runtime and official Vite adapter. It performs no registry publication.
+See [release preparation] and [CHANGELOG]. The independent package check installs a real tarball outside this monorepo and exercises its types, Node runtime and official Vite adapter. It performs no registry publication.
 
 ## License
 
-This package retains the repository's modified Apache 2.0 terms, including its additional conditions. See [LICENSE](LICENSE); it is not licensed under unmodified Apache-2.0 or MIT.
+This package retains the repository's modified Apache 2.0 terms, including its additional conditions. See [LICENSE]; it is not licensed under unmodified Apache-2.0 or MIT.
+
+[CHANGELOG]: CHANGELOG.md
+[LICENSE]: LICENSE
+[oRPC comparison]: docs/orpc-comparison.md
+[release preparation]: docs/releasing.md
+[repository guide]: https://github.com/langgenius/dify/blob/main/packages/openapi-inference/docs/repository.md

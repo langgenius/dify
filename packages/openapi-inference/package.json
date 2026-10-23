@@ -23,9 +23,10 @@
     "directory": "packages/openapi-inference"
   },
   "files": [
-    "dist",
-    "LICENSE",
     "CHANGELOG.md",
+    "LICENSE",
+    "dist",
+    "docs/orpc-comparison.md",
     "docs/releasing.md"
   ],
   "type": "module",
@@ -98,7 +99,7 @@
     "vite": "catalog:"
   },
   "peerDependencies": {
-    "vite": "^8.3.5"
+    "vite": "catalog:public-vite"
   },
   "peerDependenciesMeta": {
     "vite": {

@@ -271,6 +271,8 @@ catalog:
   use-context-selector: 2.0.0
   uuid: 14.0.3
   vinext: 1.2.1
+  # The workspace uses Vite Plus; the SDK's public peer targets official Vite.
+  # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item
   vite: npm:@voidzero-dev/vite-plus-core@1.4.0
   vite-plugin-inspect: 12.1.0
   vite-plus: 1.4.0
@@ -282,6 +284,8 @@ catalog:
   zundo: 2.3.0
   zustand: 5.0.15
 catalogs:
+  public-vite:
+    vite: ^8.3.5
   ts71:
     typescript: 7.1.0-beta
 peerDependencyRules:
