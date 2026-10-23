@@ -3,8 +3,10 @@
 from sqlalchemy.orm import Session, sessionmaker
 
 from clients.plugin.auth import PluginCredentialAuthClient
+from context.connection_execution import ConnectionExecutionContext
 from core.plugin.impl.oauth import OAuthHandler
 from extensions.ext_redis import redis_client
+from models.model import Conversation
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connection_adapters import (
     PluginApiKeyCredentialGateway,
@@ -30,6 +32,7 @@ __all__ = [
     "build_end_user_connection_runtime",
     "build_end_user_connections",
     "get_tool_runtime",
+    "initialize_conversation_connections",
 ]
 
 
@@ -102,3 +105,9 @@ def build_end_user_connection_runtime(
         checks=connections,
         cipher=TenantConnectionCipher(),
     )
+
+
+def initialize_conversation_connections(
+    session: Session, context: ConnectionExecutionContext, conversation: Conversation
+) -> None:
+    EndUserConnectionRepository.initialize_conversation_selections(session, context, conversation)

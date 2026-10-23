@@ -139,6 +139,14 @@ export const zCompletionMessagePayload = z.object({
 })
 
 /**
+ * ConnectionConfigurationResponse
+ */
+export const zConnectionConfigurationResponse = z.object({
+  connections: z.record(z.string(), z.string().nullable()),
+  workflow_id: z.string().nullable(),
+})
+
+/**
  * ConnectionCredentialStatus
  *
  * Last known credential lifecycle state, not readiness for a particular node.
@@ -2285,6 +2293,15 @@ export const zPostConnectionsBody = zEndUserConnectionCreatePayload
  * API-key connection created
  */
 export const zPostConnectionsResponse = zEndUserConnectionResponse
+
+export const zGetConnectionsConfigurationQuery = z.object({
+  conversation_id: z.uuid().optional(),
+})
+
+/**
+ * Saved Connection configuration
+ */
+export const zGetConnectionsConfigurationResponse = zConnectionConfigurationResponse
 
 export const zPostConnectionsOauthAuthorizationUrlBody = zEndUserConnectionOAuthPayload
 

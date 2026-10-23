@@ -152,6 +152,13 @@ export type ConnectionConfigurationInvalidError = ErrorResponse & {
   status: 400
 }
 
+export type ConnectionConfigurationResponse = {
+  connections: {
+    [key: string]: string | null
+  }
+  workflow_id: string | null
+}
+
 export type ConnectionConflictError = ErrorResponse & {
   code: 'connection_conflict'
   status: 409
@@ -1690,6 +1697,30 @@ export type PostConnectionsResponses = {
 }
 
 export type PostConnectionsResponse = PostConnectionsResponses[keyof PostConnectionsResponses]
+
+export type GetConnectionsConfigurationData = {
+  body?: never
+  path?: never
+  query?: {
+    conversation_id?: string
+  }
+  url: '/connections/configuration'
+}
+
+export type GetConnectionsConfigurationErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsConfigurationError =
+  GetConnectionsConfigurationErrors[keyof GetConnectionsConfigurationErrors]
+
+export type GetConnectionsConfigurationResponses = {
+  200: ConnectionConfigurationResponse
+}
+
+export type GetConnectionsConfigurationResponse =
+  GetConnectionsConfigurationResponses[keyof GetConnectionsConfigurationResponses]
 
 export type PostConnectionsOauthAuthorizationUrlData = {
   body: EndUserConnectionOAuthPayload

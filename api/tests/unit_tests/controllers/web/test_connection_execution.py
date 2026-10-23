@@ -13,10 +13,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from clients.plugin.auth_entities import CredentialCheckResult
 from controllers.common import session as controller_session
 from controllers.web import bp, wraps
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.impl.oauth import OAuthHandler
 from enums import DeploymentEdition
 from extensions import ext_application_services
 from models.end_user_connection import AppConnection, SessionConnection
+from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import WorkflowRun
 from services.app_generate_service import AppGenerateService
@@ -37,6 +39,7 @@ from services.end_user_connections.errors import (
 )
 from services.end_user_connections.execution import ConnectionExecutionService
 from services.end_user_connections.preflight import ConnectionPreflightService
+from services.end_user_connections.selections import ConnectionSelectionService
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams
 from tests.helpers.end_user_api_key import ConnectionHarness, TestProviders, make_harness, plugin_provider
@@ -169,7 +172,10 @@ def real_execution_gate(
     monkeypatch.setattr(
         ext_application_services,
         "application_services",
-        lambda: SimpleNamespace(end_user_connection_execution=ConnectionExecutionService(preflight=preflight)),
+        lambda: SimpleNamespace(
+            end_user_connection_execution=ConnectionExecutionService(preflight=preflight),
+            connection_selections=ConnectionSelectionService(store=harness.repository),
+        ),
     )
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, PUBSUB_REDIS_CHANNEL_TYPE="streams")
     rate_limit = mocker.patch("services.app_generate_service.RateLimit")
@@ -291,3 +297,93 @@ def test_ready_selection_is_checked_before_serializing_the_queued_context(
     assert params.workflow_id == harness.workflow_id
     assert params.connection_context.selections[0].connection_id == connection.id
     assert "original-secret" not in enqueue.call_args.args[0]
+    with harness.sessions() as session:
+        saved = session.scalar(sa.select(AppConnection).where(AppConnection.app_id == harness.context.app_id))
+        assert saved is not None
+        assert saved.source_run_id == params.workflow_run_id
+        assert saved.connection_id == connection.id
+
+
+@pytest.mark.usefixtures("real_execution_gate")
+@pytest.mark.parametrize("selection", ["omitted", "null", "empty", "node-null"])
+def test_only_chatflow_omission_restores_last_conversation_choices(
+    client: tuple[FlaskClient, str], harness: ConnectionHarness, mocker: MockerFixture, selection: str
+) -> None:
+    connection = harness.service.create_api_key(harness.context, harness.command())
+    with harness.sessions.begin() as session:
+        conversation = Conversation(
+            app_id=harness.context.app_id,
+            mode=AppMode.ADVANCED_CHAT,
+            name="Chat",
+            _inputs={},
+            from_source=ConversationFromSource.API,
+            from_end_user_id=harness.context.end_user_id,
+        )
+        session.add(conversation)
+        session.flush()
+        conversation_id = conversation.id
+    params = mocker.spy(AppExecutionParams, "new")
+    mocker.patch("services.app_generate_service.MessageBasedAppGenerator.retrieve_events", return_value=iter(()))
+    enqueue = mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
+    http, path = client
+    payload: dict[str, object] = {
+        "inputs": {},
+        "query": "hello",
+        "response_mode": "streaming",
+        "workflow_id": harness.workflow_id,
+        "conversation_id": conversation_id,
+        "connections": {"tool-1": connection.id},
+    }
+    assert http.post(path, json=payload).status_code == 200
+    params.reset_mock()
+    payload.pop("connections")
+    if selection != "omitted":
+        explicit_choices: dict[str, dict[str, str | None] | None] = {
+            "null": None,
+            "empty": {},
+            "node-null": {"tool-1": None},
+        }
+        payload["connections"] = explicit_choices[selection]
+    response = http.post(path, json=payload)
+    if path == "/api/chat-messages" and selection == "omitted":
+        assert response.status_code == 200
+        params.assert_called_once()
+        assert params.call_args.kwargs["connection_context"].selections[0].connection_id == connection.id
+    else:
+        assert response.status_code == 400
+        assert response.get_json()["code"] == "connection_required"
+        params.assert_not_called()
+    enqueue.assert_not_called()
+
+
+@pytest.mark.usefixtures("real_execution_gate")
+def test_blocking_run_uses_the_same_id_as_app_configuration(
+    client: tuple[FlaskClient, str], harness: ConnectionHarness, mocker: MockerFixture
+) -> None:
+    _, path = client
+    generator = "AdvancedChatAppGenerator" if path == "/api/chat-messages" else "WorkflowAppGenerator"
+    generate = mocker.patch(f"services.app_generate_service.{generator}.generate", return_value={"answer": "done"})
+    mocker.patch(f"services.app_generate_service.{generator}.convert_to_event_stream", side_effect=lambda value: value)
+    connection = harness.service.create_api_key(harness.context, harness.command())
+    with harness.sessions() as session:
+        app = session.get(App, harness.context.app_id)
+        user = session.get(EndUser, harness.context.end_user_id)
+        assert app is not None
+        assert user is not None
+        result = AppGenerateService.generate(
+            app_model=app,
+            user=user,
+            session=session,
+            invoke_from=InvokeFrom.WEB_APP,
+            streaming=False,
+            args={
+                "inputs": {},
+                "query": "hello",
+                "workflow_id": harness.workflow_id,
+                "connections": {"tool-1": connection.id},
+            },
+        )
+        assert result == {"answer": "done"}
+        saved = session.scalar(sa.select(AppConnection).where(AppConnection.app_id == harness.context.app_id))
+        assert saved is not None
+        assert saved.source_run_id == generate.call_args.kwargs["workflow_run_id"]

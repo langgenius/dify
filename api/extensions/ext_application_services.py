@@ -69,6 +69,7 @@ from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.conversation_variable_query_repository import ConversationVariableQueryRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
+from repositories.end_user_connection_repository import EndUserConnectionRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
@@ -134,6 +135,7 @@ from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
 from services.end_user_connections.preflight import ConnectionPreflightService
 from services.end_user_connections.runtime import ConnectionRuntimeService
+from services.end_user_connections.selections import ConnectionSelectionService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
@@ -324,6 +326,7 @@ class ApplicationServices:
     web_passport: WebPassportService
     web_identity: WebIdentityService
     web_login_handoff: WebLoginHandoffService
+    connection_selections: ConnectionSelectionService
     end_user_connection_execution: ConnectionExecutionService
     end_user_connection_runtime: ConnectionRuntimeService
     end_user_connections: ConnectionService
@@ -742,6 +745,9 @@ def build_application_services(
             app_web_url=dify_config.APP_WEB_URL,
             console_web_url=dify_config.CONSOLE_WEB_URL,
             now=lambda: datetime.now(UTC),
+        ),
+        connection_selections=ConnectionSelectionService(
+            store=EndUserConnectionRepository(session_factory=database_client)
         ),
         end_user_connection_execution=ConnectionExecutionService(preflight=end_user_connection_preflight),
         end_user_connection_runtime=build_end_user_connection_runtime(

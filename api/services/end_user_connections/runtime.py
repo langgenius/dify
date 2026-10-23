@@ -40,13 +40,13 @@ class ConnectionRuntimeService:
         self._cipher = cipher
 
     def resolve(
-        self, context: WebConnectionContext, *, connection_id: str, target: ToolConnectionTarget
+        self, context: WebConnectionContext, *, connection: ConnectionAccessRecord, target: ToolConnectionTarget
     ) -> ResolvedConnectionCredentials:
         require_personal_connection_access(context)
-        record = self._store.find(context, connection_id)
+        connection_id = connection.id
         access = require_applicable_connection(
             context,
-            record.access if record is not None else None,
+            connection,
             workflow_id=target.workflow_id,
             node_id=target.node_id,
             target=target,

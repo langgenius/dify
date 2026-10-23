@@ -47,6 +47,7 @@ from services.end_user_connections.execution import (
     ConnectionRunInput,
 )
 from services.end_user_connections.preflight import ConnectionPreflightInput, ConnectionPreflightService
+from services.end_user_connections.selections import ConnectionSelectionService
 from services.errors.conversation import ConversationNotExistsError
 from tasks.app_generate.workflow_execute_task import AppExecutionParams
 from tests.helpers.end_user_api_key import make_harness
@@ -199,6 +200,13 @@ def test_async_authority_revalidated_without_rebinding_to_new_publication(
     validate_connection_execution(
         context, app=app, user=user, workflow=workflow, conversation_id=None, repository=harness.base.repository
     )
+    published_version = workflow.version
+    workflow.version = Workflow.VERSION_DRAFT
+    with pytest.raises(ConnectionWorkflowChangedError):
+        validate_connection_execution(
+            context, app=app, user=user, workflow=workflow, conversation_id=None, repository=harness.base.repository
+        )
+    workflow.version = published_version
     with pytest.raises(ConnectionWorkflowChangedError):
         prepare(harness, service, {})
     changed = context.model_copy(update={"account_id": str(uuid4())})
@@ -345,7 +353,12 @@ def test_entry_ignores_client_authority_fields(
     from extensions import ext_application_services
 
     monkeypatch.setattr(
-        ext_application_services, "application_services", lambda: SimpleNamespace(end_user_connection_execution=service)
+        ext_application_services,
+        "application_services",
+        lambda: SimpleNamespace(
+            end_user_connection_execution=service,
+            connection_selections=ConnectionSelectionService(store=harness.base.repository),
+        ),
     )
     connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     with harness.base.sessions() as session:
@@ -359,6 +372,7 @@ def test_entry_ignores_client_authority_fields(
         app=app,
         user=user,
         workflow=workflow,
+        workflow_run_id=str(uuid4()),
         args={
             "workflow_id": workflow.id,
             "connections": {"tool-1": connection.id},
@@ -380,10 +394,11 @@ def test_workspace_only_entry_checks_protocol_and_rejects_unused_selections(
 ) -> None:
     from extensions import ext_application_services
 
-    def unexpected_services() -> None:
-        raise AssertionError("Workspace-only runs must not resolve personal connections.")
-
-    monkeypatch.setattr(ext_application_services, "application_services", unexpected_services)
+    monkeypatch.setattr(
+        ext_application_services,
+        "application_services",
+        lambda: SimpleNamespace(connection_selections=ConnectionSelectionService(store=harness.base.repository)),
+    )
     with harness.base.sessions.begin() as session:
         app = session.get(App, harness.base.context.app_id)
         user = session.get(EndUser, harness.base.context.end_user_id)
@@ -402,12 +417,21 @@ def test_workspace_only_entry_checks_protocol_and_rejects_unused_selections(
         args["workflow_id"] = workflow.id if pin == "matching" else str(uuid4())
     if pin == "stale":
         with pytest.raises(ConnectionWorkflowChangedError):
-            prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args)
+            prepare_web_connection_execution(
+                app=app, user=user, workflow=workflow, args=args, workflow_run_id=str(uuid4())
+            )
     elif selection in {"unused", "unused-null"}:
         with pytest.raises(ConnectionConfigurationError):
-            prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args)
+            prepare_web_connection_execution(
+                app=app, user=user, workflow=workflow, args=args, workflow_run_id=str(uuid4())
+            )
     else:
-        assert prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args) is None
+        assert (
+            prepare_web_connection_execution(
+                app=app, user=user, workflow=workflow, args=args, workflow_run_id=str(uuid4())
+            )
+            is None
+        )
 
 
 @pytest.mark.parametrize("choices", [None, {}, {"tool-1": None}])

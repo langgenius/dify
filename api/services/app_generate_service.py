@@ -245,8 +245,11 @@ class AppGenerateService:
             case AppMode.ADVANCED_CHAT:
                 workflow_id = None if invoke_from == InvokeFrom.WEB_APP else args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                workflow_run_id = str(uuid.uuid4())
                 connection_context = (
-                    prepare_web_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
+                    prepare_web_connection_execution(
+                        app=app_model, user=user, workflow=workflow, args=args, workflow_run_id=workflow_run_id
+                    )
                     if invoke_from == InvokeFrom.WEB_APP
                     else None
                 )
@@ -265,7 +268,7 @@ class AppGenerateService:
                             invoke_from=invoke_from,
                             streaming=True,
                             call_depth=0,
-                            workflow_run_id=str(uuid.uuid4()),
+                            workflow_run_id=workflow_run_id,
                         )
                         payload_json = payload.model_dump_json()
 
@@ -301,7 +304,7 @@ class AppGenerateService:
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
-                            workflow_run_id=str(uuid.uuid4()),
+                            workflow_run_id=workflow_run_id,
                             streaming=False,
                             pause_state_config=pause_config,
                             session=session,
@@ -312,14 +315,17 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow_id = None if invoke_from == InvokeFrom.WEB_APP else args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
+                workflow_run_id = str(uuid.uuid4())
                 connection_context = (
-                    prepare_web_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
+                    prepare_web_connection_execution(
+                        app=app_model, user=user, workflow=workflow, args=args, workflow_run_id=workflow_run_id
+                    )
                     if invoke_from == InvokeFrom.WEB_APP
                     else None
                 )
                 if invoke_from == InvokeFrom.WEB_APP:
                     args = {key: value for key, value in args.items() if key not in {"workflow_id", "connections"}}
-                cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
                 if streaming:
                     with rate_limit_context(rate_limit, request_id):
                         payload = AppExecutionParams.new(
@@ -332,7 +338,7 @@ class AppGenerateService:
                             streaming=True,
                             call_depth=0,
                             root_node_id=root_node_id,
-                            workflow_run_id=str(uuid.uuid4()),
+                            workflow_run_id=workflow_run_id,
                         )
                         payload_json = payload.model_dump_json()
 
@@ -366,6 +372,7 @@ class AppGenerateService:
                             invoke_from=invoke_from,
                             streaming=False,
                             root_node_id=root_node_id,
+                            workflow_run_id=workflow_run_id,
                             call_depth=0,
                             pause_state_config=pause_config,
                         ),
