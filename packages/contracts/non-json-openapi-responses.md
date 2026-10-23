@@ -37,7 +37,7 @@ The current Flask-RESTX generator still emits these response entries under `appl
 | console | GET    | `/apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/events`     | `text/event-stream` | `EventStreamResponse` |
 | console | GET    | `/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/events` | `text/event-stream` | `EventStreamResponse` |
 | openapi | POST   | `/apps/{app_id}/run`                                                   | `text/event-stream` | `EventStreamResponse` |
-| openapi | GET    | `/apps/{app_id}/tasks/{task_id}/events`                                | `text/event-stream` | `EventStreamResponse` |
+| openapi | GET    | `/apps/{app_id}/runs/{run_id}/events`                                  | `text/event-stream` | `EventStreamResponse` |
 | service | GET    | `/workflow/{task_id}/events`                                           | `text/event-stream` | `EventStreamResponse` |
 | web     | GET    | `/workflow/{task_id}/events`                                           | `text/event-stream` | `EventStreamResponse` |
 

@@ -887,6 +887,7 @@ export type OpenApiErrorCode =
   | 'recipient_surface_mismatch'
   | 'request_entity_too_large'
   | 'run_not_found'
+  | 'run_not_stoppable'
   | 'secret_mask_not_secret'
   | 'secret_mask_unknown_id'
   | 'service_api_disabled'
@@ -2413,6 +2414,34 @@ export type GetAppsByAppIdRunsByRunIdResponses = {
 export type GetAppsByAppIdRunsByRunIdResponse =
   GetAppsByAppIdRunsByRunIdResponses[keyof GetAppsByAppIdRunsByRunIdResponses]
 
+export type GetAppsByAppIdRunsByRunIdEventsData = {
+  body?: never
+  path: {
+    app_id: string
+    run_id: string
+  }
+  query?: {
+    continue_on_pause?: boolean
+    include_state_snapshot?: boolean
+  }
+  url: '/apps/{app_id}/runs/{run_id}/events'
+}
+
+export type GetAppsByAppIdRunsByRunIdEventsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdRunsByRunIdEventsError =
+  GetAppsByAppIdRunsByRunIdEventsErrors[keyof GetAppsByAppIdRunsByRunIdEventsErrors]
+
+export type GetAppsByAppIdRunsByRunIdEventsResponses = {
+  200: EventStreamResponse
+}
+
+export type GetAppsByAppIdRunsByRunIdEventsResponse =
+  GetAppsByAppIdRunsByRunIdEventsResponses[keyof GetAppsByAppIdRunsByRunIdEventsResponses]
+
 export type GetAppsByAppIdRunsByRunIdNodesData = {
   body?: never
   path: {
@@ -2436,6 +2465,30 @@ export type GetAppsByAppIdRunsByRunIdNodesResponses = {
 
 export type GetAppsByAppIdRunsByRunIdNodesResponse =
   GetAppsByAppIdRunsByRunIdNodesResponses[keyof GetAppsByAppIdRunsByRunIdNodesResponses]
+
+export type PostAppsByAppIdRunsByRunIdStopData = {
+  body?: never
+  path: {
+    app_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/runs/{run_id}:stop'
+}
+
+export type PostAppsByAppIdRunsByRunIdStopErrors = {
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdRunsByRunIdStopError =
+  PostAppsByAppIdRunsByRunIdStopErrors[keyof PostAppsByAppIdRunsByRunIdStopErrors]
+
+export type PostAppsByAppIdRunsByRunIdStopResponses = {
+  200: TaskStopResponse
+}
+
+export type PostAppsByAppIdRunsByRunIdStopResponse =
+  PostAppsByAppIdRunsByRunIdStopResponses[keyof PostAppsByAppIdRunsByRunIdStopResponses]
 
 export type GetAppsByAppIdServiceApiData = {
   body?: never
@@ -2530,34 +2583,6 @@ export type PatchAppsByAppIdServiceApiAgentResponses = {
 
 export type PatchAppsByAppIdServiceApiAgentResponse =
   PatchAppsByAppIdServiceApiAgentResponses[keyof PatchAppsByAppIdServiceApiAgentResponses]
-
-export type GetAppsByAppIdTasksByTaskIdEventsData = {
-  body?: never
-  path: {
-    app_id: string
-    task_id: string
-  }
-  query?: {
-    continue_on_pause?: boolean
-    include_state_snapshot?: boolean
-  }
-  url: '/apps/{app_id}/tasks/{task_id}/events'
-}
-
-export type GetAppsByAppIdTasksByTaskIdEventsErrors = {
-  422: ErrorBody
-  default: ErrorBody
-}
-
-export type GetAppsByAppIdTasksByTaskIdEventsError =
-  GetAppsByAppIdTasksByTaskIdEventsErrors[keyof GetAppsByAppIdTasksByTaskIdEventsErrors]
-
-export type GetAppsByAppIdTasksByTaskIdEventsResponses = {
-  200: EventStreamResponse
-}
-
-export type GetAppsByAppIdTasksByTaskIdEventsResponse =
-  GetAppsByAppIdTasksByTaskIdEventsResponses[keyof GetAppsByAppIdTasksByTaskIdEventsResponses]
 
 export type PostAppsByAppIdTasksByTaskIdStopData = {
   body?: never

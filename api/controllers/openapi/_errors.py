@@ -74,6 +74,7 @@ class OpenApiErrorCode(StrEnum):
     CATALOG_STALE = "catalog_stale"
     TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE = "trigger_workflow_service_mode_unavailable"
     RUN_NOT_FOUND = "run_not_found"
+    RUN_NOT_STOPPABLE = "run_not_stoppable"
     VERSION_NOT_FOUND = "version_not_found"
     VERSION_NOT_RESTORABLE = "version_not_restorable"
     DRAFT_NOT_FOUND = "draft_not_found"
@@ -316,6 +317,14 @@ class RunNotFound(OpenApiError):  # noqa: N818
     code = 404
     error_code = OpenApiErrorCode.RUN_NOT_FOUND
     description = "No run with this id exists for this app."
+
+
+class RunNotStoppable(OpenApiError):  # noqa: N818
+    code = 409
+    error_code = OpenApiErrorCode.RUN_NOT_STOPPABLE
+    description = (
+        "This run has already finished, or it started before runs recorded a stop id; stop it from the console."
+    )
 
 
 class VersionNotFound(OpenApiError):  # noqa: N818
