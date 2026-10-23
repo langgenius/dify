@@ -3545,11 +3545,6 @@
       "count": 1
     }
   },
-  "web/app/components/header/account-setting/workspace-role-checkbox-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/header/env-nav/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3

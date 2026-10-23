@@ -1,5 +1,6 @@
 'use client'
 
+import type { Ref } from 'react'
 import type { Role } from '@/models/access-control'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -23,6 +24,7 @@ import {
 } from './workspace-role-list-query'
 
 type WorkspaceRoleCheckboxListProps = {
+  searchInputRef?: Ref<HTMLInputElement>
   selectedRoleIds: string[]
   selectedRoles?: Role[]
   allowMultipleRoles?: boolean
@@ -54,6 +56,7 @@ const getLegacyRoleDescriptionKey = (role: Role) => {
 }
 
 const WorkspaceRoleCheckboxList = ({
+  searchInputRef,
   selectedRoleIds,
   selectedRoles,
   allowMultipleRoles = true,
@@ -210,6 +213,7 @@ const WorkspaceRoleCheckboxList = ({
     <>
       <div className="shrink-0 px-6 pt-3 pb-2">
         <SearchInput
+          ref={searchInputRef}
           name="workspace-role-query"
           value={keyword}
           onValueChange={setKeyword}
@@ -219,7 +223,7 @@ const WorkspaceRoleCheckboxList = ({
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
-        <ScrollAreaViewport ref={containerRef} className="overscroll-contain px-3">
+        <ScrollAreaViewport ref={containerRef} className="overscroll-contain px-6">
           <ScrollAreaContent>
             <div
               role="status"
@@ -276,16 +280,12 @@ const WorkspaceRoleCheckboxList = ({
                             value={role.id}
                             disabled={disabled}
                             nativeButton
-                            render={
-                              <button
-                                type="button"
-                                className={cn(
-                                  'flex w-full cursor-pointer items-start gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
-                                  'data-checked:bg-state-accent-hover data-checked:hover:bg-state-accent-hover',
-                                  'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent data-checked:data-disabled:hover:bg-transparent',
-                                )}
-                              />
-                            }
+                            className={cn(
+                              'flex w-full cursor-pointer items-start gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-start hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
+                              'data-checked:bg-state-accent-hover data-checked:hover:bg-state-accent-hover',
+                              'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent data-checked:data-disabled:hover:bg-transparent',
+                            )}
+                            render={<button type="button" />}
                           >
                             <RadioControl className="pointer-events-none mt-0.5" />
                             {renderRoleText(role)}
