@@ -88,7 +88,7 @@ class ConnectionOAuthAttempts(Protocol):
 
 
 class ConnectionOAuthGateway(Protocol):
-    def resolve_client(self, tenant_id: str, provider: str) -> ResolvedOAuthClient: ...
+    def resolve_client(self, tenant_id: str, provider: str, source: OAuthClientSource) -> ResolvedOAuthClient: ...
 
     def authorization_url(self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient) -> str: ...
 
@@ -135,7 +135,9 @@ class OAuthConnectionService:
     ) -> ConnectionOAuthStart:
         require_personal_connection_access(context)
         target = self._targets.resolve(context, command)
-        client = self._gateway.resolve_client(context.tenant_id, target.provider)
+        if target.oauth_client_source is None:
+            raise ConnectionConfigurationError()
+        client = self._gateway.resolve_client(context.tenant_id, target.provider, target.oauth_client_source)
         require_creation_target(
             context,
             workflow_id=str(command.workflow_id),
@@ -157,7 +159,9 @@ class OAuthConnectionService:
         self, context: WebConnectionContext, connection_id: str, *, callback_url: str
     ) -> ConnectionOAuthStart:
         record = self._load(context, connection_id)
-        client = self._gateway.resolve_client(context.tenant_id, record.access.provider)
+        reference = record.access.oauth_client
+        assert reference is not None
+        client = self._gateway.resolve_client(context.tenant_id, record.access.provider, reference.source)
         return self._start(
             context,
             record.access.provider,
@@ -230,7 +234,7 @@ class OAuthConnectionService:
             if attempt.target is None or attempt.name is None:
                 raise ConnectionOAuthError()
             target = self._targets.resolve(context, attempt.target)
-            if target.provider != attempt.provider:
+            if target.provider != attempt.provider or target.oauth_client_source != attempt.client.reference.source:
                 raise ConnectionConfigurationError()
             require_creation_target(
                 context,
@@ -239,7 +243,7 @@ class OAuthConnectionService:
                 credential_type=ConnectionCredentialType.OAUTH2,
                 target=replace(target, oauth_client=attempt.client.reference),
             )
-        client = self._gateway.resolve_client(context.tenant_id, attempt.provider)
+        client = self._gateway.resolve_client(context.tenant_id, attempt.provider, attempt.client.reference.source)
         if client.snapshot != attempt.client:
             raise ConnectionReauthorizationRequiredError()
         grant = self._gateway.exchange(context, attempt.provider, client, query_string)

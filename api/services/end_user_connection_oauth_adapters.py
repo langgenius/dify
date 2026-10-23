@@ -56,7 +56,9 @@ from services.plugin.oauth_service import OAuthProxyService
 
 
 class OAuthClientConfigurationQuery(Protocol):
-    def oauth_client_configuration(self, tenant_id: str, provider: str) -> StoredOAuthClientConfiguration: ...
+    def oauth_client_configuration(
+        self, tenant_id: str, provider: str, source: OAuthClientSource
+    ) -> StoredOAuthClientConfiguration: ...
 
     def oauth_grant_client_configuration(
         self, tenant_id: str, provider: str, reference: ConnectionOAuthClient
@@ -130,8 +132,8 @@ class PluginConnectionOAuthGateway:
         self._handler = handler
         self._auth = auth
 
-    def resolve_client(self, tenant_id: str, provider: str) -> ResolvedOAuthClient:
-        stored = self._clients.oauth_client_configuration(tenant_id, provider)
+    def resolve_client(self, tenant_id: str, provider: str, source: OAuthClientSource) -> ResolvedOAuthClient:
+        stored = self._clients.oauth_client_configuration(tenant_id, provider, source)
         return self._resolve_client(tenant_id, provider, stored)
 
     def resolve_grant_client(
@@ -148,6 +150,8 @@ class PluginConnectionOAuthGateway:
     ) -> ResolvedOAuthClient:
         controller = self._providers.provider(tenant_id, provider)
         if CredentialType.OAUTH2 not in controller.get_supported_credential_types():
+            raise ConnectionConfigurationError()
+        if stored.source == OAuthClientSource.WORKSPACE and not controller.get_oauth_client_schema():
             raise ConnectionConfigurationError()
         if stored.source == OAuthClientSource.PLATFORM and not PluginService.is_plugin_verified(
             tenant_id, controller.plugin_unique_identifier

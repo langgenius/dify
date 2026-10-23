@@ -60,6 +60,7 @@ def target(context: WebConnectionContext, client: ConnectionOAuthClient) -> Tool
         provider="vendor/calendar/calendar",
         allowed_credential_types=frozenset(ConnectionCredentialType),
         provider_credential_types=frozenset(ConnectionCredentialType),
+        oauth_client_source=client.source,
         oauth_client=client,
     )
 
@@ -201,6 +202,31 @@ def test_oauth_creation_requires_configured_client(context: WebConnectionContext
             node_id=target.node_id,
             credential_type=ConnectionCredentialType.OAUTH2,
             target=replace(target, oauth_client=None),
+        )
+
+
+def test_resolved_client_must_match_the_graph_source(
+    context: WebConnectionContext,
+    record: ConnectionAccessRecord,
+    target: ToolConnectionTarget,
+    client: ConnectionOAuthClient,
+) -> None:
+    target = replace(target, oauth_client_source=OAuthClientSource.PLATFORM)
+    with pytest.raises(ConnectionConfigurationError):
+        require_creation_target(
+            context,
+            workflow_id=target.workflow_id,
+            node_id=target.node_id,
+            credential_type=ConnectionCredentialType.OAUTH2,
+            target=target,
+        )
+    with pytest.raises(ConnectionReauthorizationRequiredError):
+        require_applicable_connection(
+            context,
+            replace(record, credential_type=ConnectionCredentialType.OAUTH2, oauth_client=client),
+            workflow_id=target.workflow_id,
+            node_id=target.node_id,
+            target=target,
         )
 
 

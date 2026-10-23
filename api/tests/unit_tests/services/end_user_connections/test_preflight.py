@@ -9,14 +9,16 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
 from clients.plugin.auth_entities import CredentialCheckResult
-from constants.end_user_connections import NodeConnectionStatus
+from constants.end_user_connections import NodeConnectionStatus, OAuthClientSource
+from core.plugin.plugin_service import PluginService
+from core.tools.utils.system_encryption import encrypt_system_params
 from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from models.enums import ConversationFromSource, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser
-from models.tools import ToolOAuthTenantClient
+from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow, WorkflowRun, WorkflowType
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
-from services.end_user_connections.contracts import ConnectionCheckOutcome
+from services.end_user_connections.contracts import ConnectionCheckOutcome, StartConnectionOAuthInput
 from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
@@ -207,6 +209,54 @@ def test_oauth_client_change_is_reconnect_required_without_mutating_grant(
     assert result.requirements[0].status == NodeConnectionStatus.RECONNECT_REQUIRED
     assert harness.base.auth.calls == []
     stored = harness.base.repository.find(harness.base.context, connection.id)
+    assert stored is not None
+    assert stored.access.revision == 1
+
+
+def test_same_provider_nodes_resolve_clients_independently_and_reuse_inherits_selection(
+    harness: OAuthHarness, service: ConnectionPreflightService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    custom = harness.finish(harness.start())
+    add_node(harness, reuse=False)
+    with harness.base.sessions.begin() as session:
+        workflow = session.get(Workflow, harness.base.workflow_id)
+        assert workflow is not None
+        graph = workflow.graph_dict
+        graph["nodes"][1]["data"]["end_user_auth"]["oauth_client_type"] = "default"
+        child = deepcopy(graph["nodes"][1])
+        child["id"] = "reuse"
+        child["data"].pop("end_user_auth")
+        child["data"].update(credential_source="reuse_node", reuse_node_id="tool-2")
+        graph["nodes"].append(child)
+        workflow.graph = json.dumps(graph)
+        session.add(
+            ToolOAuthSystemClient(
+                plugin_id="vendor/calendar",
+                provider="calendar",
+                encrypted_oauth_params=encrypt_system_params({"client_id": "platform-client"}),
+            )
+        )
+    monkeypatch.setattr(PluginService, "is_plugin_verified", lambda _tenant_id, _unique_id: True)
+    default = harness.finish(
+        harness.service.start_oauth(
+            harness.base.context,
+            StartConnectionOAuthInput(workflow_id=harness.command().workflow_id, node_id="reuse", name="Default"),
+            callback_url="http://web-api.example/api/connections/oauth",
+        )
+    )
+
+    result = service.check(harness.base.context, command(harness, {"tool-1": custom.id, "tool-2": default.id}))
+    assert result.ready
+    assert result.requirements[1].node_ids == ("tool-2", "reuse")
+    stored = harness.base.repository.find(harness.base.context, default.id)
+    assert stored is not None
+    assert stored.access.oauth_client is not None
+    assert stored.access.oauth_client.source == OAuthClientSource.PLATFORM
+
+    result = service.check(harness.base.context, command(harness, {"tool-1": default.id, "tool-2": custom.id}))
+    assert not result.ready
+    assert all(item.status == NodeConnectionStatus.RECONNECT_REQUIRED for item in result.requirements)
+    stored = harness.base.repository.find(harness.base.context, custom.id)
     assert stored is not None
     assert stored.access.revision == 1
 

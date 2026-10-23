@@ -99,6 +99,8 @@ class ToolConnectionTarget:
     provider: str
     allowed_credential_types: frozenset[ConnectionCredentialType]
     provider_credential_types: frozenset[ConnectionCredentialType]
+    # None only when OAuth is not allowed; otherwise the graph explicitly selects a source.
+    oauth_client_source: OAuthClientSource | None
     oauth_client: ConnectionOAuthClient | None
 
 

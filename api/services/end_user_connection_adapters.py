@@ -29,7 +29,17 @@ from services.end_user_connections.errors import (
     ConnectionInvalidCredentialsError,
     ConnectionSecretUnavailableError,
 )
-from services.workflow.tool_credentials import ToolCredentialConfig, check_tool_credentials
+from services.workflow.tool_credentials import EndUserAuthConfig, ToolCredentialConfig, check_tool_credentials
+
+
+def validate_provider_authentication(provider: PluginToolProviderController, auth: EndUserAuthConfig) -> None:
+    """Provider schemas define the methods and custom Client setup it can support."""
+    supported = {value.value for value in provider.get_supported_credential_types()}
+    allowed = set(auth.allowed_credential_types or ())
+    if not allowed or not allowed.issubset(supported):
+        raise ConnectionConfigurationError()
+    if auth.oauth_client_type == "custom" and not provider.get_oauth_client_schema():
+        raise ConnectionConfigurationError()
 
 
 class ConnectionWorkflowQuery(Protocol):
@@ -152,6 +162,7 @@ class PublishedConnectionTargetResolver:
                 raise ConnectionConfigurationError()
             provider = self._providers.provider(context.tenant_id, data["provider_id"])
             provider.get_tool(data["tool_name"])
+            validate_provider_authentication(provider, config.end_user_auth)
         except (KeyError, ValueError, ValidationError, TypeError):
             raise ConnectionConfigurationError() from None
         canonical = str(ToolProviderID(provider.entity.identity.name))
@@ -170,5 +181,6 @@ class PublishedConnectionTargetResolver:
                 if value in (CredentialType.API_KEY, CredentialType.OAUTH2)
             ),
             # The authorization service resolves and pins the Client before accepting OAuth creation.
+            oauth_client_source=config.end_user_auth.oauth_client_source,
             oauth_client=None,
         )
