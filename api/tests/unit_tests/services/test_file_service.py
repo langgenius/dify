@@ -179,7 +179,7 @@ class TestFileService:
             assert db_session.get(UploadFile, result.id) is not None
 
     def test_upload_file_blocked_extension(self, file_service, config_overrides: Callable[..., None]):
-        config_overrides(inner_UPLOAD_FILE_EXTENSION_BLACKLIST="exe")
+        config_overrides(inner_upload_file_extension_blacklist="exe")
         with pytest.raises(BlockedFileExtensionError):
             file_service.upload_file(
                 filename="test.exe", content=b"", mimetype="application/octet-stream", user=_account()

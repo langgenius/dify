@@ -145,7 +145,7 @@ def harness(
         LOGIN_DISABLED=False,
         RBAC_ENABLED=False,
         UPLOAD_FILE_SIZE_LIMIT=1,
-        inner_UPLOAD_FILE_EXTENSION_BLACKLIST="exe",
+        inner_upload_file_extension_blacklist="exe",
     )
     features = _Features()
     account = Account(name="Trial viewer", email="trial@example.com")

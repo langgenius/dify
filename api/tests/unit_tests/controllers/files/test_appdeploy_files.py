@@ -324,7 +324,7 @@ def test_upload_applies_the_shared_per_extension_size_limit(
 def test_upload_rejects_a_blacklisted_extension(
     app: Flask, end_user: EndUser, config_overrides: Callable[..., None]
 ) -> None:
-    config_overrides(inner_UPLOAD_FILE_EXTENSION_BLACKLIST="exe")
+    config_overrides(inner_upload_file_extension_blacklist="exe")
 
     with app.test_request_context(
         "/files/appdeploy/upload",

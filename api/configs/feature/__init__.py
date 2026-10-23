@@ -601,7 +601,7 @@ class FileUploadConfig(BaseSettings):
         default=2,
     )
 
-    inner_UPLOAD_FILE_EXTENSION_BLACKLIST: str = Field(
+    inner_upload_file_extension_blacklist: str = Field(
         description=(
             "Comma-separated list of file extensions that are blocked from upload. "
             "Extensions should be lowercase without dots (e.g., 'exe,bat,sh,dll'). "
@@ -618,11 +618,11 @@ class FileUploadConfig(BaseSettings):
         Parse and return the blacklist as a set of lowercase extensions.
         Returns an empty set if no blacklist is configured.
         """
-        if not self.inner_UPLOAD_FILE_EXTENSION_BLACKLIST:
+        if not self.inner_upload_file_extension_blacklist:
             return set()
         return {
             ext.strip().lower().strip(".")
-            for ext in self.inner_UPLOAD_FILE_EXTENSION_BLACKLIST.split(",")
+            for ext in self.inner_upload_file_extension_blacklist.split(",")
             if ext.strip()
         }
 
@@ -642,7 +642,7 @@ class HttpConfig(BaseSettings):
         default=False,
     )
 
-    inner_CONSOLE_CORS_ALLOW_ORIGINS: str = Field(
+    inner_console_cors_allow_origins: str = Field(
         description="Comma-separated list of allowed origins for CORS in the console",
         validation_alias=AliasChoices("CONSOLE_CORS_ALLOW_ORIGINS", "CONSOLE_WEB_URL"),
         default="",
@@ -650,7 +650,7 @@ class HttpConfig(BaseSettings):
 
     @computed_field
     def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
-        return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(",")
+        return self.inner_console_cors_allow_origins.split(",")
 
     WEBSOCKET_MAX_HTTP_BUFFER_SIZE: PositiveInt = Field(
         description=(
@@ -662,7 +662,7 @@ class HttpConfig(BaseSettings):
         default=10 * 1024 * 1024,
     )
 
-    inner_WEB_API_CORS_ALLOW_ORIGINS: str = Field(
+    inner_web_api_cors_allow_origins: str = Field(
         description="",
         validation_alias=AliasChoices("WEB_API_CORS_ALLOW_ORIGINS"),
         default="*",
@@ -670,7 +670,7 @@ class HttpConfig(BaseSettings):
 
     @computed_field
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
-        return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
+        return self.inner_web_api_cors_allow_origins.split(",")
 
     OPENAPI_ENABLED: bool = Field(
         description=(
@@ -681,7 +681,7 @@ class HttpConfig(BaseSettings):
         default=False,
     )
 
-    inner_OPENAPI_CORS_ALLOW_ORIGINS: str = Field(
+    inner_openapi_cors_allow_origins: str = Field(
         description=(
             "Comma-separated allowlist for /openapi/v1/* CORS. "
             "Default empty = same-origin only. Browser-cookie routes within "
@@ -693,9 +693,9 @@ class HttpConfig(BaseSettings):
 
     @computed_field
     def OPENAPI_CORS_ALLOW_ORIGINS(self) -> list[str]:
-        return [o for o in self.inner_OPENAPI_CORS_ALLOW_ORIGINS.split(",") if o]
+        return [o for o in self.inner_openapi_cors_allow_origins.split(",") if o]
 
-    inner_OPENAPI_KNOWN_CLIENT_IDS: str = Field(
+    inner_openapi_known_client_ids: str = Field(
         description=(
             "Comma-separated client_id values accepted at "
             "POST /openapi/v1/oauth/device/code. New CLIs / SDKs added here "
@@ -708,7 +708,7 @@ class HttpConfig(BaseSettings):
     @computed_field  # type: ignore[misc]
     @property
     def OPENAPI_KNOWN_CLIENT_IDS(self) -> frozenset[str]:
-        return frozenset(c for c in self.inner_OPENAPI_KNOWN_CLIENT_IDS.split(",") if c)
+        return frozenset(c for c in self.inner_openapi_known_client_ids.split(",") if c)
 
     HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = Field(
         ge=1, description="Maximum connection timeout in seconds for HTTP requests", default=10
