@@ -13,6 +13,7 @@ from services.auth.resource_access_token_contracts import (
     ResourceAccessTokenInputError,
     ResourceAccessTokenResource,
     ResourceAccessTokenRow,
+    ResourceAccessTokenWorkspaceMismatchError,
     ResourceAccessTokenWorkspaceUnavailableError,
 )
 from services.resource_access_token_service import ResourceAccessTokenService
@@ -127,7 +128,7 @@ def test_openapi_grant_uses_live_store_and_records_usage(
             "foreign",
             True,
             BoundResource(ResourceType.APP, "app", True, True),
-            ResourceAccessTokenWorkspaceUnavailableError,
+            ResourceAccessTokenWorkspaceMismatchError,
         ),
         (
             "workspace",

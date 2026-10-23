@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 from controllers.common.resource_access_token_errors import resource_access_token_errors
-from controllers.openapi._errors import OpenApiError, ResourceNotAuthorized, WorkspaceUnavailable
+from controllers.openapi._errors import OpenApiError, ResourceNotAuthorized, WorkspaceMismatch, WorkspaceUnavailable
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Rank, Requirement
 from controllers.openapi.auth.subjects import Subject
@@ -23,12 +23,14 @@ from services.auth.resource_access_token_contracts import (
     ResourceAccessTokenAppNotAuthorizedError,
     ResourceAccessTokenForbiddenError,
     ResourceAccessTokenInvalidError,
+    ResourceAccessTokenWorkspaceMismatchError,
     ResourceAccessTokenWorkspaceUnavailableError,
 )
 
 # A denial with no entry here falls through to the shared mapping's plain 403.
 _REJECTIONS: Final[Mapping[type[ResourceAccessTokenForbiddenError], type[OpenApiError]]] = {
     ResourceAccessTokenWorkspaceUnavailableError: WorkspaceUnavailable,
+    ResourceAccessTokenWorkspaceMismatchError: WorkspaceMismatch,
     ResourceAccessTokenAppNotAuthorizedError: ResourceNotAuthorized,
 }
 

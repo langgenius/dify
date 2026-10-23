@@ -27,7 +27,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
+from controllers.openapi._catalog import CATALOG_HEADER, build_catalog, catalog_for
 from controllers.openapi._errors import (
     AccessModeNotAllowed,
     AppAccessModeUnavailable,
@@ -55,6 +55,7 @@ from controllers.openapi._errors import (
     ResourceNotAuthorized,
     ServiceApiDisabled,
     UnsupportedTokenType,
+    WorkspaceMismatch,
     WorkspaceUnavailable,
 )
 from controllers.openapi._models import Hint
@@ -334,6 +335,7 @@ ERROR_MATRIX = [
     (AppQuotaExceeded(), 403, "app_quota_exceeded"),
     (InsufficientWorkspaceRole(), 403, "insufficient_workspace_role"),
     (WorkspaceUnavailable(), 403, "workspace_unavailable"),
+    (WorkspaceMismatch(), 403, "workspace_mismatch"),
     (ExternalSsoRequiresEE(), 403, "external_sso_requires_ee"),
     (AccessModeNotAllowed(), 403, "subject_not_allowed_for_access_mode"),
     (AppAccessModeUnavailable(), 403, "app_access_mode_unavailable"),
@@ -409,3 +411,13 @@ def test_openapi_503_keeps_its_message_and_hint(fmt):
 
 def test_service_api_disabled_hint_has_no_api_wording():
     assert ServiceApiDisabled.hint == "A workspace admin can turn it on."
+
+
+@pytest.mark.parametrize(
+    ("exc_class", "op"),
+    [(WorkspaceMismatch, "get.workspace"), (ResourceNotAuthorized, "get.console_app")],
+)
+def test_app_token_hints_name_a_real_op(openapi_app, exc_class: type[OpenApiError], op: str) -> None:
+    assert exc_class.hint is not None
+    assert exc_class.hint.startswith(f"{op} ")
+    assert op in build_catalog(openapi_app)["ops"]

@@ -11,7 +11,12 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
-from controllers.openapi._errors import ResourceNotAuthorized, UnsupportedTokenType, WorkspaceUnavailable
+from controllers.openapi._errors import (
+    ResourceNotAuthorized,
+    UnsupportedTokenType,
+    WorkspaceMismatch,
+    WorkspaceUnavailable,
+)
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import CheckScope, CheckSubject
 from controllers.openapi.auth.resource_access import authenticate_resource_token
@@ -144,7 +149,7 @@ def test_rejects_unbound_app_before_creating_caller(resource_fixture: ResourceFi
 
 def test_rejects_other_workspace(resource_fixture: ResourceFixture) -> None:
     flask_app, _, _, _, _ = resource_fixture
-    with pytest.raises(WorkspaceUnavailable):
+    with pytest.raises(WorkspaceMismatch):
         call(flask_app, workspace_id=str(uuid4()), scope=Scope.APPS_READ)
 
 
@@ -207,6 +212,22 @@ def test_archived_workspace_is_rejected(resource_fixture: ResourceFixture, sqlit
     sqlite_session.commit()
     with pytest.raises(WorkspaceUnavailable):
         call(flask_app, app_id)
+
+
+def test_workspace_gone_after_grant_is_rejected(
+    resource_fixture: ResourceFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from controllers.openapi.auth import resource_access
+
+    flask_app, app_id, _, _, end_user = resource_fixture
+    monkeypatch.setattr(
+        resource_access.application_services(),
+        "workspaces",
+        SimpleNamespace(identity=SimpleNamespace(get_workspace=lambda _workspace_id: None)),
+    )
+    with pytest.raises(WorkspaceUnavailable):
+        call(flask_app, app_id)
+    end_user.assert_not_called()
 
 
 def test_resource_token_has_workspace_read_scope(resource_fixture: ResourceFixture) -> None:

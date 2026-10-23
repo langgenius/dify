@@ -917,6 +917,7 @@ export type OpenApiErrorCode =
   | 'webapp_access_requires_ee'
   | 'webapp_access_unavailable'
   | 'webapp_public_access_disabled'
+  | 'workspace_mismatch'
   | 'workspace_unavailable'
 
 export type OpenApiFormSubmitPayload = {

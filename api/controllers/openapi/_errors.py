@@ -107,6 +107,7 @@ class OpenApiErrorCode(StrEnum):
     APP_QUOTA_EXCEEDED = "app_quota_exceeded"
     INSUFFICIENT_WORKSPACE_ROLE = "insufficient_workspace_role"
     WORKSPACE_UNAVAILABLE = "workspace_unavailable"
+    WORKSPACE_MISMATCH = "workspace_mismatch"
     EXTERNAL_SSO_REQUIRES_EE = "external_sso_requires_ee"
     ACCESS_MODE_NOT_ALLOWED = "subject_not_allowed_for_access_mode"
     APP_ACCESS_MODE_UNAVAILABLE = "app_access_mode_unavailable"
@@ -538,8 +539,15 @@ class InsufficientWorkspaceRole(OpenApiError):  # noqa: N818
 class WorkspaceUnavailable(OpenApiError):  # noqa: N818
     code = 403
     error_code = OpenApiErrorCode.WORKSPACE_UNAVAILABLE
-    description = "This workspace is archived or not available."
-    hint = "Pick another workspace; `difyctl get workspace` lists them."
+    description = "The workspace of this app or token is archived or no longer exists."
+    hint = "Ask an admin to restore the workspace."
+
+
+class WorkspaceMismatch(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.WORKSPACE_MISMATCH
+    description = "This token belongs to a different workspace than the one in the request."
+    hint = "get.workspace shows the workspace this token belongs to."
 
 
 class ExternalSsoRequiresEE(OpenApiError):  # noqa: N818
@@ -581,6 +589,7 @@ class ResourceNotAuthorized(OpenApiError):  # noqa: N818
     code = 403
     error_code = OpenApiErrorCode.RESOURCE_NOT_AUTHORIZED
     description = "This app token doesn't cover this app, or the app's Service API is off."
+    hint = "get.console_app lists the apps this token covers; a workspace admin can turn on an app's Service API."
 
 
 class PermittedAppsUnavailable(OpenApiError):  # noqa: N818

@@ -70,7 +70,11 @@ class ResourceAccessTokenForbiddenError(Exception):
 
 
 class ResourceAccessTokenWorkspaceUnavailableError(ResourceAccessTokenForbiddenError):
-    """The token's workspace is archived, or the request names another workspace."""
+    """The token's workspace is archived or no longer exists."""
+
+
+class ResourceAccessTokenWorkspaceMismatchError(ResourceAccessTokenForbiddenError):
+    """The request names a workspace other than the token's."""
 
 
 class ResourceAccessTokenAppNotAuthorizedError(ResourceAccessTokenForbiddenError):

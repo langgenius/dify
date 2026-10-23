@@ -87,6 +87,7 @@ def test_owner_is_admitted_with_request_context(monkeypatch: pytest.MonkeyPatch)
         ("input", 400),
         ("forbidden", 403),
         ("workspace_unavailable", 403),
+        ("workspace_mismatch", 403),
         ("app_not_authorized", 403),
         ("missing", 404),
         ("invalid", 401),
@@ -102,6 +103,7 @@ def test_service_failures_keep_the_http_error_contract(error: str, status: int) 
         ResourceAccessTokenInputError,
         ResourceAccessTokenInvalidError,
         ResourceAccessTokenNotFoundError,
+        ResourceAccessTokenWorkspaceMismatchError,
         ResourceAccessTokenWorkspaceUnavailableError,
     )
 
@@ -109,6 +111,7 @@ def test_service_failures_keep_the_http_error_contract(error: str, status: int) 
         "input": ResourceAccessTokenInputError,
         "forbidden": ResourceAccessTokenForbiddenError,
         "workspace_unavailable": ResourceAccessTokenWorkspaceUnavailableError,
+        "workspace_mismatch": ResourceAccessTokenWorkspaceMismatchError,
         "app_not_authorized": ResourceAccessTokenAppNotAuthorizedError,
         "missing": ResourceAccessTokenNotFoundError,
         "invalid": ResourceAccessTokenInvalidError,

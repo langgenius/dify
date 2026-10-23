@@ -13,6 +13,7 @@ from services.auth.resource_access_token_contracts import (
     ResourceAccessTokenInputError,
     ResourceAccessTokenResource,
     ResourceAccessTokenRow,
+    ResourceAccessTokenWorkspaceMismatchError,
     ResourceAccessTokenWorkspaceUnavailableError,
 )
 
@@ -92,7 +93,7 @@ class ResourceAccessTokenService:
         if not access.workspace_active:
             raise ResourceAccessTokenWorkspaceUnavailableError("workspace unavailable")
         if workspace_id and workspace_id != access.tenant_id:
-            raise ResourceAccessTokenWorkspaceUnavailableError("workspace not bound to this token")
+            raise ResourceAccessTokenWorkspaceMismatchError("workspace not bound to this token")
         apps = tuple(r for r in access.resources if r.type == ResourceAccessTokenResourceType.APP and r.exists)
         if app_id and not any(r.id == app_id and r.enabled for r in apps):
             raise ResourceAccessTokenAppNotAuthorizedError("resource_not_authorized")
