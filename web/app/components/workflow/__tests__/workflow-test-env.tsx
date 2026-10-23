@@ -1,34 +1,9 @@
 /**
  * Workflow test environment — composable providers + render helpers.
  *
- * ## Quick start (hook)
- *
- * ```ts
- * import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
- * import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
- *
- * // Mock ReactFlow (one line, only needed when the hook imports reactflow)
- * vi.mock('reactflow', async () =>
- *   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
- * )
- *
- * it('example', () => {
- *   resetReactFlowMockState()
- *   rfState.nodes = [{ id: 'n1', position: { x: 0, y: 0 }, data: {} }]
- *
- *   const { result, store } = renderWorkflowHook(
- *     () => useMyHook(),
- *     {
- *       initialStoreState: { workflowRunningData: {...} },
- *       hooksStoreProps: { doSyncWorkflowDraft: vi.fn() },
- *     },
- *   )
- *
- *   result.current.doSomething()
- *   expect(store.getState().someValue).toBe(expected)
- *   expect(rfState.setNodes).toHaveBeenCalled()
- * })
- * ```
+ * Use renderWorkflowCanvasHook for graph-reading hooks and seed nodes/edges in options.
+ * Use renderWorkflowFlowComponent when the contract needs a mounted ReactFlow canvas.
+ * Assert resulting graph, workflow store or DOM state; keep owner hooks real.
  *
  * ## Quick start (component)
  *
@@ -66,31 +41,21 @@ import type {
   RenderOptions,
   RenderResult,
 } from '@testing-library/react'
-import type { EditorResource } from '../editor-resource/resource'
-import type { Shape as HooksStoreShape } from '../hooks-store/store'
-import type { InjectWorkflowStoreSliceFn, Shape } from '../store/workflow'
-import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import type { Edge, Node, WorkflowRunningData } from '../types'
-import { QueryClient } from '@tanstack/react-query'
+import type { StoreInstances, WorkflowProviderOptions } from './workflow-test-providers'
 import * as React from 'react'
 import ReactFlow, { ReactFlowProvider, useStoreApi } from 'reactflow'
-import { consoleQuery } from '@/service/console'
-import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { createQueryClientWrapper } from '@/test/console/query-client'
-import {
-  seedAppDetail,
-  seedAppDslVersion,
-  seedKnowledgeFsFeatures,
-  seedSystemFeatures,
-} from '@/test/console/query-data'
 import { render, renderHook } from '@/test/console/render'
-import { createAppDetailFixture } from '@/test/fixtures/app'
-import { WorkflowContext } from '../context'
-import { EditorResourceScope } from '../editor-resource/provider'
-import { HooksStoreContext } from '../hooks-store/provider'
-import { createHooksStore } from '../hooks-store/store'
-import { createWorkflowStore } from '../store/workflow'
 import { WorkflowRunningStatus } from '../types'
+import {
+  createTestWorkflowStore as createProviderWorkflowStore,
+  createStoresFromOptions,
+  createWorkflowWrapper,
+} from './workflow-test-providers'
+
+export function createTestWorkflowStore(...args: Parameters<typeof createProviderWorkflowStore>) {
+  return createProviderWorkflowStore(...args)
+}
 
 // Re-exports are in a separate non-JSX file to avoid react-refresh warnings.
 // Import directly from the individual modules:
@@ -111,128 +76,6 @@ export function baseRunningData(overrides: Record<string, unknown> = {}) {
     resultTabActive: false,
     ...overrides,
   } as WorkflowRunningData
-}
-
-// ---------------------------------------------------------------------------
-// Store creation helpers
-// ---------------------------------------------------------------------------
-
-type WorkflowStore = ReturnType<typeof createWorkflowStore>
-type HooksStore = ReturnType<typeof createHooksStore>
-
-export function createTestWorkflowStore(
-  initialState?: Partial<Shape>,
-  injectWorkflowStoreSliceFn?: InjectWorkflowStoreSliceFn,
-): WorkflowStore {
-  const store = createWorkflowStore({ injectWorkflowStoreSliceFn })
-  if (initialState) store.setState(initialState)
-  return store
-}
-
-function createTestHooksStore(props?: Partial<HooksStoreShape>): HooksStore {
-  const store = createHooksStore(props ?? {})
-  if (props) store.setState(props)
-  return store
-}
-
-// ---------------------------------------------------------------------------
-// Shared provider options & wrapper factory
-// ---------------------------------------------------------------------------
-
-type HistoryStoreConfig = {
-  nodes?: Node[]
-  edges?: Edge[]
-}
-
-type WorkflowProviderOptions = {
-  injectWorkflowStoreSliceFn?: InjectWorkflowStoreSliceFn
-  resource?: EditorResource
-  initialStoreState?: Partial<Shape>
-  hooksStoreProps?: Partial<HooksStoreShape>
-  historyStore?: HistoryStoreConfig
-  queryClient?: QueryClient
-}
-
-type StoreInstances = {
-  store: WorkflowStore
-  hooksStore?: HooksStore
-}
-
-function createStoresFromOptions(options: WorkflowProviderOptions): StoreInstances {
-  const store = createTestWorkflowStore(
-    options.initialStoreState,
-    options.injectWorkflowStoreSliceFn,
-  )
-  const hooksStore = createTestHooksStore(options.hooksStoreProps)
-  return { store, hooksStore }
-}
-
-function createWorkflowWrapper(
-  stores: StoreInstances,
-  historyConfig?: HistoryStoreConfig,
-  externalQueryClient?: QueryClient,
-  resource: EditorResource = { kind: 'app', appId: 'app-1', mode: 'workflow' },
-) {
-  if (historyConfig) {
-    stores.store.temporal.getState().pause()
-    stores.store.getState().setWorkflowHistory(createTestWorkflowHistoryState(historyConfig))
-    stores.store.temporal.getState().clear()
-    stores.store.temporal.getState().resume()
-  }
-
-  const queryClient =
-    externalQueryClient ??
-    new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          gcTime: Infinity,
-          staleTime: Infinity,
-        },
-      },
-    })
-  if (!externalQueryClient) seedSystemFeatures(queryClient)
-  // The node catalog reads KnowledgeFS availability; keep it unavailable unless a suite seeds it.
-  if (!externalQueryClient) seedKnowledgeFsFeatures(queryClient)
-  if (!externalQueryClient) seedAppDslVersion(queryClient)
-  if (!externalQueryClient) seedAccountProfileQuery(queryClient)
-  if (resource.kind === 'app') {
-    const input = { input: { params: { app_id: resource.appId } } }
-    for (const endpoint of [
-      consoleQuery.apps.byAppId.workflows.draft.systemVariables.get,
-      consoleQuery.apps.byAppId.workflows.draft.conversationVariables.get,
-    ]) {
-      const variableKey = endpoint.queryKey(input)
-      if (!queryClient.getQueryData(variableKey))
-        queryClient.setQueryData(variableKey, { items: [] })
-    }
-    const key = consoleQuery.apps.byAppId.get.queryKey({
-      input: { params: { app_id: resource.appId } },
-    })
-    if (!queryClient.getQueryData(key))
-      seedAppDetail(
-        queryClient,
-        createAppDetailFixture({ id: resource.appId, mode: resource.mode }),
-      )
-  }
-  const QueryClientWrapper = createQueryClientWrapper(queryClient)
-
-  return ({ children }: { children: React.ReactNode }) => {
-    let inner: React.ReactNode = children
-
-    if (stores.hooksStore) {
-      inner = React.createElement(HooksStoreContext.Provider, { value: stores.hooksStore }, inner)
-    }
-
-    return React.createElement(
-      QueryClientWrapper,
-      null,
-      React.createElement(EditorResourceScope, {
-        resource,
-        children: React.createElement(WorkflowContext.Provider, { value: stores.store }, inner),
-      }),
-    )
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -557,19 +400,4 @@ export function renderNodeComponent<T extends Record<string, unknown>>(
     React.createElement(Component, { id: nodeId, data, selected }),
     rest,
   )
-}
-
-// ---------------------------------------------------------------------------
-// WorkflowHistoryStore test helper
-// ---------------------------------------------------------------------------
-
-function createTestWorkflowHistoryState(config: HistoryStoreConfig): WorkflowHistoryState {
-  const nodes = config.nodes ?? []
-  const edges = config.edges ?? []
-  return {
-    nodes,
-    edges,
-    workflowHistoryEvent: undefined,
-    workflowHistoryEventMeta: undefined,
-  }
 }
