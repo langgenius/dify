@@ -6,11 +6,13 @@ from typing_extensions import TypedDict
 
 import tasks.trigger_processing_tasks as trigger_processing_tasks_module
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.trigger.entities.entities import Subscription
 from models.enums import EndUserType
 from models.model import EndUser
-from models.trigger import TriggerSubscription, WorkflowPluginTrigger
+from models.trigger import WorkflowPluginTrigger
 from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
+from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
 from tasks.trigger_processing_tasks import dispatch_triggered_workflow
 from tests.unit_tests.model_factories import make_end_user, make_workflow
 
@@ -83,20 +85,22 @@ class TestDispatchTriggeredWorkflow:
     """
 
     @pytest.fixture
-    def subscription(self) -> TriggerSubscription:
-        subscription = TriggerSubscription(
+    def subscription(self) -> TriggerSubscriptionRuntime:
+        return TriggerSubscriptionRuntime(
+            id="subscription-123",
             tenant_id="tenant-123",
             user_id="user-123",
-            name="Test Subscription",
             endpoint_id="endpoint-123",
             provider_id="langgenius/test_plugin/test_plugin",
-            parameters={},
-            properties={},
             credentials={},
             credential_type=CredentialType.API_KEY,
+            subscription=Subscription(
+                expires_at=-1,
+                endpoint="https://example.com/triggers/plugin/endpoint-123",
+                parameters={},
+                properties={},
+            ),
         )
-        subscription.id = "subscription-123"
-        return subscription
 
     @pytest.fixture
     def plugin_trigger(self) -> WorkflowPluginTrigger:
@@ -199,7 +203,7 @@ class TestDispatchTriggeredWorkflow:
             }
 
     def test_dispatch_skips_when_workflow_missing(
-        self, subscription: TriggerSubscription, dispatch_mocks: _DispatchMocks
+        self, subscription: TriggerSubscriptionRuntime, dispatch_mocks: _DispatchMocks
     ) -> None:
         """Covers missing workflow → log + ``continue``."""
         dispatch_mocks["get_workflows"].return_value = dict[str, object]()
@@ -218,7 +222,10 @@ class TestDispatchTriggeredWorkflow:
         dispatch_mocks["mark_rate_limited"].assert_not_called()
 
     def test_dispatch_marks_rate_limited_when_quota_exceeded(
-        self, subscription: TriggerSubscription, plugin_trigger: WorkflowPluginTrigger, dispatch_mocks: _DispatchMocks
+        self,
+        subscription: TriggerSubscriptionRuntime,
+        plugin_trigger: WorkflowPluginTrigger,
+        dispatch_mocks: _DispatchMocks,
     ) -> None:
         """Covers QuotaExceededError → mark rate-limited + early return."""
         workflow = _workflow()
@@ -241,7 +248,10 @@ class TestDispatchTriggeredWorkflow:
         dispatch_mocks["invoke_trigger_event"].assert_not_called()
 
     def test_dispatch_commits_quota_and_counts_when_workflow_triggered(
-        self, subscription: TriggerSubscription, plugin_trigger: WorkflowPluginTrigger, dispatch_mocks: _DispatchMocks
+        self,
+        subscription: TriggerSubscriptionRuntime,
+        plugin_trigger: WorkflowPluginTrigger,
+        dispatch_mocks: _DispatchMocks,
     ) -> None:
         """Happy path: end user exists and async trigger succeeds."""
         workflow = _workflow()

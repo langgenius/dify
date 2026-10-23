@@ -16,7 +16,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
-from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginInvokeError
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
@@ -38,13 +37,13 @@ from models.enums import (
 )
 from models.model import App, EndUser
 from models.provider_ids import TriggerProviderID
-from models.trigger import TriggerSubscription, WorkflowPluginTrigger, WorkflowTriggerLog
+from models.trigger import WorkflowPluginTrigger, WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun
 from services.async_workflow_service import AsyncWorkflowService
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService, unlimited
 from services.trigger.app_trigger_service import AppTriggerService
-from services.trigger.trigger_provider_service import TriggerProviderService
+from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
 from services.workflow.entities import PluginTriggerData, PluginTriggerDispatchData, PluginTriggerMetadata
@@ -71,7 +70,7 @@ def dispatch_trigger_debug_event(
     user_id: str,
     timestamp: int,
     request_id: str,
-    subscription: TriggerSubscription,
+    subscription: TriggerSubscriptionRuntime,
 ) -> int:
     debug_dispatched = 0
     try:
@@ -138,7 +137,7 @@ def _record_trigger_failure_log(
     session: Session,
     workflow: Workflow,
     plugin_trigger: WorkflowPluginTrigger,
-    subscription: TriggerSubscription,
+    subscription: TriggerSubscriptionRuntime,
     trigger_metadata: PluginTriggerMetadata,
     end_user: EndUser | None,
     error_message: str,
@@ -241,7 +240,7 @@ def _record_trigger_failure_log(
 
 def dispatch_triggered_workflow(
     user_id: str,
-    subscription: TriggerSubscription,
+    subscription: TriggerSubscriptionRuntime,
     event_name: str,
     request_id: str,
     *,
@@ -340,8 +339,8 @@ def dispatch_triggered_workflow(
                         parameter_schemas=provider_controller.get_event_parameters(event_name=event_name)
                     ),
                     credentials=subscription.credentials,
-                    credential_type=CredentialType.of(subscription.credential_type),
-                    subscription=subscription.to_entity(),
+                    credential_type=subscription.credential_type,
+                    subscription=subscription.subscription,
                     request=request,
                     payload=payload,
                 )
@@ -427,7 +426,7 @@ def dispatch_triggered_workflow(
 def dispatch_triggered_workflows(
     user_id: str,
     events: list[str],
-    subscription: TriggerSubscription,
+    subscription: TriggerSubscriptionRuntime,
     request_id: str,
     *,
     end_users: TriggerEndUserProvisioner,
@@ -498,7 +497,7 @@ def dispatch_triggered_workflows_async(
             provider_id,
         )
 
-        subscription: TriggerSubscription | None = TriggerProviderService.get_subscription_by_id(
+        subscription = application_services().workspaces.trigger_subscriptions.get_for_execution(
             tenant_id=tenant_id,
             subscription_id=subscription_id,
         )

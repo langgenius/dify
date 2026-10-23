@@ -1021,6 +1021,10 @@ def test_build_application_services_wires_credential_query(
         is services.workspaces.trigger_subscription_management._subscriptions
     )
     assert services.workspaces.trigger_subscriptions._schemas is services.workspaces.trigger_providers
+    assert (
+        services.workspaces.trigger_subscriptions._subscriptions
+        is services.workspaces.trigger_subscription_management._subscriptions
+    )
     gateway = services.workspaces.trigger_oauth._builders
     assert isinstance(gateway, TriggerOAuthBuilderGateway)
     assert gateway._builders is services.workspaces.trigger_builders
@@ -1032,6 +1036,16 @@ def test_build_application_services_wires_credential_query(
         services.workspaces.trigger_endpoints._subscriptions
         is services.workspaces.trigger_subscription_management._subscriptions
     )
+    assert (
+        services.workspaces.trigger_subscription_renewal._subscriptions
+        is services.workspaces.trigger_subscription_management._subscriptions
+    )
+    assert (
+        services.workspaces.trigger_subscription_renewal._providers
+        is services.workspaces.trigger_subscription_management._providers
+    )
+    assert services.workspaces.trigger_subscription_renewal._clients is services.workspaces.trigger_oauth_clients
+    assert services.workspaces.trigger_subscription_renewal._oauth is services.workspaces.trigger_oauth._providers
 
 
 def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(

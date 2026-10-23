@@ -95,6 +95,37 @@ class PluginTriggerOAuthGateway:
             raise TriggerOAuthProviderError("Failed to get OAuth credentials from the trigger provider.") from error
         return TriggerOAuthCredentials(credentials=result.credentials, expires_at=result.expires_at)
 
+    def refresh_credentials(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        provider_id: TriggerProviderID,
+        redirect_uri: str,
+        client_config: PluginOAuthClientConfig | None,
+        credentials: Mapping[str, object],
+    ) -> TriggerOAuthCredentials:
+        """None retains renewal with the provider's default OAuth client."""
+        plugin_unique_identifier = (
+            client_config.plugin_unique_identifier
+            if client_config is not None
+            else self.get_metadata(tenant_id=tenant_id, provider_id=provider_id).plugin_unique_identifier
+        )
+        try:
+            result = self._oauth.refresh_credentials(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                plugin_id=provider_id.plugin_id,
+                provider=provider_id.provider_name,
+                redirect_uri=redirect_uri,
+                system_credentials=dict(client_config.credentials) if client_config is not None else {},
+                plugin_unique_identifier=plugin_unique_identifier,
+                credentials=dict(credentials),
+            )
+        except ValueError as error:
+            raise TriggerOAuthProviderError("Failed to refresh OAuth credentials for the trigger provider.") from error
+        return TriggerOAuthCredentials(credentials=result.credentials, expires_at=result.expires_at)
+
 
 class OAuthProxyContextGateway:
     """Retain the shared proxy format so in-flight callbacks survive deployment.

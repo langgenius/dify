@@ -1191,6 +1191,7 @@ source_modules =
     services.trigger.provider_query
     services.trigger.subscription_query_service
     services.trigger.subscription_service
+    services.trigger.subscription_renewal_service
 forbidden_modules =
     controllers
     extensions
@@ -1198,6 +1199,15 @@ forbidden_modules =
     repositories
     sqlalchemy
     werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:services-composition-root-boundary]
+name = Services do not locate their dependencies through the application container
+type = forbidden
+source_modules =
+    services
+forbidden_modules =
+    extensions.ext_application_services
 allow_indirect_imports = True
 
 [importlinter:contract:trigger-subscription-builder-persistence-boundary]
@@ -1211,5 +1221,4 @@ forbidden_modules =
     extensions
     repositories
     sqlalchemy
-    services.trigger.trigger_provider_service
 allow_indirect_imports = True

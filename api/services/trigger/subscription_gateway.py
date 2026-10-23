@@ -1,4 +1,4 @@
-"""Adapt plugin provider discovery and dispatch for subscription management."""
+"""Adapt plugin provider discovery and dispatch for subscription management and renewal."""
 
 from collections.abc import Mapping
 from typing import Any
@@ -8,6 +8,7 @@ from core.trigger.entities.entities import Subscription, UnsubscribeResult
 from core.trigger.errors import TriggerProviderCredentialValidationError
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
+from core.trigger.utils.encryption import TriggerProviderPropertiesCache
 from models.provider_ids import TriggerProviderID
 from services.trigger.subscription_query_service import TriggerSubscriptionSchemas
 from services.trigger.subscription_service import (
@@ -17,7 +18,7 @@ from services.trigger.subscription_service import (
 
 
 class PluginTriggerSubscriptionGateway:
-    """Reuse TriggerManager's context cache for one synchronous management operation."""
+    """Reuse TriggerManager's context cache for a synchronous subscription operation."""
 
     def get_schemas(
         self, *, tenant_id: str, provider_id: TriggerProviderID, credential_type: CredentialType
@@ -81,9 +82,29 @@ class PluginTriggerSubscriptionGateway:
             credential_type=credential_type,
         )
 
+    def refresh(
+        self,
+        *,
+        tenant_id: str,
+        provider_id: TriggerProviderID,
+        subscription: Subscription,
+        credentials: Mapping[str, str],
+        credential_type: CredentialType,
+    ) -> Subscription:
+        provider = self._provider(tenant_id=tenant_id, provider_id=provider_id)
+        return provider.refresh_trigger(
+            subscription=subscription, credentials=credentials, credential_type=credential_type
+        )
+
     @staticmethod
     def _provider(*, tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProviderController:
         try:
             return TriggerManager.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)
         except Exception as error:
             raise TriggerSubscriptionProviderError(f"Failed to load trigger provider {provider_id}.") from error
+
+
+def invalidate_subscription_properties(*, tenant_id: str, provider_id: str, subscription_id: str) -> None:
+    TriggerProviderPropertiesCache(
+        tenant_id=tenant_id, provider_id=provider_id, subscription_id=subscription_id
+    ).delete()

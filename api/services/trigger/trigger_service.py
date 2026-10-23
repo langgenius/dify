@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
-from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.debug.events import PluginTriggerDebugEvent
@@ -18,9 +17,9 @@ from extensions.ext_redis import redis_client
 from graphon.entities.graph_config import NodeConfigDict
 from models.model import App
 from models.provider_ids import TriggerProviderID
-from models.trigger import TriggerSubscription, WorkflowPluginTrigger
+from models.trigger import WorkflowPluginTrigger
 from models.workflow import Workflow
-from services.trigger.trigger_provider_service import TriggerProviderService
+from services.trigger.subscription_query_service import TriggerSubscriptionRuntimeReader
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 
 logger = logging.getLogger(__name__)
@@ -35,10 +34,16 @@ class TriggerService:
 
     @classmethod
     def invoke_trigger_event(
-        cls, tenant_id: str, user_id: str, node_config: NodeConfigDict, event: PluginTriggerDebugEvent
+        cls,
+        tenant_id: str,
+        user_id: str,
+        node_config: NodeConfigDict,
+        event: PluginTriggerDebugEvent,
+        *,
+        subscriptions: TriggerSubscriptionRuntimeReader,
     ) -> TriggerInvokeEventResponse:
         """Invoke a trigger event."""
-        subscription: TriggerSubscription | None = TriggerProviderService.get_subscription_by_id(
+        subscription = subscriptions.get_for_execution(
             tenant_id=tenant_id,
             subscription_id=event.subscription_id,
         )
@@ -60,8 +65,8 @@ class TriggerService:
                 parameter_schemas=provider_controller.get_event_parameters(event_name=event.name)
             ),
             credentials=subscription.credentials,
-            credential_type=CredentialType.of(subscription.credential_type),
-            subscription=subscription.to_entity(),
+            credential_type=subscription.credential_type,
+            subscription=subscription.subscription,
             request=request,
             payload=payload,
         )
