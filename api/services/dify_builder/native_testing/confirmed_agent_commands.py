@@ -197,7 +197,7 @@ class ConfirmedAgentCommands:
             from services.dify_builder.native_testing.confirmed_agent_cancellation import ConfirmedAgentCancellation
 
             ref = self._root_ref(actor=actor, request_id=request_id)
-            if ConfirmedAgentCancellation(self).initial_stop_is_saved(ref=ref):
+            if ConfirmedAgentCancellation(self).stop_is_saved(ref=ref):
                 return receipt.model_copy(
                     update={
                         "status": "terminal",
@@ -756,7 +756,9 @@ class ConfirmedAgentCommands:
         children = []
         try:
             for wait in self.continuation._stored_waits(ref=ref):
-                protected = self.api.store.load_agent_association(ref=ref, parent_node=wait.parent_node, wait=wait)
+                protected = self.api.store.read_agent_association_for_cancellation(
+                    ref=ref, parent_node=wait.parent_node, wait=wait
+                )
                 children.append(protected.association.agent_run_id)
         except Exception:
             # Revocation still commits when checkpoint/cleanup is unknown.

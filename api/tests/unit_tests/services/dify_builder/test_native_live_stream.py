@@ -356,3 +356,117 @@ def test_read_only_snapshot_keeps_physically_clean_paused_parent_unresolved(
         native = sql.get(WorkflowRun, owner.native_id)
         assert native is not None
         assert native.status == "paused"
+
+
+@pytest.mark.parametrize("declining", [2], indirect=True)
+def test_resumed_cancelled_parent_session_history_and_sse_stay_readonly(
+    declining: CompletedOwner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from flask import Flask, Response
+    from sqlalchemy import Table, event
+
+    from controllers.console import dify_builder as controller
+    from models.dify_builder_native_tests import NativeDispatch, NativeEffectGrant, NativePendingAction
+    from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
+    from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+    from services.dify_builder.service import DifyBuilderService
+    from services.dify_builder.test_actions import BuilderTestActions
+    from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
+
+    owner = declining
+    with owner.factory.begin() as sql:
+        for model in (NativeEffectGrant, NativePendingAction):
+            table = model.__table__
+            assert isinstance(table, Table)
+            table.create(sql.connection(), checkfirst=True)
+        sql.add(
+            NativePayloadObject(
+                id="context",
+                tenant_id=owner.case.actor.tenant_id,
+                request_id=owner.request_id,
+                invocation_id=owner.ref.invocation_id,
+                kind="context",
+                logical_key="context",
+                storage_key="context-storage",
+                payload_digest="a" * 64,
+                value_digest="b" * 64,
+            )
+        )
+        sql.add(
+            NativeDispatch(
+                id="source-two",
+                tenant_id=owner.case.actor.tenant_id,
+                request_id=owner.request_id,
+                invocation_id=owner.ref.invocation_id,
+                generation=2,
+                state="completed",
+                checkpoint_id="checkpoint",
+                idempotency_digest="e" * 64,
+            )
+        )
+        from models.dify_builder_native_tests import NativeEffectOperation
+
+        operation = sql.scalar(select(NativeEffectOperation))
+        assert operation is not None
+        operation.state = "completed"
+    _restore_public_reads(owner, monkeypatch)
+    lifecycle = owner.commands.api.lifecycle
+    monkeypatch.setattr(lifecycle, "cancel", NativeTestLifecycleService.cancel.__get__(lifecycle))
+    # The caller does not use the mutation response; subsequent reads must need
+    # neither a second cancellation nor a completion/recovery side effect.
+    owner.commands.cancel(
+        actor=owner.case.actor,
+        session_id=owner.session.id,
+        request_id=owner.request_id,
+        idempotency_key="lost-cancel-ack",
+    )
+    owner.commands.backend.client.get_run_sync = lambda _: pytest.fail("read queried child runtime")
+    commands = ProfiledNativeTestCommands(
+        sessions=owner.factory,
+        actor=owner.case.actor,
+        confirmed_factory=lambda: owner.commands,
+        legacy_factory=lambda: pytest.fail("changed runtime profile"),
+    )
+    service = DifyBuilderService(
+        owner.repo,
+        FakeSessionLock(),
+        lambda *_: pytest.fail("read enqueued work"),
+        get_app_revision_fn=lambda *_: "fixture-revision",
+        test_actions=BuilderTestActions(owner.factory, lambda **_: commands),
+    )
+    monkeypatch.setattr(controller, "build_service", lambda: service)
+    monkeypatch.setattr(controller, "build_native_test_api_service", lambda **_: commands)
+    monkeypatch.setattr(controller.progress_bus, "subscribe", lambda _: _subscription(monkeypatch, []))
+    statements: list[str] = []
+
+    def observe(_c: object, _u: object, statement: str, _p: object, _x: object, _m: object) -> None:
+        statements.append(statement)
+
+    engine = owner.factory.kw["bind"]
+    event.listen(engine, "before_cursor_execute", observe)
+    try:
+        with Flask(__name__).test_request_context():
+            view = controller._get_session(owner.session.id, owner.case.actor)
+            assert isinstance(view, dict)
+            receipt = view["test_execution"]
+            assert receipt["request_id"] == owner.request_id
+            assert receipt["native_run_id"] == owner.native_id
+            assert receipt["status"] == "terminal"
+            assert receipt["outcome"] == "cancelled"
+            assert receipt["cancellation"]["status"] == "cancelled"
+            assert not receipt["can_resume"]
+            history = controller._conversation(owner.session.id, {}, owner.case.actor)
+            assert isinstance(history, dict)
+            response = controller._stream(owner.session.id, owner.case.actor, native_version="builder-native-test-v1")
+            assert isinstance(response, Response)
+            frames = response.get_data(as_text=True)
+            assert '"outcome":"cancelled"' in frames.replace(" ", "")
+    finally:
+        event.remove(engine, "before_cursor_execute", observe)
+    assert not any(q.lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE")) for q in statements)
+    assert owner.cancel_calls == ["original-child"]
+    with owner.factory() as sql:
+        state = sql.scalar(select(NativeInvocationState))
+        assert state is not None
+        assert not state.cleanup_complete
+    assert owner.repo.get_run(owner.verify_id).status == "failed"

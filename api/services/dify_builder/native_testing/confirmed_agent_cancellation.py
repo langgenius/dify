@@ -110,7 +110,7 @@ class ConfirmedAgentCancellation:
             generation = state.generation
             objects = self._objects(sql, ref, owned.tenant_id)
             sources = self._sources(sql, ref)
-        payload = self.commands.api.store.read_checkpoint(ref=ref, checkpoint=checkpoint)
+        payload = self.commands.api.store.read_checkpoint_for_cancellation(ref=ref, checkpoint=checkpoint)
         executions = {item.execution_id for item in paused.runtime.graph_execution.node_executions.values()}
         if (
             payload.native_run_id != paused.native_run_id
@@ -125,7 +125,9 @@ class ConfirmedAgentCancellation:
             return
         children = []
         for wait in payload.agent_associations:
-            protected = self.commands.api.store.load_agent_association(ref=ref, parent_node=wait.parent_node, wait=wait)
+            protected = self.commands.api.store.read_agent_association_for_cancellation(
+                ref=ref, parent_node=wait.parent_node, wait=wait
+            )
             children.append(protected.association.agent_run_id)
         proof = {
             "generation": generation,
@@ -207,11 +209,11 @@ class ConfirmedAgentCancellation:
             and [list(source) for source in self._sources(sql, ref)] == proof["sources"]
         )
 
-    def initial_stop_is_saved(self, *, ref):
-        """Read the initial ordinary owner's saved stop, not physical cleanup.
+    def stop_is_saved(self, *, ref):
+        """Read an exact sealed logical stop, never physical cleanup.
 
-        Initial runs have no native dispatch source. The sealed terminal proof
-        may close their logical receipt while C02 still retains cleanup facts.
+        Initial runs have no dispatch. Resumed runs additionally retain the
+        original cancellation preparation's complete source/object snapshot.
         """
         with self.loader.session_factory() as sql:
             request = _request(sql, actor=self.commands.actor, ref=ref)
@@ -227,13 +229,14 @@ class ConfirmedAgentCancellation:
                 return False
             state, invocation = states[0], invocations[0]
             if (
-                (state.tenant_id, state.invocation_id, state.parent_invocation_id, state.generation)
-                != (self.commands.actor.tenant_id, ref.invocation_id, None, 0)
+                (state.tenant_id, state.invocation_id, state.parent_invocation_id)
+                != (self.commands.actor.tenant_id, ref.invocation_id, None)
+                or type(state.generation) is not int
+                or state.generation < 0
                 or (invocation.tenant_id, invocation.invocation_id)
                 != (self.commands.actor.tenant_id, ref.invocation_id)
                 or invocation.active
                 or (state.app_id, state.workflow_id) != (request.app_id, request.workflow_id)
-                or sql.scalar(select(NativeDispatch.id).where(NativeDispatch.request_id == ref.request_id)) is not None
                 or sql.scalar(
                     owner_query(NativePayloadObject, ref, request.tenant_id).where(
                         NativePayloadObject.id == state.context_object_id, NativePayloadObject.kind == "context"
@@ -242,6 +245,46 @@ class ConfirmedAgentCancellation:
                 is None
             ):
                 return False
+            sources = sql.scalars(select(NativeDispatch).where(NativeDispatch.request_id == ref.request_id)).all()
+            if state.generation == 0:
+                if sources:
+                    return False
+            else:
+                proofs = [record[PREPARATION] for record in request.observations if PREPARATION in record]
+                if len(proofs) != 1 or not isinstance(proofs[0], dict):
+                    return False
+                proof = proofs[0]
+                try:
+                    checkpoint = CheckpointRef.model_validate(proof.get("checkpoint"))
+                except (TypeError, ValueError):
+                    return False
+                continuations = sql.scalars(
+                    owner_query(NativeContinuation, ref, request.tenant_id).where(
+                        NativeContinuation.checkpoint_id == checkpoint.checkpoint_id,
+                        NativeContinuation.payload_digest == checkpoint.payload_digest,
+                        NativeContinuation.generation == state.generation,
+                    )
+                ).all()
+                if (
+                    state.checkpoint_id != checkpoint.checkpoint_id
+                    or len(continuations) != 1
+                    or type(proof.get("generation")) is not int
+                    or not sources
+                    or proof.get("generation") != state.generation
+                    or proof.get("context_object_id") != state.context_object_id
+                    or proof.get("native_run_id") != _native_run_id(request)
+                    or not proof.get("children")
+                    or proof.get("sources") != [list(source) for source in self._sources(sql, ref)]
+                    or proof.get("objects") != self._objects(sql, ref, request.tenant_id)
+                    or not any(source.generation == state.generation for source in sources)
+                    or any(
+                        (source.tenant_id, source.invocation_id) != (request.tenant_id, ref.invocation_id)
+                        or source.state != "completed"
+                        or not 0 <= source.generation <= state.generation
+                        for source in sources
+                    )
+                ):
+                    return False
             operations = sql.scalars(
                 select(NativeEffectOperation).where(NativeEffectOperation.request_id == ref.request_id)
             ).all()
