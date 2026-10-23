@@ -3673,11 +3673,6 @@
       "count": 3
     }
   },
-  "web/app/components/main-nav/components/help-menu.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/main-nav/components/web-apps-section.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
