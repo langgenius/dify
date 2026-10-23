@@ -43,7 +43,7 @@ def _conversation() -> Conversation:
         app_id="app1",
         mode=AppMode.AGENT_CHAT,
         name="Conversation",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.CONSOLE,
     )
 

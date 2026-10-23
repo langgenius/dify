@@ -343,16 +343,30 @@ export function AgentSkillDetailDialog({
   skillName: string
   detail: AgentSkillDetail
 }) {
+  return (
+    <DialogContent
+      backdropProps={{ forceRender: true, className: 'fixed' }}
+      className="h-[min(720px,calc(100dvh-2rem))] w-[min(960px,calc(100vw-2rem))] overflow-hidden"
+    >
+      <AgentSkillDetailBody skillName={skillName} detail={detail} />
+    </DialogContent>
+  )
+}
+
+export function AgentSkillDetailBody({
+  skillName,
+  detail,
+}: {
+  skillName: string
+  detail: AgentSkillDetail
+}) {
   const { t: tCommon } = useTranslation(['common'])
   const dialogTitleId = useId()
   const previewTitle = detail.filePreview?.fileName
   const isHeaderDownloadLoading = detail.filePreview?.downloadActionLoadingTarget === 'header'
 
   return (
-    <DialogContent
-      backdropProps={{ forceRender: true, className: 'fixed' }}
-      className="h-[min(720px,calc(100dvh-2rem))] w-[min(960px,calc(100vw-2rem))] overflow-hidden"
-    >
+    <>
       <div className="flex min-h-0 flex-1">
         <div
           className={cn(
@@ -465,6 +479,6 @@ export function AgentSkillDetailDialog({
           </ScrollArea>
         </div>
       </div>
-    </DialogContent>
+    </>
   )
 }

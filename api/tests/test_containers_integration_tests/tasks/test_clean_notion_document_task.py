@@ -341,7 +341,6 @@ class TestCleanNotionDocumentTask:
 
         # Create document
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -527,7 +526,6 @@ class TestCleanNotionDocumentTask:
 
         # Create document
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -629,7 +627,6 @@ class TestCleanNotionDocumentTask:
 
         # Create document
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -1045,7 +1042,6 @@ class TestCleanNotionDocumentTask:
 
         # Create document with rich metadata
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,

@@ -8,7 +8,7 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
-from models.model import App, TraceAppConfig
+from models.model import App, AppMode, TraceAppConfig
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
@@ -47,7 +47,7 @@ def case(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.Monk
                 id="app",
                 tenant_id="tenant",
                 name="Trace",
-                mode="workflow",
+                mode=AppMode.WORKFLOW,
                 enable_site=False,
                 enable_api=False,
                 tracing=json.dumps(

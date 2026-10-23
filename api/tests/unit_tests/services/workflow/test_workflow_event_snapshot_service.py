@@ -505,9 +505,10 @@ def test_get_message_context_by_app_should_scope_and_bound_compatibility_lookup(
 
 def test_get_message_context_by_conversation_should_default_created_at_to_zero_when_message_has_no_timestamp() -> None:
     session_maker = MagicMock()
-    session_maker.return_value.__enter__.return_value.scalar.return_value = Message(
-        id="msg-1", conversation_id="conv-1", answer="answer", created_at=None
-    )
+    message = Message(id="msg-1", conversation_id="conv-1", answer="answer")
+    # Exercise a legacy row without a timestamp.
+    message.created_at = None  # pyrefly: ignore[bad-assignment]
+    session_maker.return_value.__enter__.return_value.scalar.return_value = message
 
     result = service_module._get_message_context_by_conversation(
         session_maker, conversation_id="conv-1", workflow_run_id="run-1"

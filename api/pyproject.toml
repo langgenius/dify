@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.17.1"
+version = "1.18.0"
 requires-python = "~=3.13.0"
 
 dependencies = [
@@ -218,7 +218,7 @@ storage = [
 ############################################################
 # [ Tools ] dependency group
 ############################################################
-tools = ["cloudscraper>=1.2.71,<2.0.0", "nltk>=3.10.3,<4.0.0"]
+tools = ["cloudscraper>=1.2.71,<2.0.0", "nltk>=3.10.4,<4.0.0"]
 
 ############################################################
 # [ VDB ] workspace plugins — hollow packages under providers/vdb/*

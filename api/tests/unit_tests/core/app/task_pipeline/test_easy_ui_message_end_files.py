@@ -76,9 +76,10 @@ class TestMessageEndStreamResponseFiles:
             mode=AppMode.CHAT,
             name="Conversation",
             from_source=ConversationFromSource.API,
-            inputs={},
+            _inputs={},
         )
-        message = Message(id=str(uuid.uuid4()), created_at=datetime.now())
+        message = Message(id=str(uuid.uuid4()))
+        message.created_at = datetime.now()
         queue = MessageBasedAppQueueManager(
             task_id=request.task_id,
             user_id=request.user_id,

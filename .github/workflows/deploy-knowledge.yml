@@ -7,67 +7,72 @@ permissions:
 on:
   workflow_run:
     workflows: ['Build and Push API & Web']
-    branches:
-      - 'deploy/konwledge'
-    types:
-      - completed
+    branches: ['deploy/konwledge']
+    types: [completed]
+
+# A second workflow used to deploy the same server after KnowledgeFS CI. This is the single
+# Dify deployment owner; the independent KnowledgeFS release retains its own deployment lock.
+concurrency:
+  group: deploy-knowledge-dify-test
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: depot-ubuntu-24.04
+    timeout-minutes: 340
     if: |
+      github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'deploy/konwledge'
+      github.event.workflow_run.head_branch == 'deploy/konwledge' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     steps:
-      - name: Wait for KnowledgeFS CI
+      - name: Checkout tested deployment gates
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Require same-revision KnowledgeFS CI and current branch head
+        id: gates
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         timeout-minutes: 35
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const workflowId = "knowledge-fs-ci.yml";
-            const headBranch = context.payload.workflow_run.head_branch;
-            const headSha = context.payload.workflow_run.head_sha;
-            const deadline = Date.now() + 30 * 60 * 1000;
-            const pollIntervalMs = 15 * 1000;
+            await require('./.github/scripts/knowledge-deploy-gates.cjs')({ github, context, core });
 
-            while (Date.now() < deadline) {
-              const { data } = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: workflowId,
-                branch: headBranch,
-                event: "push",
-                head_sha: headSha,
-                per_page: 10,
-              });
-              const run = data.workflow_runs[0];
-
-              if (!run) {
-                core.info(`Waiting for ${workflowId} to start for ${headSha}.`);
-              } else if (run.status !== "completed") {
-                core.info(`Waiting for ${run.html_url}; current status is ${run.status}.`);
-              } else if (run.conclusion !== "success") {
-                throw new Error(
-                  `${workflowId} did not succeed for ${headSha}: ${run.conclusion} (${run.html_url})`,
-                );
-              } else {
-                core.info(`KnowledgeFS CI succeeded for ${headSha}: ${run.html_url}`);
-                return;
-              }
-
-              await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-            }
-
-            throw new Error(`Timed out waiting for ${workflowId} to succeed for ${headSha}.`);
-
-      - name: Deploy to server
+      - name: Deploy tested Dify revision while preserving KnowledgeFS
+        if: steps.gates.outputs.current == 'true'
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        env:
+          EXPECTED_DIFY_REVISION: ${{ github.event.workflow_run.head_sha }}
+          DEPLOY_DIR: /home/ubuntu/langgenius
         with:
           host: ${{ secrets.SSH_NEW_RAG_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           # Allow the shared deployment lock and Celery warm shutdown to finish.
           command_timeout: 300m
+          envs: EXPECTED_DIFY_REVISION,DEPLOY_DIR
           script: |
-            ${{ vars.SSH_SCRIPT || secrets.SSH_SCRIPT }}
+            set -euo pipefail
+            [[ "$EXPECTED_DIFY_REVISION" =~ ^[0-9a-f]{40}$ ]] || {
+              echo 'Expected a full tested Dify revision.' >&2; exit 1;
+            }
+            # Verify the installed bridge forwards revision arguments before invoking it. Never
+            # overwrite an operator's custom entrypoint or fall back to an unverified script.
+            python3 - "$DEPLOY_DIR" <<'PY'
+            import shlex
+            import sys
+            from pathlib import Path
+
+            project = Path(sys.argv[1]).resolve()
+            controller = project / 'knowledge-fs-independent-deploy.py'
+            expected = ('#!/usr/bin/env bash\nset -euo pipefail\nexec python3 ' +
+                        shlex.quote(str(controller)) + ' --dify --project-dir ' +
+                        shlex.quote(str(project)) + ' "$@"\n')
+            if not controller.is_file() or (project / 'deploy.sh').read_text() != expected:
+                raise SystemExit('Expected the installed KnowledgeFS-preserving Dify release bridge.')
+            PY
+            "$DEPLOY_DIR/deploy.sh" --expected-revision "$EXPECTED_DIFY_REVISION"

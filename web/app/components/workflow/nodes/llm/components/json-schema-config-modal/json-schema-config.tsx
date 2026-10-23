@@ -235,7 +235,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave }: JsonSchemaConfigProp
         </TabsList>
         <div className="flex items-center gap-x-0.5">
           {/* JSON Schema Generator */}
-          <JsonSchemaGenerator crossAxisOffset={btnWidth} onApply={handleApplySchema} />
+          <JsonSchemaGenerator alignOffset={btnWidth} onApply={handleApplySchema} />
           <Separator decorative orientation="vertical" className="mx-2 h-3" />
           {/* JSON Schema Importer */}
           <JsonImporter updateBtnWidth={updateBtnWidth} onSubmit={handleSubmit} />

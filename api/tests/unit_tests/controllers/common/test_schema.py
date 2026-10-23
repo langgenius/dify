@@ -2,7 +2,7 @@ import sys
 from datetime import datetime
 from enum import StrEnum
 from types import SimpleNamespace
-from typing import Literal
+from typing import Annotated, Literal
 from unittest.mock import patch
 
 import pytest
@@ -48,7 +48,12 @@ class QueryModel(BaseModel):
     enum_status: StatusEnum | None = Field(default=None, description="Enum status filter")
     created_at: datetime | None = Field(default=None, description="Creation time")
     app_id: str = Field(..., alias="appId", description="Application ID")
-    tag_ids: list[str] = Field(default_factory=list, min_length=1, max_length=3, description="Tag IDs")
+    tag_ids: list[Annotated[str, Field(min_length=1, max_length=255)]] = Field(
+        default_factory=list,
+        min_length=1,
+        max_length=3,
+        description="Tag IDs",
+    )
     ambiguous: int | str | None = Field(default=None, description="Ambiguous query parameter")
 
 
@@ -410,7 +415,7 @@ def test_query_params_from_model_builds_flask_restx_doc_params():
         "required": False,
         "description": "Tag IDs",
         "type": "array",
-        "items": {"type": "string"},
+        "items": {"type": "string", "minLength": 1, "maxLength": 255},
         "minItems": 1,
         "maxItems": 3,
     }
