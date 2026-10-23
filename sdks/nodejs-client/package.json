@@ -43,7 +43,7 @@
   },
   "scripts": {
     "build": "vp pack",
-    "type-check": "tsc",
+    "type-check": "tsrs --noEmit",
     "test": "vp test",
     "test:coverage": "vp test --coverage",
     "publish:check": "./scripts/publish.sh --dry-run",
@@ -54,6 +54,7 @@
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "tsrs": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",

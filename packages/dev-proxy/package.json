@@ -21,7 +21,7 @@
     "build": "vp pack",
     "prepare": "pnpm run build",
     "test": "vp test",
-    "type-check": "tsc",
+    "type-check": "tsrs --noEmit",
     "prepublish": "pnpm run build"
   },
   "dependencies": {
@@ -34,6 +34,7 @@
     "@dify/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",
+    "tsrs": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },

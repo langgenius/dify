@@ -15,7 +15,7 @@
   },
   "scripts": {
     "test": "vp test",
-    "type-check": "tsc"
+    "type-check": "tsrs --noEmit"
   },
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
@@ -30,6 +30,7 @@
     "nuqs": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "tsrs": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
