@@ -6,19 +6,22 @@ from collections.abc import Generator, Mapping, Sequence
 from contextlib import AbstractContextManager, contextmanager
 from copy import deepcopy
 from typing import Any, override
+from uuid import uuid4
 
 from psycopg2.errors import UniqueViolation
 from pymysql.err import IntegrityError as MySQLIntegrityError
 from redis.exceptions import LockError, RedisError
-from sqlalchemy import delete, func, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.trigger.utils.locks import build_trigger_refresh_lock_key
 from extensions.ext_redis import RedisClientWrapper
 from models.enums import AppTriggerStatus
 from models.provider_ids import TriggerProviderID
 from models.trigger import AppTrigger, TriggerSubscription, WorkflowPluginTrigger
 from services.trigger.subscription_binding_service import TriggerSubscriber, TriggerSubscriptionBinding
+from services.trigger.subscription_refresh_service import TriggerSubscriptionRefreshJob, TriggerSubscriptionRefreshRef
 from services.trigger.subscription_service import (
     TriggerSubscriptionChangedError,
     TriggerSubscriptionLimitError,
@@ -57,6 +60,33 @@ def _is_name_conflict(error: IntegrityError) -> bool:
 class TriggerSubscriptionRepository(TriggerSubscriptionStore):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def list_due_for_refresh(
+        self,
+        *,
+        credential_due_at: int,
+        subscription_due_at: int,
+        after_id: str | None,
+        limit: int,
+    ) -> tuple[TriggerSubscriptionRefreshRef, ...]:
+        """Scan all workspaces for the scheduler, releasing SQL before reservation or publishing."""
+        statement = select(TriggerSubscription.tenant_id, TriggerSubscription.id).where(
+            or_(
+                and_(
+                    TriggerSubscription.credential_expires_at != -1,
+                    TriggerSubscription.credential_expires_at <= credential_due_at,
+                ),
+                and_(TriggerSubscription.expires_at != -1, TriggerSubscription.expires_at <= subscription_due_at),
+            )
+        )
+        if after_id is not None:
+            statement = statement.where(TriggerSubscription.id > after_id)
+        with self._session_factory() as session:
+            rows = session.execute(statement.order_by(TriggerSubscription.id).limit(limit)).all()
+            return tuple(
+                TriggerSubscriptionRefreshRef(tenant_id=tenant_id, subscription_id=subscription_id)
+                for tenant_id, subscription_id in rows
+            )
 
     def sync_workflow_bindings(
         self,
@@ -354,3 +384,38 @@ class RedisTriggerSubscriptionLocks(TriggerSubscriptionLocks):
                 lock.release()
             except RedisError:
                 logger.exception("Failed to release trigger subscription lock %s", key)
+
+
+class RedisTriggerSubscriptionRefreshReservations:
+    _RELEASE = """
+        if redis.call('GET', KEYS[1]) == ARGV[1] then
+            return redis.call('DEL', KEYS[1])
+        end
+        return 0
+    """
+
+    def __init__(self, *, redis: RedisClientWrapper) -> None:
+        self._redis = redis
+
+    def reserve(
+        self, *, subscriptions: Sequence[TriggerSubscriptionRefreshRef], ttl: int
+    ) -> tuple[TriggerSubscriptionRefreshJob, ...]:
+        jobs = tuple(
+            TriggerSubscriptionRefreshJob(subscription=subscription, token=str(uuid4()))
+            for subscription in subscriptions
+        )
+        with self._redis.pipeline(transaction=False) as pipe:
+            for job in jobs:
+                pipe.set(self._key(job), job.token, ex=ttl, nx=True)
+            acquired = pipe.execute()
+        return tuple(job for job, owned in zip(jobs, acquired, strict=True) if owned)
+
+    def owns(self, job: TriggerSubscriptionRefreshJob) -> bool:
+        return self._redis.get(self._key(job)) in (job.token, job.token.encode())
+
+    def release(self, job: TriggerSubscriptionRefreshJob) -> None:
+        self._redis.eval(self._RELEASE, 1, self._key(job), job.token)
+
+    @staticmethod
+    def _key(job: TriggerSubscriptionRefreshJob) -> str:
+        return build_trigger_refresh_lock_key(job.subscription.tenant_id, job.subscription.subscription_id)

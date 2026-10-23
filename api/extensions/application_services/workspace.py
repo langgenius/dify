@@ -16,7 +16,11 @@ from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
-from repositories.trigger.subscription_repository import RedisTriggerSubscriptionLocks, TriggerSubscriptionRepository
+from repositories.trigger.subscription_repository import (
+    RedisTriggerSubscriptionLocks,
+    RedisTriggerSubscriptionRefreshReservations,
+    TriggerSubscriptionRepository,
+)
 from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
@@ -40,8 +44,13 @@ from services.trigger.subscription_binding_service import (
     TriggerSubscriptionBindingQuery,
     TriggerSubscriptionBindingService,
 )
-from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway, invalidate_subscription_properties
+from services.trigger.subscription_gateway import (
+    PluginTriggerSubscriptionGateway,
+    enqueue_subscription_refresh,
+    invalidate_subscription_properties,
+)
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
+from services.trigger.subscription_refresh_service import TriggerSubscriptionRefreshService
 from services.trigger.subscription_renewal_service import TriggerSubscriptionRenewalService
 from services.trigger.subscription_service import TriggerSubscriptionService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
@@ -88,6 +97,7 @@ class WorkspaceServices:
     create_trigger_binding_service: Callable[[Session], TriggerSubscriptionBindingService]
     trigger_subscription_management: TriggerSubscriptionService
     trigger_subscription_renewal: TriggerSubscriptionRenewalService
+    trigger_subscription_refresh: TriggerSubscriptionRefreshService
     trigger_builders: TriggerSubscriptionBuilderService
     trigger_endpoints: TriggerEndpointService
     trigger_events: TriggerEventService
@@ -153,6 +163,14 @@ def build_workspace_services(
     trigger_subscriptions = TriggerSubscriptionQueryService(
         credentials=credentials, schemas=trigger_providers, subscriptions=subscriptions
     )
+    renewal = TriggerSubscriptionRenewalService(
+        subscriptions=subscriptions,
+        providers=subscription_provider,
+        oauth=trigger_oauth_provider,
+        clients=trigger_oauth_clients,
+        invalidate_cache=delete_cache_for_subscription,
+        invalidate_properties=invalidate_subscription_properties,
+    )
     return WorkspaceServices(
         queries=WorkspaceQueryService(workspaces=workspaces, plans=DeploymentWorkspacePlanGateway()),
         management=WorkspaceService(
@@ -204,13 +222,12 @@ def build_workspace_services(
             requests=TriggerHttpRequestCachingService,
         ),
         trigger_subscription_management=trigger_subscription_management,
-        trigger_subscription_renewal=TriggerSubscriptionRenewalService(
+        trigger_subscription_renewal=renewal,
+        trigger_subscription_refresh=TriggerSubscriptionRefreshService(
             subscriptions=subscriptions,
-            providers=subscription_provider,
-            oauth=trigger_oauth_provider,
-            clients=trigger_oauth_clients,
-            invalidate_cache=delete_cache_for_subscription,
-            invalidate_properties=invalidate_subscription_properties,
+            reservations=RedisTriggerSubscriptionRefreshReservations(redis=redis),
+            publish=enqueue_subscription_refresh,
+            renewal=renewal,
         ),
         trigger_builders=trigger_builders,
         trigger_endpoints=TriggerEndpointService(
