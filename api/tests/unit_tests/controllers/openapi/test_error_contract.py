@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import (
     BadGateway,
@@ -417,7 +418,7 @@ def test_service_api_disabled_hint_has_no_api_wording():
     ("exc_class", "op"),
     [(WorkspaceMismatch, "get.workspace"), (ResourceNotAuthorized, "get.console_app")],
 )
-def test_app_token_hints_name_a_real_op(openapi_app, exc_class: type[OpenApiError], op: str) -> None:
+def test_app_token_hints_name_a_real_op(openapi_app: Flask, exc_class: type[OpenApiError], op: str) -> None:
     assert exc_class.hint is not None
     assert exc_class.hint.startswith(f"{op} ")
     assert op in build_catalog(openapi_app)["ops"]

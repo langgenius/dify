@@ -220,10 +220,9 @@ def test_workspace_gone_after_grant_is_rejected(
     from controllers.openapi.auth import resource_access
 
     flask_app, app_id, _, _, end_user = resource_fixture
+    # The token's live grant still passes; only the later tenant load misses.
     monkeypatch.setattr(
-        resource_access.application_services(),
-        "workspaces",
-        SimpleNamespace(identity=SimpleNamespace(get_workspace=lambda _workspace_id: None)),
+        resource_access.application_services().workspaces.identity, "get_workspace", lambda _workspace_id: None
     )
     with pytest.raises(WorkspaceUnavailable):
         call(flask_app, app_id)
