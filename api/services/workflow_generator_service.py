@@ -52,6 +52,7 @@ class WorkflowGeneratorService:
         ideal_output: str = "",
         current_graph: dict[str, Any] | None = None,
         ready_tool_keys: frozenset[tuple[str, str]] | None = None,
+        reply_language: str | None = None,
     ) -> WorkflowGenerateResultDict:
         """
         Resolve a model instance for the tenant and run the generator.
@@ -63,6 +64,9 @@ class WorkflowGeneratorService:
         ``current_graph`` is the existing draft graph for the cmd+k `/refine`
         flow — when present the generator refines it instead of creating a new
         graph from scratch. ``None`` is the `/create` path.
+
+        ``reply_language`` optionally sets the language of generated display text;
+        omission preserves the standalone generator behavior.
 
         Errors from the LLM call (auth, quota, invoke) propagate so the
         controller can map them to existing HTTP error envelopes (same
@@ -93,6 +97,7 @@ class WorkflowGeneratorService:
 
         return WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
+            reply_language=reply_language,
             model_parameters=model_parameters,
             provider=model_config.provider,
             model_name=model_config.name,
@@ -116,6 +121,7 @@ class WorkflowGeneratorService:
         model_config: ModelConfig,
         ideal_output: str = "",
         current_graph: dict[str, Any] | None = None,
+        reply_language: str | None = None,
     ) -> Iterator[tuple[str, dict[str, Any]]]:
         """
         Streaming sibling of ``generate_workflow_graph``.
@@ -133,6 +139,7 @@ class WorkflowGeneratorService:
 
         yield from WorkflowGenerator.generate_workflow_graph_stream(
             model_instance=model_instance,
+            reply_language=reply_language,
             model_parameters=model_parameters,
             provider=model_config.provider,
             model_name=model_config.name,

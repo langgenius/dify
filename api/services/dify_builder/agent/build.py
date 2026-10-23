@@ -523,6 +523,7 @@ def propose_plan_v1(
     agent_source_error: str | None = None,
     goal_text: str = "",
     mode: str = "workflow",
+    reply_language: str | None = None,
 ) -> WorkflowPlan | None:
     """Return an intact plan or None, with at most one schema correction.
 
@@ -559,7 +560,9 @@ def propose_plan_v1(
     )
     system = _topology_directive(mode) + "\n\n" + system
     system += "\n\n" + native_constant_output_system_rules()
-    system += llm.json_language_instruction("the plan title, input and output summaries, and plan steps")
+    system += llm.json_language_instruction(
+        "the plan title, input and output summaries, and plan steps", reply_language=reply_language
+    )
     source = _cognition_source(goal_text, requirements)
     user = source
     for attempt in range(2):
@@ -1208,6 +1211,7 @@ def build_nodes(
     trusted_text: str = "",
     account_id: str | None = None,
     mode: str = "workflow",
+    reply_language: str | None = None,
 ) -> BuildNodesResult:
     """Generate installed Tool schemas with delayed setup and no credential borrowing.
 
@@ -1269,6 +1273,7 @@ def build_nodes(
                     model_config=mc,
                     current_graph=None,
                     ready_tool_keys=ready_tool_keys,
+                    reply_language=reply_language,
                 )
             )
 

@@ -43,17 +43,23 @@ class RetryingAgent(StubAgent):
         self.proposal_contexts: list[tuple[Diagnosis, Graph]] = []
 
     @override
-    def diagnose(self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> Diagnosis:
+    def diagnose(
+        self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput], *, reply_language: str | None = None
+    ) -> Diagnosis:
         self.run_diagnoses += 1
         return super().diagnose(failed_run, graph, node_outputs)
 
     @override
-    def diagnose_checklist(self, errors: list[ChecklistError], graph: Graph) -> Diagnosis:
+    def diagnose_checklist(
+        self, errors: list[ChecklistError], graph: Graph, *, reply_language: str | None = None
+    ) -> Diagnosis:
         self.checklist_diagnoses += 1
         return super().diagnose_checklist(errors, graph)
 
     @override
-    def propose_repair(self, diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]:
+    def propose_repair(
+        self, diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
+    ) -> tuple[list[MutationIntent], Risk]:
         self.proposals += 1
         self.proposal_contexts.append((diagnosis, graph))
         if self.empty_risk_level is not None:

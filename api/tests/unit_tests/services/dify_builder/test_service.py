@@ -1848,7 +1848,9 @@ def test_failed_build_planning_reload_reoffers_confirmed_requirements_and_retry_
             self.sources: list[tuple[str, dict[str, object]]] = []
 
         @override
-        def propose_plan_v1(self, requirements: dict[str, object], *, goal_text: str) -> WorkflowPlan | None:
+        def propose_plan_v1(
+            self, requirements: dict[str, object], *, goal_text: str, reply_language: str | None = None
+        ) -> WorkflowPlan | None:
             self.sources.append((goal_text, copy.deepcopy(requirements)))
             return None
 
