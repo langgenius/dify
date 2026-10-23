@@ -777,14 +777,18 @@ class AgentObservabilityService:
         inputs = cls._json_mapping(node_execution.inputs)
         outputs = cls._json_mapping(node_execution.outputs)
         metadata = cls._json_mapping(node_execution.execution_metadata)
-        agent_backend = cls._mapping_value(metadata, "agent_backend")
         raw_agent_log = metadata.get("agent_log")
         agent_log_entries = raw_agent_log if isinstance(raw_agent_log, list) else []
-        usage = cls._mapping_value(agent_backend, "usage")
+        # Agent V2 used to nest its run statistics under this key. The node now keeps
+        # the official keys only, so the nested shape is only read for older rows.
+        legacy_agent_backend = raw_agent_log.get("agent_backend") if isinstance(raw_agent_log, Mapping) else None
+        usage = legacy_agent_backend.get("usage") if isinstance(legacy_agent_backend, Mapping) else {}
+        if not isinstance(usage, Mapping):
+            usage = {}
 
         prompt_tokens = cls._int_value(usage.get("prompt_tokens"))
         completion_tokens = cls._int_value(usage.get("completion_tokens"))
-        total_tokens = cls._int_value(usage.get("total_tokens") or metadata.get("total_tokens"))
+        total_tokens = cls._int_value(metadata.get("total_tokens") or usage.get("total_tokens"))
         if not total_tokens:
             total_tokens = prompt_tokens + completion_tokens
         created_by_role = cls._enum_value(node_execution.created_by_role)
@@ -808,8 +812,8 @@ class AgentObservabilityService:
             "message_tokens": prompt_tokens,
             "answer_tokens": completion_tokens,
             "total_tokens": total_tokens,
-            "total_price": str(usage.get("total_price") or metadata.get("total_price") or Decimal(0)),
-            "currency": str(usage.get("currency") or metadata.get("currency") or ""),
+            "total_price": str(metadata.get("total_price") or usage.get("total_price") or Decimal(0)),
+            "currency": str(metadata.get("currency") or usage.get("currency") or ""),
             "latency": float(usage.get("latency") or node_execution.elapsed_time or 0),
             "created_at": to_timestamp(node_execution.created_at),
             "updated_at": to_timestamp(node_execution.finished_at or node_execution.created_at),
@@ -1083,25 +1087,22 @@ WHERE
         source_filter: AgentSourceFilter,
     ) -> list[dict[str, Any]]:
         converted_run_created_at = convert_datetime_to_date("aru.created_at")
+        # The node keeps the official metadata keys, which is where the engine writes
+        # usage. Agent V2 used to nest them under "agent_log", so that path stays
+        # readable for rows written before the process entries became an array.
         total_tokens = self._workflow_execution_metadata_numeric_sql(("total_tokens",), "BIGINT")
-        # Agent V2 recorded its run statistics under "agent_log" before the flattened
-        # "agent_backend" shape. Keep the old path readable so untransformed rows do
-        # not silently report zero usage.
         nested_total_tokens = self._workflow_execution_metadata_numeric_sql(
-            ("agent_backend", "usage", "total_tokens"),
+            ("agent_log", "agent_backend", "usage", "total_tokens"),
             "BIGINT",
-            fallback_path=("agent_log", "agent_backend", "usage", "total_tokens"),
         )
         total_price = self._workflow_execution_metadata_numeric_sql(("total_price",), "DECIMAL(65, 30)")
         nested_total_price = self._workflow_execution_metadata_numeric_sql(
-            ("agent_backend", "usage", "total_price"),
+            ("agent_log", "agent_backend", "usage", "total_price"),
             "DECIMAL(65, 30)",
-            fallback_path=("agent_log", "agent_backend", "usage", "total_price"),
         )
         completion_tokens = self._workflow_execution_metadata_numeric_sql(
-            ("agent_backend", "usage", "completion_tokens"),
+            ("agent_log", "agent_backend", "usage", "completion_tokens"),
             "BIGINT",
-            fallback_path=("agent_log", "agent_backend", "usage", "completion_tokens"),
         )
         binding_filters = self._statistics_workflow_binding_filters_sql(source_filter)
         binding_join = self._statistics_workflow_node_binding_join_sql()
