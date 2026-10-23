@@ -101,6 +101,71 @@ def test_analyze_goal_returns_fields_and_values() -> None:
     assert out["values"] == {"categories": "billing"}
 
 
+_ALERT_GOAL = (
+    "Create an alert grading Workflow using numeric error_rate_pct, p95_ms, requests. "
+    "Invalid negatives or rate>100 ->invalid_input; requests=0 ->no_data; "
+    "rate>=5 or latency>=2000 ->critical; rate>=1 or latency>=800 ->warning; otherwise healthy. "
+    "Deterministic logic, no runtime LLM/external calls."
+)
+
+
+def test_analyze_goal_requests_only_necessary_unanswered_business_requirements() -> None:
+    model = _FakeInstance([json.dumps({"fields": [], "values": {}})])
+
+    build.analyze_goal(model, _ALERT_GOAL)
+
+    system = model.calls[0][0][0].content
+    assert "3-6" not in system
+    assert "0-6" in system
+    assert "unanswered business requirements" in system
+    assert '"fields": []' in system
+    assert "implementation choices" in system
+    assert "thresholds" in system
+    assert "explicitly requested technical choices" in system
+    assert len(model.calls) == 1
+
+
+def test_analyze_goal_empty_clarification_preserves_fixed_values_for_planning() -> None:
+    fixed_values = {
+        "grading_rules": "rate>=5 or latency>=2000 ->critical; rate>=1 or latency>=800 ->warning",
+        "runtime_constraints": "Deterministic logic, no runtime LLM/external calls.",
+    }
+    model = _FakeInstance(
+        [json.dumps({"fields": [], "values": fixed_values}), _plan_reply(["code node grades the alert"])]
+    )
+
+    analysis = build.analyze_goal(model, _ALERT_GOAL)
+    plan = build.propose_plan_v1(model, analysis["values"], goal_text=_ALERT_GOAL)
+
+    assert analysis["fields"] == []
+    assert analysis["values"] == fixed_values
+    assert plan is not None
+    planner_source = model.calls[1][0][1].content
+    assert _ALERT_GOAL in planner_source
+    assert json.dumps(fixed_values, ensure_ascii=False) in planner_source
+    assert len(model.calls) == 2
+
+
+def test_analyze_goal_keeps_a_necessary_unanswered_business_question() -> None:
+    model = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [{"key": "alert_recipient", "label": "Who should receive alerts?", "type": "text"}],
+                    "values": {"alert_recipient": ""},
+                }
+            )
+        ]
+    )
+
+    analysis = build.analyze_goal(model, "Grade service alerts and notify the responsible team.")
+
+    assert len(analysis["fields"]) == 1
+    assert analysis["fields"][0]["key"] == "alert_recipient"
+    assert analysis["values"]["alert_recipient"] == ""
+    assert "hint_copy" in analysis["fields"][0]
+
+
 def test_analyze_goal_reconciles_field_type_with_value() -> None:
     m = _FakeInstance(
         [
