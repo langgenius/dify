@@ -44,7 +44,7 @@ from services.human_input_service import (
     HumanInputService,
     InvalidFormDataError,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _make_app(mode: AppMode) -> App:

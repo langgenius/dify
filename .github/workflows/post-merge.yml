@@ -50,7 +50,7 @@ jobs:
               - 'dify-agent-runtime/**'
               - 'api/pyproject.toml'
               - 'api/uv.lock'
-              - 'api/tests/integration_tests/.env.example'
+              - 'api/tests/e2e_tests/middleware/.env.example'
               - 'api/clients/agent_backend/**'
               - 'api/core/app/apps/agent_app/**'
               - 'api/core/model_manager.py'

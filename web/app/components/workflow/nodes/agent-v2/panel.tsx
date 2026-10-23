@@ -684,7 +684,6 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
                   resource={inlineAgentResource ?? undefined}
                   inlineComposerState={inlineComposerStateForPanel}
                   nodeId={id}
-                  onClose={() => handleAgentPanelOpenChange(false)}
                   onSaved={handleInlineAgentSaved}
                   onSaveInlineToRoster={
                     canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined

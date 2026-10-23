@@ -16,7 +16,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { PluginSource } from '../types'
 
 type OperationDropdownProps = Readonly<
-  Pick<DropdownMenuContentProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+  Pick<DropdownMenuContentProps, 'side' | 'align'> & {
     source: PluginSource
     onInfo: () => void
     onCheckVersion: () => void
@@ -39,9 +39,8 @@ export function OperationDropdown({
   onCheckVersion,
   onRemove,
   onViewReadme,
-  placement = 'bottom-end',
-  sideOffset = 4,
-  alignOffset = 0,
+  side,
+  align,
   popupClassName,
   triggerSize = 'm',
   triggerAriaLabel,
@@ -85,12 +84,7 @@ export function OperationDropdown({
           </IconButton>
         }
       />
-      <DropdownMenuContent
-        placement={placement}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        className={cn('w-48 py-1', popupClassName)}
-      >
+      <DropdownMenuContent side={side} align={align} className={cn('w-48 py-1', popupClassName)}>
         {showInfo && (
           <DropdownMenuItem
             className="px-2 py-1 system-md-regular text-text-secondary"

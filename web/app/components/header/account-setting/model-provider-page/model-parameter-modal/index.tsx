@@ -31,7 +31,7 @@ import ParameterItem from './parameter-item'
 import PresetsParameter from './presets-parameter'
 import { getSupportedPresetConfig } from './presets-parameter-utils'
 
-export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & {
+export type ModelParameterModalProps = Pick<PopoverContentProps, 'side' | 'align'> & {
   trigger?: ReactElement<ComponentPropsWithRef<'button'>>
   triggerContainerClassName?: string
   popupClassName?: string
@@ -69,7 +69,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   triggerContainerClassName,
   popupClassName,
   modelSelectorPopupClassName,
-  placement,
+  side,
+  align,
   isAdvancedMode,
   modelId,
   provider,
@@ -195,7 +196,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         </div>
       )}
       <PopoverContent
-        placement={placement ?? (isInWorkflow ? 'left' : trigger ? 'bottom-end' : 'left-start')}
+        side={side ?? (isInWorkflow ? 'left' : trigger ? 'bottom' : 'left')}
+        align={align ?? (isInWorkflow ? 'center' : trigger ? 'end' : 'start')}
         sideOffset={4}
         className={cn(popupClassName, 'w-100 rounded-2xl')}
       >

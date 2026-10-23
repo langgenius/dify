@@ -16,7 +16,7 @@ import { usePathname } from '@/next/navigation'
 import { MainNav } from '.'
 import { ResponsiveMainNav } from './responsive-main-nav'
 import { shouldHideMainNavigation, shouldUseDetailSidebar } from './routes'
-import { MAIN_CONTENT_ID, SkipNav } from './skip-nav'
+import { MAIN_CONTENT_ID, SkipLink } from './skip-link'
 
 type MainNavLayoutProps = {
   children: ReactNode
@@ -53,7 +53,7 @@ const MainNavLayout = ({
         useResponsiveNavigation && 'flex-col md:flex-row',
       )}
     >
-      <SkipNav>{t(($) => $['navigation.skipToMain'])}</SkipNav>
+      <SkipLink>{t(($) => $['navigation.skipToMain'])}</SkipLink>
       {appId && <AppDetailPrefetch appId={appId} />}
       {hideMainNavigation ? null : useDetailSidebar ? (
         detailSidebar

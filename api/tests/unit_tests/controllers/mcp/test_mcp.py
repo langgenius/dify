@@ -1,5 +1,3 @@
-"""Unit tests for controllers.mcp.mcp endpoints."""
-
 from __future__ import annotations
 
 import json
@@ -11,50 +9,23 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask, Response
+from flask.testing import FlaskClient
 from pydantic import ValidationError
-from sqlalchemy import inspect
+from sqlalchemy import inspect, select
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+import controllers.mcp as mcp_controller
 import controllers.mcp.mcp as module
+from controllers.mcp.mcp import MCPAppApi
 from models.engine import db
 from models.enums import EndUserType
-from models.model import App, AppAnnotationSetting, AppMCPServer, AppModelConfig, EndUser, IconType
+from models.model import App, AppAnnotationSetting, AppMCPServer, AppMode, AppModelConfig, EndUser, IconType
 from models.workflow import Workflow, WorkflowType
-from tests.unit_tests.model_factories import make_end_user
+from services.app.mcp_server_service import AppMCPServerStatus
+from tests.helpers.unit.model_factories import make_end_user
 
-
-@pytest.fixture
-def app() -> Iterator[Flask]:
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    db.init_app(app)
-
-    with app.app_context():
-        for table in (
-            App.__table__,
-            AppAnnotationSetting.__table__,
-            AppMCPServer.__table__,
-            AppModelConfig.__table__,
-            EndUser.__table__,
-            Workflow.__table__,
-        ):
-            table.create(db.engine)
-        with patch.object(module.session_factory, "get_session_maker", return_value=sessionmaker(db.engine)):
-            yield app
-
-
-@pytest.fixture(autouse=True)
-def mock_mcp_ns(monkeypatch: pytest.MonkeyPatch):
-    fake_ns = types.SimpleNamespace()
-    fake_ns.payload = None
-    fake_ns.models = {}
-    monkeypatch.setattr(module, "mcp_ns", fake_ns)
-
-
-@pytest.fixture
-def flask_req_ctx(app: Flask):
-    with app.test_request_context("/"):
-        yield
+"""Unit tests for controllers.mcp.mcp endpoints."""
 
 
 def fake_payload(data):
@@ -145,390 +116,6 @@ class DummyResult:
         return {"jsonrpc": "2.0", "result": "ok", "id": 1}
 
 
-@pytest.mark.usefixtures("flask_req_ctx")
-class TestMCPAppApi:
-    @patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True)
-    def test_success_request(self, mock_handle):
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "id": 1,
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {"name": "test-client", "version": "1.0"},
-                },
-            }
-        )
-
-        server = _server(module.AppMCPServerStatus.ACTIVE)
-        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
-
-        api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-
-        post_fn = unwrap(api.post)
-        response = post_fn("server-1")
-
-        assert isinstance(response, Response)
-        mock_handle.assert_called_once()
-
-    def test_notification_initialized(self):
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "notifications/initialized",
-                "params": {},
-            }
-        )
-
-        server = _server(module.AppMCPServerStatus.ACTIVE)
-        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
-
-        api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-
-        post_fn = unwrap(api.post)
-        response = post_fn("server-1")
-
-        assert response.status_code == 202
-
-    def test_invalid_notification_method(self):
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "notifications/invalid",
-                "params": {},
-            }
-        )
-
-        server = _server(module.AppMCPServerStatus.ACTIVE)
-        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
-
-        api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-
-        post_fn = unwrap(api.post)
-
-        response = post_fn("server-1")
-        assert response.status_code == 202
-        assert response.data == b""
-
-    def test_inactive_server(self):
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "ping",
-                "id": 1,
-                "params": {},
-            }
-        )
-
-        server = _server("inactive")
-        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
-
-        api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-
-        post_fn = unwrap(api.post)
-
-        response = post_fn("server-1")
-        assert response.status_code == 404
-        assert response.get_json()["error"]["message"] == "Server Not Found"
-
-    def test_invalid_payload(self, mocker):
-        fake_payload({"invalid": "data"})
-
-        api = module.MCPAppApi()
-        mocker.patch.object(
-            api,
-            "_get_mcp_server_and_app",
-            return_value=(_server(module.AppMCPServerStatus.ACTIVE), _app(module.AppMode.WORKFLOW)),
-        )
-        post_fn = unwrap(api.post)
-
-        with pytest.raises(ValidationError):
-            post_fn("server-1")
-
-    def test_unknown_method_without_request_id_is_ignored(self):
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "test",
-                "params": {},
-            }
-        )
-
-        server = _server(module.AppMCPServerStatus.ACTIVE)
-        app = _app(module.AppMode.WORKFLOW, workflow_variables=[])
-
-        api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-
-        post_fn = unwrap(api.post)
-
-        response = post_fn("server-1")
-        assert response.status_code == 202
-        assert response.data == b""
-
-    def test_server_not_found(self, mocker):
-        """Test when MCP server doesn't exist"""
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "id": 1,
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {"name": "test-client", "version": "1.0"},
-                },
-            }
-        )
-
-        api = module.MCPAppApi()
-        mocker.patch.object(api, "_get_mcp_server_and_app", side_effect=module.MCPServerNotFoundError())
-
-        post_fn = unwrap(api.post)
-
-        response = post_fn("server-1")
-        assert response.status_code == 404
-        assert response.get_json()["error"]["message"] == "Server Not Found"
-
-    def test_app_not_found(self, mocker):
-        """Test when app associated with server doesn't exist"""
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "id": 1,
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {"name": "test-client", "version": "1.0"},
-                },
-            }
-        )
-
-        api = module.MCPAppApi()
-        mocker.patch.object(api, "_get_mcp_server_and_app", side_effect=module.MCPServerNotFoundError())
-
-        post_fn = unwrap(api.post)
-
-        response = post_fn("server-1")
-        assert response.status_code == 404
-        assert response.get_json()["error"]["message"] == "Server Not Found"
-
-    def test_app_unavailable_no_workflow(self):
-        """Test when app has no workflow (ADVANCED_CHAT mode)"""
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "id": 1,
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {"name": "test-client", "version": "1.0"},
-                },
-            }
-        )
-
-        server = _server(module.AppMCPServerStatus.ACTIVE)
-        app = _app(module.AppMode.ADVANCED_CHAT)
-
-        api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-
-        post_fn = unwrap(api.post)
-
-        with pytest.raises(module.MCPRequestError) as exc_info:
-            post_fn("server-1")
-        assert "App is unavailable" in str(exc_info.value)
-
-    def test_app_unavailable_no_model_config(self):
-        """Test when app has no model config (chat mode)"""
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "id": 1,
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {"name": "test-client", "version": "1.0"},
-                },
-            }
-        )
-
-        server = _server(module.AppMCPServerStatus.ACTIVE)
-        app = _app(module.AppMode.CHAT)
-
-        api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-
-        post_fn = unwrap(api.post)
-
-        with pytest.raises(module.MCPRequestError) as exc_info:
-            post_fn("server-1")
-        assert "App is unavailable" in str(exc_info.value)
-
-    @patch.object(module, "handle_mcp_request", return_value=None, autospec=True)
-    def test_mcp_request_no_response(self, mock_handle):
-        """Test when handle_mcp_request returns None"""
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "id": 1,
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {"name": "test-client", "version": "1.0"},
-                },
-            }
-        )
-
-        server = _server(module.AppMCPServerStatus.ACTIVE)
-        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
-
-        api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-
-        post_fn = unwrap(api.post)
-
-        with pytest.raises(module.MCPRequestError) as exc_info:
-            post_fn("server-1")
-        assert "No response generated" in str(exc_info.value)
-
-    def test_workflow_mode_with_user_input_form(self):
-        """Test WORKFLOW mode app with user input form"""
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "id": 1,
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {"name": "test-client", "version": "1.0"},
-                },
-            }
-        )
-
-        server = _server(module.AppMCPServerStatus.ACTIVE)
-        app = _app(
-            module.AppMode.WORKFLOW,
-            workflow_variables=[{"type": "text-input", "variable": "test_var", "label": "Test", "required": False}],
-        )
-
-        api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-
-        with patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True):
-            post_fn = unwrap(api.post)
-            response = post_fn("server-1")
-            assert isinstance(response, Response)
-
-    def test_chat_mode_with_model_config(self):
-        """Test CHAT mode app with model config"""
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "id": 1,
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {"name": "test-client", "version": "1.0"},
-                },
-            }
-        )
-
-        server = _server(module.AppMCPServerStatus.ACTIVE)
-        app = _app(module.AppMode.CHAT, with_model_config=True)
-
-        api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-
-        with patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True):
-            post_fn = unwrap(api.post)
-            response = post_fn("server-1")
-            assert isinstance(response, Response)
-
-    def test_invalid_mcp_request_format(self):
-        """Test invalid MCP request that doesn't match any type"""
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "invalid_method_xyz",
-                "id": 1,
-                "params": {},
-            }
-        )
-
-        server = _server(module.AppMCPServerStatus.ACTIVE)
-        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
-
-        api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-
-        post_fn = unwrap(api.post)
-
-        response = post_fn("server-1")
-        assert response.status_code == 400
-        assert response.get_json() == {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "error": {"code": module.mcp_types.METHOD_NOT_FOUND, "message": "Method not found"},
-        }
-
-    def test_validate_server_status_active(self):
-        """Test successful server status validation"""
-        api = module.MCPAppApi()
-        server = _server(module.AppMCPServerStatus.ACTIVE)
-
-        # Should not raise an exception
-        api._validate_server_status(server)
-
-    def test_convert_user_input_form_empty(self):
-        """Test converting empty user input form"""
-        api = module.MCPAppApi()
-        result = api._convert_user_input_form([])
-        assert result == []
-
-    def test_invalid_user_input_form_validation(self):
-        """Test invalid user input form that fails validation"""
-        fake_payload(
-            {
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "id": 1,
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {"name": "test-client", "version": "1.0"},
-                },
-            }
-        )
-
-        server = _server(module.AppMCPServerStatus.ACTIVE)
-        app = _app(
-            module.AppMode.WORKFLOW,
-            workflow_variables=[{"type": "invalid-type", "variable": "test_var"}],
-        )
-
-        api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-
-        post_fn = unwrap(api.post)
-
-        with pytest.raises(module.MCPRequestError) as exc_info:
-            post_fn("server-1")
-        assert "Invalid user_input_form" in str(exc_info.value)
-
-
 _UNSUPPORTED_VERSION = "1999-01-01"
 
 
@@ -561,237 +148,878 @@ def _tools_call_payload() -> dict[str, object]:
     }
 
 
-def test_execution_reloads_attached_orm_objects_after_identity_preflight(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    app_model = _app(module.AppMode.CHAT, with_model_config=True)
-    server = _server(module.AppMCPServerStatus.ACTIVE)
-    db.session.add_all([app_model, server])
-    db.session.commit()
-    api = module.MCPAppApi()
-    lookup = api._get_mcp_server_and_app
-    snapshots: list[tuple[module.AppMCPServer, module.App]] = []
+class TestMcpCases:
+    @staticmethod
+    @pytest.fixture
+    def app() -> Iterator[Flask]:
+        app = Flask(__name__)
+        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+        db.init_app(app)
 
-    def observe_lookup(code: str, session: Session) -> tuple[module.AppMCPServer, module.App]:
-        pair = lookup(code, session)
-        snapshots.append(pair)
-        return pair
+        with app.app_context():
+            for table in (
+                App.__table__,
+                AppAnnotationSetting.__table__,
+                AppMCPServer.__table__,
+                AppModelConfig.__table__,
+                EndUser.__table__,
+                Workflow.__table__,
+            ):
+                table.create(db.engine)
+            with patch.object(module.session_factory, "get_session_maker", return_value=sessionmaker(db.engine)):
+                yield app
 
-    def process(
-        _mcp_request: module.mcp_types.ClientRequest | module.mcp_types.ClientNotification,
-        _request_id: int | str | None,
-        fresh_app: module.App,
-        fresh_server: module.AppMCPServer,
-        _form: list[module.VariableEntity],
-        session: Session,
-        _protocol: str,
-    ) -> Response:
-        old_server, old_app = snapshots[0]
-        assert inspect(old_server).detached
-        assert inspect(old_app).detached
-        assert fresh_server is not old_server
-        assert fresh_app is not old_app
-        assert inspect(fresh_server).session is session
-        assert inspect(fresh_app).session is session
-        return Response("ok")
+    @staticmethod
+    @pytest.fixture(autouse=True)
+    def mock_mcp_ns(monkeypatch: pytest.MonkeyPatch):
+        fake_ns = types.SimpleNamespace()
+        fake_ns.payload = None
+        fake_ns.models = {}
+        monkeypatch.setattr(module, "mcp_ns", fake_ns)
 
-    monkeypatch.setattr(api, "_get_mcp_server_and_app", observe_lookup)
-    monkeypatch.setattr(api, "_process_mcp_message", process)
-    fake_payload({"jsonrpc": "2.0", "method": "ping", "id": 1})
-    with app.test_request_context("/"):
-        response = api.post("server-1")
-    assert response.status_code == 200
-    assert len(snapshots) == 2
+    @staticmethod
+    @pytest.fixture
+    def flask_req_ctx(app: Flask):
+        with app.test_request_context("/"):
+            yield
 
+    @pytest.mark.usefixtures("flask_req_ctx")
+    class TestMCPAppApi:
+        @patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True)
+        def test_success_request(self, mock_handle):
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "initialize",
+                    "id": 1,
+                    "params": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {},
+                        "clientInfo": {"name": "test-client", "version": "1.0"},
+                    },
+                }
+            )
 
-@pytest.mark.usefixtures("app")
-def test_identity_query_does_not_accept_a_server_bound_to_another_tenants_app() -> None:
-    app_model = _app(module.AppMode.CHAT)
-    server = _server(module.AppMCPServerStatus.ACTIVE)
-    server.tenant_id = str(uuid4())
-    db.session.add_all([app_model, server])
-    db.session.commit()
-    with sessionmaker(db.engine).begin() as session:
-        with pytest.raises(module.MCPServerNotFoundError):
-            module.MCPAppApi()._get_mcp_server_and_app("server-1", session)
+            server = _server(module.AppMCPServerStatus.ACTIVE)
+            app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
 
+            api = module.MCPAppApi()
+            api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
 
-class TestMCPProtocolVersionNegotiationApi:
-    """MCP protocol version negotiation exercised through the HTTP controller layer.
+            post_fn = unwrap(api.post)
+            response = post_fn("server-1")
 
-    Covers the MCP-Protocol-Version header contract (resolution, rejection, threading)
-    and the serialized JSON responses seen by modern (2025-06-18) vs legacy (2024-11-05)
-    clients, including the back-compat guarantee that legacy responses carry none of the
-    structured-output fields.
-    """
+            assert isinstance(response, Response)
+            mock_handle.assert_called_once()
 
-    def _make_api(self) -> module.MCPAppApi:
+        def test_notification_initialized(self):
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "notifications/initialized",
+                    "params": {},
+                }
+            )
+
+            server = _server(module.AppMCPServerStatus.ACTIVE)
+            app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
+
+            api = module.MCPAppApi()
+            api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+
+            post_fn = unwrap(api.post)
+            response = post_fn("server-1")
+
+            assert response.status_code == 202
+
+        def test_invalid_notification_method(self):
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "notifications/invalid",
+                    "params": {},
+                }
+            )
+
+            server = _server(module.AppMCPServerStatus.ACTIVE)
+            app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
+
+            api = module.MCPAppApi()
+            api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+
+            post_fn = unwrap(api.post)
+
+            response = post_fn("server-1")
+            assert response.status_code == 202
+            assert response.data == b""
+
+        def test_inactive_server(self):
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "ping",
+                    "id": 1,
+                    "params": {},
+                }
+            )
+
+            server = _server("inactive")
+            app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
+
+            api = module.MCPAppApi()
+            api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+
+            post_fn = unwrap(api.post)
+
+            response = post_fn("server-1")
+            assert response.status_code == 404
+            assert response.get_json()["error"]["message"] == "Server Not Found"
+
+        def test_invalid_payload(self, mocker):
+            fake_payload({"invalid": "data"})
+
+            api = module.MCPAppApi()
+            mocker.patch.object(
+                api,
+                "_get_mcp_server_and_app",
+                return_value=(_server(module.AppMCPServerStatus.ACTIVE), _app(module.AppMode.WORKFLOW)),
+            )
+            post_fn = unwrap(api.post)
+
+            with pytest.raises(ValidationError):
+                post_fn("server-1")
+
+        def test_unknown_method_without_request_id_is_ignored(self):
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "test",
+                    "params": {},
+                }
+            )
+
+            server = _server(module.AppMCPServerStatus.ACTIVE)
+            app = _app(module.AppMode.WORKFLOW, workflow_variables=[])
+
+            api = module.MCPAppApi()
+            api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+
+            post_fn = unwrap(api.post)
+
+            response = post_fn("server-1")
+            assert response.status_code == 202
+            assert response.data == b""
+
+        def test_server_not_found(self, mocker):
+            """Test when MCP server doesn't exist"""
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "initialize",
+                    "id": 1,
+                    "params": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {},
+                        "clientInfo": {"name": "test-client", "version": "1.0"},
+                    },
+                }
+            )
+
+            api = module.MCPAppApi()
+            mocker.patch.object(api, "_get_mcp_server_and_app", side_effect=module.MCPServerNotFoundError())
+
+            post_fn = unwrap(api.post)
+
+            response = post_fn("server-1")
+            assert response.status_code == 404
+            assert response.get_json()["error"]["message"] == "Server Not Found"
+
+        def test_app_not_found(self, mocker):
+            """Test when app associated with server doesn't exist"""
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "initialize",
+                    "id": 1,
+                    "params": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {},
+                        "clientInfo": {"name": "test-client", "version": "1.0"},
+                    },
+                }
+            )
+
+            api = module.MCPAppApi()
+            mocker.patch.object(api, "_get_mcp_server_and_app", side_effect=module.MCPServerNotFoundError())
+
+            post_fn = unwrap(api.post)
+
+            response = post_fn("server-1")
+            assert response.status_code == 404
+            assert response.get_json()["error"]["message"] == "Server Not Found"
+
+        def test_app_unavailable_no_workflow(self):
+            """Test when app has no workflow (ADVANCED_CHAT mode)"""
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "initialize",
+                    "id": 1,
+                    "params": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {},
+                        "clientInfo": {"name": "test-client", "version": "1.0"},
+                    },
+                }
+            )
+
+            server = _server(module.AppMCPServerStatus.ACTIVE)
+            app = _app(module.AppMode.ADVANCED_CHAT)
+
+            api = module.MCPAppApi()
+            api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+
+            post_fn = unwrap(api.post)
+
+            with pytest.raises(module.MCPRequestError) as exc_info:
+                post_fn("server-1")
+            assert "App is unavailable" in str(exc_info.value)
+
+        def test_app_unavailable_no_model_config(self):
+            """Test when app has no model config (chat mode)"""
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "initialize",
+                    "id": 1,
+                    "params": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {},
+                        "clientInfo": {"name": "test-client", "version": "1.0"},
+                    },
+                }
+            )
+
+            server = _server(module.AppMCPServerStatus.ACTIVE)
+            app = _app(module.AppMode.CHAT)
+
+            api = module.MCPAppApi()
+            api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+
+            post_fn = unwrap(api.post)
+
+            with pytest.raises(module.MCPRequestError) as exc_info:
+                post_fn("server-1")
+            assert "App is unavailable" in str(exc_info.value)
+
+        @patch.object(module, "handle_mcp_request", return_value=None, autospec=True)
+        def test_mcp_request_no_response(self, mock_handle):
+            """Test when handle_mcp_request returns None"""
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "initialize",
+                    "id": 1,
+                    "params": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {},
+                        "clientInfo": {"name": "test-client", "version": "1.0"},
+                    },
+                }
+            )
+
+            server = _server(module.AppMCPServerStatus.ACTIVE)
+            app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
+
+            api = module.MCPAppApi()
+            api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+
+            post_fn = unwrap(api.post)
+
+            with pytest.raises(module.MCPRequestError) as exc_info:
+                post_fn("server-1")
+            assert "No response generated" in str(exc_info.value)
+
+        def test_workflow_mode_with_user_input_form(self):
+            """Test WORKFLOW mode app with user input form"""
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "initialize",
+                    "id": 1,
+                    "params": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {},
+                        "clientInfo": {"name": "test-client", "version": "1.0"},
+                    },
+                }
+            )
+
+            server = _server(module.AppMCPServerStatus.ACTIVE)
+            app = _app(
+                module.AppMode.WORKFLOW,
+                workflow_variables=[{"type": "text-input", "variable": "test_var", "label": "Test", "required": False}],
+            )
+
+            api = module.MCPAppApi()
+            api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+
+            with patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True):
+                post_fn = unwrap(api.post)
+                response = post_fn("server-1")
+                assert isinstance(response, Response)
+
+        def test_chat_mode_with_model_config(self):
+            """Test CHAT mode app with model config"""
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "initialize",
+                    "id": 1,
+                    "params": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {},
+                        "clientInfo": {"name": "test-client", "version": "1.0"},
+                    },
+                }
+            )
+
+            server = _server(module.AppMCPServerStatus.ACTIVE)
+            app = _app(module.AppMode.CHAT, with_model_config=True)
+
+            api = module.MCPAppApi()
+            api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+
+            with patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True):
+                post_fn = unwrap(api.post)
+                response = post_fn("server-1")
+                assert isinstance(response, Response)
+
+        def test_invalid_mcp_request_format(self):
+            """Test invalid MCP request that doesn't match any type"""
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "invalid_method_xyz",
+                    "id": 1,
+                    "params": {},
+                }
+            )
+
+            server = _server(module.AppMCPServerStatus.ACTIVE)
+            app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
+
+            api = module.MCPAppApi()
+            api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+
+            post_fn = unwrap(api.post)
+
+            response = post_fn("server-1")
+            assert response.status_code == 400
+            assert response.get_json() == {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "error": {"code": module.mcp_types.METHOD_NOT_FOUND, "message": "Method not found"},
+            }
+
+        def test_validate_server_status_active(self):
+            """Test successful server status validation"""
+            api = module.MCPAppApi()
+            server = _server(module.AppMCPServerStatus.ACTIVE)
+
+            # Should not raise an exception
+            api._validate_server_status(server)
+
+        def test_convert_user_input_form_empty(self):
+            """Test converting empty user input form"""
+            api = module.MCPAppApi()
+            result = api._convert_user_input_form([])
+            assert result == []
+
+        def test_invalid_user_input_form_validation(self):
+            """Test invalid user input form that fails validation"""
+            fake_payload(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "initialize",
+                    "id": 1,
+                    "params": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {},
+                        "clientInfo": {"name": "test-client", "version": "1.0"},
+                    },
+                }
+            )
+
+            server = _server(module.AppMCPServerStatus.ACTIVE)
+            app = _app(
+                module.AppMode.WORKFLOW,
+                workflow_variables=[{"type": "invalid-type", "variable": "test_var"}],
+            )
+
+            api = module.MCPAppApi()
+            api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+
+            post_fn = unwrap(api.post)
+
+            with pytest.raises(module.MCPRequestError) as exc_info:
+                post_fn("server-1")
+            assert "Invalid user_input_form" in str(exc_info.value)
+
+    @staticmethod
+    def test_execution_reloads_attached_orm_objects_after_identity_preflight(
+        app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        app_model = _app(module.AppMode.CHAT, with_model_config=True)
         server = _server(module.AppMCPServerStatus.ACTIVE)
-        app = _app(module.AppMode.CHAT, with_model_config=True)
+        db.session.add_all([app_model, server])
+        db.session.commit()
         api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-        api._retrieve_end_user = MagicMock(return_value=_end_user())
-        return api
+        lookup = api._get_mcp_server_and_app
+        snapshots: list[tuple[module.AppMCPServer, module.App]] = []
 
-    def _post(
-        self, flask_app: Flask, api: module.MCPAppApi, payload: dict[str, object], headers: dict[str, str] | None = None
-    ) -> Response:
-        fake_payload(payload)
-        post_fn = unwrap(api.post)
-        with flask_app.test_request_context(headers=headers):
-            return post_fn("server-1")
+        def observe_lookup(code: str, session: Session) -> tuple[module.AppMCPServer, module.App]:
+            pair = lookup(code, session)
+            snapshots.append(pair)
+            return pair
 
-    @pytest.mark.parametrize("version", sorted(module.mcp_types.SERVER_SUPPORTED_PROTOCOL_VERSIONS))
-    def test_initialize_echoes_supported_body_version(self, app, version):
-        """Initialize echoes every supported client-requested version back unchanged."""
-        api = self._make_api()
+        def process(
+            _mcp_request: module.mcp_types.ClientRequest | module.mcp_types.ClientNotification,
+            _request_id: int | str | None,
+            fresh_app: module.App,
+            fresh_server: module.AppMCPServer,
+            _form: list[module.VariableEntity],
+            session: Session,
+            _protocol: str,
+        ) -> Response:
+            old_server, old_app = snapshots[0]
+            assert inspect(old_server).detached
+            assert inspect(old_app).detached
+            assert fresh_server is not old_server
+            assert fresh_app is not old_app
+            assert inspect(fresh_server).session is session
+            assert inspect(fresh_app).session is session
+            return Response("ok")
 
-        response = self._post(app, api, _initialize_payload(version))
+        monkeypatch.setattr(api, "_get_mcp_server_and_app", observe_lookup)
+        monkeypatch.setattr(api, "_process_mcp_message", process)
+        fake_payload({"jsonrpc": "2.0", "method": "ping", "id": 1})
+        with app.test_request_context("/"):
+            response = api.post("server-1")
+        assert response.status_code == 200
+        assert len(snapshots) == 2
 
-        body = response.get_json()
-        assert body["result"]["protocolVersion"] == version
+    @staticmethod
+    @pytest.mark.usefixtures("app")
+    def test_identity_query_does_not_accept_a_server_bound_to_another_tenants_app() -> None:
+        app_model = _app(module.AppMode.CHAT)
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        server.tenant_id = str(uuid4())
+        db.session.add_all([app_model, server])
+        db.session.commit()
+        with sessionmaker(db.engine).begin() as session:
+            with pytest.raises(module.MCPServerNotFoundError):
+                module.MCPAppApi()._get_mcp_server_and_app("server-1", session)
 
-    def test_initialize_falls_back_for_unsupported_body_version(self, app):
-        """An unsupported requested version falls back to the server latest."""
-        api = self._make_api()
+    class TestMCPProtocolVersionNegotiationApi:
+        """MCP protocol version negotiation exercised through the HTTP controller layer.
 
-        response = self._post(app, api, _initialize_payload(_UNSUPPORTED_VERSION))
+        Covers the MCP-Protocol-Version header contract (resolution, rejection, threading)
+        and the serialized JSON responses seen by modern (2025-06-18) vs legacy (2024-11-05)
+        clients, including the back-compat guarantee that legacy responses carry none of the
+        structured-output fields.
+        """
 
-        body = response.get_json()
-        assert body["result"]["protocolVersion"] == module.mcp_types.SERVER_LATEST_PROTOCOL_VERSION
+        def _make_api(self) -> module.MCPAppApi:
+            server = _server(module.AppMCPServerStatus.ACTIVE)
+            app = _app(module.AppMode.CHAT, with_model_config=True)
+            api = module.MCPAppApi()
+            api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
+            api._retrieve_end_user = MagicMock(return_value=_end_user())
+            return api
 
-    def test_initialize_ignores_unsupported_header(self, app):
-        """Initialize negotiates via the request body, so its header is never rejected."""
-        api = self._make_api()
+        def _post(
+            self,
+            flask_app: Flask,
+            api: module.MCPAppApi,
+            payload: dict[str, object],
+            headers: dict[str, str] | None = None,
+        ) -> Response:
+            fake_payload(payload)
+            post_fn = unwrap(api.post)
+            with flask_app.test_request_context(headers=headers):
+                return post_fn("server-1")
 
-        response = self._post(
-            app,
-            api,
-            _initialize_payload("2024-11-05"),
-            headers={"MCP-Protocol-Version": _UNSUPPORTED_VERSION},
-        )
+        @pytest.mark.parametrize("version", sorted(module.mcp_types.SERVER_SUPPORTED_PROTOCOL_VERSIONS))
+        def test_initialize_echoes_supported_body_version(self, app, version):
+            """Initialize echoes every supported client-requested version back unchanged."""
+            api = self._make_api()
 
-        body = response.get_json()
-        assert "error" not in body
-        assert body["result"]["protocolVersion"] == "2024-11-05"
+            response = self._post(app, api, _initialize_payload(version))
 
-    @pytest.mark.parametrize("request_id", [5, None])
-    def test_unsupported_header_returns_invalid_request_error(self, app, request_id):
-        """An unsupported header gets a JSON-RPC error echoing the request id (missing id -> null)."""
-        api = self._make_api()
+            body = response.get_json()
+            assert body["result"]["protocolVersion"] == version
 
-        with patch.object(module, "handle_mcp_request", autospec=True) as mock_handle:
+        def test_initialize_falls_back_for_unsupported_body_version(self, app):
+            """An unsupported requested version falls back to the server latest."""
+            api = self._make_api()
+
+            response = self._post(app, api, _initialize_payload(_UNSUPPORTED_VERSION))
+
+            body = response.get_json()
+            assert body["result"]["protocolVersion"] == module.mcp_types.SERVER_LATEST_PROTOCOL_VERSION
+
+        def test_initialize_ignores_unsupported_header(self, app):
+            """Initialize negotiates via the request body, so its header is never rejected."""
+            api = self._make_api()
+
             response = self._post(
                 app,
                 api,
-                _tools_list_payload(request_id=request_id),
+                _initialize_payload("2024-11-05"),
                 headers={"MCP-Protocol-Version": _UNSUPPORTED_VERSION},
             )
 
-        body = response.get_json()
-        assert response.status_code == 200
-        assert body["jsonrpc"] == "2.0"
-        assert body["id"] == request_id
-        assert body["error"]["code"] == module.mcp_types.INVALID_REQUEST
-        assert _UNSUPPORTED_VERSION in body["error"]["message"]
-        mock_handle.assert_not_called()
+            body = response.get_json()
+            assert "error" not in body
+            assert body["result"]["protocolVersion"] == "2024-11-05"
 
-    def test_notification_with_unsupported_header_is_accepted(self, app):
-        """A notification is accepted (202, no body) even with an unsupported header."""
-        api = self._make_api()
+        @pytest.mark.parametrize("request_id", [5, None])
+        def test_unsupported_header_returns_invalid_request_error(self, app, request_id):
+            """An unsupported header gets a JSON-RPC error echoing the request id (missing id -> null)."""
+            api = self._make_api()
 
-        response = self._post(
-            app,
-            api,
-            {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
-            headers={"MCP-Protocol-Version": _UNSUPPORTED_VERSION},
-        )
+            with patch.object(module, "handle_mcp_request", autospec=True) as mock_handle:
+                response = self._post(
+                    app,
+                    api,
+                    _tools_list_payload(request_id=request_id),
+                    headers={"MCP-Protocol-Version": _UNSUPPORTED_VERSION},
+                )
 
-        assert response.status_code == 202
+            body = response.get_json()
+            assert response.status_code == 200
+            assert body["jsonrpc"] == "2.0"
+            assert body["id"] == request_id
+            assert body["error"]["code"] == module.mcp_types.INVALID_REQUEST
+            assert _UNSUPPORTED_VERSION in body["error"]["message"]
+            mock_handle.assert_not_called()
 
-    @pytest.mark.parametrize("version", sorted(module.mcp_types.SERVER_SUPPORTED_PROTOCOL_VERSIONS))
-    def test_supported_header_is_threaded_to_handler(self, app, version):
-        """Every supported header value is passed through to handle_mcp_request."""
-        api = self._make_api()
+        def test_notification_with_unsupported_header_is_accepted(self, app):
+            """A notification is accepted (202, no body) even with an unsupported header."""
+            api = self._make_api()
 
-        with patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True) as mock_handle:
-            self._post(
+            response = self._post(
+                app,
+                api,
+                {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+                headers={"MCP-Protocol-Version": _UNSUPPORTED_VERSION},
+            )
+
+            assert response.status_code == 202
+
+        @pytest.mark.parametrize("version", sorted(module.mcp_types.SERVER_SUPPORTED_PROTOCOL_VERSIONS))
+        def test_supported_header_is_threaded_to_handler(self, app, version):
+            """Every supported header value is passed through to handle_mcp_request."""
+            api = self._make_api()
+
+            with patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True) as mock_handle:
+                self._post(
+                    app,
+                    api,
+                    _tools_list_payload(),
+                    headers={"MCP-Protocol-Version": version},
+                )
+
+            assert mock_handle.call_args.args[-1] == version
+
+        def test_absent_header_defaults_to_back_compat_version(self, app):
+            """An absent header resolves to the spec's default version (2025-03-26)."""
+            api = self._make_api()
+
+            with patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True) as mock_handle:
+                self._post(app, api, _tools_list_payload())
+
+            assert mock_handle.call_args.args[-1] == module.mcp_types.DEFAULT_NEGOTIATED_VERSION
+
+        def test_tools_list_json_advertises_structured_output_for_modern_client(self, app):
+            """A 2025-06-18 client sees outputSchema and title in the serialized tool JSON."""
+            api = self._make_api()
+
+            response = self._post(
                 app,
                 api,
                 _tools_list_payload(),
-                headers={"MCP-Protocol-Version": version},
+                headers={"MCP-Protocol-Version": "2025-06-18"},
             )
 
-        assert mock_handle.call_args.args[-1] == version
+            tool = response.get_json()["result"]["tools"][0]
+            assert tool["outputSchema"] == {"type": "object"}
+            assert tool["title"] == "test_app"
 
-    def test_absent_header_defaults_to_back_compat_version(self, app):
-        """An absent header resolves to the spec's default version (2025-03-26)."""
-        api = self._make_api()
+        def test_tools_list_json_unchanged_for_legacy_client(self, app):
+            """A 2024-11-05 client sees exactly the pre-upgrade tool JSON keys."""
+            api = self._make_api()
 
-        with patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True) as mock_handle:
-            self._post(app, api, _tools_list_payload())
+            response = self._post(
+                app,
+                api,
+                _tools_list_payload(),
+                headers={"MCP-Protocol-Version": "2024-11-05"},
+            )
 
-        assert mock_handle.call_args.args[-1] == module.mcp_types.DEFAULT_NEGOTIATED_VERSION
+            tool = response.get_json()["result"]["tools"][0]
+            assert set(tool) == {"name", "description", "inputSchema"}
 
-    def test_tools_list_json_advertises_structured_output_for_modern_client(self, app):
-        """A 2025-06-18 client sees outputSchema and title in the serialized tool JSON."""
-        api = self._make_api()
+        @patch("core.mcp.server.streamable_http.AppGenerateService")
+        def test_tools_call_json_includes_structured_content_for_modern_client(self, mock_app_generate, app):
+            """A 2025-06-18 client receives structuredContent alongside the text content."""
+            api = self._make_api()
+            mock_app_generate.generate.return_value = {"answer": "test answer"}
 
-        response = self._post(
-            app,
-            api,
-            _tools_list_payload(),
-            headers={"MCP-Protocol-Version": "2025-06-18"},
+            response = self._post(
+                app,
+                api,
+                _tools_call_payload(),
+                headers={"MCP-Protocol-Version": "2025-06-18"},
+            )
+
+            result = response.get_json()["result"]
+            assert result["structuredContent"] == {"answer": "test answer"}
+            assert result["content"][0]["text"] == "test answer"
+
+        @patch("core.mcp.server.streamable_http.AppGenerateService")
+        def test_tools_call_json_omits_structured_content_for_legacy_client(self, mock_app_generate, app):
+            """A 2024-11-05 client receives the pre-upgrade tools/call JSON without structuredContent."""
+            api = self._make_api()
+            mock_app_generate.generate.return_value = {"answer": "test answer"}
+
+            response = self._post(
+                app,
+                api,
+                _tools_call_payload(),
+                headers={"MCP-Protocol-Version": "2024-11-05"},
+            )
+
+            result = response.get_json()["result"]
+            assert "structuredContent" not in result
+            assert result["content"][0]["text"] == "test answer"
+
+
+"""MCP request parsing errors exercised through the real HTTP blueprint."""
+
+
+_URL = "/mcp/server/test-server/mcp"
+_MODERN_HEADERS = {
+    "Accept": "application/json, text/event-stream",
+    "MCP-Protocol-Version": "2026-07-28",
+    "Mcp-Method": "server/discover",
+}
+
+
+class TestMcpRequestErrorsCases:
+    @staticmethod
+    @pytest.fixture
+    def app(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Flask:
+        app = Flask(__name__)
+        app.config["SQLALCHEMY_DATABASE_URI"] = str(sqlite_engine.url)
+        db.init_app(app)
+        app.register_blueprint(mcp_controller.bp)
+        monkeypatch.setattr(module, "mcp_ns", mcp_controller.mcp_ns)
+        return app
+
+    @staticmethod
+    @pytest.fixture
+    def client(app: Flask) -> FlaskClient:
+        return app.test_client()
+
+    @staticmethod
+    @pytest.fixture(autouse=True)
+    def published_server(sqlite_session: Session) -> AppMCPServer:
+        app_id = str(uuid4())
+        tenant_id = str(uuid4())
+        model_config = AppModelConfig(app_id=app_id, user_input_form="[]")
+        app = App(
+            id=app_id,
+            tenant_id=tenant_id,
+            name="test_app",
+            mode=AppMode.CHAT,
+            enable_site=False,
+            enable_api=True,
+            app_model_config_id=model_config.id,
+        )
+        server = AppMCPServer(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            name="test_app",
+            description="Test MCP app",
+            server_code="test-server",
+            status=AppMCPServerStatus.ACTIVE,
+            parameters="{}",
+        )
+        sqlite_session.add_all([app, model_config, server])
+        sqlite_session.commit()
+        return server
+
+    @staticmethod
+    @pytest.mark.parametrize("request_id", [1, 0, "discover-1", None])
+    def test_server_discover_returns_method_not_found(client: FlaskClient, request_id: int | str | None) -> None:
+        response = client.post(
+            _URL,
+            json={
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "method": "server/discover",
+                "params": {
+                    "_meta": {
+                        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                        "io.modelcontextprotocol/clientInfo": {"name": "modern-client", "version": "1.0"},
+                        "io.modelcontextprotocol/clientCapabilities": {
+                            "extensions": {"io.modelcontextprotocol/ui": {"mimeTypes": ["text/html;profile=mcp-app"]}}
+                        },
+                    }
+                },
+            },
+            headers=_MODERN_HEADERS,
         )
 
-        tool = response.get_json()["result"]["tools"][0]
-        assert tool["outputSchema"] == {"type": "object"}
-        assert tool["title"] == "test_app"
+        assert response.status_code == 400
+        body = response.get_json()
+        assert body == {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "error": {"code": -32601, "message": "Method not found"},
+        }
+        assert type(body["id"]) is type(request_id)
 
-    def test_tools_list_json_unchanged_for_legacy_client(self, app):
-        """A 2024-11-05 client sees exactly the pre-upgrade tool JSON keys."""
-        api = self._make_api()
-
-        response = self._post(
-            app,
-            api,
-            _tools_list_payload(),
-            headers={"MCP-Protocol-Version": "2024-11-05"},
+    @staticmethod
+    def test_invalid_tool_params_return_safe_jsonrpc_error(client: FlaskClient) -> None:
+        response = client.post(
+            _URL,
+            json={
+                "jsonrpc": "2.0",
+                "id": "tool-call-1",
+                "method": "tools/call",
+                "params": {"arguments": {"secret": "private-input-do-not-echo"}},
+            },
         )
 
-        tool = response.get_json()["result"]["tools"][0]
-        assert set(tool) == {"name", "description", "inputSchema"}
+        assert response.status_code == 400
+        body = response.get_json()
+        assert body["jsonrpc"] == "2.0"
+        assert body["id"] == "tool-call-1"
+        assert body["error"]["code"] == -32602
+        assert "private-input-do-not-echo" not in response.get_data(as_text=True)
+        assert "validation error" not in body["error"]["message"].lower()
 
-    @patch("core.mcp.server.streamable_http.AppGenerateService")
-    def test_tools_call_json_includes_structured_content_for_modern_client(self, mock_app_generate, app):
-        """A 2025-06-18 client receives structuredContent alongside the text content."""
-        api = self._make_api()
-        mock_app_generate.generate.return_value = {"answer": "test answer"}
-
-        response = self._post(
-            app,
-            api,
-            _tools_call_payload(),
-            headers={"MCP-Protocol-Version": "2025-06-18"},
+    @staticmethod
+    @pytest.mark.parametrize("method", ["server/discover", "notifications/unknown", "tools/call"])
+    def test_unparseable_notification_has_no_jsonrpc_response(client: FlaskClient, method: str) -> None:
+        response = client.post(
+            _URL,
+            json={"jsonrpc": "2.0", "method": method, "params": {}},
+            headers={**_MODERN_HEADERS, "Mcp-Method": method},
         )
 
-        result = response.get_json()["result"]
-        assert result["structuredContent"] == {"answer": "test answer"}
-        assert result["content"][0]["text"] == "test answer"
+        assert response.status_code == 202
+        assert response.data == b""
 
-    @patch("core.mcp.server.streamable_http.AppGenerateService")
-    def test_tools_call_json_omits_structured_content_for_legacy_client(self, mock_app_generate, app):
-        """A 2024-11-05 client receives the pre-upgrade tools/call JSON without structuredContent."""
-        api = self._make_api()
-        mock_app_generate.generate.return_value = {"answer": "test answer"}
-
-        response = self._post(
-            app,
-            api,
-            _tools_call_payload(),
-            headers={"MCP-Protocol-Version": "2024-11-05"},
+    @staticmethod
+    def test_legacy_initialize_and_list_tools_remain_compatible(
+        client: FlaskClient, published_server: AppMCPServer, sqlite_session: Session
+    ) -> None:
+        response = client.post(
+            _URL,
+            json={
+                "jsonrpc": "2.0",
+                "id": 0,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "legacy-client", "version": "1.0"},
+                },
+            },
         )
 
-        result = response.get_json()["result"]
-        assert "structuredContent" not in result
-        assert result["content"][0]["text"] == "test answer"
+        assert response.status_code == 200
+        initialized = response.get_json()
+        assert initialized["id"] == 0
+        assert initialized["result"]["protocolVersion"] == "2024-11-05"
+        end_user = sqlite_session.scalar(select(EndUser).where(EndUser.session_id == published_server.id))
+        assert end_user is not None
+        assert end_user.tenant_id == published_server.tenant_id
+        assert end_user.app_id == published_server.app_id
+        assert end_user.type == EndUserType.MCP
+        assert end_user.name == "legacy-client@1.0"
+
+        headers = {"MCP-Protocol-Version": "2024-11-05"}
+        notification = client.post(
+            _URL,
+            json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+            headers=headers,
+        )
+        assert notification.status_code == 202
+        assert notification.data == b""
+
+        listed = client.post(
+            _URL,
+            json={"jsonrpc": "2.0", "id": "list-1", "method": "tools/list"},
+            headers=headers,
+        )
+        assert listed.status_code == 200
+        body = listed.get_json()
+        assert body["id"] == "list-1"
+        assert body["result"]["tools"] == [
+            {
+                "name": "test_app",
+                "description": "Test MCP app",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string", "description": "User Input/Question content"}},
+                    "required": ["query"],
+                },
+            }
+        ]
+
+
+"""SQLite-backed unit tests for MCP app controller database helpers."""
+
+
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
+APP_ID = "22222222-2222-2222-2222-222222222222"
+
+
+class TestMcpAppApiCases:
+    @staticmethod
+    @pytest.mark.parametrize("sqlite_session", [(App, AppMCPServer)], indirect=True)
+    def test_get_mcp_server_and_app_returns_persisted_models(sqlite_session: Session) -> None:
+        app = App(
+            tenant_id=TENANT_ID,
+            name="MCP App",
+            description="",
+            mode=AppMode.ADVANCED_CHAT,
+            icon_type=IconType.EMOJI,
+            icon="🤖",
+            icon_background="#FFFFFF",
+            enable_site=False,
+            enable_api=False,
+            max_active_requests=0,
+        )
+        app.id = APP_ID
+        server = AppMCPServer(
+            tenant_id=TENANT_ID,
+            app_id=APP_ID,
+            name="Test MCP Server",
+            description="Test server",
+            server_code="server-1",
+            status=AppMCPServerStatus.ACTIVE,
+            parameters="{}",
+        )
+        sqlite_session.add_all([app, server])
+        sqlite_session.commit()
+
+        result_server, result_app = MCPAppApi()._get_mcp_server_and_app("server-1", sqlite_session)
+
+        assert result_server is server
+        assert result_app is app

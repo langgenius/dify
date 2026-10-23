@@ -79,7 +79,7 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
               </ContextMenuItem>
               <PopoverPortal>
                 <PopoverBackdrop />
-                <PopoverPositioner placement="right-start" positionMethod="fixed">
+                <PopoverPositioner side="right" align="start" positionMethod="fixed">
                   <ChangeBlockPopup
                     nodeId={model.id}
                     nodeData={model.data}
