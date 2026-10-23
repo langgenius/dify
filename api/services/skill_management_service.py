@@ -11,6 +11,7 @@ Agent consumption all use the same storage model.
 
 from __future__ import annotations
 
+import codecs
 import hashlib
 import io
 import json
@@ -4710,6 +4711,7 @@ class SkillManagementService:
             text_encoding = "utf-8"
         except UnicodeDecodeError:
             text_encoding = "latin-1"
+        hex_encoding = "latin-1"
         # Keep source positions byte-aligned: \bin lengths count bytes, not decoded characters.
         source = payload.decode("latin-1")
 
@@ -4743,8 +4745,18 @@ class SkillManagementService:
                 continue
             if char != "\\":
                 if fallback_remaining:
-                    if char not in "\r\n\x00":
-                        fallback_remaining -= 1
+                    end = index + 1
+                    while end < len(source) and source[end] not in "\\{}":
+                        end += 1
+                    literal = payload[index:end].decode(text_encoding, errors="replace")
+                    skipped = 0
+                    while skipped < len(literal) and fallback_remaining:
+                        if literal[skipped] not in "\r\n\x00":
+                            fallback_remaining -= 1
+                        skipped += 1
+                    text_parts.append(literal[skipped:].replace("\r", "\n"))
+                    index = end
+                    continue
                 else:
                     end = index + 1
                     while end < len(source) and source[end] not in "\\{}":
@@ -4768,6 +4780,10 @@ class SkillManagementService:
                         index += max(0, int(value))
                 elif word == "uc" and value is not None:
                     unicode_skip = max(0, int(value))
+                elif word == "ansicpg" and value is not None:
+                    with suppress(LookupError, ValueError):
+                        text_encoding = codecs.lookup(f"cp{int(value)}").name
+                        hex_encoding = text_encoding
                 elif word in {"par", "line"}:
                     text_parts.append("\n")
                 elif word == "tab":
@@ -4781,12 +4797,19 @@ class SkillManagementService:
                 continue
 
             if source[index : index + 2] == "\\'":
-                if fallback_remaining:
-                    fallback_remaining -= 1
-                else:
+                hex_bytes = bytearray()
+                while source[index : index + 2] == "\\'":
                     with suppress(ValueError):
-                        text_parts.append(bytes.fromhex(source[index + 2 : index + 4]).decode("latin-1"))
-                index += 4
+                        hex_bytes.append(int(source[index + 2 : index + 4], 16))
+                    index += 4
+                if hex_bytes:
+                    decoded = bytes(hex_bytes).decode(hex_encoding, errors="replace")
+                    if fallback_remaining:
+                        skipped = min(fallback_remaining, len(decoded))
+                        fallback_remaining -= skipped
+                        text_parts.append(decoded[skipped:])
+                    else:
+                        text_parts.append(decoded)
                 continue
             if fallback_remaining:
                 fallback_remaining -= 1
