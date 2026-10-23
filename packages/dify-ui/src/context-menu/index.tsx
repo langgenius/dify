@@ -2,7 +2,6 @@
 
 import type * as React from 'react'
 import type { MenuItemVariant } from '../internal/menu'
-import type { Placement } from '../internal/placement'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
 import { cn } from '../cn'
 import {
@@ -18,7 +17,6 @@ import {
   floatingSeparatorClassName,
   positionerClassName,
 } from '../internal/overlay'
-import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const ContextMenu = BaseContextMenu.Root
@@ -54,21 +52,19 @@ function ContextMenuRadioGroup<Value = unknown>(
 }
 
 type ContextMenuContentProps = Omit<BaseContextMenu.Popup.Props, 'children'> &
-  Pick<BaseContextMenu.Positioner.Props, 'sideOffset' | 'alignOffset'> & {
+  Pick<BaseContextMenu.Positioner.Props, 'side' | 'align' | 'sideOffset' | 'alignOffset'> & {
     children: React.ReactNode
-    placement?: Placement
   }
 
 function ContextMenuContent({
   children,
-  placement = 'bottom-start',
+  side,
+  align,
   sideOffset = 0,
   alignOffset = 0,
   className,
   ...props
 }: ContextMenuContentProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <BaseContextMenu.Portal>
       <BaseContextMenu.Positioner
@@ -227,17 +223,15 @@ function ContextMenuSubTrigger({
 
 type ContextMenuSubContentProps = ContextMenuContentProps
 
-// Base UI's own submenu default: it opens away from the trigger and follows the text direction.
 function ContextMenuSubContent({
   children,
-  placement = 'inline-end-start',
+  side,
+  align,
   sideOffset = 4,
-  alignOffset = 0,
+  alignOffset,
   className,
   ...props
 }: ContextMenuSubContentProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <BaseContextMenu.Portal>
       <BaseContextMenu.Positioner

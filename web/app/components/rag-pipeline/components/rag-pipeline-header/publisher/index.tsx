@@ -113,7 +113,7 @@ const Publisher = () => {
           }
         />
         <PopoverContent
-          placement="bottom-end"
+          align="end"
           sideOffset={4}
           alignOffset={40}
           className={cn('border-none bg-transparent shadow-none', confirmVisible && 'hidden')}

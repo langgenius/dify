@@ -172,17 +172,13 @@ export type HumanInputFormPreviewPayload = {
 }
 
 export type HumanInputFormPreviewResponse = {
-  actions?: Array<{
-    [key: string]: unknown
-  }>
+  actions?: Array<UserActionConfig>
   display_in_ui?: boolean | null
   expiration_time?: number | null
   form_content: string
   form_id: string
   form_token?: string | null
-  inputs?: Array<{
-    [key: string]: unknown
-  }>
+  inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
   resolved_default_values?: {
@@ -669,6 +665,7 @@ export type MessageDetailResponse = {
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
+  retriever_resources?: Array<RetrievalSourceMetadata>
   status: string
   workflow_run_id?: string | null
 }
@@ -855,13 +852,22 @@ export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
 export type TextToSpeechVoiceListResponse = Array<TextToSpeechVoiceResponse>
 
 export type AppTraceResponse = {
+  capture_agent?: boolean
+  capture_content?: boolean
   enabled?: boolean
   tracing_provider?: string | null
 }
 
 export type AppTracePayload = {
+  capture_agent?: boolean
+  capture_content?: boolean
   enabled: boolean
   tracing_provider?: string | null
+}
+
+export type InvalidTracingConfigError = ErrorResponse & {
+  code: 'invalid_tracing_config'
+  status: 400
 }
 
 export type TracingProviderUnavailableError = ErrorResponse & {
@@ -879,9 +885,26 @@ export type TraceConfigNotFoundError = ErrorResponse & {
   status: 404
 }
 
+export type TracingConfigConflictError = ErrorResponse & {
+  code: 'tracing_config_conflict'
+  status: 409
+}
+
 export type TracingConfigProcessingFailedError = ErrorResponse & {
   code: 'tracing_config_processing_failed'
   status: 500
+}
+
+export type TraceProviderCapabilitiesResponse = {
+  agent_spans: boolean
+  api_collection_enabled: boolean
+  export_ack: 'accepted'
+  native_cost: boolean
+  native_usage: boolean
+  provider: string
+  session: boolean
+  span_url: boolean
+  trace_url: boolean
 }
 
 export type TraceAppConfigResponse = {
@@ -900,15 +923,11 @@ export type TraceAppConfigResponse = {
 }
 
 export type TraceConfigPayload = {
+  activate?: boolean
   tracing_config: {
     [key: string]: string | null
   }
   tracing_provider: string
-}
-
-export type InvalidTracingConfigError = ErrorResponse & {
-  code: 'invalid_tracing_config'
-  status: 400
 }
 
 export type TracingConfigVerificationFailedError = ErrorResponse & {
@@ -918,6 +937,68 @@ export type TracingConfigVerificationFailedError = ErrorResponse & {
 
 export type TraceConfigAlreadyExistsError = ErrorResponse & {
   code: 'trace_config_already_exists'
+  status: 409
+}
+
+export type TraceRunStatusResponse = {
+  accepted_at?: string | null
+  attempts?: number | null
+  capabilities?: TraceProviderSupportResponse | null
+  capture_agent?: boolean | null
+  capture_content?: boolean | null
+  config_revision?: string | null
+  error_code?: string | null
+  project_url?: string | null
+  provider?: string | null
+  queryable?: boolean | null
+  source_id: string
+  source_kind: TraceSourceKind
+  span_count?: number | null
+  span_url?: string | null
+  status:
+    | 'accepted'
+    | 'collecting'
+    | 'exporting'
+    | 'failed'
+    | 'not_collected'
+    | 'ready'
+    | 'retrying'
+    | 'uncertain'
+  trace_id?: string | null
+  trace_url?: string | null
+}
+
+export type TracingNodeNotFoundError = ErrorResponse & {
+  code: 'tracing_node_not_found'
+  status: 404
+}
+
+export type TracingSourceNotFoundError = ErrorResponse & {
+  code: 'tracing_source_not_found'
+  status: 404
+}
+
+export type TraceRunRetryPayload = {
+  acknowledge_possible_duplicates?: boolean
+}
+
+export type TracingRunNotFoundError = ErrorResponse & {
+  code: 'tracing_run_not_found'
+  status: 404
+}
+
+export type TracingAlreadyAcceptedError = ErrorResponse & {
+  code: 'tracing_already_accepted'
+  status: 409
+}
+
+export type TracingDuplicateAcknowledgementRequiredError = ErrorResponse & {
+  code: 'tracing_duplicate_acknowledgement_required'
+  status: 409
+}
+
+export type TracingRetryNotAllowedError = ErrorResponse & {
+  code: 'tracing_retry_not_allowed'
   status: 409
 }
 
@@ -936,6 +1017,11 @@ export type WorkflowTriggerResponse = {
   title: string
   trigger_type: string
   updated_at?: string | null
+}
+
+export type AppTriggerNotFoundError = ErrorResponse & {
+  code: 'app_trigger_not_found'
+  status: 404
 }
 
 export type WorkflowTriggerListResponse = {
@@ -977,6 +1063,10 @@ export type WorkflowRunDetailResponse = {
 
 export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
+}
+
+export type WorkflowToolNodeExecutionListResponse = {
+  data: Array<WorkflowToolNodeExecutionResponse>
 }
 
 export type SandboxListResponse = {
@@ -1121,9 +1211,7 @@ export type WorkflowPaginationResponse = {
   page: number
 }
 
-export type DefaultBlockConfigsResponse = Array<{
-  [key: string]: unknown
-}>
+export type DefaultBlockConfigsResponse = Array<DefaultBlockConfigItemResponse>
 
 export type DefaultBlockConfigResponse = {
   [key: string]: unknown
@@ -1448,6 +1536,11 @@ export type WebhookTriggerResponse = {
   webhook_url: string
 }
 
+export type WebhookTriggerNotFoundError = ErrorResponse & {
+  code: 'webhook_trigger_not_found'
+  status: 404
+}
+
 export type WorkflowUpdatePayload = {
   marked_comment?: string | null
   marked_name?: string | null
@@ -1467,6 +1560,7 @@ export type ApiKeyItem = {
   created_at?: number | null
   dataset_ids?: Array<string>
   id: string
+  knowledge_space_ids?: Array<string>
   last_used_at?: number | null
   token: string
   type: string
@@ -1664,6 +1758,26 @@ export type AdvancedChatWorkflowRunForListResponse = {
   version?: string | null
 }
 
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type FormInputConfig =
+  | ({
+      type: 'paragraph'
+    } & ParagraphInputConfig)
+  | ({
+      type: 'select'
+    } & SelectInputConfig)
+  | ({
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
+
 export type ShallowJsonValue =
   | string
   | number
@@ -1839,6 +1953,7 @@ export type MessageDetail = {
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
+  retriever_resources?: Array<RetrievalSourceMetadata>
   status: string
   workflow_run_id?: string | null
 }
@@ -1910,6 +2025,36 @@ export type MessageFile = {
   type: string
   upload_file_id?: string | null
   url?: string | null
+}
+
+export type RetrievalSourceMetadata = {
+  content?: string | null
+  data_source_type?: string | null
+  dataset_id?: string | null
+  dataset_name?: string | null
+  doc_metadata?: {
+    [key: string]: unknown
+  } | null
+  document_asset_id?: string | null
+  document_id?: string | null
+  document_name?: string | null
+  document_revision?: number | null
+  document_version?: number | null
+  files?: Array<{
+    [key: string]: unknown
+  }> | null
+  hit_count?: number | null
+  index_node_hash?: string | null
+  knowledge_fs_citation?: KnowledgeFsCitation | null
+  page?: number | null
+  position?: number | null
+  retriever_from?: string | null
+  score?: number | null
+  segment_id?: string | null
+  segment_position?: number | null
+  summary?: string | null
+  title?: string | null
+  word_count?: number | null
 }
 
 export type AppAgentModePayload = {
@@ -2168,6 +2313,19 @@ export type TextToSpeechVoiceResponse = {
   value: string
 }
 
+export type TraceProviderSupportResponse = {
+  agent_spans: boolean
+  export_ack: 'accepted'
+  native_cost: boolean
+  native_usage: boolean
+  provider: string
+  session: boolean
+  span_url: boolean
+  trace_url: boolean
+}
+
+export type TraceSourceKind = 'message' | 'node' | 'workflow'
+
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
   created_by_account?: SimpleAccountResponse | null
@@ -2204,6 +2362,33 @@ export type SimpleEndUser = {
   is_anonymous: boolean
   session_id?: string | null
   type: string
+}
+
+export type WorkflowToolNodeExecutionResponse = {
+  created_at?: number | null
+  created_by_account?: SimpleAccountResponse | null
+  created_by_end_user?: SimpleEndUser | null
+  created_by_role?: string | null
+  elapsed_time?: number | null
+  error?: string | null
+  execution_metadata?: unknown
+  extras?: unknown
+  finished_at?: number | null
+  id: string
+  index?: number | null
+  inputs?: unknown
+  inputs_truncated?: boolean | null
+  node_execution_id?: string | null
+  node_id?: string | null
+  node_type?: string | null
+  outputs?: unknown
+  outputs_truncated?: boolean | null
+  predecessor_node_id?: string | null
+  process_data?: unknown
+  process_data_truncated?: boolean | null
+  retry_index?: number | null
+  status?: string | null
+  title?: string | null
 }
 
 export type SandboxFileEntryResponse = {
@@ -2284,6 +2469,13 @@ export type WorkflowDailyTerminalsStatisticItem = {
 export type WorkflowDailyTokenCostStatisticItem = {
   date: string
   token_count: number
+}
+
+export type DefaultBlockConfigItemResponse = {
+  config: {
+    [key: string]: unknown
+  }
+  type: string
 }
 
 export type WorkflowConversationVariableResponse = {
@@ -2799,6 +2991,37 @@ export type WorkflowOnlineUser = {
   username: string
 }
 
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type ParagraphInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'paragraph'
+}
+
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file'
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: 'file-list'
+}
+
 export type AgentToolCallResponse = {
   error?: string | null
   status: string
@@ -2880,6 +3103,22 @@ export type HumanInputFormSubmissionData = {
 }
 
 export type ExecutionContentType = 'human_input'
+
+export type KnowledgeFsCitation = {
+  artifact_hash: string
+  control_space_id: string
+  document_asset_id: string
+  document_title?: string | null
+  document_version?: number | null
+  end_offset?: number | null
+  id: string
+  node_id: string
+  page_number?: number | null
+  parse_artifact_id?: string | null
+  section_path?: Array<string>
+  space_name: string
+  start_offset?: number | null
+}
 
 export type AppConfigJsonValue =
   | string
@@ -3230,6 +3469,7 @@ export type AgentSoulHumanConfig = {
 
 export type AgentSoulKnowledgeConfig = {
   sets?: Array<AgentKnowledgeSetConfig>
+  spaces?: Array<AgentKnowledgeSpaceConfig>
 }
 
 export type AgentSoulMemoryConfig = {
@@ -3387,9 +3627,11 @@ export type AgentComposerDifyToolCandidateResponse = {
 }
 
 export type AgentComposerKnowledgeSetCandidateResponse = {
+  control_space_id?: string | null
   datasets?: Array<AgentComposerKnowledgeDatasetCandidateResponse>
   description?: string | null
   id: string
+  missing?: boolean
   missing_dataset_ids?: Array<string>
   name: string
 }
@@ -3543,25 +3785,17 @@ export type AppUserInputFormConfigResponse = {
   [key: string]: unknown
 }
 
-export type UserActionConfig = {
-  button_style?: ButtonStyle
-  id: string
-  title: string
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
 }
 
-export type FormInputConfig =
-  | ({
-      type: 'paragraph'
-    } & ParagraphInputConfig)
-  | ({
-      type: 'select'
-    } & SelectInputConfig)
-  | ({
-      type: 'file'
-    } & FileInputConfig)
-  | ({
-      type: 'file-list'
-    } & FileListInputConfig)
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
 
 export type AppProviderAgentToolPayload = {
   credential_id?: string | null
@@ -3914,6 +4148,14 @@ export type AgentKnowledgeSetConfig = {
   retrieval: AgentKnowledgeRetrievalConfig
 }
 
+export type AgentKnowledgeSpaceConfig = {
+  control_space_id: string
+  description?: string | null
+  id: string
+  is_missing?: boolean
+  name: string
+}
+
 export type AgentMemoryArtifactConfig = {
   id?: string | null
   name?: string | null
@@ -3932,7 +4174,7 @@ export type AgentSoulModelSettings = {
   frequency_penalty?: number | null
   max_tokens?: number | null
   presence_penalty?: number | null
-  response_format?: AgentModelResponseFormatConfig | null
+  response_format?: string | AgentModelResponseFormatConfig | null
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
@@ -4096,36 +4338,7 @@ export type AppVectorSettingResponse = {
   [key: string]: unknown
 }
 
-export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
-
-export type ParagraphInputConfig = {
-  default?: StringSource | null
-  output_variable_name: string
-  type?: 'paragraph'
-}
-
-export type SelectInputConfig = {
-  option_source: StringListSource
-  output_variable_name: string
-  type?: 'select'
-}
-
-export type FileInputConfig = {
-  allowed_file_extensions?: Array<string>
-  allowed_file_types?: Array<FileType>
-  allowed_file_upload_methods?: Array<FileTransferMethod>
-  output_variable_name: string
-  type?: 'file'
-}
-
-export type FileListInputConfig = {
-  allowed_file_extensions?: Array<string>
-  allowed_file_types?: Array<FileType>
-  allowed_file_upload_methods?: Array<FileTransferMethod>
-  number_limits?: number
-  output_variable_name: string
-  type?: 'file-list'
-}
+export type ValueSourceType = 'constant' | 'variable'
 
 export type AppLegacyDatasetSelectionPayload = {
   enabled?: boolean | null
@@ -4208,18 +4421,6 @@ export type AgentSoulDifyToolCredentialRef = {
   type?: 'provider' | 'tool'
 }
 
-export type StringSource = {
-  selector?: Array<string>
-  type: ValueSourceType
-  value?: string
-}
-
-export type StringListSource = {
-  selector?: Array<string>
-  type: ValueSourceType
-  value?: Array<string>
-}
-
 export type AgentModerationIoConfig = {
   enabled?: boolean
   preset_response?: string | null
@@ -4257,8 +4458,6 @@ export type AgentKnowledgeWeightedScoreConfig = {
   weight_type?: string | null
   [key: string]: unknown
 }
-
-export type ValueSourceType = 'constant' | 'variable'
 
 export type AgentKnowledgeMetadataCondition = {
   comparison_operator:
@@ -7004,8 +7203,15 @@ export type PostAppsByAppIdTraceData = {
 }
 
 export type PostAppsByAppIdTraceErrors = {
-  400: TracingProviderUnavailableError | ErrorResponse
+  400:
+    | InvalidTracingConfigError
+    | TracingProviderUnavailableError
+    | UnsupportedTracingProviderError
+    | ErrorResponse
   403: ErrorResponse
+  404: AppNotFoundError | TraceConfigNotFoundError | ErrorResponse
+  409: TracingConfigConflictError | ErrorResponse
+  500: TracingConfigProcessingFailedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7017,6 +7223,32 @@ export type PostAppsByAppIdTraceResponses = {
 
 export type PostAppsByAppIdTraceResponse =
   PostAppsByAppIdTraceResponses[keyof PostAppsByAppIdTraceResponses]
+
+export type GetAppsByAppIdTraceCapabilitiesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    tracing_provider: string
+  }
+  url: '/apps/{app_id}/trace-capabilities'
+}
+
+export type GetAppsByAppIdTraceCapabilitiesErrors = {
+  400: UnsupportedTracingProviderError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdTraceCapabilitiesError =
+  GetAppsByAppIdTraceCapabilitiesErrors[keyof GetAppsByAppIdTraceCapabilitiesErrors]
+
+export type GetAppsByAppIdTraceCapabilitiesResponses = {
+  200: TraceProviderCapabilitiesResponse
+}
+
+export type GetAppsByAppIdTraceCapabilitiesResponse =
+  GetAppsByAppIdTraceCapabilitiesResponses[keyof GetAppsByAppIdTraceCapabilitiesResponses]
 
 export type DeleteAppsByAppIdTraceConfigData = {
   body?: never
@@ -7093,6 +7325,7 @@ export type PatchAppsByAppIdTraceConfigErrors = {
     | ErrorResponse
   403: ErrorResponse
   404: AppNotFoundError | TraceConfigNotFoundError | ErrorResponse
+  409: TracingConfigConflictError | ErrorResponse
   500: TracingConfigProcessingFailedError | ErrorResponse
   default: ErrorResponse
 }
@@ -7140,6 +7373,71 @@ export type PostAppsByAppIdTraceConfigResponses = {
 export type PostAppsByAppIdTraceConfigResponse =
   PostAppsByAppIdTraceConfigResponses[keyof PostAppsByAppIdTraceConfigResponses]
 
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdData = {
+  body?: never
+  path: {
+    app_id: string
+    source_id: string
+    source_kind: 'message' | 'node' | 'workflow'
+  }
+  query?: {
+    node_execution_id?: string
+  }
+  url: '/apps/{app_id}/trace-runs/{source_kind}/{source_id}'
+}
+
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdErrors = {
+  404: TracingNodeNotFoundError | TracingSourceNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdError =
+  GetAppsByAppIdTraceRunsBySourceKindBySourceIdErrors[keyof GetAppsByAppIdTraceRunsBySourceKindBySourceIdErrors]
+
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdResponses = {
+  200: TraceRunStatusResponse
+}
+
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdResponse =
+  GetAppsByAppIdTraceRunsBySourceKindBySourceIdResponses[keyof GetAppsByAppIdTraceRunsBySourceKindBySourceIdResponses]
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryData = {
+  body: TraceRunRetryPayload
+  path: {
+    app_id: string
+    source_id: string
+    source_kind: 'message' | 'node' | 'workflow'
+  }
+  query?: {
+    node_execution_id?: string
+  }
+  url: '/apps/{app_id}/trace-runs/{source_kind}/{source_id}/retry'
+}
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryErrors = {
+  404:
+    | TracingNodeNotFoundError
+    | TracingRunNotFoundError
+    | TracingSourceNotFoundError
+    | ErrorResponse
+  409:
+    | TracingAlreadyAcceptedError
+    | TracingDuplicateAcknowledgementRequiredError
+    | TracingRetryNotAllowedError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryError =
+  PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryErrors[keyof PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryErrors]
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryResponses = {
+  200: TraceRunStatusResponse
+}
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryResponse =
+  PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryResponses[keyof PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryResponses]
+
 export type PostAppsByAppIdTriggerEnableData = {
   body: ParserEnable
   path: {
@@ -7150,7 +7448,7 @@ export type PostAppsByAppIdTriggerEnableData = {
 }
 
 export type PostAppsByAppIdTriggerEnableErrors = {
-  404: AppNotFoundError | ErrorResponse
+  404: AppNotFoundError | AppTriggerNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7361,6 +7659,32 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses = {
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse =
   GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses]
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenData = {
+  body?: never
+  path: {
+    app_id: string
+    node_execution_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-runs/{run_id}/node-executions/{node_execution_id}/children'
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors = {
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenError =
+  GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors]
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses = {
+  200: WorkflowToolNodeExecutionListResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponse =
+  GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses]
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesData = {
   body?: never
@@ -9063,7 +9387,7 @@ export type GetAppsByAppIdWorkflowsTriggersWebhookData = {
 }
 
 export type GetAppsByAppIdWorkflowsTriggersWebhookErrors = {
-  404: AppNotFoundError | ErrorResponse
+  404: AppNotFoundError | WebhookTriggerNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

@@ -8,6 +8,7 @@ import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { SERVER_CONSOLE_API_PREFIX } from '@/config/server'
 import { cookies, headers } from '@/next/headers'
 import { httpErrorFromResponse, isHttpErrorStatus } from '@/service/http-error'
+import { reportClientError } from '../client-error'
 import { createConsoleContractLink } from './contract-loader'
 import { validateDefinedErrors } from './defined-errors'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
@@ -67,7 +68,7 @@ function createServerConsoleOpenAPILink(
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: getServerConsoleApiPrefix,
     headers: getServerConsoleRequestHeaders,
-    fetch: async (request, init) => {
+    fetch: async (request, init, options) => {
       if (request.body && !request.headers.has('content-type'))
         request.headers.set('Content-Type', 'application/json')
 
@@ -79,12 +80,13 @@ function createServerConsoleOpenAPILink(
         cache: 'no-store',
       })
       if (isHttpErrorStatus(response.status)) throw await httpErrorFromResponse(response)
+      options.context.onResponseHeaders?.(response.headers)
       return response
     },
     interceptors: [
       validateDefinedErrors(contract),
       onError((error) => {
-        console.error(error)
+        reportClientError(error)
       }),
     ],
   })

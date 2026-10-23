@@ -14,7 +14,7 @@ This module tests the dataset cleanup task functionality including:
 import json
 import uuid
 from collections.abc import Iterator, Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 from typing import override
@@ -22,7 +22,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from celery.exceptions import Retry
-from flask import Flask
 from sqlalchemy import Engine, event
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
@@ -43,6 +42,7 @@ from models.dataset import (
     SegmentAttachmentBinding,
 )
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.knowledge_fs import KnowledgeFSUpgradeFileLease, KnowledgeFSUpgradeJob
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowType
 from tasks.clean_dataset_task import clean_dataset_task
@@ -134,10 +134,14 @@ def mock_get_image_upload_file_ids() -> Iterator[MagicMock]:
 
 
 @pytest.fixture
-def elasticsearch_delete_endpoint() -> Iterator[tuple[int, list[int], list[tuple[str, int]]]]:
+def elasticsearch_delete_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Iterator[tuple[int, list[int], list[tuple[str, int]]]]:
     """Serve real SDK requests with Elasticsearch's missing-index response shape."""
     pytest.importorskip("elasticsearch")
-    pytest.importorskip("dify_vdb_elasticsearch.elasticsearch_vector")
+    elasticsearch_vector = pytest.importorskip("dify_vdb_elasticsearch.elasticsearch_vector")
+    from elasticsearch import Elasticsearch
+
     responses: list[int] = []
     requests: list[tuple[str, int]] = []
 
@@ -174,9 +178,23 @@ def elasticsearch_delete_endpoint() -> Iterator[tuple[int, list[int], list[tuple
     server = HTTPServer(("127.0.0.1", 0), Handler)
     thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
+    client = Elasticsearch(
+        [f"http://127.0.0.1:{server.server_port}"],
+        request_timeout=2,
+        max_retries=0,
+        retry_on_timeout=False,
+    )
+
+    def local_client(**_options: object) -> Elasticsearch:
+        return client
+
+    # Celery can enter a different Flask app from the test fixture's app.
+    # Bind only SDK construction; keep real ping/info/delete and error decoding.
+    monkeypatch.setattr(elasticsearch_vector, "Elasticsearch", local_client)
     try:
         yield server.server_port, responses, requests
     finally:
+        client.close()
         server.shutdown()
         thread.join(timeout=1)
         server.server_close()
@@ -662,8 +680,6 @@ class TestIndexProcessorParameters:
     def test_missing_elasticsearch_index_allows_parent_child_cleanup_after_retry(
         self,
         commit_fails: bool,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
         elasticsearch_delete_endpoint: tuple[int, list[int], list[tuple[str, int]]],
         dataset_id: str,
         tenant_id: str,
@@ -672,20 +688,9 @@ class TestIndexProcessorParameters:
         mock_storage: MagicMock,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        port, responses, requests = elasticsearch_delete_endpoint
+        _port, responses, requests = elasticsearch_delete_endpoint
         expected_statuses = [200, 404] if commit_fails else [404]
         responses.extend(expected_statuses)
-        for key, value in {
-            "ELASTICSEARCH_USE_CLOUD": False,
-            "ELASTICSEARCH_HOST": "http://127.0.0.1",
-            "ELASTICSEARCH_PORT": port,
-            "ELASTICSEARCH_USERNAME": "elastic",
-            "ELASTICSEARCH_PASSWORD": "test",
-            "ELASTICSEARCH_REQUEST_TIMEOUT": 2,
-            "ELASTICSEARCH_MAX_RETRIES": 0,
-            "ELASTICSEARCH_RETRY_ON_TIMEOUT": False,
-        }.items():
-            monkeypatch.setitem(app.config, key, value)
         document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
         segment = _persist_segment(
             orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
@@ -1366,6 +1371,80 @@ class TestBatchedDeletes:
         with orm_session_maker() as session:
             remaining = [document.id for document in documents if session.get(Document, document.id) is not None]
         assert not remaining, f"Batched delete left {len(remaining)} of 5 documents behind"
+
+
+def test_dataset_cleanup_keeps_a_leased_legacy_source_file(
+    dataset_id: str,
+    tenant_id: str,
+    collection_binding_id: str,
+    orm_session_maker: sessionmaker[Session],
+    mock_storage: MagicMock,
+    mock_index_processor_factory: dict[str, MagicMock],
+    mock_get_image_upload_file_ids: MagicMock,
+) -> None:
+    del mock_index_processor_factory, mock_get_image_upload_file_ids
+    account_id = str(uuid.uuid4())
+    now = datetime.now(UTC).replace(tzinfo=None)
+    upload_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"upload_files/{tenant_id}/dataset-source.txt",
+        name="dataset-source.txt",
+        size=10,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=account_id,
+        created_at=now,
+        used=False,
+    )
+    document = Document(
+        id=str(uuid.uuid4()),
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        data_source_info=json.dumps({"upload_file_id": upload_file.id}),
+        batch="batch",
+        name="dataset-source.txt",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by=account_id,
+        indexing_status=IndexingStatus.COMPLETED,
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+    )
+    job = KnowledgeFSUpgradeJob(
+        tenant_id=tenant_id,
+        old_dataset_id=dataset_id,
+        requested_by_account_id=account_id,
+        owner_account_id=account_id,
+        idempotency_key="dataset-cleanup-lease-test",
+        snapshot_at=now,
+        config_snapshot={},
+        permission_snapshot={},
+        app_binding_snapshot=[],
+        tag_ids_snapshot=[],
+    )
+    with orm_session_maker.begin() as session:
+        session.add_all([upload_file, document, job])
+        session.flush()
+        session.add(
+            KnowledgeFSUpgradeFileLease(
+                job_id=job.id,
+                old_upload_file_id=upload_file.id,
+                expires_at=now + timedelta(hours=1),
+            )
+        )
+
+    _run_clean_dataset(
+        dataset_id=dataset_id,
+        tenant_id=tenant_id,
+        collection_binding_id=collection_binding_id,
+    )
+
+    with orm_session_maker() as session:
+        assert session.get(Document, document.id) is None
+        assert session.get(UploadFile, upload_file.id) is not None
+    mock_storage.delete.assert_not_called()
 
 
 @pytest.mark.parametrize("shared_tenant", [None, "same", "other"])

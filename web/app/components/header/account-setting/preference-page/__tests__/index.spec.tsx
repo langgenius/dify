@@ -2,7 +2,7 @@ import type { GetAccountProfileResponse } from '@dify/contracts/api/console/acco
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { setLocaleOnClient } from '@/i18n/client'
 import { languages } from '@/i18n/language'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
@@ -19,7 +19,10 @@ let mockUserProfile: GetAccountProfileResponse
 
 vi.mock('@/service/base', () => ({
   get: mockGet,
-  request: mockRequest,
+  request: (url: string, init: RequestInit, options: { request: Request }) =>
+    url.endsWith('/account/profile') && options.request.method === 'GET'
+      ? mockGet(url, init, options)
+      : mockRequest(url, init, options),
   sseGeneratorPost: vi.fn(),
 }))
 
@@ -55,7 +58,7 @@ const renderPage = () => {
   return render(
     <QueryClientProvider client={queryClient}>
       <PreferencePage />
-      <AppToastHost />
+      <AppToaster />
     </QueryClientProvider>,
   )
 }
@@ -206,7 +209,7 @@ describe('PreferencePage - Interactions', () => {
     ).toBeInTheDocument()
   })
 
-  it('should keep profile controls disabled until saving, refetching, and changing language finish', async () => {
+  it('should keep profile values read-only until saving, refetching, and changing language finish', async () => {
     const chinese = getLanguageOption('zh-Hans')
     mockUserProfile = createUserProfile({ interface_language: 'en-US' })
     const save = createDeferred<Response>()
@@ -225,8 +228,8 @@ describe('PreferencePage - Interactions', () => {
 
     await selectOption('common.language.displayLanguage', chinese.name)
 
-    expect(language).toBeDisabled()
-    expect(timezone).toBeDisabled()
+    expect(language).toHaveAttribute('aria-readonly', 'true')
+    expect(timezone).toHaveAttribute('aria-readonly', 'true')
     expect(appearance).toBeEnabled()
     await waitFor(() => expect(mockRequest).toHaveBeenCalledOnce())
     expect(language).toHaveFocus()
@@ -243,8 +246,8 @@ describe('PreferencePage - Interactions', () => {
     await act(async () => save.resolve(response()))
     await waitFor(() => expect(mockGet).toHaveBeenCalled())
     await waitFor(() => expect(setLocaleOnClient).toHaveBeenCalledWith(chinese.value, false))
-    expect(language).toBeDisabled()
-    expect(timezone).toBeDisabled()
+    expect(language).toHaveAttribute('aria-readonly', 'true')
+    expect(timezone).toHaveAttribute('aria-readonly', 'true')
     expect(mockRefresh).not.toHaveBeenCalled()
 
     await act(async () => {
@@ -252,12 +255,12 @@ describe('PreferencePage - Interactions', () => {
       changeLanguage.resolve()
     })
     await waitFor(() => expect(mockRefresh).toHaveBeenCalledOnce())
-    expect(language).toBeDisabled()
-    expect(timezone).toBeDisabled()
+    expect(language).toHaveAttribute('aria-readonly', 'true')
+    expect(timezone).toHaveAttribute('aria-readonly', 'true')
 
     await act(async () => refetch.resolve(response()))
-    await waitFor(() => expect(language).toBeEnabled())
-    expect(timezone).toBeEnabled()
+    await waitFor(() => expect(language).not.toHaveAttribute('aria-readonly'))
+    expect(timezone).not.toHaveAttribute('aria-readonly')
     expect(language).toHaveTextContent(chinese.name)
     expect(mockRefresh).toHaveBeenCalledOnce()
   })
@@ -274,9 +277,11 @@ describe('PreferencePage - Interactions', () => {
     await waitFor(() =>
       expect(
         screen.getByRole('combobox', { name: 'common.language.displayLanguage' }),
-      ).toBeEnabled(),
+      ).not.toHaveAttribute('aria-readonly'),
     )
-    expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).not.toHaveAttribute(
+      'aria-readonly',
+    )
     expect(setLocaleOnClient).not.toHaveBeenCalled()
     expect(mockRefresh).not.toHaveBeenCalled()
   })
@@ -291,7 +296,7 @@ describe('PreferencePage - Interactions', () => {
     await waitFor(() =>
       expect(
         screen.getByRole('combobox', { name: 'common.language.displayLanguage' }),
-      ).toBeEnabled(),
+      ).not.toHaveAttribute('aria-readonly'),
     )
     expect(mockRequest).toHaveBeenCalledOnce()
     expect(mockRefresh).not.toHaveBeenCalled()
@@ -338,11 +343,15 @@ describe('PreferencePage - Interactions', () => {
 
     expect(await screen.findAllByText('Timezone failed')).toHaveLength(1)
     await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).toBeEnabled(),
+      expect(
+        screen.getByRole('combobox', { name: 'common.language.timezone' }),
+      ).not.toHaveAttribute('aria-readonly'),
     )
     expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).toHaveTextContent(
       getTimezoneOption('Pacific/Niue').name,
     )
-    expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).not.toHaveAttribute(
+      'aria-readonly',
+    )
   }, 15000)
 })

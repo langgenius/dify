@@ -19,7 +19,7 @@ requested during root SSR, so treat this response as a minimal public bootstrap 
 configuration endpoint, a feature registry, or a mirror of environment and Enterprise settings. Existing fields are
 legacy inventory and do not establish precedent for new fields.
 
-A new field is eligible only when all of the following are true:
+Apart from the explicit Agent tracing exception below, a new field is eligible only when all of the following are true:
 
 1. Both Console and Web have named production consumers for the field.
 2. Both consumers need the value before authentication and tenant/workspace bootstrap to render initial state or
@@ -44,9 +44,27 @@ Route excluded values to their actual owner:
   and failure cost explicitly.
 - Load large, slow, or page-specific data lazily through a consumer-owned query.
 
+### Agent tracing deployment discovery exception
+
+`agent_tracing_api_collection_enabled` is an explicit deployment-discovery exception to the pre-authentication
+consumer requirements above. Both public Console and Web `/system-features` responses expose the same required
+boolean from `OPS_AGENT_TRACE_ENABLED`; the authenticated Console tracing configuration and Workflow inheritance
+surfaces consume it independently of workspace, application, or provider configuration. It has no schema default:
+a missing field must not be mistaken for a confirmed disabled deployment.
+
+This field reports only the API collection gate. It grants no configuration, credential, or log access and says
+nothing about Agent runtime, worker, or provider health, export acknowledgement, or platform queryability. The
+exception does not admit other environment settings or integration toggles, or broaden this response into a
+configuration registry. Keep workspace policy and entitlements in their authenticated owners.
+
+The existing Console and Web bootstrap requests gain one boolean and no additional configuration or provider I/O.
+Their authentication, SSR request timing, and cache ownership are unchanged; consumers must retain an unknown
+state when the response is missing or fails rather than infer a disabled or healthy deployment.
+
 Every pull request that adds a System Features field must:
 
-- Name both production consumer paths and explain why they require the value before authentication.
+- Name both production consumer paths and explain why they require the value before authentication. For the named
+  Agent tracing exception, document the authenticated Console consumers and intentional shared Web exposure instead.
 - Document the root SSR request, payload, caching, and failure-mode impact.
 - Update the Pydantic owner, regenerate OpenAPI Markdown and TypeScript/Zod contracts, and update shared fixtures.
 - Add Console and Web schema regression coverage. Do not hand-edit generated contracts or add compatibility defaults.

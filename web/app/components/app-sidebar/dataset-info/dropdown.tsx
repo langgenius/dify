@@ -173,8 +173,8 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
         }
       />
       <DropdownMenuContent
-        placement={expand ? 'bottom-end' : 'right-start'}
-        sideOffset={4}
+        side={expand ? 'bottom' : 'right'}
+        align={expand ? 'end' : 'start'}
         className="w-50"
       >
         {datasetACLCapabilities.canEdit && (

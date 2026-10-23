@@ -26,6 +26,115 @@ Run Dify with Docker Compose. Configuration templates live in `.env.example` and
    - Copy `envs/core-services/shared.env.example` to `envs/core-services/shared.env`.
    - Set `ENABLE_OTEL=true` and configure `OTLP_BASE_ENDPOINT`. Tune the other `OTEL_*` knobs in the same file if needed.
 
+## KnowledgeFS Integration Service
+
+The optional `knowledge-fs` Compose profile starts the internal KnowledgeFS API service and the
+dedicated Dataset upgrade worker. The API service publishes no host port and has no nginx route.
+Model, datasource, and object-storage calls go through Dify's inner API.
+Dify resolves active Workspace/plugin configuration and remains the only owner of physical
+storage credentials. `KNOWLEDGE_FS_ENABLED` remains `false`, so starting the container does not
+enable product traffic.
+
+Copy and fill the dedicated service configuration before enabling KnowledgeFS traffic. The default
+image is the CI-published deployment-branch image; set `KNOWLEDGE_FS_API_IMAGE` to pin another tag
+or immutable SHA tag. If the image repository is private, authenticate the deployment host with
+`docker login` before pulling:
+
+```bash
+cp envs/core-services/knowledge-fs.env.example envs/core-services/knowledge-fs.env
+docker compose --profile knowledge-fs --profile knowledge-fs-unstructured config
+docker compose --profile knowledge-fs --profile knowledge-fs-unstructured pull knowledge_fs knowledge_fs_unstructured
+docker compose --profile knowledge-fs --profile knowledge-fs-unstructured up -d
+```
+
+The service env file intentionally contains only operator-owned inputs: the dedicated database,
+durable compilation switch, Capability v2 public verification material, and optional Unstructured
+endpoint. Compose injects the Dify inner API connection and integrated mode. KnowledgeFS stores
+objects below an internal namespace in Dify's configured `STORAGE_TYPE`; do not duplicate Dify's
+bucket, endpoint, or provider credentials in `knowledge-fs.env`. Feature-specific rollout flags
+and capacity tunables should be added only when deliberately overriding their safe runtime
+defaults.
+
+The optional `knowledge-fs-unstructured` profile starts one isolated parser service named
+`knowledge_fs_unstructured` for every KnowledgeFS remote format. Its tracked
+`knowledge-fs-unstructured-service.defaults` additionally enables bounded page parallelism for
+PDFs and a 25-million-pixel pre-allocation limit per page at the pinned 350 DPI; an optional copied
+`knowledge-fs-unstructured.env` can override those service values. Do not raise the DPI or pixel
+limit, or disable the guard: the KnowledgeFS client estimates page rasters at 350 DPI and rejects
+oversized or unverifiable page geometry before sending it to the parser. Oversized pages need
+smaller page dimensions or tiling before import; reducing compressed file size alone does not
+help. Existing installations need the new KnowledgeFS image and a recreated parser service to
+activate both guards. The
+existing `unstructured` profile remains unchanged for Dify's legacy ETL, so KnowledgeFS tuning
+cannot alter its PDF or Office parsing behavior. The copied
+`knowledge-fs.env` pairs every PDF and structurally/byte-heavy remote document with the longer
+deadline and narrower admission gate; ordinary formats retain two concurrent requests and a
+600-second timeout, while heavy work uses one concurrent request and a 2,400-second timeout. The
+remote input cap defaults to 15 MiB so the parser accepts the complete product upload envelope. The
+legacy `UNSTRUCTURED_PDF_*` names remain lower-precedence compatibility aliases. The required
+defaults file deliberately does not end
+in `.env`, so it remains tracked and a clean checkout can validate the profile; files ending in
+`.env.example` are copy-only templates and are never loaded as runtime configuration. The isolated
+service is available to KnowledgeFS at `http://knowledge_fs_unstructured:8000`; it does not publish
+a host port.
+
+The KnowledgeFS API image includes Poppler and enables its `pdftoppm` PDF image rasterizer with
+bounded defaults (144 DPI, 48 DPI thumbnails, a 30-second timeout, at most 500 assets per document,
+and two concurrent Poppler page batches per replica). Canonical settings live in the dedicated
+`knowledge-fs.env`; whitelisted `DIFY_ROOT_*_OVERRIDE` proxies let explicitly set values in
+`docker/.env` take precedence without injecting the complete root environment. When a root value
+is unset, the service env or image default remains authoritative. Set
+`KNOWLEDGE_PDF_RASTERIZER=off` in either operator env as an emergency or low-resource kill switch. Existing
+documents whose parse artifacts lack image asset references must be ingested again after rollout.
+
+Use a dedicated KnowledgeFS database. Do not point `DATABASE_URL` at Dify's application database,
+reuse Dataset/Document tables, or run a data migration as part of this service. KnowledgeFS
+migrations remain a separate controlled operator step. The selected Dify storage backend must
+support recursive `scan`; the currently verified paths are S3 and OpenDAL/local.
+
+The production entrypoint supports the explicitly selected Capability v2 verifier and accepts only
+public JWKS material. The `knowledge_fs` container can still return `200` from
+`/health` while `/ready` returns `503` when the verifier or another durable dependency is missing;
+this is intentional fail-closed behavior. Do not add a proxy route, set
+`KNOWLEDGE_FS_ENABLED=true`, or send product traffic until readiness returns `200` and the migration
+and per-Workspace cutover gates are complete.
+
+### KnowledgeFS lifecycle and upgrade workers
+
+The standard Dify worker consumes `knowledge_fs_lifecycle` for provisioning, deletion, initial
+source imports, and staged-upload cleanup. Deployments overriding `CELERY_QUEUES` or
+`CELERY_WORKER_QUEUES` must include this queue in a worker pool. Enable the lifecycle rollout gates
+on the API, workers, and Beat before creating spaces.
+
+Classic Dataset upgrades use the separate `worker_knowledge_fs_upgrade` service. It starts with
+the `knowledge-fs` Compose profile, so enable that profile before submitting an upgrade. This
+worker must use `CELERY_WORKER_POOL=prefork`; local development uses
+`./dev/start-worker --queues knowledge_fs_upgrade --pool prefork`. Each checkpoint has a 570-second
+soft limit and a 600-second hard limit. Do not override these task limits: recovery relies on the
+child having stopped before reclaiming its execution window. Beat checks for abandoned running
+jobs and publication claims every minute after the lifecycle gates are ready. Claims without
+progress for 11 minutes can be recovered automatically or through the upgrade retry endpoint.
+Stop existing upgrade workers before deploying this recovery change, then recreate the API,
+worker, upgrade worker, and Beat with the new image and pool configuration.
+
+Document reconciliation has its own durable delivery lease after the parent upgrade succeeds.
+Beat also scans successful upgrades with unfinished document checkpoints, so a failed publication
+or interrupted reconciliation is retried without restarting the upgrade. Unclaimed successful jobs
+are eligible immediately; lost deliveries are reclaimed after the 11-minute lease expires, and
+completed attempts with unfinished work become eligible again after one minute. Apply the
+`b9d3f7a5c102` migration before starting the updated processes; existing successful upgrades receive
+NULL leases and are picked up automatically. Reconciliation uses the same prefork pool and
+570/600-second task limits. Keep Beat running with the lifecycle rollout gates enabled.
+
+Upgrade uploads retain their logical document identity before compilation finishes, so pending
+or failed documents can have their legacy disabled state restored without an active revision.
+Reconciliation releases a deleted document's checkpoint only after verifying a completed durable
+deletion receipt for that identity; a missing document or upstream error alone is not sufficient.
+Custom metadata is restored from the snapshot's field definitions, converting Classic UTC epoch
+seconds to ISO timestamps for time fields. Classic built-in fields are omitted because KnowledgeFS
+owns its system metadata. These corrections also apply when retrying existing unfinished
+checkpoints and require no additional migration.
+
 ## Client IP and trusted proxies
 
 Dify uses the request's resolved client IP for rate limits and audit records. The

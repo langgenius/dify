@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, override
+
+from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import session_factory
+from core.rbac.entities import RBACPermission
 from services.enterprise.base import EnterpriseRequest
 from services.rbac.contracts import (
     AccessMatrixItem,
@@ -80,6 +84,42 @@ def _inner_call(
         params=params,
         timeout=dify_config.ENTERPRISE_RBAC_REQUEST_TIMEOUT,
     )
+
+
+def _commit_knowledge_fs_rbac_invalidation(
+    *,
+    tenant_id: str,
+    actor_account_id: str | None,
+    member_account_id: str | None = None,
+) -> None:
+    """Commit one local invalidation after its remote RBAC mutation succeeded."""
+    from services.knowledge_fs.membership_changes import (
+        KnowledgeFSWorkspaceMembershipChange,
+        apply_workspace_membership_change,
+        apply_workspace_rbac_role_change,
+    )
+
+    with session_factory.create_session() as session:
+        try:
+            if member_account_id is None:
+                apply_workspace_rbac_role_change(session=session, tenant_id=tenant_id)
+            else:
+                apply_workspace_membership_change(
+                    session=session,
+                    tenant_id=tenant_id,
+                    actor_account_id=actor_account_id or "",
+                    account_ids=(member_account_id,),
+                    change=KnowledgeFSWorkspaceMembershipChange.ROLE_CHANGED,
+                )
+            session.commit()
+        except Exception:
+            session.rollback()
+            logger.exception(
+                "KnowledgeFS RBAC invalidation failed after remote mutation tenant_id=%s actor_account_id=%s",
+                tenant_id,
+                actor_account_id,
+            )
+            raise
 
 
 def _resource_id_params(resource_type: RBACResourceType | str, resource_id: str) -> dict[str, str]:
@@ -648,6 +688,30 @@ class RBACService:
                 pagination=Pagination.model_validate(data["pagination"]) if data.get("pagination") else None,
             )
 
+    class KnowledgeFSRoles(Roles):
+        """Couple successful remote role writes to durable KnowledgeFS invalidation.
+
+        Enterprise RBAC is remote, so the remote mutation must succeed before
+        the local epoch and revoke outbox transaction commits. A local failure
+        is rolled back and propagated so callers cannot mistake a partially
+        invalidated authorization change for success.
+        """
+
+        @staticmethod
+        @override
+        def update(
+            tenant_id: str, account_id: str | None, role_id: str, payload: RoleMutation, *, language: str | None = None
+        ) -> RBACRole:
+            result = RBACService.Roles.update(tenant_id, account_id, role_id, payload, language=language)
+            _commit_knowledge_fs_rbac_invalidation(tenant_id=tenant_id, actor_account_id=account_id)
+            return result
+
+        @staticmethod
+        @override
+        def delete(tenant_id: str, account_id: str | None, role_id: str, *, language: str | None = None) -> None:
+            RBACService.Roles.delete(tenant_id, account_id, role_id, language=language)
+            _commit_knowledge_fs_rbac_invalidation(tenant_id=tenant_id, actor_account_id=account_id)
+
     # ------------------------------------------------------------------
     # Access policies (Settings > Access Rules: create/edit permission sets).
     # ------------------------------------------------------------------
@@ -1053,6 +1117,27 @@ class RBACService:
             )
             return data
 
+    class KnowledgeFSMemberRoles(MemberRoles):
+        """Remote member-role writes followed by durable KnowledgeFS invalidation."""
+
+        @staticmethod
+        @override
+        def replace(
+            tenant_id: str,
+            account_id: str | None,
+            member_account_id: str,
+            role_ids: list[str],
+            *,
+            language: str | None = None,
+        ) -> MemberRolesResponse:
+            result = RBACService.MemberRoles.replace(
+                tenant_id, account_id, member_account_id, role_ids, language=language
+            )
+            _commit_knowledge_fs_rbac_invalidation(
+                tenant_id=tenant_id, actor_account_id=account_id, member_account_id=member_account_id
+            )
+            return result
+
     class Migrations:
         @staticmethod
         def migrate_agent_manage_roles(
@@ -1154,6 +1239,41 @@ class RBACService:
                 language=language,
             )
             return _parse_resource_permission_keys_batch(data, resource_id_key="dataset_id")
+
+    class KnowledgeFSPermissions:
+        """Batch permission lookup for independent KnowledgeFS control-space IDs."""
+
+        @staticmethod
+        def batch_get(
+            tenant_id: str,
+            account_id: str | None,
+            control_space_ids: list[str],
+            *,
+            session: Session,
+        ) -> dict[str, list[str]]:
+            if not control_space_ids:
+                return {}
+            if not dify_config.RBAC_ENABLED:
+                _ = session
+                # KnowledgeFS reuses the legacy knowledge base permission points; without
+                # RBAC every caller holds all of them.
+                permissions = [
+                    RBACPermission.DATASET_READONLY.value,
+                    RBACPermission.DATASET_CREATE_AND_MANAGEMENT.value,
+                    RBACPermission.DATASET_EDIT.value,
+                    RBACPermission.DATASET_DELETE.value,
+                    RBACPermission.DATASET_ACCESS_CONFIG.value,
+                    RBACPermission.DATASET_RETRIEVAL_RECALL.value,
+                ]
+                return dict.fromkeys(control_space_ids, permissions)
+            data = _inner_call(
+                "POST",
+                f"{_INNER_PREFIX}/knowledge-fs/permission-keys/batch",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json={"control_space_ids": control_space_ids},
+            )
+            return _parse_resource_permission_keys_batch(data, resource_id_key="control_space_id")
 
     class MyPermissions:
         @staticmethod

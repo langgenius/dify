@@ -87,7 +87,7 @@ export const checkUsageExternalAPI = ({ apiTemplateId }: { apiTemplateId: string
 }
 
 export const createExternalAPI = ({ body }: { body: CreateExternalAPIReq }) => {
-  return consoleClient.datasets.externalKnowledgeApi.post({ body })
+  return consoleClient.datasets.externalKnowledgeApi.post({ body }, { context: { silent: true } })
 }
 
 export const createExternalKnowledgeBase = ({ body }: { body: CreateKnowledgeBaseReq }) => {

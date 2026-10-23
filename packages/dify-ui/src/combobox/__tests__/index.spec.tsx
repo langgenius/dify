@@ -382,7 +382,8 @@ describe('Combobox wrappers', () => {
           </ComboboxTrigger>
           <ComboboxPortal>
             <ComboboxPositioner
-              placement="top-end"
+              side="top"
+              align="end"
               sideOffset={12}
               alignOffset={6}
               data-testid="combobox-positioner"

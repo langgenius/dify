@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "“{{name}}” artıq Agent bilik bazasıdır",
+  "upgrade.completeTitle": "Yeniləmə tamamlandı",
+  "upgrade.contactSupport": "Dəstək xidməti ilə əlaqə",
+  "upgrade.dialogAvailability": "Yeniləmədən sonra <strong>həm Klassik, həm də Agent bilik bazası əlçatan qalır</strong>",
+  "upgrade.dialogDescription": "Bu <legacy>Klassik bilik bazasını</legacy> bütün sənədləri, parametrləri və tətbiq əlaqələrini köçürməklə <new>Agent bilik bazasına</new> yeniləyin. Siz avtomatik olaraq Agent bilik bazasına yönləndiriləcəksiniz.",
+  "upgrade.dialogDuration": "Ölçüdən asılı olaraq bir neçə dəqiqədən bir neçə saata qədər çəkir. Gedişat bilik bazası kartında göstərilir",
+  "upgrade.dialogLinkedApps": "Əlaqəli tətbiqlər yeniləmə zamanı məlumat axtarışını davam etdirir",
+  "upgrade.dialogTitle": "Agent bilik bazasına yenilənsin?",
+  "upgrade.failedDescription": "Yeniləmə uğursuz oldu. Heç nə dəyişdirilmədi və Klassik bilik bazanız hələ də əlçatandır.",
+  "upgrade.failedTitle": "Yeniləmə uğursuz oldu",
+  "upgrade.failedToastDescription": "“{{name}}” Klassik bilik bazası olaraq qalır. Heç bir məlumat dəyişdirilmədi",
+  "upgrade.justNow": "İndicə",
+  "upgrade.menuLabel": "Agent bilik bazasına yenilə",
+  "upgrade.migratingDocuments": "Sənədlər köçürülür…",
+  "upgrade.modelCostDescription": "Yeniləmə bu bilik bazasındakı sənədləri emal etmək üçün modellərdən istifadə edir və token sərf edir. Sənədlərin məzmunu nə qədər çox olsa, istifadə adətən bir o qədər yüksək olur və böyük xərclər yarana bilər. Faktiki xərc istifadə olunan modelin ödəniş qaydasından asılıdır.",
+  "upgrade.start": "Yeniləməni başlat",
+  "upgrade.startFailed": "Yeniləməni başlatmaq mümkün olmadı. Yenidən cəhd edin.",
+  "upgrade.statusFailed": "Yeniləmə uğursuz oldu",
+  "upgrade.statusUpgrading": "Yenilənir",
+  "upgrade.summary": "Bilik bazası: {{name}}",
+  "upgrade.upgradedJustNow": "İndicə yeniləndi"
+}

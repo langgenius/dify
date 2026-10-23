@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import json
+from dataclasses import dataclass
 from types import SimpleNamespace
 
 import pytest
@@ -10,10 +12,12 @@ from dify_agent.layers.config import DifyConfigLayerConfig, DifyConfigSkillConfi
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.user_prompt import DifyUserPromptLayerConfig
+from dify_agent.layers.user_prompt import layer as user_prompt_layer
 from dify_agent.protocol.snapshot import SessionSnapshot
+from flask import Flask
+from pydantic_ai.messages import BinaryContent, ImageUrl
 
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
@@ -29,12 +33,29 @@ from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeRequestBuilder,
     AgentAppRuntimeRequestBuildError,
 )
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.workflow.file_reference import build_file_reference
+from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.agent_config_entities import AgentSoulConfig
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
+
+
+@dataclass(frozen=True)
+class _LayerDeps:
+    """The only part of the agent runtime Deps the user-prompt capability reads."""
+
+    layers: dict[str, dict[str, object]]
+
+
+@pytest.fixture(autouse=True)
+def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
 
 
 @pytest.fixture(autouse=True)
@@ -112,6 +133,43 @@ class TestBuildForAgentApp:
         assert [layer.name for layer in request.composition.layers][0] == "agent_app_user_prompt"
 
 
+def test_builder_carries_application_trace_context_but_redacts_it_from_request_logs(monkeypatch: pytest.MonkeyPatch):
+    from uuid import uuid4
+
+    from dify_agent.layers.execution_context import ApplicationTracingContext
+
+    tracing = ApplicationTracingContext(
+        run_id=uuid4(),
+        invocation_id=uuid4(),
+        trace_id="1" * 32,
+        parent_span_id="2" * 16,
+        session_id="private-session",
+        capture_content=False,
+    )
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+    context = _ctx(_soul_with_model())
+    calls: list[AgentAppRuntimeBuildContext] = []
+
+    def prepare(value: AgentAppRuntimeBuildContext) -> ApplicationTracingContext:
+        calls.append(value)
+        return tracing
+
+    monkeypatch.setattr(RuntimeApplicationTracingHooks, "prepare_agent_app", staticmethod(prepare))
+    hooks = RuntimeApplicationTracingHooks()
+    app = Flask(__name__)
+    bind_application_tracing_hooks(app, hooks)
+
+    with app.app_context():
+        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=WorkflowAgentDifyToolsBuilder()).build(context)
+    layer = next(item for item in result.request.composition.layers if item.name == "execution_context")
+    assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == tracing
+    redacted = next(
+        item for item in result.redacted_request["composition"]["layers"] if item["name"] == "execution_context"
+    )
+    assert redacted["config"]["tracing"] == "[REDACTED]"
+    assert calls == [context]
+
+
 class _NoToolsBuilder:
     def build_layers(self, **kwargs):
         del kwargs
@@ -174,15 +232,16 @@ def _ctx(
     files: tuple[File, ...] = (),
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
 ) -> AgentAppRuntimeBuildContext:
-    dify_context = SimpleNamespace(
+    dify_context = DifyRunContext(
         tenant_id="tenant-1",
         app_id="app-1",
         user_id="user-1",
         user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
+        trace_session_id="trace-session-1",
     )
     return AgentAppRuntimeBuildContext(
-        dify_context=dify_context,  # type: ignore[arg-type]
+        dify_context=dify_context,
         agent_id="agent-1",
         agent_config_snapshot_id="snap-1",
         agent_soul=soul,
@@ -274,6 +333,7 @@ class TestAgentAppRuntimeRequestBuilder:
         assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).user_from == "end-user"
         assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).invoke_from == "web-app"
         assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).agent_mode == "agent_app"
+        assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).trace_id == "trace-session-1"
         # LLM credentials are resolved by API and never enter the Agent request.
         assert "credentials" not in result.redacted_request["composition"]["layers"][-1]["config"]
         assert result.metadata["conversation_id"] == "conv-1"
@@ -341,10 +401,95 @@ class TestAgentAppRuntimeRequestBuilder:
             {
                 "delivery": "download",
                 "type": "image",
+                "filename": "earth.png",
                 "transfer_method": "local_file",
                 "reference": build_file_reference(record_id="upload-file-1"),
             }
         ]
+
+    @pytest.mark.parametrize("vision", [False, True])
+    @pytest.mark.parametrize("transport", ["url", "base64"])
+    def test_knowledge_image_search_retains_named_upload_references(
+        self, monkeypatch: pytest.MonkeyPatch, vision: bool, transport: str
+    ) -> None:
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            lambda **_kwargs: vision,
+        )
+        model_factory = RecordingModelFactory(schema=llm_schema(features=[ModelFeature.VISION] if vision else []))
+        monkeypatch.setattr("services.agent.knowledge_runtime_config.DifyModelFactory", model_factory)
+
+        def image_content(file: File, **_kwargs: object) -> ImagePromptMessageContent:
+            return ImagePromptMessageContent(
+                format="png",
+                url=f"https://files.example.com/{file.filename}" if transport == "url" else "",
+                base64_data="aW1hZ2UtYnl0ZXM=" if transport == "base64" else "",
+                mime_type="image/png",
+                filename=file.filename or "image.png",
+                detail="low",
+            )
+
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content", image_content
+        )
+        soul = _soul_with_model()
+        soul.knowledge = AgentSoulConfig.model_validate(
+            {
+                "knowledge": {
+                    "spaces": [
+                        {
+                            "id": "docs",
+                            "control_space_id": "00000000-0000-4000-8000-000000000001",
+                            "name": "Docs",
+                        }
+                    ]
+                }
+            }
+        ).knowledge
+        upload_ids = ["a013fb44-3e12-4f5d-8de2-000000000001", "a013fb44-3e12-4f5d-8de2-000000000002"]
+        references = [build_file_reference(record_id=upload_id) for upload_id in upload_ids]
+        # Cover both raw upload IDs and already-canonical references, with distinct filenames.
+        files = tuple(
+            File(
+                file_id=upload_id,
+                file_type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                reference=reference,
+                filename=filename,
+                extension=".png",
+                mime_type="image/png",
+                size=11,
+            )
+            for upload_id, reference, filename in zip(
+                upload_ids, [upload_ids[0], references[1]], ["earth.png", "moon.png"], strict=True
+            )
+        )
+        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder()).build(  # type: ignore[arg-type]
+            _ctx(soul, query="Search knowledge using these images.", files=files)
+        )
+        layers = {layer.name: layer for layer in result.request.composition.layers}
+        assert "knowledge_fs" in layers
+        config = DifyUserPromptLayerConfig.model_validate(layers["agent_app_user_prompt"].config)
+        # Render the serialized request through the actual runtime module, not just the API DTO.
+        deps = _LayerDeps(
+            layers={"agent_app_user_prompt": {"config": json.loads(config.model_dump_json()), "state": {}}}
+        )
+        prompts = user_prompt_layer.Capability("agent_app_user_prompt").build_user_content(deps)  # type: ignore[arg-type]
+        assert isinstance(prompts[0], str)
+        assert json.loads(prompts[0].splitlines()[-1]) == [
+            {"filename": file.filename, "transfer_method": "local_file", "reference": reference}
+            for file, reference in zip(files, references, strict=True)
+        ]
+        assert len(prompts) == (3 if vision else 1)
+        for content, file in zip(prompts[1:], files, strict=False):
+            if transport == "url":
+                assert isinstance(content, ImageUrl)
+                assert content.url == f"https://files.example.com/{file.filename}"
+            else:
+                assert isinstance(content, BinaryContent)
+                assert content.data == b"image-bytes"
+            assert content.vendor_metadata == {"filename": file.filename, "detail": "low"}
 
     def test_build_preserves_inline_base64_transport_for_vision_model(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
@@ -403,6 +548,7 @@ class TestAgentAppRuntimeRequestBuilder:
         assert download.model_dump(exclude_none=True) == {
             "delivery": "download",
             "type": "document",
+            "filename": "brief.pdf",
             "transfer_method": "local_file",
             "reference": build_file_reference(record_id="upload-document-1"),
         }
@@ -568,7 +714,8 @@ class TestAgentAppRuntimeRequestBuilder:
         assert DifyPluginLLMLayerConfig.model_validate(llm.config).plugin_id == "langgenius/openai"
         assert DifyPluginLLMLayerConfig.model_validate(llm.config).model_provider == "openai"
 
-    def test_build_maps_agent_soul_knowledge_to_knowledge_layer(self):
+    def test_build_runs_legacy_knowledge_without_shell(self, monkeypatch: pytest.MonkeyPatch):
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=False)
         soul = AgentSoulConfig.model_validate(
             {
                 "model": {
@@ -598,18 +745,45 @@ class TestAgentAppRuntimeRequestBuilder:
         )
 
         result = builder.build(_ctx(soul))
+        layers = {layer.name: layer for layer in result.request.composition.layers}
+        assert "knowledge" in layers
+        assert "knowledge_fs" not in layers
+        assert layers["knowledge"].config["sets"][0]["id"] == "support"
 
-        knowledge = next(layer for layer in result.request.composition.layers if layer.name == "knowledge")
-        assert knowledge.config["execution_context"] == "execution_context"
-        dumped_config = DifyKnowledgeBaseLayerConfig.model_validate(knowledge.config).model_dump(
-            mode="json", by_alias=True
+    def test_build_runs_classic_and_agent_knowledge_together(self, monkeypatch: pytest.MonkeyPatch):
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
+        monkeypatch.setattr(
+            "services.agent.knowledge_runtime_config.DifyModelFactory",
+            RecordingModelFactory(schema=llm_schema(features=[])),
         )
-        knowledge_set = dumped_config["sets"][0]
-        assert [dataset["id"] for dataset in knowledge_set["datasets"]] == ["dataset-1", "dataset-2"]
-        assert knowledge_set["query"] == {"mode": "generated_query", "value": None}
-        assert knowledge_set["retrieval"]["mode"] == "multiple"
-        assert knowledge_set["retrieval"]["top_k"] == 3
-        assert knowledge_set["retrieval"]["score_threshold"] == 0.0
+        soul = _soul_with_model()
+        soul.knowledge = AgentSoulConfig.model_validate(
+            {
+                "knowledge": {
+                    "sets": [
+                        {
+                            "id": "classic",
+                            "name": "Classic Docs",
+                            "datasets": [{"id": "dataset-1"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {"mode": "multiple", "top_k": 3},
+                        }
+                    ],
+                    "spaces": [
+                        {
+                            "id": "new",
+                            "name": "New Docs",
+                            "control_space_id": "00000000-0000-4000-8000-000000000001",
+                        }
+                    ],
+                }
+            }
+        ).knowledge
+
+        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder()).build(_ctx(soul))  # type: ignore[arg-type]
+        layers = {layer.name: layer for layer in result.request.composition.layers}
+        assert layers["knowledge"].config["sets"][0]["id"] == "classic"
+        assert layers["knowledge_fs"].config["spaces"][0]["id"] == "new"
 
     def test_build_raises_when_model_missing(self):
         builder = AgentAppRuntimeRequestBuilder(

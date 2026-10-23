@@ -32,7 +32,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  get: mocks.profile,
+  request: mocks.profile,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()

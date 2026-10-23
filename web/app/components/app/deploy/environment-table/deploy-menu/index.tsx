@@ -57,12 +57,7 @@ export function EnvironmentDeployMenu({
           </Button>
         }
       />
-      <DropdownMenuContent
-        aria-busy={isLoading || isRetrying}
-        placement="bottom-end"
-        sideOffset={4}
-        className="w-42 p-1"
-      >
+      <DropdownMenuContent aria-busy={isLoading || isRetrying} className="w-42 p-1">
         <DropdownMenuGroup>
           <DropdownMenuGroupLabel className="px-2 py-1">
             {t(($) => $['card.notDeployed'])}

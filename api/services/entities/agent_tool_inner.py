@@ -22,6 +22,7 @@ class AgentToolInvokeCaller(BaseModel):
     node_execution_id: str | None = None
     agent_id: str | None = None
     agent_config_version_id: str | None = None
+    trace_session_id: str | None = Field(default=None, exclude_if=lambda value: value is None)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

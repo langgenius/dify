@@ -87,6 +87,1644 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /knowledge-fs/query-stream
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSAdmittedQueryRequest](#knowledgefsadmittedqueryrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base query event stream | **text/event-stream**: string<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/background-tasks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| task_ids | query | Comma-separated document or document_bulk task IDs for an exact lookup | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listBackgroundTasks | **application/json**: [KnowledgeFSBackgroundTaskListResponse](#knowledgefsbackgroundtasklistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/bulk-jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base bulk job | **application/json**: [KnowledgeFSBulkJobResponse](#knowledgefsbulkjobresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/deletion-batches/{batch_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| batch_id | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Deletion batch status | **application/json**: [KnowledgeFSBulkDeletionAcceptedResponse](#knowledgefsbulkdeletionacceptedresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/deletion-jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getDeletionJob | **application/json**: [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/deletion-jobs/{job_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | retryDeletionJob | **application/json**: [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/document-references/resolve
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| document_asset_id | query |  | Yes | string |
+| document_asset_version | query |  | Yes | integer |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | resolveDocumentReference | **application/json**: [KnowledgeFSResolvedDocumentReferenceResponse](#knowledgefsresolveddocumentreferenceresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base documents | **application/json**: [KnowledgeFSDocumentListResponse](#knowledgefsdocumentlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/documents/bulk
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSBulkDocumentDeletePayload](#knowledgefsbulkdocumentdeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base document deletions accepted | **application/json**: [KnowledgeFSBulkDeletionAcceptedResponse](#knowledgefsbulkdeletionacceptedresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/documents/reindex
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSDocumentReindexPayload](#knowledgefsdocumentreindexpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base document reindex queued | **application/json**: [KnowledgeFSDocumentReindexResponse](#knowledgefsdocumentreindexresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [KnowledgeFsRequestTooLargeError](#knowledgefsrequesttoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSDocumentDeletePayload](#knowledgefsdocumentdeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base document deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base document | **application/json**: [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSDocumentMetadataPayload](#knowledgefsdocumentmetadatapayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base document metadata updated | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/outline
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base document outline | **application/json**: [KnowledgeFSDocumentOutlineResponse](#knowledgefsdocumentoutlineresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base document revisions | **application/json**: [KnowledgeFSDocumentRevisionListResponse](#knowledgefsdocumentrevisionlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| query | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| revision | path |  | Yes | integer |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base document chunks | **application/json**: [KnowledgeFSDocumentChunkListResponse](#knowledgefsdocumentchunklistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks/{chunk_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| chunk_id | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| revision | path |  | Yes | integer |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base document chunk | **application/json**: [KnowledgeFSDocumentChunkResponse](#knowledgefsdocumentchunkresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base compilation job canceled | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base compilation job | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base compilation job retried | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listLogicalDocuments | **application/json**: [KnowledgeFSLogicalDocumentListResponse](#knowledgefslogicaldocumentlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getLogicalDocument | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/processing-tasks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document processing history | **application/json**: [KnowledgeFSDocumentProcessingTaskListResponse](#knowledgefsdocumentprocessingtasklistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/processing-tasks/{task_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document processing task | **application/json**: [KnowledgeFSDocumentProcessingTaskResponse](#knowledgefsdocumentprocessingtaskresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/queries/admission
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSQueryCreatePayload](#knowledgefsquerycreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base streaming query admitted through Dify API | **application/json**: [KnowledgeFSQueryAdmissionResponse](#knowledgefsqueryadmissionresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [KnowledgeFsRequestTooLargeError](#knowledgefsrequesttoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [KnowledgeFsRequestRejectedError](#knowledgefsrequestrejectederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/query-images
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Query image uploaded | **application/json**: [KnowledgeFSServiceQueryImageUploadResponse](#knowledgefsservicequeryimageuploadresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [KnowledgeFsRequestTooLargeError](#knowledgefsrequesttoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [KnowledgeFsRequestRejectedError](#knowledgefsrequestrejectederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base research tasks | **application/json**: [KnowledgeFSResearchTaskListResponse](#knowledgefsresearchtasklistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSResearchTaskCreatePayload](#knowledgefsresearchtaskcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base research task accepted | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [KnowledgeFsRequestTooLargeError](#knowledgefsrequesttoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [KnowledgeFsRequestRejectedError](#knowledgefsrequestrejectederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks/plan
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSResearchTaskPlanPayload](#knowledgefsresearchtaskplanpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base research task plan | **application/json**: [KnowledgeFSResearchTaskPlanResponse](#knowledgefsresearchtaskplanresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [KnowledgeFsRequestTooLargeError](#knowledgefsrequesttoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [KnowledgeFsRequestRejectedError](#knowledgefsrequestrejectederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base research task canceled | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base research task | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}/partials
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 25 |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base research task partial evidence | **application/json**: [KnowledgeFSResearchTaskPartialListResponse](#knowledgefsresearchtaskpartiallistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}/resume
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | resumeResearchTask | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/settings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base settings | **application/json**: [KnowledgeFSSettingsResponse](#knowledgefssettingsresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/settings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSettingsPayload](#knowledgefssettingspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base settings updated | **application/json**: [KnowledgeFSSettingsUpdateResponse](#knowledgefssettingsupdateresponse)<br> |
+| 202 | Agent Knowledge Base settings migration accepted | **application/json**: [KnowledgeFSSettingsUpdateResponse](#knowledgefssettingsupdateresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [KnowledgeFsRequestRejectedError](#knowledgefsrequestrejectederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/settings/migrations/{migration_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| migration_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getProfileMigration | **application/json**: [KnowledgeFSProfileMigrationResponse](#knowledgefsprofilemigrationresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-connections
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listSourceConnections | **application/json**: [KnowledgeFSSourceConnectionListResponse](#knowledgefssourceconnectionlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-connections
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSServiceSourceConnectionCreatePayload](#knowledgefsservicesourceconnectioncreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | createSourceConnection | **application/json**: [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-connections/{connection_id}/refresh
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceConnectionRefreshPayload](#knowledgefssourceconnectionrefreshpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | refreshSourceConnection | **application/json**: [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-providers
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Source providers | **application/json**: [KnowledgeFSSourceProviderListResponse](#knowledgefssourceproviderlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| sourceId | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listSourceWorkflows | **application/json**: [KnowledgeFSSourceWorkflowListResponse](#knowledgefssourceworkflowlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getSourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/cancel
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceWorkflowCancelPayload](#knowledgefssourceworkflowcancelpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | cancelSourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/pages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listCrawlPreviewPages | **application/json**: [KnowledgeFSCrawlPreviewPageListResponse](#knowledgefscrawlpreviewpagelistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | retrySourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/selection
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSCrawlPreviewSelectionPayload](#knowledgefscrawlpreviewselectionpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | selectCrawlPreviewPages | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base sources | **application/json**: [KnowledgeFSSourceListResponse](#knowledgefssourcelistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSServiceSourceCreatePayload](#knowledgefsservicesourcecreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Agent Knowledge Base source created | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [KnowledgeFsRateLimitExceededError](#knowledgefsratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| documents | query |  | No | string, <br>**Available values:** "cascade", "keep", <br>**Default:** cascade |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceDeletePayload](#knowledgefssourcedeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base source deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base source | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSServiceSourceUpdatePayload](#knowledgefsservicesourceupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base source updated | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### ~~[POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl~~
+
+***DEPRECATED***
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base source crawl | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-import
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSCrawlImportPayload](#knowledgefscrawlimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | importSelectedSourceCrawl | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | previewSourceCrawl | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| bucket | query |  | No | string |
+| continuationToken | query |  | No | string |
+| maxKeys | query |  | No | integer |
+| prefix | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base source files | **application/json**: [KnowledgeFSSourceFilesResponse](#knowledgefssourcefilesresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### ~~[POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import~~
+
+***DEPRECATED***
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceImportPagesPayload](#knowledgefssourceimportpagespayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base source pages imported | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### ~~[POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import-files~~
+
+***DEPRECATED***
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceImportFilesPayload](#knowledgefssourceimportfilespayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base source files imported | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base source pages | **application/json**: [KnowledgeFSSourcePagesResponse](#knowledgefssourcepagesresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | syncSource | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getSourceSyncPolicy | **application/json**: [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceSyncPolicyPayload](#knowledgefssourcesyncpolicypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | updateSourceSyncPolicy | **application/json**: [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/test
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base source credential test | **application/json**: [KnowledgeFSSourceCredentialTestResponse](#knowledgefssourcecredentialtestresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/workflow-imports
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceWorkflowImportPayload](#knowledgefssourceworkflowimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | importSourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| source | query |  | No | string, <br>**Available values:** "agent", "mcp", "retrieval_test", "service_api", "workflow" |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base traces | **application/json**: [KnowledgeFSTraceListResponse](#knowledgefstracelistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| trace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base answer trace | **application/json**: [KnowledgeFSAnswerTraceResponse](#knowledgefsanswertraceresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/conflicts
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 100 |
+| control_space_id | path |  | Yes | string |
+| trace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base trace conflicts | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/evidence
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 100 |
+| control_space_id | path |  | Yes | string |
+| trace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base trace evidence view | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/missing
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 100 |
+| control_space_id | path |  | Yes | string |
+| trace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base trace missing evidence | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ---
 ## default
 
@@ -2595,6 +4233,7 @@ Audio size exceeded. {message}
 | hit_count | integer |  | No |
 | id | string |  | No |
 | index_node_hash | string |  | No |
+| knowledge_fs_citation | [KnowledgeFsCitation](#knowledgefscitation) |  | No |
 | message_id | string |  | No |
 | position | integer |  | Yes |
 | score | number |  | No |
@@ -3849,6 +5488,1512 @@ The metadata content is incorrect. Please check and verify.
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
 
+#### KnowledgeFSActiveProfileRevisions
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding | integer |  | No |
+| retrieval | integer |  | No |
+
+#### KnowledgeFSAdmittedQueryRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| activeDocumentIds | [ string ] |  | No |
+| activeEntityIds | [ string ] |  | No |
+| knowledgeSpaceId | string |  | Yes |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" |  | No |
+| query | string |  | No |
+| queryImages | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
+| sessionId | string |  | No |
+
+#### KnowledgeFSAnswerTraceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| evidence_bundle_id | string |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" | *Enum:* `"auto"`, `"deep"`, `"fast"`, `"research"` | Yes |
+| query | string |  | Yes |
+| query_images | [ [KnowledgeFSQueryImageResponse](#knowledgefsqueryimageresponse) ] |  | No |
+| source | [KnowledgeFSTraceSource](#knowledgefstracesource) |  | No |
+| steps | [ [KnowledgeFSAnswerTraceStepResponse](#knowledgefsanswertracestepresponse) ] |  | Yes |
+
+#### KnowledgeFSAnswerTraceStepResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ended_at | string |  | No |
+| metadata | object |  | Yes |
+| name | string |  | Yes |
+| started_at | dateTime |  | Yes |
+| status | string, <br>**Available values:** "error", "ok", "skipped" | *Enum:* `"error"`, `"ok"`, `"skipped"` | Yes |
+
+#### KnowledgeFSBackgroundTaskFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| document_title | string |  | No |
+| error_code | string |  | Yes |
+| error_message | string |  | Yes |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | Yes |
+| job_id | string |  | No |
+
+#### KnowledgeFSBackgroundTaskListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+| task_ids | string | Comma-separated document or document_bulk task IDs for an exact lookup | No |
+
+#### KnowledgeFSBackgroundTaskListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSBackgroundTaskResponse](#knowledgefsbackgroundtaskresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSBackgroundTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| can_cancel | boolean |  | Yes |
+| can_retry | boolean |  | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| document_id | string |  | No |
+| document_revision | integer |  | No |
+| document_title | string |  | No |
+| error_code | string |  | No |
+| error_message | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| failures | [ [KnowledgeFSBackgroundTaskFailureResponse](#knowledgefsbackgroundtaskfailureresponse) ] |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| operation | string, <br>**Available values:** "document_delete", "document_processing", "document_reindex", "document_upload", "source_bulk", "source_crawl_import", "source_crawl_preview", "source_online_document_import", "source_online_drive_import", "source_sync" | *Enum:* `"document_delete"`, `"document_processing"`, `"document_reindex"`, `"document_upload"`, `"source_bulk"`, `"source_crawl_import"`, `"source_crawl_preview"`, `"source_online_document_import"`, `"source_online_drive_import"`, `"source_sync"` | Yes |
+| progress_completed | integer |  | Yes |
+| progress_failed | integer |  | Yes |
+| progress_percent | integer |  | Yes |
+| progress_total | integer |  | Yes |
+| semantic_enrichment | [KnowledgeFSSemanticEnrichmentResponse](#knowledgefssemanticenrichmentresponse) |  | No |
+| source_id | string |  | No |
+| source_title | string |  | No |
+| state | string, <br>**Available values:** "canceled", "completed", "failed", "queued", "running" | *Enum:* `"canceled"`, `"completed"`, `"failed"`, `"queued"`, `"running"` | Yes |
+| task_kind | string, <br>**Available values:** "document", "document_bulk", "source" | *Enum:* `"document"`, `"document_bulk"`, `"source"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSBulkDeletionAcceptedItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| document_title | string |  | No |
+| job | [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse) |  | Yes |
+| status_url | string |  | Yes |
+
+#### KnowledgeFSBulkDeletionAcceptedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| batch_id | string |  | No |
+| items | [ [KnowledgeFSBulkDeletionAcceptedItemResponse](#knowledgefsbulkdeletionaccepteditemresponse) ] |  | Yes |
+| results | [ [KnowledgeFSBulkDeletionResultResponse](#knowledgefsbulkdeletionresultresponse) ] |  | No |
+| status_url | string |  | No |
+| total | integer |  | Yes |
+
+#### KnowledgeFSBulkDeletionResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| error | [KnowledgeFSDurableDeletionErrorResponse](#knowledgefsdurabledeletionerrorresponse) |  | No |
+| job | [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse) |  | No |
+| status | string, <br>**Available values:** "accepted", "pending", "rejected" | *Enum:* `"accepted"`, `"pending"`, `"rejected"` | Yes |
+| status_url | string |  | No |
+
+#### KnowledgeFSBulkDocumentDeleteItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documentId | string |  | Yes |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSBulkDocumentDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | [ [KnowledgeFSBulkDocumentDeleteItemPayload](#knowledgefsbulkdocumentdeleteitempayload) ] |  | Yes |
+
+#### KnowledgeFSBulkJobFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| document_title | string |  | No |
+| error_code | string |  | Yes |
+| error_message | string |  | Yes |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| job_id | string |  | No |
+
+#### KnowledgeFSBulkJobResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canceled_items | integer |  | Yes |
+| completed_items | integer |  | Yes |
+| created_at | dateTime |  | Yes |
+| failed_item_ids | [ string ] |  | Yes |
+| failed_items | integer |  | Yes |
+| failures | [ [KnowledgeFSBulkJobFailureResponse](#knowledgefsbulkjobfailureresponse) ] |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| status | string, <br>**Available values:** "canceled", "completed", "failed", "running" | *Enum:* `"canceled"`, `"completed"`, `"failed"`, `"running"` | Yes |
+| total_items | integer |  | Yes |
+| type | string, <br>**Available values:** "document_delete", "document_reindex", "document_upload" | *Enum:* `"document_delete"`, `"document_reindex"`, `"document_upload"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSCrawlImportPagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| description | string |  | No |
+| sourceUrl | string |  | Yes |
+| title | string |  | No |
+
+#### KnowledgeFSCrawlImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| desiredSyncPolicy | [KnowledgeFSSourceEditSyncPolicyPayload](#knowledgefssourceeditsyncpolicypayload) |  | No |
+| pages | [ [KnowledgeFSCrawlImportPagePayload](#knowledgefscrawlimportpagepayload) ] |  | No |
+| replaceExistingSelection | boolean |  | No |
+| sourceUpdate | [KnowledgeFSSourceImportConfigurationPayload](#knowledgefssourceimportconfigurationpayload) |  | No |
+| sourceUrls | [ string ] |  | Yes |
+
+#### KnowledgeFSCrawlPreviewPageListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSCrawlPreviewPageListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSCrawlPreviewPageResponse](#knowledgefscrawlpreviewpageresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSCrawlPreviewPageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| etag | string |  | No |
+| page_id | string |  | Yes |
+| source_url | string |  | Yes |
+| title | string |  | No |
+
+#### KnowledgeFSCrawlPreviewSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| pageIds | [ string ] |  | Yes |
+
+#### KnowledgeFSCrawledPageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| description | string |  | No |
+| source_url | string |  | Yes |
+| title | string |  | No |
+
+#### KnowledgeFSCursorQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSDocumentChunkListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+| query | string |  | No |
+
+#### KnowledgeFSDocumentChunkListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSDocumentChunkResponse](#knowledgefsdocumentchunkresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSDocumentChunkResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| document_id | string |  | Yes |
+| document_revision | integer |  | Yes |
+| enabled | boolean |  | Yes |
+| end_offset | integer |  | No |
+| id | string |  | Yes |
+| kind | string, <br>**Available values:** "chunk", "image", "section", "summary", "table", <br>**Default:** chunk | *Enum:* `"chunk"`, `"image"`, `"section"`, `"summary"`, `"table"` | No |
+| knowledge_space_id | string |  | Yes |
+| ordinal | integer |  | Yes |
+| parent_chunk_id | string |  | No |
+| parse_element_ids | [ string ] |  | Yes |
+| section_path | [ string ] |  | No |
+| start_offset | integer |  | No |
+| text | string |  | Yes |
+| token_count | integer |  | Yes |
+| user_metadata | object |  | Yes |
+
+#### KnowledgeFSDocumentCompilationJobResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| base_head_revision | integer |  | No |
+| candidate_fingerprint | string |  | No |
+| candidate_publication_id | string |  | No |
+| completed_at | number |  | No |
+| created_at | number |  | Yes |
+| document_asset_id | string |  | Yes |
+| error | string |  | No |
+| execution_attempts | integer |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| max_execution_attempts | integer |  | No |
+| run_state | string |  | No |
+| stage | string, <br>**Available values:** "canceled", "failed", "nodes_generated", "outline_built", "parsed", "projection_built", "published", "queued", "smoke_eval_passed" | *Enum:* `"canceled"`, `"failed"`, `"nodes_generated"`, `"outline_built"`, `"parsed"`, `"projection_built"`, `"published"`, `"queued"`, `"smoke_eval_passed"` | Yes |
+| updated_at | number |  | Yes |
+| version | integer |  | Yes |
+
+#### KnowledgeFSDocumentDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSDocumentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSDocumentMetadataPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedRowVersion | integer |  | Yes |
+| patch | object |  | Yes |
+
+#### KnowledgeFSDocumentOutlineNodeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| child_node_ids | [ string ] |  | No |
+| children | [ [KnowledgeFSDocumentOutlineNodeResponse](#knowledgefsdocumentoutlinenoderesponse) ] |  | No |
+| end_offset | integer |  | No |
+| end_page | integer |  | No |
+| id | string |  | Yes |
+| level | integer |  | Yes |
+| metadata | object |  | Yes |
+| section_path | [ string ] |  | No |
+| source_element_ids | [ string ] |  | No |
+| source_node_ids | [ string ] |  | No |
+| start_offset | integer |  | No |
+| start_page | integer |  | No |
+| summary | string |  | No |
+| title | string |  | Yes |
+| title_location | object |  | No |
+| toc_source | string |  | Yes |
+
+#### KnowledgeFSDocumentOutlineResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| artifact_hash | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| document_asset_id | string |  | Yes |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| metadata | object |  | Yes |
+| nodes | [ [KnowledgeFSDocumentOutlineNodeResponse](#knowledgefsdocumentoutlinenoderesponse) ] |  | Yes |
+| outline_version | string |  | Yes |
+| parse_artifact_id | string |  | Yes |
+| updated_at | string |  | No |
+| version | integer |  | Yes |
+
+#### KnowledgeFSDocumentProcessingTaskListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSDocumentProcessingTaskResponse](#knowledgefsdocumentprocessingtaskresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSDocumentProcessingTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_operations | [ string ] |  | No |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| document_id | string |  | Yes |
+| document_revision | integer |  | Yes |
+| error_code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" |  | No |
+| error_message | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| phase | string |  | No |
+| progress_percent | integer |  | Yes |
+| retry_at | string |  | No |
+| semantic_enrichment | [KnowledgeFSSemanticEnrichmentResponse](#knowledgefssemanticenrichmentresponse) |  | No |
+| stage | string, <br>**Available values:** "nodes_generated", "outline_built", "parsed", "projection_built", "published", "queued", "smoke_eval_passed" | *Enum:* `"nodes_generated"`, `"outline_built"`, `"parsed"`, `"projection_built"`, `"published"`, `"queued"`, `"smoke_eval_passed"` | Yes |
+| state | string, <br>**Available values:** "canceled", "dispatch_pending", "failed", "queued", "retry_wait", "running", "succeeded", "superseded" | *Enum:* `"canceled"`, `"dispatch_pending"`, `"failed"`, `"queued"`, `"retry_wait"`, `"running"`, `"succeeded"`, `"superseded"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSDocumentReferenceQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_asset_id | string |  | Yes |
+| document_asset_version | integer |  | Yes |
+
+#### KnowledgeFSDocumentReindexItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| asset | [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse) |  | No |
+| code | string |  | No |
+| compilation_job | object |  | No |
+| document_id | string |  | No |
+| error | string |  | No |
+| status | string, <br>**Available values:** "disabled", "failed", "not_found", "pending", "queued" | *Enum:* `"disabled"`, `"failed"`, `"not_found"`, `"pending"`, `"queued"` | Yes |
+| status_url | string |  | No |
+
+#### KnowledgeFSDocumentReindexPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| all | boolean |  | No |
+| documentIds | [ string ] |  | No |
+
+#### KnowledgeFSDocumentReindexResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bulk_job_id | string |  | Yes |
+| items | [ [KnowledgeFSDocumentReindexItemResponse](#knowledgefsdocumentreindexitemresponse) ] |  | Yes |
+| total | integer |  | Yes |
+
+#### KnowledgeFSDocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| filename | string |  | Yes |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| metadata | object |  | Yes |
+| mime_type | string |  | Yes |
+| object_key | string |  | Yes |
+| parser_status | string, <br>**Available values:** "failed", "parsed", "pending" | *Enum:* `"failed"`, `"parsed"`, `"pending"` | Yes |
+| sha256 | string |  | Yes |
+| size_bytes | integer |  | Yes |
+| source_id | string |  | No |
+| updated_at | string |  | No |
+| version | integer |  | Yes |
+
+#### KnowledgeFSDocumentRevisionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSDocumentRevisionResponse](#knowledgefsdocumentrevisionresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSDocumentRevisionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| activated_at | string |  | No |
+| content_hash | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| document_asset_id | string |  | Yes |
+| document_asset_version | integer |  | Yes |
+| document_id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mime_type | string |  | Yes |
+| revision | integer |  | Yes |
+| size_bytes | integer |  | Yes |
+| state | string, <br>**Available values:** "active", "candidate", "failed", "superseded" | *Enum:* `"active"`, `"candidate"`, `"failed"`, `"superseded"` | Yes |
+
+#### KnowledgeFSDurableDeletionAcceptedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_title | string |  | No |
+| job | [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse) |  | Yes |
+| status_url | string |  | Yes |
+
+#### KnowledgeFSDurableDeletionErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| retryable | boolean |  | Yes |
+
+#### KnowledgeFSDurableDeletionJobResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checkpoint | string, <br>**Available values:** "completed", "deleting_derived_data", "deleting_objects", "deleting_primary_data", "quiescing", "requested" | *Enum:* `"completed"`, `"deleting_derived_data"`, `"deleting_objects"`, `"deleting_primary_data"`, `"quiescing"`, `"requested"` | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| error | [KnowledgeFSDurableDeletionErrorResponse](#knowledgefsdurabledeletionerrorresponse) |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mode | string, <br>**Available values:** "cascade", "keep" |  | No |
+| progress | [KnowledgeFSDurableDeletionProgressResponse](#knowledgefsdurabledeletionprogressresponse) |  | No |
+| retry_at | string |  | No |
+| run_state | string, <br>**Available values:** "canceled", "completed", "dispatch_pending", "failed", "queued", "retry_wait", "running" | *Enum:* `"canceled"`, `"completed"`, `"dispatch_pending"`, `"failed"`, `"queued"`, `"retry_wait"`, `"running"` | Yes |
+| target_id | string |  | Yes |
+| target_type | string, <br>**Available values:** "document", "knowledge_space", "logical_document", "source" | *Enum:* `"document"`, `"knowledge_space"`, `"logical_document"`, `"source"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSDurableDeletionProgressResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed_items | integer |  | Yes |
+| current_item_kind | string |  | No |
+| total_items | integer |  | No |
+
+#### KnowledgeFSEmbeddingSettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dimension | integer |  | No |
+| model | string |  | Yes |
+| plugin_id | string |  | Yes |
+| provider | string |  | Yes |
+| revision | integer |  | No |
+| vector_space_id | string |  | No |
+
+#### KnowledgeFSLogicalDocumentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSLogicalDocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active | [KnowledgeFSDocumentRevisionResponse](#knowledgefsdocumentrevisionresponse) |  | Yes |
+| active_revision | integer |  | No |
+| created_at | dateTime |  | Yes |
+| disabled_at | string |  | No |
+| disabled_by_subject_id | string |  | No |
+| enabled | boolean, <br>**Default:** true |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| latest_task | [KnowledgeFSBackgroundTaskResponse](#knowledgefsbackgroundtaskresponse) |  | No |
+| provider_item_id | string |  | No |
+| row_version | integer |  | Yes |
+| source_id | string |  | No |
+| status | string, <br>**Available values:** "deleting", "failed", "pending", "ready" | *Enum:* `"deleting"`, `"failed"`, `"pending"`, `"ready"` | Yes |
+| title | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| user_metadata | object |  | Yes |
+
+#### KnowledgeFSOnlineDocumentWorkflowImportItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| etag | string |  | No |
+| lastEditedTime | string |  | No |
+| name | string |  | No |
+| pageId | string |  | Yes |
+| providerItemId | string |  | Yes |
+| type | string |  | Yes |
+| workspaceId | string |  | Yes |
+
+#### KnowledgeFSOnlineDocumentWorkflowImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| desiredSyncPolicy | [KnowledgeFSSourceEditSyncPolicyPayload](#knowledgefssourceeditsyncpolicypayload) |  | No |
+| items | [ [KnowledgeFSOnlineDocumentWorkflowImportItemPayload](#knowledgefsonlinedocumentworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
+| sourceUpdate | [KnowledgeFSSourceImportConfigurationPayload](#knowledgefssourceimportconfigurationpayload) |  | No |
+
+#### KnowledgeFSOnlineDriveWorkflowImportItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bucket | string |  | No |
+| etag | string |  | No |
+| id | string |  | Yes |
+| mimeType | string |  | No |
+| name | string |  | Yes |
+| providerItemId | string |  | Yes |
+
+#### KnowledgeFSOnlineDriveWorkflowImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| desiredSyncPolicy | [KnowledgeFSSourceEditSyncPolicyPayload](#knowledgefssourceeditsyncpolicypayload) |  | No |
+| items | [ [KnowledgeFSOnlineDriveWorkflowImportItemPayload](#knowledgefsonlinedriveworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
+| sourceUpdate | [KnowledgeFSSourceImportConfigurationPayload](#knowledgefssourceimportconfigurationpayload) |  | No |
+
+#### KnowledgeFSProductRerankProfile
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| model | [KnowledgeFSProfileModelSelection](#knowledgefsprofilemodelselection) |  | No |
+
+#### KnowledgeFSProductRetrievalProfile
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| defaultMode | string, <br>**Available values:** "deep", "fast", "research" | *Enum:* `"deep"`, `"fast"`, `"research"` | Yes |
+| reasoningModel | [KnowledgeFSProfileModelSelection](#knowledgefsprofilemodelselection) |  | Yes |
+| rerank | [KnowledgeFSProductRerankProfile](#knowledgefsproductrerankprofile) |  | Yes |
+| scoreThreshold | [KnowledgeFSProductScoreThreshold](#knowledgefsproductscorethreshold) |  | Yes |
+| topK | integer |  | Yes |
+
+#### KnowledgeFSProductScoreThreshold
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| stage | string, <br>**Available values:** "mode-final", "rerank", <br>**Default:** mode-final | *Enum:* `"mode-final"`, `"rerank"` | No |
+| value | number |  | No |
+
+#### KnowledgeFSProfileMigrationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| candidate_publication_fingerprint | string |  | No |
+| changed_kind | string, <br>**Available values:** "embedding", "retrieval" | *Enum:* `"embedding"`, `"retrieval"` | Yes |
+| checkpoint | string, <br>**Available values:** "activated", "candidate-built", "evaluated", "queued" | *Enum:* `"activated"`, `"candidate-built"`, `"evaluated"`, `"queued"` | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| error_code | string |  | No |
+| evaluation_summary | object |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| rebuild_scope | string, <br>**Available values:** "clone-publication", "full-page-index-summary-outline", "full-vector-space" | *Enum:* `"clone-publication"`, `"full-page-index-summary-outline"`, `"full-vector-space"` | Yes |
+| run_state | string, <br>**Available values:** "canceled", "failed", "queued", "running", "succeeded" | *Enum:* `"canceled"`, `"failed"`, `"queued"`, `"running"`, `"succeeded"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSProfileModelSelection
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| pluginId | string |  | Yes |
+| provider | string |  | Yes |
+
+#### KnowledgeFSPublicFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string, <br>**Available values:** "configure_model", "configure_parser", "configure_source", "contact_admin", "retry", "reupload" |  | No |
+| category | string, <br>**Available values:** "authorization", "canceled", "configuration", "conflict", "dependency", "internal", "not_found", "rate_limit", "timeout", "validation" | *Enum:* `"authorization"`, `"canceled"`, `"configuration"`, `"conflict"`, `"dependency"`, `"internal"`, `"not_found"`, `"rate_limit"`, `"timeout"`, `"validation"` | Yes |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_LEASE_LOST"`, `"DOCUMENT_COMPILATION_PROFILE_CHANGED"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_COUNT_QUOTA_EXCEEDED"`, `"DOCUMENT_COUNT_QUOTA_UNAVAILABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_TIMEOUT"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"DOCUMENT_PARSER_UNSUPPORTED_TYPE"`, `"DOCUMENT_PDF_RENDER_FAILED"`, `"DURABLE_DELETION_IDEMPOTENCY_CONFLICT"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS"`, `"KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"`, `"LOGICAL_DOCUMENT_CAS_CONFLICT"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_CONTEXT_LIMIT"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_OUTPUT_LIMIT"`, `"MODEL_RUNTIME_RESPONSE_INVALID"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"RETRIEVAL_DELETION_IN_PROGRESS"`, `"RETRIEVAL_EXECUTION_LEASE_LOST"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CONNECTION_UNAVAILABLE"`, `"SOURCE_CRAWL_PAGE_NOT_FOUND"`, `"SOURCE_CRAWL_PROVIDER_UNAVAILABLE"`, `"SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_COMPILATION_FAILED"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_IMPORT_PARTIAL_FAILURE"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_UNAVAILABLE"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_UNAVAILABLE"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_PROVIDER_REJECTED"`, `"SOURCE_PROVIDER_TIMEOUT"`, `"SOURCE_PROVIDER_UNAVAILABLE"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_SYNC_SELECTION_MISMATCH"`, `"SOURCE_VERSION_CONFLICT"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_CONTENT_MISSING"`, `"SOURCE_WORKFLOW_CONTENT_TOO_LARGE"`, `"SOURCE_WORKFLOW_EXTERNAL_TIMEOUT"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"`, `"VECTOR_SPACE_QUOTA_EXCEEDED"`, `"VECTOR_SPACE_QUOTA_UNAVAILABLE"` | Yes |
+| message | string |  | Yes |
+| parameters | object |  | No |
+| retryPolicy | string, <br>**Available values:** "after_configuration", "automatic", "manual", "never" | *Enum:* `"after_configuration"`, `"automatic"`, `"manual"`, `"never"` | Yes |
+| stage | string |  | No |
+| traceId | string |  | No |
+
+#### KnowledgeFSQueryAdmissionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | dateTime |  | Yes |
+| operation_id | string |  | Yes |
+| request | [KnowledgeFSAdmittedQueryRequest](#knowledgefsadmittedqueryrequest) |  | Yes |
+| token | string |  | Yes |
+| trace_id | string |  | Yes |
+| url | string |  | Yes |
+
+#### KnowledgeFSQueryCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| activeDocumentIds | [ string ] |  | No |
+| activeEntityIds | [ string ] |  | No |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" |  | No |
+| query | string |  | No |
+| queryImages | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
+| sessionId | string |  | No |
+
+#### KnowledgeFSQueryImageReference
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| uploadFileId | string |  | Yes |
+
+#### KnowledgeFSQueryImageResponse
+
+One query image a retrieval run was asked with, enriched for console display.
+
+The gateway persists only the UploadFile reference and static metadata; the console fills in
+the file name and a short-lived signed preview URL for files the caller still owns.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| byte_size | integer |  | No |
+| mime_type | string |  | No |
+| name | string |  | No |
+| preview_url | string |  | No |
+| upload_file_id | string |  | Yes |
+
+#### KnowledgeFSReadinessCapabilities
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deep | boolean |  | Yes |
+| index | boolean |  | Yes |
+| ingest | boolean |  | Yes |
+| query | boolean |  | Yes |
+| research | boolean |  | Yes |
+| source_sync | boolean |  | Yes |
+
+#### KnowledgeFSReadinessIssue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string, <br>**Available values:** "binding_missing", "incompatible", "missing", "unavailable", "validation_failed" | *Enum:* `"binding_missing"`, `"incompatible"`, `"missing"`, `"unavailable"`, `"validation_failed"` | Yes |
+| field | string, <br>**Available values:** "embedding", "publication", "reasoning", "rerank" | *Enum:* `"embedding"`, `"publication"`, `"reasoning"`, `"rerank"` | Yes |
+| retryable | boolean |  | Yes |
+
+#### KnowledgeFSResearchTaskCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budgetUsd | number |  | No |
+| limits | [KnowledgeFSResearchTaskLimits](#knowledgefsresearchtasklimits) |  | No |
+| metadata | object |  | No |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" |  | No |
+| query | string |  | No |
+| queryImages | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
+| topK | integer |  | No |
+
+#### KnowledgeFSResearchTaskLimits
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| maxRetrievalSteps | integer |  | No |
+| maxScannedResources | integer |  | No |
+| maxToolCalls | integer |  | No |
+| timeoutMs | integer |  | No |
+
+#### KnowledgeFSResearchTaskListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSResearchTaskPartialListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSResearchTaskPartialResponse](#knowledgefsresearchtaskpartialresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSResearchTaskPartialResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
+| evidence_bundle | object |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| research_task_job_id | string |  | Yes |
+| sequence | integer |  | Yes |
+
+#### KnowledgeFSResearchTaskPartialsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 25 |  | No |
+
+#### KnowledgeFSResearchTaskPlanBudgetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budget_usd | number |  | No |
+| exceeds_budget | boolean |  | Yes |
+| remaining_budget_usd | number |  | No |
+
+#### KnowledgeFSResearchTaskPlanPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budgetUsd | number |  | No |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" |  | No |
+| query | string |  | No |
+| queryImages | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
+| topK | integer |  | No |
+
+#### KnowledgeFSResearchTaskPlanResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budget | [KnowledgeFSResearchTaskPlanBudgetResponse](#knowledgefsresearchtaskplanbudgetresponse) |  | Yes |
+| estimates | object |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| query | string |  | Yes |
+| query_images | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
+| retrieval_plan | [KnowledgeFSResearchTaskRetrievalPlanResponse](#knowledgefsresearchtaskretrievalplanresponse) |  | Yes |
+| steps | [ object ] |  | Yes |
+| strategy_version | string |  | Yes |
+
+#### KnowledgeFSResearchTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budget_usd | number |  | No |
+| completed_at | number |  | No |
+| cost | object |  | Yes |
+| created_at | number |  | Yes |
+| error | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| limits | [KnowledgeFSResearchTaskLimits](#knowledgefsresearchtasklimits) |  | No |
+| metadata | object |  | Yes |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" |  | No |
+| query | string |  | Yes |
+| query_images | [ [KnowledgeFSQueryImageResponse](#knowledgefsqueryimageresponse) ] |  | No |
+| stage | string, <br>**Available values:** "analyzing", "canceled", "completed", "failed", "generating", "paused", "planning", "queued", "retrieving" | *Enum:* `"analyzing"`, `"canceled"`, `"completed"`, `"failed"`, `"generating"`, `"paused"`, `"planning"`, `"queued"`, `"retrieving"` | Yes |
+| top_k | integer |  | No |
+| updated_at | number |  | Yes |
+
+#### KnowledgeFSResearchTaskRetrievalPlanResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dense_top_k | integer |  | Yes |
+| fts_top_k | integer |  | Yes |
+| fusion_limit | integer |  | Yes |
+| query_language | string, <br>**Available values:** "cjk", "latin", "mixed-cjk-latin", "other" | *Enum:* `"cjk"`, `"latin"`, `"mixed-cjk-latin"`, `"other"` | Yes |
+| requested_mode | string, <br>**Available values:** "auto", "deep", "fast", "research" | *Enum:* `"auto"`, `"deep"`, `"fast"`, `"research"` | Yes |
+| rerank_candidate_limit | integer |  | Yes |
+| resolved_mode | string, <br>**Available values:** "deep", "fast", "research" | *Enum:* `"deep"`, `"fast"`, `"research"` | Yes |
+| strategy_version | string |  | Yes |
+| top_k | integer |  | Yes |
+
+#### KnowledgeFSResolvedDocumentReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| revision | integer |  | Yes |
+
+#### KnowledgeFSRetrievalSettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_mode | string, <br>**Available values:** "deep", "fast", "research" | *Enum:* `"deep"`, `"fast"`, `"research"` | Yes |
+| reasoning_model | [KnowledgeFSEmbeddingSettingsResponse](#knowledgefsembeddingsettingsresponse) |  | Yes |
+| rerank | [KnowledgeFSProductRerankProfile](#knowledgefsproductrerankprofile) |  | Yes |
+| revision | integer |  | No |
+| score_threshold | [KnowledgeFSProductScoreThreshold](#knowledgefsproductscorethreshold) |  | Yes |
+| top_k | integer |  | Yes |
+
+#### KnowledgeFSSemanticEnrichmentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error_code | string |  | No |
+| error_message | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| nodes_completed | integer |  | Yes |
+| nodes_total | integer |  | No |
+| provider_calls | integer |  | No |
+| provider_calls_maximum | integer |  | No |
+| state | string, <br>**Available values:** "disabled", "failed", "not_scheduled", "pending", "ready", "running" | *Enum:* `"disabled"`, `"failed"`, `"not_scheduled"`, `"pending"`, `"ready"`, `"running"` | Yes |
+| updated_at | string |  | No |
+
+#### KnowledgeFSServiceQueryImageUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| byte_size | integer |  | Yes |
+| mime_type | string |  | Yes |
+| upload_file_id | string |  | Yes |
+
+#### KnowledgeFSServiceSourceConnectionCreatePayload
+
+Dify owns datasource secrets; clients supply an opaque binding in configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authKind | string, <br>**Default:** endpoint |  | No |
+| configuration | object |  | No |
+| credentials | object |  | No |
+| name | string |  | Yes |
+| providerId | string |  | Yes |
+
+#### KnowledgeFSServiceSourceCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connectionId | string |  | No |
+| metadata | object |  | No |
+| name | string |  | Yes |
+| permissionScope | [ string ] |  | No |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" |  | No |
+| type | string, <br>**Available values:** "connector", "object-storage", "upload", "web" | *Enum:* `"connector"`, `"object-storage"`, `"upload"`, `"web"` | Yes |
+| uri | string |  | Yes |
+
+#### KnowledgeFSServiceSourceUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedVersion | integer |  | No |
+| metadata | object |  | No |
+| name | string |  | No |
+| providerParameters | object |  | No |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" |  | No |
+| syncAfterUpdate | boolean |  | No |
+| uri | string |  | No |
+
+#### KnowledgeFSSettingsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding | [KnowledgeFSProfileModelSelection](#knowledgefsprofilemodelselection) |  | No |
+| expectedRevision | integer |  | Yes |
+| retrieval | [KnowledgeFSProductRetrievalProfile](#knowledgefsproductretrievalprofile) |  | No |
+
+#### KnowledgeFSSettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_profile_available | boolean |  | Yes |
+| active_profile_revisions | [KnowledgeFSActiveProfileRevisions](#knowledgefsactiveprofilerevisions) |  | Yes |
+| capabilities | [KnowledgeFSReadinessCapabilities](#knowledgefsreadinesscapabilities) |  | Yes |
+| configuration_state | string, <br>**Available values:** "active", "pending-validation", "setup-required", "validation-failed" | *Enum:* `"active"`, `"pending-validation"`, `"setup-required"`, `"validation-failed"` | Yes |
+| embedding | [KnowledgeFSEmbeddingSettingsResponse](#knowledgefsembeddingsettingsresponse) |  | Yes |
+| issues | [ [KnowledgeFSReadinessIssue](#knowledgefsreadinessissue) ] |  | Yes |
+| retrieval | [KnowledgeFSRetrievalSettingsResponse](#knowledgefsretrievalsettingsresponse) |  | Yes |
+| revision | integer |  | Yes |
+
+#### KnowledgeFSSettingsUpdateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| migration | [KnowledgeFSProfileMigrationResponse](#knowledgefsprofilemigrationresponse) |  | No |
+| settings | [KnowledgeFSSettingsResponse](#knowledgefssettingsresponse) |  | Yes |
+
+#### KnowledgeFSSourceConnectionListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSSourceConnectionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSSourceConnectionRefreshPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedVersion | integer |  | Yes |
+
+#### KnowledgeFSSourceConnectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_kind | string, <br>**Available values:** "api-key", "endpoint", "oauth2" | *Enum:* `"api-key"`, `"endpoint"`, `"oauth2"` | Yes |
+| configuration | object |  | Yes |
+| created_at | dateTime |  | Yes |
+| error_code | string |  | No |
+| expires_at | string |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| name | string |  | Yes |
+| provider_id | string |  | Yes |
+| scopes | [ string ] |  | Yes |
+| status | string, <br>**Available values:** "active", "error", "expired", "provisioning", "revoked" | *Enum:* `"active"`, `"error"`, `"expired"`, `"provisioning"`, `"revoked"` | Yes |
+| updated_at | dateTime |  | Yes |
+| version | integer |  | Yes |
+
+#### KnowledgeFSSourceCrawlResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed | integer |  | No |
+| failed | integer |  | No |
+| imported | integer |  | No |
+| pages | [ [KnowledgeFSCrawledPageResponse](#knowledgefscrawledpageresponse) ] |  | Yes |
+| replaced | integer |  | No |
+| skipped | integer |  | No |
+| status | string |  | No |
+| total | integer |  | No |
+
+#### KnowledgeFSSourceCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connectionId | string |  | No |
+| credentials | object |  | No |
+| metadata | object |  | No |
+| name | string |  | Yes |
+| permissionScope | [ string ] |  | No |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" |  | No |
+| type | string, <br>**Available values:** "connector", "object-storage", "upload", "web" | *Enum:* `"connector"`, `"object-storage"`, `"upload"`, `"web"` | Yes |
+| uri | string |  | Yes |
+
+#### KnowledgeFSSourceCredentialTestResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" |  | No |
+| error | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| valid | boolean |  | Yes |
+
+#### KnowledgeFSSourceDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSSourceDeleteQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | string, <br>**Available values:** "cascade", "keep", <br>**Default:** cascade | *Enum:* `"cascade"`, `"keep"` | No |
+
+#### KnowledgeFSSourceEditOnlineDocumentSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSOnlineDocumentWorkflowImportItemPayload](#knowledgefsonlinedocumentworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
+
+#### KnowledgeFSSourceEditOnlineDriveSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSOnlineDriveWorkflowImportItemPayload](#knowledgefsonlinedriveworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
+
+#### KnowledgeFSSourceEditSyncPolicyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| customIntervalSeconds | integer |  | No |
+| enabled | boolean |  | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual" | *Enum:* `"custom"`, `"interval"`, `"manual"` | Yes |
+
+#### KnowledgeFSSourceEditWebsiteSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string |  | Yes |
+| sourceUrls | [ string ] |  | Yes |
+
+#### KnowledgeFSSourceFileBucketResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bucket | string |  | No |
+| continuation_token | string |  | No |
+| files | [ [KnowledgeFSSourceFileResponse](#knowledgefssourcefileresponse) ] |  | Yes |
+| is_truncated | boolean |  | No |
+
+#### KnowledgeFSSourceFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| size | number |  | No |
+| type | string |  | Yes |
+
+#### KnowledgeFSSourceFilesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bucket | string |  | No |
+| continuationToken | string |  | No |
+| maxKeys | integer |  | No |
+| prefix | string |  | No |
+
+#### KnowledgeFSSourceFilesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| buckets | [ [KnowledgeFSSourceFileBucketResponse](#knowledgefssourcefilebucketresponse) ] |  | Yes |
+
+#### KnowledgeFSSourceImportConfigurationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedVersion | integer |  | Yes |
+| metadata | object |  | No |
+| name | string |  | No |
+| providerParameters | object |  | No |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" |  | No |
+| uri | string |  | No |
+
+#### KnowledgeFSSourceImportFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_LEASE_LOST"`, `"DOCUMENT_COMPILATION_PROFILE_CHANGED"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_COUNT_QUOTA_EXCEEDED"`, `"DOCUMENT_COUNT_QUOTA_UNAVAILABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_TIMEOUT"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"DOCUMENT_PARSER_UNSUPPORTED_TYPE"`, `"DOCUMENT_PDF_RENDER_FAILED"`, `"DURABLE_DELETION_IDEMPOTENCY_CONFLICT"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS"`, `"KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"`, `"LOGICAL_DOCUMENT_CAS_CONFLICT"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_CONTEXT_LIMIT"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_OUTPUT_LIMIT"`, `"MODEL_RUNTIME_RESPONSE_INVALID"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"RETRIEVAL_DELETION_IN_PROGRESS"`, `"RETRIEVAL_EXECUTION_LEASE_LOST"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CONNECTION_UNAVAILABLE"`, `"SOURCE_CRAWL_PAGE_NOT_FOUND"`, `"SOURCE_CRAWL_PROVIDER_UNAVAILABLE"`, `"SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_COMPILATION_FAILED"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_IMPORT_PARTIAL_FAILURE"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_UNAVAILABLE"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_UNAVAILABLE"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_PROVIDER_REJECTED"`, `"SOURCE_PROVIDER_TIMEOUT"`, `"SOURCE_PROVIDER_UNAVAILABLE"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_SYNC_SELECTION_MISMATCH"`, `"SOURCE_VERSION_CONFLICT"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_CONTENT_MISSING"`, `"SOURCE_WORKFLOW_CONTENT_TOO_LARGE"`, `"SOURCE_WORKFLOW_EXTERNAL_TIMEOUT"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"`, `"VECTOR_SPACE_QUOTA_EXCEEDED"`, `"VECTOR_SPACE_QUOTA_UNAVAILABLE"` | Yes |
+| error | string |  | Yes |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| filename | string |  | Yes |
+
+#### KnowledgeFSSourceImportFilePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bucket | string |  | No |
+| id | string |  | Yes |
+| mimeType | string |  | No |
+| name | string |  | Yes |
+
+#### KnowledgeFSSourceImportFilesPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| files | [ [KnowledgeFSSourceImportFilePayload](#knowledgefssourceimportfilepayload) ] |  | Yes |
+
+#### KnowledgeFSSourceImportPagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| lastEditedTime | string |  | No |
+| name | string |  | No |
+| pageId | string |  | Yes |
+| type | string |  | Yes |
+| workspaceId | string |  | Yes |
+
+#### KnowledgeFSSourceImportPagesPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| pages | [ [KnowledgeFSSourceImportPagePayload](#knowledgefssourceimportpagepayload) ] |  | Yes |
+
+#### KnowledgeFSSourceImportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | [ [KnowledgeFSSourceImportedDocumentResponse](#knowledgefssourceimporteddocumentresponse) ] |  | Yes |
+| failed | [ [KnowledgeFSSourceImportFailureResponse](#knowledgefssourceimportfailureresponse) ] |  | Yes |
+| skipped | [ string ] |  | Yes |
+
+#### KnowledgeFSSourceImportedDocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_asset_id | string |  | Yes |
+| filename | string |  | Yes |
+
+#### KnowledgeFSSourceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceResponse](#knowledgefssourceresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSSourcePageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| last_edited_time | string |  | No |
+| page_id | string |  | Yes |
+| page_name | string |  | Yes |
+| parent_id | string |  | No |
+| type | string |  | Yes |
+
+#### KnowledgeFSSourcePagesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSSourcePagesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| next_cursor | string |  | No |
+| workspaces | [ [KnowledgeFSSourceWorkspacePagesResponse](#knowledgefssourceworkspacepagesresponse) ] |  | Yes |
+
+#### KnowledgeFSSourceProviderFieldResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| format | string, <br>**Available values:** "password", "uri" |  | No |
+| name | string |  | Yes |
+| required | boolean |  | Yes |
+| secret | boolean |  | Yes |
+| type | string, <br>**Available values:** "boolean", "integer", "string" | *Enum:* `"boolean"`, `"integer"`, `"string"` | Yes |
+
+#### KnowledgeFSSourceProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceProviderResponse](#knowledgefssourceproviderresponse) ] |  | Yes |
+
+#### KnowledgeFSSourceProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_kinds | [ string, <br>**Available values:** "api-key", "endpoint", "oauth2" ] |  | Yes |
+| available | boolean |  | Yes |
+| capabilities | [ string, <br>**Available values:** "online-document", "online-drive", "website-crawl" ] |  | Yes |
+| configuration | [ [KnowledgeFSSourceProviderFieldResponse](#knowledgefssourceproviderfieldresponse) ] |  | Yes |
+| display_name | string |  | Yes |
+| id | string |  | Yes |
+| unavailable_reason | string |  | No |
+
+#### KnowledgeFSSourceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_id | string |  | No |
+| created_at | dateTime |  | Yes |
+| credential_configured | boolean |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| last_synced_at | string |  | No |
+| metadata | object |  | Yes |
+| name | string |  | Yes |
+| permission_scope | [ string ] |  | Yes |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" | *Enum:* `"active"`, `"disabled"`, `"error"`, `"syncing"` | Yes |
+| sync_policy | [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse) |  | No |
+| sync_workflow | [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse) |  | No |
+| type | string, <br>**Available values:** "connector", "object-storage", "upload", "web" | *Enum:* `"connector"`, `"object-storage"`, `"upload"`, `"web"` | Yes |
+| updated_at | dateTime |  | Yes |
+| uri | string |  | Yes |
+| version | integer |  | Yes |
+
+#### KnowledgeFSSourceSyncPolicyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| customIntervalSeconds | integer |  | No |
+| enabled | boolean |  | Yes |
+| expectedRevision | integer |  | Yes |
+| expectedSourceVersion | integer |  | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual" | *Enum:* `"custom"`, `"interval"`, `"manual"` | Yes |
+
+#### KnowledgeFSSourceSyncPolicyResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| custom_interval_seconds | integer |  | No |
+| enabled | boolean |  | Yes |
+| expected_source_version | integer |  | Yes |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual" | *Enum:* `"custom"`, `"interval"`, `"manual"` | Yes |
+| next_run_at | string |  | No |
+| revision | integer |  | Yes |
+| source_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSSourceUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedVersion | integer |  | No |
+| metadata | object |  | No |
+| name | string |  | No |
+| providerParameters | object |  | No |
+| selection | [KnowledgeFSSourceEditWebsiteSelectionPayload](#knowledgefssourceeditwebsiteselectionpayload)<br>[KnowledgeFSSourceEditOnlineDocumentSelectionPayload](#knowledgefssourceeditonlinedocumentselectionpayload)<br>[KnowledgeFSSourceEditOnlineDriveSelectionPayload](#knowledgefssourceeditonlinedriveselectionpayload) |  | No |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" |  | No |
+| syncAfterUpdate | boolean |  | No |
+| syncPolicy | [KnowledgeFSSourceEditSyncPolicyPayload](#knowledgefssourceeditsyncpolicypayload) |  | No |
+| uri | string |  | No |
+
+#### KnowledgeFSSourceWorkflowCancelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reason | string |  | No |
+
+#### KnowledgeFSSourceWorkflowImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSSourceWorkflowImportPayload | [KnowledgeFSOnlineDocumentWorkflowImportPayload](#knowledgefsonlinedocumentworkflowimportpayload)<br>[KnowledgeFSOnlineDriveWorkflowImportPayload](#knowledgefsonlinedriveworkflowimportpayload) |  |  |
+
+#### KnowledgeFSSourceWorkflowListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+| sourceId | string |  | No |
+
+#### KnowledgeFSSourceWorkflowListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSSourceWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canceled_at | string |  | No |
+| checkpoint | string |  | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| cursor | string |  | No |
+| execution_attempts | integer |  | Yes |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| id | string |  | Yes |
+| kind | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| last_error_code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" |  | No |
+| max_execution_attempts | integer |  | Yes |
+| progress_completed | integer |  | Yes |
+| progress_failed | integer |  | Yes |
+| progress_skipped | integer |  | Yes |
+| progress_total | integer |  | No |
+| source_id | string |  | No |
+| state | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSSourceWorkspacePagesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| pages | [ [KnowledgeFSSourcePageResponse](#knowledgefssourcepageresponse) ] |  | Yes |
+| total | integer |  | No |
+| workspace_id | string |  | No |
+| workspace_name | string |  | No |
+
+#### KnowledgeFSTraceEntriesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 100 |  | No |
+
+#### KnowledgeFSTraceEntryListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | string |  | No |
+| data | [ [KnowledgeFSTraceEntryResponse](#knowledgefstraceentryresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+| path | string |  | Yes |
+| preview | boolean |  | No |
+| truncated | boolean |  | Yes |
+
+#### KnowledgeFSTraceEntryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string, <br>**Available values:** "directory", "resource" | *Enum:* `"directory"`, `"resource"` | Yes |
+| metadata | object |  | Yes |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| resource_type | string |  | No |
+| target_id | string |  | No |
+| version | integer |  | No |
+
+#### KnowledgeFSTraceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSTraceResponse](#knowledgefstraceresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSTraceProfileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model | string |  | No |
+| embedding_vector_space_id | string |  | No |
+| projection_publication_id | string |  | No |
+| projection_version | integer |  | No |
+| reasoning_model | string |  | No |
+| rerank_model | string |  | No |
+| retrieval_profile_revision | integer |  | No |
+
+#### KnowledgeFSTraceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed | boolean |  | Yes |
+| created_at | dateTime |  | Yes |
+| duration_ms | integer |  | No |
+| evidence_bundle_id | string |  | No |
+| evidence_state | string |  | No |
+| final_score | number |  | No |
+| id | string |  | Yes |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" | *Enum:* `"auto"`, `"deep"`, `"fast"`, `"research"` | Yes |
+| open_bad_case_id | string |  | No |
+| profile | [KnowledgeFSTraceProfileResponse](#knowledgefstraceprofileresponse) |  | Yes |
+| query | string |  | Yes |
+| query_images | [ [KnowledgeFSQueryImageResponse](#knowledgefsqueryimageresponse) ] |  | No |
+| result_count | integer |  | Yes |
+| scores | [KnowledgeFSTraceScoresResponse](#knowledgefstracescoresresponse) |  | Yes |
+| source | [KnowledgeFSTraceSource](#knowledgefstracesource) |  | No |
+| stages | [ [KnowledgeFSTraceStageResponse](#knowledgefstracestageresponse) ] |  | Yes |
+
+#### KnowledgeFSTraceScoresResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| final | number |  | No |
+| rerank | number |  | No |
+| retrieval | number |  | No |
+
+#### KnowledgeFSTraceSource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSTraceSource | string |  |  |
+
+#### KnowledgeFSTraceStageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| candidate_count | integer |  | No |
+| name | string |  | Yes |
+| status | string, <br>**Available values:** "error", "ok", "skipped" | *Enum:* `"error"`, `"ok"`, `"skipped"` | Yes |
+
+#### KnowledgeFsAccessDeniedError
+
+Agent Knowledge Base operation is not allowed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsAccessDeniedError |  | Agent Knowledge Base operation is not allowed. |  |
+
+#### KnowledgeFsCitation
+
+Immutable evidence identity; no signed URLs, tokens or storage keys.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| artifact_hash | string |  | Yes |
+| control_space_id | string |  | Yes |
+| document_asset_id | string |  | Yes |
+| document_title | string |  | No |
+| document_version | integer |  | No |
+| end_offset | integer |  | No |
+| id | string |  | Yes |
+| node_id | string |  | Yes |
+| page_number | integer |  | No |
+| parse_artifact_id | string |  | No |
+| section_path | [ string ] |  | No |
+| space_name | string |  | Yes |
+| start_offset | integer |  | No |
+
+#### KnowledgeFsConflictError
+
+Agent Knowledge Base operation conflicts with the current resource state.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsConflictError |  | Agent Knowledge Base operation conflicts with the current resource state. |  |
+
+#### KnowledgeFsInvalidCredentialError
+
+Invalid Agent Knowledge Base service credential.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsInvalidCredentialError |  | Invalid Agent Knowledge Base service credential. |  |
+
+#### KnowledgeFsInvalidRequestError
+
+Agent Knowledge Base request is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsInvalidRequestError |  | Agent Knowledge Base request is invalid. |  |
+
+#### KnowledgeFsOperationUnavailableError
+
+Agent Knowledge Base operation is not available.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsOperationUnavailableError |  | Agent Knowledge Base operation is not available. |  |
+
+#### KnowledgeFsRateLimitExceededError
+
+Agent Knowledge Base request rate limit exceeded.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsRateLimitExceededError |  | Agent Knowledge Base request rate limit exceeded. |  |
+
+#### KnowledgeFsRequestRejectedError
+
+Agent Knowledge Base request was rejected.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsRequestRejectedError |  | Agent Knowledge Base request was rejected. |  |
+
+#### KnowledgeFsRequestTooLargeError
+
+Agent Knowledge Base request is too large.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsRequestTooLargeError |  | Agent Knowledge Base request is too large. |  |
+
+#### KnowledgeFsResourceNotFoundError
+
+Agent Knowledge Base resource was not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsResourceNotFoundError |  | Agent Knowledge Base resource was not found. |  |
+
+#### KnowledgeFsUpstreamUnavailableError
+
+Agent Knowledge Base is unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsUpstreamUnavailableError |  | Agent Knowledge Base is unavailable. |  |
+
 #### KnowledgeTagListResponse
 
 | Name | Type | Description | Required |
@@ -4303,12 +7448,16 @@ Rate Limit Error
 | dataset_id | string |  | No |
 | dataset_name | string |  | No |
 | doc_metadata | object |  | No |
+| document_asset_id | string |  | No |
 | document_id | string |  | No |
 | document_name | string |  | No |
+| document_revision | integer |  | No |
+| document_version | integer |  | No |
 | files | [ object ] |  | No |
 | hit_count | integer |  | No |
 | id | string (uuid) |  | No |
 | index_node_hash | string |  | No |
+| knowledge_fs_citation | [KnowledgeFsCitation](#knowledgefscitation) |  | No |
 | message_id | string (uuid) |  | No |
 | page | integer |  | No |
 | position | integer |  | Yes |

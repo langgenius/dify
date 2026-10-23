@@ -158,7 +158,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
         <DropdownMenuTrigger
           ref={triggerRef}
           data-learn-dify-help-target
-          // The recovery pulse animates box-shadow, so focus is drawn with an outline instead of the ring.
+          // oxlint-disable-next-line shadcn/no-restyle -- The recovery pulse animates box-shadow, so an outline replaces the ring.
           className="focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-state-accent-solid focus-visible:outline-solid"
           render={
             <IconButton
@@ -181,7 +181,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
           }
         />
         <DropdownMenuContent
-          placement="top-end"
+          side="top"
           sideOffset={8}
           className="w-60 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >

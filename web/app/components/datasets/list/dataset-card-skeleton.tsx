@@ -1,14 +1,13 @@
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 
 type DatasetCardSkeletonProps = {
-  label: string
   count?: number
 }
 
-const DatasetCardSkeleton = ({ label, count = 6 }: DatasetCardSkeletonProps) => (
-  <div className="contents" role="status" aria-label={label} aria-live="polite">
+const DatasetCardSkeleton = ({ count = 6 }: DatasetCardSkeletonProps) => (
+  <>
     {Array.from({ length: count }, (_, index) => (
-      <div
+      <li
         key={index}
         className="h-47.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs shadow-shadow-shadow-3"
       >
@@ -29,9 +28,9 @@ const DatasetCardSkeleton = ({ label, count = 6 }: DatasetCardSkeletonProps) => 
             <SkeletonRectangle className="h-3 w-16 animate-pulse" />
           </div>
         </SkeletonContainer>
-      </div>
+      </li>
     ))}
-  </div>
+  </>
 )
 
 export default DatasetCardSkeleton

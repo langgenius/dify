@@ -1,4 +1,5 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
@@ -8,17 +9,20 @@ import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
 
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation(['workflow'])
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
+  const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)
 
   const mergedNodesMetaData = useMemo(
     () => [
       ...WORKFLOW_COMMON_NODES.filter(
         (node) =>
           node.metaData.type !== BlockEnum.HumanInput &&
+          (knowledgeFsEnabled || node.metaData.type !== BlockEnum.KnowledgeRetrievalV2) &&
           (agentV2Enabled
             ? node.metaData.type !== BlockEnum.Agent
             : node.metaData.type !== BlockEnum.AgentV2),
@@ -33,7 +37,7 @@ export const useAvailableNodesMetaData = () => {
       knowledgeBaseDefault,
       dataSourceEmptyDefault,
     ],
-    [agentV2Enabled],
+    [agentV2Enabled, knowledgeFsEnabled],
   )
 
   const helpLinkUri = useMemo(

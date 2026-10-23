@@ -1,0 +1,383 @@
+'use client'
+
+import type { ReactNode } from 'react'
+import type { DocumentUploadFormHandle } from '../../upload/form'
+import type { UploadExclusionReasonKey } from './model'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
+import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { knowledgeFsRequestFailureMessageKey } from '../../knowledge-fs-task-error'
+import { DocumentUploadForm } from '../../upload/form'
+import {
+  documentUploadIssue,
+  DOCUMENT_UPLOAD_FILE_SIZE_LIMIT_MB as fileSizeLimitMb,
+} from '../../upload/policy'
+import { getKnowledgeFsUploadQuotaFailure } from '../../upload/quota'
+import { useKnowledgeBatchUpload } from '../../upload/use-batch-upload'
+import { DocumentDropOverlay } from '../list'
+import { documentsKnowledgeSpaceIdAtom, documentUploadAtom } from '../state/inputs'
+import {
+  denyDocumentWriteAtom,
+  documentCanReadAtom,
+  documentCanWriteAtom,
+  ensureDocumentModelReadyAtom,
+} from '../state/runtime'
+import { documentBulkActionsVisibleAtom } from '../state/selection'
+import { documentUploadAvailability } from '../state/upload'
+import { queryKeyMatchesKnowledgeSpace } from '../tasks/recovery'
+import { DocumentStagingCanceledError } from './model'
+import { useDocumentUploadSession } from './use-document-upload-session'
+
+function DocumentUploadHeader() {
+  const { t } = useTranslation(['knowledgeSpace', 'dataset'])
+  const canRead = useAtomValueRawSync(documentCanReadAtom)
+  const canWrite = useAtomValueRawSync(documentCanWriteAtom)
+  const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
+  const uploadRequest = useAtomValueRawSync(documentUploadAtom)
+  const formOpen =
+    documentUploadAvailability(canWrite, uploadAvailable).canUpload && uploadRequest === '1'
+
+  return (
+    <header>
+      <h2
+        id="new-knowledge-documents-title"
+        className="title-xl-semi-bold leading-6 text-text-primary"
+        tabIndex={-1}
+      >
+        {t(($) => (formOpen ? $.addDocument : $.documents))}
+      </h2>
+      <p className="mt-1 system-xs-regular text-text-tertiary">
+        {t(($) => (formOpen ? $.uploadFilesDescription : $.documentsDescription))}
+      </p>
+      {canRead && !canWrite && (
+        <p
+          id="documents-readonly-reason"
+          className="mt-2 inline-flex items-center gap-1.5 system-xs-regular text-text-warning"
+          role="status"
+        >
+          <span aria-hidden className="i-ri-lock-line size-3.5" />
+          {t(($) => $.documentPermissionRestricted)}
+        </p>
+      )}
+    </header>
+  )
+}
+
+export function DocumentUploadSurface({ children }: { children: ReactNode }) {
+  const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeDocuments'])
+  const { t: tError } = useTranslation(['knowledgeErrors'])
+  const { t: tDatasetCreation } = useTranslation(['datasetCreation'])
+  const queryClient = useQueryClient()
+  const deploymentEdition = useAtomValueRawSync(deploymentEditionAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
+  const canWrite = useAtomValueRawSync(documentCanWriteAtom)
+  const bulkActionsVisible = useAtomValueRawSync(documentBulkActionsVisibleAtom)
+  const denyWrite = useSetAtom(denyDocumentWriteAtom)
+  const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
+  const supportBatchUpload = useKnowledgeBatchUpload()
+  const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
+  const uploadRequest = useAtomValueRawSync(documentUploadAtom)
+  const setUploadRequest = useSetAtom(documentUploadAtom)
+  const [formInitialFiles, setFormInitialFiles] = useState<File[]>([])
+  const [fileDragActive, setFileDragActive] = useState(false)
+  const formRef = useRef<DocumentUploadFormHandle>(null)
+  const fileDragDepthRef = useRef(0)
+  const {
+    completedUploadCount,
+    discardAllStagedFiles,
+    discardStagedFile,
+    progress: stagedUploadProgress,
+    resetProgress,
+    stageFiles,
+    uploadFiles: uploadStagedFiles,
+    uploading,
+  } = useDocumentUploadSession()
+  const { canUpload } = documentUploadAvailability(canWrite, uploadAvailable)
+  const formOpen = canUpload && uploadRequest === '1'
+
+  const refreshDocuments = useCallback(() => {
+    void Promise.allSettled([
+      queryClient.invalidateQueries({
+        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key(),
+      }),
+      ...(deploymentEdition === 'CLOUD'
+        ? [
+            queryClient.invalidateQueries(
+              { queryKey: consoleQuery.features.get.key() },
+              { cancelRefetch: false },
+            ),
+            queryClient.invalidateQueries(
+              { queryKey: consoleQuery.features.vectorSpace.get.key() },
+              { cancelRefetch: false },
+            ),
+          ]
+        : []),
+    ])
+  }, [deploymentEdition, knowledgeSpaceId, queryClient])
+
+  const close = useCallback(() => {
+    resetProgress()
+    setFormInitialFiles([])
+    void setUploadRequest(null)
+  }, [resetProgress, setUploadRequest])
+
+  const openUpload = useCallback(
+    (files: File[] = []) => {
+      if (!supportBatchUpload && files.length > 1) {
+        toast.error(
+          tDatasetCreation(($) => $['stepOne.uploader.validation.filesNumber'], { filesNumber: 1 }),
+        )
+        return
+      }
+      fileDragDepthRef.current = 0
+      setFileDragActive(false)
+      resetProgress()
+      setFormInitialFiles(files)
+      void setUploadRequest('1')
+    },
+    [resetProgress, setUploadRequest, supportBatchUpload, tDatasetCreation],
+  )
+
+  const cancel = useCallback(() => {
+    discardAllStagedFiles()
+    close()
+  }, [close, discardAllStagedFiles])
+
+  useEffect(() => {
+    if (uploadRequest !== '1' || canUpload) return
+    discardAllStagedFiles()
+    void setUploadRequest(null)
+  }, [canUpload, discardAllStagedFiles, setUploadRequest, uploadRequest])
+
+  const formatExclusionDetails = useCallback(
+    (exclusions: Array<{ filename: string; reasonKey: UploadExclusionReasonKey }>) => {
+      const detailItems = exclusions.slice(0, 3).map(({ filename, reasonKey }) => {
+        const reason =
+          reasonKey === 'fileSize'
+            ? t(($) => $['documentUploadExclusion.fileSize'], {
+                size: fileSizeLimitMb,
+              })
+            : t(($) => $[`documentUploadExclusion.${reasonKey}`])
+        return `${filename} (${reason})`
+      })
+      if (exclusions.length > detailItems.length)
+        detailItems.push(
+          t(($) => $['documentUploadExclusion.more'], {
+            ns: 'knowledgeDocuments',
+            count: exclusions.length - detailItems.length,
+          }),
+        )
+      return detailItems.join('; ')
+    },
+    [t],
+  )
+
+  const checkUploadQuota = useCallback(
+    async (isActive?: () => boolean) => {
+      if (deploymentEdition !== 'CLOUD') return true
+      const failureKey = await getKnowledgeFsUploadQuotaFailure(queryClient)
+      if (isActive && !isActive()) return false
+      if (!failureKey) return true
+      toast.error(tError(($) => $[failureKey]))
+      return false
+    },
+    [deploymentEdition, queryClient, tError],
+  )
+
+  const uploadFiles = useCallback(
+    async (files: File[]): Promise<boolean> => {
+      if (!canUpload || !files.length) return false
+      if (!supportBatchUpload && files.length > 1) {
+        toast.error(
+          tDatasetCreation(($) => $['stepOne.uploader.validation.filesNumber'], { filesNumber: 1 }),
+        )
+        return false
+      }
+      const uploadableFiles: File[] = []
+      const localExclusions: Array<{
+        filename: string
+        reasonKey: UploadExclusionReasonKey
+      }> = []
+      for (const file of files) {
+        const issue = documentUploadIssue(file, fileSizeLimitMb)
+        if (issue) localExclusions.push({ filename: file.name, reasonKey: issue })
+        else uploadableFiles.push(file)
+      }
+      if (!uploadableFiles.length) {
+        toast.error(
+          t(($) => $.documentUploadRejected, {
+            ns: 'knowledgeDocuments',
+            details: formatExclusionDetails(localExclusions),
+          }),
+        )
+        return false
+      }
+      try {
+        const uploaded = await uploadStagedFiles(uploadableFiles, async () => {
+          if (!(await checkUploadQuota())) return false
+          if (
+            (await ensureModelReady({ capability: 'ingest', intent: 'upload' })).status !== 'ready'
+          )
+            return false
+          await stageFiles(uploadableFiles)
+          return true
+        })
+        if (!uploaded) return false
+        const exclusionDetails = formatExclusionDetails(localExclusions)
+        if (localExclusions.length)
+          toast.warning(
+            t(($) => $.documentUploadPartial, {
+              ns: 'knowledgeDocuments',
+              accepted: uploadableFiles.length,
+              details: exclusionDetails,
+              excluded: localExclusions.length,
+            }),
+          )
+        else toast.success(t(($) => $.documentUploadStarted, { ns: 'knowledgeDocuments' }))
+        refreshDocuments()
+        return true
+      } catch (error) {
+        const completed = completedUploadCount(uploadableFiles)
+        if (completed) refreshDocuments()
+        if (getHttpErrorStatus(error) === 403) {
+          cancel()
+          denyWrite()
+        } else {
+          const failureKey = await knowledgeFsRequestFailureMessageKey(error)
+          const reason = failureKey
+            ? tError(($) => $[failureKey])
+            : t(($) => $.documentUploadFailed)
+          toast.error(
+            completed
+              ? t(($) => $.documentUploadIncomplete, {
+                  ns: 'knowledgeDocuments',
+                  completed,
+                  remaining: uploadableFiles.length - completed,
+                  reason,
+                })
+              : reason,
+          )
+        }
+        return false
+      }
+    },
+    [
+      canUpload,
+      cancel,
+      checkUploadQuota,
+      completedUploadCount,
+      ensureModelReady,
+      formatExclusionDetails,
+      denyWrite,
+      refreshDocuments,
+      stageFiles,
+      supportBatchUpload,
+      t,
+      tDatasetCreation,
+      tError,
+      uploadStagedFiles,
+    ],
+  )
+
+  const onFilesAdded = useCallback(
+    async (files: File[]) => {
+      try {
+        await stageFiles(files, deploymentEdition === 'CLOUD' ? checkUploadQuota : undefined)
+      } catch (error) {
+        if (error instanceof DocumentStagingCanceledError) return
+        const failureKey = await knowledgeFsRequestFailureMessageKey(error)
+        toast.error(failureKey ? tError(($) => $[failureKey]) : t(($) => $.documentUploadFailed))
+        throw error
+      }
+    },
+    [checkUploadQuota, deploymentEdition, stageFiles, t, tError],
+  )
+
+  const onSubmit = useCallback(
+    async (files: File[]) => {
+      const uploaded = await uploadFiles(files)
+      if (uploaded) close()
+      return uploaded
+    },
+    [close, uploadFiles],
+  )
+
+  return (
+    <section
+      className={cn(
+        'relative flex min-h-full w-full flex-col gap-4 px-6 pt-3',
+        bulkActionsVisible ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]' : 'pb-6',
+      )}
+      onDragEnter={(event) => {
+        const types = Array.from(event.dataTransfer.types ?? [])
+        if (types.length && !types.includes('Files')) return
+        event.preventDefault()
+        if (!canUpload || uploading) return
+        fileDragDepthRef.current += 1
+        setFileDragActive(true)
+      }}
+      onDragLeave={() => {
+        if (!fileDragDepthRef.current) return
+        fileDragDepthRef.current -= 1
+        if (!fileDragDepthRef.current) setFileDragActive(false)
+      }}
+      onDragOver={(event) => {
+        const types = Array.from(event.dataTransfer.types ?? [])
+        if (types.length && !types.includes('Files')) return
+        event.preventDefault()
+        event.dataTransfer.dropEffect = canUpload && !uploading ? 'copy' : 'none'
+      }}
+      onDrop={(event) => {
+        const types = Array.from(event.dataTransfer.types ?? [])
+        if (types.length && !types.includes('Files')) return
+        const handledByChild = event.defaultPrevented
+        event.preventDefault()
+        fileDragDepthRef.current = 0
+        setFileDragActive(false)
+        // The inner form handles selection, but the surface still owns drag cleanup.
+        if (handledByChild) return
+        if (!canUpload || uploading) return
+        const files = [...event.dataTransfer.files]
+        if (!files.length) return
+        if (formOpen) formRef.current?.addFiles(files)
+        else openUpload(files)
+      }}
+    >
+      {!uploadAvailable && (
+        <span id="documents-upload-unavailable" className="sr-only">
+          {t(($) => $['cornerLabel.unavailable'], { ns: 'dataset' })}
+        </span>
+      )}
+      <DocumentUploadHeader />
+      {formOpen ? (
+        <DocumentUploadForm
+          ref={formRef}
+          fileSizeLimitMb={fileSizeLimitMb}
+          supportBatchUpload={supportBatchUpload}
+          initialFiles={formInitialFiles}
+          uploadProgress={stagedUploadProgress}
+          uploading={uploading}
+          onCancel={cancel}
+          onFileRemoved={discardStagedFile}
+          onFilesAdded={onFilesAdded}
+          onSubmit={onSubmit}
+        />
+      ) : (
+        children
+      )}
+      {fileDragActive && canUpload && <DocumentDropOverlay fileSizeLimitMb={fileSizeLimitMb} />}
+    </section>
+  )
+}

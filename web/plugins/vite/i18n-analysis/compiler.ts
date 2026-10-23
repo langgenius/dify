@@ -49,7 +49,7 @@ function importBindings(code: string): ImportBinding[] {
               : []),
         ],
         typeOnly:
-          !!clause?.isTypeOnly ||
+          clause?.phaseModifier === ts.SyntaxKind.TypeKeyword ||
           !!(
             bindings &&
             ts.isNamedImports(bindings) &&

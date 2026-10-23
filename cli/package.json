@@ -1,6 +1,6 @@
 {
   "name": "@langgenius/difyctl",
-  "version": "1.17.1",
+  "version": "1.18.0",
   "description": "Dify command-line interface",
   "license": "Apache-2.0",
   "files": [
@@ -23,7 +23,7 @@
     "test:e2e": "vp test --config vitest.e2e.config.ts",
     "test:e2e:smoke": "vp test --config vitest.e2e.config.ts --testNamePattern \"\\[P0\\]\"",
     "test:e2e:local": "DIFY_E2E_MODE=local vp test --config vitest.e2e.config.ts",
-    "type-check": "tsc",
+    "type-check": "tsrs --noEmit",
     "tree:gen": "bun scripts/generate-command-tree.ts",
     "tree:check": "bun scripts/generate-command-tree.ts --check",
     "prebuild": "pnpm tree:gen",
@@ -55,6 +55,7 @@
     "@typescript/native": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "hono": "catalog:",
+    "tsrs": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
@@ -63,12 +64,12 @@
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "24.21.0",
+      "version": "24.22.1",
       "onFail": "download"
     }
   },
   "engines": {
-    "node": "^24.20.0"
+    "node": "^24.22.1"
   },
   "difyctl": {
     "channel": "stable",

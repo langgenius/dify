@@ -131,6 +131,51 @@ x-shared-worker-config: &shared-worker-config
     - default
   restart: always
 
+# KNOWLEDGE_FS_WORKER_IMAGE must bundle the KnowledgeFS engine at KNOWLEDGE_FS_BACKGROUND_ENGINE_PATH;
+# standard Dify API images do not, and the worker entrypoint exits without it.
+x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
+  image: ${KNOWLEDGE_FS_WORKER_IMAGE:-langgenius/dify-api:1.18.0}
+  profiles:
+    - knowledge-fs-celery
+  restart: always
+  # Match the two-hour default task deadline plus shutdown margin for long document jobs.
+  stop_grace_period: 125m
+  env_file:
+    - path: ./envs/core-services/shared.env
+      required: false
+    - path: ./envs/core-services/worker.env
+      required: false
+    - path: ./envs/security.env
+      required: false
+    - path: ./envs/databases/db-postgres.env
+      required: false
+    - path: ./envs/databases/db-mysql.env
+      required: false
+    - path: ./envs/databases/redis.env
+      required: false
+    - path: ./envs/core-services/knowledge-fs.env
+      required: false
+    - path: ./envs/core-services/knowledge-fs-worker.env
+      required: false
+    - ./.env
+  environment: &knowledge-fs-celery-environment
+    MODE: worker
+    MIGRATION_ENABLED: "false"
+    CELERY_WORKER_POOL: prefork
+    CELERY_PREFETCH_MULTIPLIER: "1"
+    # Periodic database sweeps are cheap Celery tasks; the standard 50-task recycling would
+    # repeatedly discard a warm engine even while idle.
+    MAX_TASKS_PER_CHILD: ${KNOWLEDGE_FS_WORKER_MAX_TASKS_PER_CHILD:-1000}
+    DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
+    DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+    KNOWLEDGE_INTEGRATED_MODE_ENABLED: ${KNOWLEDGE_INTEGRATED_MODE_ENABLED:-true}
+    KNOWLEDGE_DIRECT_UPLOAD_ENABLED: ${KNOWLEDGE_DIRECT_UPLOAD_ENABLED:-true}
+  depends_on:
+    api:
+      condition: service_healthy
+  networks:
+    - default
+
 x-shared-worker-beat-config: &shared-worker-beat-config
   env_file:
     - path: ./envs/core-services/shared.env
@@ -220,7 +265,7 @@ services:
   # API service
   api:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.17.1
+    image: langgenius/dify-api:1.18.0
     environment:
       MODE: api
       # The bundled Nginx supplies a verified client IP; keep direct API callers trusted.
@@ -270,7 +315,7 @@ services:
   # WebSocket service for workflow collaboration.
   api_websocket:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.17.1
+    image: langgenius/dify-api:1.18.0
     profiles:
       - collaboration
     environment:
@@ -302,7 +347,7 @@ services:
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.17.1
+    image: langgenius/dify-api:1.18.0
     environment:
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -345,11 +390,44 @@ services:
       - ssrf_proxy_network
       - default
 
+  # Dedicated worker for click-time Dataset snapshots and KnowledgeFS upgrade orchestration.
+  # Keep this queue out of the generic worker so large file copies cannot starve existing jobs.
+  worker_knowledge_fs_upgrade:
+    <<: *shared-worker-config
+    image: langgenius/dify-api:1.18.0
+    profiles:
+      - knowledge-fs
+    environment:
+      MODE: worker
+      CELERY_WORKER_QUEUES: knowledge_fs_upgrade
+      CELERY_WORKER_POOL: prefork
+      CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_UPGRADE_WORKER_AMOUNT:-2}
+      CELERY_PREFETCH_MULTIPLIER: 1
+      SENTRY_DSN: ${API_SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+    depends_on:
+      init_permissions:
+        condition: service_completed_successfully
+      db_postgres:
+        condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_started
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
+
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
     <<: *shared-worker-beat-config
-    image: langgenius/dify-api:1.17.1
+    image: langgenius/dify-api:1.18.0
     environment:
       MODE: beat
     depends_on:
@@ -382,7 +460,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.17.1
+    image: langgenius/dify-web:1.18.0
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
@@ -543,7 +621,7 @@ services:
   # on port 3128, which only allows agent_backend /agent-stub/ and the Dify API
   # /files/* endpoints (see ssrf_proxy/squid-agent.conf.template).
   local_sandbox:
-    image: langgenius/dify-agent-local-sandbox:1.17.1
+    image: langgenius/dify-agent-local-sandbox:1.18.0
     command: ["shellctl", "serve", "--listen", "0.0.0.0:5004", "--require-auth-token"]
     restart: always
     env_file:
@@ -654,9 +732,94 @@ services:
         condition: service_healthy
         required: false
 
+  # KnowledgeFS integration service. It is opt-in: add `knowledge-fs` to COMPOSE_PROFILES only after
+  # configuring envs/core-services/knowledge-fs.env (durable DATABASE_URL, migrations, verifier).
+  # It has no public port or nginx route. The published image is linux/amd64 only.
+  knowledge_fs:
+    image: ${KNOWLEDGE_FS_API_IMAGE:-langgenius/dify-knowledge-fs-api:deploy-konwledge}
+    profiles:
+      - knowledge-fs
+    restart: always
+    env_file:
+      - path: ./envs/core-services/knowledge-fs.env
+        required: false
+    environment:
+      DIFY_ROOT_KNOWLEDGE_BACKGROUND_EXECUTION_OVERRIDE: ${KNOWLEDGE_BACKGROUND_EXECUTION-}
+      DIFY_ROOT_KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY_OVERRIDE: ${KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY-}
+      # Canonical values stay in the service env/image. These whitelisted proxies let an explicitly
+      # set docker/.env value override them without injecting the complete root environment.
+      DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_OVERRIDE: ${KNOWLEDGE_PDF_RASTERIZER-}
+      DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_DPI_OVERRIDE: ${KNOWLEDGE_PDF_RASTERIZER_DPI-}
+      DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI_OVERRIDE: ${KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI-}
+      DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS_OVERRIDE: ${KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS-}
+      DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS_OVERRIDE: ${KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS-}
+      DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY_OVERRIDE: ${KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY-}
+      DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
+      DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+      KNOWLEDGE_INTEGRATED_MODE_ENABLED: ${KNOWLEDGE_INTEGRATED_MODE_ENABLED:-true}
+      # Workspace staging uses KFS upload sessions for quota reservation and durable admission,
+      # while the document bytes remain in Dify's unified object storage.
+      KNOWLEDGE_DIRECT_UPLOAD_ENABLED: ${KNOWLEDGE_DIRECT_UPLOAD_ENABLED:-true}
+      NODE_ENV: production
+      PORT: 8787
+    depends_on:
+      api:
+        condition: service_healthy
+    expose:
+      - "8787"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8787/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - default
+
+  # All five worker roles share the Dify Celery broker and need a worker image with the bundled
+  # KnowledgeFS engine. Only the optional knowledge-fs-celery profile starts them; set
+  # KNOWLEDGE_BACKGROUND_EXECUTION=celery in the root env first.
+  knowledge_fs_document_worker:
+    <<: *knowledge-fs-celery-worker
+    environment:
+      <<: *knowledge-fs-celery-environment
+      # Compose shares document capacity; Cloud deployments can use separate consumer pools.
+      CELERY_WORKER_QUEUES: knowledge_fs_document,knowledge_fs_priority_document
+      CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_DOCUMENT_WORKER_CONCURRENCY:-2}
+  knowledge_fs_source_worker:
+    <<: *knowledge-fs-celery-worker
+    environment:
+      <<: *knowledge-fs-celery-environment
+      CELERY_WORKER_QUEUES: knowledge_fs_source
+      CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_SOURCE_WORKER_CONCURRENCY:-1}
+  knowledge_fs_research_worker:
+    <<: *knowledge-fs-celery-worker
+    environment:
+      <<: *knowledge-fs-celery-environment
+      CELERY_WORKER_QUEUES: knowledge_fs_research
+      CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_RESEARCH_WORKER_CONCURRENCY:-2}
+  knowledge_fs_maintenance_worker:
+    <<: *knowledge-fs-celery-worker
+    environment:
+      <<: *knowledge-fs-celery-environment
+      CELERY_WORKER_QUEUES: knowledge_fs_maintenance
+      CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_MAINTENANCE_WORKER_CONCURRENCY:-1}
+  knowledge_fs_dispatch_worker:
+    <<: *knowledge-fs-celery-worker
+    environment:
+      <<: *knowledge-fs-celery-environment
+      CELERY_WORKER_QUEUES: knowledge_fs_dispatch
+      CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_DISPATCH_WORKER_CONCURRENCY:-1}
+
   # Dify Agent backend service.
   agent_backend:
-    image: langgenius/dify-agent-backend:1.17.1
+    image: langgenius/dify-agent-backend:1.18.0
     restart: always
     env_file:
       - path: ./envs/core-services/dify-agent.env
@@ -813,7 +976,7 @@ services:
 
   # The Weaviate vector store.
   weaviate:
-    image: cr.weaviate.io/semitechnologies/weaviate:1.39.2
+    image: cr.weaviate.io/semitechnologies/weaviate:1.39.13
     profiles:
       - weaviate
     restart: always
@@ -1294,6 +1457,26 @@ services:
     restart: always
     volumes:
       - ./volumes/unstructured:/app/data
+
+  # Dedicated KnowledgeFS parser for all remote document formats. Its page-parallel PDF policy
+  # and heavy-workload resource budget cannot change legacy Dify Unstructured ETL traffic.
+  knowledge_fs_unstructured:
+    image: downloads.unstructured.io/unstructured-io/unstructured-api@sha256:0df934a22e4e893cf15e7aeaf35c463ecc75937758a83099aefdc13041619a1d
+    profiles:
+      - knowledge-fs-unstructured
+    restart: always
+    env_file:
+      - path: ./envs/core-services/knowledge-fs-unstructured-service.defaults
+        required: true
+      - path: ./envs/core-services/knowledge-fs-unstructured.env
+        required: false
+    volumes:
+      - ./volumes/knowledge-fs-unstructured:/app/data
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 6G
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.

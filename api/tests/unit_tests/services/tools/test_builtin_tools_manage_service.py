@@ -1,6 +1,7 @@
 """Unit tests for built-in tool management and its persisted credential state."""
 
 import json
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -10,12 +11,14 @@ from sqlalchemy import event, select
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.plugin.entities.oauth import OAuthSchema
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl import base as client_module
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin, ToolProviderIdentity
+from core.tools.plugin_tool.provider import PluginToolProviderController
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from repositories.credentials.query_repository import CredentialQueryRepository
 from services.tools import builtin_tools_manage_service as service_module
@@ -193,6 +196,167 @@ class TestIsOauthCustomClientEnabled:
         _persist_tenant_oauth_client(repository_session, tenant_id="tenant-2", enabled=True)
 
         assert BuiltinToolManageService.is_oauth_custom_client_enabled("tenant-1", "google") is False
+
+
+class _RecordingLock:
+    """Redis lock stand-in that records when it is held and runs a hook just before release."""
+
+    def __init__(self, events: list[str], on_release: Callable[[], None] | None = None) -> None:
+        self._events = events
+        self._on_release = on_release
+
+    def __enter__(self) -> "_RecordingLock":
+        self._events.append("acquire")
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        if self._on_release is not None:
+            self._on_release()
+        self._events.append("release")
+
+
+class TestAddBuiltinToolProvider:
+    @pytest.fixture
+    def events(self) -> list[str]:
+        return []
+
+    @pytest.fixture
+    def controller(self, monkeypatch: pytest.MonkeyPatch, events: list[str]) -> PluginToolProviderController:
+        controller = PluginToolProviderController(
+            entity=ToolProviderEntityWithPlugin(
+                identity=ToolProviderIdentity(
+                    author="author",
+                    name="google",
+                    description=I18nObject(en_US="Google"),
+                    icon="icon.svg",
+                    label=I18nObject(en_US="Google"),
+                ),
+                credentials_schema=[ProviderConfig(name="key", type=ProviderConfigType.TEXT_INPUT)],
+                plugin_id="langgenius/google",
+                tools=[],
+            ),
+            plugin_id="langgenius/google",
+            plugin_unique_identifier="langgenius/google:0.0.1",
+            tenant_id="tenant-1",
+        )
+
+        def validate_credentials(user_id: str, credentials: dict[str, str]) -> None:
+            assert user_id == "u"
+            assert credentials == {"key": "value"}
+            events.append("validate")
+
+        monkeypatch.setattr(controller, "_validate_credentials", validate_credentials)
+        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", lambda *_: controller)
+        return controller
+
+    def _install_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        events: list[str],
+        on_release: Callable[[], None] | None = None,
+    ) -> None:
+        lock = _RecordingLock(events, on_release)
+        monkeypatch.setattr(service_module.redis_client, "lock", lambda *_, **__: lock)
+
+    def _count_providers(self, repository_session: Session) -> int:
+        with Session(repository_session.get_bind()) as session:
+            return len(session.scalars(select(BuiltinToolProvider)).all())
+
+    def test_validates_credentials_before_acquiring_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: PluginToolProviderController,
+        events: list[str],
+    ) -> None:
+        self._install_lock(monkeypatch, events)
+
+        result = BuiltinToolManageService.add_builtin_tool_provider(
+            "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "value"}, name="Google 1"
+        )
+
+        assert result["result"] == "success"
+        assert events == ["validate", "acquire", "release"]
+        provider = repository_session.get(BuiltinToolProvider, result["id"])
+        assert provider is not None
+        assert provider.credentials == {"key": "value"}
+
+    def test_commits_credential_before_releasing_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: PluginToolProviderController,
+        events: list[str],
+    ) -> None:
+        counts_at_release: list[int] = []
+        self._install_lock(
+            monkeypatch, events, on_release=lambda: counts_at_release.append(self._count_providers(repository_session))
+        )
+
+        BuiltinToolManageService.add_builtin_tool_provider(
+            "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "value"}, name="Google 1"
+        )
+
+        assert counts_at_release == [1]
+
+    def test_does_not_lock_or_save_when_validation_fails(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: PluginToolProviderController,
+        events: list[str],
+    ) -> None:
+        self._install_lock(monkeypatch, events)
+
+        def reject_credentials(user_id: str, credentials: dict[str, str]) -> None:
+            raise ValueError("invalid api key")
+
+        monkeypatch.setattr(controller, "_validate_credentials", reject_credentials)
+
+        with pytest.raises(ValueError, match="invalid api key"):
+            BuiltinToolManageService.add_builtin_tool_provider(
+                "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "bad"}
+            )
+
+        assert events == []
+        assert self._count_providers(repository_session) == 0
+
+    def test_checks_count_limit_inside_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: PluginToolProviderController,
+        events: list[str],
+    ) -> None:
+        _persist_provider(repository_session, credential_id="cred-1")
+        monkeypatch.setattr(BuiltinToolManageService, "__MAX_BUILTIN_TOOL_PROVIDER_COUNT__", 1)
+        self._install_lock(monkeypatch, events)
+
+        with pytest.raises(ValueError, match="maximum number of providers"):
+            BuiltinToolManageService.add_builtin_tool_provider(
+                "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "value"}
+            )
+
+        assert events == ["validate", "acquire", "release"]
+        assert self._count_providers(repository_session) == 1
+
+    def test_rejects_duplicate_name_inside_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: PluginToolProviderController,
+        events: list[str],
+    ) -> None:
+        _persist_provider(repository_session, credential_id="cred-1", name="Google 1")
+        self._install_lock(monkeypatch, events)
+
+        with pytest.raises(ValueError, match="already used"):
+            BuiltinToolManageService.add_builtin_tool_provider(
+                "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "value"}, name="Google 1"
+            )
+
+        assert events == ["validate", "acquire", "release"]
+        assert self._count_providers(repository_session) == 1
 
 
 class TestDeleteBuiltinToolProvider:

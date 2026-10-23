@@ -7,7 +7,7 @@ from werkzeug.test import EnvironBuilder
 from core.plugin.impl.oauth import OAuthHandler
 
 
-def test_oauth_convert_request_to_raw_data():
+def test_oauth_convert_request_to_raw_data() -> None:
     oauth_handler = OAuthHandler()
     builder = EnvironBuilder(
         method="GET",
@@ -22,7 +22,7 @@ def test_oauth_convert_request_to_raw_data():
     assert b"\r\n\r\n" in raw_request_bytes
 
 
-def test_oauth_convert_request_to_raw_data_with_query_params():
+def test_oauth_convert_request_to_raw_data_with_query_params() -> None:
     oauth_handler = OAuthHandler()
     builder = EnvironBuilder(
         method="GET",
@@ -38,7 +38,7 @@ def test_oauth_convert_request_to_raw_data_with_query_params():
     assert b"\r\n\r\n" in raw_request_bytes
 
 
-def test_oauth_convert_request_to_raw_data_with_post_body():
+def test_oauth_convert_request_to_raw_data_with_post_body() -> None:
     oauth_handler = OAuthHandler()
     builder = EnvironBuilder(
         method="POST",
@@ -55,7 +55,7 @@ def test_oauth_convert_request_to_raw_data_with_post_body():
     assert b"param1=value1&param2=value2" in raw_request_bytes
 
 
-def test_oauth_convert_request_to_raw_data_with_json_body():
+def test_oauth_convert_request_to_raw_data_with_json_body() -> None:
     oauth_handler = OAuthHandler()
     json_data = {"code": "abc123", "state": "xyz789", "grant_type": "authorization_code"}
     builder = EnvironBuilder(

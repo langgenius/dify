@@ -1,7 +1,6 @@
 import importlib
 import json
 import sys
-import types
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import UUID
@@ -10,13 +9,14 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy.types import UserDefinedType
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
 def _build_fake_pgvecto_modules():
-    pgvecto_rs = types.ModuleType("pgvecto_rs")
-    pgvecto_rs_sqlalchemy = types.ModuleType("pgvecto_rs.sqlalchemy")
+    pgvecto_rs = FakeModule("pgvecto_rs")
+    pgvecto_rs_sqlalchemy = FakeModule("pgvecto_rs.sqlalchemy")
 
     class VECTOR(UserDefinedType):
         def __init__(self, dim):

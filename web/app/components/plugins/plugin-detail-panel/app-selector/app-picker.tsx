@@ -1,7 +1,6 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import type { ComboboxPositionerProps } from '@langgenius/dify-ui/combobox'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -29,11 +28,9 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 
-type AppPickerProps = Pick<ComboboxPositionerProps, 'placement'> & {
-  scope?: string
+type AppPickerProps = {
   disabled: boolean
   trigger: ReactNode
-  offset?: number
   isShow: boolean
   onShowChange: (isShow: boolean) => void
   onSelect: (app: AppPartial) => void
@@ -90,8 +87,6 @@ function AppPickerOption({ app }: { app: AppPartial }) {
 export function AppPicker({
   disabled,
   trigger,
-  placement = 'right-start',
-  offset = 0,
   isShow,
   onShowChange,
   onSelect,
@@ -133,7 +128,7 @@ export function AppPicker({
         {trigger}
       </ComboboxTrigger>
       <ComboboxPortal>
-        <ComboboxPositioner placement={placement} sideOffset={offset}>
+        <ComboboxPositioner align="center">
           <ComboboxPopup
             aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
             className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"

@@ -390,6 +390,7 @@ class WorkflowAgentPublishService:
                 workflow_id=draft_workflow.id,
                 workflow_version=cls._DRAFT_WORKFLOW_VERSION,
                 node_id=node_id,
+                binding_type=resolved_binding_type,
                 node_job_config=node_job_config,
                 created_by=account_id,
             )

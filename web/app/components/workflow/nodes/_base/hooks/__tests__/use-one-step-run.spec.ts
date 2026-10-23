@@ -9,7 +9,7 @@ import {
 import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleClient } from '@/service/console'
 import useOneStepRun from '../use-one-step-run'
 
@@ -44,7 +44,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
-  render(createElement(AppToastHost))
+  render(createElement(AppToaster))
   const nodes = [
     createStartNode({ id: 'start', data: { variables: [] } }),
     createNode({ id: 'if-else-node', data: { type, title: 'Test node' } }),

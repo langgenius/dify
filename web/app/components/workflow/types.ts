@@ -33,6 +33,7 @@ export const BlockEnum = {
   Answer: 'answer',
   LLM: 'llm',
   KnowledgeRetrieval: 'knowledge-retrieval',
+  KnowledgeRetrievalV2: 'knowledge-retrieval-v2',
   QuestionClassifier: 'question-classifier',
   IfElse: 'if-else',
   Code: 'code',
@@ -462,6 +463,7 @@ export type WorkflowRunningData = {
   message_id?: string
   conversation_id?: string
   result: {
+    id?: string
     workflow_id?: string
     inputs?: string
     inputs_truncated: boolean

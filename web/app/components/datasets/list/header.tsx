@@ -1,5 +1,6 @@
 'use client'
 
+import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/list/knowledge-view-switcher'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -11,10 +12,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
+import { CreatorFilter } from '@/app/components/datasets/creator-filter'
 import {
   getStepByStepTourDropdownMenuContentProps,
   useStepByStepTourControlledDropdown,
 } from '@/app/components/step-by-step-tour/dropdown-menu'
+import { KnowledgeViewSwitcher } from '@/features/new-rag/list/knowledge-view-switcher'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { ServiceApi } from '../extra-info/service-api'
 
@@ -22,6 +25,7 @@ type Props = {
   apiBaseUrl: string
   canConnectExternalDataset: boolean
   canCreateDataset: boolean
+  creatorFilterValue: string[]
   includeAll: boolean
   isCurrentWorkspaceOwner: boolean
   keywords: string
@@ -30,6 +34,7 @@ type Props = {
   onCreateFromPipeline: () => void
   onConnectDataset: () => void
   onExternalApiClick: () => void
+  onCreatorsChange: (value: string[]) => void
   onIncludeAllChange: () => void
   onKeywordsChange: (value: string) => void
   onOpenTagManagement: () => void
@@ -37,12 +42,14 @@ type Props = {
   stepByStepTourCreateMenuHighlightPart?: string
   stepByStepTourCreateMenuOpen?: boolean
   stepByStepTourCreateMenuTarget?: string
+  knowledgeViewSwitcherProps?: KnowledgeViewSwitcherProps
 }
 
 const DatasetListHeader = ({
   apiBaseUrl,
   canConnectExternalDataset,
   canCreateDataset,
+  creatorFilterValue,
   includeAll,
   isCurrentWorkspaceOwner,
   keywords,
@@ -51,6 +58,7 @@ const DatasetListHeader = ({
   onCreateFromPipeline,
   onConnectDataset,
   onExternalApiClick,
+  onCreatorsChange,
   onIncludeAllChange,
   onKeywordsChange,
   onOpenTagManagement,
@@ -58,6 +66,7 @@ const DatasetListHeader = ({
   stepByStepTourCreateMenuHighlightPart,
   stepByStepTourCreateMenuOpen,
   stepByStepTourCreateMenuTarget,
+  knowledgeViewSwitcherProps,
 }: Props) => {
   const { t } = useTranslation(['common', 'dataset'])
   const showCreateMenu = canCreateDataset || canConnectExternalDataset
@@ -72,6 +81,7 @@ const DatasetListHeader = ({
           <h1 className="min-w-0 text-[18px]/[21.6px] font-semibold text-text-primary">
             {t(($) => $.knowledge, { ns: 'dataset' })}
           </h1>
+          {knowledgeViewSwitcherProps && <KnowledgeViewSwitcher {...knowledgeViewSwitcherProps} />}
         </div>
         <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
           {canConnectExternalDataset && (
@@ -101,8 +111,14 @@ const DatasetListHeader = ({
             onChange={onTagsChange}
             onOpenTagManagement={onOpenTagManagement}
             showLeadingIcon={false}
+            triggerClassName="min-w-0"
           />
-          <SearchInput className="w-50" value={keywords} onValueChange={onKeywordsChange} />
+          <CreatorFilter value={creatorFilterValue} onChange={onCreatorsChange} />
+          <SearchInput
+            className="w-full min-w-0 sm:w-50"
+            value={keywords}
+            onValueChange={onKeywordsChange}
+          />
           {isCurrentWorkspaceOwner && (
             <>
               <div className="h-3.5 w-px bg-divider-regular" />
@@ -139,8 +155,6 @@ const DatasetListHeader = ({
                 }
               />
               <DropdownMenuContent
-                placement="bottom-end"
-                sideOffset={4}
                 {...getStepByStepTourDropdownMenuContentProps({
                   disableMotion: createMenu.controlled,
                   highlightPart: createMenu.controlled

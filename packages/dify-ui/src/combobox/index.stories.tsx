@@ -598,7 +598,7 @@ function InlinePopoverDemo() {
         }}
       >
         <PopoverTrigger render={<Button variant="secondary" />}>Choose reviewer</PopoverTrigger>
-        <PopoverContent placement="bottom-start" sideOffset={4} className="w-80 p-0">
+        <PopoverContent side="bottom" align="start" sideOffset={4} className="w-80 p-0">
           <PopoverTitle className="sr-only">Choose reviewer</PopoverTitle>
           <Combobox
             inline
@@ -686,8 +686,12 @@ export const Default: Story = {
       await expect(body.getByRole('option', { name: 'Notion' })).toBeVisible()
     })
 
+    const listbox = body.getByRole('listbox')
     await userEvent.keyboard('{ArrowDown}{Enter}')
     await expect(input).toHaveValue('Notion')
+    await waitFor(async () => {
+      await expect(listbox).not.toBeInTheDocument()
+    })
   },
 }
 

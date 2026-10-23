@@ -266,7 +266,7 @@ describe('SystemModel', () => {
       screen.queryByRole('button', { name: 'Clear Speech to Text Model' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getAllByRole('button', { name: 'plugin.detailPanel.configureModel' }),
+      screen.getAllByRole('button', { name: / plugin\.detailPanel\.configureModel$/ }),
     ).toHaveLength(4)
     expect(save).toBeEnabled()
   })
@@ -564,7 +564,9 @@ describe('SystemModel', () => {
 
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
       expect(screen.getByRole('dialog', { name: 'Default Model Settings' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /^Test model/ })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'System Reasoning Model Test model' }),
+      ).toBeInTheDocument()
       expect(
         await screen.findByRole('button', { name: 'Clear System Reasoning Model' }),
       ).toBeEnabled()
@@ -655,7 +657,7 @@ describe('SystemModel', () => {
     await user.click(screen.getByRole('button', { name: /system model settings/i }))
 
     expect(
-      await screen.findAllByRole('button', { name: 'plugin.detailPanel.configureModel' }),
+      await screen.findAllByRole('button', { name: / plugin\.detailPanel\.configureModel$/ }),
     ).toHaveLength(5)
     expect(
       screen.queryByRole('button', { name: 'Clear System Reasoning Model' }),
@@ -686,7 +688,9 @@ describe('SystemModel', () => {
       )
     })
 
-    expect(screen.getByRole('button', { name: /^Test model/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'System Reasoning Model Test model' }),
+    ).toBeInTheDocument()
     expect(screen.queryByText('background-model')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => {
