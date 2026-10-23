@@ -6,7 +6,7 @@ transaction locks the Builder session before the workflow and request scope,
 matching admission's lock order. It contains SQL and pure presentation only.
 """
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from uuid import NAMESPACE_URL, uuid5
 
 from pydantic import TypeAdapter, ValidationError
@@ -32,6 +32,7 @@ from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOut
 from services.dify_builder import session_lock
 from services.dify_builder.application.handlers_fix import append_card
 from services.dify_builder.application.verification import has_output_blocker, result_card
+from services.dify_builder.business_acceptance import business_failure_context, record_run_acceptance
 from services.dify_builder.conversation_tasks import active_entry_mode
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.native_testing.repository import admitted_workflow_revision
@@ -251,6 +252,23 @@ def _project(*, sessions, actor, ref, request):
         sandbox_profile="native",
         native_run_id=native_run_id,
     )
+    # Continuations finish the original ordinary test, including its explicit
+    # acceptance oracle. Bind the Builder identity before recording its finding;
+    # the native mapper deliberately knows only the Workflow Run identity.
+    run = replace(
+        run, id=context.verify_run_id, session_id=session_id, kind="verify", inputs_ref=test_input_id, immutable=True
+    )
+    native_graph = result[1].graph_dict
+    record_run_acceptance(
+        owner, context, run, repo.get_test_input(test_input_id), native_graph, evidence.execution_revision
+    )
+    business_failure = business_failure_context(
+        run,
+        owner,
+        context,
+        current_revision=evidence.execution_revision,
+        current_graph_revision=evidence.executed_graph_revision,
+    )
     if declined:
         run.error = "Test declined by the user; continue adjusting to revise the plan."
     card = result_card(run)
@@ -261,7 +279,11 @@ def _project(*, sessions, actor, ref, request):
     if declined:
         context.confirmed_consent_id, context.confirmed_command_id = "", ""
         context.effect_confirmation, context.effect_confirmation_form = {}, {}
-    next_state = review_state if declined or run.status == "succeeded" and not has_output_blocker(run) else repair_state
+    next_state = (
+        review_state
+        if declined or run.status == "succeeded" and not has_output_blocker(run) and business_failure is None
+        else repair_state
+    )
     try:
         with sessions.begin() as sql:
             session = sql.get(DifyBuilderSession, session_id, with_for_update=True)
