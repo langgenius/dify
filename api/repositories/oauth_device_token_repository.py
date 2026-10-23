@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
 from extensions.ext_redis import RedisClientWrapper
+from libs.uuid_utils import uuidv7
 from models.oauth import OAuthAccessToken
 from services.oauth_device_contracts import (
     OAuthDeviceSession,
@@ -24,8 +25,14 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True, slots=True)
 class _TokenRowValues:
-    """The columns a rotation overwrites when it reuses a device's row."""
+    """The columns a rotation overwrites when it reuses a device's row.
 
+    The id is overwritten too, so every login keeps its own token id: an old
+    id held by a hint, an audit log or an in-flight hard-expire never matches
+    the new login.
+    """
+
+    id: str
     token_hash: str | None
     prefix: str
     account_id: str | None
@@ -37,6 +44,7 @@ class _TokenRowValues:
     @classmethod
     def of(cls, record: OAuthAccessToken) -> _TokenRowValues:
         return cls(
+            id=record.id,
             token_hash=record.token_hash,
             prefix=record.prefix,
             account_id=record.account_id,
@@ -47,6 +55,7 @@ class _TokenRowValues:
         )
 
     def apply_to(self, record: OAuthAccessToken) -> None:
+        record.id = self.id
         record.token_hash = self.token_hash
         record.prefix = self.prefix
         record.account_id = self.account_id
@@ -64,6 +73,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
     def rotate_token(self, token: OAuthDeviceTokenWrite) -> OAuthDeviceTokenRotation:
         # MySQL drops the index's WHERE revoked_at IS NULL, so a revoked row on
         # the same device key would collide with a new insert. Reuse the row.
+        # None: no row existed, so the rotation inserted one.
         previous: _TokenRowValues | None = None
         with self._session_factory() as session:
             record = session.scalar(
@@ -93,6 +103,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
             else:
                 previous = _TokenRowValues.of(record)
                 _TokenRowValues(
+                    id=str(uuidv7()),
                     token_hash=token.token_hash,
                     prefix=token.prefix,
                     account_id=token.account_id,
@@ -108,7 +119,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
         replaced = previous if previous is not None and previous.revoked_at is None else None
         rotation = OAuthDeviceTokenRotation(
             token_id=token_id,
-            replaced_token_id=token_id if replaced is not None else None,
+            replaced_token_id=replaced.id if replaced is not None else None,
             replaced_token_hash=replaced.token_hash if replaced is not None else None,
         )
         if rotation.replaced_token_hash:
@@ -126,6 +137,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
         new_hash: str,
         previous: _TokenRowValues | None,
     ) -> None:
+        """Undo a rotation: delete the inserted row, or put a reused row's values back (``previous``)."""
         with self._session_factory() as session:
             record = session.scalar(
                 select(OAuthAccessToken)

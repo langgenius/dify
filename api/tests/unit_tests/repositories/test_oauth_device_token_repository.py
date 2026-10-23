@@ -142,7 +142,7 @@ def test_issue_rotates_matching_live_token_and_invalidates_old_cache(
 
     sqlite_session.expire_all()
     records = list(sqlite_session.scalars(select(OAuthAccessToken)).all())
-    assert [(record.id, record.revoked_at) for record in records] == [(first.token_id, None)]
+    assert [(record.id, record.revoked_at) for record in records] == [(second.token_id, None)]
     assert records[0].token_hash == sha256_hex(second.token)
     assert redis.deleted == [TOKEN_CACHE_KEY_FMT.format(hash=sha256_hex(first.token))]
 
@@ -190,23 +190,19 @@ def test_rollback_does_not_restore_predecessor_after_later_rotation(
     assert [(record.token_hash, record.revoked_at) for record in records] == [("hash-3", None)]
 
 
-def test_relogin_on_the_same_label_reuses_the_live_row(
+def test_relogin_reuses_the_row_under_a_new_token_id(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    _issuer, repository, redis, _ttl_policy = _repository(sqlite_session_factory)
+    _issuer, repository, _redis, _ttl_policy = _repository(sqlite_session_factory)
 
     first = repository.rotate_token(_write("hash-1"))
     second = repository.rotate_token(_write("hash-2"))
 
-    assert second.token_id == first.token_id
+    assert second.token_id != first.token_id
     assert second.replaced_token_id == first.token_id
-    assert second.replaced_token_hash == "hash-1"
     sqlite_session.expire_all()
-    assert sqlite_session.scalar(select(OAuthAccessToken).where(OAuthAccessToken.token_hash == "hash-1")) is None
-    live = list(sqlite_session.scalars(select(OAuthAccessToken).where(OAuthAccessToken.revoked_at.is_(None))))
-    assert [record.id for record in live] == [first.token_id]
-    assert redis.deleted == [TOKEN_CACHE_KEY_FMT.format(hash="hash-1")]
+    assert sqlite_session.get(OAuthAccessToken, first.token_id) is None
 
 
 def test_login_after_logout_on_the_same_device_succeeds(
@@ -226,11 +222,10 @@ def test_login_after_logout_on_the_same_device_succeeds(
 
     second = issue_token()
 
-    assert second.token_id == first.token_id
     assert second.rotation.replaced_token_id is None
     sqlite_session.expire_all()
     records = list(sqlite_session.scalars(select(OAuthAccessToken)).all())
-    assert [(record.id, record.revoked_at) for record in records] == [(first.token_id, None)]
+    assert [(record.id, record.revoked_at) for record in records] == [(second.token_id, None)]
     assert records[0].token_hash == sha256_hex(second.token)
 
 
