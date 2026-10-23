@@ -383,6 +383,17 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
     if boundary != "model":
         assert reasoning[0]["parameters"] == result.parameters
         assert saved_assessment == assessment
+        if boundary in {"shell_run", "bootstrap", "config_pull"}:
+            capability = reasoning[0]["tool"]
+            assert isinstance(capability, module.AgentShellCapability)
+            assert capability.execution_context is not None
+            assert capability.execution_context["initial_working_directory"] == "request_owned_agent_workspace"
+            assert capability.execution_context["may_contain_cloned_files"] is True
+            assert capability.execution_context["filesystem_confinement_guaranteed"] is False
+            asset_cli = capability.execution_context["configured_asset_cli"]
+            assert isinstance(asset_cli, dict)
+            assert asset_cli["may_overwrite_local_copies"] is True
+            assert asset_cli["may_download_remote_assets"] is True
     else:
         assert reasoning == []
         assert saved_assessment["action"] == "Invoke selected Agent model"
