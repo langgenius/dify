@@ -12,11 +12,13 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import WorkspaceRoleCheckboxList from '../../workspace-role-checkbox-list'
+import WorkspaceRolePicker from '../../workspace-role-picker'
 
 type AssignRolesContentProps = {
   selectedRoles: Role[]
   allowMultipleRoles?: boolean
+  isSubmitting?: boolean
+  hasSubmitError?: boolean
   searchInputRef: Ref<HTMLInputElement>
   onSubmit: (roles: Role[]) => void
 }
@@ -25,6 +27,8 @@ const AssignRolesContent = ({
   selectedRoles,
   allowMultipleRoles = true,
   searchInputRef,
+  isSubmitting = false,
+  hasSubmitError = false,
   onSubmit,
 }: AssignRolesContentProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
@@ -49,7 +53,7 @@ const AssignRolesContent = ({
       })
 
   const handleConfirm = () => {
-    if (isConfirmDisabled) return
+    if (isConfirmDisabled || isSubmitting) return
 
     onSubmit(selected)
   }
@@ -68,14 +72,20 @@ const AssignRolesContent = ({
         <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
       </DialogHeader>
 
-      <WorkspaceRoleCheckboxList
+      <WorkspaceRolePicker
         searchInputRef={searchInputRef}
+        readOnly={isSubmitting}
         selectedRoleIds={selectedRoleIds}
         selectedRoles={selected}
         allowMultipleRoles={allowMultipleRoles}
         onSelectedRolesChange={setSelected}
       />
 
+      {hasSubmitError && (
+        <p role="alert" className="px-6 pt-2 system-sm-regular text-text-destructive">
+          {t(($) => $['api.actionFailed'], { ns: 'common' })}
+        </p>
+      )}
       <DialogFooter>
         {allowMultipleRoles && (
           <div className="me-auto system-xs-regular text-text-tertiary">
@@ -88,7 +98,7 @@ const AssignRolesContent = ({
         <DialogClose render={<Button variant="secondary" />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
-        <Button variant="primary" disabled={isConfirmDisabled} type="submit">
+        <Button variant="primary" loading={isSubmitting} disabled={isConfirmDisabled} type="submit">
           {t(($) => $['operation.confirm'], { ns: 'common' })}
         </Button>
       </DialogFooter>

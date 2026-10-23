@@ -258,7 +258,7 @@ describe('MemberDetailsContent', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /members\.memberDetails\.assign/i }))
-      await user.click(await screen.findByRole('checkbox', { name: /Second role/i }))
+      await user.click(await screen.findByRole('option', { name: /Second role/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
 
       expect(handleAssignSubmit).not.toHaveBeenCalled()
@@ -286,7 +286,7 @@ describe('MemberDetailsContent', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /common\.operation\.edit/i }))
-      await user.click(await screen.findByRole('radio', { name: /Second role/i }))
+      await user.click(await screen.findByRole('option', { name: /Second role/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 

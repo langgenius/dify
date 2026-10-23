@@ -112,8 +112,8 @@ async function chooseRoles(user: ReturnType<typeof userEvent.setup>, multiple: b
       name: multiple ? /memberDetails\.assign(?=$|:)/ : 'common.operation.edit',
     }),
   )
-  await user.click(await screen.findByRole(multiple ? 'checkbox' : 'radio', { name: /Next role/ }))
-  if (multiple) await user.click(screen.getByRole('checkbox', { name: /Extra role/ }))
+  await user.click(await screen.findByRole('option', { name: /Next role/ }))
+  if (multiple) await user.click(screen.getByRole('option', { name: /Extra role/ }))
   await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
   return details
 }
@@ -307,18 +307,18 @@ describe('MembersPage', () => {
     const openRoles = async () => {
       await user.click(more)
       await user.click(screen.getByRole('menuitem', { name: /members\.editRole(?=$|:)/ }))
-      const search = await screen.findByRole('searchbox')
+      const search = await screen.findByRole('combobox')
       await waitFor(() => expect(search).toHaveFocus())
       return search
     }
     const search = await openRoles()
-    await user.click(await screen.findByRole('radio', { name: /Next role/ }))
+    await user.click(await screen.findByRole('option', { name: /Next role/ }))
     await user.type(search, 'Next')
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(await openRoles()).toHaveValue('')
-    expect(await screen.findByRole('radio', { name: /Next role/ })).toHaveAttribute(
-      'aria-checked',
+    expect(await screen.findByRole('option', { name: /Next role/ })).toHaveAttribute(
+      'aria-selected',
       'false',
     )
     expect(updateRoles).not.toHaveBeenCalled()
