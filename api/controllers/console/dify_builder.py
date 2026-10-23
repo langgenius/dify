@@ -54,6 +54,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, NotFoundError
 from core.dify_builder.models import Action, Actor
 from core.dify_builder.real_call_consent import ConsentReceipt
 from extensions.ext_database import db
@@ -103,6 +104,7 @@ from .dify_builder_fields import (
     DifyBuilderStreamEventResponse,
     DifyBuilderSubmitActionPayload,
     DifyBuilderSubmitMessagePayload,
+    DifyBuilderTaskControlPayload,
 )
 
 logger = logging.getLogger(__name__)
@@ -118,6 +120,7 @@ register_schema_models(
     DifyBuilderConversationListQuery,
     DifyBuilderSubmitActionPayload,
     DifyBuilderSubmitMessagePayload,
+    DifyBuilderTaskControlPayload,
     DifyBuilderPrepareRealCallPayload,
     DifyBuilderConfirmRealCallPayload,
     DifyBuilderExecuteRealCallPayload,
@@ -282,6 +285,44 @@ def _message(session_id: str, body, actor: Actor) -> Response | tuple[dict, int]
             payload.client_turn_id,
         )
     )
+
+
+def _task_control(session_id: str, body, actor: Actor, *, operation: Literal["stop", "resume"]) -> dict:
+    """Parse a fixed task operation and serialize its authoritative JSON projection."""
+    try:
+        payload = DifyBuilderTaskControlPayload.model_validate(body)
+    except ValidationError:
+        raise BadRequest("Invalid task control request.") from None
+    try:
+        service = build_service()
+        command = service.stop_task if operation == "stop" else service.resume_task
+        view = command(
+            session_id,
+            actor,
+            base_version=payload.base_version,
+            client_action_id=payload.client_action_id,
+            base_app_revision=payload.base_app_revision,
+        )
+    except NotFoundError:
+        raise NotFound("Session not found.") from None
+    except BadRequestError:
+        raise BadRequest("Invalid task control request.") from None
+    except (BusyError, ConflictError):
+        raise Conflict("Task state conflict.") from None
+    except BuilderExecutionPolicyError as error:
+        if error.reason_code in {"native_owner_mismatch", "execution_owner_mismatch"}:
+            raise NotFound("Session not found.") from None
+        if error.reason_code == "execution_permission_denied":
+            raise Forbidden("Task permission denied.") from None
+        if error.reason_code in {
+            "native_runtime_unavailable",
+            "native_profile_unavailable",
+            "native_binding_unavailable",
+            "native_disclosure_unavailable",
+        }:
+            raise ServiceUnavailable("Task capability unavailable.") from None
+        raise Conflict("Task state conflict.") from None
+    return dump_response(DifyBuilderSessionViewResponse, session_view_to_dict(view))
 
 
 def _get_session(session_id: str, actor: Actor) -> dict | tuple[dict, int]:
@@ -614,6 +655,50 @@ class DifyBuilderActionsApi(Resource):
     @dify_builder_required
     def post(self, current_tenant_id, current_user, session_id):
         return _action(session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/stop")
+class DifyBuilderTaskStopApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderTaskControlPayload.__name__])
+    @console_ns.response(
+        200,
+        "Stopped task session state",
+        console_ns.models[DifyBuilderSessionViewResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _task_control(
+            session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id), operation="stop"
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/resume")
+class DifyBuilderTaskResumeApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderTaskControlPayload.__name__])
+    @console_ns.response(
+        200,
+        "Resumed task session state",
+        console_ns.models[DifyBuilderSessionViewResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _task_control(
+            session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id), operation="resume"
+        )
 
 
 @console_ns.route("/dify-builder/sessions/<string:session_id>/messages")

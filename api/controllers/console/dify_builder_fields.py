@@ -117,6 +117,14 @@ class DifyBuilderReceiptSnapshot(DifyBuilderPayload):
     fields: list[DifyBuilderReceiptFieldSnapshot] = Field(default_factory=list)
 
 
+class DifyBuilderTaskControlPayload(DifyBuilderPayload):
+    """Control the current task with a durable client replay identity."""
+
+    base_version: StrictInt
+    client_action_id: ClientTurnId
+    base_app_revision: str = ""
+
+
 class DifyBuilderSubmitActionPayload(DifyBuilderPayload):
     action_id: NonEmptyString
     client_action_id: ClientTurnId | None = None
