@@ -4,6 +4,7 @@ import {
   baseRunningData,
   renderWorkflowCanvasHook,
 } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useSnippetDraftStore } from '../../draft-store'
 import { useSnippetStartRun } from '../use-snippet-start-run'
@@ -54,7 +55,10 @@ it('runs immediately without leaving an old input form visible when there are no
 })
 
 it('closes an already open debug panel without starting another run', () => {
-  const { result, store } = renderStart({ showDebugAndPreviewPanel: true })
+  const { result, store } = renderStart({
+    showDebugAndPreviewPanel: true,
+    workflowRunningData: baseRunningData({ result: { status: WorkflowRunningStatus.Succeeded } }),
+  })
   act(() => result.current.handleWorkflowStartRunInWorkflow())
 
   expect(store.getState()).toMatchObject({

@@ -44,10 +44,10 @@ const createVariable = (
   overrides: Partial<WorkflowDraftVariableResponse> = {},
 ): WorkflowDraftVariableResponse => ({
   id: 'var-1',
-  type: VarInInspectType.node,
+  type: VarInInspectType.conversation,
   name: 'result',
   description: '',
-  selector: ['node-1', 'result'],
+  selector: ['conversation', 'result'],
   value_type: VarType.string,
   value: 'cached',
   edited: false,
