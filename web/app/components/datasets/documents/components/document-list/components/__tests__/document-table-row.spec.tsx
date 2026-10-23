@@ -137,6 +137,14 @@ describe('DocumentTableRow', () => {
     })
   })
 
+  describe('Summary Status', () => {
+    it('shows the generating summary status without requiring hover', () => {
+      const doc = createMockDoc({ summary_index_status: 'SUMMARIZING' })
+      render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
+      expect(screen.getByText(/list\.summary\.generating/)).toBeVisible()
+    })
+  })
+
   describe('Rename Action', () => {
     it('exposes a named rename action that can be activated with the keyboard', async () => {
       const user = userEvent.setup()

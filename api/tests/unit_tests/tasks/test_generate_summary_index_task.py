@@ -9,6 +9,7 @@ document indexing tasks.
 import pytest
 
 from tasks.generate_summary_index_task import generate_summary_index_task
+from tasks.regenerate_segment_summary_task import regenerate_segment_summary_task
 from tasks.regenerate_summary_index_task import regenerate_summary_index_task
 
 SUMMARY_QUEUE = "dataset_summary"
@@ -26,6 +27,7 @@ def _task_queue(task) -> str | None:
     [
         (generate_summary_index_task, "generate_summary_index_task"),
         (regenerate_summary_index_task, "regenerate_summary_index_task"),
+        (regenerate_segment_summary_task, "regenerate_segment_summary_task"),
     ],
 )
 def test_summary_task_uses_dedicated_queue(task, task_name):
