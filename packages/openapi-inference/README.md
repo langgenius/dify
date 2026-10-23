@@ -89,6 +89,12 @@ For Node:
 node --import @dify/openapi-inference/register app.ts
 ```
 
+For Next.js, use `@dify/openapi-inference/loader` in both `turbopack.rules` and `webpack` rules, as shown in `web/next.config.ts`. Turbopack rules need `as: '*.js'`; Webpack rules need `type: 'javascript/auto'` for JSON targets. Match the resolved JSON filename when importing through an `.openapi` symlink. The optional `runtime` loader option is a path relative to the specification directory; this selects the sidecar when symlink resolution moves the specification to another directory. Without the option, the loader discovers `<resolved filename>.config.ts`.
+
+The loader emits ESM namespaces as separate query modules, keeping API calls and query helpers tree-shakable. It tracks the runtime configuration as a dependency and refreshes compiled descriptors when the document changes.
+
+`pnpm --filter @dify/openapi-inference test:next` builds disposable Next.js apps sequentially with Turbopack and Webpack. It verifies server transport/context, query-key binding and removal of unused endpoints/schema metadata from client chunks. This production-build test is separate from `test` and `test:repository`; CI runs it with bounded workers and memory.
+
 Use an independent transport when requests need different hosts, credentials, or fetch implementations:
 
 ```ts
@@ -217,7 +223,7 @@ Specification limitations remain visible: Swagger 2 input files are rejected (us
 
 `console.openapi.config.ts` binds every operation to the existing console transport and supplies the shared context type and query-key prefix. Endpoint inputs and outputs come from the imported specification. The migrated owner keeps its existing nested API calls and only switches its import to `@/service/console/inferred`; there is no metadata-specific client wrapper. The browser keeps cookie auth, CSRF, refresh handling, `silent`, cancellation and response-header callbacks. Server calls use the existing `@/service/console/server` registration and request-local identity. HTTP errors retain the existing `ORPCError` envelope; the pilot does not load generated error maps or mark errors as validated defined errors. The unchanged query-key prefix lets existing oRPC consumers invalidate the same cache. Pagination now forwards the cancellation signal and silent context to every request.
 
-Build this package before running Web. The worktree's Vite configuration enables the mapper runtime for Vinext, unit tests and Storybook; Next.js's separate Webpack/Turbopack pipeline does not yet have an adapter. Use the existing Vinext command (`pnpm --dir web dev`) for this pilot, with a configured Dify console backend and KnowledgeFS enabled.
+Normal workspace installation builds this package through its `prepare` script. When installing with `--ignore-scripts`, build it explicitly before running Web; the Docker build does this too. Web configures the mapper runtime for Vinext, unit tests and Storybook, and an OpenAPI loader for Next.js Turbopack and Webpack. The Next.js rules match the resolved `console-openapi.json` target of the `.openapi` symlink and bind the same console runtime configuration. Use the existing Vinext command (`pnpm --dir web dev`) or Next.js command (`pnpm --dir web dev:next`) with a configured Dify console backend and KnowledgeFS enabled.
 
 ```sh
 pnpm --filter @dify/openapi-inference build
@@ -235,7 +241,7 @@ The integration checks pagination, CSRF/cookies, cache invalidation, HTTP errors
 - External references, URL-encoded forms, nested multipart file dictionaries, advanced serialization and YAML aliases are not implemented. Multipart supports repeated array fields and explicit `application/json` part encoding. Select `contentType: 'multipart/form-data'` when the endpoint also accepts JSON. SSE returns a `ReadableStream<Uint8Array>` without buffering or parsing events. Unsupported request serialization fails explicitly. This is not a complete JSON Schema validator, and response bodies are not runtime-validated.
 - These are oRPC-shaped functions using a Fetch transport, not a drop-in replacement for every oRPC Link, interceptor, typed error map or Dify `context` policy. Document configurations can implement context behavior through the transport factory; arbitrary existing query policies and defined-error maps are not imported automatically. Errors expose `response` and `data` via `ApiError`.
 - Unresolvable router member collisions are rejected. `key` is reserved as a route segment for query helpers; `api`, `query`, `default` and `then` are reserved operation IDs.
-- Vite handles bundling/HMR; Node handles direct execution. Other bundlers need an adapter. The compiler's mapper output is used for checking and is not the browser runtime artifact.
+- Vite, Next.js Turbopack and Webpack handle bundling; Node handles direct execution. Other bundlers need an adapter. The compiler's mapper output is used for checking and is not the browser runtime artifact.
 
 References: [TS 7.1 announcement] and [content mapper protocol].
 

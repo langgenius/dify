@@ -14,6 +14,8 @@ const config: KnipConfig = {
         'bin/**/*.{js,ts,mjs}',
         'tsslint.config.ts',
         'dev-proxy.config.ts',
+        // Loaded by the OpenAPI bundler adapters rather than a static import.
+        'service/console/console.openapi.config.ts!',
         // Public surface consumed by the standalone Marketplace host.
         // The `!` suffix keeps these entries in `knip --production`.
         'app/components/plugins/marketplace/detail-dialog/image-preview-message.ts!',

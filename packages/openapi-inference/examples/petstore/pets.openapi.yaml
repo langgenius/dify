@@ -9,10 +9,13 @@ paths:
       parameters:
         - name: limit
           in: query
-          schema: { type: integer }
+          schema:
+            type: integer
         - name: status
           in: query
-          schema: { type: string, enum: [available, adopted] }
+          schema:
+            type: string
+            enum: [available, adopted]
       responses:
         '200':
           description: Pets
@@ -20,7 +23,8 @@ paths:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/Pet' }
+                items:
+                  $ref: '#/components/schemas/Pet'
     post:
       operationId: createPet
       requestBody:
@@ -31,14 +35,18 @@ paths:
               type: object
               required: [name]
               properties:
-                name: { type: string }
-                status: { type: string, enum: [available, adopted] }
+                name:
+                  type: string
+                status:
+                  type: string
+                  enum: [available, adopted]
       responses:
         '201':
           description: Created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Pet' }
+              schema:
+                $ref: '#/components/schemas/Pet'
   /pets/{petId}:
     parameters:
       - $ref: '#/components/parameters/PetId'
@@ -49,7 +57,8 @@ paths:
           description: Found
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Pet' }
+              schema:
+                $ref: '#/components/schemas/Pet'
         '404':
           description: Missing
           content:
@@ -58,24 +67,32 @@ paths:
                 type: object
                 required: [message]
                 properties:
-                  message: { type: string }
+                  message:
+                    type: string
     delete:
       operationId: deletePet
       responses:
-        '204': { description: Deleted }
+        '204':
+          description: Deleted
 components:
   parameters:
     PetId:
       name: petId
       in: path
       required: true
-      schema: { type: integer }
+      schema:
+        type: integer
   schemas:
     Pet:
       type: object
       required: [id, name, status]
       properties:
-        id: { type: integer }
-        name: { type: string }
-        status: { type: string, enum: [available, adopted] }
-        nickname: { type: [string, 'null'] }
+        id:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string
+          enum: [available, adopted]
+        nickname:
+          type: [string, 'null']

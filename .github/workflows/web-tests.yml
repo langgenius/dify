@@ -10,6 +10,28 @@ permissions:
   contents: read
 
 jobs:
+  openapi-sdk-test:
+    name: OpenAPI SDK and Next.js adapters
+    runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Test SDK types, runtime and Vite integration
+        run: pnpm --filter @dify/openapi-inference test
+
+      - name: Test Next.js adapters and tree-shaking
+        run: pnpm --filter @dify/openapi-inference test:next
+
+      - name: Verify the production console bundle
+        run: pnpm --filter @dify/openapi-inference exec node --test integration/knowledge-fs-console.test.mjs
+
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: depot-ubuntu-24.04-4

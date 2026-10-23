@@ -2,6 +2,11 @@ import type { NextConfig } from '@/next'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { env } from './env'
 
+const openapiLoader = {
+  loader: '@dify/openapi-inference/loader',
+  options: { runtime: '../../../web/service/console/console.openapi.config.ts' },
+}
+
 const isDev = process.env.NODE_ENV === 'development'
 const allowedDevOrigins = process.env.NEXT_ALLOWED_DEV_ORIGINS?.split(',')
   .map((origin) => origin.trim())
@@ -13,9 +18,19 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   serverExternalPackages: ['loro-crdt'],
   turbopack: {
-    rules: codeInspectorPlugin({
-      bundler: 'turbopack',
-    }),
+    rules: {
+      ...codeInspectorPlugin({ bundler: 'turbopack' }),
+      // Next resolves the .openapi symlink to its JSON target before applying loaders.
+      '*console-openapi.json': { loaders: [openapiLoader], as: '*.js' },
+    },
+  },
+  webpack(config) {
+    config.module.rules.push({
+      test: /console-openapi\.json$/,
+      type: 'javascript/auto',
+      use: [openapiLoader],
+    })
+    return config
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   typescript: {
