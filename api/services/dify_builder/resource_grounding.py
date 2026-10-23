@@ -8,6 +8,7 @@ import re
 from collections.abc import Sequence
 from typing import Any
 
+from runtime_contracts.builder.presentation import BuilderText
 from services.dify_builder.agent.resources import ResourceRef, TenantResources
 from services.dify_builder.errors import PreflightError
 
@@ -263,7 +264,7 @@ def ground_edit_impact(impact: dict, catalogue: TenantResources) -> dict:
             continue
         candidates = {rid: ref for rid, ref in directory.items() if rid.startswith(kind + ":")}
         matches = {rid: ref for rid, ref in candidates.items() if _matches(query, ref)}
-        options = sorted(matches or candidates)
+        options = sorted(matches if query.strip() else candidates)
         key = f"{_RESOURCE_FIELD_PREFIX}{index}"
         node_id = str(request.get("node_id") or "")
         result["fields"].append(
@@ -334,6 +335,29 @@ def resolve_edit_choices(fields: list[dict], rules: dict, catalogue: TenantResou
     }
 
 
+def edit_resource_guidance(fields: list[dict], reply_language: str) -> BuilderText | None:
+    """Explain an empty choice before approval without offering substitutions."""
+    from runtime_contracts.builder.copy_ids import BuilderCopyId
+    from runtime_contracts.builder.presentation import copy_text
+
+    missing = [
+        field
+        for field in fields
+        if str(field.get("key", "")).startswith(_RESOURCE_FIELD_PREFIX) and not field.get("options")
+    ]
+    if not missing:
+        return None
+    if any(field.get("source_unavailable") for field in missing):
+        return copy_text(BuilderCopyId.RESOURCES_CATALOGUE_UNAVAILABLE)
+    return (
+        "未找到与所请求资源匹配的可用资源，无法按此要求修改。请修改目标或先配置该资源；"
+        "如需大幅重建工作流，请使用 Build。"
+        if reply_language.lower().startswith("zh")
+        else "No available resource matches the requested resource, so this edit cannot be fulfilled as requested. "
+        "Revise the goal or configure that resource first. Use Build if substantial workflow reconstruction is needed."
+    )
+
+
 def resolve_plan_resources(agent: Any, context: Any, graph: dict) -> None:
     try:
         resolver = agent.resolve_edit_bindings
@@ -400,6 +424,8 @@ def selection_failure_step(
             "resource_catalogue_changed": BuilderCopyId.RESOURCES_CHANGED,
         }.get(error.reason_code, BuilderCopyId.RESOURCES_SELECTION_REQUIRED)
     )
+    if error.reason_code == "resource_selection_required":
+        message = edit_resource_guidance(context.form_fields, context.reply_language) or message
     if error.reason_code == "resource_configuration_incompatible":
         message = (
             f"节点 {error.node_id} 的工具或模型配置与已选资源不兼容。尚未应用修改。"

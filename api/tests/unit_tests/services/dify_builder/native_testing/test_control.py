@@ -7,7 +7,7 @@ from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
-from threading import Event, Thread, current_thread
+from threading import Barrier, Event, Thread, current_thread
 from types import TracebackType
 from typing import Literal, TypedDict, cast, override
 
@@ -576,8 +576,6 @@ def test_actual_iteration_child_restore_and_container_resume_forward_native_algo
     native, first = make_native(config=config)
     # Both occurrences reach their control boundary before either worker emits
     # a pause; Graphon 0.8 can defer a sibling that has not started yet.
-    from threading import Barrier
-
     arrived = Barrier(2)
 
     def before_accept(_record: NativeControlRecord) -> None:
@@ -616,6 +614,14 @@ def test_actual_parallel_waits_retain_both_distinct_pending_ids_and_native_bindi
         "one": ApprovalWait(pending_operation_id="pending-one", wait_reason="configuration"),
         "two": ApprovalWait(pending_operation_id="pending-two", wait_reason="interaction"),
     }
+    # Exercise two reached boundaries: Graphon can defer an unstarted sibling
+    # as soon as the first worker requests a pause.
+    arrived = Barrier(2)
+
+    def before_accept(_record: NativeControlRecord) -> None:
+        arrived.wait(timeout=3)
+
+    factory.sink.before_accept = before_accept
     events = list(native.run())
     assert isinstance(events[-1], GraphRunPausedEvent)
     assert factory.owner.status == "WAIT_RECORDED"
