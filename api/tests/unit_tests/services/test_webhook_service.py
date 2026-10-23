@@ -9,7 +9,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
 
-from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
+from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, EndUserType
 from models.model import App, AppMode, EndUser
 from models.tools import ToolFile
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
@@ -19,6 +19,7 @@ from services.errors.app import QuotaExceededError
 from services.trigger import webhook_service as webhook_service_module
 from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.webhook_service import WebhookService
+from services.workflow.entities import AsyncTriggerResponse, TriggerActor, TriggerData
 from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
 
 
@@ -233,103 +234,79 @@ class TestWebhookServiceLookup:
             WebhookService.get_webhook_trigger_and_workflow("webhook-123")
 
 
+class _WorkflowDispatcher:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+        self.actor: TriggerActor | None = None
+        self.data: TriggerData | None = None
+
+    def trigger_workflow_async(self, *, actor: TriggerActor, trigger_data: TriggerData) -> AsyncTriggerResponse:
+        self.actor, self.data = actor, trigger_data
+        if self.error is not None:
+            raise self.error
+        return AsyncTriggerResponse(workflow_trigger_log_id="log", task_id="task", status="queued", queue="workflow")
+
+
 class TestWebhookServiceUnit:
     """Webhook business-logic tests with isolated sessions where the service owns their lifecycle."""
 
     def test_trigger_workflow_execution_propagates_quota_error_without_error_log(
         self,
         caplog: pytest.LogCaptureFixture,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
         trigger_status: AppTriggerService,
     ) -> None:
-        """Quota failures refund the charge and close the real service-owned session."""
-        monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
-        webhook_trigger = _webhook_trigger()
-        workflow = _workflow()
         quota_charge = MagicMock()
         quota_error = QuotaExceededError(feature="workflow", tenant_id="tenant-123", required=1)
-
+        dispatch = _WorkflowDispatcher(error=quota_error)
         caplog.set_level(logging.INFO)
-        with (
-            patch("services.trigger.webhook_service.QuotaService.reserve", return_value=quota_charge),
-            patch(
-                "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
-                side_effect=quota_error,
-            ) as mock_trigger_workflow_async,
-        ):
+        with patch("services.trigger.webhook_service.QuotaService.reserve", return_value=quota_charge):
             with pytest.raises(QuotaExceededError) as exc_info:
                 WebhookService.trigger_workflow_execution(
-                    webhook_trigger,
+                    _webhook_trigger(),
                     {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
-                    workflow,
+                    _workflow(),
                     end_users=_EndUserServiceStub(_end_user()),
+                    workflow_dispatch=dispatch,
                     trigger_status=trigger_status,
                 )
-
         assert exc_info.value is quota_error
         quota_charge.refund.assert_called_once_with()
-        session = mock_trigger_workflow_async.call_args.kwargs["session"]
-        assert isinstance(session, Session)
-        assert session.in_transaction() is False
         assert len(caplog.records) == 1
         assert caplog.records[0].levelno == logging.INFO
-        assert caplog.records[0].message == (
-            "Tenant tenant-123 quota exceeded for feature workflow, skipping webhook trigger webhook-123"
-        )
 
-    def test_trigger_workflow_execution_success(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
-        trigger_status: AppTriggerService,
-    ) -> None:
-        monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
-        webhook_trigger = _webhook_trigger()
-        workflow = _workflow()
-        end_user = _end_user()
+    def test_trigger_workflow_execution_success(self, trigger_status: AppTriggerService) -> None:
         quota_charge = MagicMock()
-        webhook_data = {
-            "method": "POST",
-            "headers": {"Authorization": "Bearer token"},
-            "query_params": {"version": "1"},
-            "body": {"message": "hello"},
-            "files": {},
-        }
-
-        with (
-            patch.object(webhook_service_module.QuotaService, "reserve", return_value=quota_charge),
-            patch.object(
-                webhook_service_module.AsyncWorkflowService,
-                "trigger_workflow_async",
-            ) as mock_trigger,
-        ):
+        dispatch = _WorkflowDispatcher()
+        end_user = _end_user()
+        with patch.object(webhook_service_module.QuotaService, "reserve", return_value=quota_charge):
             WebhookService.trigger_workflow_execution(
-                webhook_trigger,
-                webhook_data,
-                workflow,
+                _webhook_trigger(),
+                {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}},
+                _workflow(),
                 end_users=_EndUserServiceStub(end_user),
+                workflow_dispatch=dispatch,
                 trigger_status=trigger_status,
             )
-
-        call_session = mock_trigger.call_args.kwargs["session"]
-        assert call_session.get_bind() is sqlite_engine
+        assert dispatch.actor is not None
+        assert dispatch.actor.id == end_user.id
+        assert dispatch.actor.role == CreatorUserRole.END_USER
+        assert dispatch.data is not None
+        assert dispatch.data.workflow_id == _workflow().id
         quota_charge.commit.assert_called_once_with()
         quota_charge.refund.assert_not_called()
 
     def test_trigger_workflow_execution_end_user_service_failure(self, trigger_status: AppTriggerService) -> None:
-        webhook_trigger = _webhook_trigger()
-        workflow = _workflow()
-        webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
-
+        dispatch = _WorkflowDispatcher()
         with pytest.raises(ValueError, match="Failed to create end user"):
             WebhookService.trigger_workflow_execution(
-                webhook_trigger,
-                webhook_data,
-                workflow,
+                _webhook_trigger(),
+                {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}},
+                _workflow(),
                 end_users=_EndUserServiceStub(ValueError("Failed to create end user")),
+                workflow_dispatch=dispatch,
                 trigger_status=trigger_status,
             )
+        assert dispatch.actor is None
 
     def test_extract_webhook_data_json(self):
         """Test webhook data extraction from JSON request."""

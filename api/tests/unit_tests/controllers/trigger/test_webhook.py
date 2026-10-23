@@ -30,10 +30,16 @@ class _AppServicesStub:
     trigger_status: AppTriggerService
 
 
+@dataclass(eq=False, repr=False)
+class _WorkspaceServicesStub:
+    workflow_dispatch: object
+
+
 class _ApplicationServicesStub:
     def __init__(self, commands: object, trigger_status: AppTriggerService) -> None:
         self.app_scoped_end_users = _AppScopedEndUserServicesStub(commands)
         self.apps = _AppServicesStub(trigger_status)
+        self.workspaces = _WorkspaceServicesStub(object())
 
 
 @pytest.fixture(autouse=True)

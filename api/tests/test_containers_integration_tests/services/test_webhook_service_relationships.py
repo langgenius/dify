@@ -367,7 +367,7 @@ class TestWebhookServiceTriggerExecutionWithContainers:
                 "services.trigger.webhook_service.QuotaService.reserve",
                 return_value=quota_charge,
             ) as mock_reserve,
-            patch("services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async") as mock_trigger,
+            patch("services.async_workflow_service.AsyncWorkflowService.trigger_workflow_async") as mock_trigger,
         ):
             WebhookService.trigger_workflow_execution(
                 webhook_trigger,
@@ -375,6 +375,7 @@ class TestWebhookServiceTriggerExecutionWithContainers:
                 workflow,
                 end_users=_EndUserServiceStub(end_user),
                 trigger_status=application_services().apps.trigger_status,
+                workflow_dispatch=application_services().workspaces.workflow_dispatch,
             )
 
         mock_reserve.assert_called_once()
@@ -383,11 +384,10 @@ class TestWebhookServiceTriggerExecutionWithContainers:
         assert reserve_args[1] == webhook_trigger.tenant_id
         quota_charge.commit.assert_called_once()
         mock_trigger.assert_called_once()
-        trigger_args = mock_trigger.call_args.args
-        assert trigger_args[0] is end_user
-        assert trigger_args[1].workflow_id == workflow.id
-        assert trigger_args[1].root_node_id == webhook_trigger.node_id
-        assert mock_trigger.call_args.kwargs["session"] is not None
+        trigger_args = mock_trigger.call_args.kwargs
+        assert trigger_args["actor"].id == end_user.id
+        assert trigger_args["trigger_data"].workflow_id == workflow.id
+        assert trigger_args["trigger_data"].root_node_id == webhook_trigger.node_id
 
     def test_trigger_workflow_execution_marks_tenant_rate_limited_when_quota_exceeded(
         self, db_session_with_containers: Session, flask_app_with_containers: Flask
@@ -417,6 +417,7 @@ class TestWebhookServiceTriggerExecutionWithContainers:
                     workflow,
                     end_users=_EndUserServiceStub(_end_user(tenant_id=tenant.id, app_id=app.id)),
                     trigger_status=application_services().apps.trigger_status,
+                    workflow_dispatch=application_services().workspaces.workflow_dispatch,
                 )
 
         db_session_with_containers.refresh(app_trigger)
@@ -447,6 +448,7 @@ class TestWebhookServiceTriggerExecutionWithContainers:
                 workflow,
                 end_users=_EndUserServiceStub(RuntimeError("boom")),
                 trigger_status=application_services().apps.trigger_status,
+                workflow_dispatch=application_services().workspaces.workflow_dispatch,
             )
 
         assert caplog.messages.count(f"Failed to trigger workflow for webhook {webhook_trigger.webhook_id}") == 1

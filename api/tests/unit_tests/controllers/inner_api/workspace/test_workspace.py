@@ -23,7 +23,11 @@ from core.trigger.utils.encryption import delete_cache_for_subscription
 from extensions.application_services.workspace import WorkspaceServices
 from extensions.ext_redis import RedisClientWrapper
 from libs.external_api import register_external_error_handlers
+from repositories.app_definition_query_repository import AppDefinitionQueryRepository
+from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.credentials.query_repository import CredentialQueryRepository
+from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerDispatchRepository
+from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
 from repositories.trigger.subscription_repository import (
@@ -32,6 +36,8 @@ from repositories.trigger.subscription_repository import (
     TriggerSubscriptionRepository,
 )
 from services.account_errors import AccountNotFoundError
+from services.app_scoped_end_user_service import AppScopedEndUserService
+from services.async_workflow_service import AsyncWorkflowService
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     WorkspaceNotFoundError,
@@ -40,6 +46,8 @@ from services.errors.workspace import (
 )
 from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
 from services.plugin.plugin_parameter_service import PluginParameterService
+from services.quota_service import QuotaService
+from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
 from services.trigger.endpoint_service import TriggerEndpointService
 from services.trigger.event_gateway import PluginTriggerEventGateway
@@ -64,6 +72,9 @@ from services.trigger.subscription_renewal_service import TriggerSubscriptionRen
 from services.trigger.subscription_service import TriggerSubscriptionService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
+from services.trigger.workflow_dispatch_gateway import AppScopedTriggerEndUsers
+from services.trigger.workflow_dispatch_service import PluginTriggerWorkflowDispatchService
+from services.workflow.queue_dispatcher import CeleryWorkflowQueuePublisher
 from services.workspace.contracts import CreatedWorkspace, WorkspaceMembership
 from services.workspace.provisioning_service import WorkspaceProvisioningService
 from services.workspace.service import WorkspaceQueryService, WorkspaceService
@@ -109,6 +120,17 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
         invalidate_cache=delete_cache_for_subscription,
         invalidate_properties=invalidate_subscription_properties,
     )
+    workflow_queries = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
+    logs = SQLAlchemyWorkflowTriggerDispatchRepository(session_factory=sqlite_session_factory)
+    queues = CeleryWorkflowQueuePublisher()
+    events = TriggerEventService(
+        subscriptions=subscription_queries,
+        plugins=PluginTriggerEventGateway(),
+        requests=TriggerHttpRequestCachingService,
+    )
+    workflow_dispatch = AsyncWorkflowService(
+        workflows=workflow_queries, logs=logs, queues=queues, reserve_quota=QuotaService.reserve
+    )
     services = WorkspaceServices(
         queries=create_autospec(WorkspaceQueryService, instance=True),
         management=create_autospec(WorkspaceService, instance=True),
@@ -138,6 +160,24 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
             subscriptions=subscription_queries,
             plugins=PluginTriggerEventGateway(),
             requests=TriggerHttpRequestCachingService,
+        ),
+        workflow_dispatch=workflow_dispatch,
+        trigger_workflow_dispatch=PluginTriggerWorkflowDispatchService(
+            workflows=workflow_queries,
+            logs=logs,
+            queues=queues,
+            dispatch=workflow_dispatch,
+            events=events,
+            bindings=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+            end_users=AppScopedTriggerEndUsers(
+                end_users=AppScopedEndUserService(
+                    end_users=AppScopedEndUserRepo(session_factory=sqlite_session_factory)
+                )
+            ),
+            reserve_quota=QuotaService.reserve,
+            mark_rate_limited=AppTriggerService(
+                triggers=SQLAlchemyAppTriggerRepository(session_factory=sqlite_session_factory)
+            ).mark_tenant_triggers_rate_limited,
         ),
         trigger_builders=builders,
         trigger_endpoints=TriggerEndpointService(
