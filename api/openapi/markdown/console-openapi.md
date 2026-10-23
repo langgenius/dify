@@ -24995,7 +24995,7 @@ Binding only; ordinary Builder actions remain the preferred start path.
 | outcome | string, <br>**Available values:** "cancelled", "failed", "succeeded", "unknown" |  | Yes |
 | pending | [ [PendingActionDisclosure](#pendingactiondisclosure) ] |  | Yes |
 | request_id | string |  | Yes |
-| resume_blocked_reason | string, <br>**Available values:** "approval_required", "native_resolution_unavailable", "not_waiting", "state_unavailable" |  | No |
+| resume_blocked_reason | string, <br>**Available values:** "approval_required", "native_expired", "native_resolution_unavailable", "not_waiting", "state_unavailable" |  | No |
 | schema_version | string, <br>**Default:** builder-native-test-v1 |  | No |
 | status | string, <br>**Available values:** "prepared", "running", "terminal", "waiting" | *Enum:* `"prepared"`, `"running"`, `"terminal"`, `"waiting"` | Yes |
 | version | integer |  | Yes |

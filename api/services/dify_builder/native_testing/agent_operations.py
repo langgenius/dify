@@ -276,8 +276,12 @@ class AgentOperationService:
                 raise BuilderExecutionPolicyError("native_agent_profile_mismatch")
         return endpoint
 
-    def _definition(self, *, ref, descriptor=None):
-        context = self.state_store.load_context(ref=ref)
+    def _definition(self, *, ref, descriptor=None, for_projection: bool = False):
+        context = (
+            self.state_store.load_projection_context(ref=ref)
+            if for_projection
+            else self.state_store.load_context(ref=ref)
+        )
         if descriptor is None:
             endpoint = self._endpoint(ref)
             config = endpoint.config.config
@@ -307,8 +311,8 @@ class AgentOperationService:
         )
         return context, definition
 
-    def _tool(self, *, ref, target, descriptor=None):
-        context, definition = self._definition(ref=ref, descriptor=descriptor)
+    def _tool(self, *, ref, target, descriptor=None, for_projection: bool = False):
+        context, definition = self._definition(ref=ref, descriptor=descriptor, for_projection=for_projection)
         if not isinstance(target, dict) or set(target) != {"provider_type", "provider_id", "tool_name"}:
             raise BuilderExecutionPolicyError("native_agent_target_mismatch")
         selected = [
@@ -477,14 +481,14 @@ class AgentOperationService:
             binding=binding,
         )
 
-    def _shell(self, *, ref, boundary, target, parameters, descriptor=None):
+    def _shell(self, *, ref, boundary, target, parameters, descriptor=None, for_projection: bool = False):
         """Read immutable composition and recheck current complete workspace ownership."""
         from services.dify_builder.native_testing.agent_confirmed_workspace import (
             ALLOCATION,
             current_confirmed_workspace,
         )
 
-        context, definition = self._definition(ref=ref, descriptor=descriptor)
+        context, definition = self._definition(ref=ref, descriptor=descriptor, for_projection=for_projection)
         if descriptor is None:
             endpoint = self._endpoint(ref)
             prepared = self.state_store.load_prepared_config(
@@ -501,7 +505,7 @@ class AgentOperationService:
             if parent.ref != ref:
                 raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
             prepared = self.state_store.load_prepared_config(
-                ref=ref, parent_node=parent, config_ref=descriptor["config_ref"]
+                ref=ref, parent_node=parent, config_ref=descriptor["config_ref"], for_projection=for_projection
             )
             endpoint = NativeAgentEndpointContext(
                 ref=AgentNativeTestRef.model_validate(ref.model_dump(mode="json")),
@@ -900,7 +904,7 @@ class AgentOperationService:
             AgentCallAssessment.model_validate(payload["assessment"]),
         )
 
-    def revalidate(self, *, ref, intent):
+    def revalidate(self, *, ref, intent, for_projection: bool = False):
         owned = self.loader.load(ref=ref)
         descriptor = owned.bindings.get(_RESOURCE_KEY, {}).get(operation_digest(intent.key))
         if descriptor is None:
@@ -917,6 +921,7 @@ class AgentOperationService:
                 target=intent.target,
                 parameters=intent.parameters,
                 descriptor=descriptor,
+                for_projection=for_projection,
             )
             if (
                 definition.snapshot_id,
@@ -926,13 +931,15 @@ class AgentOperationService:
                 raise BuilderExecutionPolicyError("native_binding_drift")
             return None
         if intent.kind == "model":
-            _context, definition = self._definition(ref=ref, descriptor=descriptor)
+            _context, definition = self._definition(ref=ref, descriptor=descriptor, for_projection=for_projection)
             if intent.implementation_revision != definition.snapshot_id or intent.target != self._model_target(
                 definition
             ):
                 raise BuilderExecutionPolicyError("native_binding_drift")
             return None
-        current, definition, tool, selected_account = self._tool(ref=ref, target=intent.target, descriptor=descriptor)
+        current, definition, tool, selected_account = self._tool(
+            ref=ref, target=intent.target, descriptor=descriptor, for_projection=for_projection
+        )
         saved, _proposal, assessment = self.snapshot(ref=ref, key=intent.key)
         if assessment.destructive:
             raise BuilderExecutionPolicyError("destructive_effect_forbidden")
@@ -1070,7 +1077,7 @@ class AgentOperationService:
         intent, proposal, assessment = self.snapshot(ref=resolved.ref, key=resolved.intent.key)
         if intent != resolved.intent:
             raise BuilderExecutionPolicyError("native_pending_conflict")
-        self.revalidate(ref=resolved.ref, intent=intent)
+        self.revalidate(ref=resolved.ref, intent=intent, for_projection=True)
         with self.loader.session_factory() as session:
             owned, _scope = self.loader._load(session, ref=resolved.ref, lock=False)
             pending = session.scalar(

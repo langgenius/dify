@@ -912,6 +912,21 @@ def payload_for(c: AgentStateCase, wait: AgentWaitAssociation, generation: int =
     )
 
 
+def test_expired_projection_keeps_agent_checkpoint_proof_without_writes(state_case: AgentStateCase) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    c = state_case
+    _, wait, _ = wait_state(c)
+    cp = c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload_for(c, wait))
+    c.loader.scope.expires_at = datetime.now(UTC) - timedelta(seconds=1)
+    c.events.clear()
+    projected = c.store.read_checkpoint(ref=c.ref, checkpoint=cp, for_projection=True)
+    assert projected.agent_associations == (wait,)
+    assert not any(event in {"save", "ack"} for event in c.events)
+    with pytest.raises(BuilderExecutionPolicyError, match="native_expired"):
+        c.store.read_checkpoint(ref=c.ref, checkpoint=cp)
+
+
 @pytest.mark.parametrize(
     ("field", "bad"),
     [
@@ -936,7 +951,12 @@ def test_commit_checkpoint_rejects_unselected_agent_private_material(
 
 
 @pytest.mark.parametrize("fault", ["current_workspace", "checkpoint_bytes", "saved_generation"])
-def test_read_checkpoint_revalidates_current_agent_private_relations(state_case: AgentStateCase, fault: str) -> None:
+@pytest.mark.parametrize("for_projection", [False, True])
+def test_read_checkpoint_revalidates_current_agent_private_relations(
+    state_case: AgentStateCase, fault: str, for_projection: bool
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
     from models.agent import AgentWorkspaceBinding
     from models.dify_builder_native_tests import NativeContinuation
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
@@ -944,6 +964,8 @@ def test_read_checkpoint_revalidates_current_agent_private_relations(state_case:
     c = state_case
     _, wait, _ = wait_state(c)
     checkpoint_ref = c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload_for(c, wait))
+    if for_projection:
+        c.loader.scope.expires_at = datetime.now(UTC) - timedelta(seconds=1)
     if fault == "current_workspace":
         required_resource(c.loader, AgentWorkspaceBinding).backend_binding_ref = "foreign"
     elif fault == "checkpoint_bytes":
@@ -952,7 +974,7 @@ def test_read_checkpoint_revalidates_current_agent_private_relations(state_case:
     else:
         next(row for row in c.loader.rows if isinstance(row, NativeContinuation)).generation = 1
     with pytest.raises(BuilderExecutionPolicyError):
-        c.store.read_checkpoint(ref=c.ref, checkpoint=checkpoint_ref)
+        c.store.read_checkpoint(ref=c.ref, checkpoint=checkpoint_ref, for_projection=for_projection)
 
 
 def test_second_distinct_occurrence_cannot_silently_reuse_single_workspace(state_case: AgentStateCase) -> None:
@@ -1118,20 +1140,27 @@ def test_sql_recheck_after_private_io_refuses_drift_before_ack(state_case: Agent
     assert not c.loader.writing
 
 
-def test_read_checkpoint_rechecks_selected_outer_metadata_after_private_io(state_case: AgentStateCase) -> None:
+@pytest.mark.parametrize("for_projection", [False, True])
+def test_read_checkpoint_rechecks_selected_outer_metadata_after_private_io(
+    state_case: AgentStateCase, for_projection: bool
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
     from models.dify_builder_native_tests import NativeContinuation
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 
     c = state_case
     _, wait, _ = wait_state(c)
     checkpoint_ref = c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload_for(c, wait))
+    if for_projection:
+        c.loader.scope.expires_at = datetime.now(UTC) - timedelta(seconds=1)
 
     def changed_outer() -> None:
         next(row for row in c.loader.rows if isinstance(row, NativeContinuation)).generation = 1
 
     c.loader.before_lock = changed_outer
     with pytest.raises(BuilderExecutionPolicyError, match="native_generation_conflict"):
-        c.store.read_checkpoint(ref=c.ref, checkpoint=checkpoint_ref)
+        c.store.read_checkpoint(ref=c.ref, checkpoint=checkpoint_ref, for_projection=for_projection)
 
 
 def test_actual_operation_cursor_finish_is_untouched_by_agent_associations(

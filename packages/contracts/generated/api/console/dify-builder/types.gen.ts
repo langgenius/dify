@@ -442,6 +442,7 @@ export type NativeTestPublicReceipt = {
   request_id: string
   resume_blocked_reason?:
     | 'approval_required'
+    | 'native_expired'
     | 'native_resolution_unavailable'
     | 'not_waiting'
     | 'state_unavailable'

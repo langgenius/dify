@@ -1307,6 +1307,7 @@ export const zNativeTestPublicReceipt = z.object({
   resume_blocked_reason: z
     .enum([
       'approval_required',
+      'native_expired',
       'native_resolution_unavailable',
       'not_waiting',
       'state_unavailable',

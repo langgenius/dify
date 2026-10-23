@@ -544,13 +544,15 @@ def test_real_queued_agent_checkpoint_is_readable_before_single_dispatch_claim(
     assert not lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id)
 
 
-@pytest.mark.parametrize("guard_change", ["none", "canvas", "execution", "input", "actor", "target"])
+@pytest.mark.parametrize("guard_change", ["none", "canvas", "execution", "input", "actor", "target", "rbac"])
+@pytest.mark.parametrize("for_projection", [False, True])
 def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
     mocker: pytest_mock.MockerFixture,
     association_case: AgentAssociationCase,
     native_owner: NativeOwner,
     monkeypatch: pytest.MonkeyPatch,
     guard_change: str,
+    for_projection: bool,
 ) -> None:
     """Actual normal SQL/crypto owners; only backend allocation is a no-I/O fixture."""
     from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
@@ -717,7 +719,82 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
         backend_wait_event_id="1234-0",
     )
     normal = NormalAgentParent(ref=ref, context=context, parent=parent)
-    saved = store.commit_checkpoint(ref=ref, generation=0, payload=payload(normal, wait))
+    checkpoint_payload = payload(normal, wait)
+    operations = None
+    resolved = None
+    intent = None
+    if for_projection:
+        from dify_agent.protocol.native_testing import AgentNativeTestRef, AgentOperationKey
+        from flask import g
+
+        from runtime_contracts.builder.native.contracts import ApprovalWait, EffectIntent
+        from services.dify_builder.native_testing.agent_lineage import NativeAgentEndpointContext
+        from services.dify_builder.native_testing.agent_operations import (
+            AgentCallAssessment,
+            AgentOperationBindingResolver,
+            AgentOperationService,
+        )
+        from services.dify_builder.native_testing.pending_intents import ResolvedPendingIntent
+        from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+
+        operations = AgentOperationService(
+            loader=OwnedNativeTestLoader(factory, actor=actor, resolver=AgentOperationBindingResolver()),
+            state_store=store,
+            assessor=lambda **_: AgentCallAssessment(
+                action="bootstrap",
+                account_label=None,
+                target_summary={"runtime": "runtime", "shell": "shell"},
+                parameters_summary={"script": "python3 --version"},
+                risk_notice="Read Python version only.",
+                destructive=False,
+            ),
+        )
+        g.agent_runtime_context = NativeAgentEndpointContext(
+            ref=AgentNativeTestRef.model_validate(ref.model_dump(mode="json")),
+            config=config,
+            association=association,
+            native_test_profile="confirmed",
+        )
+        agent_intent = operations.prepare_intent(
+            ref=g.agent_runtime_context.ref,
+            key=AgentOperationKey(
+                invocation_id=ref.invocation_id,
+                occurrence_path=(execution_id, "bootstrap"),
+                cursor=0,
+            ),
+            boundary="bootstrap",
+            target={"runtime": "runtime", "shell": "shell"},
+            parameters={"script": "python3 --version"},
+        )
+        intent = EffectIntent.model_validate(agent_intent.model_dump(mode="json"))
+        pending = operations.bridge.authorization.before_call(ref=ref, intent=intent)
+        assert isinstance(pending, ApprovalWait)
+        _, proposal, _ = operations.snapshot(ref=ref, key=intent.key)
+        journal = checkpoint_payload.node_journals[0].model_copy(
+            update={
+                "occurrence_path": intent.key.occurrence_path,
+                "operation_keys": (intent.key,),
+                "intents": (intent,),
+            }
+        )
+        checkpoint_payload = checkpoint_payload.model_copy(
+            update={
+                "node_journals": (*checkpoint_payload.node_journals, journal),
+                "approval_proposals": (proposal,),
+            }
+        )
+    saved = store.commit_checkpoint(ref=ref, generation=0, payload=checkpoint_payload)
+    if for_projection:
+        from datetime import timedelta
+
+        from services.dify_builder.native_testing import state_store
+        from services.dify_builder.native_testing.pending_intents import ResolvedPendingIntent
+
+        assert intent is not None
+        resolved = ResolvedPendingIntent(ref=ref, generation=0, checkpoint=saved, intent=intent)
+        with factory() as session:
+            expired_now = require_instance(session.get(NativeTestScope, ref.request_id), NativeTestScope).expires_at
+        monkeypatch.setattr(state_store, "utc_now", lambda: expired_now + timedelta(seconds=1))
     with factory.begin() as session:
         state = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == ref.request_id))
         require_instance(state, NativeInvocationState).generation = 1
@@ -750,25 +827,43 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
             soul = require_instance(snapshot, AgentConfigSnapshot).config_snapshot_dict
             soul["model"]["model"] = "changed-model"
             require_instance(snapshot, AgentConfigSnapshot).config_snapshot = AgentSoulConfig.model_validate(soul)
+    if guard_change == "rbac":
+        from services.dify_builder import execution_policy_service
+
+        def revoked(*_args: object, **_kwargs: object) -> None:
+            raise BuilderExecutionPolicyError("test_permission_denied")
+
+        monkeypatch.setattr(execution_policy_service, "check_execution_permission", revoked)
     if guard_change not in {"none", "canvas"}:
         with pytest.raises(BuilderExecutionPolicyError):
-            store.read_checkpoint(ref=ref, checkpoint=saved)
+            store.read_checkpoint(ref=ref, checkpoint=saved, for_projection=for_projection)
+        if operations is not None and resolved is not None:
+            with pytest.raises(BuilderExecutionPolicyError):
+                operations.describe(actor=actor, resolved=resolved)
         with factory() as session:
             assert (
                 session.scalar(select(NativeEffectAttempt).where(NativeEffectAttempt.request_id == ref.request_id))
                 is None
             )
         return
-    selected = store.read_checkpoint(ref=ref, checkpoint=saved)
-    protected = store.load_agent_association(ref=ref, parent_node=parent, wait=selected.agent_associations[0])
-    assert protected.association.home_snapshot_id is None
-    assert protected.association.workspace.workspace_generation == 0
+    selected = store.read_checkpoint(ref=ref, checkpoint=saved, for_projection=for_projection)
+    assert selected.agent_associations == (wait,)
+    if not for_projection:
+        protected = store.load_agent_association(ref=ref, parent_node=parent, wait=selected.agent_associations[0])
+        assert protected.association.home_snapshot_id is None
+        assert protected.association.workspace.workspace_generation == 0
     assert (
         store.load_prepared_config(
-            ref=ref, parent_node=parent, config_ref=prepared.claim.config_ref
+            ref=ref, parent_node=parent, config_ref=prepared.claim.config_ref, for_projection=for_projection
         ).workspace.home_snapshot_id
         is None
     )
+    if operations is not None and resolved is not None:
+        disclosure = operations.describe(actor=actor, resolved=resolved)
+        assert disclosure.action == "bootstrap"
+        assert disclosure.parameters_summary == {"script": "python3 --version"}
+        with pytest.raises(BuilderExecutionPolicyError, match="native_expired"):
+            operations.revalidate(ref=ref, intent=resolved.intent)
     assert len(allocations) == 1
     with factory() as session:
         assert (
@@ -781,7 +876,10 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
             session.get(AgentWorkspaceBinding, stored.binding_id), AgentWorkspaceBinding
         ).base_home_snapshot_id = c.workspace.home_snapshot_id
     with pytest.raises(BuilderExecutionPolicyError, match="native_agent_pin_mismatch"):
-        store.read_checkpoint(ref=ref, checkpoint=saved)
+        store.read_checkpoint(ref=ref, checkpoint=saved, for_projection=for_projection)
+    if operations is not None and resolved is not None:
+        with pytest.raises(BuilderExecutionPolicyError):
+            operations.describe(actor=actor, resolved=resolved)
 
 
 @pytest.mark.parametrize("association_case", ["legacy_confirmed", "isolated"], indirect=True)
