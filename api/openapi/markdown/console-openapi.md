@@ -7972,7 +7972,12 @@ Delete an API key for a dataset
 | 409 | Session conflict | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [GET] /dify-builder/sessions/{session_id}/native-test-input
+### ~~[GET] /dify-builder/sessions/{session_id}/native-test-input~~
+
+***DEPRECATED***
+
+Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -7986,7 +7991,12 @@ Delete an API key for a dataset
 | 200 | Current saved test input binding | **application/json**: [DifyBuilderNativeTestInputResponse](#difybuildernativetestinputresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [POST] /dify-builder/sessions/{session_id}/native-tests
+### ~~[POST] /dify-builder/sessions/{session_id}/native-tests~~
+
+***DEPRECATED***
+
+Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -8006,7 +8016,12 @@ Delete an API key for a dataset
 | 200 | Native test admission receipt | **application/json**: [DifyBuilderNativeTestResponse](#difybuildernativetestresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [GET] /dify-builder/sessions/{session_id}/native-tests/{request_id}
+### ~~[GET] /dify-builder/sessions/{session_id}/native-tests/{request_id}~~
+
+***DEPRECATED***
+
+Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -8021,7 +8036,12 @@ Delete an API key for a dataset
 | 200 | Current native test receipt | **application/json**: [DifyBuilderNativeTestResponse](#difybuildernativetestresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [POST] /dify-builder/sessions/{session_id}/native-tests/{request_id}/cancel
+### ~~[POST] /dify-builder/sessions/{session_id}/native-tests/{request_id}/cancel~~
+
+***DEPRECATED***
+
+Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -8042,7 +8062,12 @@ Delete an API key for a dataset
 | 200 | Native test cancellation receipt | **application/json**: [DifyBuilderNativeTestResponse](#difybuildernativetestresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [POST] /dify-builder/sessions/{session_id}/native-tests/{request_id}/decisions
+### ~~[POST] /dify-builder/sessions/{session_id}/native-tests/{request_id}/decisions~~
+
+***DEPRECATED***
+
+Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -8063,7 +8088,12 @@ Delete an API key for a dataset
 | 200 | Saved native test decision | **application/json**: [DifyBuilderNativeTestResponse](#difybuildernativetestresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [POST] /dify-builder/sessions/{session_id}/native-tests/{request_id}/resume
+### ~~[POST] /dify-builder/sessions/{session_id}/native-tests/{request_id}/resume~~
+
+***DEPRECATED***
+
+Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -8181,7 +8211,8 @@ Delete an API key for a dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| native_tests | query | Include durable native execution snapshots with reconnect cursors | No | string, <br>**Available values:** "builder-native-test-v1" |
+| Last-Event-ID | header | Last observed native execution cursor; reconnect never repeats execution | No | string |
+| native_tests | query | Observe durable native execution changes until settlement, with reconnect cursors | No | string, <br>**Available values:** "builder-native-test-v1" |
 | session_id | path |  | Yes | string |
 
 #### Responses
@@ -20377,6 +20408,7 @@ Account not link tenant.
 | kind | [ActionKind](#actionkind) |  | Yes |
 | label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | next_state | string |  | No |
+| payload | object |  | No |
 
 #### ActionKind
 
@@ -26403,6 +26435,7 @@ Enum representing the deployment edition of the platform.
 | id | string |  | Yes |
 | kind | [ActionKind](#actionkind) |  | Yes |
 | label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
+| payload | object |  | No |
 
 #### DifyBuilderActiveInteractionResponse
 
@@ -26501,6 +26534,7 @@ Enum representing the deployment edition of the platform.
 | reply_language | string | Detected user-input language (BCP-47); empty until a user language is detected. | Yes |
 | run_status | [RunStatus](#runstatus) |  | Yes |
 | session_id | string |  | Yes |
+| test_execution | [NativeTestPublicReceipt](#nativetestpublicreceipt) |  | No |
 | version | integer |  | Yes |
 
 #### DifyBuilderCommandFinishedEventResponse
@@ -26636,6 +26670,7 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | ---- | ---- | ----------- | -------- |
 | code | [BuilderErrorCode](#buildererrorcode) |  | Yes |
 | message | string |  | No |
+| reason_code | string |  | No |
 | recoverable | boolean |  | No |
 
 #### DifyBuilderExecutionActivityResponse
@@ -26921,6 +26956,7 @@ Localized display only; submitted values remain in action.payload.
 | reply_language | string | Detected user-input language (BCP-47); empty until a user language is detected. | Yes |
 | run_status | [RunStatus](#runstatus) |  | Yes |
 | session_id | string |  | Yes |
+| test_execution | [NativeTestPublicReceipt](#nativetestpublicreceipt) |  | No |
 | version | integer |  | Yes |
 
 #### DifyBuilderStreamEventResponse
@@ -26938,7 +26974,8 @@ One JSON object carried by an SSE ``data:`` frame.
 | action_id | string |  | Yes |
 | base_app_revision | string |  | Yes |
 | base_version | integer |  | Yes |
-| payload | object |  | No |
+| client_action_id | string |  | No |
+| payload | object | Existing action payload. Native controls: confirm_test_operation/deny_test_operation take request_id,pending_operation_id,pending_version,scope_digest; resume_test takes request_id,expected_generation; cancel_test takes request_id. Copy payload from the current server action. | No |
 | receipt_snapshot | [DifyBuilderReceiptSnapshot](#difybuilderreceiptsnapshot) |  | No |
 
 #### DifyBuilderSubmitMessagePayload
