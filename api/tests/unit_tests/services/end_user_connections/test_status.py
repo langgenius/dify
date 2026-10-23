@@ -68,6 +68,7 @@ def target(context: WebConnectionContext, client: ConnectionOAuthClient) -> Tool
         provider="vendor/calendar/calendar",
         allowed_credential_types=frozenset(ConnectionCredentialType),
         provider_credential_types=frozenset(ConnectionCredentialType),
+        oauth_client_source=client.source,
         oauth_client=client,
     )
 

@@ -1,4 +1,6 @@
+import json
 from dataclasses import replace
+from datetime import datetime
 from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
@@ -12,6 +14,7 @@ from models.account import Account, AccountStatus
 from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from models.model import App, EndUser, Site
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
+from models.workflow import Workflow
 from services.end_user_connection_oauth_adapters import PluginService
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
@@ -246,11 +249,20 @@ def test_failed_reauthorization_keeps_working_credentials(harness: OAuthHarness)
     assert stored.access.credential_status == ConnectionCredentialStatus.CONNECTED
 
 
+@pytest.mark.parametrize("custom_client_schema", [False, True])
 def test_platform_client_requires_verified_provider_and_tracks_source(
-    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, custom_client_schema: bool
 ) -> None:
+    if not custom_client_schema:
+        schema = harness.providers.controller.entity.oauth_schema
+        assert schema is not None
+        schema.client_schema = []
     with harness.base.sessions.begin() as session:
-        session.execute(sa.delete(ToolOAuthTenantClient).where(ToolOAuthTenantClient.id == harness.client_id))
+        workflow = session.get(Workflow, harness.base.workflow_id)
+        assert workflow is not None
+        graph = workflow.graph_dict
+        graph["nodes"][0]["data"]["end_user_auth"]["oauth_client_type"] = "default"
+        workflow.graph = json.dumps(graph)
         system = ToolOAuthSystemClient(
             plugin_id="vendor/calendar",
             provider="calendar",
@@ -267,6 +279,22 @@ def test_platform_client_requires_verified_provider_and_tracks_source(
     assert stored.access.oauth_client.source == OAuthClientSource.PLATFORM
     assert stored.access.oauth_client.client_id == "platform-client"
     assert "private-client-secret" not in str(harness.redis_values)
+    with harness.base.sessions.begin() as session:
+        session.execute(
+            sa.update(EndUserConnection)
+            .where(EndUserConnection.id == connection.id)
+            .values(expires_at=datetime(2000, 1, 1))
+        )
+    assert harness.base.service.check_connection(harness.base.context, connection.id).check.status == "valid"
+    assert len(harness.handler.refreshes) == 1
+    started = harness.service.reauthorize_oauth(
+        harness.base.context, connection.id, callback_url="http://web-api.example/api/connections/oauth"
+    )
+    assert harness.finish(started).id == connection.id
+    stored = harness.base.repository.find(harness.base.context, connection.id)
+    assert stored is not None
+    assert stored.access.oauth_client is not None
+    assert stored.access.oauth_client.source == OAuthClientSource.PLATFORM
 
 
 def test_foreign_owner_cannot_reauthorize(harness: OAuthHarness) -> None:
@@ -282,7 +310,11 @@ def test_foreign_owner_cannot_reauthorize(harness: OAuthHarness) -> None:
 
 def test_unverified_provider_cannot_use_platform_client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> None:
     with harness.base.sessions.begin() as session:
-        session.execute(sa.delete(ToolOAuthTenantClient).where(ToolOAuthTenantClient.id == harness.client_id))
+        workflow = session.get(Workflow, harness.base.workflow_id)
+        assert workflow is not None
+        graph = workflow.graph_dict
+        graph["nodes"][0]["data"]["end_user_auth"]["oauth_client_type"] = "default"
+        workflow.graph = json.dumps(graph)
         session.add(
             ToolOAuthSystemClient(
                 plugin_id="vendor/calendar",
@@ -294,6 +326,67 @@ def test_unverified_provider_cannot_use_platform_client(harness: OAuthHarness, m
     with pytest.raises(ConnectionConfigurationError):
         harness.start()
     assert harness.redis_values == {}
+
+
+@pytest.mark.parametrize(("client_type", "missing"), [("default", True), ("custom", False), ("custom", True)])
+def test_unavailable_selected_client_never_falls_back(
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, client_type: str, missing: bool
+) -> None:
+    with harness.base.sessions.begin() as session:
+        workflow = session.get(Workflow, harness.base.workflow_id)
+        assert workflow is not None
+        graph = workflow.graph_dict
+        graph["nodes"][0]["data"]["end_user_auth"]["oauth_client_type"] = client_type
+        workflow.graph = json.dumps(graph)
+        if client_type == "custom":
+            session.add(
+                ToolOAuthSystemClient(
+                    plugin_id="vendor/calendar",
+                    provider="calendar",
+                    encrypted_oauth_params=encrypt_system_params({"client_id": "platform-client"}),
+                )
+            )
+            if missing:
+                session.execute(sa.delete(ToolOAuthTenantClient).where(ToolOAuthTenantClient.id == harness.client_id))
+            else:
+                session.execute(
+                    sa.update(ToolOAuthTenantClient)
+                    .where(ToolOAuthTenantClient.id == harness.client_id)
+                    .values(enabled=False)
+                )
+    monkeypatch.setattr(PluginService, "is_plugin_verified", lambda _tenant_id, _unique_id: True)
+
+    with pytest.raises(ConnectionReauthorizationRequiredError):
+        harness.start()
+    assert harness.redis_values == {}
+
+
+@pytest.mark.parametrize("capability", ["oauth", "custom_client"])
+def test_selected_oauth_method_must_be_supported_by_provider(harness: OAuthHarness, capability: str) -> None:
+    schema = harness.providers.controller.entity.oauth_schema
+    assert schema is not None
+    if capability == "oauth":
+        schema.credentials_schema = []
+    else:
+        schema.client_schema = []
+
+    with pytest.raises(ConnectionConfigurationError):
+        harness.start()
+    assert harness.redis_values == {}
+
+
+def test_callback_rejects_changed_graph_client_selection_before_exchange(harness: OAuthHarness) -> None:
+    started = harness.start()
+    with harness.base.sessions.begin() as session:
+        workflow = session.get(Workflow, harness.base.workflow_id)
+        assert workflow is not None
+        graph = workflow.graph_dict
+        graph["nodes"][0]["data"]["end_user_auth"]["oauth_client_type"] = "default"
+        workflow.graph = json.dumps(graph)
+
+    with pytest.raises(ConnectionConfigurationError):
+        harness.finish(started)
+    assert harness.handler.exchanges == 0
 
 
 def test_expired_context_cannot_complete_even_with_matching_state(harness: OAuthHarness) -> None:

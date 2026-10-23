@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from constants.end_user_connections import OAuthClientSource
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from models.provider_ids import ToolProviderID
@@ -17,7 +18,14 @@ class EndUserAuthConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     allowed_credential_types: list[Literal["api-key", "oauth2"]] | None = Field(default=None, max_length=2)
+    oauth_client_type: Literal["default", "custom"] | None = None
     purpose: str | None = Field(default=None, max_length=50)
+
+    @property
+    def oauth_client_source(self) -> OAuthClientSource | None:
+        if self.oauth_client_type is None:
+            return None
+        return OAuthClientSource.PLATFORM if self.oauth_client_type == "default" else OAuthClientSource.WORKSPACE
 
     @field_validator("allowed_credential_types")
     @classmethod
@@ -155,6 +163,19 @@ def _configuration_issues(
         )
     if auth.purpose is None or not auth.purpose.strip():
         issues.append(ToolCredentialIssue(node_id, ("end_user_auth", "purpose"), "Field is required."))
+    if "oauth2" in (auth.allowed_credential_types or ()):
+        if auth.oauth_client_type is None:
+            issues.append(
+                ToolCredentialIssue(
+                    node_id, ("end_user_auth", "oauth_client_type"), "An OAuth client type is required."
+                )
+            )
+    elif auth.oauth_client_type is not None:
+        issues.append(
+            ToolCredentialIssue(
+                node_id, ("end_user_auth", "oauth_client_type"), "Only OAuth authentication can select a client type."
+            )
+        )
     return issues
 
 

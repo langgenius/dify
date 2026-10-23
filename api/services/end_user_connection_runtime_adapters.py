@@ -17,7 +17,7 @@ from graphon.nodes.tool.exc import ToolNodeError, ToolRuntimeResolutionError
 from graphon.runtime import VariablePool
 from models.provider_ids import ToolProviderID
 from repositories.end_user_connection_repository import EndUserConnectionRepository
-from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
+from services.end_user_connection_adapters import PluginApiKeyCredentialGateway, validate_provider_authentication
 from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway
 from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
 from services.end_user_connections.errors import (
@@ -87,6 +87,8 @@ def get_tool_runtime(
             canonical = str(ToolProviderID(provider.entity.identity.name))
             if selection.provider != canonical or root.end_user_auth is None:
                 raise ConnectionConfigurationError()
+            validate_provider_authentication(provider, root.end_user_auth)
+            source = root.end_user_auth.oauth_client_source
             oauth_client = None
             if record.credential_type == ConnectionCredentialType.OAUTH2:
                 gateway = PluginConnectionOAuthGateway(
@@ -95,7 +97,9 @@ def get_tool_runtime(
                     handler=OAuthHandler(),
                     auth=PluginCredentialAuthClient(),
                 )
-                oauth_client = gateway.resolve_client(identity.tenant_id, canonical).snapshot.reference
+                if source is None:
+                    raise ConnectionConfigurationError()
+                oauth_client = gateway.resolve_client(identity.tenant_id, canonical, source).snapshot.reference
             target = ToolConnectionTarget(
                 tenant_id=identity.tenant_id,
                 app_id=identity.app_id,
@@ -110,6 +114,7 @@ def get_tool_runtime(
                     for value in provider.get_supported_credential_types()
                     if value.value in {"api-key", "oauth2"}
                 ),
+                oauth_client_source=source,
                 oauth_client=oauth_client,
             )
             from extensions.ext_application_services import application_services

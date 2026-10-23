@@ -5,10 +5,10 @@ from typing import Any, Protocol
 
 from pydantic import ValidationError
 
-from constants.end_user_connections import ConnectionCredentialType
+from constants.end_user_connections import ConnectionCredentialType, OAuthClientSource
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from models.provider_ids import ToolProviderID
-from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
+from services.end_user_connection_adapters import PluginApiKeyCredentialGateway, validate_provider_authentication
 from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway
 from services.end_user_connections.entities import ConnectionOAuthClient, ToolConnectionTarget, WebConnectionContext
 from services.end_user_connections.errors import ConnectionConfigurationError, ConnectionReauthorizationRequiredError
@@ -56,7 +56,7 @@ class PublishedPreflightRequirements:
             }
             configs = {node_id: ToolCredentialConfig.model_validate(data) for node_id, data in nodes.items()}
             providers: dict[str, PluginToolProviderController] = {}
-            clients: dict[str, ConnectionOAuthClient | None] = {}
+            clients: dict[tuple[str, OAuthClientSource], ConnectionOAuthClient | None] = {}
             requirements: list[ConnectionRequirement] = []
             for node_id, config in configs.items():
                 if config.credential_source != "end_user":
@@ -78,17 +78,21 @@ class PublishedPreflightRequirements:
                     for value in provider.get_supported_credential_types()
                     if value.value in {"api-key", "oauth2"}
                 )
-                if not allowed or not allowed.issubset(supported):
-                    raise ConnectionConfigurationError()
+                validate_provider_authentication(provider, auth)
+                source = auth.oauth_client_source
+                client_key = (canonical, source) if source is not None else None
                 if (
                     canonical in oauth_providers
                     and ConnectionCredentialType.OAUTH2 in allowed
-                    and canonical not in clients
+                    and client_key is not None
+                    and client_key not in clients
                 ):
                     try:
-                        clients[canonical] = self._oauth.resolve_client(context.tenant_id, canonical).snapshot.reference
+                        clients[client_key] = self._oauth.resolve_client(
+                            context.tenant_id, canonical, client_key[1]
+                        ).snapshot.reference
                     except ConnectionReauthorizationRequiredError:
-                        clients[canonical] = None
+                        clients[client_key] = None
                 title = data.get("title")
                 requirements.append(
                     ConnectionRequirement(
@@ -100,7 +104,8 @@ class PublishedPreflightRequirements:
                             provider=canonical,
                             allowed_credential_types=allowed,
                             provider_credential_types=supported,
-                            oauth_client=clients.get(canonical),
+                            oauth_client_source=source,
+                            oauth_client=clients.get(client_key) if client_key is not None else None,
                         ),
                         title=title if isinstance(title, str) and title else node_id,
                         purpose=auth.purpose,

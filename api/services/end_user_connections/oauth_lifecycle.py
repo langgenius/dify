@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
-from constants.end_user_connections import ConnectionCredentialStatus
+from constants.end_user_connections import ConnectionCredentialStatus, OAuthClientSource
 from services.end_user_connections.contracts import ConnectionCheckOutcome, ConnectionCheckView
 from services.end_user_connections.entities import ConnectionMutationGuard, ConnectionOAuthClient, WebConnectionContext
 from services.end_user_connections.errors import (
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class OAuthLifecycleGateway(Protocol):
-    def resolve_client(self, tenant_id: str, provider: str) -> ResolvedOAuthClient: ...
+    def resolve_client(self, tenant_id: str, provider: str, source: OAuthClientSource) -> ResolvedOAuthClient: ...
 
     def resolve_grant_client(
         self, tenant_id: str, provider: str, reference: ConnectionOAuthClient
@@ -101,7 +101,10 @@ class OAuthConnectionLifecycleService:
         self, context: WebConnectionContext, record: StoredConnection
     ) -> tuple[ResolvedOAuthClient, dict[str, Any]]:
         connection_mutation_guard(context, record.access)
-        client = self._gateway.resolve_client(context.tenant_id, record.access.provider)
+        reference = record.access.oauth_client
+        if reference is None:
+            raise ConnectionReauthorizationRequiredError()
+        client = self._gateway.resolve_client(context.tenant_id, record.access.provider, reference.source)
         if record.access.oauth_client != client.snapshot.reference:
             raise ConnectionReauthorizationRequiredError()
         return client, self._cipher.decrypt(context.tenant_id, record.encrypted_credentials)
