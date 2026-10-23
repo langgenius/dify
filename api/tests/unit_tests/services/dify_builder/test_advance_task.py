@@ -1272,9 +1272,8 @@ def test_advance_builds_the_agent_for_the_acting_account(
 def test_first_test_command_finished_contains_native_receipt_without_opt_in(
     monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
 ) -> None:
-    from types import SimpleNamespace
-
     from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+    from services.dify_builder.test_actions import BuilderTestActions
 
     receipt = NativeTestPublicReceipt(
         request_id="native-request",
@@ -1288,7 +1287,8 @@ def test_first_test_command_finished_contains_native_receipt_without_opt_in(
         outcome=None,
         evidence_refs=(),
     )
-    port = SimpleNamespace(current=lambda **_: receipt)
+    port = BuilderTestActions(repo._session_factory, lambda **_: pytest.fail("projection must not start a command"))
+    monkeypatch.setattr(port, "current", lambda **_: receipt)
     monkeypatch.setattr(mod, "_build_repo", lambda: repo)
     monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
     monkeypatch.setattr(mod, "BuilderTestActions", lambda *_: port, raising=False)
