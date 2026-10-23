@@ -236,6 +236,23 @@ describe('MembersPage', () => {
     },
   )
 
+  it('discards canceled role edits when reopening the shared details dialog', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage()
+    const dialog = await chooseRoles(user, false)
+    expect(within(dialog).getByText('Next role')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Owner User' }))
+    expect(within(detailsDialog()).getByText('owner@example.com')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Admin User' }))
+    expect(within(detailsDialog()).getByText('admin@example.com')).toBeInTheDocument()
+    expect(within(detailsDialog()).queryByText('Next role')).not.toBeInTheDocument()
+    expect(updateRoles).not.toHaveBeenCalled()
+  })
+
   it('keeps role edits while saving and after failure, then closes only after a successful retry', async () => {
     const user = userEvent.setup()
     let rejectSave!: (error: Error) => void

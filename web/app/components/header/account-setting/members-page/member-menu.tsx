@@ -121,13 +121,10 @@ const MemberMenu = ({
           render={
             <IconButton
               size="lg"
-              aria-label={t(($) => $['members.memberActions'], {
-                ns: 'workspaceMembers',
-                defaultValue: 'Member actions',
-              })}
+              aria-label={`${t(($) => $['members.memberActions'], { ns: 'workspaceMembers' })}: ${memberName}`}
               className="data-popup-open:bg-state-base-hover"
             >
-              <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
+              <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </IconButton>
           }
         />
