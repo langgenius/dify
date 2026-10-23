@@ -245,7 +245,7 @@ describe('PreferencePage - Interactions', () => {
       })
     await act(async () => save.resolve(response()))
     await waitFor(() => expect(mockGet).toHaveBeenCalled())
-    await waitFor(() => expect(setLocaleOnClient).toHaveBeenCalledWith(chinese.value, false))
+    await waitFor(() => expect(setLocaleOnClient).toHaveBeenCalledWith(chinese.value))
     expect(language).toHaveAttribute('aria-readonly', 'true')
     expect(timezone).toHaveAttribute('aria-readonly', 'true')
     expect(mockRefresh).not.toHaveBeenCalled()
