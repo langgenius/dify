@@ -533,3 +533,89 @@ def test_direct_native_admission_rejects_stopped_task_without_worker_context(ser
     service.stop_task(s.id, _actor(), base_version=1, client_action_id="stop")
     with repo._session_factory() as sql, sql.begin(), pytest.raises(ConflictError, match="paused"):
         lock_task_admission(sql, s.id)
+
+
+def test_resume_response_receipt_cannot_invalidate_running_worker_cas(tmp_path, monkeypatch):
+    from dataclasses import asdict
+    from threading import Event, Thread
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+    from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+    from models.base import Base
+    from services.dify_builder.agent.llm import invoke_text
+    from services.dify_builder.application.runner import StepResult
+    from services.dify_builder.repository import SqlDifyBuilderRepository
+    from services.dify_builder.service import DifyBuilderService
+    from tasks import dify_builder_advance_task as task
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+    from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'resume-race.db'}")
+    Base.metadata.create_all(engine)
+    repository = SqlDifyBuilderRepository(sessionmaker(engine, expire_on_commit=False))
+    lock = FakeSessionLock()
+    entered, release = Event(), Event()
+    workers = []
+    failures = []
+    port = FakeBuildDifyPort()
+    port.read_task_dsl = lambda *_: ({"graph": port.graph}, port.hash)
+
+    class Model:
+        def invoke_llm(self, **_kwargs):
+            entered.set()
+            assert release.wait(5)
+            return LLMResult(
+                model="barrier", message=AssistantPromptMessage(content="continued"), usage=LLMUsage.empty_usage()
+            )
+
+    def cognition(_env, _turn, _session, context):
+        invoke_text(Model(), system="continue", user="continue")
+        return StepResult(next=PcState.BUILD_REVIEW, context=context)
+
+    monkeypatch.setattr(task, "_build_repo", lambda: repository)
+    monkeypatch.setattr(task, "_build_test_actions", lambda _: None)
+    monkeypatch.setattr(task, "WorkflowServiceDifyPort", lambda: port)
+    monkeypatch.setattr(task, "build_dify_builder_agent", lambda **_: StubAgent())
+    monkeypatch.setattr(task, "build_registry", lambda: {PcState.BUILD_INITIAL_PLAN: cognition})
+    monkeypatch.setattr(task, "fix_registry", dict)
+    monkeypatch.setattr(task, "edit_registry", dict)
+    monkeypatch.setattr(task.session_lock, "activate", lock.activate)
+    monkeypatch.setattr(task.session_lock, "release", lock.release)
+    monkeypatch.setattr(task.progress_bus, "publish", lambda *_: None)
+    monkeypatch.setattr(task.progress_bus, "publish_native_change", lambda *_: None)
+    monkeypatch.setattr(task.progress_snapshot, "save", lambda *_args, **_kwargs: None)
+
+    def enqueue(session_id, action, actor, token):
+        def work():
+            try:
+                task.advance_session(session_id, asdict(action), asdict(actor), token)
+            except BaseException as error:
+                failures.append(error)
+
+        worker = Thread(target=work)
+        workers.append(worker)
+        worker.start()
+        assert entered.wait(5)
+
+    service = DifyBuilderService(repository, lock, enqueue, read_task_dsl_fn=port.read_task_dsl)
+    session = seed(repository, PcState.BUILD_PLAN_APPROVAL)
+    stopped = service.stop_task(session.id, _actor(), base_version=1, client_action_id="stop")
+    try:
+        resumed = service.resume_task(session.id, _actor(), base_version=stopped.version, client_action_id="resume")
+        assert str(resumed.run_status) == "processing"
+        assert resumed.canvas_read_only
+    finally:
+        release.set()
+        for worker in workers:
+            worker.join(5)
+    assert not any(worker.is_alive() for worker in workers)
+    assert failures == []
+    head, context = repository.get_session(session.id)
+    assert head.current_state == PcState.BUILD_REVIEW
+    assert context.task_control["receipt"]["enqueue"] == "settled"
+    assert service.resume_task(session.id, _actor(), base_version=stopped.version, client_action_id="resume") == resumed
+    assert len(workers) == 1
+    engine.dispose()

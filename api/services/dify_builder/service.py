@@ -1499,6 +1499,11 @@ class DifyBuilderService:
 
         s = replace(s, entry_mode=active_entry_mode(s, fc))
         st = s.current_state
+        continuation_pending = not fc.paused and fc.task_control.get("receipt", {}).get("enqueue") in {
+            "pending",
+            "dispatching",
+            "claimed",
+        }
         lock_held = self._session_lock.exists(s.id)
         current_app_revision = self._get_app_revision(
             s.app_id,
@@ -1564,7 +1569,9 @@ class DifyBuilderService:
             app_id=s.app_id,
             version=s.version,
             state=str(st),
-            canvas_read_only=False if stopped else lock_held or canvas_read_only(st) or fc.paused,
+            canvas_read_only=False
+            if stopped
+            else lock_held or canvas_read_only(st) or fc.paused or continuation_pending,
             run_status=(
                 RunStatus.PAUSED
                 if stopped
@@ -1579,7 +1586,7 @@ class DifyBuilderService:
                 else RunStatus.FAILED
                 if receipt is not None and receipt.outcome == "unknown"
                 else RunStatus.PROCESSING
-                if lock_held
+                if lock_held or continuation_pending
                 else _run_status(st, paused=fc.paused)
             ),
             interrupted=interrupted,
@@ -1675,6 +1682,8 @@ class DifyBuilderService:
                 False,
                 [],
             )
+        if fc.task_control.get("receipt", {}).get("enqueue") in {"pending", "dispatching", "claimed"}:
+            raise BusyError("task continuation is pending")
         if action.kind in TEST_ACTIONS:
             return self._prepare_test_action(s, fc, actor, action)
         if self._test_actions is not None:
