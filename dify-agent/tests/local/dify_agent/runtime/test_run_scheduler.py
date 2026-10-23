@@ -39,6 +39,7 @@ from dify_agent.runtime.event_sink import (
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
 from dify_agent.runtime.runner import AgentRunRunner
 from dify_agent.server.schemas import RunRecord
+from dify_agent.storage.redis_run_store import IdempotencyConflictError
 
 
 def _request(
@@ -92,6 +93,7 @@ class FakeStore:
     error_types: dict[str, RunFailureType | None]
     cancellation_changes: dict[str, asyncio.Event]
     cancellation_intents: dict[str, RunCancellationIntent]
+    idempotency_claims: dict[str, tuple[str, str]]
 
     def __init__(self) -> None:
         self.records = {}
@@ -101,6 +103,7 @@ class FakeStore:
         self.error_types = {}
         self.cancellation_changes = {}
         self.cancellation_intents = {}
+        self.idempotency_claims = {}
 
     async def create_run(self) -> RunRecord:
         run_id = f"run-{len(self.records) + 1}"
@@ -109,6 +112,17 @@ class FakeStore:
         self.statuses[run_id] = "running"
         self.cancellation_changes[run_id] = asyncio.Event()
         return record
+
+    async def create_run_idempotent(self, *, idempotency_key: str, request_fingerprint: str) -> tuple[RunRecord, bool]:
+        existing = self.idempotency_claims.get(idempotency_key)
+        if existing is not None:
+            existing_fingerprint, run_id = existing
+            if existing_fingerprint != request_fingerprint:
+                raise IdempotencyConflictError("idempotency key was already used with a different create-run request")
+            return await self.get_run(run_id), False
+        record = await self.create_run()
+        self.idempotency_claims[idempotency_key] = (request_fingerprint, record.run_id)
+        return record, True
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
         event_id = str(len(self.events[event.run_id]) + 1)
@@ -523,6 +537,55 @@ def test_create_run_starts_background_task_and_returns_running() -> None:
             await asyncio.wait_for(scheduler.active_tasks[record.run_id], timeout=1)
             await asyncio.sleep(0)
             assert scheduler.active_tasks == {}
+
+    asyncio.run(scenario())
+
+
+def test_create_run_idempotency_replay_does_not_schedule_a_second_runner() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        started = asyncio.Event()
+        release = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                runner_factory=lambda _record, _request: ControlledRunner(started=started, release=release),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            request = _request().model_copy(update={"idempotency_key": "retry-1"})
+
+            first = await scheduler.create_run(request)
+            await asyncio.wait_for(started.wait(), timeout=1)
+            replay = await scheduler.create_run(request.model_copy(deep=True))
+
+            assert replay.run_id == first.run_id
+            assert list(scheduler.active_tasks) == [first.run_id]
+            assert len(store.records) == 1
+            _ = release.set()
+            await asyncio.wait_for(scheduler.active_tasks[first.run_id], timeout=1)
+
+    asyncio.run(scenario())
+
+
+def test_create_run_idempotency_rejects_different_request() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                runner_factory=lambda _record, _request: ControlledRunner(
+                    started=asyncio.Event(), release=asyncio.Event()
+                ),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            first = _request().model_copy(update={"idempotency_key": "retry-1"})
+            _ = await scheduler.create_run(first)
+            conflicting = _request("different payload").model_copy(update={"idempotency_key": "retry-1"})
+
+            with pytest.raises(IdempotencyConflictError):
+                _ = await scheduler.create_run(conflicting)
+            assert len(store.records) == 1
+            await scheduler.shutdown()
 
     asyncio.run(scenario())
 
