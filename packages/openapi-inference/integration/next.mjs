@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { join, relative, resolve } from 'node:path'
 import { test } from 'node:test'
 
 const repository = resolve(import.meta.dirname, '../../..')
@@ -27,13 +27,15 @@ for (const bundler of ['turbopack', 'webpack']) {
       await readFile(join(repository, 'packages/contracts/openapi/console-openapi.json'), 'utf8'),
     )
     const dir = await mkdtemp(join(web, '.openapi-next-'))
+    // Match production: contracts owns the document but only Web depends on the SDK.
+    const specDir = await mkdtemp(join(repository, 'packages/contracts/.openapi-next-'))
     try {
       await mkdir(join(dir, 'app'))
       await writeFile(join(dir, 'package.json'), JSON.stringify({ private: true, type: 'module' }))
       await writeFile(
         join(dir, 'next.config.mjs'),
         `
-const loader = { loader: '@dify/openapi-inference/loader', options: { runtime: './runtime.js' } };
+const loader = { loader: '@dify/openapi-inference/loader', options: { runtime: ${JSON.stringify(relative(specDir, join(dir, 'runtime.js')))} } };
 export default {
   experimental: { cpus: 2 },
   turbopack: { root: ${JSON.stringify(repository)}, rules: { '*spec.json': { loaders: [loader], as: '*.js' }, '*openapi-namespace.js': { loaders: [loader], as: '*.js' } } },
@@ -42,7 +44,7 @@ export default {
 `,
       )
       await writeFile(
-        join(dir, 'spec.json'),
+        join(specDir, 'spec.json'),
         JSON.stringify({
           ...consoleSpec,
           info: { title: 'SCHEMA_METADATA_MUST_DISAPPEAR', version: '1' },
@@ -54,7 +56,7 @@ export default {
           },
         }),
       )
-      await symlink('spec.json', join(dir, 'spec.openapi'))
+      await symlink(join(specDir, 'spec.json'), join(dir, 'spec.openapi'))
       await writeFile(
         join(dir, 'runtime.js'),
         `
@@ -114,6 +116,7 @@ export default async function Page() {
       assert(!client.includes('SCHEMA_METADATA_MUST_DISAPPEAR'))
     } finally {
       await rm(dir, { recursive: true, force: true })
+      await rm(specDir, { recursive: true, force: true })
     }
   })
 }

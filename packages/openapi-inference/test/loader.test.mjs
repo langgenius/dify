@@ -28,9 +28,19 @@ test('loader namespaces use a tiny resource and invalidate when the source docum
     writeFileSync(file, JSON.stringify(spec))
     writeFileSync(runtime, 'export default {};')
     const entry = loader.call(context, JSON.stringify(spec))
-    const apiModule = JSON.parse(entry.match(/export \* as api from (.+);/)[1])
+    const rootModule = JSON.parse(entry.match(/export \* from (.+);/)[1])
+    const namespacePath = join(root, 'dist/tooling/openapi-namespace.js')
+    const namespaceEntry = loader.call(
+      {
+        ...context,
+        resourcePath: namespacePath,
+        resourceQuery: rootModule.slice(rootModule.indexOf('?')),
+      },
+      '',
+    )
+    const apiModule = JSON.parse(namespaceEntry.match(/export \* as api from (.+);/)[1])
     assert.equal(
-      resolve(dirname(file), apiModule.split('?')[0]),
+      resolve(dirname(namespacePath), apiModule.split('?')[0]),
       join(root, 'dist/tooling/openapi-namespace.js'),
     )
     const query = new URLSearchParams(apiModule.slice(apiModule.indexOf('?')))
@@ -39,7 +49,7 @@ test('loader namespaces use a tiny resource and invalidate when the source docum
     query.set('openapi-router', JSON.stringify(['pets']))
     const namespaceContext = {
       ...context,
-      resourcePath: join(root, 'dist/tooling/openapi-namespace.js'),
+      resourcePath: namespacePath,
       resourceQuery: `?${query}`,
     }
     const before = loader.call(namespaceContext, '')
