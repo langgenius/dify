@@ -40,7 +40,6 @@ from services.end_user_connections.contracts import (
     UpdateConnectionInput,
 )
 from services.end_user_connections.errors import ConnectionError
-from services.end_user_connections.selections import ConnectionConfiguration
 from services.errors.conversation import ConversationNotExistsError
 
 
@@ -55,8 +54,23 @@ class ConnectionConfigurationQuery(ConnectionInput):
     )
 
 
-class ConnectionConfigurationResponse(ConnectionConfiguration, ResponseModel):
-    pass
+class EndUserConnectionResponse(ConnectionSummary, ResponseModel):
+    @field_serializer("created_at", "updated_at", "last_active_at")
+    def serialize_timestamp(self, value: datetime) -> int:
+        return to_utc_timestamp(value)
+
+    @field_serializer("expires_at")
+    def serialize_expiration(self, value: datetime | None) -> int | None:
+        return to_utc_timestamp(value) if value is not None else None
+
+
+class ConnectionConfigurationResponse(ResponseModel):
+    connections: dict[str, EndUserConnectionResponse | None] = Field(
+        description=(
+            "Saved Connection details keyed by authorization node ID, not a readiness result. "
+            "Inaccessible Connection references are returned as null."
+        )
+    )
 
 
 register_response_schema_models(web_ns, ConnectionConfigurationResponse)
@@ -105,16 +119,6 @@ class EndUserConnectionUpdatePayload(UpdateConnectionInput):
 
 class EndUserConnectionListQuery(ListConnectionsInput):
     limit: int = Field(default=20, ge=1, le=100, strict=False)
-
-
-class EndUserConnectionResponse(ConnectionSummary, ResponseModel):
-    @field_serializer("created_at", "updated_at", "last_active_at")
-    def serialize_timestamp(self, value: datetime) -> int:
-        return to_utc_timestamp(value)
-
-    @field_serializer("expires_at")
-    def serialize_expiration(self, value: datetime | None) -> int | None:
-        return to_utc_timestamp(value) if value is not None else None
 
 
 class EndUserConnectionListResponse(ResponseModel):
