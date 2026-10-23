@@ -323,7 +323,13 @@ class ConsoleAppService:
                     raise InvalidRosterAgentPackageError(
                         f"Workflow tool {tool.name!r} could not be imported: {imported.error}"
                     )
-                self._transfers.create_workflow_tool(context, app_id=imported.app_id, tool=tool, target=target)
+                try:
+                    self._transfers.create_workflow_tool(context, app_id=imported.app_id, tool=tool, target=target)
+                except ValueError as exc:
+                    # Publishing validates the workflow against this workspace, e.g. its Knowledge Bases.
+                    raise InvalidRosterAgentPackageError(
+                        f"Workflow tool {tool.name!r} could not be created: {exc}"
+                    ) from exc
                 warnings.extend(
                     warning.model_copy(update={"path": f"workflow_tools.{tool.id}.{warning.path}"})
                     for warning in imported.warnings
@@ -345,10 +351,9 @@ class ConsoleAppService:
         if result.status == ImportStatus.FAILED:
             self._discard_imported_apps(context, created_app_ids)
             return result
-        if warnings:
-            result.warnings = [*warnings, *result.warnings]
-            if result.status == ImportStatus.COMPLETED:
-                result.status = ImportStatus.COMPLETED_WITH_WARNINGS
+        result.warnings = [*warnings, *result.warnings]
+        if result.warnings and result.status == ImportStatus.COMPLETED:
+            result.status = ImportStatus.COMPLETED_WITH_WARNINGS
         return result
 
     def _discard_imported_apps(self, context: RequestContext, app_ids: list[str]) -> None:

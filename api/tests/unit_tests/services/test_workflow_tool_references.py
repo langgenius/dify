@@ -56,6 +56,7 @@ def test_references_cover_agent_chat_tools() -> None:
                 "tools": [
                     {"provider_type": "workflow", "provider_id": _SOURCE_ID, "tool_name": "summarize"},
                     {"dataset": {"enabled": True, "id": "dataset-1"}},
+                    "not-a-tool",
                 ]
             }
         }
@@ -83,3 +84,9 @@ def test_retarget_keeps_providers_without_a_target() -> None:
     dsl = yaml.safe_dump(_workflow_dsl())
 
     assert yaml.safe_load(retarget_workflow_tool_dsl(dsl, {})) == _workflow_dsl()
+
+
+def test_retarget_leaves_a_dsl_that_is_not_a_mapping_unchanged() -> None:
+    targets = {_SOURCE_ID: WorkflowToolTarget(provider_id=_TARGET_ID, name="summarize", create=True)}
+
+    assert retarget_workflow_tool_dsl("[]\n", targets) == "[]\n"

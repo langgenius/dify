@@ -689,7 +689,7 @@ def _workflow_tool(index: int, member: bytes, **overrides: object) -> dict[str, 
 
 
 def _bundle(
-    members: list[bytes], *, root_dsl: str = _WORKFLOW_DSL, format_version: int = 2, **tool_overrides: str
+    members: list[bytes], *, root_dsl: str = _WORKFLOW_DSL, format_version: int = 2, **tool_overrides: object
 ) -> io.BytesIO:
     tools = [_workflow_tool(index, member, **tool_overrides) for index, member in enumerate(members, start=1)]
     source = _archive(root_dsl, format_version=format_version, workflow_tools=tools)
@@ -723,8 +723,13 @@ class TestWorkflowToolPackageCases:
     @staticmethod
     @pytest.mark.parametrize(
         ("format_version", "tool_overrides"),
-        [(1, {}), (2, {"name": "not a tool name"}), (2, {"provider_id": "not-a-uuid"})],
-        ids=["v1-with-tools", "invalid-name", "invalid-provider-id"],
+        [
+            (1, {}),
+            (2, {"name": "not a tool name"}),
+            (2, {"provider_id": "not-a-uuid"}),
+            (2, {"path": "w_000009.ifpkg"}),
+        ],
+        ids=["v1-with-tools", "invalid-name", "invalid-provider-id", "path-without-its-id"],
     )
     def test_rejects_invalid_workflow_tool_manifests(format_version: int, tool_overrides: dict[str, str]) -> None:
         member = _nested_package(_WORKFLOW_DSL)
@@ -768,6 +773,49 @@ class TestWorkflowToolPackageCases:
         member = _nested_package(_WORKFLOW_DSL)
         config_overrides(APP_PACKAGE_MAX_WORKFLOW_TOOLS=1)
         with pytest.raises(RosterAgentPackageTooLargeError, match="too many workflow tools"):
+            AppPackageService().read_package(_bundle([member, member]))
+
+    @staticmethod
+    def test_rejects_workflow_tools_that_share_a_provider_id() -> None:
+        member = _nested_package(_WORKFLOW_DSL)
+        with pytest.raises(InvalidRosterAgentPackageError, match="manifest"):
+            AppPackageService().read_package(
+                _bundle([member, member], provider_id="33333333-3333-4333-8333-000000000009")
+            )
+
+    @staticmethod
+    def test_rejects_a_workflow_tool_larger_than_declared() -> None:
+        member = _nested_package(_WORKFLOW_DSL)
+        with pytest.raises(InvalidRosterAgentPackageError, match="integrity"):
+            AppPackageService().read_package(_bundle([member], size=1))
+
+    @staticmethod
+    def test_rejects_a_workflow_tool_that_is_an_agent_package() -> None:
+        member = io.BytesIO()
+        with zipfile.ZipFile(member, "w") as archive:
+            archive.writestr("manifest.yaml", yaml.safe_dump({"format": "dify.roster-agent", "format_version": 1}))
+        with pytest.raises(InvalidRosterAgentPackageError, match="must be an App package"):
+            AppPackageService().read_package(_bundle([member.getvalue()]))
+
+    @staticmethod
+    def test_rejects_a_corrupted_workflow_tool_member() -> None:
+        source = _bundle([_nested_package(_WORKFLOW_DSL)])
+        with zipfile.ZipFile(source) as archive:
+            offset = archive.getinfo("w_000001.ifpkg").header_offset
+        payload = bytearray(source.getvalue())
+        # A local file header is 30 bytes, then the member name and extra field, then the stored data.
+        name_length = int.from_bytes(payload[offset + 26 : offset + 28], "little")
+        extra_length = int.from_bytes(payload[offset + 28 : offset + 30], "little")
+        payload[offset + 30 + name_length + extra_length] ^= 0xFF
+        with pytest.raises(InvalidRosterAgentPackageError, match="not a valid ZIP"):
+            AppPackageService().read_package(io.BytesIO(bytes(payload)))
+
+    @staticmethod
+    def test_bounds_what_all_workflow_tools_expand_to(config_overrides: Callable[..., None]) -> None:
+        dsl = f"{_WORKFLOW_DSL}  description: {'a' * 60_000}\n"
+        member = _nested_package(dsl)
+        config_overrides(AGENT_PACKAGE_MAX_BYTES=100_000)
+        with pytest.raises(RosterAgentPackageTooLargeError, match="workflow tools exceed"):
             AppPackageService().read_package(_bundle([member, member]))
 
 

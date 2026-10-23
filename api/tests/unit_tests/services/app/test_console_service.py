@@ -18,11 +18,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.entities.plugin import PluginDependency
 from core.plugin.impl.plugin import PluginInstaller
+from core.rbac import RBACPermission
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolProviderType
 from core.tools.tool_manager import ToolManager
 from events.app_event import app_was_updated
 from extensions.application_services.app import AppServices
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
@@ -35,10 +37,17 @@ from models.provider_ids import GenericProviderID
 from models.tools import ApiToolProvider, ToolLabelBinding, WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
 from repositories.app.console_repository import ConsoleAppRepository
-from services.agent.errors import AgentAccessNotReadyError
+from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from services.agent.errors import (
+    AgentAccessNotReadyError,
+    InvalidRosterAgentPackageError,
+    RosterAgentPackageTooLargeError,
+)
 from services.agent.roster_package_entities import RosterAgentPackageExport
+from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.agent.roster_package_importer import RosterAgentPackageImporter
 from services.agent.roster_service import AgentRosterService
-from services.app.console_gateway import AppLifecycleGateway
+from services.app.console_gateway import AppLifecycleGateway, AppTransferGateway
 from services.app.console_service import (
     AppExportPaidPlanRequiredError,
     ConsoleAppNotFoundError,
@@ -47,6 +56,8 @@ from services.app.console_service import (
     CreatorsPlatformDisabledError,
     InvalidAppExportError,
 )
+from services.app_dsl_service import AppDslService
+from services.app_package_service import AppPackageService
 from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     AppCreationSettings,
@@ -76,9 +87,11 @@ from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
 from services.model_provider.service import ModelProviderService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.recommended_app_package_service import RecommendedAppPackageService
 from services.workflow_tool_references import WorkflowToolTarget
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 from tests.helpers.unit.model_factories import make_account, make_tenant
+from tests.helpers.unit.rbac_fakes import RBACDomain
 
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
 RECORD = AppRecord(id="app", name="Example", mode_compatible_with_agent="chat")
@@ -1232,6 +1245,50 @@ def _caller_tool_node(session: Session, app_id: str) -> dict[str, object]:
     return node["data"]
 
 
+def _call_ranker_from_summarizer(
+    sqlite_session_factory: sessionmaker[Session], workspaces: Workspaces, ranker_nodes: list[dict[str, object]]
+) -> str:
+    """Make the summarizer call a second Workflow Tool, ``rank``, whose published workflow runs ``ranker_nodes``."""
+    source_id, actor = workspaces.source.active_workspace_id, workspaces.source.account_id
+    ranker_app_id, ranker_provider_id = str(uuid4()), str(uuid4())
+    version = Workflow.version_from_datetime(naive_utc_now())
+    ranker_workflow = _workflow(
+        tenant_id=source_id,
+        app_id=ranker_app_id,
+        version=version,
+        graph={"nodes": ranker_nodes, "edges": list[object]()},
+        created_by=actor,
+    )
+    ranker = _workflow_tool(
+        provider_id=ranker_provider_id, tenant_id=source_id, app_id=ranker_app_id, version=version, user_id=actor
+    )
+    ranker.name = "rank"
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                App(
+                    id=ranker_app_id,
+                    tenant_id=source_id,
+                    name="Ranker",
+                    mode=AppMode.WORKFLOW,
+                    enable_site=True,
+                    enable_api=True,
+                    workflow_id=ranker_workflow.id,
+                ),
+                ranker_workflow,
+                ranker,
+            ]
+        )
+        summarizer = session.scalar(
+            select(Workflow).where(
+                Workflow.app_id == workspaces.tool_app_id, Workflow.version != Workflow.VERSION_DRAFT
+            )
+        )
+        assert summarizer is not None
+        summarizer.graph = json.dumps({"nodes": [_tool_node(ranker_provider_id, "rank")], "edges": list[object]()})
+    return ranker_provider_id
+
+
 def test_export_bundles_the_pinned_workflow_and_its_tool_definition(
     app_services: AppServices, workspaces: Workspaces
 ) -> None:
@@ -1347,14 +1404,23 @@ def test_import_requires_permission_to_create_tools_before_creating_anything(
         assert list(session.scalars(select(App.id).where(App.tenant_id == target_id))) == []
 
 
+@pytest.mark.parametrize("broker_available", [True, False])
 def test_failed_import_deletes_the_workflows_it_created(
     app_services: AppServices,
     workspaces: Workspaces,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    broker_available: bool,
 ) -> None:
     cleanups: list[dict[str, str]] = []
-    monkeypatch.setattr(remove_app_and_related_data_task, "delay", lambda **kwargs: cleanups.append(kwargs))
+
+    def enqueue_cleanup(**kwargs: str) -> None:
+        cleanups.append(kwargs)
+        if not broker_available:
+            raise ConnectionError("The message broker is unavailable")
+
+    monkeypatch.setattr(remove_app_and_related_data_task, "delay", enqueue_cleanup)
     monkeypatch.setattr("services.app_service.app_was_deleted", Signal())
     target_id = workspaces.target.active_workspace_id
 
@@ -1365,6 +1431,7 @@ def test_failed_import_deletes_the_workflows_it_created(
     assert result.status == ImportStatus.FAILED
     [cleanup] = cleanups
     assert cleanup["tenant_id"] == target_id
+    assert ("left by a failed package import" in caplog.text) is not broker_available
     with sqlite_session_factory() as session:
         assert list(session.scalars(select(App.id).where(App.tenant_id == target_id))) == []
 
@@ -1372,43 +1439,7 @@ def test_failed_import_deletes_the_workflows_it_created(
 def test_import_recreates_workflows_that_call_each_other(
     app_services: AppServices, workspaces: Workspaces, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
-    source_id, actor = workspaces.source.active_workspace_id, workspaces.source.account_id
-    ranker_app_id, ranker_provider_id = str(uuid4()), str(uuid4())
-    version = Workflow.version_from_datetime(naive_utc_now())
-    ranker_workflow = _workflow(
-        tenant_id=source_id,
-        app_id=ranker_app_id,
-        version=version,
-        graph={"nodes": [_tool_node(workspaces.provider_id, _TOOL_NAME)], "edges": list[object]()},
-        created_by=actor,
-    )
-    ranker = _workflow_tool(
-        provider_id=ranker_provider_id, tenant_id=source_id, app_id=ranker_app_id, version=version, user_id=actor
-    )
-    ranker.name = "rank"
-    with sqlite_session_factory.begin() as session:
-        session.add_all(
-            [
-                App(
-                    id=ranker_app_id,
-                    tenant_id=source_id,
-                    name="Ranker",
-                    mode=AppMode.WORKFLOW,
-                    enable_site=True,
-                    enable_api=True,
-                    workflow_id=ranker_workflow.id,
-                ),
-                ranker_workflow,
-                ranker,
-            ]
-        )
-        summarizer = session.scalar(
-            select(Workflow).where(
-                Workflow.app_id == workspaces.tool_app_id, Workflow.version != Workflow.VERSION_DRAFT
-            )
-        )
-        assert summarizer is not None
-        summarizer.graph = json.dumps({"nodes": [_tool_node(ranker_provider_id, "rank")], "edges": list[object]()})
+    _call_ranker_from_summarizer(sqlite_session_factory, workspaces, [_tool_node(workspaces.provider_id, _TOOL_NAME)])
 
     result = _export_and_import(app_services, workspaces, workspaces.target, AppImportParams(mode="yaml-content"))
 
@@ -1454,3 +1485,103 @@ def test_import_checks_the_quota_for_every_app_it_creates(
     target_id = workspaces.target.active_workspace_id
     with sqlite_session_factory() as session:
         assert list(session.scalars(select(App.id).where(App.tenant_id == target_id))) == []
+
+
+@pytest.mark.parametrize(
+    ("knowledge_node", "error", "created_apps"),
+    [
+        ({}, "'rank' could not be imported", 1),
+        ({"query_variable_selector": ["start", "query"]}, "'rank' could not be created", 2),
+    ],
+    ids=["invalid-node", "missing-knowledge-base"],
+)
+def test_import_deletes_created_workflows_when_a_called_workflow_fails(
+    app_services: AppServices,
+    workspaces: Workspaces,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    knowledge_node: dict[str, object],
+    error: str,
+    created_apps: int,
+) -> None:
+    knowledge: dict[str, object] = {
+        "id": "knowledge",
+        "data": {
+            "type": "knowledge-retrieval-v2",
+            "title": "Knowledge",
+            "control_space_ids": [str(uuid4())],
+            **knowledge_node,
+        },
+    }
+    _call_ranker_from_summarizer(sqlite_session_factory, workspaces, [knowledge])
+    cleanups: list[dict[str, str]] = []
+    monkeypatch.setattr(remove_app_and_related_data_task, "delay", lambda **kwargs: cleanups.append(kwargs))
+    monkeypatch.setattr("services.app_service.app_was_deleted", Signal())
+
+    with pytest.raises(InvalidRosterAgentPackageError, match=error):
+        _export_and_import(app_services, workspaces, workspaces.target, AppImportParams(mode="yaml-content"))
+
+    target_id = workspaces.target.active_workspace_id
+    assert len(cleanups) == created_apps
+    with sqlite_session_factory() as session:
+        assert list(session.scalars(select(App.id).where(App.tenant_id == target_id))) == []
+
+
+def test_export_stops_at_the_workflow_tool_limit(
+    app_services: AppServices,
+    workspaces: Workspaces,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+) -> None:
+    _call_ranker_from_summarizer(sqlite_session_factory, workspaces, [])
+    config_overrides(APP_PACKAGE_MAX_WORKFLOW_TOOLS=1)
+
+    with pytest.raises(RosterAgentPackageTooLargeError, match="too many workflow tools"):
+        app_services.console.export(workspaces.source, workspaces.caller_app_id, AppExportOptions())
+
+
+@pytest.mark.parametrize("allowed", [True, False])
+def test_planning_new_workflow_tools_checks_tool_management_under_rbac(
+    workspaces: Workspaces,
+    sqlite_session_factory: sessionmaker[Session],
+    rbac_domain: RBACDomain,
+    config_overrides: Callable[..., None],
+    allowed: bool,
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    rbac_domain.transport.response = {"allowed": allowed}
+    gateway = AppTransferGateway(
+        session_factory=sqlite_session_factory,
+        dsl_factory=AppDslService,
+        packages=AppPackageService(),
+        agent_packages=RosterAgentPackageExporter(),
+        agent_importer=RosterAgentPackageImporter(),
+        recommended_packages=RecommendedAppPackageService(
+            sources=DatabaseRecommendedAppCatalogRepository(session_factory=sqlite_session_factory, redis=redis_client),
+            exporter=RosterAgentPackageExporter(),
+        ),
+    )
+    tool = PackagedWorkflowTool(
+        id="w_000001",
+        path="w_000001.ifpkg",
+        size=0,
+        sha256="0" * 64,
+        provider_id=workspaces.provider_id,
+        name=_TOOL_NAME,
+        label="Summarize",
+        icon={"background": "#FFEAD5", "content": "🤖"},
+        description="",
+        parameters=[],
+        labels=[],
+        privacy_policy="",
+    )
+
+    if allowed:
+        targets = gateway.plan_workflow_tools(workspaces.target, [tool], creates_root_app=True)
+        assert targets[workspaces.provider_id].create
+    else:
+        with pytest.raises(NoPermissionError, match="workflow tools"):
+            gateway.plan_workflow_tools(workspaces.target, [tool], creates_root_app=True)
+    request_json = rbac_domain.transport.only_request.json
+    assert request_json is not None
+    assert request_json["scene"] == RBACPermission.TOOL_MANAGE
