@@ -30,7 +30,7 @@ from services.tracing.records import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
-from tests.unit_tests.model_factories import make_message
+from tests.helpers.unit.model_factories import make_message
 
 # ---------------------------------------------------------------------------
 # Fixtures

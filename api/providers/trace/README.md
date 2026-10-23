@@ -61,7 +61,7 @@ Stored configurations keep the provider's fields at the top level, with `secret(
 1. Create `api/providers/trace/trace-<name>/` with:
    - a `pyproject.toml` for the project `dify-trace-<name>`, depending on `dify-trace-sdk` (plus any vendor SDK that is safe to import);
    - `src/dify_trace_<name>/{config.py,provider.py,py.typed}`;
-   - `tests/unit_tests/`.
+   - tests that mirror the sources, e.g. `src/dify_trace_<name>/provider.py` maps to `tests/unit_tests/src/dify_trace_<name>/test_provider.py`.
 
    List `py.typed` under `[tool.setuptools.package-data]`.
 2. Register the provider class as an entry point:

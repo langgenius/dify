@@ -783,7 +783,10 @@ describe('ProviderConfigModal', () => {
         await httpErrorFromResponse(Response.json({ message: 'Removal failed' }, { status: 400 })),
       )
       const user = userEvent.setup()
-      renderProviderConfigModal({ payload: validConfigs.langfuse })
+      renderProviderConfigModal({
+        type: 'langfuse',
+        config: savedConfig('langfuse', validConfigs.langfuse),
+      })
       const host = screen.getByRole('textbox', { name: 'Host' })
       await user.clear(host)
       await user.type(host, 'https://draft.langfuse.com')

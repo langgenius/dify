@@ -2,10 +2,7 @@ import traceback
 
 import pytest
 from dify_trace_sdk.config import FormField
-from dify_trace_sdk.errors import VerificationError
-from dify_trace_sdk.testing import RecordingEgress
 from dify_trace_tencent.config import TencentConfig
-from dify_trace_tencent.provider import TencentProvider
 from pydantic import ValidationError
 
 TOKEN = "synthetic-token"
@@ -56,18 +53,6 @@ def test_documented_service_name_boundaries_are_accepted(service_name: str) -> N
 )
 def test_stored_service_names_from_before_verification_stay_usable(service_name: str, stored: str) -> None:
     assert _config(service_name=service_name).service_name == stored
-
-
-@pytest.mark.parametrize(
-    "service_name",
-    ["", "   ", "dify_app", "Dify", "1app", "-app", "app-", "a" * 64, "应用", "a.b", "a/b", "a b", "a\nb"],
-)
-def test_verification_rejects_service_names_outside_the_documented_pattern(service_name: str) -> None:
-    egress = RecordingEgress([], grpc_target=None)
-    with pytest.raises(VerificationError) as raised:
-        TencentProvider(egress).verify(_config(service_name=service_name))
-    assert raised.value.code == "invalid_service_name"
-    assert egress.grpc_endpoints == []
 
 
 @pytest.mark.parametrize(

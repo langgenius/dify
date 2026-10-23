@@ -105,6 +105,9 @@ class SSRFEgress(Egress):
             failure = EgressError("Destination unreachable", request_sent=False)
         except (httpx.TransportError, ssrf_proxy.ResponseLimitError):
             failure = EgressError("Transport failed after the request was sent", request_sent=True)
+        except ValueError:
+            # Request construction rejects malformed input before sending; its message may quote the URL.
+            failure = EgressError("Request could not be built", request_sent=False)
         if failure is not None:
             raise failure
         if response is None:

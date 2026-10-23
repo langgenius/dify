@@ -13,7 +13,7 @@ from extensions.tracing import (
 )
 from services.tracing.emitter import correlation_from_extras
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 class _Recorder:

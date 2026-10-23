@@ -6,7 +6,6 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 from dify_trace_opik.config import OpikConfig
 from dify_trace_opik.provider import OpikProvider
-from dify_trace_sdk.config import FormField
 from dify_trace_sdk.egress import EgressResponse
 from dify_trace_sdk.errors import (
     EgressBlockedError,
@@ -29,7 +28,6 @@ from dify_trace_sdk.testing import (
     tool_fragment,
     workflow_trace,
 )
-from pydantic import ValidationError
 
 API_URL = "https://www.comet.com/opik/api/"
 API_KEY = "opik-key-1"
@@ -73,35 +71,6 @@ def test_importing_the_provider_leaves_the_opik_sdk_unloaded() -> None:
     script = "import sys, dify_trace_opik.provider; print(sorted(n for n in sys.modules if n.split('.')[0] == 'opik'))"
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=True)
     assert result.stdout.strip() == "[]"
-
-
-def test_config_fields_and_defaults() -> None:
-    assert OpikConfig.secret_fields() == {"api_key"}
-    assert OpikConfig.derived_fields() == frozenset()
-    assert OpikConfig.form_fields() == (
-        FormField(name="api_key", secret=True, required=False),
-        FormField(name="project", secret=False, required=False),
-        FormField(name="workspace", secret=False, required=False),
-        FormField(name="url", secret=False, required=False),
-    )
-    stored = OpikConfig.model_validate({"api_key": None, "project": None, "workspace": " ", "url": ""})
-    assert (stored.api_key, stored.project, stored.workspace, stored.url) == (None, "Default Project", None, API_URL)
-    named = OpikConfig(project=" Dify ", workspace=" team-1 ", url=" http://localhost:5173/api/ ")
-    assert (named.project, named.workspace, named.url) == ("Dify", "team-1", "http://localhost:5173/api/")
-
-
-@pytest.mark.parametrize(
-    ("url", "message"),
-    [
-        ("ftp://comet.example.com/api/", "URL must start with https:// or http://"),
-        ("https://comet.example.com/opik/", "URL should end with /api/"),
-        ("https://user:secret@comet.example.com/api/", "URL must name a host and must not contain credentials"),
-    ],
-)
-def test_config_rejects_unusable_urls_without_echoing_them(url: str, message: str) -> None:
-    with pytest.raises(ValidationError, match=message) as caught:
-        OpikConfig(url=url)
-    assert "secret" not in str(caught.value)
 
 
 def test_verify_checks_access_to_a_named_workspace() -> None:

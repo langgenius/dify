@@ -23,7 +23,7 @@ WORKFLOW_RUN_ID = "4b4b8c2e-1a0f-4bd0-93c1-0f2f0e9d6a33"
 
 
 def _message() -> Message:
-    return Message(
+    message = Message(
         id=MESSAGE_ID,
         app_id="app-1",
         conversation_id=CONVERSATION_ID,
@@ -34,8 +34,9 @@ def _message() -> Message:
         total_price=Decimal("0.0042"),
         currency="USD",
         error=None,
-        created_at=STARTED_AT,
     )
+    message.created_at = STARTED_AT
+    return message
 
 
 def _message_record(**metadata: object) -> MessageTraceInfo:

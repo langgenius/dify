@@ -13,7 +13,7 @@ from alembic.operations import Operations
 from sqlalchemy.exc import IntegrityError
 
 _PATH = (
-    Path(__file__).resolve().parents[3]
+    Path(__file__).resolve().parents[4]
     / "migrations/versions/2026_10_23_1200-53c10126d551_unique_trace_app_config_provider.py"
 )
 

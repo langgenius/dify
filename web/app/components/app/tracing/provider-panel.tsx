@@ -72,7 +72,7 @@ export function ProviderPanel({
         <div className="flex items-center">
           <span aria-hidden className={cn(iconClassName, 'h-6')} />
           {isChosen && (
-            <div className="ml-1 flex min-w-4.5 items-center justify-center rounded-[5px] bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-accent inset-ring-1 inset-ring-text-accent">
+            <div className="ms-1 flex min-w-4.5 items-center justify-center rounded-[5px] bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-accent inset-ring-1 inset-ring-text-accent">
               {t(($) => $[`${I18N_PREFIX}.inUse`], { ns: 'app' })}
             </div>
           )}

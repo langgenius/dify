@@ -12,7 +12,6 @@ from dify_trace_sdk.errors import (
 )
 from dify_trace_sdk.ids import span_uuid
 from dify_trace_sdk.testing import MESSAGE_ID, RecordingEgress, message_trace, response, tool_fragment, workflow_trace
-from pydantic import ValidationError
 
 CONFIG = LangfuseConfig(public_key="pk-lf-1", secret_key="sk-lf-1", host="https://cloud.langfuse.com")
 
@@ -27,14 +26,6 @@ def _sent_events(egress: RecordingEgress) -> list[dict]:
     body = sent.json()
     assert isinstance(body, dict)
     return body["batch"]
-
-
-def test_config_secrets_and_defaults() -> None:
-    assert LangfuseConfig.secret_fields() == {"public_key", "secret_key"}
-    assert LangfuseConfig.derived_fields() == {"project_key"}
-    assert LangfuseConfig(public_key="p", secret_key="s", host=" ").host == "https://api.langfuse.com"
-    with pytest.raises(ValidationError):
-        LangfuseConfig(public_key="p", secret_key="s", host="ftp://cloud.langfuse.com")
 
 
 def test_verify_resolves_the_project() -> None:

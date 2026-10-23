@@ -62,6 +62,12 @@ def _provider(grpc_target: str | None) -> tuple[TencentProvider, RecordingEgress
     return TencentProvider(egress), egress
 
 
+def _config(**overrides: object) -> TencentConfig:
+    return TencentConfig.model_validate(
+        {"endpoint": "https://collector.example:4320", "service_name": "dify-agent", "token": TOKEN, **overrides}
+    )
+
+
 def _attributes(values: Iterable[KeyValue]) -> dict[str, object]:
     decoded: dict[str, object] = {}
     for item in values:
@@ -170,6 +176,18 @@ def test_verify_endpoint_refused_by_the_egress_is_a_connection_failure() -> None
         provider.verify(CONFIG)
     assert caught.value.code == "connection_failed"
     assert egress.grpc_endpoints == ["https://apm.example.com:4317"]
+
+
+@pytest.mark.parametrize(
+    "service_name",
+    ["", "   ", "dify_app", "Dify", "1app", "-app", "app-", "a" * 64, "应用", "a.b", "a/b", "a b", "a\nb"],
+)
+def test_verification_rejects_service_names_outside_the_documented_pattern(service_name: str) -> None:
+    egress = RecordingEgress([], grpc_target=None)
+    with pytest.raises(VerificationError) as raised:
+        TencentProvider(egress).verify(_config(service_name=service_name))
+    assert raised.value.code == "invalid_service_name"
+    assert egress.grpc_endpoints == []
 
 
 def test_project_url_is_the_apm_console() -> None:

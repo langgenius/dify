@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
 import pytest
 from dify_trace_sdk.events import (
@@ -11,8 +12,7 @@ from dify_trace_sdk.events import (
 )
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from models.enums import ConversationFromSource, EndUserType
+from models.enums import ConversationFromSource, ConversationStatus, EndUserType, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
 from services.tracing.assembly import SourceNotFoundError, SourceNotReadyError, TraceAssembler
 from services.tracing.records import MessageTraceInfo, ModerationTraceInfo, ToolTraceInfo
@@ -50,11 +50,11 @@ def records(sqlite_session: Session) -> None:
         model_id=None,
         mode=AppMode.CHAT,
         name="Conversation",
-        inputs={},
+        _inputs={},
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
-        status="normal",
+        status=ConversationStatus.NORMAL,
         invoke_from=InvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_end_user_id=end_user.id,
@@ -64,27 +64,27 @@ def records(sqlite_session: Session) -> None:
         id=MESSAGE_ID,
         app_id=APP_ID,
         conversation_id=conversation.id,
-        inputs={},
+        _inputs={},
         query="What is Dify?",
         message=[{"role": "user", "text": "What is Dify?"}],
         message_tokens=12,
-        message_unit_price=0,
-        message_price_unit=0,
+        message_unit_price=Decimal(0),
+        message_price_unit=Decimal(0),
         answer="An LLM app platform.",
         answer_tokens=8,
-        answer_unit_price=0,
-        answer_price_unit=0,
+        answer_unit_price=Decimal(0),
+        answer_price_unit=Decimal(0),
         provider_response_latency=1.5,
-        total_price=0,
+        total_price=Decimal(0),
         currency="USD",
         invoke_from=InvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_end_user_id=end_user.id,
         from_account_id=None,
         app_mode=AppMode.CHAT,
-        created_at=CREATED_AT,
-        updated_at=CREATED_AT + timedelta(seconds=2),
     )
+    message.created_at = CREATED_AT
+    message.updated_at = CREATED_AT + timedelta(seconds=2)
     sqlite_session.add_all([app, end_user, conversation, message])
     sqlite_session.commit()
 

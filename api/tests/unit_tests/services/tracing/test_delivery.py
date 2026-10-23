@@ -140,8 +140,8 @@ def _record(*, workflow_run_id: str | None = None) -> MessageTraceInfo:
         conversation_id="conversation-1",
         answer="hello",
         workflow_run_id=workflow_run_id,
-        created_at=STARTED_AT,
     )
+    message.created_at = STARTED_AT
     return MessageTraceInfo(
         message_id=MESSAGE_ID,
         message_data=message,

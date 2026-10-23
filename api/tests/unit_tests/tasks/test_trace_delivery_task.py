@@ -8,7 +8,7 @@ from dify_trace_sdk.testing import message_trace
 from services.tracing.assembly import SourceNotFoundError, SourceNotReadyError
 from services.tracing.delivery import ExportJob, TraceCollectorUnavailableError
 from services.tracing.emitter import payload_key
-from tasks import ops_trace_task, trace_delivery_task
+from tasks import trace_delivery_task
 from tasks.trace_delivery_task import deliver_trace_event, retry_trace_export, sweep_trace_payloads
 
 
@@ -74,7 +74,6 @@ def _event() -> TraceEvent:
 def storage(monkeypatch: pytest.MonkeyPatch) -> _Storage:
     fake = _Storage({})
     monkeypatch.setattr(trace_delivery_task, "storage", fake)
-    monkeypatch.setattr(ops_trace_task, "storage", fake)
     return fake
 
 
@@ -183,19 +182,3 @@ def test_sweep_removes_expired_and_legacy_payloads_only(storage: _Storage) -> No
     sweep_trace_payloads.run()
 
     assert sorted(storage.files) == sorted([fresh, "trace_payloads/not-a-date/x.json", "other/keep.json"])
-
-
-def test_legacy_trace_tasks_are_drained(storage: _Storage) -> None:
-    storage.save("ops_trace/app-1/file-1.json", b"{}")
-
-    ops_trace_task.process_trace_tasks.run({"app_id": "app-1", "file_id": "file-1"})
-
-    assert storage.files == {}
-
-
-def test_legacy_trace_tasks_never_delete_outside_their_folder(storage: _Storage) -> None:
-    storage.save("ops_trace/app-1/file-1.json", b"{}")
-
-    ops_trace_task.process_trace_tasks.run({"app_id": "..", "file_id": "../secrets"})
-
-    assert list(storage.files) == ["ops_trace/app-1/file-1.json"]
