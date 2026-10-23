@@ -209,6 +209,110 @@ def test_action_transport_rejects_foreign_scope_without_dispatch(action_console:
     _evidence("stale-scope", {"http_status": response.status_code, "error": response.get_json(), "business_calls": 0})
 
 
+@pytest.mark.parametrize("approval_state", ["pending", "confirmed", "empty"])
+def test_expired_current_test_remains_readonly_and_cannot_continue(
+    action_console: ActionConsole, approval_state: str
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import event, select
+
+    from models.dify_builder_native_tests import NativeInvocationState, NativeTestScope
+
+    c, _, sid, base = action_console
+    initial = _view(c, base)
+    assert initial.test_execution is not None
+    pending = initial.test_execution.pending[0]
+    if approval_state == "confirmed":
+        _control(c, base, "confirm_test_operation", "approve-before-expiry")
+    with c.factory.begin() as sql:
+        scope = sql.get(NativeTestScope, c.ref.request_id)
+        assert scope is not None
+        scope.expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        if approval_state == "empty":
+            state = sql.scalar(
+                select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
+            )
+            assert state is not None
+            state.pending_ids = []
+    statements: list[str] = []
+
+    def observe_sql(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: object,
+    ) -> None:
+        if statement.lstrip().split(" ", 1)[0].upper() in {"INSERT", "UPDATE", "DELETE"}:
+            statements.append(statement)
+
+    engine = c.factory.kw["bind"]
+    event.listen(engine, "before_cursor_execute", observe_sql)
+    try:
+        view = _view(c, base)
+        receipt = view.test_execution
+        assert receipt is not None
+        assert receipt.request_id == c.ref.request_id
+        assert receipt.status == "waiting"
+        assert not receipt.can_resume
+        assert receipt.resume_blocked_reason == "native_expired"
+        if approval_state != "empty":
+            assert receipt.pending[0].pending_operation_id == pending.pending_operation_id
+            assert receipt.pending[0].decision_status == "expired"
+            assert receipt.pending[0].target == pending.target
+        assert not {"confirm_test_operation", "resume_test"} & {action.id for action in view.actions}
+        assert c.client.get(base + "/conversation").status_code == 200
+        stream = c.client.get(base + "/stream")
+        assert stream.status_code == 200
+        assert _finished(stream).test_execution == receipt
+        assert statements == []
+    finally:
+        event.remove(engine, "before_cursor_execute", observe_sql)
+    for kind, payload in [
+        (
+            "confirm_test_operation",
+            {
+                "pending_operation_id": pending.pending_operation_id,
+                "pending_version": pending.version,
+                "scope_digest": pending.scope_digest,
+            },
+        ),
+        ("resume_test", {"expected_generation": initial.test_execution.generation}),
+    ]:
+        response = c.client.post(
+            base + "/actions",
+            json={
+                "action_id": "confirm",
+                "payload": {"option_id": kind, "request_id": c.ref.request_id, **payload},
+                "base_version": view.version,
+                "base_app_revision": "fixture-revision",
+                "client_action_id": "expired-" + kind,
+            },
+        )
+        assert response.status_code == 409, response.get_data(as_text=True)
+    forged = c.client.post(
+        base + "/actions",
+        json={
+            "action_id": "confirm",
+            "payload": {
+                "option_id": "confirm_test_operation",
+                "request_id": c.ref.request_id,
+                "pending_operation_id": pending.pending_operation_id,
+                "pending_version": pending.version,
+                "scope_digest": pending.scope_digest,
+                "for_projection": True,
+            },
+            "base_version": view.version,
+            "base_app_revision": "fixture-revision",
+            "client_action_id": "caller-cannot-select-projection",
+        },
+    )
+    assert forged.status_code == 400, forged.get_data(as_text=True)
+    assert c.ledger.dispatched_attempt_count() == 0
+
+
 def test_action_transport_still_requires_console_login_and_csrf(action_console: ActionConsole) -> None:
     c, _, _, base = action_console
     login = c.client.post(base + "/actions", json={}, headers={"Authorization": ""})

@@ -100,7 +100,9 @@ class ProtectedPendingIntentReader:
     def __init__(self, *, loader: OwnedNativeTestLoader, state_store: NativeExecutionStateStore):
         self.loader, self.store = loader, state_store
 
-    def load(self, *, actor: Actor, request_id: str, pending_operation_id: str) -> ResolvedPendingIntent:
+    def load(
+        self, *, actor: Actor, request_id: str, pending_operation_id: str, for_projection: bool = False
+    ) -> ResolvedPendingIntent:
         if actor != self.loader.actor:
             raise BuilderExecutionPolicyError("native_owner_mismatch")
         with self.loader.session_factory() as session:
@@ -155,7 +157,7 @@ class ProtectedPendingIntentReader:
             )
             app_id = request.app_id
         # State owner validates actual child-app access before decrypting anything.
-        payload = self.store.read_checkpoint(ref=ref, checkpoint=checkpoint)
+        payload = self.store.read_checkpoint(ref=ref, checkpoint=checkpoint, for_projection=for_projection)
         matches = [
             intent
             for journal in payload.node_journals
@@ -180,12 +182,18 @@ class ProtectedPendingIntentReader:
         )
         return resolved
 
-    def load_terms(self, *, resolved: ResolvedPendingIntent) -> NativeApprovalTerms:
-        context = self.store.load_context(ref=resolved.ref)
+    def load_terms(self, *, resolved: ResolvedPendingIntent, for_projection: bool = False) -> NativeApprovalTerms:
+        context = (
+            self.store.load_projection_context(ref=resolved.ref)
+            if for_projection
+            else self.store.load_context(ref=resolved.ref)
+        )
         if context.generation != resolved.generation:
             raise BuilderExecutionPolicyError("native_pending_conflict")
         # Reuses current private-read owner, including actual child permission.
-        payload = self.store.read_checkpoint(ref=resolved.ref, checkpoint=resolved.checkpoint)
+        payload = self.store.read_checkpoint(
+            ref=resolved.ref, checkpoint=resolved.checkpoint, for_projection=for_projection
+        )
         if payload.generation != resolved.generation:
             raise BuilderExecutionPolicyError("native_pending_conflict")
         if not any(intent == resolved.intent for journal in payload.node_journals for intent in journal.intents):
