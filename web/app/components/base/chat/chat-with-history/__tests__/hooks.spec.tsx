@@ -4,7 +4,7 @@ import type { ChatConfig } from '../../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { useWebAppStore } from '@/context/web-app-context'
 import { httpErrorFromResponse } from '@/service/http-error'
 import {
@@ -83,7 +83,7 @@ const createQueryClient = () => {
 const createWrapper = (queryClient: QueryClient) => {
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <AppToastHost />
+      <AppToaster />
       {children}
     </QueryClientProvider>
   )

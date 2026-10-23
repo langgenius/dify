@@ -1,3 +1,8 @@
+import type {
+  SelectContentProps,
+  SelectProps,
+  SelectTriggerProps,
+} from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -43,9 +48,9 @@ const renderOpenSelect = ({
   contentProps = {},
   onValueChange,
 }: {
-  rootProps?: Record<string, unknown>
-  triggerProps?: Record<string, unknown>
-  contentProps?: Record<string, unknown>
+  rootProps?: SelectProps<string>
+  triggerProps?: SelectTriggerProps
+  contentProps?: Omit<SelectContentProps, 'children'>
   onValueChange?: (value: string | null) => void
 } = {}) => {
   return renderWithSafeViewport(
@@ -319,7 +324,7 @@ describe('Select wrappers', () => {
       await expect.element(screen.getByText('Popular cities')).toBeInTheDocument()
     })
 
-    it('should use positioning attributes when placement is not provided', async () => {
+    it('should use positioning attributes when side and align are not provided', async () => {
       const screen = await renderOpenSelect()
 
       await vi.waitFor(() => {
@@ -329,10 +334,11 @@ describe('Select wrappers', () => {
       })
     })
 
-    it('should preserve positioning attributes when placement props are provided', async () => {
+    it('should preserve positioning attributes when positioning props are provided', async () => {
       const screen = await renderOpenSelect({
         contentProps: {
-          placement: 'top-end',
+          side: 'top',
+          align: 'end',
           sideOffset: 12,
           alignOffset: 6,
         },

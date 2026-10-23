@@ -125,6 +125,14 @@ const findSettings = async () => {
 const expectMembers = () =>
   screen.findByRole('columnheader', { name: 'workspaceMembers.members.name' })
 
+it('exposes the Members content title as a heading', async () => {
+  renderSettings()
+  const dialog = await findSettings()
+  expect(
+    within(dialog).getByRole('heading', { name: 'navigation.settings.members', level: 3 }),
+  ).toBeVisible()
+})
+
 beforeEach(() => {
   featureFlags.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN = true
 })
@@ -136,6 +144,9 @@ it('opens preferences from the URL control, switches real pages, and closes with
   await user.click(screen.getByRole('button', { name: 'Open preferences' }))
   const dialog = await findSettings()
   expect(within(dialog).getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
+  expect(within(dialog).getByRole('button', { current: 'page' })).toHaveAccessibleName(
+    'navigation.settings.preferences',
+  )
   expect(onUrlUpdate.mock.lastCall?.[0]).toMatchObject({
     options: { history: 'replace', shallow: true },
   })
@@ -176,6 +187,13 @@ it('opens preferences from the URL control, switches real pages, and closes with
   for (const { name, tab, content } of destinations) {
     await user.click(within(dialog).getByRole('button', { name }))
     expect(await within(dialog).findByText(content)).toBeInTheDocument()
+    if (tab === TAB.BILLING) {
+      expect(within(dialog).getByRole('heading', { name, level: 3 })).toBeInTheDocument()
+      expect(
+        within(dialog).getByRole('heading', { name: 'billing.plans.sandbox.name', level: 4 }),
+      ).toBeInTheDocument()
+    }
+    expect(within(dialog).getByRole('button', { current: 'page' })).toHaveAccessibleName(name)
     await waitFor(() =>
       expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(tab),
     )
@@ -265,6 +283,21 @@ it('allows regular members to read billing without management permissions', asyn
   expect(
     within(dialog).queryByRole('link', { name: /billing.viewBillingTitle/ }),
   ).not.toBeInTheDocument()
+})
+
+it('exposes the customization page and preview through heading navigation', async () => {
+  renderSettings(TAB.CUSTOM)
+  const dialog = await findSettings()
+  expect(within(dialog).getByRole('heading', { level: 2 })).toHaveAccessibleName(
+    'navigation.settings.settings',
+  )
+  expect(within(dialog).getByRole('heading', { level: 3 })).toHaveAccessibleName('custom.custom')
+  expect(
+    await within(dialog).findByRole('heading', {
+      level: 4,
+      name: 'appOverview.overview.appInfo.preview',
+    }),
+  ).toBeInTheDocument()
 })
 
 it.each([

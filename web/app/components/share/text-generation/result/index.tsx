@@ -73,7 +73,7 @@ const Result: FC<IResultProps> = ({
   onRunControlChange,
   hideInlineStopButton = false,
 }) => {
-  const { t } = useTranslation(['share', 'appDebug', 'common'])
+  const { t } = useTranslation(['share', 'appDebug', 'common', 'workflow'])
   const notify = useCallback(({ type, message }: { type: ToastType; message: string }) => {
     toast(message, { type })
   }, [])

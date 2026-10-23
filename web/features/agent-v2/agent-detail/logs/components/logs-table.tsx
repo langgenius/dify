@@ -64,7 +64,7 @@ export function AgentLogsTable({
           aria-label={t(($) => $['agentDetail.logs.title'])}
           role="region"
           tabIndex={0}
-          className="overscroll-contain focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="overscroll-contain"
         >
           <ScrollAreaContent className="pr-3">
             <table className="w-full min-w-[56rem] table-fixed border-collapse lg:min-w-0">

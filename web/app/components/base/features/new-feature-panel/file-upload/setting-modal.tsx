@@ -31,7 +31,7 @@ const FileUploadSettings = ({
     >
       <PopoverTrigger disabled={disabled} render={children} />
       <PopoverContent
-        placement="left"
+        side="left"
         sideOffset={32}
         className="border-none bg-transparent shadow-none"
       >

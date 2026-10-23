@@ -15,8 +15,9 @@ import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
+import { useStudioListHref } from '@/features/studio-list-navigation'
+import { StudioListLink } from '@/features/studio-list-navigation/navigation'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
-import Link from '@/next/link'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
 import CreatorsFilter from './creators-filter'
@@ -64,6 +65,7 @@ export function AppListHeader({
   showCreateButton,
 }: AppListHeaderProps) {
   const { t } = useTranslation(['app', 'navigation'])
+  const snippetsHref = useStudioListHref('/snippets')
   const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
   const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
   const activeStepByStepTourGuideGroup = useAtomValue(activeStepByStepTourGuideGroupAtom)
@@ -106,13 +108,13 @@ export function AppListHeader({
           />
         </div>
         <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
-          <Link
-            href="/snippets"
+          <StudioListLink
+            href={snippetsHref}
             className="inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 text-[13px] leading-4 font-medium whitespace-nowrap text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
             <span aria-hidden className="i-ri-braces-line size-4 shrink-0" />
             {t(($) => $['studio.viewSnippets'], { ns: 'app' })}
-          </Link>
+          </StudioListLink>
           {showCreateButton && (
             <CreateAppDropdown
               onCreateBlank={onCreateBlank}
