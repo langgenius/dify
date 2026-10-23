@@ -87,26 +87,34 @@ it.each([undefined, '', 'unknown', '203.0.113.1, 192.0.2.1', '999.1.1.1'])(
   },
 )
 
-it('changes only the error-page language, retaining the IP and restoring the title on exit', async () => {
-  const user = userEvent.setup()
-  const { unmount } = render(<AppNotAccessible clientIp="203.0.113.8" />)
-  await user.click(await screen.findByRole('button', { name: 'English' }))
-  await user.click(screen.getByRole('menuitemradio', { name: '日本語 (日本)' }))
-  expect(
-    await screen.findByRole('heading', { name: jaShare['appNotAccessible.title'] }),
-  ).toBeInTheDocument()
-  await waitFor(() => expect(document.title).toBe(jaShare['appNotAccessible.documentTitle']))
-  expect(screen.getByText('203.0.113.8', { selector: 'code' })).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: jaLogin.signBtn })).toHaveAttribute(
-    'href',
-    '/signin?redirect_url=%2Fchat%2Fapp',
-  )
-  expect(document.cookie).toContain('locale=zh-Hans')
-  expect(document.documentElement.lang).toBe('ja-JP')
-  expect(document.documentElement.dir).toBe('ltr')
-  unmount()
-  expect(document.title).toBe('Previous title')
-})
+it.each([
+  { syncDocument: false, expectedDocumentLocale: 'zh-Hans', expectedDirection: 'ltr' },
+  { syncDocument: true, expectedDocumentLocale: 'ar-TN', expectedDirection: 'rtl' },
+])(
+  'changes error-page language without persisting console preferences (document owner: $syncDocument)',
+  async ({ syncDocument, expectedDocumentLocale, expectedDirection }) => {
+    const user = userEvent.setup()
+    const { unmount } = render(
+      <AppNotAccessible syncDocument={syncDocument} clientIp="203.0.113.8" />,
+    )
+    await user.click(await screen.findByRole('button', { name: 'English' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'العربية (تونس)' }))
+    expect(
+      await screen.findByRole('heading', { name: arShare['appNotAccessible.title'] }),
+    ).toBeInTheDocument()
+    await waitFor(() => expect(document.title).toBe(arShare['appNotAccessible.documentTitle']))
+    expect(screen.getByText('203.0.113.8', { selector: 'code' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: arLogin.signBtn })).toHaveAttribute(
+      'href',
+      '/signin?redirect_url=%2Fchat%2Fapp',
+    )
+    expect(document.cookie).toContain('locale=zh-Hans')
+    expect(document.documentElement.lang).toBe(expectedDocumentLocale)
+    expect(document.documentElement.dir).toBe(expectedDirection)
+    unmount()
+    expect(document.title).toBe('Previous title')
+  },
+)
 
 it('keeps an embedded error language and its portaled menus local to the dialog', async () => {
   const user = userEvent.setup()

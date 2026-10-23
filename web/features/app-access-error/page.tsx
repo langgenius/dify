@@ -23,6 +23,8 @@ type AppNotAccessibleProps = {
   clientIp?: string
   /** A dialog supplies its own landmarks and close control. */
   embedded?: boolean
+  /** Only the standalone error document owns the document language. */
+  syncDocument?: boolean
   /** The document gate supplies browser-language resources before streaming. */
   initialLocale?: Locale
   initialResources?: Resource
@@ -152,7 +154,7 @@ export default function AppNotAccessible(props: AppNotAccessibleProps) {
   return (
     <Suspense fallback={<LoadingPlaceholder className="min-h-dvh" />}>
       <I18nextProvider i18n={i18n}>
-        <I18nDirectionProvider syncDocument={!props.embedded}>
+        <I18nDirectionProvider syncDocument={props.syncDocument ?? false}>
           <PageContent {...props} />
         </I18nDirectionProvider>
       </I18nextProvider>
