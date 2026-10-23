@@ -2284,11 +2284,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/create/step-one/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/datasets/create/step-one/upgrade-card.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
