@@ -11,6 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,19 +21,19 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { createSelectedRolePlaceholder } from '../workspace-role-list-query'
-import AssignRolesModal from './assign-roles-modal'
+import AssignRolesContent from './assign-roles-content'
+import TransferOwnershipContent from './transfer-ownership-content'
 
 type MemberMenuProps = {
   member: AccountWithRoleResponse
   isCurrentUser: boolean
   canTransferOwnership?: boolean
   allowMultipleRoles?: boolean
-  onTransferOwnership?: () => void
 }
 
 const MemberMenu = ({
@@ -40,10 +41,11 @@ const MemberMenu = ({
   isCurrentUser,
   canTransferOwnership = false,
   allowMultipleRoles = true,
-  onTransferOwnership,
 }: MemberMenuProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const queryClient = useQueryClient()
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const [transferOpen, setTransferOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -76,6 +78,7 @@ const MemberMenu = ({
         ? roles.map((role) => role.id)
         : roles.slice(0, 1).map((role) => role.id)
 
+      setAssignModalOpen(false)
       updateRolesOfMember(
         { params: { member_id: member.id }, body: { role_ids: roleIds } },
         {
@@ -108,10 +111,6 @@ const MemberMenu = ({
     }
   }, [member.id, queryClient])
 
-  const handleTransferOwnership = useCallback(() => {
-    onTransferOwnership?.()
-  }, [onTransferOwnership])
-
   if (!canAssignRoles && !canRemove && !showTransferOwnership) return null
 
   return (
@@ -121,13 +120,10 @@ const MemberMenu = ({
           render={
             <IconButton
               size="lg"
-              aria-label={t(($) => $['members.memberActions'], {
-                ns: 'workspaceMembers',
-                defaultValue: 'Member actions',
-              })}
+              aria-label={`${t(($) => $['members.memberActions'], { ns: 'workspaceMembers' })}: ${memberName}`}
               className="data-popup-open:bg-state-base-hover"
             >
-              <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
+              <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </IconButton>
           }
         />
@@ -143,7 +139,7 @@ const MemberMenu = ({
           {showTransferOwnership && (
             <DropdownMenuItem
               className="system-sm-medium text-text-secondary"
-              onClick={handleTransferOwnership}
+              onClick={() => setTransferOpen(true)}
             >
               {t(($) => $['members.transferOwnership'], { ns: 'workspaceMembers' })}
             </DropdownMenuItem>
@@ -186,14 +182,25 @@ const MemberMenu = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {assignModalOpen && (
-        <AssignRolesModal
-          selectedRoles={selectedRoles}
-          allowMultipleRoles={allowMultipleRoles}
-          onClose={() => setAssignModalOpen(false)}
-          onSubmit={handleAssignRolesSubmit}
-        />
-      )}
+      <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
+        <DialogContent
+          className="h-121"
+          initialFocus={searchInputRef}
+          backdropProps={{ forceRender: true }}
+        >
+          <AssignRolesContent
+            searchInputRef={searchInputRef}
+            selectedRoles={selectedRoles}
+            allowMultipleRoles={allowMultipleRoles}
+            onSubmit={handleAssignRolesSubmit}
+          />
+        </DialogContent>
+      </Dialog>
+      <Dialog open={transferOpen} onOpenChange={setTransferOpen} disablePointerDismissal>
+        <DialogContent className="w-105" backdropProps={{ forceRender: true }}>
+          <TransferOwnershipContent />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
