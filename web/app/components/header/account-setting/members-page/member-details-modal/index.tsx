@@ -154,7 +154,7 @@ const MemberDetailsModal = ({
                 {member.name}
               </div>
               <div className="system-xs-regular wrap-break-word text-text-tertiary">
-                {member.email}
+                <span dir="ltr">{member.email}</span>
               </div>
             </div>
           </div>

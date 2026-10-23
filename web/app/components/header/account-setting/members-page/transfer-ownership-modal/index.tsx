@@ -240,7 +240,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
                   <button
                     type="button"
                     onClick={sendCodeToOriginEmail}
-                    className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-accent-secondary"
+                    className="cursor-pointer border-none bg-transparent p-0 text-start system-xs-medium text-text-accent-secondary"
                   >
                     {t(($) => $['members.transferModal.resend'], { ns: 'workspaceMembers' })}
                   </button>

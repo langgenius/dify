@@ -3313,31 +3313,6 @@
       "count": 1
     }
   },
-  "web/app/components/header/account-setting/members-page/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    }
-  },
-  "web/app/components/header/account-setting/members-page/invited-modal/invitation-link.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/members-page/member-row.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/members-page/transfer-ownership-modal/member-selector.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/__tests__/hooks.spec.ts": {
     "typescript/no-deprecated": {
       "count": 1

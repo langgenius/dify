@@ -106,7 +106,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
                           key={item.email}
                           className="flex justify-center rounded-md border border-components-panel-border bg-background-section-burn px-1 text-sm text-text-secondary"
                         >
-                          {item.email}
+                          <span dir="ltr">{item.email}</span>
                         </div>
                       ))}
                     </div>
@@ -135,7 +135,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
                                 id={`${failedEmailId}-${index}`}
                                 className="min-w-0 wrap-anywhere"
                               >
-                                {item.email}
+                                <span dir="ltr">{item.email}</span>
                               </span>
                               <span
                                 aria-hidden="true"
