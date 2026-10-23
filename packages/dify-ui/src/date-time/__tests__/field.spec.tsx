@@ -379,31 +379,35 @@ it.each(['external-booking', 'missing-booking'])(
   },
 )
 
-it('updates contextual registration when the explicit form owner changes its id', async () => {
-  const submitted = vi.fn()
-  function Example({ id }: { id: string }) {
-    return (
-      <Form id={id} aria-label="Booking" onFormSubmit={submitted}>
-        <Field name="departure">{families[0]!.render({ form: 'booking' })}</Field>
-        <button type="submit">Submit booking</button>
-      </Form>
-    )
-  }
-  const screen = await render(<Example id="booking" />)
-  await screen.getByRole('button', { name: 'Submit booking' }).click()
-  expect(submitted).toHaveBeenLastCalledWith({ departure: '2025-01-15' }, expect.anything())
-  await screen.rerender(<Example id="other" />)
-  expect(
-    new FormData(screen.getByRole('form', { name: 'Booking' }).element() as HTMLFormElement).has(
-      'departure',
-    ),
-  ).toBe(false)
-  await screen.getByRole('button', { name: 'Submit booking' }).click()
-  expect(submitted).toHaveBeenLastCalledWith({}, expect.anything())
-  await screen.rerender(<Example id="booking" />)
-  await screen.getByRole('button', { name: 'Submit booking' }).click()
-  expect(submitted).toHaveBeenLastCalledWith({ departure: '2025-01-15' }, expect.anything())
-})
+it.each([false, true])(
+  'updates contextual registration when the explicit form owner changes its id (portal: %s)',
+  async (portal) => {
+    const submitted = vi.fn()
+    function Example({ id }: { id: string }) {
+      const field = <Field name="departure">{families[0]!.render({ form: 'booking' })}</Field>
+      return (
+        <Form id={id} aria-label="Booking" onFormSubmit={submitted}>
+          {portal ? ReactDOM.createPortal(field, document.body) : field}
+          <button type="submit">Submit booking</button>
+        </Form>
+      )
+    }
+    const screen = await render(<Example id="booking" />)
+    await screen.getByRole('button', { name: 'Submit booking' }).click()
+    expect(submitted).toHaveBeenLastCalledWith({ departure: '2025-01-15' }, expect.anything())
+    await screen.rerender(<Example id="other" />)
+    expect(
+      new FormData(screen.getByRole('form', { name: 'Booking' }).element() as HTMLFormElement).has(
+        'departure',
+      ),
+    ).toBe(false)
+    await screen.getByRole('button', { name: 'Submit booking' }).click()
+    expect(submitted).toHaveBeenLastCalledWith({}, expect.anything())
+    await screen.rerender(<Example id="booking" />)
+    await screen.getByRole('button', { name: 'Submit booking' }).click()
+    expect(submitted).toHaveBeenLastCalledWith({ departure: '2025-01-15' }, expect.anything())
+  },
+)
 
 it('registers and resets a portalled picker with its contextual Form', async () => {
   const submitted = vi.fn()

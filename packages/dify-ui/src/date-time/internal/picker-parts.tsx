@@ -172,6 +172,8 @@ function PickerRoot({
     const observer = new (ownerWindow(input).MutationObserver)(updateEligibility)
     for (let ancestor: Element | null = input; ancestor; ancestor = ancestor.parentElement)
       observer.observe(ancestor, { attributes: true, attributeFilter: ['disabled', 'form', 'id'] })
+    if (formElementRef.current)
+      observer.observe(formElementRef.current, { attributes: true, attributeFilter: ['id'] })
     return () => observer.disconnect()
   }, [disabled, props.form, formElementRef])
   const { registerInput: registerFieldInput } = field.validation
