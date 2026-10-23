@@ -1,6 +1,5 @@
 'use client'
 
-import type { RefObject } from 'react'
 import {
   AlertDialogBody,
   AlertDialogCancelButton,
@@ -16,23 +15,20 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-u
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 
-// Rendered inside AlertDialogContent so the confirmation resets each time the dialog opens.
-export function DeleteKnowledgeForm({
-  confirmationRef,
-  knowledgeName,
+export function DeleteAgentForm({
+  agentName,
   isPending,
   error,
   onSubmit,
 }: {
-  confirmationRef: RefObject<HTMLInputElement | null>
-  knowledgeName: string
+  agentName: string
   isPending: boolean
   error?: string
   onSubmit: () => void
 }) {
-  const { t } = useTranslation(['knowledgeSettings', 'common'])
+  const { t } = useTranslation(['agentRoster', 'common'])
   // Keep the name the user is asked to type stable while a list refresh lands mid-dialog.
-  const [name] = useState(knowledgeName)
+  const [name] = useState(agentName)
   const [confirmation, setConfirmation] = useState('')
 
   return (
@@ -45,18 +41,18 @@ export function DeleteKnowledgeForm({
     >
       <AlertDialogHeader>
         <AlertDialogTitle>
-          {t(($) => $['settings.deleteDialogTitle'], { ns: 'knowledgeSettings' })}
+          {t(($) => $['roster.deleteDialog.title'], { ns: 'agentRoster', name })}
         </AlertDialogTitle>
         <AlertDialogDescription>
-          {t(($) => $['settings.deleteDialogDescription'], { ns: 'knowledgeSettings' })}
+          {t(($) => $['roster.deleteDialog.description'], { ns: 'agentRoster', name })}
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogBody>
-        <Field name="confirm-knowledge-name">
+        <Field name="confirm-agent-name">
           <FieldLabel>
             <Trans
-              i18nKey={($) => $['settings.deleteConfirmInputLabel']}
-              ns="knowledgeSettings"
+              i18nKey={($) => $['roster.deleteDialog.inputLabel']}
+              ns="agentRoster"
               values={{ name }}
               components={{
                 name: <span className="system-sm-semibold text-text-primary" translate="no" />,
@@ -65,14 +61,13 @@ export function DeleteKnowledgeForm({
           </FieldLabel>
           <InputGroup>
             <InputGroupInput
-              ref={confirmationRef}
               autoComplete="off"
               spellCheck={false}
               value={confirmation}
               onValueChange={setConfirmation}
               readOnly={isPending}
-              placeholder={t(($) => $['settings.deleteConfirmInputPlaceholder'], {
-                ns: 'knowledgeSettings',
+              placeholder={t(($) => $['roster.deleteDialog.inputPlaceholder'], {
+                ns: 'agentRoster',
               })}
             />
             <InputGroupAddon align="inline-end">
