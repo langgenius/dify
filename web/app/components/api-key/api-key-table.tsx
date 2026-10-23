@@ -27,12 +27,16 @@ export function ApiKeyTable({
   const { t } = useTranslation(['appApi', 'common', 'time'])
   const { formatTime } = useTimestamp()
 
-  // Only dataset keys expose dataset_ids; an empty/absent list means the key can access
-  // every knowledge base in the workspace.
+  // Only dataset keys expose bound knowledge bases (legacy dataset_ids plus KnowledgeFS
+  // knowledge_space_ids); both empty/absent means the key can access every knowledge base
+  // in the workspace.
   const scopeLabel = (apiKey: ApiKeyItem | EnvironmentApiKey) => {
     const datasetIds = 'dataset_ids' in apiKey ? apiKey.dataset_ids : undefined
-    if (!datasetIds?.length) return t(($) => $['apiKeyModal.scopeAllDatasets'], { ns: 'appApi' })
-    return t(($) => $['apiKeyModal.scopeCount'], { ns: 'appApi', count: datasetIds.length })
+    const knowledgeSpaceIds =
+      'knowledge_space_ids' in apiKey ? apiKey.knowledge_space_ids : undefined
+    const count = (datasetIds?.length ?? 0) + (knowledgeSpaceIds?.length ?? 0)
+    if (!count) return t(($) => $['apiKeyModal.scopeAllDatasets'], { ns: 'appApi' })
+    return t(($) => $['apiKeyModal.scopeCount'], { ns: 'appApi', count })
   }
 
   return (
@@ -47,14 +51,14 @@ export function ApiKeyTable({
               {t(($) => $['apiKeyModal.secretKey'], { ns: 'appApi' })}
             </th>
             {showScope && (
-              <th className="w-40 px-3 py-2" scope="col">
+              <th className="w-28 px-3 py-2" scope="col">
                 {t(($) => $['apiKeyModal.scope'], { ns: 'appApi' })}
               </th>
             )}
-            <th className="w-48 px-3 py-2" scope="col">
+            <th className="w-40 px-3 py-2" scope="col">
               {t(($) => $['apiKeyModal.created'], { ns: 'appApi' })}
             </th>
-            <th className="w-48 px-3 py-2" scope="col">
+            <th className="w-40 px-3 py-2" scope="col">
               {t(($) => $['apiKeyModal.lastUsed'], { ns: 'appApi' })}
             </th>
             <th className="w-28 px-3 py-2" scope="col">

@@ -43,10 +43,10 @@ def _snippet(**overrides) -> CustomizedSnippet:
         icon_info=None,
         input_fields=None,
         created_by=None,
-        created_at=datetime.fromtimestamp(1_704_067_200, UTC),
         updated_by=None,
-        updated_at=datetime.fromtimestamp(1_704_153_600, UTC),
     )
+    snippet.created_at = datetime.fromtimestamp(1_704_067_200, UTC)
+    snippet.updated_at = datetime.fromtimestamp(1_704_153_600, UTC)
     snippet.id = "snippet-1"
     for name, value in overrides.items():
         setattr(snippet, name, value)

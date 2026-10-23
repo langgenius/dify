@@ -454,6 +454,8 @@ class AgentComposerKnowledgeSetCandidateResponse(ResponseModel):
     id: str
     name: str
     description: str | None = None
+    control_space_id: str | None = None
+    missing: bool = False
     datasets: list[AgentComposerKnowledgeDatasetCandidateResponse] = Field(default_factory=list)
     missing_dataset_ids: list[str] = Field(default_factory=list)
 

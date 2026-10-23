@@ -1457,6 +1457,230 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:cat
+**Read Agent Knowledge Base entry content (cat)**
+
+Reads a bounded text portion of one entry, equivalent to difyctl fs cat. Content follows stable source order. When next_page_token is present, reuse it with the same path and consistency_class. total is not returned because this response is a bounded content stream, not a collection. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+| consistency_class | query | Optional Agent Knowledge Base read-consistency policy. | No | string, <br>**Available values:** "cache-consistent", "eventual-preview", "path-consistent", "snapshot-consistent" |
+| page_size | query | Maximum source segments to read (1-100); ignored when the selected entry has one bounded content value. | No | integer, <br>**Default:** 100 |
+| page_token | query | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No | string |
+| path | query | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base entry content | **application/json**: [KnowledgeFSEntryReadContentResponse](#knowledgefsentryreadcontentresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:diff
+**Compare two Agent Knowledge Base entries (diff)**
+
+Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSEntryComparePayload](#knowledgefsentrycomparepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base entry comparison | **application/json**: [KnowledgeFSEntryComparisonResponse](#knowledgefsentrycomparisonresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:find
+**Find Agent Knowledge Base entries (find)**
+
+Searches entries beneath path by name, resource type, or an exact metadata key/value pair, equivalent to difyctl fs find. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+| consistency_class | query | Optional Agent Knowledge Base read-consistency policy. | No | string, <br>**Available values:** "cache-consistent", "eventual-preview", "path-consistent", "snapshot-consistent" |
+| metadata_key | query | Exact metadata key; metadata_value must be supplied with it. | No | string |
+| metadata_value | query | Exact metadata value; metadata_key must be supplied with it. | No | string |
+| name_contains | query |  | No | string |
+| page_size | query | Maximum number of results to return (1-100). | No | integer, <br>**Default:** 20 |
+| page_token | query | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No | string |
+| path | query | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes | string |
+| resource_type | query |  | No | string, <br>**Available values:** "artifact", "document", "evidence", "node", "source", "workspace" |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base entry search results | **application/json**: [KnowledgeFSEntryListResponse](#knowledgefsentrylistresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:grep
+**Search Agent Knowledge Base content (grep)**
+
+Searches readable content beneath path, equivalent to difyctl fs grep. Matches follow canonical entry traversal order and source-offset order within each entry. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+| consistency_class | query | Optional Agent Knowledge Base read-consistency policy. | No | string, <br>**Available values:** "cache-consistent", "eventual-preview", "path-consistent", "snapshot-consistent" |
+| page_size | query | Maximum number of results to return (1-100). | No | integer, <br>**Default:** 20 |
+| page_token | query | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No | string |
+| path | query | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes | string |
+| text | query | Text to find in readable entry content. | Yes | string |
+| timeout_ms | query | Optional search time budget in milliseconds (1-10000). | No | integer |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base content matches | **application/json**: [KnowledgeFSEntryContentSearchResponse](#knowledgefsentrycontentsearchresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:ls
+**List an Agent Knowledge Base directory (ls)**
+
+Lists direct child entries under path, equivalent to difyctl fs ls. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+| consistency_class | query | Optional Agent Knowledge Base read-consistency policy. | No | string, <br>**Available values:** "cache-consistent", "eventual-preview", "path-consistent", "snapshot-consistent" |
+| page_size | query | Maximum number of results to return (1-100). | No | integer, <br>**Default:** 20 |
+| page_token | query | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No | string |
+| path | query | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base entry page | **application/json**: [KnowledgeFSEntryListResponse](#knowledgefsentrylistresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:stat
+**Inspect an Agent Knowledge Base entry (stat)**
+
+Returns stable metadata for one entry selected by canonical virtual path without reading content, equivalent to difyctl fs stat. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+| consistency_class | query | Optional Agent Knowledge Base read-consistency policy. | No | string, <br>**Available values:** "cache-consistent", "eventual-preview", "path-consistent", "snapshot-consistent" |
+| path | query | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base entry metadata | **application/json**: [KnowledgeFSEntryMetadataResponse](#knowledgefsentrymetadataresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:tree
+**Traverse an Agent Knowledge Base directory (tree)**
+
+Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyctl fs tree. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| knowledge_space_id | path | Stable Dify Agent Knowledge Base resource ID; treat it as opaque. | Yes | string |
+| workspace_id | path | Dify workspace ID that owns the Agent Knowledge Base. | Yes | string |
+| consistency_class | query | Optional Agent Knowledge Base read-consistency policy. | No | string, <br>**Available values:** "cache-consistent", "eventual-preview", "path-consistent", "snapshot-consistent" |
+| depth | query | Maximum tree depth (1-8). | No | integer |
+| page_size | query | Maximum number of results to return (1-100). | No | integer, <br>**Default:** 20 |
+| page_token | query | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No | string |
+| path | query | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base entry tree | **application/json**: [KnowledgeFSEntryTreeResponse](#knowledgefsentrytreeresponse)<br> |
+| 400 | Invalid Agent Knowledge Base request | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Missing or invalid OAuth account bearer | **application/json**: [ErrorBody](#errorbody)<br> |
+| 403 | Caller lacks workspace or Agent Knowledge Base read access | **application/json**: [ErrorBody](#errorbody)<br> |
+| 404 | Agent Knowledge Base or entry is missing or hidden | **application/json**: [ErrorBody](#errorbody)<br> |
+| 409 | Requested consistency conflicts with current state | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | Request exceeds an Agent Knowledge Base operational bound | **application/json**: [ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| 503 | Agent Knowledge Base is temporarily unavailable | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /workspaces/{workspace_id}/marketplace/plugins
 #### Parameters
 
@@ -2593,6 +2817,235 @@ A next step: the op id to call and its ready input.
 | node_data | [KnowledgeRetrievalFragment](#knowledgeretrievalfragment) | Merge into a knowledge-retrieval node's data and set query_variable_selector; to search several bases, join their dataset_ids. For rerank or weights read describe node_type | Yes |
 | provider | string | vendor: indexed in Dify; external: an external knowledge API | Yes |
 | usable | boolean | false when its embedding model isn't available in this workspace | Yes |
+
+#### KnowledgeFSConsistencyClass
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSConsistencyClass | string |  |  |
+
+#### KnowledgeFSEntryComparePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| include_semantic_summary | boolean | Whether to generate a bounded semantic change summary. This can consume model quota. | No |
+| mode | string, <br>**Available values:** "line", "word" | Comparison granularity. | No |
+| new_path | string | Canonical path of the entry to compare. | Yes |
+| old_path | string | Canonical path of the baseline entry. | Yes |
+
+#### KnowledgeFSEntryComparisonOperationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string, <br>**Available values:** "delete", "equal", "insert" | *Enum:* `"delete"`, `"equal"`, `"insert"` | Yes |
+| new_end | integer |  | No |
+| new_start | integer |  | No |
+| old_end | integer |  | No |
+| old_start | integer |  | No |
+| text | string |  | Yes |
+
+#### KnowledgeFSEntryComparisonResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mode | string, <br>**Available values:** "line", "word" | *Enum:* `"line"`, `"word"` | Yes |
+| new_path | string |  | Yes |
+| old_path | string |  | Yes |
+| operations | [ [KnowledgeFSEntryComparisonOperationResponse](#knowledgefsentrycomparisonoperationresponse) ] |  | Yes |
+| semantic | [KnowledgeFSEntrySemanticSummaryResponse](#knowledgefsentrysemanticsummaryresponse) |  | No |
+| stats | [KnowledgeFSEntryComparisonStatsResponse](#knowledgefsentrycomparisonstatsresponse) |  | Yes |
+
+#### KnowledgeFSEntryComparisonStatsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| delete | integer |  | Yes |
+| equal | integer |  | Yes |
+| insert | integer |  | Yes |
+
+#### KnowledgeFSEntryContentMatchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| end_offset | integer |  | Yes |
+| kind | string, <br>**Available values:** "node", "segment" | *Enum:* `"node"`, `"segment"` | Yes |
+| metadata | object |  | Yes |
+| node_id | string |  | No |
+| path | string |  | Yes |
+| segment_id | string |  | No |
+| snippet | string |  | Yes |
+| start_offset | integer |  | Yes |
+
+#### KnowledgeFSEntryContentSearchQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| page_size | integer, <br>**Default:** 20 | Maximum number of results to return (1-100). | No |
+| page_token | string | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No |
+| path | string | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes |
+| text | string | Text to find in readable entry content. | Yes |
+| timeout_ms | integer | Optional search time budget in milliseconds (1-10000). | No |
+
+#### KnowledgeFSEntryContentSearchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSEntryContentMatchResponse](#knowledgefsentrycontentmatchresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_page_token | string | Opaque continuation token for the next page; null when no continuation is available. | No |
+| path | string |  | Yes |
+| truncated | boolean | Whether operational bounds made the result incomplete, even when no continuation is available. | Yes |
+
+#### KnowledgeFSEntryInspectQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| path | string | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes |
+
+#### KnowledgeFSEntryListQuery
+
+List direct children in stable Agent Knowledge Base traversal order.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| page_size | integer, <br>**Default:** 20 | Maximum number of results to return (1-100). | No |
+| page_token | string | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No |
+| path | string | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes |
+
+#### KnowledgeFSEntryListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | No |
+| data | [ [KnowledgeFSEntryResponse](#knowledgefsentryresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_page_token | string | Opaque continuation token for the next page; null when no continuation is available. | No |
+| path | string |  | Yes |
+| preview | boolean |  | No |
+| truncated | boolean | Whether operational bounds made the result incomplete, even when no continuation is available. | Yes |
+
+#### KnowledgeFSEntryMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | No |
+| content_type | string |  | No |
+| metadata | object |  | Yes |
+| parser_status | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | No |
+| path | string |  | Yes |
+| preview | boolean |  | No |
+| resource_type | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | Yes |
+| sha256 | string |  | No |
+| size_bytes | integer |  | No |
+| target_id | string |  | Yes |
+| version | integer |  | No |
+
+#### KnowledgeFSEntryReadContentQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| page_size | integer, <br>**Default:** 100 | Maximum source segments to read (1-100); ignored when the selected entry has one bounded content value. | No |
+| page_token | string | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No |
+| path | string | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes |
+
+#### KnowledgeFSEntryReadContentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content_type | string |  | Yes |
+| has_more | boolean |  | Yes |
+| next_page_token | string | Opaque continuation token for the next page; null when no continuation is available. | No |
+| path | string |  | Yes |
+| text | string |  | Yes |
+| truncated | boolean | Whether operational bounds made the content incomplete, even when no continuation is available. | Yes |
+
+#### KnowledgeFSEntryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string, <br>**Available values:** "directory", "resource" | *Enum:* `"directory"`, `"resource"` | Yes |
+| metadata | object |  | Yes |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| resource_type | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | No |
+| target_id | string |  | No |
+| version | integer |  | No |
+
+#### KnowledgeFSEntrySearchQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| metadata_key | string | Exact metadata key; metadata_value must be supplied with it. | No |
+| metadata_value | string | Exact metadata value; metadata_key must be supplied with it. | No |
+| name_contains | string |  | No |
+| page_size | integer, <br>**Default:** 20 | Maximum number of results to return (1-100). | No |
+| page_token | string | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No |
+| path | string | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes |
+| resource_type | [KnowledgeFSResourceType](#knowledgefsresourcetype) |  | No |
+
+#### KnowledgeFSEntrySemanticChangeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | string |  | Yes |
+| evidence | [ string ] |  | Yes |
+| summary | string |  | Yes |
+
+#### KnowledgeFSEntrySemanticSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| changes | [ [KnowledgeFSEntrySemanticChangeResponse](#knowledgefsentrysemanticchangeresponse) ] |  | Yes |
+| metadata | object |  | Yes |
+| model | string |  | No |
+| summary | string |  | Yes |
+
+#### KnowledgeFSEntryTreeNodeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| children | [ [KnowledgeFSEntryTreeNodeResponse](#knowledgefsentrytreenoderesponse) ] |  | No |
+| kind | string, <br>**Available values:** "directory", "resource" | *Enum:* `"directory"`, `"resource"` | Yes |
+| metadata | object |  | Yes |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| resource_type | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | No |
+| target_id | string |  | No |
+| version | integer |  | No |
+
+#### KnowledgeFSEntryTreeQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | [KnowledgeFSConsistencyClass](#knowledgefsconsistencyclass) | Optional Agent Knowledge Base read-consistency policy. | No |
+| depth | integer | Maximum tree depth (1-8). | No |
+| page_size | integer, <br>**Default:** 20 | Maximum number of results to return (1-100). | No |
+| page_token | string | Opaque continuation token returned as next_page_token. Repeat the same query without inspecting the token. | No |
+| path | string | Canonical Agent Knowledge Base virtual path under /sources, /knowledge, /evidence, or /workspaces. | Yes |
+
+#### KnowledgeFSEntryTreeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | string | Open response value. Clients must tolerate unknown future values and fall back to generic display behavior. | No |
+| has_more | boolean |  | Yes |
+| next_page_token | string | Opaque continuation token for the next page; null when no continuation is available. | No |
+| path | string |  | Yes |
+| preview | boolean |  | No |
+| root | [KnowledgeFSEntryTreeNodeResponse](#knowledgefsentrytreenoderesponse) |  | Yes |
+| truncated | boolean | Whether operational bounds made the result incomplete, even when no continuation is available. | Yes |
+
+#### KnowledgeFSResourceType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSResourceType | string |  |  |
 
 #### KnowledgeRetrievalFragment
 

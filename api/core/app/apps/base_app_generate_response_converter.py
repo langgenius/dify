@@ -82,12 +82,16 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
                 updated_resources.append(
                     {
                         "dataset_id": resource.get("dataset_id"),
+                        "knowledge_fs_citation": resource.get("knowledge_fs_citation"),
                         "dataset_name": resource.get("dataset_name"),
                         "document_id": resource.get("document_id"),
+                        "document_asset_id": resource.get("document_asset_id"),
                         "segment_id": resource.get("segment_id", ""),
                         "position": resource["position"],
                         "data_source_type": resource.get("data_source_type"),
                         "document_name": resource["document_name"],
+                        "document_revision": resource.get("document_revision"),
+                        "document_version": resource.get("document_version"),
                         "score": resource["score"],
                         "hit_count": resource.get("hit_count"),
                         "word_count": resource.get("word_count"),

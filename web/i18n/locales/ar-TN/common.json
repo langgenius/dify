@@ -168,6 +168,7 @@
   "operation.deSelectAll": "إلغاء تحديد الكل",
   "operation.decreaseValue": "تقليل القيمة",
   "operation.delete": "حذف",
+  "operation.deleteConfirmTitle": "حذف؟",
   "operation.download": "تنزيل",
   "operation.downloadFailed": "فشل التنزيل. يرجى المحاولة مرة أخرى لاحقًا.",
   "operation.downloadSuccess": "اكتمل التنزيل.",

@@ -46,8 +46,10 @@ it.each([
   ['/datasets/create', 'dataset.create_and_management'],
   ['/datasets/create-from-pipeline', 'dataset.create_and_management'],
   ['/datasets/create/draft', 'dataset.create_and_management'],
+  ['/datasets/new/create', 'dataset.create_and_management'],
   ['/datasets/connect', 'dataset.external.connect'],
   ['/datasets/connect/', 'dataset.external.connect'],
+  ['/datasets/connect/provider', 'dataset.external.connect'],
 ])('requires the matching permission for %s', async (pathname, permission) => {
   navigation.pathname = pathname
   const otherPermission =
@@ -64,6 +66,13 @@ it.each([
   render(<DatasetsLayout>Datasets content</DatasetsLayout>, {
     workspacePermissionKeys: [permission],
   })
+  expect(screen.getByText('Datasets content')).toBeInTheDocument()
+  expect(navigation.replace).not.toHaveBeenCalled()
+})
+
+it('leaves New RAG source authorization to the knowledge-space route', () => {
+  navigation.pathname = '/datasets/new/space-1/sources/new'
+  render(<DatasetsLayout>Datasets content</DatasetsLayout>, { workspacePermissionKeys: [] })
   expect(screen.getByText('Datasets content')).toBeInTheDocument()
   expect(navigation.replace).not.toHaveBeenCalled()
 })
