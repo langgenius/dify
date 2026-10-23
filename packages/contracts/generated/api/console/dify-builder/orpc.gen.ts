@@ -47,6 +47,12 @@ import {
   zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponse,
   zPostDifyBuilderSessionsBySessionIdRealCallConsentsPath,
   zPostDifyBuilderSessionsBySessionIdRealCallConsentsResponse,
+  zPostDifyBuilderSessionsBySessionIdResumeBody,
+  zPostDifyBuilderSessionsBySessionIdResumePath,
+  zPostDifyBuilderSessionsBySessionIdResumeResponse,
+  zPostDifyBuilderSessionsBySessionIdStopBody,
+  zPostDifyBuilderSessionsBySessionIdStopPath,
+  zPostDifyBuilderSessionsBySessionIdStopResponse,
   zPostDifyBuilderSessionsResponse,
 } from './zod.gen.ts'
 
@@ -370,6 +376,46 @@ export const realCallConsents = {
   byConsentId,
 }
 
+export const post11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDifyBuilderSessionsBySessionIdResume',
+    path: '/dify-builder/sessions/{session_id}/resume',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDifyBuilderSessionsBySessionIdResumeBody,
+      params: zPostDifyBuilderSessionsBySessionIdResumePath,
+    }),
+  )
+  .output(zPostDifyBuilderSessionsBySessionIdResumeResponse)
+
+export const resume2 = {
+  post: post11,
+}
+
+export const post12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDifyBuilderSessionsBySessionIdStop',
+    path: '/dify-builder/sessions/{session_id}/stop',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDifyBuilderSessionsBySessionIdStopBody,
+      params: zPostDifyBuilderSessionsBySessionIdStopPath,
+    }),
+  )
+  .output(zPostDifyBuilderSessionsBySessionIdStopResponse)
+
+export const stop = {
+  post: post12,
+}
+
 export const get5 = oc
   .route({
     inputStructure: 'detailed',
@@ -410,10 +456,12 @@ export const bySessionId = {
   nativeTestInput,
   nativeTests,
   realCallConsents,
+  resume: resume2,
+  stop,
   stream,
 }
 
-export const post11 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -425,7 +473,7 @@ export const post11 = oc
   .output(eventIterator(zPostDifyBuilderSessionsResponse))
 
 export const sessions = {
-  post: post11,
+  post: post13,
   bySessionId,
 }
 

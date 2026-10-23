@@ -165,6 +165,17 @@ export const zDifyBuilderExecuteRealCallPayload = z.object({
 })
 
 /**
+ * DifyBuilderTaskControlPayload
+ *
+ * Control the current task with a durable client replay identity.
+ */
+export const zDifyBuilderTaskControlPayload = z.object({
+  base_app_revision: z.string().optional().default(''),
+  base_version: z.int(),
+  client_action_id: z.string().min(1).max(128),
+})
+
+/**
  * BuilderErrorCode
  *
  * Stable HTTP error codes returned by the Builder console routes.
@@ -2600,6 +2611,28 @@ export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecu
  */
 export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponse =
   zDifyBuilderRealCallConsentResponse
+
+export const zPostDifyBuilderSessionsBySessionIdResumeBody = zDifyBuilderTaskControlPayload
+
+export const zPostDifyBuilderSessionsBySessionIdResumePath = z.object({
+  session_id: z.string(),
+})
+
+/**
+ * Resumed task session state
+ */
+export const zPostDifyBuilderSessionsBySessionIdResumeResponse = zDifyBuilderSessionViewResponse
+
+export const zPostDifyBuilderSessionsBySessionIdStopBody = zDifyBuilderTaskControlPayload
+
+export const zPostDifyBuilderSessionsBySessionIdStopPath = z.object({
+  session_id: z.string(),
+})
+
+/**
+ * Stopped task session state
+ */
+export const zPostDifyBuilderSessionsBySessionIdStopResponse = zDifyBuilderSessionViewResponse
 
 export const zGetDifyBuilderSessionsBySessionIdStreamHeaders = z.object({
   'Last-Event-ID': z.string().optional(),

@@ -7414,6 +7414,46 @@ Compatibility endpoint. Builder clients should use the existing /actions and ses
 | 409 | Real call refused | **application/json**: [DifyBuilderRealCallRefusalResponse](#difybuilderrealcallrefusalresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /dify-builder/sessions/{session_id}/resume
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| session_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DifyBuilderTaskControlPayload](#difybuildertaskcontrolpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Resumed task session state | **application/json**: [DifyBuilderSessionViewResponse](#difybuildersessionviewresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /dify-builder/sessions/{session_id}/stop
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| session_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DifyBuilderTaskControlPayload](#difybuildertaskcontrolpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Stopped task session state | **application/json**: [DifyBuilderSessionViewResponse](#difybuildersessionviewresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /dify-builder/sessions/{session_id}/stream
 #### Parameters
 
@@ -22075,6 +22115,16 @@ One JSON object carried by an SSE ``data:`` frame.
 | base_version | integer |  | Yes |
 | client_turn_id | string |  | Yes |
 | text | string |  | Yes |
+
+#### DifyBuilderTaskControlPayload
+
+Control the current task with a durable client replay identity.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| base_app_revision | string |  | No |
+| base_version | integer |  | Yes |
+| client_action_id | string |  | Yes |
 
 #### DifyBuilderTestResultConversationItemResponse
 

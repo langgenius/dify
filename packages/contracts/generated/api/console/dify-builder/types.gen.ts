@@ -274,6 +274,12 @@ export type DifyBuilderExecuteRealCallPayload = {
   scope_digest: string
 }
 
+export type DifyBuilderTaskControlPayload = {
+  base_app_revision?: string
+  base_version: number
+  client_action_id: string
+}
+
 export type DifyBuilderCreateBuildSessionPayload = {
   app_id: string
   derive_app_name?: boolean
@@ -2380,6 +2386,52 @@ export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecute
 
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponse =
   PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponses[keyof PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponses]
+
+export type PostDifyBuilderSessionsBySessionIdResumeData = {
+  body: DifyBuilderTaskControlPayload
+  path: {
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/resume'
+}
+
+export type PostDifyBuilderSessionsBySessionIdResumeErrors = {
+  default: ErrorResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdResumeError =
+  PostDifyBuilderSessionsBySessionIdResumeErrors[keyof PostDifyBuilderSessionsBySessionIdResumeErrors]
+
+export type PostDifyBuilderSessionsBySessionIdResumeResponses = {
+  200: DifyBuilderSessionViewResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdResumeResponse =
+  PostDifyBuilderSessionsBySessionIdResumeResponses[keyof PostDifyBuilderSessionsBySessionIdResumeResponses]
+
+export type PostDifyBuilderSessionsBySessionIdStopData = {
+  body: DifyBuilderTaskControlPayload
+  path: {
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/stop'
+}
+
+export type PostDifyBuilderSessionsBySessionIdStopErrors = {
+  default: ErrorResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdStopError =
+  PostDifyBuilderSessionsBySessionIdStopErrors[keyof PostDifyBuilderSessionsBySessionIdStopErrors]
+
+export type PostDifyBuilderSessionsBySessionIdStopResponses = {
+  200: DifyBuilderSessionViewResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdStopResponse =
+  PostDifyBuilderSessionsBySessionIdStopResponses[keyof PostDifyBuilderSessionsBySessionIdStopResponses]
 
 export type GetDifyBuilderSessionsBySessionIdStreamData = {
   body?: never
