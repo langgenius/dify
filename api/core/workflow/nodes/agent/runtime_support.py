@@ -54,13 +54,16 @@ class AgentRuntimeSupport:
             agent_input = node_data.agent_parameters[parameter_name]
             match agent_input.type:
                 case "variable":
-                    if agent_input.value is None:
-                        # Unset optional param: the canvas stores it as
-                        # {"type": "variable", "value": null}. Treat it as not
-                        # provided instead of passing None to variable_pool.get,
-                        # which raises TypeError: object of type 'NoneType' has no len().
-                        result[parameter_name] = None
-                        continue
+                    # Cleared selectors are "", [], or null. The canvas keeps
+                    # them after a variable parameter is cleared. Optional
+                    # params are unset (omitted), matching a parameter absent
+                    # from agent_parameters. Required params still fail.
+                    # Skipping also avoids variable_pool.get(None), which
+                    # raises TypeError: object of type 'NoneType' has no len().
+                    if not agent_input.value:
+                        if not parameter.required:
+                            continue
+                        raise AgentVariableNotFoundError(str(agent_input.value))
                     variable = variable_pool.get(agent_input.value)  # type: ignore[arg-type]
                     if variable is None:
                         raise AgentVariableNotFoundError(str(agent_input.value))
