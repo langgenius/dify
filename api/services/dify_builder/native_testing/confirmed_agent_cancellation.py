@@ -141,7 +141,7 @@ class ConfirmedAgentCancellation:
             "sources": [list(source) for source in sources],
             "context_object_id": state.context_object_id,
         }
-        with self.loader.locked(ref=ref) as (sql, owned, _):
+        with self.loader.locked(ref=ref, settlement=True) as (sql, owned, _):
             # Neither this snapshot nor its client-independent child IDs may
             # survive a changed checkpoint/ordinary pause during preparation.
             if not self._matches(sql, ref, owned, proof):

@@ -215,19 +215,15 @@ class OwnedNativeTestLoader:
             owned, scope = self._load(session, ref=ref, lock=True, settlement=settlement)
             yield session, owned, scope
 
-    def _load(
-        self, session: Session, *, ref: NativeTestContextRef, lock: bool, settlement: bool = False
-    ) -> tuple[OwnedNativeTest, NativeTestScope]:
-        from services.dify_builder.execution_policy_service import load_execution_owners
-
-        query = select(DifyBuilderExecutionRequest).where(
+    def _request_query(self, ref: NativeTestContextRef):
+        return select(DifyBuilderExecutionRequest).where(
             DifyBuilderExecutionRequest.id == ref.request_id,
             DifyBuilderExecutionRequest.tenant_id == self.actor.tenant_id,
             DifyBuilderExecutionRequest.actor_id == self.actor.account_id,
         )
-        if lock:
-            query = query.with_for_update()
-        request = session.scalar(query)
+
+    @staticmethod
+    def _request_binding(request, ref):
         if request is None or request.context_digest != ref.context_digest:
             raise BuilderExecutionPolicyError("native_owner_mismatch")
         if (
@@ -235,6 +231,35 @@ class OwnedNativeTestLoader:
             or canonical_digest(request.context) != request.context_digest
         ):
             raise BuilderExecutionPolicyError("native_context_mismatch")
+        return (request.session_id, request.app_id, request.workflow_id, request.test_input_id, request.context_digest)
+
+    def lock_task_admission(self, session: Session, *, ref: NativeTestContextRef):
+        from core.dify_builder.errors import ConflictError
+        from services.dify_builder.task_controls import lock_task_admission
+
+        # Read an authenticated immutable binding before taking any writer lock.
+        # Execution writers always lock Session before App/Request, like Stop.
+        request = session.scalar(self._request_query(ref).execution_options(populate_existing=True))
+        binding = self._request_binding(request, ref)
+        try:
+            lock_task_admission(session, binding[0])
+        except ConflictError as error:
+            raise BuilderExecutionPolicyError("native_revision_drift") from error
+        return binding
+
+    def _load(
+        self, session: Session, *, ref: NativeTestContextRef, lock: bool, settlement: bool = False
+    ) -> tuple[OwnedNativeTest, NativeTestScope]:
+        from services.dify_builder.execution_policy_service import load_execution_owners
+
+        binding = self.lock_task_admission(session, ref=ref) if lock and not settlement else None
+        query = self._request_query(ref)
+        if lock:
+            query = query.with_for_update().execution_options(populate_existing=True)
+        request = session.scalar(query)
+        current_binding = self._request_binding(request, ref)
+        if binding is not None and current_binding != binding:
+            raise BuilderExecutionPolicyError("native_owner_mismatch")
         if settlement:
             # An already-spent permit can report its result after revocation,
             # cancellation or draft drift. This writes evidence, never new I/O.
