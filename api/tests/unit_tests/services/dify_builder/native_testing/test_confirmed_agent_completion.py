@@ -2166,3 +2166,59 @@ def test_resumed_terminal_run_records_current_business_acceptance_on_original_at
     assert cards[0].payload["business_acceptance_state"] == acceptance
     observe(owner)
     assert owner.repo.get_session(owner.session.id)[0].version == session.version
+
+
+@pytest.mark.parametrize("declining", [0, 1], indirect=True)
+def test_delayed_cancel_is_settled_by_worker_without_get_or_another_cancel(
+    declining: CompletedOwner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A delayed child ACK must close the same attempt while public reads stay inert."""
+    from types import SimpleNamespace
+
+    from schedule import dify_builder_reconcile_task as task
+    from services.dify_builder import wiring
+    from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
+
+    owner = declining
+    owner.child_status = "cancelling"
+    values = {"actor": owner.case.actor, "session_id": owner.session.id, "request_id": owner.request_id}
+    first = owner.commands.cancel(**values, idempotency_key="delayed-cancel")
+    assert first.native_status == "paused"
+    cancel_calls = list(owner.cancel_calls)
+    service = ProfiledNativeTestCommands(
+        sessions=owner.factory,
+        actor=owner.case.actor,
+        confirmed_factory=lambda: owner.commands,
+        legacy_factory=lambda: pytest.fail("confirmed cancellation changed runtime profile"),
+    )
+    monkeypatch.setattr(task, "_session_factory", lambda: owner.factory)
+    monkeypatch.setattr(wiring, "build_native_test_api_service", lambda **_: service)
+    monkeypatch.setattr(wiring, "native_runtime_owner", lambda: SimpleNamespace(retire_closed=lambda **_: None))
+    task.reconcile_native_tests()
+    assert owner.repo.get_run(owner.verify_id).status == "running"
+    owner.child_status = "cancelled"
+    assert service.peek(**values).native_status == "paused"
+    assert owner.repo.get_run(owner.verify_id).status == "running"
+    task.reconcile_native_tests()
+    with owner.factory() as sql:
+        native = sql.get(WorkflowRun, owner.native_id)
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert native is not None
+        assert native.status == "stopped"
+        assert request is not None
+        assert request.state == "sealed"
+    run = owner.repo.get_run(owner.verify_id)
+    assert run.status == "failed"
+    assert run.dify_run_id == owner.native_id
+    session, context = owner.repo.get_session(owner.session.id)
+    assert context.verify_run_id == owner.verify_id
+    assert session.current_state == PcState.BUILD_REVIEW
+    task.reconcile_native_tests()
+    assert owner.repo.get_session(owner.session.id)[0].version == session.version
+    assert owner.cancel_calls == cancel_calls
+    cards = [
+        item
+        for item in owner.repo.list_conversation_page(owner.session.id, limit=20).data
+        if item.kind == "test_result"
+    ]
+    assert len(cards) == 1

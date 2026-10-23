@@ -161,8 +161,10 @@ def reconcile_native_tests(*, limit: int = 100) -> int:
             )
         except Exception:
             logger.warning("Dify Builder native continuation requires attention (tenant=%s)", tenant_id)
-    # Initial admission/ACK loss may have no NativeDispatch row. Recover its
-    # observed pause in this existing worker, never as a side effect of GET.
+    # Initial admission/ACK loss may have no NativeDispatch row. Cancellation
+    # also revokes its root before a child asynchronously acknowledges the stop.
+    # Recover both observations here; public GET remains read-only and cancelled
+    # children are only observed, never sent another cancellation RPC.
     with _session_factory()() as session:
         observations = session.execute(
             select(
@@ -176,7 +178,8 @@ def reconcile_native_tests(*, limit: int = 100) -> int:
                 DifyBuilderExecutionRequest.context["profile"]["profile_id"].as_string()
                 == "builder-agent-confirmed-v1",
                 NativeInvocationState.parent_invocation_id.is_(None),
-                NativeInvocationState.state == "running",
+                (NativeInvocationState.state == "running")
+                | ((NativeInvocationState.state == "cancelled") & (DifyBuilderExecutionRequest.state != "sealed")),
                 ~select(NativeDispatch.id)
                 .where(
                     NativeDispatch.request_id == DifyBuilderExecutionRequest.id,

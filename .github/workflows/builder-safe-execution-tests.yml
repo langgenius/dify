@@ -1823,6 +1823,7 @@ jobs:
               'test_native_control_only_commits_do_not_strand_successful_builder_run': 1,
               'test_terminal_projection_crash_is_recovered_without_get_or_dispatch': 1,
               'test_resumed_terminal_run_records_current_business_acceptance_on_original_attempt': 4,
+              'test_delayed_cancel_is_settled_by_worker_without_get_or_another_cancel': 2,
               'test_native_control_receipt_cannot_hide_an_intervening_user_change': 1,
               'test_paused_initial_ack_without_dispatch_is_selected_for_worker_recovery': 1,
           })
