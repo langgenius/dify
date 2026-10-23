@@ -23,6 +23,7 @@ import { MARKETPLACE_API_PREFIX } from '@/config'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
+import { resolveEmoji } from '@/utils/emoji'
 import {
   rememberMarketplaceSiteReferrer,
   trackMarketplaceSiteEvent,
@@ -293,7 +294,7 @@ function RecommendCardFace({ card }: { card: BannerRecommendCard }) {
             className="size-full object-contain object-center"
           />
         ) : card.icon ? (
-          <span className="text-xl leading-none">{card.icon}</span>
+          <span className="text-xl leading-none">{resolveEmoji(card.icon)}</span>
         ) : (
           <span aria-hidden="true" className="i-ri-image-line size-5 text-text-quaternary" />
         )}
