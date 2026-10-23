@@ -1,7 +1,7 @@
 """DELETE oauth_access_tokens past retention. Revocation is UPDATE
-(token_id stays for audits) so rows accumulate across re-logins, and
-expired-but-never-presented rows have no hard-expire trigger — both get
-pruned here. Spec: docs/specs/v1.0/server/tokens.md §Hard-expire.
+(token_id stays for audits) so revoked rows stay until a new login on the
+same device reuses them, and expired-but-never-presented rows have no
+hard-expire trigger — both get pruned here. Spec: docs/specs/v1.0/server/tokens.md §Hard-expire.
 """
 
 from __future__ import annotations
@@ -41,7 +41,8 @@ def clean_oauth_access_tokens_task():
         ids = db.session.scalars(select(OAuthAccessToken.id).where(candidates).limit(DELETE_BATCH_SIZE)).all()
         if not ids:
             break
-        db.session.execute(delete(OAuthAccessToken).where(OAuthAccessToken.id.in_(ids)))
+        # Re-check: a login may have reused one of these rows since the select.
+        db.session.execute(delete(OAuthAccessToken).where(OAuthAccessToken.id.in_(ids), candidates))
         db.session.commit()
         total += len(ids)
 
