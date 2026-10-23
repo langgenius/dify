@@ -16,15 +16,21 @@ from werkzeug.exceptions import Forbidden
 import controllers.web.human_input_form as human_input_module
 from controllers.common.errors import NotFoundError
 from controllers.web.error import WebFormRateLimitExceededError
-from core.workflow.nodes.human_input.entities import ParagraphInputConfig, SelectInputConfig, StringListSource
-from core.workflow.nodes.human_input.enums import ValueSourceType
+from core.repositories.human_input_repository import HumanInputFormRecord
+from core.workflow.nodes.human_input.entities import (
+    FormDefinition,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+)
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from models import Tenant
 from models.account import TenantStatus
 from models.enums import CustomizeTokenStrategy
 from models.human_input import RecipientType
 from models.model import App, AppMode, IconType, Site
 from services.entities.feature_entities import FeatureModel
-from services.human_input_service import FormExpiredError
+from services.human_input_service import Form, FormExpiredError
 
 HumanInputFormApi = human_input_module.HumanInputFormApi
 HumanInputFormUploadTokenApi = human_input_module.HumanInputFormUploadTokenApi
@@ -97,6 +103,34 @@ def _persist_app_site(session: Session, *, include_site: bool = True) -> tuple[T
     session.add_all(models)
     session.commit()
     return tenant, app_model, site
+
+
+def _public_form(recipient_type: RecipientType) -> Form:
+    expiration = datetime(2099, 1, 1, tzinfo=UTC)
+    return Form(
+        HumanInputFormRecord(
+            form_id="form-id",
+            workflow_run_id=None,
+            node_id="node-id",
+            tenant_id="tenant-id",
+            app_id="app-id",
+            form_kind=HumanInputFormKind.DELIVERY_TEST,
+            definition=FormDefinition(form_content="Approve", rendered_content="Approve", expiration_time=expiration),
+            rendered_content="Approve",
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+            expiration_time=expiration,
+            status=HumanInputFormStatus.WAITING,
+            selected_action_id=None,
+            submitted_data=None,
+            submitted_at=None,
+            submission_user_id=None,
+            submission_end_user_id=None,
+            completed_by_recipient_id=None,
+            recipient_id="recipient-id",
+            recipient_type=recipient_type,
+            access_token="token-1",
+        )
+    )
 
 
 @pytest.mark.parametrize(
@@ -283,9 +317,8 @@ def test_create_upload_token_returns_token_and_form_expiration(
 ) -> None:
     """POST returns a HITL upload token for an active form token."""
 
-    form_service = MagicMock()
-    form_service.get_form_by_token.return_value = SimpleNamespace(recipient_type=recipient_type)
-    monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: form_service)
+    form = _public_form(recipient_type)
+    monkeypatch.setattr(human_input_module.HumanInputService, "get_form_by_token", lambda self, token: form)
     expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
     service_mock = MagicMock()
     service_mock.issue_upload_token.return_value = SimpleNamespace(
@@ -468,7 +501,7 @@ def test_submit_form_accepts_public_tokens(
 ) -> None:
     """Web and email approval links can still submit through the public API."""
 
-    form = SimpleNamespace(recipient_type=recipient_type)
+    form = _public_form(recipient_type)
     limiter_mock = MagicMock()
     limiter_mock.is_rate_limited.return_value = False
     monkeypatch.setattr(human_input_module, "_FORM_SUBMIT_RATE_LIMITER", limiter_mock)
@@ -578,20 +611,21 @@ def test_public_mutations_reject_internal_tokens(
     recipient_type: RecipientType,
     endpoint: str,
 ) -> None:
-    form_service = MagicMock()
-    form_service.get_form_by_token.return_value = SimpleNamespace(recipient_type=recipient_type)
-    upload_service = MagicMock()
-    upload_service.issue_upload_token.return_value = SimpleNamespace(
-        upload_token="should-not-be-issued", expires_at=datetime(2099, 1, 1, tzinfo=UTC)
-    )
-    monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: form_service)
+    form = _public_form(recipient_type)
+    monkeypatch.setattr(human_input_module.HumanInputService, "get_form_by_token", lambda self, token: form)
     monkeypatch.setattr(
-        human_input_module, "application_services", lambda: SimpleNamespace(human_input_file_uploads=upload_service)
+        human_input_module.HumanInputService,
+        "submit_form_by_token",
+        lambda *args, **kwargs: pytest.fail("Internal tokens must not reach form submission"),
     )
-    for limiter_name in ["_FORM_SUBMIT_RATE_LIMITER", "_FORM_UPLOAD_TOKEN_RATE_LIMITER"]:
-        limiter = MagicMock()
-        limiter.is_rate_limited.return_value = False
-        monkeypatch.setattr(human_input_module, limiter_name, limiter)
+    monkeypatch.setattr(
+        human_input_module,
+        "application_services",
+        lambda: pytest.fail("Internal tokens must not reach upload-token issuance"),
+    )
+    for limiter in [human_input_module._FORM_SUBMIT_RATE_LIMITER, human_input_module._FORM_UPLOAD_TOKEN_RATE_LIMITER]:
+        monkeypatch.setattr(limiter, "is_rate_limited", lambda address: False)
+        monkeypatch.setattr(limiter, "increment_rate_limit", lambda address: None)
     monkeypatch.setattr(human_input_module, "extract_remote_ip", lambda req: "203.0.113.10")
 
     with app.test_request_context(
@@ -600,5 +634,3 @@ def test_public_mutations_reject_internal_tokens(
         api = HumanInputFormApi() if endpoint == "submit" else HumanInputFormUploadTokenApi()
         with pytest.raises(NotFoundError):
             api.post("token-1")
-    form_service.submit_form_by_token.assert_not_called()
-    upload_service.issue_upload_token.assert_not_called()
