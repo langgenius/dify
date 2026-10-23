@@ -1,4 +1,3 @@
-import type { ComponentProps } from 'react'
 import type { ListFilterNodeType } from '../types'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -15,21 +14,6 @@ import Node from '../node'
 import Panel from '../panel'
 import { OrderBy } from '../types'
 
-// Lexical owns editing mechanics; the real input wrapper, config hook and canvas own the saved value.
-vi.mock('@/app/components/base/prompt-editor', () => ({
-  default: ({
-    value,
-    onChange,
-    editable,
-  }: ComponentProps<typeof import('@/app/components/base/prompt-editor').default>) => (
-    <textarea
-      aria-label="Extract index"
-      value={value}
-      readOnly={!editable}
-      onChange={(event) => onChange?.(event.target.value)}
-    />
-  ),
-}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -124,14 +108,21 @@ const saved = (): ListFilterNodeType =>
 // Filter, Extract, Limit, Order; use the role list until those controls are labelled.
 const switches = () => screen.getAllByRole('switch')
 
+// The rich-text input has no accessible name yet. Distinguish its public
+// contenteditable contract from the variable picker's read-only text input.
+const queryExtractEditor = () =>
+  screen.queryAllByRole('textbox').find((element) => element.hasAttribute('contenteditable')) ??
+  null
+const extractEditor = () => queryExtractEditor()!
+
 describe('list-operator path', () => {
   it('saves extract input edits to the canvas', async () => {
     const user = userEvent.setup()
     renderPanel()
-    const input = screen.getByRole('textbox', { name: 'Extract index' })
-    await user.clear(input)
+    const input = extractEditor()
     await user.type(input, '2')
-    expect(saved().extract_by).toEqual({ enabled: true, serial: '2' })
+    expect(input).toHaveTextContent('12')
+    expect(saved().extract_by).toEqual({ enabled: true, serial: '12' })
   })
 
   it('saves the chosen file sub-variable for ordering', async () => {
@@ -173,7 +164,7 @@ describe('list-operator path', () => {
     await user.click(switches()[2]!)
     await user.type(screen.getByRole('spinbutton'), '2')
     expect(saved()).toMatchObject(data)
-    expect(screen.getByRole('textbox', { name: 'Extract index' })).toHaveAttribute('readonly')
+    expect(extractEditor()).toHaveAttribute('contenteditable', 'false')
   })
 
   it('should render the selected input variable in the node preview', () => {
@@ -226,7 +217,7 @@ describe('list-operator path', () => {
         order_by: { enabled: false, key: '', value: OrderBy.ASC },
       }),
     )
-    expect(screen.queryByRole('textbox', { name: 'Extract index' })).not.toBeInTheDocument()
+    expect(queryExtractEditor()).not.toBeInTheDocument()
     expect(screen.queryByText('workflowLogic.nodes.listFilter.asc')).not.toBeInTheDocument()
     await user.click(switches()[3]!)
     expect(screen.getByText('workflowLogic.nodes.listFilter.asc')).toBeInTheDocument()
