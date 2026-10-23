@@ -11,7 +11,7 @@ import pytest_mock
 import sqlalchemy.orm
 from dify_agent.client import Client
 from dify_agent.protocol.schemas import RunStatusResponse
-from sqlalchemy import Engine, Table, select
+from sqlalchemy import Engine, Table, select, update
 from sqlalchemy.orm import Session as SqlSession
 from sqlalchemy.orm import sessionmaker
 
@@ -39,7 +39,7 @@ from runtime_contracts.builder.native.agent_contracts import (
     AgentTestWorkspaceRef,
     AgentWaitAssociation,
 )
-from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from runtime_contracts.builder.native.contracts import CheckpointRef, NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import (
     NativeCheckpointPayload,
     NodeJournalState,
@@ -957,6 +957,7 @@ def declining(
     mocker.patch.object(continuation, "_stored_waits", return_value=(wait,))
     owner.commands.continuation = continuation
     mocker.patch.object(api.store, "load_agent_association", return_value=protected)
+    mocker.patch.object(api.store, "read_agent_association_for_cancellation", return_value=protected)
     mocker.patch.object(
         api.store,
         "read_checkpoint",
@@ -1277,6 +1278,357 @@ def test_initial_sealed_cancel_public_receipt_is_readonly_terminal(declining: Co
     assert owner.cancel_calls == ["original-child"]
 
 
+@pytest.mark.parametrize("declining", [2], indirect=True)
+@pytest.mark.parametrize("expired", [False, True])
+def test_cancel_after_completed_effects_closes_original_parent(
+    declining: CompletedOwner, mocker: pytest_mock.MockerFixture, expired: bool
+) -> None:
+    from models.dify_builder_native_tests import (
+        NativeDispatch,
+        NativeEffectAttempt,
+        NativeEffectDispatchClaim,
+        NativeEffectGrant,
+        NativeEffectOutcome,
+        NativePayloadObject,
+        NativePendingAction,
+    )
+    from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+
+    owner = declining
+    with owner.factory.begin() as sql:
+        for model in (
+            NativeEffectGrant,
+            NativePendingAction,
+            NativeEffectAttempt,
+            NativeEffectDispatchClaim,
+            NativeEffectOutcome,
+        ):
+            table = model.__table__
+            assert isinstance(table, Table)
+            table.create(sql.connection(), checkfirst=True)
+        operation = sql.scalar(select(NativeEffectOperation))
+        assert operation is not None
+        operation.state = "completed"
+        completed_operations = [operation]
+        for index in (1, 2):
+            item = NativeEffectOperation(
+                id=str(uuid4()),
+                tenant_id=operation.tenant_id,
+                request_id=operation.request_id,
+                invocation_id=operation.invocation_id,
+                operation_digest=str(index) * 64,
+                intent_digest="b" * 64,
+                scope_digest="c" * 64,
+                state="completed",
+                result_ref="result-" + str(index),
+            )
+            sql.add(item)
+            completed_operations.append(item)
+        sql.add(
+            NativeEffectOperation(
+                id=str(uuid4()),
+                tenant_id=operation.tenant_id,
+                request_id=operation.request_id,
+                invocation_id=operation.invocation_id,
+                operation_digest="d" * 64,
+                intent_digest="d" * 64,
+                scope_digest="d" * 64,
+                state="pending",
+            )
+        )
+        for index, item in enumerate(completed_operations):
+            attempt_id = str(uuid4())
+            sql.add(
+                NativeEffectAttempt(
+                    id=attempt_id,
+                    tenant_id=item.tenant_id,
+                    request_id=item.request_id,
+                    invocation_id=item.invocation_id,
+                    operation_id=item.id,
+                    grant_id=str(uuid4()),
+                    dispatch_index=1,
+                    permit_digest=str(index + 3) * 64,
+                    expires_at=datetime(2099, 1, 1),
+                    cost_units=1,
+                    budget_reservation_ref=str(uuid4()),
+                    execution_id=str(uuid4()),
+                    invocation_digest="a" * 64,
+                    budget={},
+                    profile={},
+                )
+            )
+            sql.add(
+                NativeEffectDispatchClaim(
+                    id=str(uuid4()),
+                    tenant_id=item.tenant_id,
+                    request_id=item.request_id,
+                    invocation_id=item.invocation_id,
+                    operation_id=item.id,
+                    attempt_id=attempt_id,
+                    claimed_at=datetime(2026, 1, 1),
+                )
+            )
+            sql.add(
+                NativeEffectOutcome(
+                    id=str(uuid4()),
+                    tenant_id=item.tenant_id,
+                    request_id=item.request_id,
+                    invocation_id=item.invocation_id,
+                    operation_id=item.id,
+                    attempt_id=attempt_id,
+                    outcome="completed",
+                    result_ref=item.result_ref,
+                )
+            )
+        sql.add(
+            NativeDispatch(
+                id="source-two",
+                tenant_id=owner.case.actor.tenant_id,
+                request_id=owner.request_id,
+                invocation_id=owner.ref.invocation_id,
+                generation=2,
+                state="completed",
+                checkpoint_id="checkpoint",
+                idempotency_digest="e" * 64,
+            )
+        )
+        sql.add(
+            NativePayloadObject(
+                id="context",
+                tenant_id=owner.case.actor.tenant_id,
+                request_id=owner.request_id,
+                invocation_id=owner.ref.invocation_id,
+                kind="context",
+                logical_key="context",
+                storage_key="context-storage",
+                payload_digest="a" * 64,
+                value_digest="b" * 64,
+            )
+        )
+    if expired:
+        with owner.factory.begin() as sql:
+            scope = sql.get(NativeTestScope, owner.request_id)
+            assert scope is not None
+            scope.expires_at = datetime(2000, 1, 1)
+        # The real private owner has a finite TTL; supplied artifact ports must
+        # retain that refusal for live reads, independently of cancel authority.
+        original_checkpoint = owner.commands.api.store.read_checkpoint
+
+        def checkpoint_read(
+            *, ref: NativeTestContextRef, checkpoint: CheckpointRef, for_projection: bool = False
+        ) -> NativeCheckpointPayload:
+            if not for_projection:
+                raise BuilderExecutionPolicyError("native_expired")
+            return original_checkpoint(ref=ref, checkpoint=checkpoint)
+
+        mocker.patch.object(owner.commands.api.store, "read_checkpoint", side_effect=checkpoint_read)
+        mocker.patch.object(
+            owner.commands.api.store,
+            "load_agent_association",
+            side_effect=BuilderExecutionPolicyError("native_expired"),
+        )
+    with owner.factory() as sql:
+        scope_before = sql.get(NativeTestScope, owner.request_id)
+        assert scope_before is not None
+        expiry_before = scope_before.expires_at
+        ledger_before = {
+            model: sorted(row.id for row in sql.scalars(select(model)))
+            for model in (NativeEffectAttempt, NativeEffectDispatchClaim, NativeEffectOutcome)
+        }
+    lifecycle = owner.commands.api.lifecycle
+    lifecycle.cancel = NativeTestLifecycleService.cancel.__get__(lifecycle)
+    receipt = owner.commands.cancel(
+        actor=owner.case.actor,
+        session_id=owner.session.id,
+        request_id=owner.request_id,
+        idempotency_key="after-effects",
+    )
+    assert receipt.outcome == "cancelled"
+    with owner.factory() as sql:
+        parent = sql.get(WorkflowRun, owner.native_id)
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        state = sql.scalar(select(NativeInvocationState))
+        operation = sql.scalar(select(NativeEffectOperation))
+        assert parent is not None
+        assert parent.status == "stopped"
+        assert request is not None
+        assert request.state == "sealed"
+        assert state is not None
+        assert not state.cleanup_complete
+        assert operation is not None
+        assert operation.state == "completed"
+    assert owner.repo.get_run(owner.verify_id).status == "failed"
+    assert owner.repo.get_run(owner.verify_id).dify_run_id == owner.native_id
+    public = owner.commands.peek(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
+    assert public.outcome == "cancelled"
+    assert public.status == "terminal"
+    assert public.cancellation is not None
+    assert public.cancellation.status == "cancelled"
+    assert not public.can_resume
+    assert owner.cancel_calls == ["original-child"]
+    with owner.factory() as sql:
+        scope_after = sql.get(NativeTestScope, owner.request_id)
+        assert scope_after is not None
+        assert scope_after.expires_at == expiry_before
+        assert ledger_before == {model: sorted(row.id for row in sql.scalars(select(model))) for model in ledger_before}
+        assert all(len(rows) == 3 for rows in ledger_before.values())
+        assert sorted(row.state for row in sql.scalars(select(NativeEffectOperation))) == [
+            "completed",
+            "completed",
+            "completed",
+            "not_dispatched",
+        ]
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "none",
+        "missing-proof",
+        "added-source",
+        "unknown-source",
+        "foreign-source",
+        "unknown-effect",
+        "foreign-effect",
+        "claimed-effect",
+        "active",
+        "generation",
+        "missing-object",
+        "live-parent",
+        "foreign-parent",
+        "unsealed",
+        "checkpoint",
+        "missing-continuation",
+        "continuation-digest",
+    ],
+)
+def test_resumed_saved_cancellation_projects_only_unchanged_terminal_proof(
+    declining: CompletedOwner, fault: str
+) -> None:
+    from sqlalchemy import event
+
+    from models.dify_builder_native_tests import (
+        NativeContinuation,
+        NativeDispatch,
+        NativePayloadObject,
+        NativeTestInvocation,
+    )
+
+    owner = declining
+    with owner.factory.begin() as sql:
+        sql.add(
+            NativePayloadObject(
+                id="context",
+                tenant_id=owner.case.actor.tenant_id,
+                request_id=owner.request_id,
+                invocation_id=owner.ref.invocation_id,
+                kind="context",
+                logical_key="context",
+                storage_key="context-storage",
+                payload_digest="a" * 64,
+                value_digest="b" * 64,
+            )
+        )
+    owner.commands.cancel(
+        actor=owner.case.actor,
+        session_id=owner.session.id,
+        request_id=owner.request_id,
+        idempotency_key="resumed-cancel",
+    )
+    with owner.factory.begin() as sql:
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        state = sql.scalar(select(NativeInvocationState))
+        source = sql.scalar(select(NativeDispatch))
+        operation = sql.scalar(select(NativeEffectOperation))
+        parent = sql.get(WorkflowRun, owner.native_id)
+        assert request is not None
+        assert state is not None
+        assert source is not None
+        assert operation is not None
+        assert parent is not None
+        assert request.state == "sealed"
+        assert parent.status == "stopped"
+        assert not state.cleanup_complete
+        if fault == "missing-proof":
+            request.observations = []
+        elif fault == "added-source":
+            sql.add(
+                NativeDispatch(
+                    id="added",
+                    tenant_id=source.tenant_id,
+                    request_id=owner.request_id,
+                    invocation_id=source.invocation_id,
+                    generation=0,
+                    state="completed",
+                    checkpoint_id="checkpoint",
+                    idempotency_digest="e" * 64,
+                )
+            )
+        elif fault == "unknown-source":
+            source.state = "unknown"
+        elif fault == "foreign-source":
+            source.tenant_id = "foreign"
+        elif fault == "unknown-effect":
+            operation.state = "unknown"
+        elif fault == "claimed-effect":
+            operation.state = "claimed"
+        elif fault == "foreign-effect":
+            operation.tenant_id = "foreign"
+        elif fault == "active":
+            invocation = sql.scalar(select(NativeTestInvocation))
+            assert invocation is not None
+            invocation.active = True
+        elif fault == "generation":
+            state.generation = 2
+        elif fault == "missing-object":
+            checkpoint = sql.get(NativePayloadObject, "checkpoint")
+            assert checkpoint is not None
+            sql.delete(checkpoint)
+        elif fault == "checkpoint":
+            state.checkpoint_id = "changed"
+        elif fault in {"missing-continuation", "continuation-digest"}:
+            continuation = sql.scalar(select(NativeContinuation))
+            assert continuation is not None
+            if fault == "missing-continuation":
+                sql.delete(continuation)
+            else:
+                continuation.payload_digest = "f" * 64
+        elif fault == "live-parent":
+            sql.execute(
+                update(WorkflowRun)
+                .where(WorkflowRun.id == owner.native_id)
+                .values(status=WorkflowExecutionStatus.PAUSED)
+            )
+        elif fault == "foreign-parent":
+            sql.execute(update(WorkflowRun).where(WorkflowRun.id == owner.native_id).values(created_by=str(uuid4())))
+        elif fault == "unsealed":
+            request.state = "waiting"
+    owner.commands.backend.client.get_run_sync = lambda _: pytest.fail("public saved proof read queried SDK")
+    statements: list[str] = []
+
+    def observe(_c: object, _u: object, statement: str, _p: object, _x: object, _m: object) -> None:
+        statements.append(statement)
+
+    engine = owner.factory.kw["bind"]
+    event.listen(engine, "before_cursor_execute", observe)
+    try:
+        receipt = owner.commands.peek(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
+    finally:
+        event.remove(engine, "before_cursor_execute", observe)
+    assert not any(q.lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE")) for q in statements)
+    assert (receipt.outcome == "cancelled") is (fault == "none")
+    if fault == "none":
+        assert receipt.status == "terminal"
+        assert receipt.cancellation is not None
+        assert receipt.cancellation.status == "cancelled"
+        assert not receipt.can_resume
+    with owner.factory() as sql:
+        state = sql.scalar(select(NativeInvocationState))
+        assert state is not None
+        assert not state.cleanup_complete
+    assert owner.cancel_calls == ["original-child"]
+
+
 @pytest.mark.parametrize("source", ["missing", "earlier_generation"])
 def test_later_generation_requires_its_completed_source_before_declined_settlement(
     declining: CompletedOwner, source: str
@@ -1561,6 +1913,7 @@ def test_failed_preparation_still_revokes_without_fabricating_native_stop(declin
     owner.commands.api.store.load_agent_association = lambda **_: (_ for _ in ()).throw(
         BuilderExecutionPolicyError("native_agent_owner_mismatch")
     )
+    owner.commands.api.store.read_agent_association_for_cancellation = owner.commands.api.store.load_agent_association
     receipt = owner.commands.cancel(
         actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
     )
@@ -1712,6 +2065,7 @@ def test_clean_physical_receipt_cannot_finish_confirmed_paused_parent_without_lo
 
     owner.commands.api.get = physically_clean
     owner.commands.api.store.load_agent_association = absent_association
+    owner.commands.api.store.read_agent_association_for_cancellation = absent_association
     receipt = owner.commands.cancel(
         actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
     )
@@ -1880,6 +2234,7 @@ def retrying_decline(
     owner.commands.continuation._stored_waits = active_waits
     owner.commands.continuation.read_parent_pause = active_pause
     owner.commands.api.store.load_agent_association = active_association
+    owner.commands.api.store.read_agent_association_for_cancellation = active_association
     owner.commands.api.store.read_checkpoint = lambda **_: payload
     owner.commands.api.store._read_object = state_store.NativeExecutionStateStore._read_object
 

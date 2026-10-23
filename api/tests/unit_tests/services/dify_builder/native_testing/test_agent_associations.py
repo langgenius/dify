@@ -927,6 +927,37 @@ def test_expired_projection_keeps_agent_checkpoint_proof_without_writes(state_ca
         c.store.read_checkpoint(ref=c.ref, checkpoint=cp)
 
 
+@pytest.mark.parametrize("fault", ["none", "cancelled", "inactive", "unknown", "workspace"])
+def test_cancellation_metadata_read_ignores_only_expiry(state_case: AgentStateCase, fault: str) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    c = state_case
+    association, wait, _ = wait_state(c)
+    cp = c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload_for(c, wait))
+    c.loader.scope.expires_at = datetime.now(UTC) - timedelta(seconds=1)
+    if fault == "cancelled":
+        c.loader.scope.cancelled = True
+    elif fault == "inactive":
+        c.loader.invocation.active = False
+    elif fault == "unknown":
+        c.loader.state.state = "unknown"
+    elif fault == "workspace":
+        c.loader.invocation.bindings = {}
+    c.events.clear()
+    if fault == "none":
+        assert c.store.read_checkpoint_for_cancellation(ref=c.ref, checkpoint=cp).agent_associations == (wait,)
+        protected = c.store.read_agent_association_for_cancellation(ref=c.ref, parent_node=c.parent, wait=wait)
+        assert protected.association == association
+        with pytest.raises(BuilderExecutionPolicyError, match="native_expired"):
+            c.store.load_agent_association(ref=c.ref, parent_node=c.parent, wait=wait)
+    else:
+        with pytest.raises(BuilderExecutionPolicyError):
+            c.store.read_checkpoint_for_cancellation(ref=c.ref, checkpoint=cp)
+        with pytest.raises(BuilderExecutionPolicyError):
+            c.store.read_agent_association_for_cancellation(ref=c.ref, parent_node=c.parent, wait=wait)
+    assert not any(event in {"save", "ack"} for event in c.events)
+
+
 @pytest.mark.parametrize(
     ("field", "bad"),
     [

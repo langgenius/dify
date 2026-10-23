@@ -515,6 +515,17 @@ class NativeExecutionStateStore:
         except Exception:
             raise BuilderExecutionPolicyError("checkpoint_unavailable") from None
 
+    def read_checkpoint_for_cancellation(
+        self, *, ref: NativeTestContextRef, checkpoint: CheckpointRef
+    ) -> NativeCheckpointPayload:
+        """Active cancellation metadata only; expiry grants no new execution.
+
+        Current actor, revision, invocation and private Agent resource checks
+        remain mandatory. Revoked or inactive requests cannot enter this path.
+        """
+        self.loader.load(ref=ref)
+        return self.read_checkpoint(ref=ref, checkpoint=checkpoint, for_projection=True)
+
     def read_checkpoint(
         self, *, ref: NativeTestContextRef, checkpoint: CheckpointRef, for_projection: bool = False
     ) -> NativeCheckpointPayload:
@@ -1546,8 +1557,26 @@ class NativeExecutionStateStore:
         self, *, ref: NativeTestContextRef, parent_node: AgentParentNodeRef, wait: AgentWaitAssociation | None = None
     ) -> AgentProtectedState:
         """Read owned material only; absence refuses and never implies resume/terminal proof."""
+        return self._read_agent_association(ref=ref, parent_node=parent_node, wait=wait, for_projection=False)
+
+    def read_agent_association_for_cancellation(
+        self, *, ref: NativeTestContextRef, parent_node: AgentParentNodeRef, wait: AgentWaitAssociation | None = None
+    ) -> AgentProtectedState:
+        """Locate the original child for active cancellation, never resume it."""
+        return self._read_agent_association(ref=ref, parent_node=parent_node, wait=wait, for_projection=True)
+
+    def _read_agent_association(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        parent_node: AgentParentNodeRef,
+        wait: AgentWaitAssociation | None,
+        for_projection: bool,
+    ) -> AgentProtectedState:
         with _agent_boundary():
-            prepared = self._agent_prepare(ref=ref, parent_node=parent_node, writing=False)
+            prepared = self._agent_prepare(
+                ref=ref, parent_node=parent_node, writing=False, for_projection=for_projection
+            )
             if wait is None:
                 selected = self._agent_object(prepared, logical_key=self._agent_key("agent-bind", prepared.parent))
                 assert selected is not None
