@@ -33,10 +33,7 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
         : t(($) => $['category.all'], { ns: 'plugin' }),
       icon:
         isHero || isHome ? (
-          <span
-            aria-hidden
-            className={cn('i-custom-vender-plugin-plugin h-4 w-4', iconClassName)}
-          />
+          <span aria-hidden className={cn('i-custom-vender-plugin-plugin size-4', iconClassName)} />
         ) : null,
     },
     {

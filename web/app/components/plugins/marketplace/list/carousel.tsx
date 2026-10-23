@@ -90,7 +90,7 @@ const CarouselControls = ({
               type="button"
               aria-current={selectedIndex === index ? 'page' : undefined}
               className={cn(
-                'h-1.25 w-1.25 rounded-full transition-all',
+                'size-1.25 rounded-full transition-all',
                 selectedIndex === index
                   ? 'w-4 bg-components-button-primary-bg'
                   : 'bg-components-button-secondary-border hover:bg-components-button-secondary-border-hover',
