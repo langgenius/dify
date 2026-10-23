@@ -703,3 +703,85 @@ def test_prepare_intent_refusal_logs_only_bounded_policy_category(
     assert "Native Agent prepare-intent refused: " + expected in caplog.text
     assert "private-token-and-call-arguments" not in caplog.text
     assert "private-call-content" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("mode", "expected"), [("results", 200), ("outcome", 200), ("read-result", 409), ("prepare-intent", 409)]
+)
+def test_expired_runtime_only_admits_existing_result_ack_and_outcome(
+    app: Flask, mode: str, expected: int, operations_service: AgentOperationService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from dify_agent.protocol.native_testing import AgentEffectReceipt
+
+    from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+    from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+    from tests.unit_tests.services.dify_builder.test_agent_endpoint_lineage import owner
+    from tests.unit_tests.services.dify_builder.test_agent_operation_owner import envelope
+    from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import PARENT
+
+    lineage, principal, transport, _phase = owner()
+    initial = lineage.resolve(principal=principal, selection=transport, boundary="model", caller={})
+    assert initial is not None
+    assert initial.association is not None
+    app.extensions["native_agent_endpoint_lineage"] = lineage
+    store = lineage.preparation_for_ref(PARENT.ref).state_store
+    deadline = datetime(2030, 1, 1, tzinfo=UTC)
+    now = deadline - timedelta(seconds=1)
+
+    def context(**_kwargs: object) -> ResolvedNativeTestContext:
+        if now >= deadline:
+            raise BuilderExecutionPolicyError("native_expired")
+        return resolved_context()
+
+    def settlement_identity(
+        **kwargs: object,
+    ) -> tuple[ResolvedNativeTestContext, AgentPreparedConfig, AgentNodeAssociation]:
+        if kwargs["ref"] != PARENT.ref or kwargs["parent_node"] != PARENT:
+            raise BuilderExecutionPolicyError("native_owner_mismatch")
+        return resolved_context(), initial.config, initial.association
+
+    monkeypatch.setattr(store, "load_context", context)
+    monkeypatch.setattr(store, "load_agent_settlement_identity", settlement_identity, raising=False)
+    pending = envelope()
+    receipt = AgentEffectReceipt(
+        operation_id=pending.permit.operation_id,
+        attempt_id=pending.permit.attempt_id,
+        outcome="completed",
+        result_ref="saved-result",
+    )
+    monkeypatch.setattr(operations_service, "store_result", lambda **_: "saved-result")
+    monkeypatch.setattr(operations_service.bridge, "settlement", lambda **_: receipt)
+    now = deadline + timedelta(seconds=1)
+    body = {
+        "ref": initial.ref.model_dump(mode="json"),
+        "key": pending.intent.key.model_dump(mode="json"),
+        "result": "original-result",
+        "permit": pending.permit.model_dump(mode="json"),
+        "outcome": "completed",
+        "result_ref": "saved-result",
+    }
+    if mode == "results":
+        body = {key: body[key] for key in ("ref", "key", "result")}
+    elif mode == "outcome":
+        body = {key: body[key] for key in ("ref", "permit", "outcome", "result_ref")}
+    headers = {"Authorization": "Bearer agent-token", "X-Dify-Agent-Run": encoded(transport)}
+    with (
+        patch("controllers.inner_api.agent.native_testing.agent_operations_for_ref", return_value=operations_service),
+        patch(
+            "controllers.inner_api.agent.native_testing.agent_bridge_for_ref", return_value=operations_service.bridge
+        ),
+    ):
+        response = app.test_client().post("/inner/api/agent/runtime/native-testing/" + mode, json=body, headers=headers)
+        assert response.status_code == expected, response.get_json()
+        again = app.test_client().post("/inner/api/agent/runtime/native-testing/" + mode, json=body, headers=headers)
+        assert again.status_code == expected
+        if expected == 200:
+            wrong = {**body, "ref": {**initial.ref.model_dump(mode="json"), "request_id": "foreign"}}
+            assert (
+                app.test_client()
+                .post("/inner/api/agent/runtime/native-testing/" + mode, json=wrong, headers=headers)
+                .status_code
+                == 409
+            )

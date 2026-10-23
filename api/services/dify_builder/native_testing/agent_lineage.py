@@ -68,12 +68,16 @@ class NativeAgentEndpointLineage:
         config = None
         association = None
         control = boundary in {"prepare-run", "prepared-config"}
+        settlement = boundary == "native-settlement"
         if selection.parent_node is not None:
             parent = AgentParentNodeRef.model_validate(selection.parent_node.model_dump(mode="json"))
             store = self.preparation_for_ref(parent.ref).state_store
-            context = store.load_context(ref=parent.ref)
-            config = store.load_prepared_config(ref=parent.ref, parent_node=parent, config_ref=None)
-            association = store.discover_agent_run(ref=parent.ref, parent_node=parent)
+            if settlement:
+                context, config, association = store.load_agent_settlement_identity(ref=parent.ref, parent_node=parent)
+            else:
+                context = store.load_context(ref=parent.ref)
+                config = store.load_prepared_config(ref=parent.ref, parent_node=parent, config_ref=None)
+                association = store.discover_agent_run(ref=parent.ref, parent_node=parent)
             if config.config_digest != selection.request_digest or (association is None and not control):
                 raise BuilderExecutionPolicyError("native_agent_identity_mismatch")
         try:
@@ -119,13 +123,17 @@ class NativeAgentEndpointLineage:
             raise BuilderExecutionPolicyError("native_agent_identity_mismatch")
         # Each S1 read checks current resources/RBAC after its own object I/O.
         # Repeat across the complete private identity/object boundary as well.
-        current_config = store.load_prepared_config(ref=parent.ref, parent_node=parent, config_ref=config.config_ref)
-        current_association = store.discover_agent_run(ref=parent.ref, parent_node=parent)
-        if (
-            current_config != config
-            or current_association != association
-            or store.load_context(ref=parent.ref) != context
-        ):
+        if settlement:
+            current_context, current_config, current_association = store.load_agent_settlement_identity(
+                ref=parent.ref, parent_node=parent
+            )
+        else:
+            current_config = store.load_prepared_config(
+                ref=parent.ref, parent_node=parent, config_ref=config.config_ref
+            )
+            current_association = store.discover_agent_run(ref=parent.ref, parent_node=parent)
+            current_context = store.load_context(ref=parent.ref)
+        if current_config != config or current_association != association or current_context != context:
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
         if association is not None and (
             association.parent_node != parent

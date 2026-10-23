@@ -180,6 +180,7 @@ class _AgentPreparation:
     workspace: AgentTestWorkspaceRef
     resource_digest: str
     objects: list[ObjectReceipt]
+    settlement: bool = False
 
 
 @contextmanager
@@ -379,13 +380,15 @@ class NativeExecutionStateStore:
         """Read-only recovery material; an inactive invocation gains no authority."""
         return self._load_context(ref=ref, recovery=True)
 
-    def _load_context(self, *, ref: NativeTestContextRef, recovery: bool) -> ResolvedNativeTestContext:
+    def _load_context(
+        self, *, ref: NativeTestContextRef, recovery: bool, allow_expired: bool = False
+    ) -> ResolvedNativeTestContext:
         owned = validate_private_read(self.loader, ref)
         if owned.cancelled:
             raise BuilderExecutionPolicyError("native_cancelled")
         if not recovery and (not owned.active or owned.request_state not in {"running", "waiting"}):
             raise BuilderExecutionPolicyError("native_invocation_mismatch")
-        if owned.expires_at <= utc_now():
+        if not allow_expired and owned.expires_at <= utc_now():
             raise BuilderExecutionPolicyError("native_expired")
         with self.loader.session_factory() as session:
             row = session.scalar(
@@ -410,6 +413,27 @@ class NativeExecutionStateStore:
         if owned.input_revision is not None and owned.input_revision != context.input_revision:
             raise BuilderExecutionPolicyError("native_input_drift")
         return context.model_copy(update={"generation": owned.generation})
+
+    def load_terminal_context(self, *, ref: NativeTestContextRef) -> ResolvedNativeTestContext:
+        """Observe an already terminal owned Run after expiry, never a continuation."""
+        from models.enums import CreatorUserRole
+        from models.workflow import WorkflowRun
+
+        context = self._load_context(ref=ref, recovery=False, allow_expired=True)
+        with self.loader.session_factory() as session:
+            run = session.scalar(
+                select(WorkflowRun).where(
+                    WorkflowRun.id == context.native_run_id,
+                    WorkflowRun.tenant_id == context.tenant_id,
+                    WorkflowRun.app_id == context.app_id,
+                    WorkflowRun.workflow_id == context.workflow_id,
+                    WorkflowRun.created_by == context.actor_id,
+                    WorkflowRun.created_by_role == CreatorUserRole.ACCOUNT,
+                )
+            )
+            if run is None or run.status not in {"succeeded", "failed", "partial-succeeded", "stopped"}:
+                raise BuilderExecutionPolicyError("native_expired")
+        return context
 
     def commit_checkpoint(
         self, *, ref: NativeTestContextRef, generation: int, payload: NativeCheckpointPayload
@@ -612,6 +636,7 @@ class NativeExecutionStateStore:
         generation: int,
         *,
         allowed_states: tuple[str, ...] = ("running",),
+        allow_expired: bool = False,
     ) -> None:
         """SQL-only preflight/recheck; caller owns the transaction and any root lock."""
         state = invocation_state(session, context.ref, owned.tenant_id)
@@ -619,7 +644,7 @@ class NativeExecutionStateStore:
         # their own invocation generation and remain eligible to persist inputs.
         if (context.generation, state.generation, authority.generation) != (generation,) * 3:
             raise BuilderExecutionPolicyError("native_generation_conflict")
-        if scope.expires_at <= utc_now():
+        if not allow_expired and scope.expires_at <= utc_now():
             raise BuilderExecutionPolicyError("native_expired")
         if state.state not in allowed_states:
             raise BuilderExecutionPolicyError("native_invocation_mismatch")
@@ -957,13 +982,18 @@ class NativeExecutionStateStore:
         parent_node: AgentParentNodeRef,
         writing: bool,
         expected_generation: int | None = None,
+        settlement: bool = False,
     ) -> _AgentPreparation:
         parent = AgentParentNodeRef.model_validate(parent_node.model_dump(mode="json"))
         if ref != parent.ref:
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
         self.loader.load(ref=ref)
         authority = validate_private_read(self.loader, ref)
-        context = self.load_context(ref=ref)
+        context = (
+            self._load_context(ref=ref, recovery=False, allow_expired=True)
+            if settlement
+            else self.load_context(ref=ref)
+        )
         if (
             expected_generation is not None
             and TypeAdapter(Counter).validate_python(expected_generation) != context.generation
@@ -979,10 +1009,11 @@ class NativeExecutionStateStore:
                 authority,
                 context.generation,
                 allowed_states=("running",) if writing else ("running", "waiting", "queued"),
+                allow_expired=settlement,
             )
             self._agent_single_parent(session, context, parent)
             workspace, stamp = self._agent_resources(session, owned, context)
-        prepared = _AgentPreparation(parent, context, authority, workspace, stamp, [])
+        prepared = _AgentPreparation(parent, context, authority, workspace, stamp, [], settlement=settlement)
         selected = self._agent_object(
             prepared, logical_key="node-input:" + parent.execution_id, object_ref=parent.input_result_ref
         )
@@ -1001,6 +1032,8 @@ class NativeExecutionStateStore:
         writing: bool,
         definition_receipt: AgentDefinitionReceipt | None = None,
     ) -> None:
+        if prepared.settlement and writing:
+            raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
         self._validate_node_inputs_owner(
             session,
             owned,
@@ -1009,6 +1042,7 @@ class NativeExecutionStateStore:
             prepared.authority,
             prepared.context.generation,
             allowed_states=("running",) if writing else ("running", "waiting", "queued"),
+            allow_expired=prepared.settlement,
         )
         self._agent_single_parent(session, prepared.context, prepared.parent)
         workspace, stamp = self._agent_resources(
@@ -1220,6 +1254,25 @@ class NativeExecutionStateStore:
             config_digest=canonical_digest(config),
             config=config,
         )
+
+    def load_agent_settlement_identity(self, *, ref, parent_node):
+        """Read original identity for result/outcome ACK only; grants no execution.
+
+        Static runtime Resources select this mode. Every current owner, config,
+        association and resource check remains; only expiry of new-call authority
+        does not discard evidence from an operation already dispatched.
+        """
+        with _agent_boundary():
+            prepared = self._agent_prepare(ref=ref, parent_node=parent_node, writing=False, settlement=True)
+            config = self._agent_prepared_config(prepared, None)
+            selected = self._agent_object(prepared, logical_key=self._agent_key("agent-bind", prepared.parent))
+            assert selected is not None
+            association = AgentNodeAssociation.model_validate(selected[1])
+            self._agent_config_relation(prepared, association)
+            self._agent_refresh_access(prepared)
+            with self.loader.locked(ref=ref) as (session, owned, scope):
+                self._agent_recheck(session, owned, scope, prepared, writing=False)
+            return prepared.context, config, association
 
     def load_prepared_config(
         self,
