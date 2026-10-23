@@ -4214,15 +4214,7 @@
       "count": 1
     }
   },
-  "web/app/components/tools/edit-custom-collection-modal/config-credentials.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    }
-  },
   "web/app/components/tools/edit-custom-collection-modal/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 15
-    },
     "eslint-react/set-state-in-effect": {
       "count": 4
     },
@@ -4231,21 +4223,8 @@
     }
   },
   "web/app/components/tools/edit-custom-collection-modal/test-api.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    },
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/tools/labels/filter.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 8
-    }
-  },
-  "web/app/components/tools/labels/selector.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
     }
   },
   "web/app/components/tools/marketplace/hooks.ts": {
@@ -4253,87 +4232,14 @@
       "count": 2
     }
   },
-  "web/app/components/tools/marketplace/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 17
-    }
-  },
   "web/app/components/tools/mcp/__tests__/modal.spec.tsx": {
     "typescript/no-deprecated": {
       "count": 1
     }
   },
-  "web/app/components/tools/mcp/detail/content.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/tools/mcp/detail/list-loading.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
-    }
-  },
-  "web/app/components/tools/mcp/detail/operation-dropdown.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/tools/mcp/detail/tool-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/app/components/tools/mcp/headers-input.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    }
-  },
-  "web/app/components/tools/mcp/modal.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/mcp/provider-card.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
-  "web/app/components/tools/mcp/sections/authentication-section.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/provider/create-entry-card.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/provider/detail.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/provider/empty.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/tools/provider/tool-card-skeleton.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/app/components/tools/setting/build-in/config-credentials.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
-    },
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/tools/tool-provider-grid.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/tools/types.ts": {

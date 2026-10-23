@@ -37,7 +37,7 @@ const OperationDropdown: FC<Props> = ({ inCard, onOpenChange, onEdit, onRemove }
       <DropdownMenuContent className="w-40">
         <DropdownMenuItem onClick={onEdit}>
           <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-          <div className="ml-2 system-md-regular text-text-secondary">
+          <div className="ms-2 system-md-regular text-text-secondary">
             {t(($) => $['mcp.operation.edit'], { ns: 'tools' })}
           </div>
         </DropdownMenuItem>
@@ -46,7 +46,7 @@ const OperationDropdown: FC<Props> = ({ inCard, onOpenChange, onEdit, onRemove }
           onClick={onRemove}
         >
           <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0 text-inherit" />
-          <div className="ml-2 system-md-regular text-inherit">
+          <div className="ms-2 system-md-regular text-inherit">
             {t(($) => $['mcp.operation.remove'], { ns: 'tools' })}
           </div>
         </DropdownMenuItem>
