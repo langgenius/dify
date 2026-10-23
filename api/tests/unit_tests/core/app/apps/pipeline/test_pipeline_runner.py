@@ -35,7 +35,7 @@ from models.enums import DocumentCreatedFrom
 from models.model import AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
-from tests.unit_tests.model_factories import make_dataset, make_document, make_end_user, make_workflow
+from tests.helpers.unit.model_factories import make_dataset, make_document, make_end_user, make_workflow
 
 
 def _pipeline(*, tenant_id: str = "tenant", pipeline_id: str = "pipe") -> Pipeline:

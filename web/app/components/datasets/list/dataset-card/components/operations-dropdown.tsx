@@ -89,7 +89,7 @@ const OperationsDropdown = ({
   return (
     <div
       className={cn(
-        'absolute right-2 z-5',
+        'absolute inset-e-2 z-5',
         dataset.embedding_available ? 'top-2' : 'top-6',
         open
           ? 'pointer-events-auto opacity-100'

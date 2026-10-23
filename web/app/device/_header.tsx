@@ -34,7 +34,7 @@ const Header = () => {
           value={locale}
           items={languages.filter((item) => item.supported)}
           onChange={(value) => {
-            setLocaleOnClient(value, false)
+            setLocaleOnClient(value)
           }}
         />
         <Separator decorative orientation="vertical" className="mx-0 ml-2 h-4" />

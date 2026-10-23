@@ -1,4 +1,5 @@
 import type { Locale } from '@/i18n'
+import { useDirection } from '@langgenius/dify-ui/direction-provider'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,7 @@ export default function LocaleMenu({
   locale: Locale
   onChange: (locale: Locale) => void
 }) {
+  const direction = useDirection()
   const selectedLanguage = supportedLanguages.find((language) => language.value === locale)
   const selectedLanguageName =
     selectedLanguage?.value === 'en-US' ? selectedLanguage.prompt_name : selectedLanguage?.name
@@ -37,7 +39,7 @@ export default function LocaleMenu({
         <span className="truncate">{selectedLanguageName}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="max-h-80 w-60 overflow-y-auto">
+      <DropdownMenuContent dir={direction} className="max-h-80 w-60 overflow-y-auto">
         <DropdownMenuRadioGroup<Locale>
           value={locale}
           onValueChange={(value) => {

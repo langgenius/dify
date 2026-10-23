@@ -9,8 +9,8 @@ from dify_agent.protocol.knowledge_investigation import KnowledgeInvestigationPa
 
 from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 from tasks import knowledge_fs_agent_investigation_tasks as module
-from tests.unit_tests.tasks.knowledge_fs_task_fakes import RecordingRetry
-from tests.unit_tests.tasks.task_options import task_options
+from tests.helpers.unit.tasks.knowledge_fs_task_fakes import RecordingRetry
+from tests.helpers.unit.tasks.task_options import task_options
 
 
 @dataclass

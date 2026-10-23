@@ -146,7 +146,7 @@ def _seed_batch(session: Session) -> WorkflowRun:
         app_id=app_id,
         mode=AppMode.ADVANCED_CHAT,
         name="cleanup test",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.CONSOLE,
     )
     session.add_all([run, conversation])
@@ -167,7 +167,7 @@ def _seed_batch(session: Session) -> WorkflowRun:
                 app_id=app_id,
                 conversation_id=conversation_id,
                 workflow_run_id=run_id,
-                inputs={},
+                _inputs={},
                 query="question",
                 message={},
                 answer="answer",

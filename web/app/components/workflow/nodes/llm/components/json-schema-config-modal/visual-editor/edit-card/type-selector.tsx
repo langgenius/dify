@@ -34,7 +34,7 @@ const TypeSelector: FC<TypeSelectorProps> = ({ items, currentValue, onSelect }) 
         if (selected) onSelect(selected)
       }}
     >
-      <SelectTrigger className="h-auto w-auto rounded-[5px] bg-transparent p-0.5 pl-1 hover:bg-state-base-hover data-popup-open:bg-state-base-hover">
+      <SelectTrigger className="h-auto w-auto rounded-[5px] bg-transparent p-0.5 ps-1 hover:bg-state-base-hover data-popup-open:bg-state-base-hover">
         <SelectValue className="system-xs-medium text-text-tertiary" />
       </SelectTrigger>
       <SelectPortal>

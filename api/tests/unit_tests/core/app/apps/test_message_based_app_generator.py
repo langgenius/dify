@@ -19,7 +19,7 @@ from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeF
 from models.account import Account
 from models.model import App, AppMode, Conversation, Message
 from services.errors.app_model_config import AppModelConfigBrokenError
-from tests.unit_tests.model_factories import make_account, make_app
+from tests.helpers.unit.model_factories import make_account, make_app
 
 
 @dataclass(eq=False, repr=False)

@@ -437,12 +437,31 @@ describe('AppCard', () => {
 
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith({ params: { app_id: mockApp.id } })
-      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Delete failed'))
+      expect(screen.getByRole('alert')).toHaveTextContent('Delete failed')
     })
     expect(screen.getByRole('textbox')).toHaveValue(mockApp.name)
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     expect(api.delete).toHaveBeenCalledTimes(2)
+  })
+
+  it('locks the name and autofill while deletion is pending and preserves the confirmation session name', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferred<void>()
+    api.delete.mockReturnValueOnce(pending.promise)
+    const view = render(<AppCard app={mockApp} />)
+    await chooseAction(user, 'common.operation.delete')
+    await user.click(screen.getByRole('button', { name: 'common.operation.fill' }))
+    view.rerender(<AppCard app={{ ...mockApp, name: 'Renamed elsewhere' }} />)
+    expect(screen.getByRole('textbox')).toHaveValue(mockApp.name)
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(api.delete).toHaveBeenCalledOnce())
+    expect(screen.getByRole('textbox')).toHaveAttribute('readonly')
+    expect(screen.getByRole('button', { name: 'common.operation.fill' })).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    await act(async () => pending.resolve())
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
   })
 
   it('should hide open in explore for SSO-restricted apps', async () => {

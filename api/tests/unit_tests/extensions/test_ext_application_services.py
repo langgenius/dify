@@ -12,7 +12,6 @@ from uuid import uuid4
 
 import httpx
 import pytest
-from dify_trace_sdk.emitter import TraceScope
 from flask import Flask
 from redis import Redis
 from sqlalchemy import event, select
@@ -21,16 +20,17 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.credit_usage import CreditUsageAppType
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.application_services.app import AppServices
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
-from extensions.tracing import application_tracing_hooks, create_trace_scope_for_app
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import AppStatus, CustomizeTokenStrategy
+from models.enums import AppStatus, ConversationFromSource, CustomizeTokenStrategy
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import (
     AccountTrialAppRecord,
     App,
@@ -105,6 +105,7 @@ from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavaila
 from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.app_site_service import AppSiteService
+from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.billing_portal_service import BillingPortalService
@@ -153,9 +154,6 @@ from services.retention.workflow_run.archive_log_service import WorkflowRunArchi
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.tracing import runtime_bridge
-from services.tracing.egress import SSRFEgress
-from services.tracing.emitter import CeleryTraceEmitter
-from services.tracing.provider_configs import ProviderConfigGateway
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_authentication_adapters import (
     AccountWebAuthenticationSecurityGateway,
@@ -169,9 +167,8 @@ from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tasks.delete_conversation_task import delete_conversation_related_data
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_app
-from tests.unit_tests.services.test_app_task_service import _StopRedis
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
 
 
 @pytest.fixture(autouse=True)
@@ -307,40 +304,6 @@ def test_init_app_registers_distinct_tracing_ports_without_constructing_trace_se
             assert second_hooks is not first_hooks
         assert application_tracing_hooks() is first_hooks
     assert construction_calls == []
-
-
-def test_init_app_binds_trace_scopes_to_the_apps_tracing_policy(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    app = Flask(__name__)
-    monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, INIT_PASSWORD="")
-    with sqlite_session_factory.begin() as session:
-        session.add_all(
-            [
-                make_app(
-                    app_id="traced-app",
-                    tenant_id="tenant-1",
-                    tracing=json.dumps({"enabled": True, "tracing_provider": "langfuse"}),
-                ),
-                make_app(app_id="untraced-app", tenant_id="tenant-1"),
-            ]
-        )
-
-    ext_application_services.init_app(app)
-
-    with app.app_context():
-        scope = create_trace_scope_for_app(
-            tenant_id="tenant-1", app_id="traced-app", user_id="user-1", extras={"external_trace_id": "external-1"}
-        )
-        assert scope is not None
-        assert isinstance(scope.emitter, CeleryTraceEmitter)
-        assert (scope.tenant_id, scope.app_id, scope.user_id) == ("tenant-1", "traced-app", "user-1")
-        assert scope.correlation.external_trace_id == "external-1"
-        assert create_trace_scope_for_app(tenant_id="tenant-1", app_id="untraced-app", user_id=None, extras={}) is None
-    with Flask("unbound").app_context():
-        assert create_trace_scope_for_app(tenant_id="tenant-1", app_id="traced-app", user_id=None, extras={}) is None
 
 
 def test_build_application_services_preserves_composed_boundaries(
@@ -670,9 +633,7 @@ def test_build_application_services_wires_app_tracing_config_boundary(
     assert isinstance(services.app_tracing_configs, AppTracingConfigService)
     assert isinstance(services.app_tracing_configs._configs, SQLAlchemyAppTracingConfigRepository)
     assert services.app_tracing_configs._configs._session_factory is sqlite_session_factory
-    provider = services.app_tracing_configs._provider
-    assert isinstance(provider, ProviderConfigGateway)
-    assert isinstance(provider._egress, SSRFEgress)
+    assert isinstance(services.app_tracing_configs._provider, OpsTraceManagerGateway)
 
 
 def test_build_application_services_wires_workflow_app_log_boundary(
@@ -1314,7 +1275,14 @@ def test_trial_generation_uses_configured_access_runtime_and_usage(
     app_id, tenant_id, account_id = str(uuid4()), str(uuid4()), str(uuid4())
     with sqlite_session_factory.begin() as session:
         session.add(
-            App(id=app_id, tenant_id=tenant_id, name="Trial", mode="completion", enable_site=True, enable_api=False)
+            App(
+                id=app_id,
+                tenant_id=tenant_id,
+                name="Trial",
+                mode=AppMode.COMPLETION,
+                enable_site=True,
+                enable_api=False,
+            )
         )
         account = Account(name="Account", email="trial@example.com")
         account.id = account_id
@@ -1357,7 +1325,7 @@ def test_app_audio_uses_the_configured_database_and_app_owner(
                 id=app_id,
                 tenant_id=tenant_id,
                 name="Trial",
-                mode="chat",
+                mode=AppMode.CHAT,
                 app_model_config_id=config.id,
                 enable_site=True,
                 enable_api=False,
@@ -1406,8 +1374,22 @@ def test_app_previews_use_the_configured_catalog_and_app_owner(
     with sqlite_session_factory.begin() as session:
         session.add_all(
             [
-                App(id=app_id, tenant_id=tenant_id, name="Preview", mode="chat", enable_site=False, enable_api=False),
-                App(id=other_id, tenant_id=tenant_id, name="Private", mode="chat", enable_site=False, enable_api=False),
+                App(
+                    id=app_id,
+                    tenant_id=tenant_id,
+                    name="Preview",
+                    mode=AppMode.CHAT,
+                    enable_site=False,
+                    enable_api=False,
+                ),
+                App(
+                    id=other_id,
+                    tenant_id=tenant_id,
+                    name="Private",
+                    mode=AppMode.CHAT,
+                    enable_site=False,
+                    enable_api=False,
+                ),
             ]
         )
 
@@ -1434,7 +1416,14 @@ def test_app_preview_details_use_the_configured_database_without_request_globals
         session.add_all(
             [
                 account,
-                App(id=app_id, tenant_id=owner_id, name="Preview", mode="chat", enable_site=True, enable_api=False),
+                App(
+                    id=app_id,
+                    tenant_id=owner_id,
+                    name="Preview",
+                    mode=AppMode.CHAT,
+                    enable_site=True,
+                    enable_api=False,
+                ),
                 Site(
                     app_id=app_id,
                     title="Preview site",
@@ -1787,11 +1776,11 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             app_id=app.id,
             mode=AppMode.CHAT,
             name="Original",
-            inputs={"enabled": False},
-            from_source="console",
+            _inputs={"enabled": False},
+            from_source=ConversationFromSource.CONSOLE,
             from_account_id=account_id,
             from_end_user_id=None,
-            invoke_from="explore",
+            invoke_from=ModelInvokeFrom.EXPLORE,
         )
         session.add(conversation)
         session.flush()
@@ -1800,14 +1789,14 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             Message(
                 app_id=app.id,
                 conversation_id=conversation.id,
-                inputs={},
+                _inputs={},
                 query="First question",
                 message={},
                 message_unit_price=Decimal(0),
                 answer="Answer",
                 answer_unit_price=Decimal(0),
                 currency="USD",
-                from_source="console",
+                from_source=ConversationFromSource.CONSOLE,
                 from_account_id=account_id,
             )
         )
@@ -1826,10 +1815,8 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
 
     naming_sessions: list[Session] = []
 
-    def generate_name(tenant_id: str, query: str, c_id: str, app_id: str, *, trace_scope: TraceScope | None) -> str:
+    def generate_name(tenant_id: str, query: str, c_id: str, app_id: str) -> str:
         assert active_connections == 0
-        # The app does not trace, so naming reports nowhere.
-        assert trace_scope is None
         assert get_credit_usage_metadata() == {"app_type": CreditUsageAppType.CHATBOT, "request_id": "naming-request"}
         assert (tenant_id, query, c_id, app_id) == (
             owner_tenant_id,

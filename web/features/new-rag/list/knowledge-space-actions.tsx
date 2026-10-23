@@ -12,12 +12,12 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
-import { DeleteKnowledgeForm } from '../components/delete-knowledge-form'
+import { DeleteKnowledgeForm } from '../delete-knowledge-form'
 import { newKnowledgeSettingsPath } from '../routes'
 
 export function KnowledgeSpaceActions({
@@ -27,25 +27,23 @@ export function KnowledgeSpaceActions({
 }) {
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const confirmationRef = useRef<HTMLInputElement>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const canEdit = knowledgeSpace.permission_keys.includes('knowledge_space_edit')
   const canDelete = knowledgeSpace.permission_keys.includes('knowledge_space_delete')
   const name = knowledgeSpace.technical_summary?.name ?? knowledgeSpace.control_space_id
 
-  const deleteMutation = useMutation({
-    // The dialog shows the failure next to the confirmation the user can retry.
-    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
+  const deleteMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
       context: { silent: true },
+      onSuccess: () => {
+        // The card leaves the list once it refreshes; that removal is the success feedback.
+        setDeleteOpen(false)
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
+        })
+      },
     }),
-    onSuccess: () => {
-      // The card leaves the list once it refreshes; that removal is the success feedback.
-      setDeleteDialogOpen(false)
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
-      })
-    },
-  })
+  )
 
   if (!canEdit && !canDelete) return null
 
@@ -83,7 +81,7 @@ export function KnowledgeSpaceActions({
               {canDelete && (
                 <>
                   {canEdit && <DropdownMenuSeparator />}
-                  <DropdownMenuItem variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
+                  <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
                     <span aria-hidden className="mr-1 i-ri-delete-bin-line size-4" />
                     {tCommon(($) => $['operation.delete'])}
                   </DropdownMenuItem>
@@ -95,16 +93,17 @@ export function KnowledgeSpaceActions({
       </div>
 
       <AlertDialog
-        open={deleteDialogOpen}
-        onOpenChange={(open) => {
-          if (deleteMutation.isPending) return
-          setDeleteDialogOpen(open)
+        open={deleteOpen}
+        onOpenChange={(open, details) => {
+          if (!open && deleteMutation.isPending) details.cancel()
+          else setDeleteOpen(open)
+        }}
+        onOpenChangeComplete={(open) => {
           if (!open) deleteMutation.reset()
         }}
       >
-        <AlertDialogContent initialFocus={confirmationRef}>
+        <AlertDialogContent>
           <DeleteKnowledgeForm
-            confirmationRef={confirmationRef}
             knowledgeName={name}
             isPending={deleteMutation.isPending}
             error={deleteError}

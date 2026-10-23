@@ -33,7 +33,6 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 import { downloadUrl } from '@/utils/download'
-import s from '../style.module.css'
 import RenameModal from './rename-modal'
 
 type OperationsProps = {
@@ -282,7 +281,7 @@ const Operations = ({
     },
     [canDownload, handleDownload],
   )
-  const menuActionClassName = 'h-9 w-[calc(100%-8px)] gap-2 px-3 py-2 text-left'
+  const menuActionClassName = 'h-9 w-[calc(100%-8px)] gap-2 px-3 py-2 text-start'
   const menuDeleteActionClassName = cn(menuActionClassName, 'group')
   const handleSettingsClick = useCallback(
     (evt: React.MouseEvent<HTMLElement>) => {
@@ -367,7 +366,7 @@ const Operations = ({
         <>
           {renderListSwitch()}
           {hasOperationsMenu && (
-            <Separator decorative className="mr-2 ml-4 h-3" orientation="vertical" />
+            <Separator decorative className="ms-4 me-2 h-3" orientation="vertical" />
           )}
         </>
       )}
@@ -377,9 +376,11 @@ const Operations = ({
             <DropdownMenuTrigger
               aria-label={t(($) => $['operation.more'], { ns: 'common' })}
               className={cn(
-                isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail,
+                isListScene
+                  ? 'size-6! rounded-md border-none! p-1! hover:bg-state-base-hover!'
+                  : 'border-[0.5px]! border-components-button-secondary-border! bg-components-button-secondary-bg! p-2! shadow-xs shadow-shadow-shadow-3 hover:border-components-button-secondary-border-hover! hover:bg-components-button-secondary-bg-hover!',
                 'inline-flex items-center justify-center',
-                !isListScene && 'h-8! w-8! rounded-lg backdrop-blur-[5px]',
+                !isListScene && 'size-8! rounded-lg backdrop-blur-[5px]',
                 isListScene && 'bg-transparent!',
                 'data-popup-open:shadow-none! data-popup-open:hover:bg-state-base-hover!',
               )}
@@ -388,7 +389,7 @@ const Operations = ({
                 e.preventDefault()
               }}
             >
-              <div className={cn(s.commonIcon)}>
+              <div className="inline-block size-4 bg-contain bg-center bg-no-repeat align-middle">
                 <span
                   aria-hidden
                   className="i-ri-more-fill size-4 text-components-button-secondary-text"

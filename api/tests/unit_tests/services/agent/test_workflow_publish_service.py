@@ -20,7 +20,7 @@ from models.model import App, AppMode
 from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
-from tests.unit_tests.model_factories import make_workflow
+from tests.helpers.unit.model_factories import make_workflow
 
 
 def _workflow(*, workflow_id: str = "workflow-1", version: str = Workflow.VERSION_DRAFT) -> Workflow:

@@ -28,7 +28,7 @@ from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.tracing.assembly import TraceAssembler
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.service import ApplicationTracingService
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 CONTEXT = RequestContext("request", None, "account", "tenant")
 AGENT_ID = UUID("01a11111-1111-7111-8111-111111111111")

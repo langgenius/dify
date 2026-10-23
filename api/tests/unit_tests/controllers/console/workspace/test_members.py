@@ -55,7 +55,7 @@ from services.errors.workspace import (
 )
 from services.workspace.contracts import WorkspaceMemberRecord, WorkspaceMemberRole, WorkspaceMemberSummary
 from services.workspace.member_service import WorkspaceMemberQueryService, WorkspaceMemberService
-from tests.unit_tests.controllers.error_body import raised_error
+from tests.helpers.unit.controllers.error_body import raised_error
 
 
 class _RecordingWorkspaceMemberQueryService(WorkspaceMemberQueryService):

@@ -1,6 +1,11 @@
 'use client'
 
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -18,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useMutation } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
@@ -26,11 +32,12 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities, getAgentDefaultSection } from '@/features/agent-v2/acl'
+import { DeleteAgentForm } from '@/features/agent-v2/delete-agent-form'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/console'
 import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
-import { DeleteAgentDialog } from './delete-agent-dialog'
 import { DuplicateAgentDialog } from './duplicate-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
 
@@ -78,7 +85,7 @@ function AgentRosterSkeleton() {
           key={id}
           className="relative h-36.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3"
         >
-          <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
+          <div className="flex items-center gap-3 ps-3.5 pe-4 pt-3.5 pb-2">
             <SkeletonRectangle className="my-0 size-12 shrink-0 rounded-full opacity-20" />
             <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-1">
               <SkeletonRectangle className="my-0 h-3 w-36 max-w-full rounded-md opacity-20" />
@@ -207,14 +214,20 @@ function AgentCardActionMenuItems({
   )
 }
 
-function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
+function AgentRosterItem({
+  agent,
+  onDelete,
+}: {
+  agent: AgentAppPartial
+  onDelete: (agent: AgentAppPartial) => void
+}) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tApp } = useTranslation(['app'])
   const { formatTime } = useTimestamp()
   const nameId = useId()
   const descriptionId = useId()
   const draftStatusId = useId()
-  const [activeDialog, setActiveDialog] = useState<'delete' | 'duplicate' | 'edit' | null>(null)
+  const [activeDialog, setActiveDialog] = useState<'duplicate' | 'edit' | null>(null)
   const { exportAppDsl, isExporting } = useExportAppDsl()
   const capabilities = getAgentACLCapabilities(agent.permission_keys)
   const isPreviewOnly = agent.permission_keys?.length === 1 && capabilities.canPreview
@@ -251,10 +264,6 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
     setActiveDialog('duplicate')
   }
 
-  const handleDeleteOpen = () => {
-    setActiveDialog('delete')
-  }
-
   const handleDialogOpenChange = (open: boolean) => {
     if (!open) setActiveDialog(null)
   }
@@ -279,7 +288,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
 
   const cardContent = (
     <>
-      <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
+      <div className="flex items-center gap-3 ps-3.5 pe-4 pt-3.5 pb-2">
         <span aria-hidden className="shrink-0">
           <AppIcon size="xl" shape="circle" icon={agent} />
         </span>
@@ -296,11 +305,11 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
         </div>
       </div>
       {isDraft && (
-        <div className="pointer-events-none absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden">
-          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
+        <div className="pointer-events-none absolute inset-e-0 top-[-0.5px] flex h-5 items-start overflow-hidden">
+          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)] rtl:-scale-x-100" />
           <div
             id={draftStatusId}
-            className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary"
+            className="flex h-5 items-center bg-background-section-burn ps-0.5 pe-2 system-2xs-medium-uppercase text-text-tertiary"
           >
             {t(($) => $['roster.usageStatus.draft'], { ns: 'agentRoster' })}
           </div>
@@ -338,7 +347,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
                 type="button"
                 aria-labelledby={nameId}
                 aria-describedby={accessibleDescriptionIds || undefined}
-                className={cn(cardClassName, 'w-full cursor-not-allowed text-left')}
+                className={cn(cardClassName, 'w-full cursor-not-allowed text-start')}
                 onClick={showPreviewOnlyAccessWarning}
               >
                 {cardContent}
@@ -356,13 +365,13 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
               onEdit={capabilities.canEdit ? handleEditOpen : undefined}
               onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
               onExport={capabilities.canImportExportDSL ? handleExport : undefined}
-              onDelete={capabilities.canDelete ? handleDeleteOpen : undefined}
+              onDelete={capabilities.canDelete ? () => onDelete(agent) : undefined}
             />
           </ContextMenuContent>
         )}
       </ContextMenu>
       {hasActions && (
-        <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
+        <div className="pointer-events-none absolute inset-e-[-0.5px] top-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 rtl:bg-[linear-gradient(293deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] [@media(hover:none)]:opacity-100">
           <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
@@ -386,7 +395,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
                   onEdit={capabilities.canEdit ? handleEditOpen : undefined}
                   onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
                   onExport={capabilities.canImportExportDSL ? handleExport : undefined}
-                  onDelete={capabilities.canDelete ? handleDeleteOpen : undefined}
+                  onDelete={capabilities.canDelete ? () => onDelete(agent) : undefined}
                 />
               </DropdownMenuContent>
             </DropdownMenu>
@@ -438,14 +447,6 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
           onOpenChange={handleDialogOpenChange}
         />
       )}
-      {capabilities.canDelete && (
-        <DeleteAgentDialog
-          agentId={agent.id}
-          agentName={agent.name}
-          open={activeDialog === 'delete'}
-          onOpenChange={handleDialogOpenChange}
-        />
-      )}
     </li>
   )
 }
@@ -454,6 +455,12 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
+  const [deleteDialog] = useState(() =>
+    createAlertDialogHandle<Pick<AgentAppPartial, 'id' | 'name'>>(),
+  )
+  const deletion = useMutation(
+    consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
+  )
 
   return (
     <section aria-label={label} aria-busy={isBusy}>
@@ -484,7 +491,11 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
         // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
         <ul role="list" className={AGENT_ROSTER_GRID_CLASS_NAME}>
           {state.agents.map((agent) => (
-            <AgentRosterItem key={agent.id} agent={agent} />
+            <AgentRosterItem
+              key={agent.id}
+              agent={agent}
+              onDelete={(target) => deleteDialog.openWithPayload(target)}
+            />
           ))}
         </ul>
       )}
@@ -506,6 +517,35 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
           </Button>
         </div>
       )}
+      <AlertDialog
+        handle={deleteDialog}
+        onOpenChange={(open, details) => {
+          if (!open && deletion.isPending && details.reason !== 'imperative-action')
+            details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) deletion.reset()
+        }}
+      >
+        {({ payload }) => (
+          <AlertDialogContent>
+            {payload && (
+              <DeleteAgentForm
+                agentName={payload.name}
+                isPending={deletion.isPending}
+                error={deletion.isError ? t(($) => $['roster.deleteFailed']) : undefined}
+                onSubmit={() => {
+                  if (deletion.isPending) return
+                  deletion.mutate(
+                    { params: { agent_id: payload.id } },
+                    { onSuccess: () => deleteDialog.close() },
+                  )
+                }}
+              />
+            )}
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
     </section>
   )
 }

@@ -26,12 +26,12 @@ from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
 from services.tracing.provider_configs import ProviderConfigGateway
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.rbac_fakes import RBACDomain, build_rbac_domain
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.rbac_fakes import RBACDomain, build_rbac_domain
 
 if TYPE_CHECKING:
     from extensions.ext_application_services import ApplicationServices
-    from tests.unit_tests.account_domain import AccountDomain
+    from tests.helpers.unit.account_domain import AccountDomain
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -41,7 +41,7 @@ PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
 
 CACHED_APP = Flask(__name__)
 
-pytest_plugins = ("tests.unit_tests.audio_runtime_fixtures", "tests.unit_tests.agent_runtime_fixtures")
+pytest_plugins = ("tests.helpers.unit.audio_runtime_fixtures", "tests.helpers.unit.agent_runtime_fixtures")
 
 # set global mock for Redis client
 redis_mock = MagicMock()
@@ -307,7 +307,7 @@ def account_domain(
 
     from enums import DeploymentEdition
     from services.workspace import gateways
-    from tests.unit_tests.account_domain import build_account_domain
+    from tests.helpers.unit.account_domain import build_account_domain
 
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=False)
     monkeypatch.setattr(gateways, "generate_key_pair", lambda _workspace_id: "public-key")
