@@ -1822,6 +1822,7 @@ jobs:
           a4_expected['tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion'].update({
               'test_native_control_only_commits_do_not_strand_successful_builder_run': 1,
               'test_terminal_projection_crash_is_recovered_without_get_or_dispatch': 1,
+              'test_resumed_terminal_run_records_current_business_acceptance_on_original_attempt': 4,
               'test_native_control_receipt_cannot_hide_an_intervening_user_change': 1,
               'test_paused_initial_ack_without_dispatch_is_selected_for_worker_recovery': 1,
           })

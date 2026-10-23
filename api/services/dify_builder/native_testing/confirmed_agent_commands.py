@@ -1026,12 +1026,6 @@ class ProfiledNativeTestCommands:
         if isinstance(service, ConfirmedAgentCommands):
             service._complete_builder(ref=service._root_ref(actor=actor, request_id=request_id))
 
-    def peek(self, **values):
-        """Public projection only: never recover ACKs or publish resume work on GET."""
-        service = self._service(**values)
-        api = service.api if isinstance(service, ConfirmedAgentCommands) else service
-        return api.get(**values)
-
     def start(self, **values):
         return self.legacy_factory().start(**values)
 
