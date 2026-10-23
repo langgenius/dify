@@ -104,6 +104,10 @@ class AppApiKeyRepository(AppApiKeyStore):
         if for_update:
             query = query.with_for_update()
         app = session.scalar(query)
+        if app is not None:
+            binding = app.agent_app_binding_with_session(session=session, include_archived=True)
+            if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
+                app = None
         if app is None:
             raise ApiKeyResourceNotFoundError("App not found.")
         return app

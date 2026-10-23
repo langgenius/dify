@@ -209,6 +209,38 @@ def test_knowledge_query_mode_uses_stable_backend_enums() -> None:
     assert config.knowledge.sets[0].query.mode == AgentKnowledgeQueryMode.GENERATED_QUERY
 
 
+@pytest.mark.parametrize("with_space", [False, True])
+def test_publish_accepts_classic_knowledge_with_or_without_agent_knowledge(with_space: bool) -> None:
+    knowledge: dict[str, object] = {
+        "sets": [
+            {
+                "id": "classic",
+                "name": "Classic Docs",
+                "datasets": [{"id": "dataset-1"}],
+                "query": {"mode": "generated_query"},
+                "retrieval": {"mode": "multiple", "top_k": 4},
+            }
+        ]
+    }
+    if with_space:
+        knowledge["spaces"] = [
+            {
+                "id": "new",
+                "name": "New Docs",
+                "control_space_id": "00000000-0000-4000-8000-000000000001",
+            }
+        ]
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.AGENT_APP,
+            "save_strategy": ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
+            "agent_soul": {"knowledge": knowledge},
+        }
+    )
+
+    ComposerConfigValidator.validate_publish_payload(payload)
+
+
 @pytest.mark.parametrize(
     ("knowledge_payload", "match"),
     [

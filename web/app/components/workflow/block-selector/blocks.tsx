@@ -33,7 +33,7 @@ const Blocks = ({
   availableBlocksTypes = [],
   blocks: blocksFromProps,
 }: BlocksProps) => {
-  const { t } = useTranslation(['workflow', 'workflowLogic'])
+  const { t } = useTranslation(['workflow', 'workflowLogic', 'navigation'])
   const store = useStoreApi()
   const blocksFromHooks = useBlocks()
   const [previewCardHandle] = useState(() => createPreviewCardHandle<BlockPreviewPayload>())
@@ -162,6 +162,14 @@ const Blocks = ({
                       <span className="min-w-0 grow truncate text-sm text-text-secondary">
                         {block.metaData.title}
                       </span>
+                      {block.metaData.type === BlockEnum.KnowledgeRetrievalV2 && (
+                        <Badge
+                          size="xs"
+                          variant="dimm"
+                          text={t(($) => $['menus.status'], { ns: 'navigation' })}
+                          className="ml-2 shrink-0"
+                        />
+                      )}
                       {block.metaData.type === BlockEnum.LoopEnd && (
                         <Badge
                           text={t(($) => $['nodes.loop.loopNode'], { ns: 'workflowLogic' })}

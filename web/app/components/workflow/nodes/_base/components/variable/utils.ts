@@ -7,6 +7,7 @@ import type { EndNodeType } from '../../../end/types'
 import type { HttpNodeType } from '../../../http/types'
 import type { IfElseNodeType } from '../../../if-else/types'
 import type { IterationNodeType } from '../../../iteration/types'
+import type { KnowledgeRetrievalV2NodeType } from '../../../knowledge-retrieval-v2/types'
 import type { KnowledgeRetrievalNodeType } from '../../../knowledge-retrieval/types'
 import type { ListFilterNodeType } from '../../../list-operator/types'
 import type { LLMNodeType, StructuredOutput } from '../../../llm/types'
@@ -66,6 +67,11 @@ import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-pl
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { VAR_REGEX } from '@/config'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
+import { KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT } from '../../../knowledge-retrieval-v2/constants'
+import {
+  getKnowledgeRetrievalV2MetadataValueTexts,
+  replaceKnowledgeRetrievalV2MetadataVar,
+} from '../../../knowledge-retrieval-v2/metadata-filtering'
 import { Type } from '../../../llm/types'
 
 type WorkflowTranslate = TFunction<['workflow']>
@@ -387,6 +393,10 @@ const formatItem = (
     }
     case BlockEnum.KnowledgeRetrieval: {
       res.vars = KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT
+      break
+    }
+    case BlockEnum.KnowledgeRetrievalV2: {
+      res.vars = KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT
       break
     }
 
@@ -1256,6 +1266,16 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
       res = [query_variable_selector, query_attachment_selector]
       break
     }
+    case BlockEnum.KnowledgeRetrievalV2: {
+      const payload = data as KnowledgeRetrievalV2NodeType
+      const { query_variable_selector, query_attachment_selector = [] } = payload
+      res = [
+        query_variable_selector,
+        query_attachment_selector,
+        ...matchNotSystemVars(getKnowledgeRetrievalV2MetadataValueTexts(payload)),
+      ]
+      break
+    }
     case BlockEnum.IfElse: {
       res = []
       res.push(
@@ -1466,6 +1486,14 @@ export const getNodeUsedVarPassToServerKey = (
       res = 'query'
       break
     }
+    case BlockEnum.KnowledgeRetrievalV2: {
+      const payload = data as KnowledgeRetrievalV2NodeType
+      const selectorKey = valueSelector.join('.')
+      if (payload.query_variable_selector.join('.') === selectorKey) res = 'query'
+      else if (payload.query_attachment_selector?.join('.') === selectorKey) res = 'queryAttachment'
+      else res = `#${selectorKey}#`
+      break
+    }
     case BlockEnum.IfElse: {
       const findConditionInCases = (cases: CaseItem[]): Condition | undefined => {
         for (const caseItem of cases) {
@@ -1622,6 +1650,15 @@ export const updateNodeVars = (
           payload.query_variable_selector = newVarSelector
         if (payload.query_attachment_selector?.join('.') === oldVarSelector.join('.'))
           payload.query_attachment_selector = newVarSelector
+        break
+      }
+      case BlockEnum.KnowledgeRetrievalV2: {
+        const payload = data as KnowledgeRetrievalV2NodeType
+        if (payload.query_variable_selector.join('.') === oldVarSelector.join('.'))
+          payload.query_variable_selector = newVarSelector
+        if (payload.query_attachment_selector?.join('.') === oldVarSelector.join('.'))
+          payload.query_attachment_selector = newVarSelector
+        replaceKnowledgeRetrievalV2MetadataVar(payload, oldVarSelector, newVarSelector)
         break
       }
       case BlockEnum.IfElse: {
@@ -2026,6 +2063,10 @@ export const getNodeOutputVars = (node: Node, isChatflow: boolean): ValueSelecto
 
     case BlockEnum.KnowledgeRetrieval: {
       varsToValueSelectorList(KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT, [id], res)
+      break
+    }
+    case BlockEnum.KnowledgeRetrievalV2: {
+      varsToValueSelectorList(KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT, [id], res)
       break
     }
 

@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "“{{name}}” agora é uma base de conhecimento Agent",
+  "upgrade.completeTitle": "Atualização concluída",
+  "upgrade.contactSupport": "Contatar o suporte",
+  "upgrade.dialogAvailability": "Após a atualização, <strong>tanto a base de conhecimento clássica quanto a base de conhecimento Agent continuam disponíveis</strong>",
+  "upgrade.dialogDescription": "Atualize esta <legacy>base de conhecimento clássica</legacy> para uma <new>base de conhecimento Agent</new>, mantendo todos os documentos, configurações e conexões de aplicativos. Você será levado automaticamente à base de conhecimento Agent.",
+  "upgrade.dialogDuration": "Leva de alguns minutos a algumas horas, dependendo do tamanho. O progresso é exibido no cartão da base de conhecimento",
+  "upgrade.dialogLinkedApps": "Os aplicativos vinculados continuam recuperando dados durante a atualização",
+  "upgrade.dialogTitle": "Atualizar para uma base de conhecimento Agent?",
+  "upgrade.failedDescription": "A atualização falhou — nada foi alterado. Sua base de conhecimento clássica ainda está disponível.",
+  "upgrade.failedTitle": "Falha na atualização",
+  "upgrade.failedToastDescription": "“{{name}}” permanece como uma base de conhecimento clássica; nenhum dado foi alterado",
+  "upgrade.justNow": "Agora mesmo",
+  "upgrade.menuLabel": "Atualizar para uma base de conhecimento Agent",
+  "upgrade.migratingDocuments": "Migrando documentos…",
+  "upgrade.modelCostDescription": "A atualização usa modelos para processar os documentos desta base de conhecimento e consome tokens. Quanto mais conteúdo os documentos tiverem, geralmente maior o consumo, o que pode gerar custos elevados. O custo real depende da forma de cobrança do modelo utilizado.",
+  "upgrade.start": "Iniciar atualização",
+  "upgrade.startFailed": "Não foi possível iniciar a atualização. Tente novamente.",
+  "upgrade.statusFailed": "Falha na atualização",
+  "upgrade.statusUpgrading": "Atualizando",
+  "upgrade.summary": "Base de conhecimento: {{name}}",
+  "upgrade.upgradedJustNow": "Atualizada agora mesmo"
+}

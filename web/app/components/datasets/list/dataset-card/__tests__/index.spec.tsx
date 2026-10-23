@@ -108,7 +108,7 @@ it('explains preview-only access while keeping tags visible and editing unavaila
   })
   expect(screen.queryByRole('link', { name: 'Preview Only Dataset' })).not.toBeInTheDocument()
   expect(await screen.findByRole('combobox', { name: 'Research' })).toBeDisabled()
-  expect(screen.queryByRole('button', { name: 'Dataset operations' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Preview Only Dataset' }))
   expect(await screen.findByText('app.noAccessResourcePermission')).toBeInTheDocument()
   expect(api.push).not.toHaveBeenCalled()
@@ -151,7 +151,7 @@ it('withholds tag editing without either dataset edit or workspace tag managemen
 
 it('opens access configuration from the real card menu', async () => {
   const { user } = setup({ permission_keys: [DatasetACLPermission.AccessConfig] })
-  await user.click(screen.getByRole('button', { name: 'Dataset operations' }))
+  await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
   await user.click(
     await screen.findByRole('menuitem', { name: 'navigation.settings.resourceAccess' }),
   )
@@ -161,7 +161,7 @@ it('opens access configuration from the real card menu', async () => {
 it('rechecks usage after cancellation and deletes only after confirmation', async () => {
   const { user, onSuccess } = setup({ permission_keys: [DatasetACLPermission.Delete] })
   const openDelete = async () => {
-    await user.click(screen.getByRole('button', { name: 'Dataset operations' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
     return screen.findByRole('alertdialog', { name: 'dataset.deleteDatasetConfirmTitle' })
   }

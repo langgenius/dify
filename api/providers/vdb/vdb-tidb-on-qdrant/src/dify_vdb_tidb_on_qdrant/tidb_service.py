@@ -25,6 +25,41 @@ _tidb_http_client: httpx.Client = get_pooled_http_client(
 
 class TidbService:
     @staticmethod
+    def start_tidb_serverless_cluster(
+        project_id: str,
+        api_url: str,
+        public_key: str,
+        private_key: str,
+        region: str,
+        *,
+        display_name: str,
+        password: str,
+    ) -> str:
+        """Submit one create request without waiting for readiness.
+
+        Tenant allocation persists the generated name/password before calling
+        this method and records the cluster ID before a later readiness check.
+        Keep the same project, region and spending limit as existing provisioning.
+        """
+        response = _tidb_http_client.post(
+            f"{api_url}/clusters",
+            json={
+                "displayName": display_name,
+                "region": {"name": region},
+                "labels": {"tidb.cloud/project": project_id},
+                "spendingLimit": {"monthly": dify_config.TIDB_SPEND_LIMIT},
+                "rootPassword": password,
+            },
+            auth=DigestAuth(public_key, private_key),
+            timeout=httpx.Timeout(30.0, connect=5.0),
+        )
+        response.raise_for_status()
+        cluster_id = response.json().get("clusterId")
+        if not isinstance(cluster_id, str) or not cluster_id:
+            raise ValueError("TiDB cluster creation returned no cluster ID")
+        return cluster_id
+
+    @staticmethod
     def extract_qdrant_endpoint(cluster_response: Mapping[str, Any]) -> str | None:
         """Extract the qdrant endpoint URL from a Get Cluster API response.
 
@@ -177,7 +212,11 @@ class TidbService:
         :return: The response from the API.
         """
 
-        response = _tidb_http_client.get(f"{api_url}/clusters/{cluster_id}", auth=DigestAuth(public_key, private_key))
+        response = _tidb_http_client.get(
+            f"{api_url}/clusters/{cluster_id}",
+            auth=DigestAuth(public_key, private_key),
+            timeout=httpx.Timeout(30.0, connect=5.0),
+        )
 
         if response.status_code == 200:
             return response.json()

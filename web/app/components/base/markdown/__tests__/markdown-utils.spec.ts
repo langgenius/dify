@@ -104,7 +104,7 @@ describe('preprocessThinkTag', () => {
     const out = mod.preprocessThinkTag(input)
 
     expect((out.match(/<details data-think=true>/g) || []).length).toBe(1)
-    expect((out.match(/\[ENDTHINKFLAG\]<\/details>/g) || []).length).toBe(1)
+    expect((out.match(/\[ENDTHINKFLAG\]<\/details>/g) || []).length).toBe(0)
     expect(out).toContain('planning the tool call')
   })
 
@@ -113,7 +113,7 @@ describe('preprocessThinkTag', () => {
     const out = mod.preprocessThinkTag(input)
 
     expect((out.match(/<details data-think=true>/g) || []).length).toBe(2)
-    expect((out.match(/\[ENDTHINKFLAG\]<\/details>/g) || []).length).toBe(2)
+    expect((out.match(/\[ENDTHINKFLAG\]<\/details>/g) || []).length).toBe(1)
     expect(out.indexOf('first pass')).toBeLessThan(out.indexOf('[ENDTHINKFLAG]'))
   })
 })

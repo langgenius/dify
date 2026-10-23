@@ -60,6 +60,8 @@ class DatasetDetailRecord(TypedDict):
     # Detail/create responses may omit membership or explicitly return null;
     # listing and updates materialize a list, including an empty one.
     partial_member_list: NotRequired[list[str] | None]
+    # Listing attaches Classic-to-Agent knowledge base upgrade availability.
+    knowledge_fs_upgrade: NotRequired[Mapping[str, JsonValue]]
 
 
 class DatasetPage(TypedDict):

@@ -271,6 +271,34 @@ class TestDatasetServiceRetrieval:
         assert DatasetService.get_dataset_for_tenant(owned.id, "tenant-1", session=sqlite_session) is owned
         assert DatasetService.get_dataset_for_tenant(foreign.id, "tenant-1", session=sqlite_session) is None
 
+    def test_get_datasets_filters_by_creator_ids(
+        self, application_tags, config_overrides: Callable[..., None], sqlite_session: Session
+    ) -> None:
+        creator_one = _dataset(dataset_id="creator-one", name="Creator One", maintainer="creator-1")
+        creator_two = _dataset(dataset_id="creator-two", name="Creator Two", maintainer="creator-2")
+        excluded = _dataset(dataset_id="excluded", name="Excluded", maintainer="creator-3")
+        foreign = _dataset(
+            dataset_id="foreign",
+            tenant_id="tenant-2",
+            name="Foreign",
+            maintainer="creator-1",
+        )
+        sqlite_session.add_all([creator_one, creator_two, excluded, foreign])
+        sqlite_session.commit()
+
+        config_overrides(RBAC_ENABLED=False)
+        datasets, total = DatasetService.get_datasets(
+            page=1,
+            per_page=20,
+            session=sqlite_session,
+            tenant_id="tenant-1",
+            creator_ids=["creator-1", "creator-2"],
+            tags=application_tags,
+        )
+
+        assert total == 2
+        assert {dataset.id for dataset in datasets} == {creator_one.id, creator_two.id}
+
     def test_get_datasets_applies_rbac_resource_scope_and_maintainer_override(
         self, application_tags, config_overrides: Callable[..., None], sqlite_session: Session
     ) -> None:
