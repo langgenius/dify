@@ -22,6 +22,7 @@ from services.account_errors import (
     OAuthWorkspaceCreationNotAllowedError,
 )
 from services.entities.account_entities import AccountSessionTokens, AccountSnapshot
+from services.entities.account_login_entities import LoginMode
 from services.entities.account_oauth_entities import (
     OAuthAccountRegistration,
     OAuthAuthorizationRequest,
@@ -766,3 +767,29 @@ def test_banned_account_is_rejected_before_writes() -> None:
         harness.service.complete_authorization(_command())
 
     assert harness.integrations.links == []
+
+
+@pytest.mark.parametrize("existing", [True, False])
+def test_end_user_oauth_never_provisions_or_joins_workspace(existing: bool) -> None:
+    harness = _harness()
+    harness.policy.creation_allowed = False
+    if existing:
+        _bind_identity(harness, _account(status="uninitialized"))
+    else:
+        harness.accounts.stored["new-account"] = _account(account_id="new-account", status="uninitialized")
+    result = harness.service.complete_authorization(_command(mode=LoginMode.END_USER))
+    assert isinstance(result, OAuthSignInResult)
+    assert result.oauth_new_user is (not existing)
+    assert harness.memberships.account_ids == []
+    assert harness.runtime.workspace_operations == []
+    assert harness.accounts.activations == []
+    if not existing:
+        assert harness.registration.registrations[0].mode == LoginMode.END_USER
+
+
+def test_end_user_oauth_does_not_consume_workspace_invitation() -> None:
+    harness = _harness()
+    with pytest.raises(ValueError, match="workspace invitation"):
+        harness.service.complete_authorization(_command(mode=LoginMode.END_USER, invite_token="invite"))
+    assert harness.invitations.resolutions == []
+    assert harness.provider.codes == []

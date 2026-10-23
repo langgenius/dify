@@ -2,6 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import NoReturn
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 import pytest
 from flask import Flask
@@ -11,7 +12,7 @@ from controllers.console import wraps as console_wraps
 from controllers.console.auth import oauth as oauth_controller
 from controllers.console.auth.oauth import OAuthCallback, OAuthLogin
 from enums import DeploymentEdition
-from libs.oauth import encode_oauth_state
+from libs.oauth import AccountOAuthState, decode_account_oauth_state, encode_account_oauth_state, encode_oauth_state
 from services.account_errors import (
     InvalidOAuthProviderError,
     OAuthIdentityLockUnavailableError,
@@ -87,6 +88,16 @@ def test_login_parses_input_and_delegates_to_application_service(
 
     assert response.status_code == 302
     assert response.headers["Location"] == "https://provider.example/authorize"
+    protected_state = service.authorization_calls[0][1].state
+    assert protected_state is not None
+    decoded = decode_account_oauth_state(protected_state)
+    assert decoded.mode == "console"
+    assert decoded.context == {
+        "invite_token": "invite",
+        "timezone": "Asia/Shanghai",
+        "language": "zh-Hans",
+        "redirect_url": "/apps",
+    }
     assert service.authorization_calls == [
         (
             "github",
@@ -95,6 +106,7 @@ def test_login_parses_input_and_delegates_to_application_service(
                 timezone="Asia/Shanghai",
                 language="zh-Hans",
                 redirect_url="/apps",
+                state=protected_state,
             ),
         )
     ]
@@ -300,4 +312,95 @@ def test_oauth_admission_rejects_disabled_social_login(
     with app.test_request_context("/oauth/login/github"), pytest.raises(Forbidden):
         OAuthLogin().get("github")
 
+    assert service.authorization_calls == []
+
+
+def _end_user_state(target: str) -> str:
+    return encode_account_oauth_state(
+        AccountOAuthState(mode="end_user", provider="github", nonce="browser-nonce", context={"redirect_url": target})
+    )
+
+
+@pytest.mark.parametrize("failure", ["tampered", "missing_cookie", "missing_state", "wrong_cookie", "wrong_provider"])
+def test_end_user_oauth_rejects_unbound_or_modified_state(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], failure: str
+) -> None:
+    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=True, APP_WEB_URL="https://apps.example.com")
+    service = FakeOAuthService()
+    _install_service(monkeypatch, service)
+    state = _end_user_state("https://apps.example.com/chatbot/app-code")
+    headers: dict[str, str] = {"Cookie": "account_oauth_github_browser-nonce=browser-nonce"}
+    if failure == "tampered":
+        state += "invalid"
+    elif failure == "missing_cookie":
+        headers = {}
+    elif failure == "wrong_cookie":
+        headers = {"Cookie": "account_oauth_github_browser-nonce=other-browser"}
+    elif failure == "missing_state":
+        state = ""
+    provider = "google" if failure == "wrong_provider" else "github"
+    with app.test_request_context(
+        f"/oauth/authorize/{provider}", query_string={"code": "code-1", "state": state}, headers=headers
+    ):
+        with pytest.raises(ValueError, match="[Ss]tate"):
+            OAuthCallback().get(provider)
+    assert service.callback_calls == []
+
+
+def test_end_user_oauth_rechecks_feature_flag_at_callback(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=False, APP_WEB_URL="https://apps.example.com")
+    service = FakeOAuthService()
+    _install_service(monkeypatch, service)
+    with (
+        app.test_request_context("/oauth/login/github?mode=end_user&redirect_url=/chatbot/app-code"),
+        pytest.raises(Forbidden),
+    ):
+        OAuthLogin().get("github")
+    state = _end_user_state("https://apps.example.com/chatbot/app-code")
+    with (
+        app.test_request_context(
+            "/oauth/authorize/github",
+            query_string={"code": "code-1", "state": state},
+            headers={"Cookie": "account_oauth_github_browser-nonce=browser-nonce"},
+        ),
+        pytest.raises(Forbidden),
+    ):
+        OAuthCallback().get("github")
+    assert service.authorization_calls == []
+    assert service.callback_calls == []
+
+
+def test_callback_retry_keeps_end_user_mode_and_web_app_return_target(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=True, APP_WEB_URL="https://apps.example.com")
+    service = FakeOAuthService(callback_error=OAuthRegistrationError("Try again"))
+    _install_service(monkeypatch, service)
+    target = "https://apps.example.com/chatbot/app-code?input=a%26b#message"
+    resume = f"{CONSOLE_WEB_URL}/signin?{urlencode({'mode': 'end_user', 'redirect_url': target})}"
+    state = _end_user_state(resume)
+    with app.test_request_context(
+        "/oauth/authorize/github",
+        query_string={"code": "code-1", "state": state},
+        headers={"Cookie": "account_oauth_github_browser-nonce=browser-nonce"},
+    ):
+        response = OAuthCallback().get("github")
+    destination = urlsplit(response.headers["Location"])
+    assert destination.netloc == "console.example.com"
+    assert destination.path == "/signin"
+    assert parse_qs(destination.query) == {"message": ["Try again"], "mode": ["end_user"], "redirect_url": [target]}
+
+
+@pytest.mark.parametrize("target", ["https://evil.example/signin", "/apps", "//evil.example/signin"])
+def test_end_user_oauth_requires_a_console_signin_return_target(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], target: str
+) -> None:
+    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=True)
+    service = FakeOAuthService()
+    _install_service(monkeypatch, service)
+    with app.test_request_context("/oauth/login/github", query_string={"mode": "end_user", "redirect_url": target}):
+        with pytest.raises(ValueError, match="sign-in page"):
+            OAuthLogin().get("github")
     assert service.authorization_calls == []

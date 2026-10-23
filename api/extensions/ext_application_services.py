@@ -204,6 +204,8 @@ from services.web_authentication_adapters import (
 )
 from services.web_authentication_service import WebAuthenticationService
 from services.web_identity_service import WebIdentityService
+from services.web_login_handoff import WebLoginHandoffService
+from services.web_login_handoff_adapters import RedisWebLoginGrantStore
 from services.web_passport_gateways import (
     DeploymentWebPassportAuthGateway,
     PassportTokenGateway,
@@ -323,6 +325,7 @@ class ApplicationServices:
     inner_mail: InnerMailService
     web_passport: WebPassportService
     web_identity: WebIdentityService
+    web_login_handoff: WebLoginHandoffService
     connection_selections: ConnectionSelectionService
     end_user_connection_execution: ConnectionExecutionService
     end_user_connection_runtime: ConnectionRuntimeService
@@ -503,6 +506,10 @@ def build_application_services(
         allow_console_login=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
         allow_webapp_login=deployment_edition == DeploymentEdition.ENTERPRISE,
     )
+    web_passport_repository = WebPassportRepository(
+        session_factory=database_client, generate_session_id=lambda: str(uuid4())
+    )
+    web_passport_tokens = PassportTokenGateway(passport=PassportService())
     web_app_sessions = PassportWebAppSessionGateway(
         sessions=webapp_access_repository,
         app_access=webapp_access,
@@ -729,6 +736,16 @@ def build_application_services(
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_identity=web_identity,
+        web_login_handoff=WebLoginHandoffService(
+            grants=RedisWebLoginGrantStore(redis=redis),
+            apps=web_passport_repository,
+            identities=web_identity,
+            tokens=web_passport_tokens,
+            enabled=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
+            app_web_url=dify_config.APP_WEB_URL,
+            console_web_url=dify_config.CONSOLE_WEB_URL,
+            now=lambda: datetime.now(UTC),
+        ),
         connection_selections=ConnectionSelectionService(
             store=EndUserConnectionRepository(session_factory=database_client)
         ),
@@ -740,16 +757,13 @@ def build_application_services(
         end_user_connection_preflight=end_user_connection_preflight,
         end_user_connection_oauth=build_end_user_connection_oauth(database_client=database_client),
         web_passport=WebPassportService(
-            passports=WebPassportRepository(
-                session_factory=database_client,
-                generate_session_id=lambda: str(uuid4()),
-            ),
+            passports=web_passport_repository,
             auth=DeploymentWebPassportAuthGateway(
                 webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
                 get_app_access_mode=EnterpriseService.WebAppAuth.get_app_access_mode_by_id,
                 is_user_allowed=EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp,
             ),
-            tokens=PassportTokenGateway(passport=PassportService()),
+            tokens=web_passport_tokens,
             identities=web_identity,
             account_passports_enabled=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
             now=lambda: datetime.now(UTC),

@@ -134,6 +134,7 @@ def test_login_status_passes_transport_tokens_to_service(monkeypatch: pytest.Mon
 
     assert result == {"logged_in": True, "app_logged_in": False}
     assert service.call == {
+        "mode": "console",
         "app_code": "site-code",
         "user_id": "session-1",
         "access_token": "account-token",

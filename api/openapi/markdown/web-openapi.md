@@ -689,6 +689,7 @@ Check login status
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_code | query | Web app code | No | string |
+| mode | query | end_user reports actual Account authentication instead of Public App access | No | string, <br>**Available values:** "console", "end_user", <br>**Default:** console |
 | user_id | query | End user session ID | No | string |
 
 #### Responses
@@ -841,6 +842,7 @@ Get authentication passport for web application access
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| mode | query | end_user reuses Account login; console preserves legacy Web App authentication | No | string, <br>**Available values:** "console", "end_user", <br>**Default:** console |
 | user_id | query | End user session ID | No | string |
 
 #### Responses
@@ -848,8 +850,32 @@ Get authentication passport for web application access
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Passport retrieved successfully | **application/json**: [PassportAccessTokenResponse](#passportaccesstokenresponse)<br> |
-| 401 | Unauthorized - missing app code or invalid authentication | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - missing app code or invalid authentication | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Application or user not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /passport
+Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and a Web-only login proof for subsequent visits.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| X-App-Code | header | Web app code | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PassportLoginPayload](#passportloginpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web login completed | **application/json**: [PassportLoginResponse](#passportloginresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /remote-files/upload
@@ -1942,6 +1968,12 @@ Upload token is invalid or expired.
 | ---- | ---- | ----------- | -------- |
 | status | [LicenseStatus](#licensestatus) |  | Yes |
 
+#### LoginMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LoginMode | string |  |  |
+
 #### LoginPayload
 
 | Name | Type | Description | Required |
@@ -1954,6 +1986,7 @@ Upload token is invalid or expired.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_code | string | Web app code | No |
+| mode | [LoginMode](#loginmode) | end_user reports actual Account authentication instead of Public App access | No |
 | user_id | string | End user session ID | No |
 
 #### LoginStatusResponse
@@ -2078,10 +2111,25 @@ Form input definition.
 | ---- | ---- | ----------- | -------- |
 | access_token | string |  | Yes |
 
+#### PassportLoginPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code_verifier | string |  | Yes |
+| login_code | string |  | Yes |
+
+#### PassportLoginResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | Yes |
+| webapp_access_token | string | Web-only login proof for subsequent login-status and Passport requests; never a Console token | Yes |
+
 #### PassportQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| mode | [LoginMode](#loginmode) | end_user reuses Account login; console preserves legacy Web App authentication | No |
 | user_id | string | End user session ID | No |
 
 #### PasswordMismatchError
@@ -2497,6 +2545,9 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_login_enabled | boolean | Whether explicit Account login and Passport exchange are enabled. | Yes |
+| account_login_url | string | Account-origin sign-in page for the existing Web App login flow | Yes |
+| allow_anonymous_end_user_auth | boolean | Deployment policy for anonymous EndUser authentication. | Yes |
 | annotation_reply | { **"enabled"**: boolean } |  | Yes |
 | file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
 | more_like_this | { **"enabled"**: boolean } |  | Yes |
@@ -2533,6 +2584,14 @@ Too many form requests. Please try again later.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | WebFormRateLimitExceededError |  | Too many form requests. Please try again later. |  |
+
+#### WebLoginUnavailableError
+
+Web App login is temporarily unavailable. Please retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebLoginUnavailableError |  | Web App login is temporarily unavailable. Please retry. |  |
 
 #### WebMessageInfiniteScrollPagination
 

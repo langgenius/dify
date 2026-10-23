@@ -8,6 +8,7 @@ import pytest
 from enums import WebAppAccessMode
 from machinery.context import RequestContext
 from services.entities.account_entities import AccountAuthenticationSnapshot, AccountPasswordDigest, AccountSnapshot
+from services.entities.account_login_entities import LoginMode
 from services.entities.auth_audit_entities import LoginFailureReason
 from services.entities.authentication_entities import StoredAuthenticationToken
 from services.web_authentication_service import (
@@ -76,6 +77,9 @@ class TokenGatewayFake:
 
     def verify_access_token(self, token: str | None) -> bool:
         return token == "valid-access"
+
+    def account_id(self, token: str | None) -> str | None:
+        return "account-1" if token == "valid-access" else None
 
     def send_email_login_code(self, *, account_id: str, email: str, language: str) -> str:
         return f"email:{account_id}:{email}:{language}"
@@ -150,8 +154,8 @@ class AppAccessGatewayFake:
 class AppSessionGatewayFake:
     valid: bool = False
 
-    def verify(self, *, token: str | None, app_code: str, user_id: str | None) -> bool:
-        del app_code, user_id
+    def verify(self, *, token: str | None, app_code: str, user_id: str | None, account_id: str | None = None) -> bool:
+        del app_code, user_id, account_id
         return self.valid and token == "valid-passport"
 
 
@@ -743,3 +747,22 @@ def test_account_login_state_does_not_invalidate_existing_app_session(
         app_session_token="valid-passport",
     )
     assert status.app_logged_in is True
+
+
+@pytest.mark.parametrize(("access_token", "logged_in"), [(None, False), ("invalid", False), ("valid-access", True)])
+def test_end_user_status_does_not_treat_public_access_as_account_login(
+    service_fixture: ServiceFixture,
+    access_token: str | None,
+    logged_in: bool,
+) -> None:
+    service_fixture.app_access.permission_required = False
+    service_fixture.app_sessions.valid = True
+    result = service_fixture.service.get_login_status(
+        app_code="site-code",
+        user_id=None,
+        access_token=access_token,
+        app_session_token="valid-passport",
+        mode=LoginMode.END_USER,
+    )
+    assert result.logged_in is logged_in
+    assert result.app_logged_in is logged_in

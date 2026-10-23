@@ -3,21 +3,11 @@
 import * as z from 'zod'
 
 /**
- * LoginPayload
+ * WebAppAccountSessionResponse
  */
-export const zLoginPayload = z.object({
-  email: z.string(),
-  invite_token: z.string().nullish(),
-  password: z.string(),
-  remember_me: z.boolean().optional().default(false),
-})
-
-/**
- * SimpleResultOptionalDataResponse
- */
-export const zSimpleResultOptionalDataResponse = z.object({
-  data: z.string().nullish(),
-  result: z.string(),
+export const zWebAppAccountSessionResponse = z.object({
+  logged_in: z.boolean(),
+  redirect_url: z.string().nullable(),
 })
 
 /**
@@ -34,6 +24,26 @@ export const zErrorResponse = z.object({
   message: z.string(),
   params: z.string().optional(),
   status: z.int(),
+})
+
+/**
+ * WebLoginUnavailableError
+ *
+ * Web App login is temporarily unavailable. Please retry.
+ */
+export const zWebLoginUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('web_login_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
+ * SimpleResultOptionalDataResponse
+ */
+export const zSimpleResultOptionalDataResponse = z.object({
+  data: z.string().nullish(),
+  result: z.string(),
 })
 
 /**
@@ -143,6 +153,34 @@ export const zEmailCodeLoginLimitError = zErrorResponse.and(
     status: z.literal(429),
   }),
 )
+
+/**
+ * LoginMode
+ */
+export const zLoginMode = z.enum(['console', 'end_user'])
+
+/**
+ * LoginPayload
+ */
+export const zLoginPayload = z.object({
+  email: z.string(),
+  invite_token: z.string().nullish(),
+  mode: zLoginMode.optional().default('console'),
+  password: z.string(),
+  remember_me: z.boolean().optional().default(false),
+})
+
+export const zGetLoginQuery = z.object({
+  app_code: z.string().min(1),
+  code_challenge: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  mode: z.string().optional().default('end_user'),
+  redirect_url: z.string().min(1),
+})
+
+/**
+ * Existing Account session
+ */
+export const zGetLoginResponse = zWebAppAccountSessionResponse
 
 export const zPostLoginBody = zLoginPayload
 

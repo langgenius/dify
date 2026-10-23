@@ -1,6 +1,19 @@
-import pytest
+from collections.abc import Callable
+from urllib.parse import parse_qs, urlsplit
 
-from libs.oauth import OAuth, decode_oauth_state, encode_oauth_state
+import pytest
+from itsdangerous import TimestampSigner
+
+from libs.oauth import (
+    AccountOAuthState,
+    GitHubOAuth,
+    GoogleOAuth,
+    OAuth,
+    decode_account_oauth_state,
+    decode_oauth_state,
+    encode_account_oauth_state,
+    encode_oauth_state,
+)
 
 
 def test_oauth_base_methods_raise_not_implemented() -> None:
@@ -37,3 +50,29 @@ def test_oauth_state_round_trips_login_context() -> None:
 
 def test_oauth_state_returns_empty_payload_for_invalid_state() -> None:
     assert decode_oauth_state("invalid-state") == {}
+
+
+def test_account_oauth_state_is_signed_and_expires(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(SECRET_KEY="end-user-state-test-key")
+    now = 1000
+    monkeypatch.setattr(TimestampSigner, "get_timestamp", lambda _self: now)
+    original = AccountOAuthState(
+        mode="end_user", provider="github", nonce="nonce", context={"redirect_url": "/chatbot/code?q=a%26b#result"}
+    )
+    state = encode_account_oauth_state(original)
+    assert decode_account_oauth_state(state) == original
+    with pytest.raises(ValueError, match="Invalid or expired"):
+        decode_account_oauth_state(state + "tampered")
+    now += 601
+    with pytest.raises(ValueError, match="Invalid or expired"):
+        decode_account_oauth_state(state)
+
+
+@pytest.mark.parametrize("provider", [GitHubOAuth, GoogleOAuth])
+def test_provider_authorization_preserves_protected_state(provider: type[OAuth]) -> None:
+    oauth = provider(client_id="client", client_secret="secret", redirect_uri="https://api.example.com/callback")
+    url = oauth.get_authorization_url(state="end_user.signed-context", redirect_url="/ignored-legacy-target")
+    assert parse_qs(urlsplit(url).query)["state"] == ["end_user.signed-context"]

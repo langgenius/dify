@@ -7885,6 +7885,26 @@ Get instruction generation template
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /login
+Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed; otherwise returns a one-use PKCE-bound callback to the existing /webapp-signin page.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_code | query |  | Yes | string |
+| code_challenge | query | S256 PKCE challenge | Yes | string |
+| mode | query |  | No | string, <br>**Default:** end_user |
+| redirect_url | query |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Existing Account session | **application/json**: [WebAppAccountSessionResponse](#webappaccountsessionresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /login
 **Authenticate user and login**
 
@@ -8095,7 +8115,8 @@ Initiate OAuth login process
 | provider | path | OAuth provider name (github/google) | Yes | string |
 | invite_token | query | Optional invitation token | No | string |
 | language | query | Preferred interface language | No | string |
-| redirect_url | query | Relative page to resume after login | No | string |
+| mode | query | End User mode skips workspace admission and provisioning | No | string, <br>**Available values:** "console", "end_user", <br>**Default:** console |
+| redirect_url | query | Console page to resume after login; End User mode resumes /signin to complete the Web App handoff | No | string |
 | timezone | query | Preferred timezone | No | string |
 
 #### Responses
@@ -9230,6 +9251,12 @@ Update account-level Step-by-step Tour state
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /refresh-token
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  No | **application/json**: [RefreshTokenPayload](#refreshtokenpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -21226,6 +21253,7 @@ Too many incorrect password attempts. Please try again later.
 | code | string |  | Yes |
 | email | string |  | Yes |
 | language | string |  | No |
+| mode | [LoginMode](#loginmode) | End User mode authenticates an Account without workspace admission or provisioning. | No |
 | timezone | string |  | No |
 | token | string (uuid) |  | Yes |
 | turnstile_token | string | Cloudflare Turnstile token for email-code verification. | No |
@@ -21252,6 +21280,7 @@ Email code verification is temporarily unavailable. Please try again later.
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | language | string |  | No |
+| mode | [LoginMode](#loginmode) | End User mode authenticates an Account without workspace admission or provisioning. | No |
 | turnstile_token | string | Cloudflare Turnstile token. Required at runtime for Dify Cloud. | No |
 
 #### EmailDomainSuspendedError
@@ -22749,12 +22778,19 @@ Unable to create account because the licensed seats limit was exceeded
 | configs | [ object ] |  | No |
 | enabled | boolean |  | No |
 
+#### LoginMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LoginMode | string |  |  |
+
 #### LoginPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | invite_token | string | Invitation token | No |
+| mode | [LoginMode](#loginmode) | End User mode authenticates an Account without workspace admission or provisioning. | No |
 | password | string |  | Yes |
 | remember_me | boolean | Remember me flag | No |
 
@@ -23707,7 +23743,8 @@ Only support workflow app.
 | ---- | ---- | ----------- | -------- |
 | invite_token | string | Optional invitation token | No |
 | language | string | Preferred interface language | No |
-| redirect_url | string | Relative page to resume after login | No |
+| mode | [LoginMode](#loginmode) | End User mode skips workspace admission and provisioning | No |
+| redirect_url | string | Console page to resume after login; End User mode resumes /signin to complete the Web App handoff | No |
 | timezone | string | Preferred timezone | No |
 
 #### OAuthProviderAccountResponse
@@ -25521,6 +25558,12 @@ Recommended app not found.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | redirect_url | string |  | Yes |
+
+#### RefreshTokenPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mode | [LoginMode](#loginmode) | End User mode refreshes the Account session without workspace admission | No |
 
 #### RelatedAppListResponse
 
@@ -28200,6 +28243,22 @@ The app access service is unavailable. Try again later.
 | ---- | ---- | ----------- | -------- |
 | WebAppAccessUnavailableError |  | The app access service is unavailable. Try again later. |  |
 
+#### WebAppAccountSessionQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_code | string |  | Yes |
+| code_challenge | string | S256 PKCE challenge | Yes |
+| mode | string, <br>**Default:** end_user |  | No |
+| redirect_url | string |  | Yes |
+
+#### WebAppAccountSessionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| logged_in | boolean |  | Yes |
+| redirect_url | string |  | Yes |
+
 #### WebAppAuthModel
 
 | Name | Type | Description | Required |
@@ -28216,6 +28275,14 @@ The app access service is unavailable. Try again later.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+
+#### WebLoginUnavailableError
+
+Web App login is temporarily unavailable. Please retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebLoginUnavailableError |  | Web App login is temporarily unavailable. Please retry. |  |
 
 #### WebhookTriggerQuery
 
