@@ -20,7 +20,7 @@ from services.web_authentication_adapters import PassportWebAppSessionGateway
 from services.web_identity_service import WebIdentityService
 from services.web_passport_gateways import DeploymentWebPassportAuthGateway, PassportTokenGateway
 from services.web_passport_service import WebPassportAccountExchangeDisabledError, WebPassportService
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, WebAccounts
 
 

@@ -267,7 +267,7 @@ def test_stop_task_rejects_other_token_owner(
     data = call(flask_app, app_id)
     end_user.return_value.id = "machine-user"
     from services.app_task_service import AppTaskControlService
-    from tests.unit_tests.services.test_app_task_service import _StopRedis
+    from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
 
     redis = _StopRedis(values={"generate_task_belong:task": b"end-user-other-user"})
     with patch(

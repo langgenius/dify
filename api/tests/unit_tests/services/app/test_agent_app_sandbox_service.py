@@ -53,8 +53,8 @@ from services.app.agent_app_contracts import (
 from services.app.agent_app_sandbox_service import AgentAppSandboxService
 from services.app.agent_sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
 from services.file_request_service import DownloadFileRequestResult, FileRequestService
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_message
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_message
 
 CONTEXT = RequestContext("request-1", "trace-1", "account-1", "tenant-1")
 
