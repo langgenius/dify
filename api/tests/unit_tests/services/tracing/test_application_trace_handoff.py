@@ -1,49 +1,66 @@
-"""SQLite ownership regressions at the actual legacy-task handoff boundary."""
+"""SQLite ownership regressions at the handoff from trace delivery to Agent trace collection."""
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-import httpx
 import pytest
 from dify_agent.protocol.tracing import AgentTraceBatch, AgentTraceSpan
-from flask import Flask
-from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
+from dify_trace_sdk.events import (
+    ConversationNamed,
+    MessageCompleted,
+    ModerationChecked,
+    TraceCorrelation,
+    TraceEvent,
+    TracePayload,
+    WorkflowRunCompleted,
+)
+from dify_trace_sdk.testing import RecordingEgress, response
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
-from core.ops.base_trace_instance import bind_application_tracing_hooks
-from core.ops.entities.trace_entity import (
-    BaseTraceInfo,
-    GenerateNameTraceInfo,
-    MessageTraceInfo,
-    ModerationTraceInfo,
-    WorkflowTraceInfo,
-)
-from core.ops.ops_trace_manager import OpsTraceManager
-from extensions.ext_database import db
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models.agent_config_entities import AgentSoulConfig
 from models.application_trace import ApplicationTraceRun
-from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Message
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
+from models.workflow import (
+    WorkflowAppLog,
+    WorkflowAppLogCreatedFrom,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+    WorkflowType,
+)
 from services.tracing import runtime_bridge
-from services.tracing.provider_dispatch import export_trace
+from services.tracing.canonical import CanonicalTraceBuilder
+from services.tracing.delivery import TraceCollectorUnavailableError, TraceDeliveryService
+from services.tracing.records import WorkflowTraceInfo
 from services.tracing.service import ApplicationTracingService
-from tasks import ops_trace_task
 from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account, make_conversation, make_workflow
-from tests.unit_tests.services.tracing.test_application_trace_collection import Collection, identifier, seed, terminal
+from tests.unit_tests.model_factories import make_workflow
+from tests.unit_tests.services.tracing.test_application_trace_collection import (
+    Collection,
+    add_app_owner,
+    attach_conversation,
+    identifier,
+    install_decryption,
+    no_egress,
+    seed,
+    terminal,
+    trace_event,
+    tracing_service,
+)
 
 AGENT_GRAPH = {
     "nodes": [{"id": "agent", "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"}}],
     "edges": list[object](),
 }
+STARTED_AT = datetime(2026, 10, 15, tzinfo=UTC)
 
 
 @dataclass
@@ -57,69 +74,79 @@ def setup(
     sessions: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, name: str, mode: AppMode, *, snapshot: bool
 ) -> Case:
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+    install_decryption(monkeypatch)
     collection = seed(sessions, name)
+    attach_conversation(collection, mode)
     with sessions.begin() as session:
         app = session.get(App, collection.run.app_id)
-        message = session.get(Message, collection.run.source_id)
         assert app is not None
-        assert message is not None
         app.mode = mode
-        session.add(
-            make_conversation(
-                conversation_id=message.conversation_id,
-                app_id=app.id,
-                mode=mode,
-                inputs={},
-                from_source=ConversationFromSource.CONSOLE,
-            )
-        )
         if not snapshot:
             session.execute(delete(ApplicationTraceRun).where(ApplicationTraceRun.id == collection.run.id))
-    service = ApplicationTracingService(collection.repository)
+    service = tracing_service(collection, no_egress())
     scheduled: list[str] = []
     monkeypatch.setattr(service, "schedule", scheduled.append)
     monkeypatch.setattr(runtime_bridge, "_service", lambda: service)
     return Case(collection, service, scheduled)
 
 
-def message_info(case: Case) -> MessageTraceInfo:
+def deliver(case: Case, event: TraceEvent, destination: RecordingEgress) -> None:
+    """Deliver one event the way the trace worker does, with this case's ledger as the Agent collector."""
+    TraceDeliveryService(
+        session_factory=case.collection.sessions,
+        assembler=case.service.assembler,
+        builder=CanonicalTraceBuilder(),
+        egress=destination,
+        enterprise_sink=None,
+        collector=case.service,
+        max_export_attempts=1,
+    ).deliver(event, enterprise_delivered=False)
+
+
+def exported() -> RecordingEgress:
+    """A provider destination that accepts exactly one ingestion request."""
+    return RecordingEgress([response(200, {})], grpc_target=None)
+
+
+def ingested(destination: RecordingEgress) -> list[dict[str, object]]:
+    """The Langfuse ingestion events the provider sent."""
+    events: list[dict[str, object]] = []
+    for request in destination.requests:
+        body = request.json()
+        assert isinstance(body, dict)
+        batch = body.get("batch")
+        assert isinstance(batch, list)
+        events.extend(item for item in batch if isinstance(item, dict))
+    return events
+
+
+def message(case: Case) -> Message:
     with case.collection.sessions() as session:
-        message = session.get(Message, case.collection.run.source_id)
-        assert message is not None
-        return MessageTraceInfo(
-            metadata={"app_id": message.app_id},
-            message_id=message.id,
-            message_data=message.to_dict(session=session),
-            conversation_model="agent",
-            conversation_mode="agent",
-            message_tokens=0,
-            answer_tokens=0,
-            total_tokens=0,
-            inputs="private input",
-            outputs="private output",
-        )
+        row = session.get(Message, case.collection.run.source_id)
+        assert row is not None
+        return row
 
 
-def dispatch(case: Case, info: BaseTraceInfo, monkeypatch: pytest.MonkeyPatch) -> list[BaseTraceInfo]:
-    calls: list[BaseTraceInfo] = []
-    failures: list[str] = []
+def message_event(case: Case) -> TraceEvent:
+    row = message(case)
+    return trace_event(case.collection, MessageCompleted(message_id=row.id, conversation_id=row.conversation_id))
 
-    class Legacy:
-        def trace(self, restored: BaseTraceInfo) -> None:
-            calls.append(restored)
 
-    payload = json.dumps({"trace_info_type": type(info).__name__, "trace_info": info.model_dump(mode="json")})
-    monkeypatch.setattr(ops_trace_task.storage, "load", lambda _path: payload)
-    monkeypatch.setattr(ops_trace_task.storage, "delete", lambda _path: None)
-    monkeypatch.setattr(ops_trace_task.redis_client, "incr", failures.append)
-    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda _app: Legacy())
-    monkeypatch.setattr("extensions.ext_enterprise_telemetry.is_enabled", lambda: False)
-    app = Flask(__name__)
-    bind_application_tracing_hooks(app, runtime_bridge.RuntimeApplicationTracingHooks())
-    with app.app_context():
-        ops_trace_task.process_trace_tasks.run({"app_id": case.collection.run.app_id, "file_id": "fixture"})
-    assert failures == []
-    return calls
+def workflow_event(row: WorkflowRun, parent: WorkflowRun | None) -> TraceEvent:
+    return TraceEvent(
+        event_id=uuid4().hex,
+        tenant_id=row.tenant_id,
+        app_id=row.app_id,
+        user_id=None,
+        occurred_at=datetime.now(UTC),
+        correlation=TraceCorrelation(
+            external_trace_id=None,
+            session_id=None,
+            parent_workflow_run_id=parent.id if parent else None,
+            parent_node_execution_id=identifier("parent-tool-node") if parent else None,
+        ),
+        payload=WorkflowRunCompleted(workflow_run_id=row.id, conversation_id=None, total_tokens=None),
+    )
 
 
 def workflow(
@@ -173,7 +200,7 @@ def workflow(
     return row, trace_run
 
 
-def workflow_info(row: WorkflowRun, parent: WorkflowRun | None = None) -> WorkflowTraceInfo:
+def workflow_info(row: WorkflowRun, parent: WorkflowRun | None) -> WorkflowTraceInfo:
     metadata: dict[str, object] = {"app_id": row.app_id}
     if parent is not None:
         metadata["parent_trace_context"] = {
@@ -182,6 +209,10 @@ def workflow_info(row: WorkflowRun, parent: WorkflowRun | None = None) -> Workfl
         }
     return WorkflowTraceInfo(
         workflow_data=row,
+        node_executions=[],
+        conversation_id=None,
+        message_started_at=None,
+        workflow_app_log_id=None,
         workflow_id=row.workflow_id,
         tenant_id=row.tenant_id,
         workflow_run_id=row.id,
@@ -190,8 +221,12 @@ def workflow_info(row: WorkflowRun, parent: WorkflowRun | None = None) -> Workfl
         workflow_run_inputs={},
         workflow_run_outputs={},
         workflow_run_version="1",
+        error=None,
         total_tokens=0,
+        prompt_tokens=None,
+        completion_tokens=None,
         file_list=[],
+        invoked_by=None,
         query="",
         metadata=metadata,
         start_time=row.created_at,
@@ -199,7 +234,12 @@ def workflow_info(row: WorkflowRun, parent: WorkflowRun | None = None) -> Workfl
     )
 
 
-def test_chatflow_message_event_cannot_export_again_via_legacy(
+def run_count(case: Case) -> int | None:
+    with case.collection.sessions() as session:
+        return session.scalar(select(func.count()).select_from(ApplicationTraceRun))
+
+
+def test_chatflow_message_event_is_not_exported_again(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     case = setup(sqlite_session_factory, monkeypatch, "chatflow", AppMode.ADVANCED_CHAT, snapshot=False)
@@ -209,16 +249,17 @@ def test_chatflow_message_event_cannot_export_again_via_legacy(
     before = case.collection.repository.get(trace_run.id)
     assert before is not None
     with case.collection.sessions.begin() as session:
-        message = session.get(Message, case.collection.run.source_id)
-        assert message is not None
-        message.workflow_run_id = row.id
-    assert dispatch(case, message_info(case), monkeypatch) == []
+        stored = session.get(Message, case.collection.run.source_id)
+        assert stored is not None
+        stored.workflow_run_id = row.id
+    destination = no_egress()
+    deliver(case, message_event(case), destination)
+    assert destination.requests == []
     after = case.collection.repository.get(trace_run.id)
     assert after is not None
     assert after.outer_trace == before.outer_trace
     assert case.scheduled == []
-    with case.collection.sessions() as session:
-        assert session.scalar(select(func.count()).select_from(ApplicationTraceRun)) == 1
+    assert run_count(case) == 1
 
 
 @pytest.mark.parametrize("mode", [AppMode.AGENT, AppMode.ADVANCED_CHAT])
@@ -249,7 +290,9 @@ def test_snapshot_failure_is_persisted_and_never_falls_back(
         backend_binding_ref="backend",
     )
     assert runtime_bridge.prepare_agent_app(context) is None
-    assert dispatch(case, message_info(case), monkeypatch) == []
+    destination = no_egress()
+    deliver(case, message_event(case), destination)
+    assert destination.requests == []
     stored = case.collection.repository.source_run(
         tenant_id=case.collection.run.tenant_id,
         app_id=case.collection.run.app_id,
@@ -268,83 +311,140 @@ def test_auxiliary_events_resolve_owner_without_bypassing_content_policy(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, mode: AppMode, kind: str
 ) -> None:
     case = setup(sqlite_session_factory, monkeypatch, "aux", mode, snapshot=False)
-    with case.collection.sessions() as session:
-        message = session.get(Message, case.collection.run.source_id)
-        assert message is not None
-        if kind == "title":
-            info: BaseTraceInfo = GenerateNameTraceInfo(
-                tenant_id=case.collection.run.tenant_id,
-                conversation_id=message.conversation_id,
-                metadata={"conversation_id": message.conversation_id},
-                inputs="private conversation",
-                outputs="private generated title",
+    row = message(case)
+    if kind == "aliased_moderation":
+        # Chatflow moderation is keyed by its workflow log, not by the message it guards.
+        workflow_run_id = identifier("aliased-workflow-run")
+        with case.collection.sessions.begin() as session:
+            stored = session.get(Message, row.id)
+            assert stored is not None
+            stored.workflow_run_id = workflow_run_id
+            session.add(
+                WorkflowAppLog(
+                    tenant_id=case.collection.run.tenant_id,
+                    app_id=case.collection.run.app_id,
+                    workflow_id=identifier("aliased-workflow"),
+                    workflow_run_id=workflow_run_id,
+                    created_from=WorkflowAppLogCreatedFrom.WEB_APP,
+                    created_by_role=CreatorUserRole.ACCOUNT,
+                    created_by=identifier("owner"),
+                )
             )
-        else:
-            info = ModerationTraceInfo(
-                message_id=identifier("workflow-app-log") if kind == "aliased_moderation" else message.id,
-                message_data=message.to_dict(session=session),
-                metadata={"message_id": message.id},
-                flagged=False,
-                action="direct_output",
-                preset_response="",
-                query="private prompt",
-                inputs="private prompt",
-                outputs="private output",
-            )
-    legacy = dispatch(case, info, monkeypatch)
-    assert len(legacy) == (1 if mode is AppMode.CHAT else 0)
+    payload: TracePayload = (
+        ConversationNamed(
+            conversation_id=row.conversation_id,
+            message_id=row.id,
+            inputs="private conversation",
+            name="private generated title",
+            started_at=STARTED_AT,
+            ended_at=STARTED_AT,
+        )
+        if kind == "title"
+        else ModerationChecked(
+            message_id=row.id,
+            inputs={"query": "private prompt"},
+            query="private prompt",
+            flagged=False,
+            action="direct_output",
+            preset_response="",
+            started_at=STARTED_AT,
+            ended_at=STARTED_AT,
+        )
+    )
+    destination = exported() if mode is AppMode.CHAT else no_egress()
+    deliver(case, trace_event(case.collection, payload), destination)
+    assert len(destination.requests) == (1 if mode is AppMode.CHAT else 0)
     assert case.scheduled == []
+    assert run_count(case) == 0
 
 
-def test_plain_workflow_preserves_legacy_parent_context(
+def test_plain_nested_workflow_keeps_its_parent_context_for_the_provider(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     parent_case = setup(sqlite_session_factory, monkeypatch, "plain-parent", AppMode.WORKFLOW, snapshot=False)
     parent, _ = workflow(parent_case, "plain-parent", has_agent=False, snapshot=False)
     child_case = setup(sqlite_session_factory, monkeypatch, "plain-child", AppMode.WORKFLOW, snapshot=False)
     child, _ = workflow(child_case, "plain-child", has_agent=False, snapshot=False)
-    info = workflow_info(child, parent)
-    original = dict(info.metadata)
-    assert child_case.service.capture_terminal(info) is False
-    assert info.metadata == original
-    with child_case.collection.sessions() as session:
-        assert session.scalar(select(func.count()).select_from(ApplicationTraceRun)) == 0
+    add_app_owner(child_case.collection, "plain-child")
+    event = workflow_event(child, parent)
+    record = child_case.service.assembler.assemble(event)
+    assert isinstance(record, WorkflowTraceInfo)
+    assert child_case.service.capture_terminal(record) is False
+    assert child_case.service.link_managed_parent(record) is record
+    destination = exported()
+    deliver(child_case, event, destination)
+    trace = next(item for item in ingested(destination) if item["type"] == "trace-create")
+    body = trace["body"]
+    assert isinstance(body, dict)
+    assert body["metadata"]["parent_workflow_run_id"] == parent.id
+    assert body["metadata"]["parent_node_execution_id"] == identifier("parent-tool-node")
+    assert "linked_parent_workflow_run_id" not in body["metadata"]
+    assert run_count(child_case) == 0
 
 
-def test_plain_chatflow_auxiliary_events_keep_the_legacy_route(
+def test_plain_chatflow_auxiliary_events_keep_the_provider_route(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     case = setup(sqlite_session_factory, monkeypatch, "plain-chatflow", AppMode.ADVANCED_CHAT, snapshot=False)
     row, _ = workflow(case, "plain-chatflow", has_agent=False, snapshot=False)
     with case.collection.sessions.begin() as session:
-        message = session.get(Message, case.collection.run.source_id)
-        assert message is not None
-        message.workflow_run_id = row.id
-        info = GenerateNameTraceInfo(
-            tenant_id=row.tenant_id,
-            conversation_id=message.conversation_id,
-            metadata={"conversation_id": message.conversation_id},
-            inputs="legacy input",
-            outputs="legacy title",
+        stored = session.get(Message, case.collection.run.source_id)
+        assert stored is not None
+        stored.workflow_run_id = row.id
+        payload = ConversationNamed(
+            conversation_id=stored.conversation_id,
+            message_id=stored.id,
+            inputs="provider input",
+            name="provider title",
+            started_at=STARTED_AT,
+            ended_at=STARTED_AT,
         )
-    assert len(dispatch(case, info, monkeypatch)) == 1
+    destination = exported()
+    deliver(case, trace_event(case.collection, payload), destination)
+    assert len(destination.requests) == 1
 
 
-def test_legacy_child_of_managed_parent_uses_explicit_link_not_unavailable_context(
+def test_provider_exported_child_of_managed_parent_names_the_collected_parent(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     parent_case = setup(sqlite_session_factory, monkeypatch, "managed-parent", AppMode.WORKFLOW, snapshot=False)
     parent, parent_trace = workflow(parent_case, "managed-parent", has_agent=True, snapshot=True)
     assert parent_trace is not None
-    child_case = setup(sqlite_session_factory, monkeypatch, "legacy-child", AppMode.WORKFLOW, snapshot=False)
-    child, _ = workflow(child_case, "legacy-child", has_agent=False, snapshot=False)
+    child_case = setup(sqlite_session_factory, monkeypatch, "provider-child", AppMode.WORKFLOW, snapshot=False)
+    child, _ = workflow(child_case, "provider-child", has_agent=False, snapshot=False)
     info = workflow_info(child, parent)
     assert child_case.service.capture_terminal(info) is False
-    assert info.resolved_parent_context == (None, None)
-    assert info.metadata["linked_parent_workflow_run_id"] == parent.id
-    assert info.metadata["linked_parent_node_execution_id"] == identifier("parent-tool-node")
-    assert info.metadata["linked_parent_application_trace_id"] == parent_trace.id
-    assert info.metadata["linked_parent_trace_id"] == parent_trace.trace_id
+    linked = child_case.service.link_managed_parent(info)
+    assert linked.resolved_parent_context == (None, None)
+    assert linked.metadata["linked_parent_workflow_run_id"] == parent.id
+    assert linked.metadata["linked_parent_node_execution_id"] == identifier("parent-tool-node")
+    assert linked.metadata["linked_parent_application_trace_id"] == parent_trace.id
+    assert linked.metadata["linked_parent_trace_id"] == parent_trace.trace_id
+    # Records are frozen: the delivered record is a copy, the original keeps its unavailable context.
+    assert info.resolved_parent_context == (parent.id, identifier("parent-tool-node"))
+    add_app_owner(child_case.collection, "provider-child")
+    destination = exported()
+    deliver(child_case, workflow_event(child, parent), destination)
+    trace = next(item for item in ingested(destination) if item["type"] == "trace-create")
+    body = trace["body"]
+    assert isinstance(body, dict)
+    assert body["metadata"]["linked_parent_trace_id"] == parent_trace.trace_id
+    assert "parent_workflow_run_id" not in body["metadata"]
+
+
+def test_collector_database_failure_redelivers_without_provider_fallback(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = setup(sqlite_session_factory, monkeypatch, "collector-unavailable", AppMode.AGENT, snapshot=True)
+
+    def unavailable(**_kwargs: object) -> None:
+        raise OperationalError("statement", {}, Exception("sensitive database error"))
+
+    monkeypatch.setattr(case.collection.repository, "source_run", unavailable)
+    destination = no_egress()
+    with pytest.raises(TraceCollectorUnavailableError):
+        deliver(case, message_event(case), destination)
+    assert destination.requests == []
 
 
 def test_mixed_workflow_exports_normal_llm_and_agent_calls_without_double_usage(
@@ -353,13 +453,9 @@ def test_mixed_workflow_exports_normal_llm_and_agent_calls_without_double_usage(
     case = setup(sqlite_session_factory, monkeypatch, "mixed", AppMode.WORKFLOW, snapshot=False)
     row, managed = workflow(case, "mixed", has_agent=True, snapshot=True)
     assert managed is not None
+    owner = add_app_owner(case.collection, "mixed")
     agent_node_id = identifier("agent-execution")
-    owner = identifier("mixed-owner")
     with case.collection.sessions.begin() as session:
-        app = session.get(App, row.app_id)
-        assert app is not None
-        app.created_by = owner
-        session.add(make_account(account_id=owner))
         for index, kind in enumerate(("llm", "agent")):
             node_id = identifier("normal-execution") if kind == "llm" else agent_node_id
             usage: dict[str, int] = (
@@ -443,26 +539,20 @@ def test_mixed_workflow_exports_normal_llm_and_agent_calls_without_double_usage(
         max_spans=100,
         max_bytes=100000,
     )
-    monkeypatch.setattr(type(db), "engine", property(lambda _db: sqlite_session_factory.kw["bind"]))
-    assert case.service.capture_terminal(workflow_info(row)) is True
-    stored = case.collection.repository.get(managed.id)
-    assert stored is not None
-    trace = case.service.assemble(stored)
-    payloads: list[ExportTraceServiceRequest] = []
-
-    def send(method: str, url: str, **kwargs: object) -> httpx.Response:
-        body = kwargs["content"]
-        assert isinstance(body, bytes)
-        payloads.append(ExportTraceServiceRequest.FromString(body))
-        return httpx.Response(200, content=b"", request=httpx.Request(method, url))
-
-    monkeypatch.setattr("core.helper.ssrf_proxy.make_request", send)
-    export_trace("langfuse", {"host": "https://langfuse.test", "public_key": "pk", "secret_key": "sk"}, trace)
-    observations = payloads[0].resource_spans[0].scope_spans[0].spans
-    attributes = [{item.key: item.value.string_value for item in span.attributes} for span in observations]
-    generations = [item for item in attributes if item["langfuse.observation.type"] == "generation"]
-    assert len(generations) == 3
-    assert sum(json.loads(item["langfuse.observation.usage_details"])["total"] for item in generations) == 25
-    assert sum(json.loads(item["langfuse.observation.cost_details"])["total"] for item in generations) == pytest.approx(
-        0.04
+    record = case.service.assembler.assemble(workflow_event(row, None))
+    assert isinstance(record, WorkflowTraceInfo)
+    assert case.service.capture_terminal(record) is True
+    assert case.scheduled == [managed.id]
+    destination = exported()
+    tracing_service(Collection(case.collection.repository, case.collection.sessions, managed), destination).deliver(
+        managed.id
     )
+    delivered = case.collection.repository.get(managed.id)
+    assert delivered is not None
+    assert delivered.state == "accepted"
+    assert [request.url for request in destination.requests] == ["https://langfuse.test/api/public/ingestion"]
+    generations = [item["body"] for item in ingested(destination) if item["type"] == "generation-create"]
+    usages = [body["usage"] for body in generations if isinstance(body, dict)]
+    assert len(usages) == 3
+    assert sum(usage["total"] for usage in usages) == 25
+    assert sum(usage["totalCost"] for usage in usages) == pytest.approx(0.04)

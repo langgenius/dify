@@ -8,9 +8,16 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.application_trace import ApplicationTraceRun
 from repositories.application_trace_repository import TraceCollectionError
+from services.tracing import provider_configs as provider_configs_module
 from services.tracing import service as service_module
-from services.tracing.service import ApplicationTracingService
-from tests.unit_tests.services.tracing.test_application_trace_collection import batch_for, ingest, seed, terminal
+from tests.unit_tests.services.tracing.test_application_trace_collection import (
+    batch_for,
+    ingest,
+    no_egress,
+    seed,
+    terminal,
+    tracing_service,
+)
 
 
 @pytest.mark.parametrize("invalid", ["cycle", "invalid_envelope"])
@@ -43,9 +50,9 @@ def test_invalid_tree_is_permanent_before_decryption_or_provider_io(
     def forbidden(*_args: object, **_kwargs: object) -> None:
         pytest.fail("invalid traces must fail before credentials or provider I/O")
 
-    monkeypatch.setattr(service_module.OpsTraceManager, "decrypt_tracing_config", forbidden)
-    monkeypatch.setattr(service_module, "export_trace", forbidden)
-    ApplicationTracingService(case.repository).deliver(case.run.id)
+    monkeypatch.setattr(provider_configs_module, "batch_decrypt_token", forbidden)
+    monkeypatch.setattr(service_module, "provider_class", forbidden)
+    tracing_service(case, no_egress()).deliver(case.run.id)
     current = case.repository.get(case.run.id)
     assert current is not None
     assert current.state == "failed"

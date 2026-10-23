@@ -1,19 +1,16 @@
-from pydantic import ValidationInfo, field_validator
+from dify_trace_sdk.config import ProviderConfig, derived, destination, http_url, secret
+from pydantic import field_validator
 
-from core.ops.entities.config_entity import BaseTracingConfig
-from core.ops.utils import validate_url_with_path
+DEFAULT_HOST = "https://api.langfuse.com"
 
 
-class LangfuseConfig(BaseTracingConfig):
-    """
-    Model class for Langfuse tracing config.
-    """
-
-    public_key: str
-    secret_key: str
-    host: str = "https://api.langfuse.com"
+class LangfuseConfig(ProviderConfig):
+    public_key: str = secret()
+    secret_key: str = secret()
+    host: str = destination(default=DEFAULT_HOST)
+    project_key: str | None = derived()
 
     @field_validator("host")
     @classmethod
-    def host_validator(cls, v, info: ValidationInfo):
-        return validate_url_with_path(v, "https://api.langfuse.com")
+    def _host(cls, value: str) -> str:
+        return http_url(value, allowed_schemes=("https", "http")) if value.strip() else DEFAULT_HOST

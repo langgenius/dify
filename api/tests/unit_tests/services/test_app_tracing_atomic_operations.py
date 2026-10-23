@@ -4,6 +4,7 @@ import json
 from dataclasses import dataclass
 
 import pytest
+from dify_trace_sdk.testing import RecordingEgress
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -11,7 +12,6 @@ from machinery.context import RequestContext
 from models.model import App, TraceAppConfig
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import (
     AppTraceSettings,
     AppTracingConfigConflictError,
@@ -20,6 +20,7 @@ from services.app_tracing_config_service import (
     AppTracingConfigService,
     AppTracingConfigVerificationFailedError,
 )
+from services.tracing.provider_configs import ProviderConfigGateway
 
 CONTEXT = RequestContext("request", None, "account", "tenant")
 
@@ -29,7 +30,7 @@ class Case:
     sessions: sessionmaker[Session]
     store: SQLAlchemyAppTracingConfigRepository
     service: AppTracingConfigService
-    gateway: OpsTraceManagerGateway
+    gateway: ProviderConfigGateway
     reader: ConsoleAppRepository
 
     def policy(self) -> AppTraceSettings:
@@ -55,7 +56,7 @@ def case(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.Monk
                 ),
             )
         )
-    gateway = OpsTraceManagerGateway()
+    gateway = ProviderConfigGateway(RecordingEgress([], grpc_target=None))
 
     def prepare(*, tracing_config: dict[str, object], **_: object) -> dict[str, object]:
         return dict(tracing_config)

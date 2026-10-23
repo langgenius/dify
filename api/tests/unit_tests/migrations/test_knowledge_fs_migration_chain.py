@@ -6,7 +6,7 @@ from alembic.script import ScriptDirectory
 
 _VERSIONS = Path(__file__).resolve().parents[3] / "migrations/versions"
 _MAIN_HEAD = "d6b9e2f1a407"
-# KnowledgeFS revisions run in this order after main's head, without merge revisions.
+# KnowledgeFS revisions, then later ones, run in this order after main's head, without merge revisions.
 _KNOWLEDGE_FS_CHAIN = [
     "a4e7c2f91b30",
     "b7f2a9d41c60",
@@ -23,6 +23,7 @@ _KNOWLEDGE_FS_CHAIN = [
     "3edd6cd27f54",
     "a8c2e6f4b901",
     "b9d3f7a5c102",
+    "53c10126d551",
 ]
 
 

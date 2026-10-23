@@ -390,6 +390,7 @@ def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding
             app_id="outer-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         ),
+        trace_scope=None,
     )
     index = WorkflowRunIndex(())
     index.seed_source(source.app_id, source.workflow_id, ())

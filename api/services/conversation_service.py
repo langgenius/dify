@@ -10,6 +10,7 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_app_type
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_context import use_credit_usage_metadata
+from extensions.tracing import create_trace_scope_for_app
 from factories import variable_factory
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
@@ -168,8 +169,11 @@ class ConversationService:
     @staticmethod
     def generate_name(*, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str) -> str:
         """Generate a conversation title with the appropriate credit usage metadata."""
+        trace_scope = create_trace_scope_for_app(tenant_id=tenant_id, app_id=app_id, user_id=None, extras={})
         with use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_mode)}):
-            return LLMGenerator.generate_conversation_name(tenant_id, query, conversation_id, app_id)
+            return LLMGenerator.generate_conversation_name(
+                tenant_id, query, conversation_id, app_id, trace_scope=trace_scope
+            )
 
     @classmethod
     def get_conversation(

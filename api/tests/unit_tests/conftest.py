@@ -14,6 +14,7 @@ os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
 os.environ.setdefault("STORAGE_TYPE", "opendal")
 
 import pytest
+from dify_trace_sdk.testing import RecordingEgress
 from flask import Flask
 from redis import Redis
 from sqlalchemy import create_engine
@@ -24,6 +25,7 @@ import core.db.session_factory as session_factory_module
 from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
+from services.tracing.provider_configs import ProviderConfigGateway
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.rbac_fakes import RBACDomain, build_rbac_domain
 
@@ -355,7 +357,6 @@ def app_services(sqlite_session_factory: sessionmaker[Session], rbac_domain: RBA
     from extensions.ext_redis import redis_client
     from repositories.app.console_repository import ConsoleAppRepository
     from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
-    from services.app_tracing_config_gateway import OpsTraceManagerGateway
     from services.app_tracing_config_service import AppTracingConfigService
     from services.recommended_app_package_service import RecommendedAppPackageService
 
@@ -365,7 +366,8 @@ def app_services(sqlite_session_factory: sessionmaker[Session], rbac_domain: RBA
         rbac_members=rbac_domain.rbac.members,
         tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=sqlite_session_factory),
-            provider=OpsTraceManagerGateway(),
+            # Unit tests never reach a tracing vendor; an unexpected request fails the test.
+            provider=ProviderConfigGateway(RecordingEgress([], grpc_target=None)),
         ),
         oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis_client),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),

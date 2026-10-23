@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Generator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -10,6 +11,9 @@ from typing import cast
 from unittest.mock import Mock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent
+from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
@@ -54,8 +58,6 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
@@ -96,9 +98,40 @@ class _AudioPublisher:
         return self._audio
 
 
-class _TraceManagerDouble:
-    def __init__(self) -> None:
-        self.add_trace_task = Mock()
+class _TraceRecorder:
+    """Record trace events on a timeline shared with the commits they must follow."""
+
+    def __init__(self, timeline: list[str]) -> None:
+        self._timeline = timeline
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+        self._timeline.append("trace")
+
+
+def _trace_scope(recorder: _TraceRecorder) -> TraceScope:
+    return TraceScope(
+        emitter=recorder,
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
+@contextmanager
+def _recording_commits(timeline: list[str]) -> Generator[None]:
+    def record_commit(_session: Session) -> None:
+        timeline.append("commit")
+
+    sqlalchemy_event.listen(Session, "after_commit", record_commit)
+    try:
+        yield
+    finally:
+        sqlalchemy_event.remove(Session, "after_commit", record_commit)
 
 
 class _FakeQueueManager(AppQueueManager):
@@ -279,7 +312,7 @@ def _make_entity(entity_cls, app_mode: AppMode):
         invoke_from=InvokeFrom.WEB_APP,
         extras={},
         call_depth=0,
-        trace_manager=None,
+        trace_scope=None,
     )
 
 
@@ -506,7 +539,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
             call_depth=0,
-            trace_manager=None,
+            trace_scope=None,
         )
 
         pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -703,51 +736,32 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert isinstance(responses[-1].err, ValueError)
         assert pipeline._task_state.llm_result.message.content == "annotated"
 
-    def test_process_stream_response_error_event_adds_trace_task(self, monkeypatch: pytest.MonkeyPatch):
-        conversation = _make_conversation(AppMode.CHAT)
-        message = _make_message()
+    def test_process_stream_response_error_event_emits_message_trace_after_commit(self) -> None:
+        timeline: list[str] = []
+        recorder = _TraceRecorder(timeline)
         application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
-        application_generate_entity.extras = {"trace_session_id": "session-1"}
+        application_generate_entity.trace_scope = _trace_scope(recorder)
 
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             queue_manager=_FakeQueueManager(),
-            conversation=conversation,
-            message=message,
+            conversation=_make_conversation(AppMode.CHAT),
+            message=_make_message(),
             stream=True,
         )
         _set_queue_events(pipeline, [_queue_message(QueueErrorEvent(error=ValueError("boom")))])
         _set_method(pipeline, "handle_error", lambda **kwargs: ValueError("boom"))
         _set_method(pipeline, "error_to_stream_response", lambda err: ErrorStreamResponse(task_id="task", err=err))
 
-        trace_manager_double = _TraceManagerDouble()
-        trace_manager = cast(TraceQueueManager, trace_manager_double)
-
-        class _Session:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-            def commit(self):
-                return None
-
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-            lambda: _Session(),
-        )
-
-        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
+        with _recording_commits(timeline):
+            responses = list(pipeline._process_stream_response(publisher=None))
 
         assert len(responses) == 1
         assert isinstance(responses[0], ErrorStreamResponse)
-        trace_manager_double.add_trace_task.assert_called_once()
-        trace_task = trace_manager_double.add_trace_task.call_args.args[0]
-        assert trace_task.trace_type == TraceTaskName.MESSAGE_TRACE
-        assert trace_task.conversation_id == "conv"
-        assert trace_task.message_id == "msg"
-        assert trace_task.kwargs["trace_session_id"] == "session-1"
+        assert timeline == ["commit", "trace"]
+        assert [event.payload for event in recorder.events] == [
+            MessageCompleted(message_id="msg", conversation_id="conv")
+        ]
 
     def test_agent_thought_to_stream_response_returns_payload(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
@@ -847,7 +861,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(
             pipeline,
             "_wrapper_process_stream_response",
-            lambda trace_manager: iter([PingStreamResponse(task_id="task")]),
+            lambda: iter([PingStreamResponse(task_id="task")]),
         )
         _set_method(pipeline, "_to_stream_response", lambda generator: "streamed")
 
@@ -872,7 +886,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(
             pipeline,
             "_wrapper_process_stream_response",
-            lambda trace_manager: iter([PingStreamResponse(task_id="task")]),
+            lambda: iter([PingStreamResponse(task_id="task")]),
         )
         _set_method(pipeline, "_to_blocking_response", lambda generator: "blocking")
 
@@ -1001,7 +1015,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             stream=True,
         )
         payload = PingStreamResponse(task_id="task")
-        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([payload]))
+        _set_method(pipeline, "_process_stream_response", lambda publisher: iter([payload]))
 
         responses = list(pipeline._wrapper_process_stream_response())
 
@@ -1037,7 +1051,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         audio_calls = iter([inline_audio, None])
         payload = PingStreamResponse(task_id="task")
         _set_method(pipeline, "_listen_audio_msg", lambda publisher, task_id: next(audio_calls))
-        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([payload]))
+        _set_method(pipeline, "_process_stream_response", lambda publisher: iter([payload]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
             lambda tenant_id, voice, language, app_type: _Publisher(),
@@ -1079,7 +1093,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def cancel(self):
                 return None
 
-        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([]))
+        _set_method(pipeline, "_process_stream_response", lambda publisher: iter([]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
             lambda tenant_id, voice, language, app_type: _Publisher(),
@@ -1118,7 +1132,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def cancel(self):
                 return None
 
-        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([]))
+        _set_method(pipeline, "_process_stream_response", lambda publisher: iter([]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
             lambda tenant_id, voice, language, app_type: _Publisher(),
@@ -1147,7 +1161,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         publisher = Mock()
         publisher.check_and_get_audio.return_value = None
         error = ErrorStreamResponse(task_id="task", err=RuntimeError("generation failed"))
-        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([error]))
+        _set_method(pipeline, "_process_stream_response", lambda publisher: iter([error]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
             lambda tenant_id, voice, language, app_type: publisher,
@@ -1334,13 +1348,15 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert list(pipeline._process_stream_response(publisher=None)) == []
 
-    def test_save_message_persists_fields_and_emits_trace(
+    def test_save_message_persists_fields_without_emitting_trace(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-    ):
+    ) -> None:
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
+        timeline: list[str] = []
+        recorder = _TraceRecorder(timeline)
         application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
-        application_generate_entity.extras = {"trace_session_id": "session-1"}
+        application_generate_entity.trace_scope = _trace_scope(recorder)
         pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             queue_manager=_FakeQueueManager(),
@@ -1361,8 +1377,6 @@ class TestEasyUiBasedGenerateTaskPipeline:
         session = sqlite_session
         session.add_all([conversation_obj, message_obj])
         session.flush()
-        trace_manager_double = _TraceManagerDouble()
-        trace_manager = cast(TraceQueueManager, trace_manager_double)
         sent_payloads: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
         monkeypatch.setattr(
@@ -1385,18 +1399,66 @@ class TestEasyUiBasedGenerateTaskPipeline:
             lambda *args, **kwargs: sent_payloads.append((args, kwargs)),
         )
 
-        pipeline._save_message(session=session, trace_manager=trace_manager)
+        pipeline._save_message(session=session)
 
         assert message_obj.message == "serialized-prompt"
         assert message_obj.answer == "hello"
         assert message_obj.provider_response_latency == 5.0
-        trace_manager_double.add_trace_task.assert_called_once()
-        trace_task = trace_manager_double.add_trace_task.call_args.args[0]
-        assert trace_task.trace_type == TraceTaskName.MESSAGE_TRACE
-        assert trace_task.conversation_id == "conv"
-        assert trace_task.message_id == "msg"
-        assert trace_task.kwargs["trace_session_id"] == "session-1"
         assert len(sent_payloads) == 1
+        # The caller reports the message only after it commits this session.
+        assert recorder.events == []
+
+    @pytest.mark.parametrize(
+        ("app_mode", "expected_timeline", "expected_payloads"),
+        [
+            (
+                AppMode.CHAT,
+                ["message_was_created", "commit", "trace"],
+                [MessageCompleted(message_id="msg", conversation_id="conv")],
+            ),
+            # The Agent worker reports a stopped Agent run's terminal itself.
+            (AppMode.AGENT, ["commit", "message_was_created"], []),
+        ],
+    )
+    def test_stopped_message_trace_follows_commit_unless_agent_worker_owns_it(
+        self,
+        app_mode: AppMode,
+        expected_timeline: list[str],
+        expected_payloads: list[MessageCompleted],
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+    ) -> None:
+        timeline: list[str] = []
+        recorder = _TraceRecorder(timeline)
+        application_generate_entity = _make_entity(ChatAppGenerateEntity, app_mode)
+        application_generate_entity.trace_scope = _trace_scope(recorder)
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=application_generate_entity,
+            queue_manager=_FakeQueueManager(),
+            conversation=_make_conversation(app_mode),
+            message=_make_message(),
+            stream=True,
+        )
+        _set_method(pipeline, "_model_config", _ModelConfigMode(mode="chat"))
+        _set_method(pipeline, "_handle_stop", lambda event: None)
+        _set_queue_events(pipeline, [_queue_message(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL))])
+        sqlite_session.add_all([_make_conversation(app_mode), _make_message()])
+        sqlite_session.commit()
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.PromptMessageUtil.prompt_messages_to_prompt_for_saving",
+            lambda _mode, _prompt_messages: "",
+        )
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send",
+            lambda *_args, **_kwargs: timeline.append("message_was_created"),
+        )
+
+        with _recording_commits(timeline):
+            responses = list(pipeline._process_stream_response(publisher=None))
+
+        assert isinstance(responses[-1], MessageEndStreamResponse)
+        assert timeline == expected_timeline
+        assert [event.payload for event in recorder.events] == expected_payloads
 
     def test_save_stopped_message_preserves_backend_reported_usage(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session

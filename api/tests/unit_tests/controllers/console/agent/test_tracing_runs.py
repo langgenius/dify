@@ -8,6 +8,7 @@ from functools import wraps
 from uuid import UUID
 
 import pytest
+from dify_trace_sdk.testing import RecordingEgress
 from flask import Flask
 from flask_restx import Resource
 from pydantic import ValidationError
@@ -24,6 +25,8 @@ from machinery.context import RequestContext
 from models.account import Account, AccountStatus, TenantAccountRole
 from repositories.application_trace_repository import ApplicationTraceRepository, TraceCollectionError
 from services.app.agent_app_contracts import AgentAppNotFoundError
+from services.tracing.assembly import TraceAssembler
+from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.service import ApplicationTracingService
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -54,7 +57,12 @@ def services(
     account_application_services: ApplicationServices,
     sqlite_session_factory: sessionmaker[Session],
 ) -> RunCase:
-    runs = ApplicationTracingService(ApplicationTraceRepository(sqlite_session_factory))
+    runs = ApplicationTracingService(
+        ApplicationTraceRepository(sqlite_session_factory),
+        assembler=TraceAssembler(sqlite_session_factory, files_url="https://files.test", enterprise_details=False),
+        builder=CanonicalTraceBuilder(),
+        egress=RecordingEgress([], grpc_target=None),
+    )
     case = RunCase(account_application_services, runs)
 
     def resolve(context: RequestContext, agent_id: str) -> str:

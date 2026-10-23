@@ -26,7 +26,7 @@ type ProviderPanelProps = {
   readOnly: boolean
   pending: boolean
   isChosen: boolean
-  config: TraceAppConfigResponse['tracing_config']
+  config: TraceAppConfigResponse | null | undefined
   configError?: ProviderConfigError
 }
 
@@ -46,6 +46,7 @@ export function ProviderPanel({
   })
   const iconClassName = tracingProviders[type].panelIcon
   const hasConfigured = !!config
+  const projectUrl = config?.tracing_config?.project_url
 
   return (
     <div
@@ -86,11 +87,11 @@ export function ProviderPanel({
               {hasConfigured && (
                 <a
                   className={buttonVariants({ size: 'small' })}
-                  href={config.project_url || undefined}
+                  href={projectUrl || undefined}
                   target="_blank"
                   rel="noopener noreferrer"
-                  role={config.project_url ? undefined : 'link'}
-                  aria-disabled={!config.project_url}
+                  role={projectUrl ? undefined : 'link'}
+                  aria-disabled={!projectUrl}
                 >
                   <span aria-hidden className="i-custom-vender-solid-general-eye size-3" />
                   {t(($) => $[`${I18N_PREFIX}.view`], { ns: 'app' })}

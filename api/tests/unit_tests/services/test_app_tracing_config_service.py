@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
@@ -9,6 +10,7 @@ from services.app_tracing_config_service import (
     AppTracingConfigNotFoundError,
     AppTracingConfigRecord,
     AppTracingConfigService,
+    PresentedTracingConfig,
 )
 
 
@@ -34,12 +36,16 @@ def test_get_scopes_lookup_to_workspace_and_presents_config() -> None:
     configs = MagicMock()
     configs.get.return_value = stored
     provider = MagicMock()
-    provider.present_config.return_value = {"api_key": "******", "project_url": "https://example.com"}
+    provider.present_config.return_value = PresentedTracingConfig(
+        values={"project_url": "https://example.com"}, configured_secrets=("api_key",)
+    )
     service = AppTracingConfigService(configs=configs, provider=provider)
 
     result = service.get(_context(), "app-1", "arize")
 
-    assert result == _record(tracing_config={"api_key": "******", "project_url": "https://example.com"})
+    assert result == replace(
+        _record(tracing_config={"project_url": "https://example.com"}), configured_secrets=("api_key",)
+    )
     assert stored.tracing_config == {"api_key": "encrypted"}
     provider.validate_provider.assert_called_once_with("arize")
     configs.get.assert_called_once_with(

@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 
-from core.ops.entities.trace_entity import TraceTaskName
+from core.telemetry import gateway as gateway_module
 from core.telemetry.events import (
     AppCreatedEvent,
     AppCreatedPayload,
@@ -14,6 +19,7 @@ from core.telemetry.events import (
     PromptGenerationPayload,
     TelemetryContext,
     TelemetryEvent,
+    TraceSignalEvent,
 )
 from core.telemetry.gateway import PAYLOAD_SIZE_THRESHOLD_BYTES, emit
 from enterprise.telemetry.contracts import SignalType, TelemetryCase, TelemetryEnvelope
@@ -47,6 +53,11 @@ def _prompt_event() -> PromptGenerationEvent:
             completion_tokens=5,
             total_tokens=15,
             latency=0.5,
+            total_price=None,
+            currency=None,
+            error=None,
+            started_at=datetime(2026, 10, 1, 8, 0, 0, tzinfo=UTC),
+            ended_at=datetime(2026, 10, 1, 8, 0, 1, tzinfo=UTC),
         ),
     )
 
@@ -71,21 +82,23 @@ class TestEventRoutingMetadata:
         assert ev.case == TelemetryCase.DRAFT_NODE_EXECUTION
         assert ev.signal_type is SignalType.TRACE
         assert ev.ce_eligible is False
-        assert ev.trace_task_name is TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
+        assert isinstance(ev, TraceSignalEvent)
+        assert ev.trace_payload().kind == "draft_node_execution"
 
     def test_prompt_generation_routing(self) -> None:
         ev = _prompt_event()
         assert ev.case == TelemetryCase.PROMPT_GENERATION
         assert ev.signal_type is SignalType.TRACE
         assert ev.ce_eligible is False
-        assert ev.trace_task_name is TraceTaskName.PROMPT_GENERATION_TRACE
+        assert isinstance(ev, TraceSignalEvent)
+        assert ev.trace_payload().kind == "prompt_generation"
 
     def test_app_created_routing(self) -> None:
         ev = _app_created_event()
         assert ev.case == TelemetryCase.APP_CREATED
         assert ev.signal_type is SignalType.METRIC_LOG
         assert ev.ce_eligible is False
-        assert ev.trace_task_name is None
+        assert not isinstance(ev, TraceSignalEvent)
 
     def test_all_events_satisfy_protocol(self) -> None:
         events: list[TelemetryEvent] = [_node_event(), _prompt_event(), _app_created_event()]
@@ -98,37 +111,66 @@ class TestEventRoutingMetadata:
 # ---------------------------------------------------------------------------
 
 
+@dataclass
+class _TracePipeline:
+    """Stands in for the bound trace pipeline: records the events app trace scopes emit."""
+
+    events: list[TraceEvent] = field(default_factory=list)
+
+    def create_scope(
+        self, *, tenant_id: str, app_id: str | None, user_id: str | None, extras: Mapping[str, object]
+    ) -> TraceScope:
+        assert extras == {}
+        return TraceScope(
+            emitter=self,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            user_id=user_id,
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
+        )
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
 class TestGatewayTraceRouting:
     @pytest.fixture
-    def mock_trace_manager(self) -> MagicMock:
-        return MagicMock()
+    def pipeline(self, monkeypatch: pytest.MonkeyPatch) -> _TracePipeline:
+        pipeline = _TracePipeline()
+        monkeypatch.setattr(gateway_module, "create_trace_scope_for_app", pipeline.create_scope)
+        return pipeline
 
-    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_trace_event_routes_to_trace_manager(
-        self,
-        mock_ee_enabled: MagicMock,
-        mock_trace_manager: MagicMock,
+    def test_trace_event_routes_through_the_app_trace_scope(
+        self, monkeypatch: pytest.MonkeyPatch, pipeline: _TracePipeline
     ) -> None:
-        emit(_prompt_event(), mock_trace_manager)
-        mock_trace_manager.add_trace_task.assert_called_once()
+        monkeypatch.setattr(gateway_module, "is_enterprise_telemetry_enabled", lambda: True)
 
-    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False)
+        emit(_prompt_event())
+
+        (event,) = pipeline.events
+        assert (event.tenant_id, event.app_id, event.user_id) == ("tenant-789", "app-123", "user-456")
+        assert event.payload == _prompt_event().trace_payload()
+
     def test_enterprise_only_trace_dropped_when_ee_disabled(
-        self,
-        mock_ee_enabled: MagicMock,
-        mock_trace_manager: MagicMock,
+        self, monkeypatch: pytest.MonkeyPatch, pipeline: _TracePipeline
     ) -> None:
-        emit(_node_event(), mock_trace_manager)
-        mock_trace_manager.add_trace_task.assert_not_called()
+        monkeypatch.setattr(gateway_module, "is_enterprise_telemetry_enabled", lambda: False)
 
-    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_enterprise_only_trace_enqueued_when_ee_enabled(
-        self,
-        mock_ee_enabled: MagicMock,
-        mock_trace_manager: MagicMock,
+        emit(_node_event())
+
+        assert pipeline.events == []
+
+    def test_enterprise_only_trace_emitted_when_ee_enabled(
+        self, monkeypatch: pytest.MonkeyPatch, pipeline: _TracePipeline
     ) -> None:
-        emit(_node_event(), mock_trace_manager)
-        mock_trace_manager.add_trace_task.assert_called_once()
+        monkeypatch.setattr(gateway_module, "is_enterprise_telemetry_enabled", lambda: True)
+
+        emit(_node_event())
+
+        (event,) = pipeline.events
+        assert event.payload == _node_event().trace_payload()
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,7 @@
-import type { TraceConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  TraceAppConfigResponse,
+  TraceConfigPayload,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { ConfigurableTracingProvider } from '../providers'
 import type { TracingResource } from '../resource'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
@@ -90,121 +93,165 @@ const validConfigs = {
   },
 } satisfies Record<ConfigurableTracingProvider, TraceConfigPayload['tracing_config']>
 
+// The fields each provider's backend config declares with `secret()`, by input label.
+const secretLabels = {
+  arize: { api_key: 'API Key', space_id: 'Space ID' },
+  phoenix: { api_key: 'API Key' },
+  langsmith: { api_key: 'API Key' },
+  langfuse: {
+    secret_key: 'app.tracing.configProvider.secretKey',
+    public_key: 'app.tracing.configProvider.publicKey',
+  },
+  opik: { api_key: 'API Key' },
+  weave: { api_key: 'API Key' },
+  aliyun: { license_key: 'License Key' },
+  mlflow: { password: 'app.tracing.configProvider.password' },
+  databricks: {
+    client_secret: 'app.tracing.configProvider.clientSecret',
+    personal_access_token: 'app.tracing.configProvider.personalAccessToken',
+  },
+  tencent: { token: 'Token' },
+} satisfies Record<ConfigurableTracingProvider, Record<string, string>>
+
+const configuredSecretPlaceholder = 'app.tracing.configProvider.configuredSecretPlaceholder'
+
+const isSecret = (provider: ConfigurableTracingProvider, name: string) =>
+  Object.hasOwn(secretLabels[provider], name)
+
+/** The submitted `tracing_config` when every secret input is left blank. */
+const withoutSecrets = (
+  provider: ConfigurableTracingProvider,
+  values: TraceConfigPayload['tracing_config'],
+) => Object.fromEntries(Object.entries(values).filter(([name]) => !isSecret(provider, name)))
+
+/** The trace-config response for stored `values`: secrets are reported, never returned. */
+const savedConfig = (
+  provider: ConfigurableTracingProvider,
+  values: TraceConfigPayload['tracing_config'],
+): TraceAppConfigResponse => ({
+  tracing_provider: provider,
+  tracing_config: {
+    ...withoutSecrets(provider, values),
+    project_url: 'https://tracing.example/project',
+  },
+  configured_secrets: Object.keys(secretLabels[provider]).filter((name) => !!values[name]),
+})
+
 const invalidConfigCases: Array<{
   provider: ConfigurableTracingProvider
-  payload: TraceConfigPayload['tracing_config']
+  values: TraceConfigPayload['tracing_config']
   missingField: string
 }> = [
   {
     provider: 'arize',
-    payload: { ...validConfigs.arize, api_key: '' },
+    values: { ...validConfigs.arize, api_key: '' },
     missingField: 'API Key',
   },
   {
     provider: 'arize',
-    payload: { ...validConfigs.arize, space_id: '' },
+    values: { ...validConfigs.arize, space_id: '' },
     missingField: 'Space ID',
   },
   {
     provider: 'arize',
-    payload: { ...validConfigs.arize, project: '' },
+    values: { ...validConfigs.arize, project: '' },
     missingField: 'app.tracing.configProvider.project',
   },
   {
     provider: 'phoenix',
-    payload: { ...validConfigs.phoenix, project: '' },
+    values: { ...validConfigs.phoenix, project: '' },
     missingField: 'app.tracing.configProvider.project',
   },
   {
     provider: 'langsmith',
-    payload: { ...validConfigs.langsmith, api_key: '' },
+    values: { ...validConfigs.langsmith, api_key: '' },
     missingField: 'API Key',
   },
   {
     provider: 'langsmith',
-    payload: { ...validConfigs.langsmith, project: '' },
+    values: { ...validConfigs.langsmith, project: '' },
     missingField: 'app.tracing.configProvider.project',
   },
   {
     provider: 'langfuse',
-    payload: { ...validConfigs.langfuse, secret_key: '' },
+    values: { ...validConfigs.langfuse, secret_key: '' },
     missingField: 'app.tracing.configProvider.secretKey',
   },
   {
     provider: 'langfuse',
-    payload: { ...validConfigs.langfuse, public_key: '' },
+    values: { ...validConfigs.langfuse, public_key: '' },
     missingField: 'app.tracing.configProvider.publicKey',
   },
   {
     provider: 'langfuse',
-    payload: { ...validConfigs.langfuse, host: '' },
+    values: { ...validConfigs.langfuse, host: '' },
     missingField: 'Host',
   },
   {
     provider: 'weave',
-    payload: { ...validConfigs.weave, api_key: '' },
+    values: { ...validConfigs.weave, api_key: '' },
     missingField: 'API Key',
   },
   {
     provider: 'weave',
-    payload: { ...validConfigs.weave, project: '' },
+    values: { ...validConfigs.weave, project: '' },
     missingField: 'app.tracing.configProvider.project',
   },
   {
     provider: 'aliyun',
-    payload: { ...validConfigs.aliyun, app_name: '' },
+    values: { ...validConfigs.aliyun, app_name: '' },
     missingField: 'App Name',
   },
   {
     provider: 'aliyun',
-    payload: { ...validConfigs.aliyun, license_key: '' },
+    values: { ...validConfigs.aliyun, license_key: '' },
     missingField: 'License Key',
   },
   {
     provider: 'aliyun',
-    payload: { ...validConfigs.aliyun, endpoint: '' },
+    values: { ...validConfigs.aliyun, endpoint: '' },
     missingField: 'Endpoint',
   },
   {
     provider: 'mlflow',
-    payload: { ...validConfigs.mlflow, tracking_uri: '' },
+    values: { ...validConfigs.mlflow, tracking_uri: '' },
     missingField: 'app.tracing.configProvider.trackingUri',
   },
   {
     provider: 'databricks',
-    payload: { ...validConfigs.databricks, experiment_id: '' },
+    values: { ...validConfigs.databricks, experiment_id: '' },
     missingField: 'app.tracing.configProvider.experimentId',
   },
   {
     provider: 'databricks',
-    payload: { ...validConfigs.databricks, host: '' },
+    values: { ...validConfigs.databricks, host: '' },
     missingField: 'app.tracing.configProvider.databricksHost',
   },
   {
     provider: 'tencent',
-    payload: { ...validConfigs.tencent, token: '' },
+    values: { ...validConfigs.tencent, token: '' },
     missingField: 'Token',
   },
   {
     provider: 'tencent',
-    payload: { ...validConfigs.tencent, endpoint: '' },
+    values: { ...validConfigs.tencent, endpoint: '' },
     missingField: 'Endpoint',
   },
   {
     provider: 'tencent',
-    payload: { ...validConfigs.tencent, service_name: '' },
+    values: { ...validConfigs.tencent, service_name: '' },
     missingField: 'Service Name',
   },
 ]
 
 const renderProviderConfigModal = ({
   type = 'langfuse',
-  payload,
+  config,
   inUse = false,
   resource = { kind: 'app', appId: 'app-id', mode: 'chat' },
 }: {
   type?: ConfigurableTracingProvider
-  payload?: TraceConfigPayload['tracing_config'] | null
+  config?: TraceAppConfigResponse
   inUse?: boolean
   resource?: TracingResource
 } = {}) => {
@@ -227,7 +274,7 @@ const renderProviderConfigModal = ({
         <ProviderConfigModal
           resource={resource}
           type={type}
-          payload={payload}
+          config={config}
           inUse={inUse}
           firstInputRef={firstInputRef}
           onSaved={callbacks.onSaved}
@@ -254,6 +301,10 @@ describe('ProviderConfigModal', () => {
     it('creates an anonymous Phoenix destination without a key', async () => {
       const user = userEvent.setup()
       const callbacks = renderProviderConfigModal({ type: 'phoenix' })
+      expect(screen.getByRole('textbox', { name: 'API Key' })).toHaveAttribute(
+        'placeholder',
+        'app.tracing.configProvider.placeholder:{"key":"API Key"}',
+      )
       await user.type(
         screen.getByRole('textbox', { name: 'app.tracing.configProvider.project' }),
         'local-project',
@@ -265,7 +316,6 @@ describe('ProviderConfigModal', () => {
         tracing_provider: 'phoenix',
         activate: true,
         tracing_config: {
-          api_key: '',
           project: 'local-project',
           endpoint: 'http://localhost:6006',
         },
@@ -296,39 +346,28 @@ describe('ProviderConfigModal', () => {
     })
 
     it.each(configurableProviders)(
-      'should update valid %s config in edit mode',
+      'updates a saved %s config without prefilling or resending its secrets',
       async (provider) => {
         const user = userEvent.setup()
         const callbacks = renderProviderConfigModal({
           type: provider,
-          payload: validConfigs[provider],
+          config: savedConfig(provider, validConfigs[provider]),
         })
 
-        const credentialLabels = {
-          arize: ['API Key'],
-          phoenix: ['API Key'],
-          langsmith: ['API Key'],
-          langfuse: ['app.tracing.configProvider.secretKey'],
-          opik: ['API Key'],
-          weave: ['API Key'],
-          aliyun: ['License Key'],
-          mlflow: ['app.tracing.configProvider.password'],
-          databricks: [
-            'app.tracing.configProvider.clientSecret',
-            'app.tracing.configProvider.personalAccessToken',
-          ],
-          tencent: ['Token'],
-        } satisfies Record<ConfigurableTracingProvider, string[]>
-        for (const label of credentialLabels[provider]) {
-          const credential = screen.getByRole('textbox', { name: label })
-          expect(credential).toHaveAttribute('autocomplete', 'off')
+        for (const label of Object.values(secretLabels[provider])) {
+          const secret = screen.getByRole('textbox', { name: label })
+          expect(secret).toHaveValue('')
+          expect(secret).toHaveAttribute('placeholder', configuredSecretPlaceholder)
+          expect(secret).not.toBeRequired()
+          expect(secret).toHaveAttribute('autocomplete', 'off')
         }
 
         const edits = {
-          arize: ['Space ID', 'space_id', 'new-space'],
+          arize: ['app.tracing.configProvider.project', 'project', 'new-project'],
           phoenix: ['app.tracing.configProvider.project', 'project', 'new-project'],
           langsmith: ['app.tracing.configProvider.project', 'project', 'new-project'],
-          langfuse: ['Host', 'host', 'https://new.langfuse.com'],
+          // Every other Langfuse field is a secret or a destination.
+          langfuse: ['Host', 'host', 'https://cloud.langfuse.com/'],
           opik: ['Workspace', 'workspace', 'new-workspace'],
           weave: ['Entity', 'entity', 'new-entity'],
           aliyun: ['App Name', 'app_name', 'new-app'],
@@ -345,11 +384,113 @@ describe('ProviderConfigModal', () => {
         await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
         await expectRequest('PATCH', {
           tracing_provider: provider,
-          tracing_config: { ...validConfigs[provider], [key]: value },
+          tracing_config: { ...withoutSecrets(provider, validConfigs[provider]), [key]: value },
         })
-        expect(request).toHaveBeenCalledOnce()
       },
     )
+
+    it('sends a newly entered secret and keeps the other saved secret', async () => {
+      const user = userEvent.setup()
+      const callbacks = renderProviderConfigModal({
+        type: 'langfuse',
+        config: savedConfig('langfuse', validConfigs.langfuse),
+      })
+
+      await user.type(
+        screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
+        'rotated-secret-key',
+      )
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('PATCH', {
+        tracing_provider: 'langfuse',
+        tracing_config: { host: validConfigs.langfuse.host, secret_key: 'rotated-secret-key' },
+      })
+    })
+
+    it('requires the saved secrets again once the destination changes', async () => {
+      const user = userEvent.setup()
+      const callbacks = renderProviderConfigModal({
+        type: 'langfuse',
+        config: savedConfig('langfuse', validConfigs.langfuse),
+      })
+      const secretKey = screen.getByRole<HTMLInputElement>('textbox', {
+        name: 'app.tracing.configProvider.secretKey',
+      })
+      const publicKey = screen.getByRole<HTMLInputElement>('textbox', {
+        name: 'app.tracing.configProvider.publicKey',
+      })
+      expect(secretKey).not.toBeRequired()
+
+      const host = screen.getByRole('textbox', { name: 'Host' })
+      await user.clear(host)
+      await user.type(host, 'https://us.cloud.langfuse.com')
+
+      for (const [secret, label] of [
+        [secretKey, 'app.tracing.configProvider.secretKey'],
+        [publicKey, 'app.tracing.configProvider.publicKey'],
+      ] as const) {
+        expect(secret).toBeRequired()
+        expect(secret.labels?.[0]).toHaveTextContent(`${label}*`)
+        expect(secret).toHaveAttribute(
+          'placeholder',
+          `app.tracing.configProvider.placeholder:{"key":"${label}"}`,
+        )
+      }
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      expect(request).not.toHaveBeenCalled()
+      expect(secretKey).toBeInvalid()
+      expect(secretKey).toHaveFocus()
+
+      await user.type(secretKey, 'us-secret-key')
+      await user.type(publicKey, 'us-public-key')
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('PATCH', {
+        tracing_provider: 'langfuse',
+        tracing_config: {
+          host: 'https://us.cloud.langfuse.com',
+          secret_key: 'us-secret-key',
+          public_key: 'us-public-key',
+        },
+      })
+    })
+
+    it('keeps blank secrets while the destination is unchanged, even with an added trailing slash', async () => {
+      const user = userEvent.setup()
+      const callbacks = renderProviderConfigModal({
+        type: 'langfuse',
+        config: savedConfig('langfuse', validConfigs.langfuse),
+      })
+      const secrets = Object.values(secretLabels.langfuse).map((label) =>
+        screen.getByRole('textbox', { name: label }),
+      )
+      const expectSavedSecretsKept = () => {
+        for (const secret of secrets) {
+          expect(secret).not.toBeRequired()
+          expect(secret).toHaveAttribute('placeholder', configuredSecretPlaceholder)
+        }
+      }
+      expectSavedSecretsKept()
+
+      const host = screen.getByRole('textbox', { name: 'Host' })
+      await user.clear(host)
+      await user.type(host, 'https://us.cloud.langfuse.com')
+      for (const secret of secrets) expect(secret).toBeRequired()
+      await user.clear(host)
+      await user.type(host, `${validConfigs.langfuse.host}/`)
+      expectSavedSecretsKept()
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('PATCH', {
+        tracing_provider: 'langfuse',
+        tracing_config: { host: `${validConfigs.langfuse.host}/` },
+      })
+    })
 
     it.each([
       ['langfuse', 'host', 'HTTPS://cloud.langfuse.com'],
@@ -357,19 +498,28 @@ describe('ProviderConfigModal', () => {
       ['opik', 'url', 'HTTPS://www.comet.com/opik/api/'],
     ] as const)('accepts case-insensitive URL schemes for %s', async (provider, key, value) => {
       const user = userEvent.setup()
-      const payload = { ...validConfigs[provider], [key]: value }
-      const callbacks = renderProviderConfigModal({ type: provider, payload })
+      const values = { ...validConfigs[provider], [key]: value }
+      const callbacks = renderProviderConfigModal({
+        type: provider,
+        config: savedConfig(provider, values),
+      })
 
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
-      await expectRequest('PATCH', { tracing_provider: provider, tracing_config: payload })
+      await expectRequest('PATCH', {
+        tracing_provider: provider,
+        tracing_config: withoutSecrets(provider, values),
+      })
     })
 
     it('displays nullable provider fields as empty without changing their submitted values', async () => {
       const user = userEvent.setup()
-      const payload = { ...validConfigs.mlflow, username: null }
-      const callbacks = renderProviderConfigModal({ type: 'mlflow', payload })
+      const values = { ...validConfigs.mlflow, username: null }
+      const callbacks = renderProviderConfigModal({
+        type: 'mlflow',
+        config: savedConfig('mlflow', values),
+      })
 
       expect(
         screen.getByRole('textbox', { name: 'app.tracing.configProvider.username' }),
@@ -379,7 +529,7 @@ describe('ProviderConfigModal', () => {
       await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
       await expectRequest('PATCH', {
         tracing_provider: 'mlflow',
-        tracing_config: payload,
+        tracing_config: withoutSecrets('mlflow', values),
       })
     })
 
@@ -396,11 +546,14 @@ describe('ProviderConfigModal', () => {
       )
       const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
       const callbacks = renderProviderConfigModal({
-        payload: validConfigs.langfuse,
+        config: savedConfig('langfuse', validConfigs.langfuse),
       })
       const host = screen.getByRole('textbox', { name: 'Host' })
       await user.clear(host)
       await user.type(host, 'https://draft.langfuse.com')
+      // A new destination needs its secrets entered again.
+      for (const label of Object.values(secretLabels.langfuse))
+        await user.type(screen.getByRole('textbox', { name: label }), 'draft-key')
       const save = screen.getByRole('button', { name: 'common.operation.save' })
 
       try {
@@ -431,23 +584,32 @@ describe('ProviderConfigModal', () => {
     })
 
     it.each([
-      ['langfuse', 'host', 'Host', 'ftp://cloud.langfuse.com'],
-      ['langsmith', 'endpoint', 'Endpoint', 'http://api.smith.langchain.com'],
-      ['weave', 'endpoint', 'Endpoint', 'http://trace.wandb.ai'],
-      ['opik', 'url', 'Url', 'https://www.comet.com/opik/'],
-      ['mlflow', 'experiment_id', 'app.tracing.configProvider.experimentId', '1.5'],
-      ['databricks', 'experiment_id', 'app.tracing.configProvider.experimentId', '-1'],
-      ['aliyun', 'license_key', 'License Key', '   '],
-      ['tencent', 'token', 'Token', '   '],
+      ['langfuse', 'host', 'Host', 'ftp://cloud.langfuse.com', 'https://us.cloud.langfuse.com'],
+      [
+        'langsmith',
+        'endpoint',
+        'Endpoint',
+        'http://api.smith.langchain.com',
+        'https://eu.api.smith.langchain.com',
+      ],
+      ['weave', 'endpoint', 'Endpoint', 'http://trace.wandb.ai', 'https://weave.example.com'],
+      ['opik', 'url', 'Url', 'https://www.comet.com/opik/', 'https://opik.example.com/api/'],
     ] as const)(
-      'validates %s %s inline before sending credentials',
-      async (provider, key, label, value) => {
+      'validates a new %s %s inline before sending the re-entered secrets',
+      async (provider, key, label, invalid, valid) => {
         const user = userEvent.setup()
         const callbacks = renderProviderConfigModal({
           type: provider,
-          payload: { ...validConfigs[provider], [key]: value },
+          config: savedConfig(provider, validConfigs[provider]),
         })
         const field = screen.getByRole('textbox', { name: label })
+        await user.clear(field)
+        await user.type(field, invalid)
+        const reentered: TraceConfigPayload['tracing_config'] = {}
+        for (const [name, secretLabel] of Object.entries(secretLabels[provider])) {
+          reentered[name] = `new-${name}`
+          await user.type(screen.getByRole('textbox', { name: secretLabel }), `new-${name}`)
+        }
         await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
         expect(request).not.toHaveBeenCalled()
@@ -456,26 +618,99 @@ describe('ProviderConfigModal', () => {
         expect(field).toHaveAccessibleDescription()
 
         await user.clear(field)
-        const validConfig: TraceConfigPayload['tracing_config'] = validConfigs[provider]
-        await user.type(field, validConfig[key] ?? '')
+        await user.type(field, valid)
         await user.keyboard('{Enter}')
 
         await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
         expect(field).toBeValid()
         await expectRequest('PATCH', {
           tracing_provider: provider,
-          tracing_config: validConfigs[provider],
+          tracing_config: {
+            ...withoutSecrets(provider, validConfigs[provider]),
+            [key]: valid,
+            ...reentered,
+          },
+        })
+      },
+    )
+
+    it.each([
+      ['mlflow', '1.5'],
+      ['databricks', '-1'],
+    ] as const)('validates the %s experiment ID inline before sending', async (provider, value) => {
+      const user = userEvent.setup()
+      const callbacks = renderProviderConfigModal({
+        type: provider,
+        config: savedConfig(provider, validConfigs[provider]),
+      })
+      const field = screen.getByRole('textbox', { name: 'app.tracing.configProvider.experimentId' })
+      await user.clear(field)
+      await user.type(field, value)
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      expect(request).not.toHaveBeenCalled()
+      expect(field).toBeInvalid()
+      expect(field).toHaveFocus()
+      expect(field).toHaveAccessibleDescription()
+
+      await user.clear(field)
+      await user.type(field, '456')
+      await user.keyboard('{Enter}')
+
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      expect(field).toBeValid()
+      await expectRequest('PATCH', {
+        tracing_provider: provider,
+        tracing_config: {
+          ...withoutSecrets(provider, validConfigs[provider]),
+          experiment_id: '456',
+        },
+      })
+    })
+
+    it.each([
+      ['aliyun', 'license_key', 'License Key'],
+      ['tencent', 'token', 'Token'],
+    ] as const)(
+      'rejects a whitespace-only replacement for the saved %s %s',
+      async (provider, key, label) => {
+        const user = userEvent.setup()
+        const callbacks = renderProviderConfigModal({
+          type: provider,
+          config: savedConfig(provider, validConfigs[provider]),
+        })
+        const field = screen.getByRole('textbox', { name: label })
+        await user.type(field, '   ')
+        await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+        expect(request).not.toHaveBeenCalled()
+        expect(field).toBeInvalid()
+        expect(field).toHaveFocus()
+        expect(field).toHaveAccessibleDescription()
+
+        await user.clear(field)
+        await user.type(field, 'replacement-secret')
+        await user.keyboard('{Enter}')
+
+        await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+        expect(field).toBeValid()
+        await expectRequest('PATCH', {
+          tracing_provider: provider,
+          tracing_config: {
+            ...withoutSecrets(provider, validConfigs[provider]),
+            [key]: 'replacement-secret',
+          },
         })
       },
     )
 
     it.each(invalidConfigCases)(
       'should reject $provider config when $missingField is missing',
-      async ({ provider, payload, missingField }) => {
+      async ({ provider, values, missingField }) => {
         const user = userEvent.setup()
         renderProviderConfigModal({
           type: provider,
-          payload,
+          config: savedConfig(provider, values),
         })
 
         await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -503,7 +738,7 @@ describe('ProviderConfigModal', () => {
       const user = userEvent.setup()
       const callbacks = renderProviderConfigModal({
         type: 'langfuse',
-        payload: validConfigs.langfuse,
+        config: savedConfig('langfuse', validConfigs.langfuse),
       })
 
       await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
@@ -528,7 +763,11 @@ describe('ProviderConfigModal', () => {
       [false, 'removeConfirmContentNotInUse'],
     ])('describes the removal consequence when in use is %s', async (inUse, key) => {
       const user = userEvent.setup()
-      renderProviderConfigModal({ type: 'langfuse', payload: validConfigs.langfuse, inUse })
+      renderProviderConfigModal({
+        type: 'langfuse',
+        config: savedConfig('langfuse', validConfigs.langfuse),
+        inUse,
+      })
 
       await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
@@ -543,7 +782,7 @@ describe('ProviderConfigModal', () => {
       const user = userEvent.setup()
       renderProviderConfigModal({
         type: 'langfuse',
-        payload: validConfigs.langfuse,
+        config: savedConfig('langfuse', validConfigs.langfuse),
       })
 
       const host = screen.getByRole('textbox', { name: 'Host' })

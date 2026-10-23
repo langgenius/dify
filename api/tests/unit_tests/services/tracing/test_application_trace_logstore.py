@@ -8,18 +8,19 @@ from typing import Literal
 
 import pytest
 from aliyun.log.logclient import LogClient
-from sqlalchemy import Connection, Engine, event, select
+from dify_trace_sdk.events import WorkflowRunCompleted
+from dify_trace_sdk.provider import SendResult
+from sqlalchemy import Connection, Engine, delete, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.ops.entities.trace_entity import ModerationTraceInfo
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories.logstore_api_workflow_run_repository import _dict_to_workflow_run
 from libs.datetime_utils import naive_utc_now
 from models.application_trace import ApplicationTraceRun
-from models.model import App, AppMode
+from models.model import App, AppMode, Message
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from repositories.application_trace_repository import TraceCollectionError
-from services.tracing.provider_dispatch import TraceExportResult
+from services.tracing.records import ModerationTraceInfo
 from services.tracing.recovery import _workflow_task
 from services.tracing.service import ApplicationTracingService
 from tests.unit_tests.config_override import apply_config_overrides
@@ -30,8 +31,10 @@ from tests.unit_tests.services.tracing.test_application_trace_collection import 
     claim,
     identifier,
     ingest,
+    no_egress,
     seed,
     terminal,
+    tracing_service,
 )
 from tests.unit_tests.services.tracing.test_application_trace_handoff import AGENT_GRAPH, workflow_info
 
@@ -55,7 +58,7 @@ class StoredSource:
         return run
 
     def service(self) -> ApplicationTracingService:
-        return ApplicationTracingService(self.case.repository)
+        return tracing_service(self.case, no_egress())
 
     def status(self, node_execution_id: str | None = None) -> dict[str, object]:
         return self.service().status(
@@ -275,7 +278,9 @@ def test_workflow_node_deep_link_is_scoped_to_durable_invocation(stored: StoredS
         run.id,
         lease[1],
         state="accepted",
-        result=TraceExportResult("provider-id", span_urls={invocation.span_id: "https://trace.test/span"}),
+        result=SendResult(
+            trace_id="provider-id", trace_url=None, span_urls={invocation.span_id: "https://trace.test/span"}
+        ),
     )
     assert stored.status(node_id)["span_url"] == "https://trace.test/span"
     with pytest.raises(TraceCollectionError, match="tracing_node_not_found"):
@@ -285,10 +290,14 @@ def test_workflow_node_deep_link_is_scoped_to_durable_invocation(stored: StoredS
 def test_preview_settlement_and_workflow_recovery_use_configured_source(stored: StoredSource) -> None:
     run = stored.start()
     if stored.kind == "workflow":
-        task = _workflow_task(stored.case.repository, run, naive_utc_now())
-        assert task is not None
-        assert task.workflow_run_id == run.source_id
-        assert task.kwargs["trace_session_id"] == run.session_id
+        event = _workflow_task(stored.case.repository, run, naive_utc_now())
+        assert event is not None
+        assert event.payload == WorkflowRunCompleted(
+            workflow_run_id=run.source_id, conversation_id=None, total_tokens=None
+        )
+        assert (event.tenant_id, event.app_id) == (run.tenant_id, run.app_id)
+        assert event.user_id == stored.row["created_by"]
+        assert event.correlation.session_id == run.session_id
         stored.row["status"] = "running"
         assert _workflow_task(stored.case.repository, run, naive_utc_now()) is None
     else:
@@ -300,12 +309,12 @@ def test_preview_settlement_and_workflow_recovery_use_configured_source(stored: 
         assert root["status"] == "ok"
         assert root["inputs"] is None
         assert root["outputs"] is None
-        assert root["metadata"]["node_execution_id"] == run.source_id
+        assert root["attributes"]["node_execution_id"] == run.source_id
 
 
 @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
 def test_missing_snapshot_classifies_logstore_agent_workflow_and_persists_failure(stored: StoredSource) -> None:
-    info = workflow_info(_dict_to_workflow_run(stored.row))
+    info = workflow_info(_dict_to_workflow_run(stored.row), None)
     assert stored.service().capture_terminal(info) is True
     result = stored.status()
     assert result["status"] == "failed"
@@ -317,7 +326,7 @@ def test_missing_snapshot_classifies_logstore_agent_workflow_and_persists_failur
 def test_unindexed_workflow_uses_owned_definition_for_safe_legacy_decision(
     stored: StoredSource, has_agent: bool
 ) -> None:
-    info = workflow_info(_dict_to_workflow_run(stored.row))
+    info = workflow_info(_dict_to_workflow_run(stored.row), None)
     with stored.case.sessions.begin() as session:
         app = session.get(App, stored.case.run.app_id)
         assert app is not None
@@ -335,15 +344,21 @@ def test_unindexed_workflow_uses_owned_definition_for_safe_legacy_decision(
 
 @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
 @pytest.mark.parametrize("snapshot", [True, False])
-def test_auxiliary_content_is_suppressed_for_logstore_workflow(stored: StoredSource, snapshot: bool) -> None:
+def test_auxiliary_content_is_suppressed_for_logstore_chatflow(stored: StoredSource, snapshot: bool) -> None:
+    with stored.case.sessions.begin() as session:
+        app = session.get(App, stored.case.run.app_id)
+        message = session.get(Message, stored.case.run.source_id)
+        assert app is not None
+        assert message is not None
+        app.mode = AppMode.ADVANCED_CHAT
+        message.workflow_run_id = str(stored.row["id"])
+        session.execute(delete(ApplicationTraceRun).where(ApplicationTraceRun.id == stored.case.run.id))
     if snapshot:
         stored.start()
     info = ModerationTraceInfo(
         message_id=identifier("workflow-log"),
-        metadata={
-            "workflow_run_id": stored.row["id"],
-            **({} if snapshot else {"app_id": stored.case.run.app_id}),
-        },
+        message_data=message,
+        metadata={"message_id": message.id},
         flagged=False,
         action="direct_output",
         preset_response="",
@@ -369,29 +384,15 @@ def test_linked_parent_requires_logstore_run_and_durable_owner_to_agree(
 ) -> None:
     parent = stored.start()
     info = workflow_info(_dict_to_workflow_run(stored.row), _dict_to_workflow_run(stored.row))
-    original = dict(info.metadata)
     if mismatch:
         stored.row[mismatch] = identifier("foreign")
-    stored.service()._link_managed_parent(info, parent.tenant_id)
+    linked = stored.service().link_managed_parent(info)
     if mismatch:
-        assert info.metadata == original
+        assert linked is info
     else:
-        assert info.resolved_parent_context == (None, None)
-        assert info.metadata["linked_parent_trace_id"] == parent.trace_id
-        assert info.metadata["linked_parent_workflow_run_id"] == parent.source_id
-
-
-@pytest.mark.parametrize("stored", ["workflow"], indirect=True)
-def test_auxiliary_durable_owner_rejects_app_reassigned_to_other_tenant(stored: StoredSource) -> None:
-    run = stored.start()
-    with stored.case.sessions.begin() as session:
-        app = session.get(App, run.app_id)
-        assert app is not None
-        app.tenant_id = identifier("foreign")
-    info = ModerationTraceInfo(
-        metadata={"workflow_run_id": run.source_id}, query="", flagged=False, action="direct_output", preset_response=""
-    )
-    assert stored.service().capture_terminal(info) is False
+        assert linked.resolved_parent_context == (None, None)
+        assert linked.metadata["linked_parent_trace_id"] == parent.trace_id
+        assert linked.metadata["linked_parent_workflow_run_id"] == parent.source_id
 
 
 def test_sql_workflow_source_still_uses_scoped_configured_reader(

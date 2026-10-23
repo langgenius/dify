@@ -8,6 +8,8 @@ from typing import cast
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import SuggestedQuestionsGenerated, TraceCorrelation, TraceEvent
 from flask import Flask, Request
 from sqlalchemy import Connection, Engine, delete, event, select, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -21,7 +23,6 @@ import services.message_service as message_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_context import get_credit_usage_metadata
 from core.model_manager import ModelInstance
-from core.ops.ops_trace_manager import TraceTask
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
@@ -64,7 +65,7 @@ class _Provider:
     token_calls: int = 0
     tenant_ids: list[str] = field(default_factory=list)
     prompts: list[str] = field(default_factory=list)
-    traces: list[TraceTask] = field(default_factory=list)
+    events: list[TraceEvent] = field(default_factory=list)
     questions: list[str] = field(default_factory=lambda: ["Next question?", "Another question?"])
     failure: Exception | None = None
     missing_model: bool = False
@@ -120,8 +121,8 @@ class _Provider:
             usage=LLMUsage.empty_usage(),
         )
 
-    def add_trace_task(self, task: TraceTask) -> None:
-        self.traces.append(task)
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
 
 
 @dataclass(frozen=True)
@@ -253,12 +254,22 @@ def harness(
         assert tenant_id == target.tenant_id
         return provider
 
-    def trace_manager(*, app_id: str) -> _Provider:
-        assert app_id == target.id
-        return provider
+    def trace_scope(
+        *, tenant_id: str, app_id: str | None, user_id: str | None, extras: Mapping[str, object]
+    ) -> TraceScope:
+        assert (tenant_id, app_id, user_id, extras) == (target.tenant_id, target.id, None, {})
+        return TraceScope(
+            emitter=provider,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            user_id=user_id,
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
+        )
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
-    monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
+    monkeypatch.setattr(message_module, "create_trace_scope_for_app", trace_scope)
 
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
@@ -335,7 +346,9 @@ def test_questions_keep_response_history_owner_and_usage(
     assert "Human: What is a trial?\nAssistant: A way to try an app." in harness.provider.prompts[0]
     assert harness.provider.tenant_ids == [harness.target.tenant_id] * 2
     assert harness.target.tenant_id not in {harness.trial.tenant_id, harness.account.current_tenant_id}
-    assert len(harness.provider.traces) == 1
+    (trace_event,) = harness.provider.events
+    assert isinstance(trace_event.payload, SuggestedQuestionsGenerated)
+    assert (trace_event.payload.message_id, trace_event.payload.questions) == (harness.message.id, questions)
     assert harness.features.events == ["setup", "csrf", "feature"]
     assert harness.usage() == 1
     assert len(harness.provider.model_sessions) == 2
@@ -403,7 +416,7 @@ def test_absent_default_model_keeps_empty_success(harness: _Harness) -> None:
     assert response.status_code == 200
     assert response.get_json() == {"data": []}
     assert harness.provider.prompts == []
-    assert harness.provider.traces == []
+    assert harness.provider.events == []
     harness.assert_closed()
 
 
@@ -479,7 +492,7 @@ def test_token_count_failures_preserve_specific_errors_and_close_session(
     _assert_error(harness.get(), 400, code, message)
     assert harness.provider.token_calls == 1
     assert harness.provider.prompts == []
-    assert harness.provider.traces == []
+    assert harness.provider.events == []
     assert harness.usage() is None
     harness.assert_closed()
 

@@ -1,8 +1,10 @@
 from collections.abc import Generator, Iterator
 from datetime import UTC, datetime
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
@@ -37,7 +39,6 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher
-from core.ops.ops_trace_manager import TraceQueueManager
 from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
@@ -67,6 +68,19 @@ class _Publisher(AppGeneratorTTSPublisher):
 
     def publish(self, message: WorkflowQueueMessage | MessageQueueMessage | None, /) -> None:
         self.messages.append(message)
+
+
+class _TraceRecorder:
+    """Record trace events with the number of commits that preceded each one."""
+
+    def __init__(self, committed_sessions: list[Session]) -> None:
+        self._committed_sessions = committed_sessions
+        self.events: list[TraceEvent] = []
+        self.commits_before_emit: list[int] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+        self.commits_before_emit.append(len(self._committed_sessions))
 
 
 def queue_message(event: AppQueueEvent) -> MessageQueueMessage:
@@ -215,7 +229,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline.queue_manager.messages = [message]
 
         # Execute
-        list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+        list(pipeline._process_stream_response(publisher=None))
 
         # Assert
         mock_message_cycle_manager.get_message_event_type.assert_called_once_with(message_id="test-message-id")
@@ -233,7 +247,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         mock_message_cycle_manager.get_message_event_type.return_value = StreamEvent.MESSAGE
 
         # Execute
-        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+        responses = list(pipeline._process_stream_response(publisher=None))
 
         # Assert
         assert len(responses) == 1
@@ -258,7 +272,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         mock_message_cycle_manager.get_message_event_type.return_value = StreamEvent.MESSAGE
 
         # Execute
-        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+        responses = list(pipeline._process_stream_response(publisher=None))
 
         # Assert
         assert len(responses) == 1
@@ -281,7 +295,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline._agent_message_to_stream_response = Mock(return_value=Mock())
 
         # Execute
-        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+        responses = list(pipeline._process_stream_response(publisher=None))
 
         # Assert
         assert len(responses) == 1
@@ -304,7 +318,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
             return_value=MessageEndStreamResponse(task_id="test-task-id", id="test-message-id")
         )
 
-        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+        responses = list(pipeline._process_stream_response(publisher=None))
 
         # Assert
         assert len(responses) == 1
@@ -327,7 +341,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
             return_value=ErrorStreamResponse(task_id="test-task-id", err=Exception("Test error"))
         )
 
-        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+        responses = list(pipeline._process_stream_response(publisher=None))
 
         # Assert
         assert len(responses) == 1
@@ -348,7 +362,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline.ping_stream_response = Mock(return_value=PingStreamResponse(task_id="test-task-id"))
 
         # Execute
-        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+        responses = list(pipeline._process_stream_response(publisher=None))
 
         # Assert
         assert len(responses) == 1
@@ -372,7 +386,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         mock_message_cycle_manager.message_file_to_stream_response.return_value = file_response
 
         # Execute
-        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+        responses = list(pipeline._process_stream_response(publisher=None))
 
         # Assert
         assert len(responses) == 1
@@ -391,37 +405,37 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline.ping_stream_response = Mock(return_value=PingStreamResponse(task_id="test-task-id"))
 
         # Execute
-        list(pipeline._process_stream_response(publisher=publisher, trace_manager=None))
+        list(pipeline._process_stream_response(publisher=publisher))
 
         # Assert
         assert publisher.messages == [message]
 
-    def test_trace_manager_passed_to_save_message(self, pipeline, committed_sessions):
-        """Test that trace manager is passed to _save_message."""
-        # Setup
-        with (
-            patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
-            patch.object(TraceQueueManager, "start_timer"),
-        ):
-            trace_manager = TraceQueueManager(app_id="test-app-id")
-
-        message_end_event = QueueMessageEndEvent(llm_result=None)
-
-        message = queue_message(message_end_event)
-        pipeline.queue_manager.messages = [message]
-
-        pipeline._save_message = Mock()
-        pipeline._message_end_to_stream_response = Mock(
-            return_value=MessageEndStreamResponse(task_id="test-task-id", id="test-message-id")
+    def test_message_end_emits_message_trace_after_commit(
+        self, pipeline, application_generate_entity: ChatAppGenerateEntity, committed_sessions: list[Session]
+    ) -> None:
+        """The message trace is reported only after the saved message is committed."""
+        recorder = _TraceRecorder(committed_sessions)
+        application_generate_entity.trace_scope = TraceScope(
+            emitter=recorder,
+            tenant_id="test-tenant-id",
+            app_id="test-app-id",
+            user_id="test-user-id",
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
         )
+        pipeline.queue_manager.messages = [queue_message(QueueMessageEndEvent(llm_result=None))]
+        saved_sessions: list[Session] = []
+        pipeline._save_message = lambda *, session: saved_sessions.append(session)
 
-        list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
+        responses = list(pipeline._process_stream_response(publisher=None))
 
-        # Assert
-        session = pipeline._save_message.call_args.kwargs["session"]
-        assert isinstance(session, Session)
-        assert committed_sessions == [session]
-        pipeline._save_message.assert_called_once_with(session=session, trace_manager=trace_manager)
+        assert isinstance(responses[-1], MessageEndStreamResponse)
+        assert committed_sessions == saved_sessions
+        assert [event.payload for event in recorder.events] == [
+            MessageCompleted(message_id="test-message-id", conversation_id="test-conversation-id")
+        ]
+        assert recorder.commits_before_emit == [1]
 
     def test_multiple_events_sequence(self, pipeline, mock_message_cycle_manager, task_state):
         """Test handling multiple events in sequence."""
@@ -447,7 +461,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline.ping_stream_response = Mock(return_value=PingStreamResponse(task_id="test-task-id"))
 
         # Execute
-        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+        responses = list(pipeline._process_stream_response(publisher=None))
 
         # Assert
         assert len(responses) == 3

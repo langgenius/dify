@@ -1,47 +1,75 @@
 """Exercise Celery entrypoints against durable application trace state."""
 
 from datetime import timedelta
+from uuid import UUID
 
+import httpx
 import pytest
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.ops.unified_trace.entities import CanonicalTrace
+from core.helper import ssrf_proxy
+from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.application_trace import ApplicationTraceRun
+from models.model import AppMode
 from services.tracing import service as service_module
-from services.tracing.provider_dispatch import TraceExportResult
-from services.tracing.service import ApplicationTracingService
+from services.tracing.service import application_tracing_service
 from tasks.application_trace_task import export_application_trace, reconcile_application_traces
 from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.services.tracing.test_application_trace_collection import batch_for, ingest, seed, terminal
+from tests.unit_tests.services.tracing.test_application_trace_collection import (
+    attach_conversation,
+    batch_for,
+    ingest,
+    install_decryption,
+    message_record,
+    no_egress,
+    seed,
+    terminal,
+    tracing_service,
+)
 
 
-def test_worker_task_exports_once_and_replayed_task_observes_checkpoint(
+@pytest.fixture
+def worker_database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The worker's service factory binds the application engine; bind it to the test database."""
+    monkeypatch.setattr(type(db), "engine", property(lambda _db: sqlite_engine))
+
+
+@pytest.mark.usefixtures("worker_database")
+def test_worker_task_exports_once_through_the_ssrf_proxy_and_replay_observes_checkpoint(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     case = seed(sqlite_session_factory, "worker-task")
     ingest(case, batch_for(case.run, case.invocation()))
     terminal(case)
-    service = ApplicationTracingService(case.repository)
-    monkeypatch.setattr(service_module, "application_tracing_service", lambda: service)
-    monkeypatch.setattr(service_module.OpsTraceManager, "decrypt_tracing_config", lambda *_args: {})
-    exports: list[CanonicalTrace] = []
+    install_decryption(monkeypatch)
+    proxied: list[tuple[str, str]] = []
 
-    def export(_provider: str, _config: dict[str, object], trace: CanonicalTrace) -> TraceExportResult:
-        exports.append(trace)
-        return TraceExportResult("vendor-id", "https://example.test/trace/vendor-id")
+    def send(method: str, url: str, **_kwargs: object) -> httpx.Response:
+        proxied.append((method, url))
+        return httpx.Response(200, json={}, request=httpx.Request(method, url))
 
-    monkeypatch.setattr(service_module, "export_trace", export)
+    monkeypatch.setattr(ssrf_proxy, "make_request", send)
     export_application_trace.run(case.run.id)
     export_application_trace.run(case.run.id)
-    assert len(exports) == 1
-    assert exports[0].trace_id == case.run.trace_id
+    assert proxied == [("POST", "https://langfuse.test/api/public/ingestion")]
     result = case.repository.get(case.run.id)
     assert result is not None
     assert result.state == "accepted"
     assert result.attempts == 1
-    assert result.trace_url == "https://example.test/trace/vendor-id"
+    provider_trace_id = str(UUID(hex=case.run.trace_id))
+    assert result.provider_trace_id == provider_trace_id
+    assert result.trace_url == f"https://langfuse.test/project/original/traces/{provider_trace_id}"
+
+
+@pytest.mark.usefixtures("worker_database")
+def test_worker_records_carry_no_enterprise_names(sqlite_session_factory: sessionmaker[Session]) -> None:
+    case = seed(sqlite_session_factory, "worker-names")
+    attach_conversation(case, AppMode.AGENT)
+    record = message_record(application_tracing_service(), case)
+    assert (record.metadata["app_name"], record.metadata["workspace_name"]) == ("", "")
 
 
 def test_reconcile_only_schedules_due_pending_rows_and_applies_retention(
@@ -61,7 +89,7 @@ def test_reconcile_only_schedules_due_pending_rows_and_applies_retention(
         future.next_attempt_at = naive_utc_now() + timedelta(hours=1)
         expired.state = "accepted"
         expired.created_at = naive_utc_now() - timedelta(days=4)
-    service = ApplicationTracingService(due.repository)
+    service = tracing_service(due, no_egress())
     scheduled: list[str] = []
     monkeypatch.setattr(service, "schedule", scheduled.append)
     monkeypatch.setattr(service_module, "application_tracing_service", lambda: service)

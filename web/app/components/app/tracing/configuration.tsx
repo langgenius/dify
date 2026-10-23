@@ -65,7 +65,7 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
       const response = configQueries[index]?.data
       return [
         provider,
-        response?.has_not_configured ? null : (response?.tracing_config ?? null),
+        response && !response.has_not_configured && response.tracing_config ? response : null,
       ] as const
     }),
   )

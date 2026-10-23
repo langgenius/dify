@@ -1,7 +1,7 @@
 """Console suggested-question admission and actor/configuration isolation over SQLite."""
 
 import json
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
 from http import HTTPStatus
@@ -9,6 +9,8 @@ from typing import cast
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import SuggestedQuestionsGenerated, TraceCorrelation, TraceEvent
 from flask import Flask
 from sqlalchemy import Connection, Engine, event, func, select, text, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -20,7 +22,6 @@ from controllers.common.rbac.checks import RBACService
 from controllers.console.app import message as controller
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_manager import ModelInstance
-from core.ops.ops_trace_manager import TraceTask
 from extensions.application_services.app import AppServices
 from extensions.application_services.rbac import RBACServices
 from extensions.ext_database import db
@@ -102,7 +103,7 @@ class _Provider:
     tenant_id: str
     admission_sessions: list[Session]
     prompts: list[str] = field(default_factory=list)
-    traces: list[TraceTask] = field(default_factory=list)
+    events: list[TraceEvent] = field(default_factory=list)
 
     def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
         assert tenant_id == self.tenant_id
@@ -133,8 +134,8 @@ class _Provider:
             model="test-model", message=AssistantPromptMessage(content='["Next?"]'), usage=LLMUsage.empty_usage()
         )
 
-    def add_trace_task(self, task: TraceTask) -> None:
-        self.traces.append(task)
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
 
 
 @dataclass
@@ -228,12 +229,22 @@ def harness(
         assert tenant_id == target.tenant_id
         return provider
 
-    def trace_manager(*, app_id: str) -> _Provider:
-        assert app_id == target.id
-        return provider
+    def trace_scope(
+        *, tenant_id: str, app_id: str | None, user_id: str | None, extras: Mapping[str, object]
+    ) -> TraceScope:
+        assert (tenant_id, app_id, user_id, extras) == (target.tenant_id, target.id, None, {})
+        return TraceScope(
+            emitter=provider,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            user_id=user_id,
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
+        )
 
     monkeypatch.setattr(message_service.ModelManager, "for_tenant", manager)
-    monkeypatch.setattr(message_service, "TraceQueueManager", trace_manager)
+    monkeypatch.setattr(message_service, "create_trace_scope_for_app", trace_scope)
     monkeypatch.setattr(login, "current_user", account)
     monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
     apply_config_overrides(monkeypatch, LOGIN_DISABLED=True, RBAC_ENABLED=False)
@@ -449,7 +460,9 @@ def test_chat_runtime_uses_console_history_after_reference_session_closed(harnes
     assert len(harness.provider.prompts) == 1
     assert "Console questions" in harness.provider.prompts[0]
     assert "How?" in harness.provider.prompts[0]
-    assert len(harness.provider.traces) == 1
+    (trace_event,) = harness.provider.events
+    assert isinstance(trace_event.payload, SuggestedQuestionsGenerated)
+    assert (trace_event.payload.message_id, trace_event.payload.questions) == (harness.message.id, ["Next?"])
 
 
 @pytest.mark.parametrize("entity", [Message, Conversation])

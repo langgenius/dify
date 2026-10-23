@@ -7,6 +7,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent, WorkflowRunCompleted
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -18,7 +20,6 @@ from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowSucceededEvent
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
-from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
@@ -32,11 +33,44 @@ from tests.unit_tests.model_factories import make_workflow
 
 
 @pytest.fixture(autouse=True)
-def disable_trace_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Construct real trace managers without provider lookup or background delivery."""
-    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda app_id: None)
-    monkeypatch.setattr(TraceQueueManager, "start_timer", lambda self: None)
+def disable_enterprise_telemetry(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+class _PersistedRunRecorder:
+    """Record each workflow trace with the run status persisted when it was emitted."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+        self.events: list[TraceEvent] = []
+        self.persisted_statuses: list[str | None] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        assert isinstance(event.payload, WorkflowRunCompleted)
+        self.events.append(event)
+        with self._session_factory() as session:
+            run = session.get(WorkflowRun, event.payload.workflow_run_id)
+            self.persisted_statuses.append(run.status if run is not None else None)
+
+
+def _trace_scope(recorder: _TraceRecorder | _PersistedRunRecorder, *, app: App, end_user: EndUser) -> TraceScope:
+    return TraceScope(
+        emitter=recorder,
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        user_id=end_user.session_id,
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
 
 
 def _workflow(
@@ -108,7 +142,7 @@ def _generate_entity(
         user_id=end_user.id,
         stream=stream,
         invoke_from=invoke_from,
-        trace_manager=TraceQueueManager(app_id=app.id, user_id=end_user.id),
+        trace_scope=_trace_scope(_TraceRecorder(), app=app, end_user=end_user),
         workflow_execution_id="run",
     )
 
@@ -159,6 +193,7 @@ def test_worker_executes_and_persists_a_workflow_through_the_injected_driver(
         }
     )
     sqlite_session.commit()
+    recorder = _PersistedRunRecorder(sqlite_session_factory)
     entity = WorkflowAppGenerateEntity(
         task_id="worker-task",
         app_config=_app_config(app_model, workflow),
@@ -168,6 +203,7 @@ def test_worker_executes_and_persists_a_workflow_through_the_injected_driver(
         stream=True,
         invoke_from=InvokeFrom.SERVICE_API,
         workflow_execution_id="worker-run",
+        trace_scope=_trace_scope(recorder, app=app_model, end_user=end_user),
     )
     queue = WorkflowAppQueueManager(entity.task_id, end_user.id, entity.invoke_from, AppMode.WORKFLOW)
     execution_repository, node_repository = _repositories(sqlite_session_factory, app_model, end_user)
@@ -189,6 +225,10 @@ def test_worker_executes_and_persists_a_workflow_through_the_injected_driver(
     assert run is not None
     assert run.status == "succeeded"
     assert run.outputs_dict == {"caller": end_user.session_id}
+    assert [event.payload for event in recorder.events] == [
+        WorkflowRunCompleted(workflow_run_id="worker-run", conversation_id=None, total_tokens=0)
+    ]
+    assert recorder.persisted_statuses == ["succeeded"]
 
 
 def test_ensure_snippet_start_node_in_worker_returns_standard_workflow_without_lookup(
@@ -288,6 +328,14 @@ def test_generate_includes_parent_trace_context_in_extras(
     )
     monkeypatch.setattr("core.app.apps.workflow.app_generator.db", SimpleNamespace(engine=sqlite_session.get_bind()))
     monkeypatch.setattr(generator, "_prepare_user_inputs", lambda *, user_inputs, **kwargs: user_inputs)
+    trace_scope = _trace_scope(_TraceRecorder(), app=app, end_user=end_user)
+    scope_requests: list[dict[str, object]] = []
+
+    def create_trace_scope(**kwargs: object) -> TraceScope:
+        scope_requests.append(kwargs)
+        return trace_scope
+
+    monkeypatch.setattr(app_generator_module, "create_trace_scope", create_trace_scope)
 
     captured = {}
 
@@ -326,6 +374,16 @@ def test_generate_includes_parent_trace_context_in_extras(
         "parent_node_execution_id": "outer-node-execution-1",
     }
     assert extras["trace_session_id"] == "session-1"
+    assert application_generate_entity.trace_scope is trace_scope
+    assert scope_requests == [
+        {
+            "tenant_id": app.tenant_id,
+            "app_id": app.id,
+            "app_tracing": None,
+            "user_id": end_user.session_id,
+            "extras": extras,
+        }
+    ]
     assert isinstance(captured["workflow_execution_repository"], SQLAlchemyWorkflowExecutionRepository)
     assert isinstance(captured["workflow_node_execution_repository"], SQLAlchemyWorkflowNodeExecutionRepository)
     assert repository_tenant_ids == {"workflow": app.tenant_id, "node": app.tenant_id}

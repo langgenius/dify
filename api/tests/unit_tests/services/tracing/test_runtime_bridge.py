@@ -1,19 +1,16 @@
 """Verify execution hook ownership, policy gating, and fail-open business behavior."""
 
 from dataclasses import dataclass, field
-from typing import cast
+from typing import Literal, cast
 from uuid import uuid4
 
 import pytest
 from dify_agent.layers.execution_context import ApplicationTracingContext
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom, WorkflowAppGenerateEntity
-from core.ops.entities.trace_entity import BaseTraceInfo
-from core.ops.exceptions import RetryableTraceDispatchError
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 from graphon.runtime import VariablePool
 from models.agent import (
@@ -26,10 +23,13 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.model import AppMode
-from repositories.application_trace_repository import ApplicationTraceRepository
+from repositories.application_trace_repository import ApplicationTraceRepository, TraceCollectionError
 from services.tracing import runtime_bridge
+from services.tracing.assembly import TraceAssembler
+from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.service import ApplicationTracingService
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.services.tracing.test_application_trace_collection import no_egress
 
 
 @dataclass
@@ -52,7 +52,12 @@ class BridgeCase:
 @pytest.fixture
 def service(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]) -> BridgeCase:
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
-    target = ApplicationTracingService(ApplicationTraceRepository(sqlite_session_factory))
+    target = ApplicationTracingService(
+        ApplicationTraceRepository(sqlite_session_factory),
+        assembler=TraceAssembler(sqlite_session_factory, files_url="https://files.test", enterprise_details=False),
+        builder=CanonicalTraceBuilder(),
+        egress=no_egress(),
+    )
     case = BridgeCase(target)
 
     def prepare(**values: object) -> ApplicationTracingContext:
@@ -66,11 +71,6 @@ def service(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmake
             raise case.failure
         case.calls.append(("start", values))
 
-    def terminal(_info: BaseTraceInfo) -> bool:
-        if case.failure is not None:
-            raise case.failure
-        return True
-
     def agent_terminal(**values: object) -> None:
         if case.failure is not None:
             raise case.failure
@@ -78,7 +78,6 @@ def service(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmake
 
     monkeypatch.setattr(target, "prepare_invocation", prepare)
     monkeypatch.setattr(target, "start", start)
-    monkeypatch.setattr(target, "capture_terminal", terminal)
     monkeypatch.setattr(target, "capture_agent_app_terminal", agent_terminal)
     monkeypatch.setattr(runtime_bridge, "_service", lambda: target)
     return case
@@ -170,8 +169,9 @@ def test_disabled_gate_never_constructs_database_service_or_reads_context(monkey
         conversation_id=None,
         graph_data={},
     )
-    assert runtime_bridge.capture_terminal(cast(BaseTraceInfo, object())) is False
-    assert runtime_bridge.queue_enabled_at_start("app") is False
+    runtime_bridge.capture_agent_app_terminal(
+        tenant_id="tenant", app_id="app", message_id="message", outcome="succeeded", output="answer"
+    )
     assert calls == []
 
 
@@ -241,12 +241,6 @@ def test_business_hook_failure_logs_type_without_sensitive_exception_message(
     assert "private-secret" not in caplog.text
 
 
-def test_worker_database_failure_retries_without_legacy_fallback(service: BridgeCase) -> None:
-    service.failure = OperationalError("statement", {}, Exception("sensitive database error"))
-    with pytest.raises(RetryableTraceDispatchError, match="persistence temporarily unavailable"):
-        runtime_bridge.capture_terminal(cast(BaseTraceInfo, object()))
-
-
 def test_ordinary_workflow_does_not_create_managed_snapshot(service: BridgeCase) -> None:
     runtime_bridge.freeze_workflow_run(
         cast(WorkflowAppGenerateEntity, object()),
@@ -276,8 +270,6 @@ def test_graph_string_with_agent_is_recognized() -> None:
 
 @pytest.mark.parametrize("outcome", ["succeeded", "failed", "cancelled"])
 def test_worker_terminal_handoff_preserves_outcome_without_sse(service: BridgeCase, outcome: str) -> None:
-    from typing import Literal, cast
-
     runtime_bridge.capture_agent_app_terminal(
         tenant_id="tenant",
         app_id="agent-app",
@@ -302,8 +294,6 @@ def test_worker_terminal_handoff_preserves_outcome_without_sse(service: BridgeCa
 def test_terminal_handoff_gate_and_fail_open_log_redact_sensitive_details(
     service: BridgeCase, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    from repositories.application_trace_repository import TraceCollectionError
-
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
     runtime_bridge.capture_agent_app_terminal(
         tenant_id="tenant", app_id="app", message_id="message", outcome="failed", output=None
@@ -336,32 +326,15 @@ def test_workflow_fail_open_logs_error_kind_without_content(
     assert "private-prompt" not in caplog.text
 
 
-@pytest.mark.parametrize(
-    ("policy", "expected"),
-    [
-        (None, False),
-        ('{"enabled":true}', True),
-        ('{"enabled":"true"}', False),
-        ("[]", False),
-        ("invalid-private", False),
-    ],
-)
-def test_queue_policy_reads_real_app_rows_without_constructing_vendor_sdk(
-    sqlite_session_factory: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
-    policy: str | None,
-    expected: bool,
-) -> None:
-    from extensions.ext_database import db
-    from tests.unit_tests.model_factories import make_app
-
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
-    with sqlite_session_factory.begin() as session:
-        session.add(make_app(app_id="queue-app", tenant_id="tenant", tracing=policy))
-    with sqlite_session_factory() as session:
-        monkeypatch.setattr(db, "session", session)
-        assert runtime_bridge.queue_enabled_at_start("queue-app") is expected
-        assert runtime_bridge.queue_enabled_at_start("missing") is False
-        assert runtime_bridge.queue_enabled_at_start(None) is False
-    assert "invalid-private" not in caplog.text
+def test_hooks_expose_only_the_agent_collection_lifecycle() -> None:
+    hooks = runtime_bridge.RuntimeApplicationTracingHooks()
+    assert hooks.prepare_agent_app is runtime_bridge.prepare_agent_app
+    assert hooks.prepare_workflow_agent is runtime_bridge.prepare_workflow_agent
+    assert hooks.freeze_workflow_run is runtime_bridge.freeze_workflow_run
+    assert hooks.capture_agent_app_terminal is runtime_bridge.capture_agent_app_terminal
+    assert {name for name in dir(hooks) if not name.startswith("_")} == {
+        "prepare_agent_app",
+        "prepare_workflow_agent",
+        "freeze_workflow_run",
+        "capture_agent_app_terminal",
+    }

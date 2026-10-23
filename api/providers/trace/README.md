@@ -1,77 +1,92 @@
 # Trace providers
 
-This directory holds **optional workspace packages** that send Dify **ops tracing** data (workflows, messages, tools, moderation, etc.) to an external observability backend (Langfuse, LangSmith, OpenTelemetry-style exporters, and others).
+Each directory here is an optional uv workspace package that sends Dify traces (messages, workflow runs, tool calls, retrieval, moderation, and so on) to one external observability backend. `trace-sdk/` is the contract every provider implements; it is not a provider itself.
 
-Unlike VDB providers, trace plugins are **not** discovered via entry points. The API core imports your package **explicitly** from `core/ops/ops_trace_manager.py` after you register the provider id and mapping.
+## The contract (`trace-sdk`, imported as `dify_trace_sdk`)
 
-## Architecture
+A provider is a subclass of `dify_trace_sdk.provider.TraceProvider[ConfigT]`:
 
-| Layer | Location | Role |
-|--------|----------|------|
-| Contracts | `api/core/ops/base_trace_instance.py`, `api/core/ops/entities/trace_entity.py`, `api/core/ops/entities/config_entity.py` | `BaseTraceInstance`, `BaseTracingConfig`, and typed `*TraceInfo` payloads |
-| Registry | `api/core/ops/ops_trace_manager.py` | `TracingProviderEnum`, `OpsTraceProviderConfigMap` — maps provider **string** → config class, encrypted keys, and trace class |
-| Your package | `api/providers/trace/trace-<name>/` | Pydantic config + subclass of `BaseTraceInstance` |
+| Member | Purpose |
+|--------|---------|
+| `id` | The stable provider ID stored in app tracing settings, such as `"langfuse"`. |
+| `config_model` | A `ProviderConfig` subclass. Mark credentials with `secret()` and values that verification resolves with `derived()`. |
+| `capabilities` | A `ProviderCapabilities` value: whether the backend prices usage natively and links to traces and spans. |
+| `verify(config)` | Checks a new or edited configuration against the backend and returns it with derived fields filled. Raises `VerificationError(code)` with a stable code that contains no secret. |
+| `project_url(config)` | The console link for a configuration. It must not perform I/O. |
+| `send(config, trace)` | Delivers one trace unit and classifies every failure (see below). |
 
-At runtime, `OpsTraceManager` decrypts stored credentials, builds your config model, caches a trace instance, and calls `trace(trace_info)` with a concrete `BaseTraceInfo` subtype.
+What `send` receives (`dify_trace_sdk.model`):
 
-## What you implement
+- A `Trace` is a parent-first tree of completed `Span`s that uses OpenTelemetry ID formats.
+  - Each span carries timing, inputs and outputs, status, and typed LLM fields (`model_name`, `model_provider`, `usage`, `cost`, `time_to_first_token`).
+  - All values are strict JSON.
+- A message trace has a `message` root and an `llm` child.
+- A workflow run has a `workflow` span with node spans and loop or iteration wrapper spans. For chatflows these hang under the `message` root.
+- Auxiliary operations join their message's trace as separate units. `trace.parent` names the message root span, and the first span of the unit points at it.
+- A workflow nested in another one is its own trace. Its root carries `parent_workflow_run_id` and `parent_node_execution_id`.
+- A unit can be sent again after a retryable failure. Derive vendor IDs deterministically from the trace and span IDs (`dify_trace_sdk.ids`), so a resend updates the same records instead of duplicating them.
 
-### 1. Config model (`BaseTracingConfig`)
+Failure classes (`dify_trace_sdk.errors`):
 
-Subclass `BaseTracingConfig` from `core.ops.entities.config_entity`. Use Pydantic validators; reuse helpers from `core.ops.utils` (for example `validate_url`, `validate_url_with_path`, `validate_project_name`) where appropriate.
+| Raise | When | Pipeline behaviour |
+|-------|------|--------------------|
+| `ExportRetryableError` | Nothing was accepted and the cause is transient (unreachable, 408/425/429/5xx). | Sends the same unit again later, up to `OPS_TRACE_EXPORT_MAX_ATTEMPTS` attempts in total. |
+| `ExportRejectedError` | The backend refused the unit, or the configuration cannot work. | Drops the unit and logs a warning. |
+| `ExportOutcomeUnknownError` | Part or all of the unit may have been accepted. | Drops the unit; sending again could duplicate it. |
 
-Fields fall into two groups used by the manager:
+Error messages are logged and must never contain credentials, request bodies, or vendor response bodies. Raise them `from None`.
 
-- **`secret_keys`** — names of fields that are **encrypted at rest** (API keys, tokens, passwords).
-- **`other_keys`** — non-secret connection settings (hosts, project names, endpoints).
+## Network access
 
-List these key names in your `OpsTraceProviderConfigMap` entry so encrypt/decrypt and merge logic stay correct.
+A provider never opens sockets, starts threads, or reads environment variables or files. All traffic goes through `self.egress`:
 
-### 2. Trace instance (`BaseTraceInstance`)
+- `egress.request(...)` sends one HTTP request through the SSRF proxy, with no retries or redirects, a bounded response, and no ambient cookies.
+- `egress.grpc_channel(endpoint)` opens a channel pinned to a vetted address.
+- The helpers in `dify_trace_sdk.exporting` and `dify_trace_sdk.otlp` turn egress failures and HTTP or gRPC statuses into the failure classes above.
 
-Subclass `BaseTraceInstance` and implement:
+If you must use a vendor SDK, route its HTTP through `EgressHttpxTransport` or `EgressRequestsSession` (`dify_trace_sdk.transports`) and disable its batching, background threads, and retries. Importing the SDK must not change process-wide state; some SDKs install a Sentry client or patch other libraries on import.
 
-```python
-def trace(self, trace_info: BaseTraceInfo) -> None: ...
-```
+## Configuration and secrets
 
-Dispatch on the concrete type with `isinstance` (see `trace_langfuse` or `trace_langsmith` for full patterns). Payload types are defined in `core/ops/entities/trace_entity.py`, including:
+Stored configurations keep the provider's fields at the top level, with `secret()` fields encrypted per workspace. Secrets are write-only:
 
-- `WorkflowTraceInfo`, `WorkflowNodeTraceInfo`, `DraftNodeExecutionTrace`
-- `MessageTraceInfo`, `ToolTraceInfo`, `ModerationTraceInfo`, `SuggestedQuestionTraceInfo`
-- `DatasetRetrievalTraceInfo`, `GenerateNameTraceInfo`, `PromptGenerationTraceInfo`
+- The console never receives them back; it gets the names of the secrets that are set.
+- When an edit leaves a secret empty or omits it, the stored value is kept.
+- Clients cannot set `derived()` fields.
 
-You may ignore categories your backend does not support; existing providers often no-op unhandled types.
+`ProviderConfig` hides inputs from validation errors; keep validator messages fixed texts too.
 
-Optional: use `get_service_account_with_tenant(app_id)` from the base class when you need tenant-scoped account context.
+## Adding a provider
 
-### 3. Register in the API core
+1. Create `api/providers/trace/trace-<name>/` with:
+   - a `pyproject.toml` for the project `dify-trace-<name>`, depending on `dify-trace-sdk` (plus any vendor SDK that is safe to import);
+   - `src/dify_trace_<name>/{config.py,provider.py,py.typed}`;
+   - `tests/unit_tests/`.
 
-Upstream changes are required so Dify knows your provider exists:
+   List `py.typed` under `[tool.setuptools.package-data]`.
+2. Register the provider class as an entry point:
 
-1. **`TracingProviderEnum`** (`api/core/ops/entities/config_entity.py`) — add a new member whose **value** is the stable string stored in app tracing config (e.g. `"mybackend"`).
-2. **`OpsTraceProviderConfigMap.__getitem__`** (`api/core/ops/ops_trace_manager.py`) — add a `match` case for that enum member returning:
-   - `config_class`: your Pydantic config type
-   - `secret_keys` / `other_keys`: lists of field names as above
-   - `trace_instance`: your `BaseTraceInstance` subclass  
-   Lazy-import your package inside the case so missing optional installs raise a clear `ImportError`.
+   ```toml
+   [project.entry-points."dify.trace_providers"]
+   <id> = "dify_trace_<name>.provider:<Name>Provider"
+   ```
 
-If the `match` case is missing, the provider string will not resolve and tracing will be disabled for that app.
+3. Add the ID to `SUPPORTED_PROVIDERS` in `api/services/tracing/registry.py` and the provider's form fields to the web console's tracing field registry.
+4. In `api/pyproject.toml`, add `dify-trace-<name> = { workspace = true }` under `[tool.uv.sources]` and add the package to the `trace-<name>` and `trace-all` dependency groups. Then run `uv lock` and `uv sync` from `api/`.
+5. Test with `dify_trace_sdk.testing.RecordingEgress` and the sample traces there. Tests must not reach the network.
 
-## Package layout
+`trace-langfuse/` is the smallest reference implementation; `trace-arize-phoenix/` and `trace-tencent/` show OTLP over HTTP and gRPC.
 
-Each provider is a normal uv workspace member, for example:
+## How traces reach a provider
 
-- `api/providers/trace/trace-<name>/pyproject.toml` — project name `dify-trace-<name>`, dependencies on vendor SDKs
-- `api/providers/trace/trace-<name>/src/dify_trace_<name>/` — `config.py`, `<name>_trace.py`, optional `entities/`, and an empty **`py.typed`** file (PEP 561) so the API type checker treats the package as typed; list `py.typed` under `[tool.setuptools.package-data]` for that import name in `pyproject.toml`.
+1. Producers emit typed events (`dify_trace_sdk.events`) through a `TraceScope` after their records are committed:
+   - generators, task pipelines and the workflow persistence layer;
+   - moderation, tools, retrieval, conversation naming and suggested questions.
 
-Reference implementations: `trace-langfuse/`, `trace-langsmith/`, `trace-opik/`.
-
-## Wiring into the `api` workspace
-
-In `api/pyproject.toml`:
-
-1. **`[tool.uv.sources]`** — `dify-trace-<name> = { workspace = true }`
-2. **`[dependency-groups]`** — add `trace-<name> = ["dify-trace-<name>"]` and include `dify-trace-<name>` in `trace-all` if it should ship with the default bundle
-
-After changing metadata, run **`uv sync`** from `api/`.
+   A scope exists only when the app has tracing enabled or enterprise telemetry is on.
+2. `tasks.trace_delivery_task` delivers each event on the `ops_trace` queue:
+   - `services.tracing.assembly` reloads the records through the event's workspace.
+   - Enterprise telemetry receives every record.
+   - The Agent trace collector takes the executions it manages.
+   - `services.tracing.canonical` builds the trace for the app's current provider configuration, and the provider's `send` runs.
+3. A retryable failure stores only the built trace and schedules that send again. Payloads that an interrupted delivery leaves in storage are removed daily by `sweep_trace_payloads`.

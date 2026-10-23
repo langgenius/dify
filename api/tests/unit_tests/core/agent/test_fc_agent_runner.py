@@ -7,6 +7,8 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from pytest_mock import MockerFixture
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
@@ -80,6 +82,26 @@ def _make_message(*, message_id: str = "m1", conversation_id: str = "conv1") -> 
         currency="USD",
         from_source=ConversationFromSource.API,
         created_at=naive_utc_now(),
+    )
+
+
+class _Recorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_Recorder(),
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
     )
 
 
@@ -177,7 +199,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
 
     application_generate_entity = MagicMock()
     application_generate_entity.model_conf = MagicMock(parameters={}, stop=None)
-    application_generate_entity.trace_manager = MagicMock()
+    application_generate_entity.trace_scope = None
     application_generate_entity.invoke_from = "test"
     application_generate_entity.app_config = MagicMock(app_id="app")
     application_generate_entity.file_upload_config = None
@@ -639,6 +661,8 @@ class TestRunMethod:
 
     def test_run_with_tool_instance_and_files(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
         message = _make_message()
+        trace_scope = _trace_scope()
+        runner.application_generate_entity.trace_scope = trace_scope
 
         tool_call = MagicMock()
         tool_call.id = "1"
@@ -658,13 +682,14 @@ class TestRunMethod:
 
         tool_invoke_meta = MagicMock()
         tool_invoke_meta.to_dict.return_value = {"ok": True}
-        mocker.patch(
+        agent_invoke = mocker.patch(
             "core.agent.fc_agent_runner.ToolEngine.agent_invoke",
             return_value=("ok", ["file1"], tool_invoke_meta),
         )
 
         outputs = list(runner.run(runner.session, message, "query"))
         assert len(outputs) >= 1
+        assert agent_invoke.call_args.kwargs["trace_scope"] is trace_scope
         assert any(
             isinstance(call.args[0], QueueMessageFileEvent)
             and call.args[0].message_file_id == "file1"

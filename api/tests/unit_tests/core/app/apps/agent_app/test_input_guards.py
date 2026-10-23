@@ -8,21 +8,26 @@ answer, or pass through a possibly moderation-sanitized query.
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from sqlalchemy.orm import Session
 
 import core.app.features.annotation_reply.annotation_reply as annotation_mod
 import core.moderation.input_moderation as input_moderation_mod
+from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
+from core.app.apps.agent_app.app_config_manager import AgentAppConfig
 from core.app.apps.agent_app.app_generator import AgentAppGenerator
+from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
 from core.moderation.base import ModerationError
 from models.model import App, AppMode, Message, MessageAnnotation
+from tests.unit_tests.core.model_fixtures import make_model_config
 from tests.unit_tests.model_factories import make_app, make_message
 
 
@@ -34,15 +39,44 @@ class _FakeQueueManager:
         self.events.append(event)
 
 
-def _make_entity(query: str = "hello") -> SimpleNamespace:
-    return SimpleNamespace(
-        app_config=SimpleNamespace(app_id="app-1", tenant_id="tenant-1"),
-        model_conf=SimpleNamespace(model="gpt-4o-mini"),
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _make_entity(query: str) -> AgentAppGenerateEntity:
+    return AgentAppGenerateEntity(
+        task_id="task-1",
+        app_config=AgentAppConfig(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            app_mode=AppMode.AGENT,
+            app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+            app_model_config_dict={},
+            model=ModelConfigEntity(provider="openai", model="gpt-4o-mini", mode="chat"),
+            prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+        ),
+        model_conf=make_model_config(provider="openai", model="gpt-4o-mini", mode="chat"),
         inputs={},
+        files=[],
         query=query,
-        trace_manager=None,
         user_id="user-1",
-        invoke_from=SimpleNamespace(),
+        stream=True,
+        invoke_from=InvokeFrom.WEB_APP,
+        trace_scope=TraceScope(
+            emitter=_TraceRecorder(),
+            tenant_id="tenant-1",
+            app_id="app-1",
+            user_id="user-1",
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
+        ),
+        agent_id="agent-1",
+        agent_config_snapshot_id="snapshot-1",
     )
 
 
@@ -54,14 +88,23 @@ def _message() -> Message:
     return make_message(message_id="msg-1")
 
 
-def _patch_moderation(monkeypatch: pytest.MonkeyPatch, *, returns=None, raises: Exception | None = None) -> None:
+def _patch_moderation(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    returns: tuple[bool, dict[str, Any], str] | None = None,
+    raises: Exception | None = None,
+) -> list[dict[str, Any]]:
+    calls: list[dict[str, Any]] = []
+
     class _FakeModeration:
         def check(self, **kwargs: Any):
+            calls.append(kwargs)
             if raises is not None:
                 raise raises
             return returns
 
     monkeypatch.setattr(input_moderation_mod, "InputModeration", _FakeModeration)
+    return calls
 
 
 def _patch_annotation(monkeypatch: pytest.MonkeyPatch, *, reply=None) -> None:
@@ -86,13 +129,14 @@ def _saved_user_query(events: list[Any]) -> str:
 
 class TestRunInputGuards:
     def test_no_guards_passes_through(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
-        _patch_moderation(monkeypatch, returns=(False, {}, "hello"))
+        moderation_calls = _patch_moderation(monkeypatch, returns=(False, {}, "hello"))
         _patch_annotation(monkeypatch, reply=None)
         qm = _FakeQueueManager()
+        entity = _make_entity("hello")
 
         handled, query, annotation_reply = AgentAppGenerator()._run_input_guards(
             session=sqlite_session,
-            application_generate_entity=_make_entity("hello"),
+            application_generate_entity=entity,
             app_model=_app(),
             message=_message(),
             queue_manager=qm,
@@ -102,6 +146,9 @@ class TestRunInputGuards:
         assert query == "hello"
         assert annotation_reply is None
         assert qm.events == []
+        assert len(moderation_calls) == 1
+        assert moderation_calls[0]["message_id"] == "msg-1"
+        assert moderation_calls[0]["trace_scope"] is entity.trace_scope
 
     def test_moderation_override_sanitizes_query(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
         _patch_moderation(monkeypatch, returns=(True, {}, "[redacted]"))

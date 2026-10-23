@@ -5,6 +5,8 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent, WorkflowRunCompleted
 from flask import Flask
 from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy import select
@@ -12,8 +14,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
-from core.ops.base_trace_instance import bind_application_tracing_hooks
-from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
@@ -23,6 +23,7 @@ from core.workflow.node_execution_process_data import (
 )
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from enums import WorkflowKind
+from extensions.tracing import bind_tracing
 from graphon.engine.event.node_failure import NodeFailureHandler
 from graphon.engine.event.processor import NodeEventProcessor
 from graphon.engine.event.stream import EventStream
@@ -61,6 +62,7 @@ from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from graphon.runtime.execution import ROOT_FRAME_ID
+from graphon.variables.variables import Variable
 from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
@@ -68,6 +70,7 @@ from repositories.entities.workflow_execution import WorkflowExecution
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
+from services.tracing.emitter import TraceScopes
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from tests.unit_tests.config_override import apply_config_overrides
@@ -98,6 +101,29 @@ class _RepoRecorder:
         self.saved_exec_data.append(entity)
 
 
+class _TraceRecorder:
+    """Record trace events with the number of workflow saves that preceded each one."""
+
+    def __init__(self, workflow_repo: _RepoRecorder) -> None:
+        self._workflow_repo = workflow_repo
+        self.events: list[TraceEvent] = []
+        self.saves_before_emit: list[int] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+        self.saves_before_emit.append(len(self._workflow_repo.synchronously_saved))
+
+
+def _trace_scope(recorder: _TraceRecorder, correlation: TraceCorrelation) -> TraceScope:
+    return TraceScope(emitter=recorder, tenant_id="tenant", app_id="app", user_id="user", correlation=correlation)
+
+
+def _empty_correlation() -> TraceCorrelation:
+    return TraceCorrelation(
+        external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+    )
+
+
 def _naive_utc_now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
@@ -107,7 +133,7 @@ def _make_layer(
     *,
     extras: dict | None = None,
     graph_data: dict | None = None,
-    trace_manager: object | None = None,
+    trace_scope: TraceScope | None = None,
     workflow_execution_repo=None,
     workflow_node_execution_repo=None,
     node_run_indices=None,
@@ -131,7 +157,7 @@ def _make_layer(
         user_id="user",
         stream=False,
         invoke_from=None,
-        trace_manager=None,
+        trace_scope=trace_scope,
         workflow_execution_id="run-id",
         extras=extras or {},
         call_depth=0,
@@ -154,7 +180,7 @@ def _make_layer(
         workflow_info=workflow_info,
         workflow_execution_repository=workflow_execution_repo,
         workflow_node_execution_repository=workflow_node_execution_repo,
-        trace_manager=trace_manager,
+        trace_scope=trace_scope,
     )
     layer.initialize(read_only_state, command_channel=None)
     layer.set_node_run_indices(node_run_indices or {})
@@ -712,9 +738,16 @@ class TestWorkflowPersistenceLayer:
             )
 
         monkeypatch.setattr(RuntimeApplicationTracingHooks, "freeze_workflow_run", staticmethod(freeze))
-        hooks = RuntimeApplicationTracingHooks()
         app = Flask(__name__)
-        bind_application_tracing_hooks(app, hooks)
+        bind_tracing(
+            app,
+            scopes=TraceScopes(
+                emitter=_TraceRecorder(workflow_repo),
+                session_factory=sessionmaker(),
+                enterprise_enabled=lambda: False,
+            ),
+            hooks=RuntimeApplicationTracingHooks(),
+        )
 
         with app.app_context():
             layer._handle_graph_run_started()
@@ -842,10 +875,12 @@ class TestWorkflowPersistenceLayer:
         assert saved.exceptions_count == 2
         assert saved.total_tokens == 5
 
-    def test_handle_graph_run_failed_marks_nodes_and_enqueues_trace(self):
-        trace_tasks: list[object] = []
-        trace_manager = SimpleNamespace(user_id="user", add_trace_task=lambda task: trace_tasks.append(task))
-        layer, exec_repo, node_repo, _ = _make_layer(extras={"external_trace_id": "trace"}, trace_manager=trace_manager)
+    def test_handle_graph_run_failed_marks_nodes_and_emits_trace_after_save(self) -> None:
+        workflow_repo = _RepoRecorder()
+        recorder = _TraceRecorder(workflow_repo)
+        layer, exec_repo, node_repo, _ = _make_layer(
+            trace_scope=_trace_scope(recorder, _empty_correlation()), workflow_execution_repo=workflow_repo
+        )
         layer.on_event(GraphRunStartedEvent())
 
         running = WorkflowNodeExecution(
@@ -864,64 +899,62 @@ class TestWorkflowPersistenceLayer:
 
         assert node_repo.saved
         assert exec_repo.synchronously_saved[-1].status == WorkflowExecutionStatus.FAILED
-        assert trace_tasks
+        assert [event.payload for event in recorder.events] == [
+            WorkflowRunCompleted(workflow_run_id="run-id", conversation_id="conv-id", total_tokens=0)
+        ]
+        # Started and finished saves both precede the event.
+        assert recorder.saves_before_emit == [2]
 
-    def test_handle_graph_run_succeeded_enqueues_parent_trace_context(self, monkeypatch: pytest.MonkeyPatch):
-        trace_tasks: list[TraceTask] = []
-        trace_manager = SimpleNamespace(user_id="user", add_trace_task=lambda task: trace_tasks.append(task))
-        layer, _, _, _ = _make_layer(
-            extras={
-                "external_trace_id": "trace",
-                "trace_session_id": "session-1",
-                "parent_trace_context": {
-                    "parent_workflow_run_id": "outer-workflow-run-1",
-                    "parent_node_execution_id": "outer-node-execution-1",
-                },
-            },
-            trace_manager=trace_manager,
+    @pytest.mark.parametrize(
+        ("system_variables", "conversation_id"),
+        [
+            (build_system_variables(workflow_execution_id="run-id", conversation_id="conv-id"), "conv-id"),
+            (build_system_variables(workflow_execution_id="run-id"), None),
+        ],
+    )
+    def test_handle_graph_run_succeeded_emits_run_tokens_with_scope_correlation(
+        self, system_variables: list[Variable], conversation_id: str | None
+    ) -> None:
+        workflow_repo = _RepoRecorder()
+        recorder = _TraceRecorder(workflow_repo)
+        correlation = TraceCorrelation(
+            external_trace_id="trace",
+            session_id="session-1",
+            parent_workflow_run_id="outer-workflow-run-1",
+            parent_node_execution_id="outer-node-execution-1",
+        )
+        layer, _, _, runtime_state = _make_layer(
+            system_variables,
+            trace_scope=_trace_scope(recorder, correlation),
+            workflow_execution_repo=workflow_repo,
         )
         layer.on_event(GraphRunStartedEvent())
-
-        captured: dict[str, object] = {}
-
-        def fake_workflow_trace(
-            self: TraceTask,
-            *,
-            workflow_run_id: str | None,
-            conversation_id: str | None,
-            user_id: str | None,
-            total_tokens_override: int | None = None,
-        ):
-            captured["trace_type"] = self.trace_type
-            captured["external_trace_id"] = self.kwargs.get("external_trace_id")
-            captured["trace_session_id"] = self.kwargs.get("trace_session_id")
-            captured["parent_trace_context"] = self.kwargs.get("parent_trace_context")
-            captured["workflow_run_id"] = workflow_run_id
-            return {"ok": True}
-
-        monkeypatch.setattr(TraceTask, "workflow_trace", fake_workflow_trace)
+        usage = LLMUsage.empty_usage()
+        usage.total_tokens = 7
+        runtime_state.add_llm_usage(usage)
 
         layer.on_event(GraphRunSucceededEvent(outputs={"ok": True}))
 
-        assert trace_tasks
-        trace_task = trace_tasks[0]
-        assert trace_task.trace_type == TraceTaskName.WORKFLOW_TRACE
-        assert trace_task.kwargs["external_trace_id"] == "trace"
-        assert trace_task.kwargs["trace_session_id"] == "session-1"
-        assert trace_task.kwargs["parent_trace_context"] == {
-            "parent_workflow_run_id": "outer-workflow-run-1",
-            "parent_node_execution_id": "outer-node-execution-1",
-        }
+        assert len(recorder.events) == 1
+        event = recorder.events[0]
+        assert event.payload == WorkflowRunCompleted(
+            workflow_run_id="run-id", conversation_id=conversation_id, total_tokens=7
+        )
+        assert event.correlation == correlation
+        assert (event.tenant_id, event.app_id, event.user_id) == ("tenant", "app", "user")
+        assert recorder.saves_before_emit == [2]
 
-        trace_task.execute()
+    def test_paused_run_emits_no_trace(self) -> None:
+        workflow_repo = _RepoRecorder()
+        recorder = _TraceRecorder(workflow_repo)
+        layer, _, _, _ = _make_layer(
+            trace_scope=_trace_scope(recorder, _empty_correlation()), workflow_execution_repo=workflow_repo
+        )
+        layer.on_event(GraphRunStartedEvent())
 
-        assert captured["trace_type"] == TraceTaskName.WORKFLOW_TRACE
-        assert captured["external_trace_id"] == "trace"
-        assert captured["trace_session_id"] == "session-1"
-        assert captured["parent_trace_context"] == {
-            "parent_workflow_run_id": "outer-workflow-run-1",
-            "parent_node_execution_id": "outer-node-execution-1",
-        }
+        layer.on_event(GraphRunPausedEvent(reasons=[SchedulingPause(message="pause")]))
+
+        assert recorder.events == []
 
     def test_handle_graph_run_aborted_sets_status(self):
         layer, exec_repo, _, _ = _make_layer()

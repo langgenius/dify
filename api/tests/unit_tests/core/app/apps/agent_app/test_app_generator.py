@@ -15,6 +15,8 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from pytest_mock import MockerFixture
 from sqlalchemy import event
 from sqlalchemy.orm import Session
@@ -34,6 +36,37 @@ from models.enums import AppStatus, ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation
 
 MODULE = "core.app.apps.agent_app.app_generator"
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_TraceRecorder(),
+        tenant_id="tenant",
+        app_id="app1",
+        user_id="user",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
+def _record_trace_scope_requests(monkeypatch: pytest.MonkeyPatch, trace_scope: TraceScope) -> list[dict[str, object]]:
+    requests: list[dict[str, object]] = []
+
+    def create_trace_scope(**kwargs: object) -> TraceScope:
+        requests.append(kwargs)
+        return trace_scope
+
+    monkeypatch.setattr(module, "create_trace_scope", create_trace_scope)
+    return requests
 
 
 def _account(user_id: str = "user") -> Account:
@@ -187,7 +220,11 @@ class TestGenerateSuccess:
             == "snapshot-1"
         )
 
-    def test_generate_orchestrates_and_starts_worker(self, generator, mocker: MockerFixture):
+    def test_generate_orchestrates_and_starts_worker(
+        self, generator: AgentAppGenerator, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        trace_scope = _trace_scope()
+        scope_requests = _record_trace_scope_requests(monkeypatch, trace_scope)
         config = AppModelConfig(app_id="app1")
         config.id = "config-1"
         session = _session()
@@ -210,7 +247,6 @@ class TestGenerateSuccess:
         mocker.patch(f"{MODULE}.FileUploadConfigManager.convert", return_value=file_upload_config)
         parsed_file = mocker.MagicMock()
         build_files = mocker.patch(f"{MODULE}.file_factory.build_from_mappings", return_value=[parsed_file])
-        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
         generate_entity = mocker.patch(
             f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
         )
@@ -254,6 +290,11 @@ class TestGenerateSuccess:
         assert generate_entity.call_args.kwargs["files"] == [parsed_file]
         assert generate_entity.call_args.kwargs["file_upload_config"] is file_upload_config
         assert "agent_runtime_exit_intent" not in generate_entity.call_args.kwargs
+        extras = generate_entity.call_args.kwargs["extras"]
+        assert generate_entity.call_args.kwargs["trace_scope"] is trace_scope
+        assert scope_requests == [
+            {"tenant_id": "tenant", "app_id": "app1", "app_tracing": None, "user_id": "user", "extras": extras}
+        ]
 
     def test_generate_loads_existing_conversation(self, generator: AgentAppGenerator, mocker: MockerFixture):
         app_model = _app()
@@ -267,7 +308,6 @@ class TestGenerateSuccess:
         mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
         mocker.patch(f"{MODULE}.load_annotation_reply_config", return_value={"enabled": False})
         mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock())
-        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
@@ -294,8 +334,9 @@ class TestGenerateSuccess:
         assert generator._init_generate_records.call_args.kwargs["session"] is session
 
     def test_generate_does_not_include_trace_session_id_in_extras(
-        self, generator: AgentAppGenerator, mocker: MockerFixture
-    ):
+        self, generator: AgentAppGenerator, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        scope_requests = _record_trace_scope_requests(monkeypatch, _trace_scope())
         app_model = _app()
         user = _account()
 
@@ -309,7 +350,6 @@ class TestGenerateSuccess:
             return_value=mocker.MagicMock(variables=[], tenant_id="tenant", app_id="app1"),
         )
         mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock(model="gpt-4o-mini"))
-        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
         generate_entity = mocker.patch(
             f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
         )
@@ -327,6 +367,7 @@ class TestGenerateSuccess:
         )
 
         assert generate_entity.call_args.kwargs["extras"] == {"auto_generate_conversation_name": True}
+        assert [request["extras"] for request in scope_requests] == [{"auto_generate_conversation_name": True}]
 
 
 class TestGenerateWorker:
@@ -477,14 +518,17 @@ class TestGenerateWorker:
         assert events == ["commit", "publish"]
         runner.run.assert_not_called()
 
-    def test_generate_task_stopped_is_swallowed(self, generator, mocker: MockerFixture):
+    def test_generate_task_stopped_is_swallowed(
+        self, generator: AgentAppGenerator, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         self._wire(generator, mocker, run_side_effect=GenerateTaskStoppedError())
+
         # A locally stopped consumer does not prove runtime cancellation. The
         # runner must hand off the typed terminal it actually observed.
-        mocker.patch(
-            "core.ops.base_trace_instance.application_tracing_hooks",
-            side_effect=AssertionError("stop intent must not invent a tracing terminal"),
-        )
+        def application_tracing_hooks() -> None:
+            raise AssertionError("stop intent must not invent a tracing terminal")
+
+        monkeypatch.setattr(module, "application_tracing_hooks", application_tracing_hooks)
         queue_manager = mocker.MagicMock()
         self._call(generator, mocker, queue_manager)
         queue_manager.publish_error.assert_not_called()

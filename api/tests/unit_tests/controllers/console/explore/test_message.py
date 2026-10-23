@@ -9,6 +9,8 @@ from typing import Literal, cast
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import SuggestedQuestionsGenerated, TraceCorrelation, TraceEvent
 from pydantic import JsonValue
 from sqlalchemy import Connection, Engine, event, select, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -20,7 +22,6 @@ import services.message_service as message_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_manager import ModelInstance
-from core.ops.ops_trace_manager import TraceTask
 from extensions.ext_database import db
 from graphon.model_runtime.entities import AssistantPromptMessage, PromptMessage
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -203,7 +204,7 @@ class _QuestionProvider:
     prompts: list[str] = field(default_factory=list)
     io_sessions: list[tuple[str, bool]] = field(default_factory=list)
     token_failure: bool = False
-    traces: list[TraceTask] = field(default_factory=list)
+    events: list[TraceEvent] = field(default_factory=list)
 
     def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
         assert tenant_id == self.messages.harness.target_app.tenant_id
@@ -254,8 +255,8 @@ class _QuestionProvider:
             usage=LLMUsage.empty_usage(),
         )
 
-    def add_trace_task(self, task: TraceTask) -> None:
-        self.traces.append(task)
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
 
     def assert_closed(self) -> None:
         self.messages.assert_sessions_closed()
@@ -284,12 +285,23 @@ def real_questions(
         assert tenant_id == messages.harness.target_app.tenant_id
         return provider
 
-    def trace_manager(*, app_id: str) -> _QuestionProvider:
-        assert app_id == messages.harness.target_app.id
-        return provider
+    def trace_scope(
+        *, tenant_id: str, app_id: str | None, user_id: str | None, extras: Mapping[str, object]
+    ) -> TraceScope:
+        target_app = messages.harness.target_app
+        assert (tenant_id, app_id, user_id, extras) == (target_app.tenant_id, target_app.id, None, {})
+        return TraceScope(
+            emitter=provider,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            user_id=user_id,
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
+        )
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
-    monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
+    monkeypatch.setattr(message_module, "create_trace_scope_for_app", trace_scope)
     messages.services = replace(
         messages.services,
         message_suggested_questions=MessageSuggestedQuestionsRuntime(session_factory=messages.factory),
@@ -701,7 +713,10 @@ def test_shared_suggested_questions_uses_owner_tenant_and_releases_sessions(
     messages.external_error = failure
     response = messages.request("suggested-questions", message_id=real_questions.message.id)
     _assert_json_response(response, status=200, body={"data": messages.questions if failure is None else []})
-    assert len(real_questions.traces) == 1
+    (trace_event,) = real_questions.events
+    assert isinstance(trace_event.payload, SuggestedQuestionsGenerated)
+    assert trace_event.payload.message_id == real_questions.message.id
+    assert trace_event.payload.questions == (messages.questions if failure is None else [])
     assert len(real_questions.prompts) == 1
     assert real_questions.prompts[0].startswith("Human: Hello\nAssistant: 你好\nPublished questions\n")
     assert len(real_questions.legacy_sessions) == 2
@@ -854,5 +869,5 @@ def test_shared_suggested_questions_token_failure_releases_sessions(real_questio
     assert [stage for stage, _closed in real_questions.io_sessions] == ["tokens"]
     assert len(real_questions.legacy_sessions) == 1
     assert not real_questions.prompts
-    assert not real_questions.traces
+    assert not real_questions.events
     real_questions.assert_closed()

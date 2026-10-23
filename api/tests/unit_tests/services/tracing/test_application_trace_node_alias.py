@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import pytest
 from aliyun.log.logclient import LogClient
+from dify_trace_sdk.provider import SendResult
 from sqlalchemy import Connection, Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -19,7 +20,6 @@ from models.application_trace import ApplicationTraceRun
 from models.model import App, AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from repositories.application_trace_repository import TraceCollectionError
-from services.tracing.provider_dispatch import TraceExportResult
 from services.tracing.service import ApplicationTracingService
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.services.tracing.test_application_trace_collection import (
@@ -28,8 +28,10 @@ from tests.unit_tests.services.tracing.test_application_trace_collection import 
     claim,
     identifier,
     ingest,
+    no_egress,
     seed,
     terminal,
+    tracing_service,
 )
 
 
@@ -42,7 +44,7 @@ class NodeAlias:
     logstore: bool
 
     def service(self) -> ApplicationTracingService:
-        return ApplicationTracingService(self.case.repository)
+        return tracing_service(self.case, no_egress())
 
     def status(self, node_execution_id: str | None = None) -> dict[str, object]:
         return self.service().status(
@@ -72,8 +74,10 @@ class NodeAlias:
             self.case.run.id,
             lease[1],
             state="accepted",
-            result=TraceExportResult(
-                "provider-trace", "https://provider.test/trace", span_urls=span_urls if spans else {}
+            result=SendResult(
+                trace_id="provider-trace",
+                trace_url="https://provider.test/trace",
+                span_urls=span_urls if spans else {},
             ),
         )
         return "https://provider.test/trace", "https://provider.test/span/1"
@@ -242,7 +246,7 @@ def test_alias_without_internal_invocation_returns_parent_status(
             alias.case.run.id,
             lease[1],
             state="accepted",
-            result=TraceExportResult("outer-only", "https://provider.test/outer"),
+            result=SendResult(trace_id="outer-only", trace_url="https://provider.test/outer", span_urls={}),
         )
     status = alias.status()
     assert status["status"] == ("accepted" if accepted else "collecting")

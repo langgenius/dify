@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import inspect
+import json
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
+from dify_trace_sdk.testing import RecordingEgress
 from flask import Flask
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.rbac import PlainApp
@@ -30,7 +35,8 @@ from libs.exception import BaseHTTPException
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, TenantAccountRole
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
+from models.model import TraceAppConfig
+from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from services.app_tracing_config_service import (
     AppTracingConfigAlreadyExistsError,
     AppTracingConfigAppNotFoundError,
@@ -44,7 +50,9 @@ from services.app_tracing_config_service import (
     AppTracingConfigService,
     AppTracingConfigVerificationFailedError,
 )
+from services.tracing.provider_configs import ProviderConfigGateway
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_app
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 WORKSPACE_ID = "22222222-2222-2222-2222-222222222222"
@@ -114,21 +122,56 @@ def tracing_configs(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return service
 
 
-@pytest.mark.parametrize("method_name", ["get", "delete"])
-def test_trace_config_without_sdk_can_be_read_when_absent_or_deleted(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, method_name: str
-) -> None:
-    configs = MagicMock()
-    configs.get.return_value = None
-    configs.delete.return_value = True
-    service = AppTracingConfigService(configs=configs, provider=OpsTraceManagerGateway())
-    monkeypatch.setattr(
-        ops_trace_module,
-        "application_services",
-        lambda: SimpleNamespace(app_tracing_configs=service),
-    )
+@dataclass(frozen=True)
+class _ApplicationServices:
+    app_tracing_configs: AppTracingConfigService
 
-    with patch.object(OpsTraceManagerGateway, "_provider_config") as load_provider, app.test_request_context("/"):
+
+@dataclass(frozen=True)
+class _StoredConfigs:
+    """Configurations persisted the way the provider gateway stores them, behind the real service."""
+
+    sessions: sessionmaker[Session]
+    egress: RecordingEgress
+
+    def add(self, tracing_provider: str, tracing_config: dict[str, str | None]) -> TraceAppConfig:
+        with self.sessions.begin() as session:
+            session.add(TraceAppConfig(app_id=APP_ID, tracing_provider=tracing_provider, tracing_config=tracing_config))
+        with self.sessions() as session:
+            return session.scalars(
+                select(TraceAppConfig).where(
+                    TraceAppConfig.app_id == APP_ID, TraceAppConfig.tracing_provider == tracing_provider
+                )
+            ).one()
+
+    def count(self) -> int:
+        with self.sessions() as session:
+            return session.scalar(select(func.count()).select_from(TraceAppConfig)) or 0
+
+
+@pytest.fixture
+def stored_configs(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]) -> _StoredConfigs:
+    with sqlite_session_factory.begin() as session:
+        session.add(make_app(app_id=APP_ID, tenant_id=WORKSPACE_ID))
+    egress = RecordingEgress([], grpc_target=None)
+    service = AppTracingConfigService(
+        configs=SQLAlchemyAppTracingConfigRepository(session_factory=sqlite_session_factory),
+        provider=ProviderConfigGateway(egress),
+    )
+    monkeypatch.setattr(
+        ops_trace_module, "application_services", lambda: _ApplicationServices(app_tracing_configs=service)
+    )
+    return _StoredConfigs(sqlite_session_factory, egress)
+
+
+@pytest.mark.parametrize("method_name", ["get", "delete"])
+def test_trace_config_read_when_absent_or_deleted_never_contacts_the_provider(
+    app: Flask, stored_configs: _StoredConfigs, method_name: str
+) -> None:
+    if method_name == "delete":
+        stored_configs.add("weave", {"api_key": "ciphertext-api-key", "entity": "dify", "project": "traces"})
+
+    with app.test_request_context("/"):
         result = _original(_CONTROLLER_METHODS[method_name])(
             ops_trace_module.TraceAppConfigApi(),
             ops_trace_module.TraceProviderQuery(tracing_provider="weave"),
@@ -137,9 +180,87 @@ def test_trace_config_without_sdk_can_be_read_when_absent_or_deleted(
         )
 
     assert result == ({"has_not_configured": True} if method_name == "get" else ("", 204))
-    load_provider.assert_not_called()
-    if method_name == "delete":
-        configs.delete.assert_called_once_with(workspace_id=WORKSPACE_ID, app_id=APP_ID, tracing_provider="weave")
+    assert stored_configs.count() == 0
+    assert stored_configs.egress.requests == []
+
+
+@pytest.mark.parametrize(
+    ("provider", "stored", "presented", "configured_secrets"),
+    [
+        pytest.param(
+            "langfuse",
+            {
+                "public_key": "ciphertext-public-key",
+                "secret_key": "ciphertext-secret-key",
+                "host": "https://langfuse.example.com",
+                "project_key": "project-1",
+            },
+            {"host": "https://langfuse.example.com", "project_url": "https://langfuse.example.com/project/project-1"},
+            ["public_key", "secret_key"],
+            id="all-secrets-set",
+        ),
+        pytest.param(
+            "databricks",
+            {
+                "host": "https://dbc.example.com",
+                "experiment_id": "7",
+                "client_id": "client-1",
+                "client_secret": "",
+                "personal_access_token": "ciphertext-token",
+            },
+            {
+                "host": "https://dbc.example.com",
+                "experiment_id": "7",
+                "client_id": "client-1",
+                "project_url": "https://dbc.example.com/ml/experiments/7/traces",
+            },
+            ["personal_access_token"],
+            id="empty-secret-not-configured",
+        ),
+        pytest.param(
+            "mlflow",
+            {"tracking_uri": "https://mlflow.example.com", "experiment_id": "7", "username": "admin", "password": None},
+            {
+                "tracking_uri": "https://mlflow.example.com",
+                "experiment_id": "7",
+                "username": "admin",
+                "project_url": "https://mlflow.example.com/#/experiments/7/traces",
+            },
+            [],
+            id="no-secrets-set",
+        ),
+    ],
+)
+def test_trace_app_config_get_returns_configured_secrets_and_never_secret_values(
+    app: Flask,
+    stored_configs: _StoredConfigs,
+    provider: str,
+    stored: dict[str, str | None],
+    presented: dict[str, str],
+    configured_secrets: list[str],
+) -> None:
+    record = stored_configs.add(provider, stored)
+
+    with app.test_request_context(f"/?tracing_provider={provider}"):
+        result = _original(ops_trace_module.TraceAppConfigApi.get)(
+            ops_trace_module.TraceAppConfigApi(),
+            ops_trace_module.TraceProviderQuery(tracing_provider=provider),
+            _request_context(),
+            UUID(APP_ID),
+        )
+
+    assert result == {
+        "id": record.id,
+        "app_id": APP_ID,
+        "tracing_provider": provider,
+        "tracing_config": presented,
+        "configured_secrets": configured_secrets,
+        "is_active": True,
+        "created_at": str(record.created_at),
+        "updated_at": str(record.updated_at),
+    }
+    assert "ciphertext" not in json.dumps(result)
+    assert stored_configs.egress.requests == []
 
 
 @pytest.mark.parametrize(
@@ -270,26 +391,31 @@ def test_trace_app_config_get_empty_returns_exact_legacy_body(
 
 
 @pytest.mark.parametrize(
-    ("provider", "config"),
+    ("provider", "config", "configured_secrets"),
     [
-        ("langfuse", {"public_key": "pk", "secret_key": "******"}),
+        (
+            "langfuse",
+            {"host": "https://cloud.langfuse.com", "project_url": "https://cloud.langfuse.com/project/p-1"},
+            ("public_key", "secret_key"),
+        ),
         (
             "mlflow",
             {
                 "tracking_uri": "http://localhost:5000",
                 "experiment_id": "0",
                 "username": None,
-                "password": "******",
-                "project_url": "http://localhost:5000",
+                "project_url": "http://localhost:5000/#/experiments/0/traces",
             },
+            (),
         ),
     ],
 )
-def test_trace_app_config_get_configured_returns_exact_legacy_body(
+def test_trace_app_config_get_configured_returns_exact_body(
     app: Flask,
     tracing_configs: MagicMock,
     provider: str,
     config: dict[str, str | None],
+    configured_secrets: tuple[str, ...],
 ) -> None:
     tracing_configs.get.return_value = AppTracingConfigRecord(
         id="trace-config-1",
@@ -299,6 +425,7 @@ def test_trace_app_config_get_configured_returns_exact_legacy_body(
         is_active=True,
         created_at=datetime(2026, 1, 2, 3, 4, 5),
         updated_at=datetime(2026, 1, 3, 4, 5, 6),
+        configured_secrets=configured_secrets,
     )
 
     with app.test_request_context(f"/?tracing_provider={provider}"):
@@ -314,6 +441,7 @@ def test_trace_app_config_get_configured_returns_exact_legacy_body(
         "app_id": APP_ID,
         "tracing_provider": provider,
         "tracing_config": config,
+        "configured_secrets": list(configured_secrets),
         "is_active": True,
         "created_at": "2026-01-02 03:04:05",
         "updated_at": "2026-01-03 04:05:06",

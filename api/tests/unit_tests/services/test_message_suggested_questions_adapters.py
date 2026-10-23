@@ -9,6 +9,8 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import SuggestedQuestionsGenerated, TraceCorrelation, TraceEvent
 from flask import Flask, g
 from sqlalchemy import Connection, Engine, event, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -18,7 +20,6 @@ from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.file import remote_fetcher
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
 from core.model_manager import ModelInstance
-from core.ops.ops_trace_manager import TraceTask
 from extensions.ext_database import db
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities import AssistantPromptMessage, PromptMessage
@@ -47,11 +48,12 @@ class _Provider:
     read_sessions: list[Session]
     tenant_id: str
     app_id: str
+    message_id: str
     prompts: list[str] = field(default_factory=list)
     model_requests: list[tuple[str, str]] = field(default_factory=list)
     invocation_parameters: list[Mapping[str, object]] = field(default_factory=list)
     metadata: list[Mapping[str, object] | None] = field(default_factory=list)
-    traces: list[TraceTask] = field(default_factory=list)
+    events: list[TraceEvent] = field(default_factory=list)
     model_sessions: list[Session] = field(default_factory=list)
     io_sessions: list[tuple[str, bool]] = field(default_factory=list)
     failure: Exception | None = None
@@ -124,8 +126,16 @@ class _Provider:
             usage=LLMUsage.empty_usage(),
         )
 
-    def add_trace_task(self, task: TraceTask) -> None:
-        self.traces.append(task)
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+    def traced_questions(self) -> list[list[str]]:
+        traced: list[list[str]] = []
+        for trace_event in self.events:
+            assert isinstance(trace_event.payload, SuggestedQuestionsGenerated)
+            assert trace_event.payload.message_id == self.message_id
+            traced.append(trace_event.payload.questions)
+        return traced
 
 
 @dataclass(frozen=True)
@@ -227,18 +237,28 @@ def harness(
     def track_read(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
         read_sessions.append(session)
 
-    provider = _Provider(read_sessions, target.tenant_id, target.id)
+    provider = _Provider(read_sessions, target.tenant_id, target.id, message.id)
 
     def model_manager(*, tenant_id: str) -> _Provider:
         assert tenant_id == target.tenant_id
         return provider
 
-    def trace_manager(*, app_id: str) -> _Provider:
-        assert app_id == target.id
-        return provider
+    def trace_scope(
+        *, tenant_id: str, app_id: str | None, user_id: str | None, extras: Mapping[str, object]
+    ) -> TraceScope:
+        assert (tenant_id, app_id, user_id, extras) == (target.tenant_id, target.id, None, {})
+        return TraceScope(
+            emitter=provider,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            user_id=user_id,
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
+        )
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
-    monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
+    monkeypatch.setattr(message_module, "create_trace_scope_for_app", trace_scope)
     flask_app = Flask(__name__)
     flask_app.config.update(TESTING=True, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(flask_app)
@@ -354,7 +374,7 @@ def test_runtime_preserves_history_configuration_credit_context_and_caller_sessi
     assert harness.provider.model_requests == [("default", "default"), ("vendor", "question-model")]
     assert [stage for stage, _closed in harness.provider.io_sessions] == ["tokens", "invoke"]
     assert harness.provider.invocation_parameters == [{}]
-    assert len(harness.provider.traces) == 1
+    assert harness.provider.traced_questions() == [[] if provider_failure else ["What next?"]]
 
 
 @pytest.mark.parametrize("invoke_from", ["explore", "service-api"])
@@ -421,7 +441,7 @@ def test_account_preserves_disabled_feature_and_missing_workflow_or_model_behavi
             assert harness.get(actor) == []
     assert len(harness.legacy_sessions) == (1 if case == "history_provider_failure" else 0)
     assert not harness.provider.prompts
-    assert not harness.provider.traces
+    assert not harness.provider.events
     harness.assert_closed()
 
 
@@ -482,7 +502,7 @@ def test_runtime_releases_sessions_when_history_or_second_model_stage_fails(
             assert harness.get(actor) == []
     assert len(harness.provider.model_sessions) == (1 if failure_stage == "tokens" else 2)
     assert not harness.provider.prompts
-    assert len(harness.provider.traces) == (0 if failure_stage == "tokens" else 1)
+    assert harness.provider.traced_questions() == ([] if failure_stage == "tokens" else [[]])
     harness.assert_closed()
 
 
@@ -537,7 +557,7 @@ def test_remote_attachment_is_loaded_after_history_and_model_sessions_close(
     assert requests[0] == "HEAD"
     if remote_failure:
         assert not harness.provider.prompts
-        assert not harness.provider.traces
+        assert not harness.provider.events
     else:
         assert harness.provider.prompts[0].startswith("Human: [image]\nHow does this work?\nAssistant: Like this.")
     harness.assert_closed()
@@ -587,7 +607,7 @@ def test_runtime_keeps_its_context_state_while_releasing_sessions_and_preserving
                 assert not session.is_active
         return invoke_llm(prompt_messages=prompt_messages, model_parameters=model_parameters, stop=stop, stream=stream)
 
-    def trace(task: TraceTask) -> None:
+    def trace(trace_event: TraceEvent) -> None:
         assert g.get("suggested_question_steps") is runtime_steps
         runtime_steps.append("trace")
         session = db.session()
@@ -597,12 +617,12 @@ def test_runtime_keeps_its_context_state_while_releasing_sessions_and_preserving
         assert app.name == "Shared"
         if failure_stage == "trace":
             raise RuntimeError("Trace backend unavailable")
-        harness.provider.traces.append(task)
+        harness.provider.events.append(trace_event)
 
     monkeypatch.setattr(harness.provider, "_resolve_model", resolve)
     monkeypatch.setattr(harness.provider, "get_llm_num_tokens", tokens)
     monkeypatch.setattr(harness.provider, "invoke_llm", invoke)
-    monkeypatch.setattr(harness.provider, "add_trace_task", trace)
+    monkeypatch.setattr(harness.provider, "emit", trace)
     with harness.flask_app.app_context():
         caller_marker = object()
         g.caller_marker = caller_marker
@@ -611,11 +631,8 @@ def test_runtime_keeps_its_context_state_while_releasing_sessions_and_preserving
         assert caller_app is not None
         caller_app.name = "Pending caller edit"
         harness.legacy_sessions.clear()
-        if failure_stage == "trace":
-            with pytest.raises(RuntimeError, match="Trace backend unavailable"):
-                harness.get(actor)
-        else:
-            assert harness.get(actor) == ([] if failure_stage == "provider_sql" else ["What next?"])
+        # A trace that cannot be emitted is dropped; the generated questions are still returned.
+        assert harness.get(actor) == ([] if failure_stage == "provider_sql" else ["What next?"])
         assert g.caller_marker is caller_marker
         assert g.get("suggested_question_steps") is None
         assert db.session() is caller_session
@@ -626,6 +643,12 @@ def test_runtime_keeps_its_context_state_while_releasing_sessions_and_preserving
         harness.assert_closed()
 
     assert runtime_steps == ["model", "tokens", "model", "invoke", "trace"]
+    expected_questions: dict[str | None, list[list[str]]] = {
+        None: [["What next?"]],
+        "provider_sql": [[]],
+        "trace": [],
+    }
+    assert harness.provider.traced_questions() == expected_questions[failure_stage]
     assert len(trace_sessions) == 1
     assert not trace_sessions[0].in_transaction()
     if failure_stage == "provider_sql":

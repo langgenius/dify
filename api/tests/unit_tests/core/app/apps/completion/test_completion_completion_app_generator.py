@@ -4,6 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
@@ -22,6 +24,26 @@ from services.errors.message import MessageNotExistsError
 TABLES = (AppModelConfig, Conversation, Message)
 
 
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_TraceRecorder(),
+        tenant_id="tenant",
+        app_id="app1",
+        user_id="user",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id="session-1", parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
 @pytest.fixture
 def generator(mocker: MockerFixture):
     gen = CompletionAppGenerator()
@@ -36,7 +58,6 @@ def generator(mocker: MockerFixture):
     mocker.patch.object(module.threading, "Thread", return_value=thread)
 
     mocker.patch.object(module, "MessageBasedAppQueueManager", return_value=MagicMock())
-    mocker.patch.object(module, "TraceQueueManager", return_value=MagicMock())
     generate_entity = mocker.patch.object(
         module, "CompletionAppGenerateEntity", side_effect=lambda **kwargs: SimpleNamespace(**kwargs)
     )
@@ -156,7 +177,17 @@ class TestCompletionAppGenerator:
                 streaming=False,
             )
 
-    def test_generate_success_no_file_config(self, generator, mocker: MockerFixture, sqlite_session: Session):
+    def test_generate_success_no_file_config(
+        self, generator, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        trace_scope = _trace_scope()
+        scope_requests: list[dict[str, object]] = []
+
+        def create_trace_scope(**kwargs: object) -> TraceScope:
+            scope_requests.append(kwargs)
+            return trace_scope
+
+        monkeypatch.setattr(module, "create_trace_scope", create_trace_scope)
         app_model_config = _build_app_model_config()
         mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
         to_dict = mocker.patch.object(AppModelConfig, "to_dict", return_value={"model": {"provider": "x"}})
@@ -215,7 +246,12 @@ class TestCompletionAppGenerator:
         )
 
         assert result == "converted"
-        assert generator.generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
+        extras = generator.generate_entity.call_args.kwargs["extras"]
+        assert extras == {"trace_session_id": "session-1"}
+        assert generator.generate_entity.call_args.kwargs["trace_scope"] is trace_scope
+        assert scope_requests == [
+            {"tenant_id": "tenant", "app_id": "app1", "app_tracing": None, "user_id": "user", "extras": extras}
+        ]
         module.file_factory.build_from_mappings.assert_not_called()
         load_annotation_reply_config.assert_called_once_with(sqlite_session, "app1")
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)

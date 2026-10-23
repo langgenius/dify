@@ -2732,7 +2732,10 @@ export const get46 = oc
     }),
   )
   .output(zGetAppsByAppIdTraceCapabilitiesResponse)
-  .errors({ unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError } })
+  .errors({
+    tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
 
 export const traceCapabilities = {
   get: get46,

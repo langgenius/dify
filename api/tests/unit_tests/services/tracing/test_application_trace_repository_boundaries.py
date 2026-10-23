@@ -1,17 +1,22 @@
 """Persistence boundaries that must fail closed or remain immutable across retries."""
 
+from collections.abc import Callable
 from datetime import timedelta
 from uuid import UUID
 
 import pytest
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
 from models.application_trace import ApplicationTraceBatch, ApplicationTraceInvocation, ApplicationTraceRun
 from models.model import App
+from repositories import application_trace_repository as repository_module
 from repositories.application_trace_repository import TraceCollectionError
 from tests.unit_tests.services.tracing.test_application_trace_collection import (
+    Collection,
     batch_for,
     claim,
     identifier,
@@ -19,6 +24,91 @@ from tests.unit_tests.services.tracing.test_application_trace_collection import 
     seed,
     terminal,
 )
+
+
+def race_before_insert(monkeypatch: pytest.MonkeyPatch, competitor: Callable[[], None]) -> None:
+    """Run ``competitor`` after the caller's existence check, when it allocates its new run's identifiers."""
+    raced: list[bool] = []
+
+    def allocate() -> UUID:
+        if not raced:
+            raced.append(True)
+            competitor()
+        return uuidv7()
+
+    monkeypatch.setattr(repository_module, "uuidv7", allocate)
+
+
+def drop_run(case: Collection) -> None:
+    with case.sessions.begin() as session:
+        session.execute(delete(ApplicationTraceRun).where(ApplicationTraceRun.id == case.run.id))
+
+
+def run_count(case: Collection) -> int | None:
+    with case.sessions() as session:
+        return session.scalar(
+            select(func.count())
+            .select_from(ApplicationTraceRun)
+            .where(ApplicationTraceRun.source_id == case.run.source_id)
+        )
+
+
+def start_message(case: Collection, session_id: str) -> ApplicationTraceRun | None:
+    return case.repository.start(
+        tenant_id=case.run.tenant_id,
+        app_id=case.run.app_id,
+        source_kind="message",
+        source_id=case.run.source_id,
+        session_id=session_id,
+    )
+
+
+def test_concurrent_start_returns_the_first_frozen_snapshot(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = seed(sqlite_session_factory, "concurrent-start")
+    drop_run(case)
+    winners: list[ApplicationTraceRun | None] = []
+    race_before_insert(monkeypatch, lambda: winners.append(start_message(case, "first-session")))
+    current = start_message(case, "second-session")
+    assert current is not None
+    assert winners[0] is not None
+    assert current.id == winners[0].id
+    assert current.session_id == "first-session"
+    assert current.state == "collecting"
+    assert run_count(case) == 1
+
+
+def test_initialization_failure_yields_to_a_concurrently_frozen_start(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = seed(sqlite_session_factory, "concurrent-failure")
+    drop_run(case)
+    winners: list[ApplicationTraceRun | None] = []
+    race_before_insert(monkeypatch, lambda: winners.append(start_message(case, "started-session")))
+    current = case.repository.record_initialization_failure(
+        tenant_id=case.run.tenant_id, app_id=case.run.app_id, source_kind="message", source_id=case.run.source_id
+    )
+    assert current is not None
+    assert winners[0] is not None
+    assert current.id == winners[0].id
+    assert current.state == "collecting"
+    assert current.error_code is None
+    assert current.provider_config == case.run.provider_config
+    assert run_count(case) == 1
+
+
+def test_identifier_collision_is_not_mistaken_for_a_concurrent_start(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = seed(sqlite_session_factory, "colliding-start")
+    other = seed(sqlite_session_factory, "colliding-owner")
+    drop_run(case)
+    monkeypatch.setattr(repository_module, "uuidv7", lambda: UUID(other.run.id))
+    with pytest.raises(IntegrityError):
+        start_message(case, "colliding-session")
+    assert run_count(case) == 0
+    assert case.repository.get(other.run.id) is not None
 
 
 @pytest.mark.parametrize("policy", ["invalid-json", "null", "[]"])

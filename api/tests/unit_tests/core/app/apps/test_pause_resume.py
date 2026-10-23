@@ -1,17 +1,17 @@
-import sys
 import time
 from collections.abc import Mapping
 from decimal import Decimal
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 from typing import Any
 
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 import core.workflow.nodes.human_input.entities  # noqa: F401
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.workflow import node_factory as node_factory_module
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
@@ -41,16 +41,6 @@ from models.model import App, AppMode, Conversation, Message
 from models.workflow import Workflow, WorkflowType
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.workflow_test_utils import build_test_graph_init_params
-
-if "core.ops.ops_trace_manager" not in sys.modules:
-    ops_stub = ModuleType("core.ops.ops_trace_manager")
-
-    class _StubTraceQueueManager:
-        def __init__(self, *_, **__):
-            pass
-
-    ops_stub.TraceQueueManager = _StubTraceQueueManager
-    sys.modules["core.ops.ops_trace_manager"] = ops_stub
 
 
 class _StubToolNodeData(BaseNodeData):
@@ -252,6 +242,40 @@ def _make_message() -> Message:
     )
 
 
+def _make_app_config(app_mode: AppMode) -> WorkflowUIBasedAppConfig:
+    return WorkflowUIBasedAppConfig(tenant_id="tenant", app_id="app", app_mode=app_mode, workflow_id="workflow")
+
+
+def _make_workflow_generate_entity() -> WorkflowAppGenerateEntity:
+    """A deserialized paused entity: its trace scope is not persisted."""
+    return WorkflowAppGenerateEntity(
+        task_id="task",
+        app_config=_make_app_config(AppMode.WORKFLOW),
+        inputs={},
+        files=[],
+        user_id="user",
+        stream=False,
+        invoke_from=InvokeFrom.SERVICE_API,
+        workflow_execution_id="paused-run",
+    )
+
+
+def _make_advanced_chat_generate_entity() -> AdvancedChatAppGenerateEntity:
+    """A deserialized paused entity: its trace scope is not persisted."""
+    return AdvancedChatAppGenerateEntity(
+        task_id="task",
+        app_config=_make_app_config(AppMode.ADVANCED_CHAT),
+        conversation_id="conv",
+        inputs={},
+        query="query",
+        files=[],
+        user_id="user",
+        stream=False,
+        invoke_from=InvokeFrom.SERVICE_API,
+        workflow_run_id="adv-paused",
+    )
+
+
 def _run_with_optional_pause(runtime_state: RuntimeState, *, pause_on: str | None) -> list[EngineEvent]:
     command_channel = InMemoryChannel()
     graph = _build_graph(runtime_state, pause_on=pause_on)
@@ -301,11 +325,7 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
         app_model=_make_app(),
         workflow=_make_workflow(),
         user=_make_account(),
-        application_generate_entity=SimpleNamespace(
-            stream=False,
-            invoke_from=InvokeFrom.SERVICE_API,
-            trace_manager=SimpleNamespace(),
-        ),
+        application_generate_entity=_make_workflow_generate_entity(),
         graph_runtime_state=resumed_state,
         workflow_execution_repository=SimpleNamespace(),
         workflow_node_execution_repository=SimpleNamespace(),
@@ -348,11 +368,7 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, unbo
         conversation=_make_conversation(),
         message=_make_message(),
         session=unbound_session,
-        application_generate_entity=SimpleNamespace(
-            stream=False,
-            invoke_from=InvokeFrom.SERVICE_API,
-            trace_manager=SimpleNamespace(),
-        ),
+        application_generate_entity=_make_advanced_chat_generate_entity(),
         workflow_execution_repository=SimpleNamespace(),
         workflow_node_execution_repository=SimpleNamespace(),
         graph_runtime_state=resumed_state,

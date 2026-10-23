@@ -11,6 +11,7 @@ from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.snapshot import SessionSnapshot
 from flask import Flask
+from sqlalchemy.orm import sessionmaker
 
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
@@ -20,7 +21,6 @@ from clients.agent_backend import (
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
-from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
@@ -30,6 +30,7 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     build_knowledge_layer_config,
     build_shell_layer_config,
 )
+from extensions.tracing import bind_tracing
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import (
@@ -50,6 +51,7 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from services.tracing.emitter import CeleryTraceEmitter, TraceScopes
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
@@ -270,7 +272,13 @@ def test_builder_passes_inline_or_preview_context_to_application_tracing(
     monkeypatch.setattr(RuntimeApplicationTracingHooks, "prepare_workflow_agent", staticmethod(prepare))
     hooks = RuntimeApplicationTracingHooks()
     app = Flask(__name__)
-    bind_application_tracing_hooks(app, hooks)
+    bind_tracing(
+        app,
+        scopes=TraceScopes(
+            emitter=CeleryTraceEmitter(), session_factory=sessionmaker(), enterprise_enabled=lambda: False
+        ),
+        hooks=hooks,
+    )
 
     with app.app_context():
         result = WorkflowAgentRuntimeRequestBuilder(dify_tools_builder=WorkflowAgentDifyToolsBuilder()).build(context)

@@ -5,35 +5,69 @@ validation; these tests establish token and acknowledgement semantics.
 """
 
 import threading
+from collections.abc import Callable, Mapping
 from datetime import timedelta
+from typing import override
 
 import pytest
+from dify_trace_sdk.egress import EgressResponse
+from dify_trace_sdk.errors import EgressError
+from dify_trace_sdk.provider import SendResult
+from dify_trace_sdk.testing import RecordingEgress, response
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
 from models.application_trace import ApplicationTraceRun
 from repositories import application_trace_repository as repository_module
 from repositories.application_trace_repository import TraceCollectionError
-from services.tracing import service as service_module
-from services.tracing.provider_dispatch import TraceExportResult, TraceExportUncertainError
-from services.tracing.service import ApplicationTracingService
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.services.tracing.test_application_trace_collection import (
     Collection,
+    accepted,
     batch_for,
     claim,
     ingest,
+    install_delivery,
     seed,
     terminal,
+    tracing_service,
 )
+
+
+class _SlowDestination(RecordingEgress):
+    """Runs ``during_request`` while the export request is in flight."""
+
+    def __init__(self, replies: list[EgressResponse | Exception], during_request: Callable[[], None]) -> None:
+        super().__init__(replies, grpc_target=None)
+        self._during_request = during_request
+
+    @override
+    def request(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        content: bytes | None,
+        timeout: float,
+        sensitive_url: bool,
+    ) -> EgressResponse:
+        self._during_request()
+        return super().request(
+            method, url, headers=headers, content=content, timeout=timeout, sensitive_url=sensitive_url
+        )
+
+
+def result(trace_id: str) -> SendResult:
+    return SendResult(trace_id=trace_id, trace_url=None, span_urls={})
 
 
 @pytest.fixture
 def case(sqlite_session_factory: sessionmaker[Session]) -> Collection:
-    result = seed(sqlite_session_factory, "lease-test")
-    ingest(result, batch_for(result.run, result.invocation()))
-    terminal(result)
-    return result
+    collection = seed(sqlite_session_factory, "lease-test")
+    ingest(collection, batch_for(collection.run, collection.invocation()))
+    terminal(collection)
+    return collection
 
 
 def _stored(case: Collection) -> ApplicationTraceRun:
@@ -100,7 +134,7 @@ def test_wrong_token_cannot_renew_or_complete(case: Collection) -> None:
     assert leased is not None
     before = _stored(case)
     assert not case.repository.renew_export_lease(case.run.id, "other-token")
-    case.repository.complete(case.run.id, "other-token", state="accepted", result=TraceExportResult("wrong"))
+    case.repository.complete(case.run.id, "other-token", state="accepted", result=result("wrong"))
     current = _stored(case)
     assert current.export_token == leased[1]
     assert current.export_heartbeat_at == before.export_heartbeat_at
@@ -110,15 +144,18 @@ def test_wrong_token_cannot_renew_or_complete(case: Collection) -> None:
 
 def test_late_success_wins_before_manual_retry_and_is_idempotent(case: Collection) -> None:
     token = _expire(case)
-    result = TraceExportResult("confirmed", "https://example.com/trace")
-    case.repository.complete(case.run.id, token, state="accepted", result=result)
+    confirmed = SendResult(
+        trace_id="confirmed", trace_url="https://example.com/trace", span_urls={"a" * 16: "https://example.com/span"}
+    )
+    case.repository.complete(case.run.id, token, state="accepted", result=confirmed)
     current = _stored(case)
     assert current.state == "accepted"
     assert current.error_code is None
     assert current.export_token is None
     assert current.accepted_at is not None
-    assert current.trace_url == result.trace_url
-    case.repository.complete(case.run.id, token, state="accepted", result=TraceExportResult("duplicate-ack"))
+    assert current.trace_url == confirmed.trace_url
+    assert current.span_urls == {"a" * 16: "https://example.com/span"}
+    case.repository.complete(case.run.id, token, state="accepted", result=result("duplicate-ack"))
     assert _stored(case).provider_trace_id == "confirmed"
     with pytest.raises(TraceCollectionError, match="tracing_already_accepted"):
         case.repository.retry(run_id=case.run.id, acknowledge_possible_duplicates=True)
@@ -128,17 +165,17 @@ def test_manual_retry_revokes_old_heartbeat_and_ack_before_and_after_new_claim(c
     old_token = _expire(case)
     case.repository.retry(run_id=case.run.id, acknowledge_possible_duplicates=True)
     assert not case.repository.renew_export_lease(case.run.id, old_token)
-    case.repository.complete(case.run.id, old_token, state="accepted", result=TraceExportResult("old"))
+    case.repository.complete(case.run.id, old_token, state="accepted", result=result("old"))
     assert _stored(case).state == "ready"
     second = claim(case)
     assert second is not None
     assert second[1] != old_token
-    case.repository.complete(case.run.id, old_token, state="accepted", result=TraceExportResult("old"))
+    case.repository.complete(case.run.id, old_token, state="accepted", result=result("old"))
     current = _stored(case)
     assert current.state == "exporting"
     assert current.export_token == second[1]
     assert current.provider_trace_id is None
-    case.repository.complete(case.run.id, second[1], state="accepted", result=TraceExportResult("new"))
+    case.repository.complete(case.run.id, second[1], state="accepted", result=result("new"))
     assert _stored(case).provider_trace_id == "new"
 
 
@@ -157,50 +194,55 @@ def test_other_uncertain_reason_cannot_be_promoted_by_late_ack(case: Collection)
         row = session.get(ApplicationTraceRun, case.run.id)
         assert row is not None
         row.error_code = "provider_acceptance_unknown"
-    case.repository.complete(case.run.id, token, state="accepted", result=TraceExportResult("late"))
+    case.repository.complete(case.run.id, token, state="accepted", result=result("late"))
     assert _stored(case).state == "uncertain"
 
 
 @pytest.mark.parametrize("transient_failure", [False, True])
-@pytest.mark.parametrize("outcome", ["accepted", "uncertain"])
+@pytest.mark.parametrize(
+    ("outcome", "reply"),
+    [
+        ("accepted", response(200, {"trace_id": "ack"})),
+        ("uncertain", EgressError("lost acknowledgement", request_sent=True)),
+    ],
+)
 def test_service_heartbeats_during_export_and_stops_on_every_outcome(
     case: Collection,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
     transient_failure: bool,
     outcome: str,
+    reply: EgressResponse | Exception,
 ) -> None:
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_EXPORT_LEASE_SECONDS=1)
     clock = [naive_utc_now()]
     monkeypatch.setattr(repository_module, "naive_utc_now", lambda: clock[0])
-    monkeypatch.setattr(service_module.OpsTraceManager, "decrypt_tracing_config", lambda *_args: {})
+    install_delivery(monkeypatch)
     renewed = threading.Event()
-    calls = []
+    calls: list[int] = []
     original = case.repository.renew_export_lease
 
     def renew(run_id: str, token: str) -> bool:
         calls.append(threading.get_ident())
         if transient_failure and len(calls) == 1:
             raise RuntimeError("private-provider-value")
-        result = original(run_id, token)
+        renewal = original(run_id, token)
         renewed.set()
-        return result
+        return renewal
 
     monkeypatch.setattr(case.repository, "renew_export_lease", renew)
+    observed: list[tuple[bool, bool, str]] = []
 
-    def export(*_args: object) -> TraceExportResult:
+    def while_exporting() -> None:
         # The original start time is now beyond the lease; only a real background
         # transaction can prevent a second claimant from marking it uncertain.
         clock[0] += timedelta(seconds=3)
-        assert renewed.wait(3), "background heartbeat did not commit"
-        assert case.repository.claim(case.run.id, collection_timeout=60, lease_seconds=1) is None
-        assert _stored(case).state == "exporting"
-        if outcome == "uncertain":
-            raise TraceExportUncertainError("lost acknowledgement")
-        return TraceExportResult("ack")
+        heartbeat_committed = renewed.wait(3)
+        second_claim = case.repository.claim(case.run.id, collection_timeout=60, lease_seconds=1)
+        observed.append((heartbeat_committed, second_claim is None, _stored(case).state))
 
-    monkeypatch.setattr(service_module, "export_trace", export)
-    ApplicationTracingService(case.repository).deliver(case.run.id)
+    tracing_service(case, _SlowDestination([reply], while_exporting)).deliver(case.run.id)
+    assert observed == [(True, True, "exporting")]
     assert _stored(case).state == outcome
     assert calls
     assert all(thread_id != threading.get_ident() for thread_id in calls)
@@ -211,13 +253,12 @@ def test_service_heartbeats_during_export_and_stops_on_every_outcome(
 def test_heartbeat_stops_even_when_completion_database_write_raises(
     case: Collection, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(service_module.OpsTraceManager, "decrypt_tracing_config", lambda *_args: {})
-    monkeypatch.setattr(service_module, "export_trace", lambda *_args: TraceExportResult("ack"))
+    install_delivery(monkeypatch)
 
     def fail_complete(*_args: object, **_kwargs: object) -> None:
         raise RuntimeError("database unavailable")
 
     monkeypatch.setattr(case.repository, "complete", fail_complete)
     with pytest.raises(RuntimeError, match="database unavailable"):
-        ApplicationTracingService(case.repository).deliver(case.run.id)
+        tracing_service(case, accepted("ack")).deliver(case.run.id)
     assert not any(thread.name == f"application-trace-lease-{case.run.id}" for thread in threading.enumerate())

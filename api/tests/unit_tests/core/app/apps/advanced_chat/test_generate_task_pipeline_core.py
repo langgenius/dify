@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from contextlib import nullcontext
+from collections.abc import Generator
+from contextlib import contextmanager, nullcontext
 from types import SimpleNamespace
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent
+from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
@@ -64,6 +68,42 @@ from models.model import AppMode, EndUser, Message, MessageFile
 from tests.workflow_test_utils import build_test_variable_pool
 
 
+class _TraceRecorder:
+    """Record trace events on a timeline shared with the commits they must follow."""
+
+    def __init__(self, timeline: list[str]) -> None:
+        self._timeline = timeline
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+        self._timeline.append("trace")
+
+
+def _trace_scope(recorder: _TraceRecorder) -> TraceScope:
+    return TraceScope(
+        emitter=recorder,
+        tenant_id="tenant",
+        app_id="app",
+        user_id="session",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
+@contextmanager
+def _recording_commits(timeline: list[str]) -> Generator[None]:
+    def record_commit(_session: Session) -> None:
+        timeline.append("commit")
+
+    sqlalchemy_event.listen(Session, "after_commit", record_commit)
+    try:
+        yield
+    finally:
+        sqlalchemy_event.remove(Session, "after_commit", record_commit)
+
+
 def _make_pipeline():
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant",
@@ -83,7 +123,7 @@ def _make_pipeline():
         stream=False,
         invoke_from=InvokeFrom.WEB_APP,
         extras={},
-        trace_manager=None,
+        trace_scope=None,
         workflow_run_id="run-id",
     )
 
@@ -718,6 +758,60 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert responses == ["replace", "end"]
         assert saved == ["saved"]
+
+    @pytest.mark.parametrize(
+        ("saved_on_pause", "expected_timeline", "expected_payloads"),
+        [
+            (
+                False,
+                ["save", "commit", "trace"],
+                [MessageCompleted(message_id="message-id", conversation_id="conv-id")],
+            ),
+            # The resumed run saves and reports the message instead.
+            (True, [], []),
+        ],
+    )
+    def test_handle_message_end_event_reports_message_after_commit(
+        self, saved_on_pause: bool, expected_timeline: list[str], expected_payloads: list[MessageCompleted]
+    ) -> None:
+        timeline: list[str] = []
+        recorder = _TraceRecorder(timeline)
+        pipeline = _make_pipeline()
+        pipeline._application_generate_entity.trace_scope = _trace_scope(recorder)
+        pipeline._message_saved_on_pause = saved_on_pause
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
+            start_at=0.0,
+        )
+        pipeline._save_message = lambda **kwargs: timeline.append("save")
+
+        with _recording_commits(timeline):
+            responses = list(pipeline._handle_advanced_chat_message_end_event(QueueAdvancedChatMessageEndEvent()))
+
+        assert [type(response) for response in responses] == [MessageEndStreamResponse]
+        assert timeline == expected_timeline
+        assert [event.payload for event in recorder.events] == expected_payloads
+
+    def test_handle_stop_event_reports_moderated_message_after_commit(self) -> None:
+        timeline: list[str] = []
+        recorder = _TraceRecorder(timeline)
+        pipeline = _make_pipeline()
+        pipeline._application_generate_entity.trace_scope = _trace_scope(recorder)
+        pipeline._save_message = lambda **kwargs: timeline.append("save")
+
+        with _recording_commits(timeline):
+            responses = list(
+                pipeline._handle_stop_event(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.INPUT_MODERATION))
+            )
+
+        assert [type(response) for response in responses] == [MessageEndStreamResponse]
+        assert timeline == ["save", "commit", "trace"]
+        assert [event.payload for event in recorder.events] == [
+            MessageCompleted(message_id="message-id", conversation_id="conv-id")
+        ]
 
     def test_dispatch_event_handles_node_exception(self):
         pipeline = _make_pipeline()

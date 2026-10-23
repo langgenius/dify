@@ -4,26 +4,41 @@ import json
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import override
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 import pytest
 from dify_agent.protocol.tracing import AgentTraceBatch, AgentTraceEvent, AgentTraceSpan
+from dify_trace_langfuse.config import LangfuseConfig
+from dify_trace_sdk.egress import Egress, EgressResponse
+from dify_trace_sdk.errors import EgressError
+from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent, TracePayload
+from dify_trace_sdk.exporting import send_export_request
+from dify_trace_sdk.model import Span, SpanKind, SpanStatus, Trace
+from dify_trace_sdk.provider import ProviderCapabilities, SendResult, TraceProvider
+from dify_trace_sdk.testing import RecordingEgress, response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.ops.entities.trace_entity import MessageTraceInfo
-from core.ops.exceptions import RetryableTraceDispatchError
-from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from libs.datetime_utils import naive_utc_now
+from machinery.context import RequestContext
+from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.application_trace import ApplicationTraceBatch, ApplicationTraceInvocation, ApplicationTraceRun
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Message, TraceAppConfig
+from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.application_trace_repository import ApplicationTraceRepository, TraceCollectionError
+from services.app_tracing_config_service import AppTracingConfigService
+from services.tracing import provider_configs as provider_configs_module
 from services.tracing import service as service_module
-from services.tracing.provider_dispatch import TraceExportResult, TraceExportUncertainError
+from services.tracing.assembly import TraceAssembler
+from services.tracing.canonical import CanonicalTraceBuilder
+from services.tracing.provider_configs import ProviderConfigGateway
+from services.tracing.records import MessageTraceInfo
+from services.tracing.registry import UnknownTraceProviderError
 from services.tracing.service import ApplicationTracingService
 from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_app, make_message
+from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_message, make_tenant
 
 
 def identifier(value: str) -> str:
@@ -40,6 +55,86 @@ class Collection:
         return self.repository.invocation(
             run_id=self.run.id, agent_id=identifier("agent"), node_execution_id=None, attempt=0, call_key=name
         )
+
+
+class ScriptedProvider(TraceProvider[LangfuseConfig]):
+    """Sends each trace as one JSON request through the egress, whose script decides the outcome."""
+
+    id = "langfuse"
+    config_model = LangfuseConfig
+    capabilities = ProviderCapabilities(native_cost=True, trace_url=True, span_url=True)
+
+    @override
+    def verify(self, config: LangfuseConfig) -> LangfuseConfig:
+        return config
+
+    @override
+    def project_url(self, config: LangfuseConfig) -> str | None:
+        return f"{config.host}/project/{config.project_key}"
+
+    @override
+    def send(self, config: LangfuseConfig, trace: Trace) -> SendResult:
+        reply = send_export_request(
+            self.egress,
+            "POST",
+            f"{config.host}/traces",
+            destination="Scripted",
+            headers={"Authorization": f"{config.public_key}:{config.secret_key}"},
+            content=trace.model_dump_json().encode(),
+            sensitive_url=False,
+        )
+        body = reply.json()
+        assert isinstance(body, dict)
+        return SendResult(
+            trace_id=str(body["trace_id"]), trace_url=body.get("trace_url"), span_urls=body.get("span_urls", {})
+        )
+
+
+def install_decryption(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """A stored ``encrypted-x`` secret decrypts to ``plaintext-x``; returns the ciphertexts decrypted."""
+    ciphertexts: list[str] = []
+
+    def decrypt(_tenant_id: str, tokens: list[str]) -> list[str]:
+        ciphertexts.extend(tokens)
+        return [token.replace("encrypted-", "plaintext-", 1) for token in tokens]
+
+    monkeypatch.setattr(provider_configs_module, "batch_decrypt_token", decrypt)
+    return ciphertexts
+
+
+def install_delivery(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Deliver Agent traces through ``ScriptedProvider``; returns the ciphertexts decrypted."""
+
+    def provider_class(provider_id: str) -> type[ScriptedProvider]:
+        if provider_id != ScriptedProvider.id:
+            raise UnknownTraceProviderError(provider_id)
+        return ScriptedProvider
+
+    monkeypatch.setattr(service_module, "provider_class", provider_class)
+    return install_decryption(monkeypatch)
+
+
+def accepted(trace_id: str) -> RecordingEgress:
+    """An egress whose destination acknowledges exactly one trace."""
+    return RecordingEgress([response(200, {"trace_id": trace_id})], grpc_target=None)
+
+
+def no_egress() -> RecordingEgress:
+    """An egress that fails any request the test did not script."""
+    return RecordingEgress([], grpc_target=None)
+
+
+def sent_traces(egress: RecordingEgress) -> list[Trace]:
+    return [Trace.model_validate_json(request.content or b"") for request in egress.requests]
+
+
+def tracing_service(case: Collection, egress: Egress) -> ApplicationTracingService:
+    return ApplicationTracingService(
+        case.repository,
+        assembler=TraceAssembler(case.sessions, files_url="https://files.test", enterprise_details=False),
+        builder=CanonicalTraceBuilder(),
+        egress=egress,
+    )
 
 
 def seed(
@@ -87,9 +182,10 @@ def seed(
                 app_id=app_id,
                 tracing_provider="langfuse",
                 tracing_config={
-                    "host": "https://langfuse.test",
+                    "public_key": "encrypted-public",
                     "secret_key": "encrypted-original",
-                    "project_url": "https://langfuse.test/project/original",
+                    "host": "https://langfuse.test",
+                    "project_key": "original",
                 },
             )
         )
@@ -99,6 +195,63 @@ def seed(
     )
     assert run is not None
     return Collection(repository, sessions, run)
+
+
+def attach_conversation(case: Collection, mode: AppMode) -> None:
+    """Message records are assembled only for a message whose conversation belongs to its app."""
+    with case.sessions.begin() as session:
+        message = session.get(Message, case.run.source_id)
+        assert message is not None
+        session.add(
+            make_conversation(
+                conversation_id=message.conversation_id,
+                app_id=case.run.app_id,
+                mode=mode,
+                inputs={},
+                from_source=ConversationFromSource.CONSOLE,
+            )
+        )
+
+
+def add_app_owner(case: Collection, name: str) -> str:
+    """Workflow records are read as the app creator, who must be a member of the app's workspace."""
+    owner_id = identifier(f"owner-{name}")
+    with case.sessions.begin() as session:
+        if session.get(Tenant, case.run.tenant_id) is None:
+            session.add(make_tenant(tenant_id=case.run.tenant_id))
+        session.add(make_account(account_id=owner_id, email=f"{name}@example.com"))
+        session.add(TenantAccountJoin(tenant_id=case.run.tenant_id, account_id=owner_id, role=TenantAccountRole.OWNER))
+        app = session.get(App, case.run.app_id)
+        assert app is not None
+        app.created_by = owner_id
+    return owner_id
+
+
+def trace_event(case: Collection, payload: TracePayload) -> TraceEvent:
+    return TraceEvent(
+        event_id=uuid4().hex,
+        tenant_id=case.run.tenant_id,
+        app_id=case.run.app_id,
+        user_id=None,
+        occurred_at=datetime.now(UTC),
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+        payload=payload,
+    )
+
+
+def message_record(service: ApplicationTracingService, case: Collection) -> MessageTraceInfo:
+    """The record the delivery worker assembles when the message reports its end."""
+    with case.sessions() as session:
+        message = session.get(Message, case.run.source_id)
+        assert message is not None
+        conversation_id = message.conversation_id
+    record = service.assembler.assemble(
+        trace_event(case, MessageCompleted(message_id=case.run.source_id, conversation_id=conversation_id))
+    )
+    assert isinstance(record, MessageTraceInfo)
+    return record
 
 
 @pytest.fixture
@@ -140,17 +293,24 @@ def ingest(collection: Collection, batch: AgentTraceBatch) -> tuple[int, str]:
 
 def terminal(collection: Collection) -> None:
     run = collection.run
-    root = CanonicalSpan(
-        id=run.root_span_id,
-        parent_id=None,
+    root = Span(
+        span_id=run.root_span_id,
+        parent_span_id=None,
         name="Agent turn",
-        kind=CanonicalSpanKind.CHAIN,
+        kind=SpanKind.CHAIN,
         start_time=datetime.fromtimestamp(0, UTC),
         end_time=datetime.fromtimestamp(3, UTC),
-        status=CanonicalSpanStatus.OK,
+        status=SpanStatus.OK,
     )
-    trace = CanonicalTrace(trace_id=run.trace_id, session_id=run.session_id, root_span_id=root.id, spans=(root,))
-    collection.repository.terminal(run.id, trace.model_dump(mode="json"), root.id)
+    trace = Trace(
+        trace_id=run.trace_id,
+        external_trace_id=None,
+        session_id=run.session_id,
+        user_id=None,
+        parent=None,
+        spans=(root,),
+    )
+    collection.repository.terminal(run.id, trace.model_dump(mode="json"), root.span_id)
 
 
 def claim(collection: Collection) -> tuple[ApplicationTraceRun, str] | None:
@@ -166,7 +326,10 @@ def test_batch_duplicate_is_idempotent_after_final_and_acceptance(collection: Co
     leased = claim(collection)
     assert leased is not None
     collection.repository.complete(
-        collection.run.id, leased[1], state="accepted", result=TraceExportResult("provider-id")
+        collection.run.id,
+        leased[1],
+        state="accepted",
+        result=SendResult(trace_id="provider-id", trace_url=None, span_urls={}),
     )
     assert ingest(collection, batch) == (1, collection.run.id)
     stored = collection.repository.get(collection.run.id)
@@ -295,7 +458,9 @@ def test_expired_delivery_lease_accepts_confirmed_late_ack_for_same_attempt(coll
     current = collection.repository.get(collection.run.id)
     assert current is not None
     assert current.state == "uncertain"
-    collection.repository.complete(collection.run.id, leased[1], state="accepted", result=TraceExportResult("late"))
+    collection.repository.complete(
+        collection.run.id, leased[1], state="accepted", result=SendResult(trace_id="late", trace_url=None, span_urls={})
+    )
     stored = collection.repository.get(collection.run.id)
     assert stored is not None
     assert stored.state == "accepted"
@@ -343,40 +508,34 @@ def test_running_trace_freezes_credentials_content_policy_and_session(collection
     assert repeated.session_id == "session-original"
 
 
-@pytest.mark.parametrize("outcome", ["accepted", "uncertain", "retrying"])
+@pytest.mark.parametrize(
+    ("outcome", "reply"),
+    [
+        ("accepted", response(200, {"trace_id": "vendor-trace", "trace_url": "https://trace.test/example"})),
+        ("uncertain", EgressError("acknowledgement lost", request_sent=True)),
+        ("retrying", response(503, {})),
+    ],
+)
 def test_delivery_checkpoint_controls_replays(
-    collection: Collection, monkeypatch: pytest.MonkeyPatch, outcome: str
+    collection: Collection, monkeypatch: pytest.MonkeyPatch, outcome: str, reply: EgressResponse | Exception
 ) -> None:
     ingest(collection, batch_for(collection.run, collection.invocation()))
     terminal(collection)
-    exports: list[tuple[str, dict[str, object], CanonicalTrace]] = []
-    decryptions: list[dict[str, object]] = []
-
-    def decrypt(_tenant: str, _provider: str, config: dict[str, object]) -> dict[str, object]:
-        decryptions.append(config)
-        return {"secret_key": "plaintext-only-in-worker"}
-
-    def export(provider: str, config: dict[str, object], trace: CanonicalTrace) -> TraceExportResult:
-        exports.append((provider, config, trace))
-        if outcome == "uncertain":
-            raise TraceExportUncertainError("ack lost")
-        if outcome == "retrying":
-            raise RetryableTraceDispatchError("busy")
-        return TraceExportResult("vendor-trace", "https://trace.test/example")
-
-    monkeypatch.setattr(service_module.OpsTraceManager, "decrypt_tracing_config", decrypt)
-    monkeypatch.setattr(service_module, "export_trace", export)
-    service = ApplicationTracingService(collection.repository)
+    ciphertexts = install_delivery(monkeypatch)
+    egress = RecordingEgress([reply], grpc_target=None)
+    service = tracing_service(collection, egress)
     service.deliver(collection.run.id)
     service.deliver(collection.run.id)
-    assert len(exports) == 1
-    assert decryptions[0]["secret_key"] == "encrypted-original"
+    assert len(egress.requests) == 1
+    request = egress.requests[0]
+    assert request.url == "https://langfuse.test/traces"
+    assert request.headers["Authorization"] == "plaintext-public:plaintext-original"
+    assert ciphertexts == ["encrypted-public", "encrypted-original"]
     stored = collection.repository.get(collection.run.id)
     assert stored is not None
     assert stored.state == outcome
     assert stored.provider_config["secret_key"] == "encrypted-original"
-    assert "plaintext-only-in-worker" not in json.dumps(stored.outer_trace)
-    assert exports[0][1]["host"] == "https://langfuse.test"
+    assert "plaintext" not in json.dumps(stored.outer_trace)
 
 
 def test_source_owner_checks_app_and_tenant(collection: Collection) -> None:
@@ -409,14 +568,13 @@ def test_disabled_source_decision_stays_disabled_after_config_enable(
 ) -> None:
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     case = seed(sqlite_session_factory, "initially-disabled", enabled=False)
-    service = ApplicationTracingService(case.repository)
+    attach_conversation(case, AppMode.AGENT)
+    service = tracing_service(case, no_egress())
     assert case.run.state == "not_collected"
     with case.sessions.begin() as session:
         app = session.get(App, case.run.app_id)
         assert app is not None
         app.tracing = json.dumps({"enabled": True, "tracing_provider": "langfuse", "capture_content": True})
-        message = session.get(Message, case.run.source_id)
-        assert message is not None
     assert (
         service.start(
             tenant_id=case.run.tenant_id,
@@ -427,17 +585,7 @@ def test_disabled_source_decision_stays_disabled_after_config_enable(
         )
         is None
     )
-    info = MessageTraceInfo(
-        metadata={},
-        message_data=message,
-        message_id=message.id,
-        conversation_model="agent",
-        conversation_mode="agent",
-        message_tokens=1,
-        answer_tokens=1,
-        total_tokens=2,
-    )
-    assert service.capture_terminal(info) is True
+    assert service.capture_terminal(message_record(service, case)) is True
     stored = case.repository.get(case.run.id)
     assert stored is not None
     assert stored.state == "not_collected"
@@ -450,7 +598,8 @@ def test_capture_agent_disabled_preserves_outer_only_content_policy(
 ) -> None:
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     case = seed(sqlite_session_factory, "outer-only", capture_agent=False)
-    service = ApplicationTracingService(case.repository)
+    attach_conversation(case, AppMode.AGENT)
+    service = tracing_service(case, no_egress())
     scheduled: list[str] = []
     monkeypatch.setattr(service, "schedule", scheduled.append)
     assert (
@@ -467,48 +616,30 @@ def test_capture_agent_disabled_preserves_outer_only_content_policy(
         )
         is None
     )
-    with case.sessions() as session:
-        message = session.get(Message, case.run.source_id)
-        assert message is not None
-    info = MessageTraceInfo(
-        metadata={},
-        message_data=message,
-        message_id=message.id,
-        conversation_model="agent",
-        conversation_mode="agent",
-        message_tokens=1,
-        answer_tokens=1,
-        total_tokens=2,
-        inputs="private input",
-        outputs="private output",
-    )
+    info = message_record(service, case).model_copy(update={"inputs": "private input", "outputs": "private output"})
     assert service.capture_terminal(info) is True
     assert scheduled == [case.run.id]
     stored = case.repository.get(case.run.id)
     assert stored is not None
     assert stored.outer_trace is not None
     assert "private" not in json.dumps(stored.outer_trace)
+    # The message's synthetic model call is left to the Agent runtime, which reports none here.
     assert len(stored.outer_trace["spans"]) == 1
     invocations, _ = case.repository.collected(case.run.id)
     assert invocations == []
 
 
 def test_deleting_selected_configuration_keeps_historical_destination(collection: Collection) -> None:
-    from machinery.context import RequestContext
-    from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
-    from services.app_tracing_config_gateway import OpsTraceManagerGateway
-    from services.app_tracing_config_service import AppTracingConfigService
-
     original = collection.run
     service = AppTracingConfigService(
         configs=SQLAlchemyAppTracingConfigRepository(session_factory=collection.sessions),
-        provider=OpsTraceManagerGateway(),
+        provider=ProviderConfigGateway(no_egress()),
     )
     service.delete(RequestContext("request", None, "account", original.tenant_id), original.app_id, "langfuse")
     stored = collection.repository.get(original.id)
     assert stored is not None
     assert stored.provider_config == original.provider_config
-    assert stored.provider_config["project_url"] == "https://langfuse.test/project/original"
+    assert stored.provider_config["project_key"] == "original"
     assert stored.config_revision == original.config_revision
     with collection.sessions() as session:
         assert session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == original.app_id)) is None

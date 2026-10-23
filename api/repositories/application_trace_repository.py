@@ -7,7 +7,9 @@ from typing import Any, Literal
 from uuid import UUID, uuid5
 
 from dify_agent.protocol.tracing import AgentTraceBatch
+from dify_trace_sdk.ids import span_id_for
 from sqlalchemy import delete, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
@@ -16,7 +18,7 @@ from models.application_trace import ApplicationTraceBatch, ApplicationTraceInvo
 from models.model import App, Message, TraceAppConfig
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
-from services.tracing.normalization import safe_attributes, span_id
+from services.tracing.normalization import safe_attributes
 
 
 class TraceCollectionError(Exception):
@@ -81,10 +83,8 @@ class ApplicationTraceRepository:
             if existing is not None:
                 return existing
         source = self._source(tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id)
-        # The app row serializes parallel node starts, so one workflow freezes one
-        # destination even when its first two Agent nodes start concurrently.
         with self.sessions.begin() as session:
-            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).with_for_update())
+            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
             if app is None:
                 return None
             existing = session.scalar(
@@ -144,15 +144,13 @@ class ApplicationTraceRepository:
                 config_revision=revision,
                 provider_config=frozen,
                 trace_id=uuidv7().hex,
-                root_span_id=span_id(source_id),
+                root_span_id=span_id_for(source_id),
                 session_id=session_id[:255] or source_id,
                 capture_content=enabled and policy.get("capture_content", False) is True,
                 capture_agent=enabled and policy.get("capture_agent", True) is True,
                 state="collecting" if enabled else "not_collected",
             )
-            session.add(record)
-            session.flush()
-            return record
+            return self._insert_or_get(session, record)
 
     def source_run(
         self, *, tenant_id: str, app_id: str, source_kind: str, source_id: str
@@ -180,7 +178,7 @@ class ApplicationTraceRepository:
         if source is None:
             return None
         with self.sessions.begin() as session:
-            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).with_for_update())
+            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
             if app is None:
                 return None
             current = session.scalar(
@@ -203,7 +201,7 @@ class ApplicationTraceRepository:
                 config_revision="",
                 provider_config={},
                 trace_id=uuidv7().hex,
-                root_span_id=span_id(source_id),
+                root_span_id=span_id_for(source_id),
                 session_id=source_id,
                 capture_content=False,
                 capture_agent=False,
@@ -211,8 +209,33 @@ class ApplicationTraceRepository:
                 error_code="tracing_initialization_failed",
                 terminal_at=naive_utc_now(),
             )
-            session.add(current)
-            return current
+            return self._insert_or_get(session, current)
+
+    @staticmethod
+    def _insert_or_get(session: Session, record: ApplicationTraceRun) -> ApplicationTraceRun:
+        """Insert a run; when a concurrent start won the unique source key, return its run instead.
+
+        The first frozen destination wins, so one execution never exports to two providers.
+        """
+        try:
+            with session.begin_nested():
+                session.add(record)
+        except IntegrityError:
+            # A locking read sees the committed winner even under MySQL's REPEATABLE READ snapshot.
+            existing = session.scalar(
+                select(ApplicationTraceRun)
+                .where(
+                    ApplicationTraceRun.tenant_id == record.tenant_id,
+                    ApplicationTraceRun.app_id == record.app_id,
+                    ApplicationTraceRun.source_kind == record.source_kind,
+                    ApplicationTraceRun.source_id == record.source_id,
+                )
+                .with_for_update()
+            )
+            if existing is None:
+                raise
+            return existing
+        return record
 
     def invocation(
         self, *, run_id: str, agent_id: str, node_execution_id: str | None, attempt: int, call_key: str
@@ -234,8 +257,8 @@ class ApplicationTraceRepository:
                     id=identifier,
                     run_id=run_id,
                     agent_id=agent_id,
-                    parent_span_id=span_id(node_execution_id) if node_execution_id else run.root_span_id,
-                    span_id=span_id(f"agent-attempt:{identifier}"),
+                    parent_span_id=span_id_for(node_execution_id) if node_execution_id else run.root_span_id,
+                    span_id=span_id_for(f"agent-attempt:{identifier}"),
                     node_execution_id=node_execution_id,
                     attempt=attempt,
                 )

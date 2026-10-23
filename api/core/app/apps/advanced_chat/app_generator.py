@@ -43,11 +43,11 @@ from core.app.entities.task_entities import (
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_trace_session_id_from_args
-from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
+from extensions.tracing import create_trace_scope
 from factories import file_factory
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
@@ -199,9 +199,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             # convert to app config
             app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
 
-            # get tracing instance
-            trace_manager = TraceQueueManager(
-                app_id=app_model.id, user_id=user.id if isinstance(user, Account) else user.session_id
+            trace_scope = create_trace_scope(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                app_tracing=app_model.tracing,
+                user_id=user.id if isinstance(user, Account) else user.session_id,
+                extras=extras,
             )
 
             if invoke_from == InvokeFrom.DEBUGGER:
@@ -228,7 +231,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 stream=streaming,
                 invoke_from=invoke_from,
                 extras=extras,
-                trace_manager=trace_manager,
+                trace_scope=trace_scope,
                 workflow_run_id=str(workflow_run_id),
             )
             contexts.plugin_tool_providers.set({})
@@ -291,15 +294,18 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         """
         Resume a paused advanced chat execution.
 
-        ``trace_manager`` is transient and excluded from generate-entity serialization,
-        so resumed executions rebuild it here before persistence layers receive the entity.
+        ``trace_scope`` is transient and excluded from generate-entity serialization,
+        so resumed executions create it again before persistence layers receive the entity.
         """
-        if application_generate_entity.trace_manager is None:
+        if application_generate_entity.trace_scope is None:
             application_generate_entity = application_generate_entity.model_copy(
                 update={
-                    "trace_manager": TraceQueueManager(
+                    "trace_scope": create_trace_scope(
+                        tenant_id=app_model.tenant_id,
                         app_id=app_model.id,
+                        app_tracing=app_model.tracing,
                         user_id=user.id if isinstance(user, Account) else user.session_id,
+                        extras=application_generate_entity.extras,
                     )
                 }
             )

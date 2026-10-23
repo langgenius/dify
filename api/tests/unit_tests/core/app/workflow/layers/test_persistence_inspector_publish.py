@@ -35,6 +35,7 @@ def layer() -> WorkflowPersistenceLayer:
         workflow_info=MagicMock(workflow_id="wf-1"),
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        trace_scope=None,
     )
     # Use a SimpleNamespace-like spec so Pydantic-validated callsites (e.g.
     # ``WorkflowNodeExecution.new`` requires real strings) get the right types.

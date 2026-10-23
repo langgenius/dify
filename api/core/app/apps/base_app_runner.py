@@ -482,7 +482,7 @@ class AppRunner:
             inputs=dict(inputs),
             query=query or "",
             message_id=message_id,
-            trace_manager=app_generate_entity.trace_manager,
+            trace_scope=app_generate_entity.trace_scope,
         )
 
     def check_hosting_moderation(

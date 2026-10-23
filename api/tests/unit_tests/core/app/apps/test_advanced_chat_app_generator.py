@@ -4,6 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -13,12 +15,19 @@ from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
-from core.ops.ops_trace_manager import TraceQueueManager
 from models import Account, Workflow
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation
 from services.errors.conversation import ConversationNotExistsError
 from services.workflow_run_agg import WorkflowRunAgg
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
 
 
 def _make_app_config() -> WorkflowUIBasedAppConfig:
@@ -165,11 +174,22 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
         lambda **_kwargs: app_config,
     )
     monkeypatch.setattr(app_generator_module, "db", SimpleNamespace(engine=sqlite_engine))
-    trace_manager = object.__new__(TraceQueueManager)
-    monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
-        lambda **_kwargs: trace_manager,
+    trace_scope = TraceScope(
+        emitter=_TraceRecorder(),
+        tenant_id="tenant-id",
+        app_id="app-id",
+        user_id="user-id",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
     )
+    scope_requests: list[dict[str, object]] = []
+
+    def create_trace_scope(**kwargs: object) -> TraceScope:
+        scope_requests.append(kwargs)
+        return trace_scope
+
+    monkeypatch.setattr(app_generator_module, "create_trace_scope", create_trace_scope)
     monkeypatch.setattr(
         "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
         lambda **_kwargs: SimpleNamespace(),
@@ -205,6 +225,16 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
     application_generate_entity = captured["application_generate_entity"]
     assert isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
     assert application_generate_entity.conversation_id is None
+    assert application_generate_entity.trace_scope is trace_scope
+    assert scope_requests == [
+        {
+            "tenant_id": "tenant-id",
+            "app_id": "app-id",
+            "app_tracing": None,
+            "user_id": "user-id",
+            "extras": application_generate_entity.extras,
+        }
+    ]
 
 
 def test_message_cycle_manager_uses_new_conversation_flag(monkeypatch: pytest.MonkeyPatch):

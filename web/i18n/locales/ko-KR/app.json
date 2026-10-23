@@ -267,6 +267,7 @@
   "tracing.config": "구성",
   "tracing.configProvider.clientId": "OAuth 클라이언트 ID",
   "tracing.configProvider.clientSecret": "OAuth 클라이언트 비밀",
+  "tracing.configProvider.configuredSecretPlaceholder": "구성됨. 비워 두면 저장된 값이 유지됩니다.",
   "tracing.configProvider.databricksHost": "Databricks 작업 영역 URL",
   "tracing.configProvider.experimentId": "실험 ID",
   "tracing.configProvider.password": "비밀번호",
