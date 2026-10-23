@@ -7355,17 +7355,12 @@
   },
   "web/features/agent-v2/roster/components/agent-roster-list.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
-      "count": 14
+      "count": 5
     }
   },
   "web/features/agent-v2/roster/components/agent-workflow-references-dropdown.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
-    }
-  },
-  "web/features/agent-v2/roster/components/roster-toolbar.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/features/agent-v2/template-preview/grid-background.tsx": {
