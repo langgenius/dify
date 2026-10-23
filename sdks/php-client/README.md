@@ -94,11 +94,33 @@ $response = $difyClient->message_feedback($message_id, $rating, "user_id");
 
 Replace 'your-api-key-here' with your actual Dify API key.
 
+## Conversation pagination
+
+Pass the final conversation ID from the previous page as the second argument:
+
+```php
+$page = json_decode((string) $chatClient->get_conversations("user_id", null, 20)->getBody(), true);
+if ($page['has_more'] && $page['data']) {
+    $lastConversation = end($page['data']);
+    $nextPage = $chatClient->get_conversations("user_id", $lastConversation['id'], 20);
+}
+```
+
+For compatibility, this argument retains its legacy PHP name `$first_id`, but the
+conversation-list request sends the API's `last_id` field. Message history through
+`get_conversation_messages()` continues to send `first_id`.
+
 ## License
 
 This SDK is released under the MIT License.
 
 ## Tests
 
-After `composer install`, run `php tests/base_url_test.php` from this directory.
-The regression uses Guzzle's mock transport and does not contact an API or model provider.
+After `composer install`, run these commands from this directory:
+
+```sh
+php tests/base_url_test.php
+php tests/conversation_pagination_test.php
+```
+
+The regressions use Guzzle's mock transport and do not contact an API or model provider.
