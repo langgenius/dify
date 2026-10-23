@@ -44,7 +44,8 @@ const AddConditionSelect = ({
         }
       />
       <PopoverContent
-        placement="bottom-start"
+        side="bottom"
+        align="start"
         className="w-[320px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border p-0 shadow-[0px_12px_16px_-4px_rgba(9,9,11,0.08),0px_4px_6px_-2px_rgba(9,9,11,0.03)]"
       >
         <div className="max-h-[360px] overflow-y-auto bg-components-panel-bg p-1" role="menu">

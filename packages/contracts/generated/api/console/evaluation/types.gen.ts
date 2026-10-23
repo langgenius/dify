@@ -8,12 +8,29 @@ export type EvaluationAvailableMetricsResponse = {
   metrics: Array<string>
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type GetEvaluationAvailableMetricsData = {
   body?: never
   path?: never
   query?: never
   url: '/evaluation/available-metrics'
 }
+
+export type GetEvaluationAvailableMetricsErrors = {
+  default: ErrorResponse
+}
+
+export type GetEvaluationAvailableMetricsError =
+  GetEvaluationAvailableMetricsErrors[keyof GetEvaluationAvailableMetricsErrors]
 
 export type GetEvaluationAvailableMetricsResponses = {
   200: EvaluationAvailableMetricsResponse

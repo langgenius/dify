@@ -18,6 +18,8 @@ import { dataSource } from './data-source/orpc.gen.ts'
 import { datasets } from './datasets/orpc.gen.ts'
 import { emailCodeLogin } from './email-code-login/orpc.gen.ts'
 import { emailRegister } from './email-register/orpc.gen.ts'
+import { byEvaluateTargetType } from './evaluate-target-type/orpc.gen.ts'
+import { evaluation } from './evaluation/orpc.gen.ts'
 import { explore } from './explore/orpc.gen.ts'
 import { features } from './features/orpc.gen.ts'
 import { files } from './files/orpc.gen.ts'
@@ -58,6 +60,7 @@ import { workflow } from './workflow/orpc.gen.ts'
 import { workspaces } from './workspaces/orpc.gen.ts'
 
 const communityContract = {
+  byEvaluateTargetType,
   account,
   activate,
   agent,
@@ -75,6 +78,7 @@ const communityContract = {
   datasets,
   emailCodeLogin,
   emailRegister,
+  evaluation,
   explore,
   features,
   files,

@@ -27,7 +27,7 @@ from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant
-from models.agent import Agent
+from models.agent import Agent, AgentScope, AgentSource
 from models.evaluation import (
     EvaluationConfiguration,
     EvaluationRun,
@@ -45,6 +45,21 @@ from tests.unit_tests.model_factories import make_upload_file
 @pytest.fixture(autouse=True)
 def stub_evaluation_model_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(EvaluationService, "_validate_evaluation_model", MagicMock())
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_expected_output.side_effect = lambda metric: metric == "context_recall"
+    evaluation_instance.metric_requires_expected_tool_calls.return_value = False
+    evaluation_instance.metric_requires_embeddings.side_effect = lambda metric: metric == "answer_relevancy"
+    monkeypatch.setattr(EvaluationManager, "get_evaluation_instance", MagicMock(return_value=evaluation_instance))
+
+
+def _agent() -> Agent:
+    return Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Research Agent",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+    )
 
 
 def test_generated_template_uses_provided_column_names() -> None:
@@ -367,7 +382,7 @@ def test_task_completion_generates_optional_success_criteria_columns() -> None:
 
 def test_agent_custom_evaluator_adds_referenced_dataset_columns() -> None:
     columns = EvaluationService.get_dataset_column_names(
-        Agent(id="agent-1", tenant_id="tenant-1", name="Research Agent"),
+        _agent(),
         "agents",
         EvaluationConfigData(
             customized_metrics=CustomizedMetrics(
@@ -407,7 +422,7 @@ def test_agent_custom_evaluator_reuses_native_success_criteria_column(
     )
 
     columns = EvaluationService.get_dataset_column_names(
-        Agent(id="agent-1", tenant_id="tenant-1", name="Research Agent"),
+        _agent(),
         "agents",
         EvaluationConfigData(
             default_metrics=[
@@ -730,7 +745,7 @@ def test_agent_default_metrics_are_scoped_to_the_agent(monkeypatch: pytest.Monke
             ]
         ),
     )
-    agent = Agent(id="agent-1", tenant_id="tenant-1", name="Research Agent")
+    agent = _agent()
 
     metrics = EvaluationService.get_default_metrics_with_nodes_for_published_target(
         agent,
@@ -1427,17 +1442,17 @@ def test_stop_workflow_tasks_sends_graph_commands_when_queue_stop_flags_fail(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stop_flag = MagicMock(side_effect=RuntimeError("redis flag failed"))
-    graph_manager = MagicMock()
+    send_abort = MagicMock()
     monkeypatch.setattr(
         "core.app.apps.base_app_queue_manager.AppQueueManager.set_stop_flag_no_user_check",
         stop_flag,
     )
-    monkeypatch.setattr("graphon.graph_engine.manager.GraphEngineManager", MagicMock(return_value=graph_manager))
+    monkeypatch.setattr("core.app.apps.execution_coordinator.send_abort_command", send_abort)
 
     EvaluationService._stop_workflow_tasks("run-1", 1)
 
     assert stop_flag.call_count == 2
-    assert graph_manager.send_stop_command.call_count == 2
+    assert send_abort.call_count == 2
 
 
 def test_stage_target_cleanup_removes_target_rows_and_preserves_evaluator_defaults(sqlite_session) -> None:

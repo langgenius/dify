@@ -23,7 +23,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
       mode: mockAppMode,
       permission_keys: mockAppPermissionKeys,
       workflow: mockHasPublishedWorkflow
-        ? { id: 'workflow-1', created_at: 1, updated_at: 1 }
+        ? { id: 'workflow-1', type: 'workflow', created_at: 1, updated_at: 1 }
         : null,
     }),
   )

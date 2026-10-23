@@ -155,7 +155,8 @@ const BuiltinMetricCard = ({
                 <span aria-hidden="true" className="i-ri-add-line h-4 w-4 shrink-0" />
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                placement="bottom-start"
+                side="bottom"
+                align="start"
                 className="w-[252px] rounded-md border-[0.5px] border-components-panel-border py-1 shadow-[0px_12px_16px_-4px_rgba(9,9,11,0.08),0px_4px_6px_-2px_rgba(9,9,11,0.03)]"
               >
                 {selectableNodeInfoList.map((nodeInfo) => {

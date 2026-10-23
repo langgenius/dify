@@ -164,7 +164,7 @@ const ConditionOperatorSelect = ({
   operators,
   onChange,
 }: ConditionOperatorSelectProps) => {
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation('workflowLogic')
 
   return (
     <Select

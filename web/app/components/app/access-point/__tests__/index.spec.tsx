@@ -97,7 +97,7 @@ const renderAccessPoint = ({
       id: 'app-1',
       mode: appMode,
       site: createAppSiteFixture(),
-      workflow: appPublished ? { id: 'published-workflow' } : null,
+      workflow: appPublished ? { id: 'published-workflow', type: 'workflow' } : null,
       model_config: appPublished ? createAppModelConfigFixture() : null,
       maintainer: 'user-2',
       permission_keys: appPermissionKeys,

@@ -942,6 +942,8 @@ export const zWorkflowPartial = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
+  kind: z.string().nullish(),
+  type: z.string(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
 })
@@ -2329,6 +2331,8 @@ export const zAgentAppPartial = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zWorkflowPartial.nullish(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -3104,6 +3108,8 @@ export const zAgentAppDetailWithSite = z.object({
   updated_by: z.string().nullable(),
   use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullable(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -3815,6 +3821,8 @@ export const zAgentAppPartialWritable = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zWorkflowPartial.nullish(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -3897,6 +3905,8 @@ export const zAgentAppDetailWithSiteWritable = z.object({
   updated_by: z.string().nullable(),
   use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullable(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 export const zGetAgentQuery = z.object({

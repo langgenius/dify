@@ -127,7 +127,8 @@ const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSel
       />
 
       <PopoverContent
-        placement="bottom-start"
+        side="bottom"
+        align="start"
         sideOffset={4}
         className="w-[360px] overflow-hidden p-0"
       >
