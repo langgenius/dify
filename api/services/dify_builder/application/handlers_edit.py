@@ -108,7 +108,9 @@ __all__ = [
 ]
 
 
-def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+def handle_capability_check(
+    env: Env, turn: Turn, s: Session, fc: DifyBuilderContext, *, submitted_rules: dict | None = None
+) -> StepResult:
     """(waiting) Entry state. On ``send_edit_goal`` read the existing graph,
     emit a read-only context summary, analyze impact into edit_rules + target
     nodes (highlighting them), and transition to edit.impact_analysis emitting
@@ -154,6 +156,17 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     fc.form_fields = list(impact.get("fields") or [])
     fc.edit_rules = dict(impact.get("values") or {})
     fc.edit_target_node_ids = list(impact.get("target_node_ids") or [])
+    if submitted_rules is not None:
+        # A revised goal owns a fresh resource request. Carry confirmed ordinary
+        # values only where that fresh impact still owns the field; never reuse
+        # an old choice merely because its resource field index is the same.
+        keys = [
+            field["key"]
+            for field in fc.form_fields
+            if isinstance(field, dict) and field.get("key") and not str(field["key"]).startswith("__builder_resource")
+        ]
+        fc.edit_rules = merge_known_keys(fc.edit_rules, submitted_rules, keys)
+        fc.resource_selection = {}
 
     for node_id in fc.edit_target_node_ids:
         emit_canvas(env, "highlight_edit_target", node_id=node_id)
@@ -205,6 +218,20 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     kind = action_kind(turn)
     if kind != "submit_edit_rules":
         return StepResult(next=PcState.EDIT_IMPACT_ANALYSIS, context=fc)
+
+    if turn.action is not None and any(field.get("key") == "change" for field in fc.form_fields):
+        requested_goal = turn.action.payload.get("change")
+        if isinstance(requested_goal, str) and requested_goal.strip() and requested_goal != fc.edit_rules.get("change"):
+            # Reuse impact analysis only when the user changes the goal. Old
+            # resource choices cannot resolve a removed/replaced request; show
+            # the refreshed form for confirmation before planning or approval.
+            return handle_capability_check(
+                env,
+                replace(turn, action=replace(turn.action, kind="send_edit_goal", payload={"text": requested_goal})),
+                s,
+                fc,
+                submitted_rules=turn.action.payload,
+            )
 
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,

@@ -99,6 +99,29 @@ def test_edit_planning_can_compare_requested_configuration_with_current_values()
     assert "Existing business greeting" in graph_context
 
 
+def test_read_only_plan_context_redacts_credentials_inside_http_body() -> None:
+    graph = workflow()
+    graph["nodes"].append(
+        {
+            "id": "http",
+            "data": {
+                "type": "http-request",
+                "title": "Send",
+                "headers": "Authorization: Bearer header-secret",
+                "body": {"type": "json", "data": [{"value": '{"api_key":"body-secret","message":"keep"}'}]},
+            },
+        }
+    )
+    before = deepcopy(graph)
+    context = edit._graph_context(graph, ["http"], for_plan=True)
+    assert "header-secret" not in context
+    assert "body-secret" not in context
+    assert "keep" in context
+    assert graph == before
+    # The write renderer's separate redaction/write-sentinel contract is unchanged.
+    assert "body-secret" in edit._graph_context(graph, ["http"])
+
+
 def workflow(*inputs: dict[str, object]) -> Graph:
     return {
         "nodes": [

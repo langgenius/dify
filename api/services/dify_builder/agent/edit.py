@@ -139,6 +139,11 @@ def _detailed_ids(graph: dict, target_node_ids: Sequence[str]) -> set[str]:
 
 
 def _graph_context(graph: dict, target_node_ids: Sequence[str] = (), *, for_plan: bool = False) -> str:
+    if for_plan:
+        # Planning never writes these values back. Apply the broader diagnostic
+        # profile, including credentials embedded in body/config text, before
+        # the bounded config renderer can discard their provenance.
+        graph = diagnostic_context.redact_diagnostic_value(graph, Run(), graph, [])
     detailed = _detailed_ids(graph, target_node_ids)
     node_lines: list[str] = []
     rendered_any_config = False
