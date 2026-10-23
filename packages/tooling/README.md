@@ -1,6 +1,6 @@
 # Repository Tooling
 
-Vite+ provides the primary static check through `vp check`, which combines Oxfmt formatting, Oxlint code-quality rules, and TypeScript diagnostics. The root command also runs ESLint for non-code file types that Oxlint cannot parse.
+Vite+ provides the primary static check through `vp check`, which combines Oxfmt formatting and Oxlint code-quality rules. TypeScript diagnostics run separately through each package's `type-check` script using tsrs. The root command also runs ESLint for non-code file types that Oxlint cannot parse.
 
 `@dify/tooling` is the private workspace package that owns JS/TS linting, formatting,
 custom rules, and dead-code tooling. Edit the implementations here:
@@ -41,8 +41,8 @@ vp run -w check:fix
 
 CI and local development use the same root `vite.config.ts` configuration.
 
-The root `check` script delegates to the `check:cached` Vite Task. Formatting, linting,
-and type checking reuse successful results when their tracked inputs are unchanged.
+The root `check` script delegates to the `check:cached` Vite Task. Formatting and linting
+reuse successful results when their tracked inputs are unchanged.
 `CI`, `NODE_ENV`, and `TAILWIND_CANONICAL_CLASSES` are included in the cache key;
 check results never restore files into the working tree. Fix commands remain uncached.
 To force a fresh check, run `vp run -w --no-cache check`.
@@ -54,7 +54,7 @@ time saved in the Vite Task summary.
 
 Reuse successful checks for the same final changes. Repeat or expand checks only when subsequent edits, failures, or unresolved concerns require it.
 
-To narrow formatting and linting, pass paths directly to Vite+. Type checking remains repository-wide:
+To narrow formatting and linting, pass paths directly to Vite+:
 
 ```sh
 vp check web/app/components packages/dify-ui/src/button
@@ -85,7 +85,7 @@ vp run -w lint:eslint package.json pnpm-workspace.yaml web/docs
 vp run -w lint:eslint:fix package.json pnpm-workspace.yaml web/docs
 ```
 
-Oxlint and Vite+ type-check scope is defined by `packages/tooling/lint.config.ts` `ignorePatterns`, and ESLint's scope is defined by `packages/tooling/eslint.ts` global ignores.
+Oxlint's scope is defined by `packages/tooling/lint.config.ts` `ignorePatterns`, and ESLint's scope is defined by `packages/tooling/eslint.ts` global ignores. Each package's `tsconfig.json` defines its type-check scope.
 
 The primary rule baseline lives in `packages/tooling/lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. Oxlint-native rules are preferred, and compatible ESLint rules can run through Oxlint's `jsPlugins` support. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
 
@@ -106,7 +106,15 @@ The non-code baseline and its repository-wide file scope live in `packages/tooli
 
 ### Type-aware Linting
 
-The root configuration enables both `typeAware` and `typeCheck`, so `vp check` runs type-aware rules and full diagnostics through the repository's `@typescript/native` compiler.
+The root configuration enables `typeAware` and disables `typeCheck`, so `vp check` and `vp lint` run type-aware rules without reporting TypeScript compiler diagnostics. Run a package's `type-check` script separately for tsrs diagnostics, for example `vp run dify-web#type-check`.
+
+Run tsrs for the root tooling configuration and all workspace packages with:
+
+```sh
+vp run -r type-check
+```
+
+The TS Common CI job runs this command separately from formatting and linting.
 
 The shared `packages/tsconfig/base.json` enforces erasable TypeScript syntax through
 `erasableSyntaxOnly`. Root tooling and TypeScript packages inherit this contract; enum
