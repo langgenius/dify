@@ -7,8 +7,8 @@ import { env } from '@/plugins/env'
 import { io } from '@/plugins/io'
 import { localFile } from '@/store/local-file'
 
-export const INSTALLATION_FILE_NAME = 'installation.yml'
-export const INSTALLATION_ID_PATTERN = /^[a-z0-9-]{8,64}$/i
+const INSTALLATION_FILE_NAME = 'installation.yml'
+const INSTALLATION_ID_PATTERN = /^[a-z0-9-]{8,64}$/i
 // The server indexes only the first 191 characters of a device label; the id part must fit inside them.
 export const DEVICE_LABEL_HOSTNAME_MAX = 64
 export const DEVICE_LABEL_ID_LENGTH = 8

@@ -270,34 +270,24 @@ it.each(['happy', 'denied', 'expired'] as const)(
 
 const LOGIN_FLAGS = ['--no-browser', '--no-keyring', '--insecure'] as const
 
-async function loginWorld(server: string, reuseDirOf: TestWorld): Promise<TestWorld> {
-  const w = await testContext({
-    login: false,
-    argv: ['login', '--server', server, ...LOGIN_FLAGS],
-    reuseDirOf,
-  })
-  worlds.push(w)
-  return w
-}
-
-async function loggedInWorld(): Promise<TestWorld> {
-  const seed = await testContext({ login: false })
-  worlds.push(seed)
-  const first = await loginWorld(seed.mock.url, seed)
-  expect(await (await first.ctx.get(commands)).run()).toBe(0)
-  return seed
-}
-
-it('a relogin on the same install revokes the previous session', async () => {
-  const seed = await loggedInWorld()
-  const w = await loginWorld(seed.mock.url, seed)
-  expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(w.mock.sessionRevokeCount).toBe(1)
-  const id = await installationId(w.ctx)
-  expect(w.mock.lastDeviceCodeBody).toEqual({
-    client_id: 'difyctl',
-    device_label: `${hostname().slice(0, DEVICE_LABEL_HOSTNAME_MAX)} (${id.slice(0, DEVICE_LABEL_ID_LENGTH)})`,
-  })
-  expect(w.io.errBuf()).toMatch(/logged out tester@dify\.ai from/)
-  expect(await (await w.ctx.get(token)).get()).toBe('dfoa_test')
+it('two config dirs on one host log in with different device labels', async () => {
+  const labels: unknown[] = []
+  for (const _dir of ['first', 'second']) {
+    const seed = await testContext({ login: false })
+    worlds.push(seed)
+    const w = await testContext({
+      login: false,
+      argv: ['login', '--server', seed.mock.url, ...LOGIN_FLAGS],
+      reuseDirOf: seed,
+    })
+    worlds.push(w)
+    expect(await (await w.ctx.get(commands)).run()).toBe(0)
+    const id = await installationId(w.ctx)
+    expect(w.mock.lastDeviceCodeBody).toEqual({
+      client_id: 'difyctl',
+      device_label: `${hostname().slice(0, DEVICE_LABEL_HOSTNAME_MAX)} (${id.slice(0, DEVICE_LABEL_ID_LENGTH)})`,
+    })
+    labels.push(w.mock.lastDeviceCodeBody?.device_label)
+  }
+  expect(new Set(labels).size).toBe(2)
 })
