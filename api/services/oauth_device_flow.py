@@ -123,14 +123,31 @@ _LEGACY_APPROVAL_FIELDS = ("subject_email", "account_id", "subject_issuer", "min
 
 def _parse_approval(data: dict[str, object]) -> DeviceApprovalRecord:
     """Raises KeyError or ValueError for a record this version cannot honour."""
+    subject_type = SubjectType(str(data["subject_type"]))
+    subject_email = str(data["subject_email"])
+    subject_issuer = str(data["subject_issuer"])
+    if subject_type is SubjectType.EXTERNAL_SSO:
+        return {
+            "subject_type": SubjectType.EXTERNAL_SSO,
+            "account_id": None,
+            "workspace_id": None,
+            "subject_email": subject_email,
+            "subject_issuer": subject_issuer,
+        }
+    if subject_type is not SubjectType.ACCOUNT:
+        raise ValueError(f"device flow cannot approve subject type {subject_type}")
     account_id = data["account_id"]
+    if account_id is None:
+        raise ValueError("account approval has no account_id")
     workspace_id = data["workspace_id"]
+    if workspace_id is None:
+        raise ValueError("account approval has no workspace_id")
     return {
-        "subject_type": SubjectType(str(data["subject_type"])),
-        "account_id": None if account_id is None else str(account_id),
-        "workspace_id": None if workspace_id is None else str(workspace_id),
-        "subject_email": str(data["subject_email"]),
-        "subject_issuer": str(data["subject_issuer"]),
+        "subject_type": SubjectType.ACCOUNT,
+        "account_id": str(account_id),
+        "workspace_id": str(workspace_id),
+        "subject_email": subject_email,
+        "subject_issuer": subject_issuer,
     }
 
 
@@ -298,18 +315,17 @@ class DeviceFlowRedis:
             self._redis.delete(USER_CODE_KEY_FMT.format(code=state.user_code))
         except Exception:
             logger.exception("device_flow: failed to clean consumed user-code mapping")
-        remaining = int(ttl)
-        if remaining < 0:  # -1 no expiry, -2 missing
-            remaining = APPROVED_TTL_SECONDS_MIN
-        return state, remaining
+        # -1 (no expiry) and -2 (missing) give no lifetime to restore.
+        return state, max(int(ttl), 0)
 
     def restore(self, device_code: str, state: DeviceFlowStateView, ttl_seconds: int) -> bool:
-        """Put a consumed state back. Never overwrites a state that exists again."""
-        ttl = max(ttl_seconds, APPROVED_TTL_SECONDS_MIN)
-        restored = self._redis.set(DEVICE_CODE_KEY_FMT.format(code=device_code), state.to_json(), nx=True, ex=ttl)
+        """Put a consumed state back for the time it had left. Never overwrites a state that exists again."""
+        restored = self._redis.set(
+            DEVICE_CODE_KEY_FMT.format(code=device_code), state.to_json(), nx=True, ex=ttl_seconds
+        )
         if not restored:
             return False
-        self._redis.set(USER_CODE_KEY_FMT.format(code=state.user_code), device_code, nx=True, ex=ttl)
+        self._redis.set(USER_CODE_KEY_FMT.format(code=state.user_code), device_code, nx=True, ex=ttl_seconds)
         return True
 
     def remaining_seconds(self, device_code: str) -> int | None:

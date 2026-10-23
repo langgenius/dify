@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import NotRequired, Protocol, TypedDict
+from typing import Literal, NotRequired, Protocol, TypedDict
 
 from constants.oauth_bearer import SubjectType
 
@@ -55,14 +55,24 @@ class PollPayload(TypedDict):
     subject_issuer: NotRequired[str]
 
 
-class DeviceApprovalRecord(TypedDict):
-    """Who approved a device code; the token is minted from it on the first successful poll."""
-
-    subject_type: SubjectType
-    account_id: str | None
-    workspace_id: str | None
+class AccountApprovalRecord(TypedDict):
+    subject_type: Literal[SubjectType.ACCOUNT]
+    account_id: str
+    workspace_id: str
     subject_email: str
     subject_issuer: str
+
+
+class ExternalApprovalRecord(TypedDict):
+    subject_type: Literal[SubjectType.EXTERNAL_SSO]
+    account_id: None
+    workspace_id: None
+    subject_email: str
+    subject_issuer: str
+
+
+# Who approved a device code; the token is minted from it on the first successful poll.
+DeviceApprovalRecord = AccountApprovalRecord | ExternalApprovalRecord
 
 
 @dataclass(frozen=True, slots=True)

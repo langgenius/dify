@@ -12,7 +12,7 @@ from services.oauth_device_contracts import (
     DeviceFlowStatus,
     device_key_for,
 )
-from services.oauth_device_flow import APPROVED_TTL_SECONDS_MIN, DeviceFlowRedis, DeviceFlowState
+from services.oauth_device_flow import DeviceFlowRedis, DeviceFlowState
 
 _CONSUME_RETURN = "return {raw, ttl}"
 _APPROVAL: DeviceApprovalRecord = {
@@ -99,13 +99,13 @@ def test_consume_on_poll_uses_one_cluster_safe_script_key() -> None:
 
 
 @pytest.mark.parametrize("redis_ttl", [-1, -2])
-def test_consume_on_poll_floors_a_missing_ttl(redis_ttl: int) -> None:
+def test_consume_on_poll_reports_no_lifetime_left_for_a_missing_ttl(redis_ttl: int) -> None:
     redis = _Redis(response=_approved_state().to_json(), ttl_seconds=redis_ttl)
 
     result = DeviceFlowRedis(redis).consume_on_poll("device-1")
 
     assert result is not None
-    assert result[1] == APPROVED_TTL_SECONDS_MIN
+    assert result[1] == 0
 
 
 def test_user_code_cleanup_failure_does_not_lose_consumed_state() -> None:
@@ -171,12 +171,12 @@ def test_restore_puts_state_back_with_its_remaining_ttl() -> None:
     ]
 
 
-def test_restore_never_shortens_the_retry_window_below_the_floor() -> None:
+def test_restore_never_extends_a_code_past_its_original_expiry() -> None:
     redis = _Redis(response="")
 
     DeviceFlowRedis(redis).restore("device-1", _approved_state(), 1)
 
-    assert [ttl for _name, _value, ttl in redis.set_calls] == [APPROVED_TTL_SECONDS_MIN, APPROVED_TTL_SECONDS_MIN]
+    assert [ttl for _name, _value, ttl in redis.set_calls] == [1, 1]
 
 
 def test_restore_does_not_overwrite_a_newer_state() -> None:
@@ -230,9 +230,18 @@ def test_reader_tolerates_old_approved_state_with_poll_payload() -> None:
     "approval",
     [
         {**_APPROVAL, "subject_type": "robot"},
+        {**_APPROVAL, "subject_type": SubjectType.RESOURCE_ACCESS},
         {key: value for key, value in _APPROVAL.items() if key != "subject_email"},
+        {**_APPROVAL, "account_id": None},
+        {**_APPROVAL, "workspace_id": None},
     ],
-    ids=["unknown-subject-type", "missing-field"],
+    ids=[
+        "unknown-subject-type",
+        "unmintable-subject-type",
+        "missing-field",
+        "account-without-id",
+        "account-without-workspace",
+    ],
 )
 def test_reader_rejects_an_approval_it_cannot_honour(
     approval: dict[str, object], caplog: pytest.LogCaptureFixture
@@ -246,6 +255,30 @@ def test_reader_rejects_an_approval_it_cannot_honour(
         assert store.consume_on_poll("device-1") is None
 
     assert "corrupt state" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "approval",
+    [
+        {
+            "subject_type": SubjectType.EXTERNAL_SSO,
+            "account_id": None,
+            "workspace_id": None,
+            "subject_email": "external@example.com",
+            "subject_issuer": "https://idp.example",
+        },
+        _APPROVAL,
+    ],
+    ids=["external", "account"],
+)
+def test_reader_round_trips_the_approvals_it_writes(approval: DeviceApprovalRecord) -> None:
+    state = _approved_state()
+    state.approval = approval
+
+    loaded = DeviceFlowRedis(_Redis(response=state.to_json())).load_by_device_code("device-1")
+
+    assert loaded is not None
+    assert loaded.approval == approval
 
 
 def test_approval_guard_release_compares_owner_before_delete() -> None:

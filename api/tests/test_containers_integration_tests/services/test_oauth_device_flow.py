@@ -16,22 +16,29 @@ from services.oauth_device_flow import DEVICE_CODE_KEY_FMT, USER_CODE_KEY_FMT, D
 pytestmark = pytest.mark.usefixtures("flask_app_with_containers")
 
 
-def _approval(subject_type: SubjectType) -> DeviceApprovalRecord:
-    bound = subject_type is SubjectType.ACCOUNT
-    return {
-        "subject_type": subject_type,
-        "account_id": "account-1" if bound else None,
-        "workspace_id": "workspace-1" if bound else None,
-        "subject_email": 'user "quoted"\\path\n测试@example.com',
-        "subject_issuer": "dify:account" if bound else "https://idp.example",
-    }
+_SUBJECT_EMAIL = 'user "quoted"\\path\n测试@example.com'
+_APPROVALS: list[DeviceApprovalRecord] = [
+    {
+        "subject_type": SubjectType.ACCOUNT,
+        "account_id": "account-1",
+        "workspace_id": "workspace-1",
+        "subject_email": _SUBJECT_EMAIL,
+        "subject_issuer": "dify:account",
+    },
+    {
+        "subject_type": SubjectType.EXTERNAL_SSO,
+        "account_id": None,
+        "workspace_id": None,
+        "subject_email": _SUBJECT_EMAIL,
+        "subject_issuer": "https://idp.example",
+    },
+]
 
 
-@pytest.mark.parametrize("subject_type", [SubjectType.ACCOUNT, SubjectType.EXTERNAL_SSO])
-def test_approval_record_is_stored_without_a_token_and_claimed_once(subject_type: SubjectType) -> None:
+@pytest.mark.parametrize("approval", _APPROVALS, ids=["account", "external"])
+def test_approval_record_is_stored_without_a_token_and_claimed_once(approval: DeviceApprovalRecord) -> None:
     store = DeviceFlowRedis(redis_client)
     device_code, user_code, _ = store.start("difyctl", "CLI", "abcd1234", "127.0.0.1")
-    approval = _approval(subject_type)
 
     try:
         store.approve(device_code, "approve-1", approval)

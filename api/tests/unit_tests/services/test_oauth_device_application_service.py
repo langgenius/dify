@@ -78,6 +78,7 @@ class FakeStore:
     confirm_error: Exception | None = None
     restore_error: Exception | None = None
     remaining: int | None = 900
+    consumed_approval: DeviceApprovalRecord | None = None
     acquired: list[tuple[str, str, int]] = field(default_factory=list)
     released: list[tuple[str, str]] = field(default_factory=list)
     started: list[tuple[str, str, str, str]] = field(default_factory=list)
@@ -125,7 +126,9 @@ class FakeStore:
         for user_code, (code, state) in self.states.items():
             if code == device_code:
                 del self.states[user_code]
-                return state, self.remaining
+                if self.consumed_approval is not None:
+                    state.approval = self.consumed_approval
+                return state, self.remaining or 0
         return None
 
     def restore(self, device_code: str, state: DeviceFlowStateView, ttl_seconds: int) -> bool:
@@ -186,6 +189,7 @@ class FakeTokens:
     account_issues: int = 0
     issue_error: Exception | None = None
     device_keys: list[str] = field(default_factory=list)
+    workspace_ids: list[str] = field(default_factory=list)
     sessions: tuple[OAuthDeviceSession, ...] = ()
     revoke_allowed: bool = True
 
@@ -198,10 +202,11 @@ class FakeTokens:
         device_label: str,
         device_key: str,
     ) -> IssuedOAuthToken:
-        _ = (account, workspace_id, client_id, device_label)
+        _ = (account, client_id, device_label)
         if self.issue_error is not None:
             raise self.issue_error
         self.device_keys.append(device_key)
+        self.workspace_ids.append(workspace_id)
         self.account_issues += 1
         return self.account_token
 
@@ -808,18 +813,41 @@ def test_legacy_approved_state_returns_its_stored_payload() -> None:
         _poll(harness)
 
 
-def test_poll_refuses_a_subject_type_it_cannot_mint(caplog: pytest.LogCaptureFixture) -> None:
+@pytest.mark.parametrize("error", [ExpiredTokenError(), DeviceStateLostError()], ids=lambda e: type(e).__name__)
+def test_device_errors_other_than_access_denied_restore_the_approval(error: Exception) -> None:
+    harness = _approved_harness()
+    harness.tokens.issue_error = error
+
+    with pytest.raises(type(error)):
+        _poll(harness)
+
+    assert harness.store.restored == ["device-1"]
+
+
+@pytest.mark.parametrize("remaining", [0, None], ids=["expired", "no-lifetime"])
+def test_mint_failure_at_expiry_does_not_restore_the_code(remaining: int | None) -> None:
+    harness = _approved_harness()
+    harness.store.remaining = remaining
+    harness.tokens.issue_error = RuntimeError("db down")
+
+    with pytest.raises(RuntimeError, match="db down"):
+        _poll(harness)
+
+    assert harness.store.restored == []
+    with pytest.raises(ExpiredTokenError):
+        _poll(harness)
+
+
+def test_poll_mints_from_the_approval_it_consumed() -> None:
     harness = _approved_harness()
     approval = harness.store.approval
     assert approval is not None
-    approval["subject_type"] = SubjectType.RESOURCE_ACCESS
+    assert approval["subject_type"] is SubjectType.ACCOUNT
+    harness.store.consumed_approval = {**approval, "workspace_id": "workspace-2"}
 
-    with caplog.at_level(logging.ERROR), pytest.raises(ExpiredTokenError):
-        _poll(harness)
+    _poll(harness)
 
-    assert "resource_access" in caplog.text
-    assert _issues(harness) == 0
-    assert harness.store.acquired == []
+    assert harness.tokens.workspace_ids == ["workspace-2"]
 
 
 @pytest.mark.parametrize("external", [False, True], ids=["account", "external"])
@@ -837,6 +865,8 @@ def test_audits_name_the_token_only_once_it_is_issued(external: bool, caplog: py
     assert approved["subject_type"] == ("external_sso" if external else "account")
     assert issued["token_id"] == "token-1"
     assert issued["expires_at"] == "2030-01-01T00:00:00+00:00"
+    assert approved["subject_issuer"] == issued["subject_issuer"]
+    assert issued["subject_issuer"] == ("https://idp.example" if external else "dify:account")
     assert issued["account_id"] == (None if external else "account-1")
     assert issued["tenant_id"] == (None if external else "workspace-1")
     assert issued["scopes"] == sorted(SubjectType.EXTERNAL_SSO.scopes if external else SubjectType.ACCOUNT.scopes)

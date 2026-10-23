@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import secrets
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Sequence
 from hashlib import sha256
 from typing import Protocol
 
@@ -16,6 +16,7 @@ from services.oauth_device_contracts import (
     DEFAULT_POLL_INTERVAL_SECONDS,
     DEVICE_FLOW_TTL_SECONDS,
     AccessDeniedError,
+    AccountApprovalRecord,
     AlreadyResolvedError,
     ApprovalOutcomeUnknownError,
     ApprovalSessionConsumedError,
@@ -38,6 +39,7 @@ from services.oauth_device_contracts import (
     ExternalApprovalCSRFError,
     ExternalApprovalGrant,
     ExternalApprovalRateLimitError,
+    ExternalApprovalRecord,
     ExternalIdentityConflictError,
     ExternalSubjectAssertion,
     ExternalUserCodeMismatchError,
@@ -47,7 +49,6 @@ from services.oauth_device_contracts import (
     InvalidTransitionError,
     InvalidUserCodeError,
     IssuedOAuthToken,
-    OAuthDeviceError,
     OAuthDeviceSessionNotFoundError,
     OAuthDeviceSessionPage,
     OAuthDeviceSSOConfigurationError,
@@ -192,9 +193,6 @@ class OAuthDeviceSettings(Protocol):
     def sso_base_url(self) -> str | None: ...
 
 
-_TokenMinter = Callable[[DeviceFlowStateView, DeviceApprovalRecord, str], PollPayload]
-
-
 class OAuthDeviceApplicationService:
     def __init__(
         self,
@@ -216,10 +214,6 @@ class OAuthDeviceApplicationService:
         self._sso = sso
         self._external_approval_limiter = external_approval_limiter
         self._settings = settings
-        self._minters: Mapping[SubjectType, _TokenMinter] = {
-            SubjectType.ACCOUNT: self._mint_account_token,
-            SubjectType.EXTERNAL_SSO: self._mint_external_token,
-        }
 
     def list_account_sessions(self, *, account_id: str, page: int, limit: int) -> OAuthDeviceSessionPage:
         return self._sessions.list_account_sessions(account_id=account_id, page=page, limit=limit)
@@ -280,13 +274,6 @@ class OAuthDeviceApplicationService:
         approval: DeviceApprovalRecord,
         poll_ip: str,
     ) -> PollPayload:
-        minter = self._minters.get(approval["subject_type"])
-        if minter is None:
-            logger.error(
-                "device_flow: no token minter for subject type %s on %s", approval["subject_type"], device_code
-            )
-            raise ExpiredTokenError
-
         device_key = device_key_for(installation_id=state.installation_id, device_label=state.device_label)
         guard_id = self._rotation_guard_id(
             subject_email=approval["subject_email"],
@@ -303,9 +290,13 @@ class OAuthDeviceApplicationService:
             if consumed is None:
                 raise ExpiredTokenError
             claimed, ttl_seconds = consumed
+            claimed_approval = claimed.approval
+            if claimed_approval is None:
+                logger.error("device_flow: consumed state for %s has no approval", device_code)
+                raise ExpiredTokenError
             try:
-                poll_payload = minter(claimed, approval, device_key)
-            except OAuthDeviceError:
+                poll_payload = self._mint_token(claimed, claimed_approval, device_key)
+            except AccessDeniedError:
                 raise
             except Exception:
                 # Until the restore lands, a concurrent poll finds no state and gets expired_token.
@@ -314,9 +305,19 @@ class OAuthDeviceApplicationService:
         finally:
             self._store.release_approval(guard_id, owner_id)
 
-        self._audit_cross_ip_if_needed(state, poll_ip, poll_payload["token_id"])
-        self._emit_token_issued_audit(state, approval, poll_payload)
+        self._audit_cross_ip_if_needed(claimed, poll_ip, poll_payload["token_id"])
+        self._emit_token_issued_audit(claimed, claimed_approval, poll_payload)
         return poll_payload
+
+    def _mint_token(
+        self,
+        state: DeviceFlowStateView,
+        approval: DeviceApprovalRecord,
+        device_key: str,
+    ) -> PollPayload:
+        if approval["subject_type"] is SubjectType.ACCOUNT:
+            return self._mint_account_token(state, approval, device_key)
+        return self._mint_external_token(state, approval, device_key)
 
     # TODO(ENG-1302): remove one release after this ships. Older workers minted at approve.
     def _collect_legacy_payload(self, device_code: str, poll_ip: str) -> PollPayload:
@@ -335,16 +336,11 @@ class OAuthDeviceApplicationService:
     def _mint_account_token(
         self,
         state: DeviceFlowStateView,
-        approval: DeviceApprovalRecord,
+        approval: AccountApprovalRecord,
         device_key: str,
     ) -> PollPayload:
-        account_id = approval["account_id"]
-        if account_id is None:
-            raise AccessDeniedError
         workspace_id = approval["workspace_id"]
-        if workspace_id is None:
-            raise AccessDeniedError
-        account = self._accounts.get(account_id)
+        account = self._accounts.get(approval["account_id"])
         if account is None:
             raise AccessDeniedError
 
@@ -362,7 +358,7 @@ class OAuthDeviceApplicationService:
     def _mint_external_token(
         self,
         state: DeviceFlowStateView,
-        approval: DeviceApprovalRecord,
+        approval: ExternalApprovalRecord,
         device_key: str,
     ) -> PollPayload:
         if self._accounts.has_active_email(approval["subject_email"]):
@@ -646,6 +642,9 @@ class OAuthDeviceApplicationService:
             raise
 
     def _restore_approval(self, device_code: str, state: DeviceFlowStateView, ttl_seconds: int) -> None:
+        if ttl_seconds <= 0:
+            logger.warning("device_flow: approval for %s not restored because the code has expired", device_code)
+            return
         try:
             if not self._store.restore(device_code, state, ttl_seconds):
                 logger.warning("device_flow: approval for %s not restored because the state exists again", device_code)
@@ -696,6 +695,7 @@ class OAuthDeviceApplicationService:
             "client_id": state.client_id,
             "device_label": state.device_label,
             "scopes": sorted(approval["subject_type"].scopes),
+            "subject_issuer": approval["subject_issuer"],
         }
 
     @classmethod
@@ -715,7 +715,6 @@ class OAuthDeviceApplicationService:
                 **cls._approval_audit_fields(state, approval),
                 "event": "oauth.device_flow_approved",
                 "request_id": request_id,
-                "subject_issuer": approval["subject_issuer"],
             },
         )
 
