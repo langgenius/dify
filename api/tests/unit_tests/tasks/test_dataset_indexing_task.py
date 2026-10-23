@@ -5,6 +5,7 @@ status persistence, indexing, and summary dispatch. These tests persist real
 ORM rows so each phase observes only committed database state.
 """
 
+import logging
 import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
@@ -546,6 +547,45 @@ class TestSummaryDispatch:
         sqlite_session.expire_all()
         assert sqlite_session.get(Dataset, dataset_id) is None
         summary_delay.assert_not_called()
+
+    def test_document_removed_during_indexing_is_logged_in_summary_phase(
+        self,
+        sqlite_session: Session,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
+        indexing_runner: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        _persist_indexing_rows(
+            sqlite_session,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_ids=document_ids,
+            summary_index_setting={"enable": True},
+            need_summary=[True, True, True],
+        )
+        _patch_features(monkeypatch, _features())
+        removed_id = document_ids[1]
+
+        def finish_and_remove_one(documents: list[Document], session: Session) -> None:
+            for document in documents:
+                document.indexing_status = IndexingStatus.COMPLETED
+            removed = session.get(Document, removed_id)
+            assert removed is not None
+            session.delete(removed)
+
+        indexing_runner.run.side_effect = finish_and_remove_one
+        summary_delay = MagicMock()
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", summary_delay)
+
+        with caplog.at_level(logging.WARNING, logger="tasks.document_indexing_task"):
+            _document_indexing(dataset_id, document_ids)
+
+        warnings = [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING]
+        assert warnings == [f"Document {removed_id} not found after indexing"]
+        assert {call.args[1] for call in summary_delay.call_args_list} == {document_ids[0], document_ids[2]}
 
 
 class TestTenantQueue:
