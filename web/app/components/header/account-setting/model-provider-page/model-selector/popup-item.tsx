@@ -1,5 +1,6 @@
 import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
+import type { ModelTypeEnum } from '../declarations'
 import type {
   ModelSelectorModel,
   ModelSelectorModelPredicate,
@@ -20,7 +21,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
-import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
+import { ConfigurationMethodEnum, ModelModalModeEnum, ModelStatusEnum } from '../declarations'
 import {
   useLanguage,
   useLazyModelProviderDetail,
@@ -82,16 +83,35 @@ function PopupItem({
   const hasCredits = !state.isCreditsExhausted
   const isApiKeyActive = state.variant === 'api-active' || state.variant === 'api-fallback'
   const { credentialName } = state
+  const supportsProviderCredentials = currentProvider?.configurate_methods.includes(
+    ConfigurationMethodEnum.predefinedModel,
+  )
 
-  const handleOpenModelModal = async () => {
+  const handleOpenModelModal = async (modelItem?: ModelSelectorModel) => {
     if (!canCreateCredential || !currentProvider) return
 
     const detail = await loadProviderDetail()
     if (!detail) return
+    const configurationMethod = detail.configurate_methods.includes(
+      ConfigurationMethodEnum.predefinedModel,
+    )
+      ? ConfigurationMethodEnum.predefinedModel
+      : ConfigurationMethodEnum.customizableModel
+    const isModelCredential = configurationMethod === ConfigurationMethodEnum.customizableModel
     setShowModelModal({
       payload: {
         currentProvider: detail,
-        currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
+        currentConfigurationMethod: configurationMethod,
+        isModelCredential,
+        model:
+          isModelCredential && modelItem
+            ? { model: modelItem.model, model_type: modelItem.model_type as ModelTypeEnum }
+            : undefined,
+        mode: isModelCredential
+          ? modelItem
+            ? ModelModalModeEnum.configModelCredential
+            : ModelModalModeEnum.configCustomModel
+          : ModelModalModeEnum.configProviderCredential,
       },
       onSaveCallback: () => {
         updateModelProviders()
@@ -137,76 +157,84 @@ function PopupItem({
             )}
           />
         </CollapsibleTrigger>
-        <Popover open={dropdownOpen} onOpenChange={handleDropdownOpenChange}>
-          <PopoverTrigger
-            disabled={!canOpenCredentialDropdown}
-            render={
-              <Button
-                variant="ghost"
-                size="small"
-                className="max-w-[50%] min-w-0 shrink-0 gap-0 px-1.5 py-1 system-xs-medium text-text-tertiary"
-              >
-                {isUsingCredits ? (
-                  hasCredits ? (
+        {supportsProviderCredentials ? (
+          <Popover open={dropdownOpen} onOpenChange={handleDropdownOpenChange}>
+            <PopoverTrigger
+              disabled={!canOpenCredentialDropdown}
+              render={
+                <Button
+                  variant="ghost"
+                  size="small"
+                  className="max-w-[50%] min-w-0 shrink-0 gap-0 px-1.5 py-1 system-xs-medium text-text-tertiary"
+                >
+                  {isUsingCredits ? (
+                    hasCredits ? (
+                      <>
+                        <span
+                          aria-hidden="true"
+                          className="i-custom-vender-line-financeAndECommerce-credits-coin size-3"
+                        />
+                        <span className="ml-1 truncate">
+                          {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'modelProvider' })}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span
+                          aria-hidden="true"
+                          className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary"
+                        />
+                        <span className="ml-1 truncate text-text-warning">
+                          {t(($) => $['modelProvider.selector.creditsExhausted'], {
+                            ns: 'modelProvider',
+                          })}
+                        </span>
+                      </>
+                    )
+                  ) : credentialName ? (
                     <>
-                      <span
-                        aria-hidden="true"
-                        className="i-custom-vender-line-financeAndECommerce-credits-coin size-3"
-                      />
-                      <span className="ml-1 truncate">
-                        {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'modelProvider' })}
-                      </span>
+                      <StatusDot size="small" status={isApiKeyActive ? 'success' : 'error'} />
+                      <span className="ml-1 truncate text-text-tertiary">{credentialName}</span>
                     </>
                   ) : (
                     <>
-                      <span
-                        aria-hidden="true"
-                        className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary"
-                      />
-                      <span className="ml-1 truncate text-text-warning">
-                        {t(($) => $['modelProvider.selector.creditsExhausted'], {
+                      <StatusDot size="small" status="disabled" />
+                      <span className="ml-1 truncate text-text-tertiary">
+                        {t(($) => $['modelProvider.selector.configureRequired'], {
                           ns: 'modelProvider',
                         })}
                       </span>
                     </>
-                  )
-                ) : credentialName ? (
-                  <>
-                    <StatusDot size="small" status={isApiKeyActive ? 'success' : 'error'} />
-                    <span className="ml-1 truncate text-text-tertiary">{credentialName}</span>
-                  </>
-                ) : (
-                  <>
-                    <StatusDot size="small" status="disabled" />
-                    <span className="ml-1 truncate text-text-tertiary">
-                      {t(($) => $['modelProvider.selector.configureRequired'], {
-                        ns: 'modelProvider',
-                      })}
-                    </span>
-                  </>
-                )}
-                {canOpenCredentialDropdown && (
-                  <span
-                    aria-hidden="true"
-                    className="i-ri-arrow-down-s-line size-3.5! shrink-0 translate-y-px text-text-tertiary"
-                  />
-                )}
-              </Button>
-            }
-          />
-          <PopoverContent placement="bottom-end">
-            <PopoverTitle className="sr-only">{providerLabel}</PopoverTitle>
-            {providerDetail && (
-              <DropdownContent
-                provider={providerDetail}
-                state={state}
-                isChangingPriority={isChangingPriority}
-                onChangePriority={handleChangePriority}
-                onClose={handleCloseDropdown}
-              />
-            )}
-          </PopoverContent>
-        </Popover>
+                  )}
+                  {canOpenCredentialDropdown && (
+                    <span
+                      aria-hidden="true"
+                      className="i-ri-arrow-down-s-line size-3.5! shrink-0 translate-y-px text-text-tertiary"
+                    />
+                  )}
+                </Button>
+              }
+            />
+            <PopoverContent placement="bottom-end">
+              <PopoverTitle className="sr-only">{providerLabel}</PopoverTitle>
+              {providerDetail && (
+                <DropdownContent
+                  provider={providerDetail}
+                  state={state}
+                  isChangingPriority={isChangingPriority}
+                  onChangePriority={handleChangePriority}
+                  onClose={handleCloseDropdown}
+                />
+              )}
+            </PopoverContent>
+          </Popover>
+        ) : (
+          canCreateCredential && (
+            <Button variant="ghost-accent" size="small" onClick={() => void handleOpenModelModal()}>
+              {t(($) => $['modelProvider.addModel'], { ns: 'modelProvider' })}
+            </Button>
+          )
+        )}
       </div>
       <CollapsiblePanel>
         <ul className="pb-1">
@@ -271,7 +299,7 @@ function PopupItem({
                     variant="ghost-accent"
                     size="small"
                     className="h-auto shrink-0 p-0 text-xs opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-transparent focus-visible:opacity-100"
-                    onClick={() => void handleOpenModelModal()}
+                    onClick={() => void handleOpenModelModal(modelItem)}
                   >
                     {t(($) => $['operation.add'], { ns: 'common' }).toLocaleUpperCase()}
                   </Button>

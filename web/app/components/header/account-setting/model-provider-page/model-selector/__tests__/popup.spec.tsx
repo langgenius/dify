@@ -33,6 +33,14 @@ const api = vi.hoisted(() => ({
     vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.credentials.get>(),
   addCredential:
     vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.credentials.post>(),
+  modelCredential:
+    vi.fn<
+      typeof consoleClient.workspaces.current.modelProviders.byProvider.models.credentials.get
+    >(),
+  addModelCredential:
+    vi.fn<
+      typeof consoleClient.workspaces.current.modelProviders.byProvider.models.credentials.post
+    >(),
   editCredential:
     vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.credentials.put>(),
   locale: 'en-US',
@@ -55,12 +63,15 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.modelProviders.summary.get': api.summary,
       'workspaces.current.modelProviders.get': api.providers,
       'workspaces.current.modelProviders.byProvider.credentials.get': api.credential,
+      'workspaces.current.modelProviders.byProvider.models.credentials.get': api.modelCredential,
       'workspaces.current.models.modelTypes.byModelType.get': api.catalog,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.install.marketplace.post': api.install,
       'workspaces.current.plugin.tasks.byTaskId.get': api.task,
       'workspaces.current.modelProviders.byProvider.credentials.post': api.addCredential,
+      'workspaces.current.modelProviders.byProvider.models.credentials.post':
+        api.addModelCredential,
       'workspaces.current.modelProviders.byProvider.credentials.put': api.editCredential,
     }),
   }
@@ -263,6 +274,12 @@ beforeEach(() => {
   })
   api.credential.mockReset().mockResolvedValue({ credentials: { api_key: 'masked-key' } })
   api.addCredential.mockReset().mockResolvedValue({ result: 'success' })
+  api.modelCredential.mockReset().mockResolvedValue({
+    credentials: {},
+    available_credentials: [],
+    load_balancing: { enabled: false, configs: [] },
+  })
+  api.addModelCredential.mockReset().mockResolvedValue({ result: 'success' })
   api.editCredential.mockReset().mockResolvedValue({ result: 'success' })
   api.summary.mockReset().mockResolvedValue({ data: [], plugins: {} })
   api.catalog.mockReset().mockResolvedValue({ data: [] })
@@ -672,6 +689,83 @@ describe('credentials in the model selector', () => {
     expect(await screen.findByRole('button', { name: 'New key' })).toBeInTheDocument()
     expect(onSelect).not.toHaveBeenCalled()
   })
+
+  it.each(['existing', 'new'] as const)(
+    'saves credentials for the %s custom model through the model endpoint',
+    async (entry) => {
+      const customProvider = 'custom-provider'
+      const modelName = entry === 'existing' ? 'custom-chat' : 'new-chat'
+      const customModels = [
+        provider(customProvider, 'Custom provider', [
+          model('custom-chat', { status: 'no-configure' }),
+        ]),
+      ]
+      const summary = summaryFor(customModels)
+      summary.data[0]!.configurate_methods = ['customizable-model']
+      api.providers.mockResolvedValue({
+        data: [
+          createProviderResponseFixture({
+            provider: customProvider,
+            configurate_methods: ['customizable-model'],
+            model_credential_schema: {
+              model: { label: { en_US: 'Model Name' } },
+              credential_form_schemas: [
+                {
+                  variable: 'api_key',
+                  type: 'secret-input',
+                  label: { en_US: 'Model API key' },
+                  required: true,
+                  max_length: 256,
+                  show_on: [],
+                },
+              ],
+            },
+          }),
+        ],
+      })
+      const { user, onSelect } = await setup(
+        { modelList: customModels },
+        { summary, permissions: ['credential.create'] },
+      )
+      await user.click(
+        screen.getByRole('button', {
+          name:
+            entry === 'existing' ? 'COMMON.OPERATION.ADD' : 'modelProvider.modelProvider.addModel',
+        }),
+      )
+      const dialog = await screen.findByRole('dialog', {
+        name:
+          entry === 'existing'
+            ? 'modelProvider.modelProvider.auth.addModelCredential'
+            : 'modelProvider.modelProvider.auth.addModel',
+      })
+      if (entry === 'new') {
+        await user.type(within(dialog).getByRole('textbox', { name: /Model Name/ }), modelName)
+        await user.click(within(dialog).getByRole('combobox', { name: /Model Type/ }))
+        await user.click(await screen.findByRole('option', { name: 'LLM' }))
+      } else expect(within(dialog).getByText(modelName)).toBeInTheDocument()
+      await user.type(
+        within(dialog).getByLabelText('Model API key', { exact: false }),
+        'model-secret',
+      )
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: entry === 'existing' ? 'common.operation.save' : 'common.operation.add',
+        }),
+      )
+      await waitFor(() => expect(dialog).not.toBeInTheDocument())
+      expect(api.addModelCredential).toHaveBeenCalledExactlyOnceWith({
+        params: { provider: customProvider },
+        body: expect.objectContaining({
+          model: modelName,
+          model_type: 'llm',
+          credentials: expect.objectContaining({ api_key: 'model-secret' }),
+        }),
+      })
+      expect(api.addCredential).not.toHaveBeenCalled()
+      expect(onSelect).not.toHaveBeenCalled()
+    },
+  )
 
   it('lets a manage-only user edit the real credential without offering use or creation', async () => {
     const { user } = await setup({ modelList }, { permissions: ['credential.manage'] })
