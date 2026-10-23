@@ -35,7 +35,7 @@
     "storybook:build": "storybook build",
     "test": "vp test --project unit",
     "test:browser": "vp test --project browser",
-    "type-check": "tsc",
+    "type-check": "tsrs --noEmit",
     "uglify-embed": "node ./bin/uglify-embed"
   },
   "dependencies": {
@@ -189,6 +189,7 @@
     "react-server-dom-webpack": "catalog:",
     "storybook": "catalog:",
     "tailwindcss": "catalog:",
+    "tsrs": "catalog:",
     "typescript": "catalog:",
     "uglify-js": "catalog:",
     "vinext": "catalog:",

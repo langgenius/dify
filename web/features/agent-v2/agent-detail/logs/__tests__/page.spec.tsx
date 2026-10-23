@@ -296,7 +296,7 @@ describe('AgentLogsPage', () => {
       expect(createdHeader).toHaveAttribute('aria-sort', 'descending')
       expect(updatedHeader).not.toHaveAttribute('aria-sort')
 
-      await user.click(screen.getByRole('button', { name: /appLog\.filter\.sortBy/ }))
+      await user.click(screen.getByRole('button', { name: /common\.sorting\.sortBy/ }))
       await user.click(
         await screen.findByRole('menuitemradio', {
           name: 'agentV2.agentDetail.logs.filters.sort.lastUpdatedTime',
@@ -315,7 +315,7 @@ describe('AgentLogsPage', () => {
       expect(createdHeader).not.toHaveAttribute('aria-sort')
       expect(updatedHeader).toHaveAttribute('aria-sort', 'descending')
 
-      await user.click(screen.getByRole('button', { name: 'appLog.filter.ascending' }))
+      await user.click(screen.getByRole('button', { name: 'common.sorting.ascending' }))
 
       await waitFor(() => {
         expect(getLatestLogsQueryInput().query).toEqual(

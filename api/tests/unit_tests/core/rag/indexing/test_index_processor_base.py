@@ -17,11 +17,11 @@ from core.rag.models.document import AttachmentDocument, Document
 from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.dataset import Dataset
-from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_document
 
 
 def _upload(
@@ -132,7 +132,7 @@ class TestBaseIndexProcessor:
         with pytest.raises(NotImplementedError):
             processor.clean(Dataset(), None, session=unbound_session)
         with pytest.raises(NotImplementedError):
-            processor.index(Dataset(), DatasetDocument(), {}, unbound_session)
+            processor.index(Dataset(), make_document(), {}, unbound_session)
         with pytest.raises(NotImplementedError):
             processor.format_preview([])
 

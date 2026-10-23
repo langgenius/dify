@@ -145,7 +145,7 @@ it('shows a permission empty state without dataset creation access', async () =>
 })
 
 it('uses the filtered empty state when an owner requests all knowledge', async () => {
-  api.datasets.mockImplementation(async ({ query } = {}) =>
+  api.datasets.mockImplementation(async ({ query }: Parameters<typeof api.datasets>[0] = {}) =>
     datasetPage(query?.include_all ? [] : [createDatasetFixture()]),
   )
   const { user } = setup()
@@ -190,7 +190,7 @@ it('keeps previous cards and delays the empty announcement until search settles'
 })
 
 it('filters by real tag IDs and restores the list after clearing tags', async () => {
-  api.datasets.mockImplementation(async ({ query } = {}) =>
+  api.datasets.mockImplementation(async ({ query }: Parameters<typeof api.datasets>[0] = {}) =>
     datasetPage(query?.tag_ids?.length ? [] : [createDatasetFixture()]),
   )
   const { user } = setup()

@@ -65,7 +65,7 @@ def _normalize_provider(item: DatasetDetailRecord) -> DatasetDetailRecord:
 
 
 def _status(document: Document, counts: tuple[int, int] | None = None) -> dict[str, Any]:
-    result = {
+    result: dict[str, Any] = {
         "id": document.id,
         "indexing_status": document.indexing_status,
         "processing_started_at": document.processing_started_at,
