@@ -1,10 +1,11 @@
 """SQL emitted by terminal recovery must preserve ownership across DB dialects."""
 
-from unittest.mock import MagicMock
-
 import pytest
+from sqlalchemy import Select, event
 from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.engine.interfaces import Dialect
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.sql.base import Executable
 
 from services.dify_builder.native_testing.confirmed_agent_completion import reconcile_completed_builder_runs
 
@@ -23,16 +24,25 @@ from services.dify_builder.native_testing.confirmed_agent_completion import reco
     ],
     ids=["postgresql", "mysql"],
 )
-def test_terminal_scan_compares_input_ids_as_strings(dialect: Dialect, comparison: str) -> None:
-    # Capture the actual production query at its SQL boundary without replacing
-    # SQLAlchemy's dialect compilation or constructing another copy of the join.
-    sessions = MagicMock()
-    sql = sessions.return_value.__enter__.return_value
-    sql.scalars.return_value.all.return_value = []
+def test_terminal_scan_compares_input_ids_as_strings(
+    dialect: Dialect, comparison: str, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    # Execute the production scan on the pristine real SQLite schema and observe
+    # its actual ORM statement; no query or database behavior is replaced.
+    statements: list[Executable] = []
 
-    assert reconcile_completed_builder_runs(sessions=sessions, limit=7) == 0
+    def capture(state: ORMExecuteState) -> None:
+        statements.append(state.statement)
 
-    statement = sql.scalars.call_args.args[0]
+    event.listen(sqlite_session_factory, "do_orm_execute", capture)
+    try:
+        assert reconcile_completed_builder_runs(sessions=sqlite_session_factory, limit=7) == 0
+    finally:
+        event.remove(sqlite_session_factory, "do_orm_execute", capture)
+
+    assert len(statements) == 1
+    statement = statements[0]
+    assert isinstance(statement, Select)
     query = str(statement.compile(dialect=dialect, compile_kwargs={"literal_binds": True}))
     assert comparison in query
     assert "dify_builder_runs.session_id = dify_builder_execution_requests.session_id" in query
