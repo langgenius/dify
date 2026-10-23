@@ -77,7 +77,7 @@ function getFormattedChatList(messages: any[]) {
           }
     const humanInputFormDataList: HumanInputFormData[] = []
     const humanInputFilledFormDataList: HumanInputFilledFormData[] = []
-    let workflowRunId = ''
+    let workflowRunId = item.workflow_run_id || ''
     item.extra_contents?.forEach((content: ExtraContent, contentIndex: number) => {
       if (content.type !== 'human_input') return
 
@@ -126,6 +126,7 @@ function getFormattedChatList(messages: any[]) {
       humanInputFormDataList,
       humanInputFilledFormDataList,
       workflow_run_id: workflowRunId,
+      workflow_run_is_running: item.workflow_run_is_running ?? false,
       more,
     })
   })

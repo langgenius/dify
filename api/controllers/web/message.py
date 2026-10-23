@@ -90,10 +90,25 @@ class MessageListApi(WebApiResource):
                 app_model, end_user, query.conversation_id, query.first_id, query.limit, session=session
             )
             adapter = TypeAdapter(WebMessageListItem)
-            items = [
-                adapter.validate_python(MessageResponseSource(message, session=session), from_attributes=True)
-                for message in pagination.data
-            ]
+            running_workflow_run_ids: set[str] = set()
+            if app_mode == AppMode.ADVANCED_CHAT:
+                workflow_run_ids = {message.workflow_run_id for message in pagination.data if message.workflow_run_id}
+                running_workflow_run_ids = MessageService.get_running_end_user_workflow_run_ids(
+                    workflow_run_ids=workflow_run_ids,
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    end_user_id=end_user.id,
+                    session=session,
+                )
+
+            items = []
+            for message in pagination.data:
+                item = adapter.validate_python(MessageResponseSource(message, session=session), from_attributes=True)
+                items.append(
+                    item.model_copy(
+                        update={"workflow_run_is_running": message.workflow_run_id in running_workflow_run_ids}
+                    )
+                )
             return WebMessageInfiniteScrollPagination(
                 limit=pagination.limit,
                 has_more=pagination.has_more,

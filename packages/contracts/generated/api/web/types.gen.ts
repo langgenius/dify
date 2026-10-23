@@ -1204,6 +1204,8 @@ export type WebMessageListItem = {
   status: string
   total_price?: string | null
   readonly total_tokens: number
+  workflow_run_id?: string | null
+  workflow_run_is_running?: boolean
 }
 
 export type WebModelConfigResponse = {
@@ -1306,6 +1308,8 @@ export type WebMessageListItemWritable = {
   retriever_resources: Array<RetrieverResource>
   status: string
   total_price?: string | null
+  workflow_run_id?: string | null
+  workflow_run_is_running?: boolean
 }
 
 export type PostAudioToTextData = {

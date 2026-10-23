@@ -1772,6 +1772,8 @@ export const zWebMessageListItem = z.object({
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
     .nullish(),
   total_tokens: z.int().readonly(),
+  workflow_run_id: z.uuid().nullish(),
+  workflow_run_is_running: z.boolean().optional().default(false),
 })
 
 /**
@@ -1923,6 +1925,8 @@ export const zWebMessageListItemWritable = z.object({
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
     .nullish(),
+  workflow_run_id: z.uuid().nullish(),
+  workflow_run_is_running: z.boolean().optional().default(false),
 })
 
 /**

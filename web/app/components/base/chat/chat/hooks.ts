@@ -259,6 +259,12 @@ export const useChat = (
 
   const [chatTree, setChatTree] = useState<ChatItemInTree[]>(prevChatTree || [])
   const chatTreeRef = useRef<ChatItemInTree[]>(chatTree)
+  const prevChatTreeRef = useRef(prevChatTree)
+  if (prevChatTree?.length && prevChatTree !== prevChatTreeRef.current) {
+    prevChatTreeRef.current = prevChatTree
+    chatTreeRef.current = prevChatTree
+    setChatTree(prevChatTree)
+  }
   const [targetMessageId, setTargetMessageId] = useState<string>()
   const threadMessages = useMemo(
     () => getThreadMessages(chatTree, targetMessageId),
@@ -1919,8 +1925,8 @@ export const useChat = (
       const targetMessage = findMessageInTree(chatTreeRef.current, siblingMessageId)
       if (
         targetMessage?.workflow_run_id &&
-        targetMessage.humanInputFormDataList &&
-        targetMessage.humanInputFormDataList.length > 0
+        (targetMessage.workflow_run_is_running ||
+          (targetMessage.humanInputFormDataList && targetMessage.humanInputFormDataList.length > 0))
       ) {
         handleResume(targetMessage.id, targetMessage.workflow_run_id, callbacks)
       }

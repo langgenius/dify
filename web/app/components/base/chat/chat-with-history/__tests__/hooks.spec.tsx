@@ -1236,6 +1236,83 @@ describe('useChatWithHistory', () => {
       })
     })
 
+    it('should retain the message workflow run ID when human input content omits it', async () => {
+      const listData = createConversationData({
+        data: [createConversationItem({ id: 'conversation-1' })],
+      })
+      mockFetchConversations.mockResolvedValue(listData)
+      mockFetchChatList.mockResolvedValue({
+        data: [
+          {
+            id: 'msg-paused-without-content-run-id',
+            query: 'Paused query',
+            answer: 'Awaiting input',
+            message_files: [],
+            feedback: null,
+            retriever_resources: [],
+            agent_thoughts: null,
+            parent_message_id: null,
+            inputs: {},
+            status: 'paused',
+            workflow_run_id: 'wf-run-from-message',
+            extra_contents: [
+              {
+                type: 'human_input',
+                submitted: false,
+                form_definition: { fields: [] },
+              },
+            ],
+          },
+        ],
+      })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result.current.appPrevChatTree.length).toBeGreaterThan(0)
+      })
+
+      const answerNode = result.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.workflow_run_id).toBe('wf-run-from-message')
+    })
+
+    it('should restore active workflow metadata from the message history response', async () => {
+      const listData = createConversationData({
+        data: [createConversationItem({ id: 'conversation-1' })],
+      })
+      mockFetchConversations.mockResolvedValue(listData)
+      mockFetchChatList.mockResolvedValue({
+        data: [
+          {
+            id: 'msg-running',
+            query: 'Running query',
+            answer: '',
+            message_files: [],
+            feedback: null,
+            retriever_resources: [],
+            agent_thoughts: null,
+            parent_message_id: null,
+            inputs: {},
+            status: 'normal',
+            workflow_run_id: 'wf-run-active',
+            workflow_run_is_running: true,
+            extra_contents: [],
+          },
+        ],
+      })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result.current.appPrevChatTree.length).toBeGreaterThan(0)
+      })
+
+      const answerNode = result.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.workflow_run_id).toBe('wf-run-active')
+      expect(answerNode?.workflow_run_is_running).toBe(true)
+    })
+    })
+
     it('should parse human input payloads regardless of message status', async () => {
       const listData = createConversationData({
         data: [createConversationItem({ id: 'conversation-1' })],

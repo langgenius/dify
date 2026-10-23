@@ -4,7 +4,7 @@ import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
 import AnswerIcon from '@/app/components/base/answer-icon'
@@ -160,40 +160,56 @@ const ChatWrapper = () => {
     setIsResponding(respondingState)
   }, [respondingState, setIsResponding])
 
-  // Resume paused workflows when chat history is loaded
+  // Resume active workflows and paused workflows when chat history is loaded.
+  const resumedWorkflowRef = useRef<string | undefined>(undefined)
   useEffect(() => {
     if (!appPrevChatTree || appPrevChatTree.length === 0) return
 
-    // Find the last answer item with workflow_run_id that needs resumption (DFS - find deepest first)
-    let lastPausedNode: ChatItemInTree | undefined
-    const findLastPausedWorkflow = (nodes: ChatItemInTree[]) => {
+    // Find the last resumable answer (DFS - find deepest first).
+    let lastResumableNode: ChatItemInTree | undefined
+    const findLastResumableWorkflow = (nodes: ChatItemInTree[]) => {
       nodes.forEach((node) => {
-        // Track the last node with humanInputFormDataList
         if (
           node.isAnswer &&
           node.workflow_run_id &&
-          node.humanInputFormDataList &&
-          node.humanInputFormDataList.length > 0
+          (node.workflow_run_is_running ||
+            (node.humanInputFormDataList && node.humanInputFormDataList.length > 0))
         )
-          lastPausedNode = node
+          lastResumableNode = node
 
-        // A paused descendant supersedes its ancestor.
-        if (node.children && node.children.length > 0) findLastPausedWorkflow(node.children)
+        // A resumable descendant supersedes its ancestor.
+        if (node.children && node.children.length > 0) findLastResumableWorkflow(node.children)
       })
     }
 
-    findLastPausedWorkflow(appPrevChatTree)
+    findLastResumableWorkflow(appPrevChatTree)
 
-    // Only resume the last paused workflow
-    if (lastPausedNode) {
-      handleSwitchSibling(lastPausedNode.id, {
+    // Only resume the last active workflow and avoid duplicate subscriptions as history refreshes.
+    if (lastResumableNode) {
+      const key = JSON.stringify([
+        currentConversationId,
+        lastResumableNode.id,
+        lastResumableNode.workflow_run_id,
+      ])
+      if (resumedWorkflowRef.current === key) return
+      resumedWorkflowRef.current = key
+
+      handleSwitchSibling(lastResumableNode.id, {
         onGetSuggestedQuestions: (responseItemId) =>
           fetchSuggestedQuestions(responseItemId, appSourceType, appId),
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
         isPublicAPI: appSourceType === AppSourceType.webApp,
       })
     }
-  }, [])
+  }, [
+    appPrevChatTree,
+    currentConversationId,
+    handleSwitchSibling,
+    fetchSuggestedQuestions,
+    appSourceType,
+    appId,
+    handleNewConversationCompleted,
+  ])
 
   const [hasSent, setHasSent] = useState(false)
   const [prevConversationId, setPrevConversationId] = useState(currentConversationId)
