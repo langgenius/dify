@@ -24,7 +24,10 @@ def test_external_data_tool_factory_init():
 
 
 def test_external_data_tool_factory_validate_config():
-    with patch("core.external_data_tool.factory.code_based_extension") as mock_code_based_extension:
+    with (
+        patch("core.external_data_tool.factory.code_based_extension") as mock_code_based_extension,
+        patch("core.external_data_tool.factory.db") as mock_db,
+    ):
         mock_extension_class = MagicMock()
         mock_code_based_extension.extension_class.return_value = mock_extension_class
 
@@ -35,11 +38,14 @@ def test_external_data_tool_factory_validate_config():
         ExternalDataToolFactory.validate_config(name, tenant_id, config)
 
         mock_code_based_extension.extension_class.assert_called_once_with(ExtensionModule.EXTERNAL_DATA_TOOL, name)
-        mock_extension_class.validate_config.assert_called_once_with(tenant_id, config)
+        mock_extension_class.validate_config.assert_called_once_with(tenant_id, config, mock_db.session)
 
 
 def test_external_data_tool_factory_query():
-    with patch("core.external_data_tool.factory.code_based_extension") as mock_code_based_extension:
+    with (
+        patch("core.external_data_tool.factory.code_based_extension") as mock_code_based_extension,
+        patch("core.external_data_tool.factory.db") as mock_db,
+    ):
         mock_extension_class = MagicMock()
         mock_extension_instance = MagicMock()
         mock_extension_class.return_value = mock_extension_instance
@@ -55,4 +61,4 @@ def test_external_data_tool_factory_query():
         result = factory.query(inputs, query)
 
         assert result == "query_result"
-        mock_extension_instance.query.assert_called_once_with(inputs, query)
+        mock_extension_instance.query.assert_called_once_with(inputs, mock_db.session, query)

@@ -3,6 +3,7 @@ from typing import Any, cast
 
 from core.extension.extensible import ExtensionModule
 from extensions.ext_code_based_extension import code_based_extension
+from extensions.ext_database import db
 
 
 class ExternalDataToolFactory:
@@ -24,7 +25,7 @@ class ExternalDataToolFactory:
         """
         extension_class = code_based_extension.extension_class(ExtensionModule.EXTERNAL_DATA_TOOL, name)
         # FIXME mypy issue here, figure out how to fix it
-        extension_class.validate_config(tenant_id, config)  # type: ignore
+        extension_class.validate_config(tenant_id, config, db.session)  # type: ignore
 
     def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
         """
@@ -34,4 +35,4 @@ class ExternalDataToolFactory:
         :param query: the query of chat app
         :return: the tool query result
         """
-        return cast(str, self.__extension_instance.query(inputs, query))
+        return cast(str, self.__extension_instance.query(inputs, db.session, query))
