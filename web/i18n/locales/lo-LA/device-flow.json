@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "ການເຂົ້າສູ່ລະບົບສຳລັບເຄື່ອງມື command-line ຖືກປິດຢູ່ໃນເຊີບເວີນີ້. ໃຫ້ຂໍຜູ້ດູແລຕັ້ງຄ່າ ENABLE_OAUTH_BEARER=true.",
   "approveError.codeInvalid": "ລະຫັດນີ້ໃຊ້ບໍ່ໄດ້ແລ້ວ.",
   "approveError.codeMismatch": "ລະຫັດນີ້ບໍ່ກົງກັບເຊດຊັນທີ່ກຳລັງໃຊ້ງານ. ກະລຸນາລັນ difyctl auth login ຄືນໃໝ່.",
   "approveError.codeResolved": "ລະຫັດນີ້ຖືກອະນຸມັດ ຫຼື ປະຕິເສດໄປແລ້ວ.",

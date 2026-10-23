@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "O login para ferramentas de linha de comando está desativado neste servidor. Peça a um administrador para definir ENABLE_OAUTH_BEARER=true.",
   "approveError.codeInvalid": "Este código não é mais válido.",
   "approveError.codeMismatch": "Este código não corresponde à sessão ativa. Execute difyctl auth login novamente.",
   "approveError.codeResolved": "Este código já foi aprovado ou negado.",

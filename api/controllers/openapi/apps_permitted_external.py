@@ -10,12 +10,13 @@ from __future__ import annotations
 from http import HTTPStatus
 
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound, ServiceUnavailable
+from werkzeug.exceptions import NotFound
 
 from constants.oauth_bearer import Scope
 from controllers.openapi import openapi_ns
 from controllers.openapi._app_response import app_list_row, build_app_describe_response
 from controllers.openapi._contract import Example, Kind, endpoint
+from controllers.openapi._errors import PermittedAppsUnavailable
 from controllers.openapi._models import (
     AppDescribeQuery,
     AppDescribeResponse,
@@ -60,7 +61,7 @@ class PermittedExternalAppsListApi(Resource):
                 AppDiscoveryQuery(query.page, query.limit, query.mode.value if query.mode else None, query.name)
             )
         except PermittedAppsUnavailableError as exc:
-            raise ServiceUnavailable(str(exc)) from exc
+            raise PermittedAppsUnavailable() from exc
         return PermittedExternalAppsListResponse.build(
             page=result.page,
             limit=result.per_page,

@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "การลงชื่อเข้าใช้สำหรับเครื่องมือบรรทัดคำสั่งถูกปิดอยู่บนเซิร์ฟเวอร์นี้ โปรดขอให้ผู้ดูแลระบบตั้งค่า ENABLE_OAUTH_BEARER=true",
   "approveError.codeInvalid": "รหัสนี้ไม่ถูกต้องอีกต่อไป",
   "approveError.codeMismatch": "รหัสนี้ไม่ตรงกับเซสชันที่ใช้งานอยู่ โปรดเรียกใช้ difyctl auth login อีกครั้ง",
   "approveError.codeResolved": "รหัสนี้ได้รับการอนุมัติหรือปฏิเสธไปแล้ว",

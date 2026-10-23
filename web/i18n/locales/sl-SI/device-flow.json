@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "Prijava za orodja ukazne vrstice je na tem strežniku izklopljena. Prosite skrbnika, naj nastavi ENABLE_OAUTH_BEARER=true.",
   "approveError.codeInvalid": "Ta koda ni več veljavna.",
   "approveError.codeMismatch": "Ta koda se ne ujema z aktivno sejo. Znova zaženite difyctl auth login.",
   "approveError.codeResolved": "Ta koda je bila že odobrena ali zavrnjena.",

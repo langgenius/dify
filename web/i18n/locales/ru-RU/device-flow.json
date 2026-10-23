@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "Вход для инструментов командной строки отключён на этом сервере. Попросите администратора задать ENABLE_OAUTH_BEARER=true.",
   "approveError.codeInvalid": "Этот код больше не действителен.",
   "approveError.codeMismatch": "Этот код не соответствует активной сессии. Запустите difyctl auth login снова.",
   "approveError.codeResolved": "Этот код уже был подтверждён или отклонён.",

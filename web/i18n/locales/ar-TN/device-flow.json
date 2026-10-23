@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "تسجيل الدخول لأدوات سطر الأوامر متوقف على هذا الخادم. اطلب من المسؤول ضبط ENABLE_OAUTH_BEARER=true.",
   "approveError.codeInvalid": "لم يعد هذا الرمز صالحًا.",
   "approveError.codeMismatch": "هذا الرمز لا يتطابق مع الجلسة النشطة. شغّل difyctl auth login مرة أخرى.",
   "approveError.codeResolved": "تمت الموافقة على هذا الرمز أو رفضه بالفعل.",

@@ -1,4 +1,5 @@
 import type { ErrorEnvelope } from './base'
+import type { RenderOptions } from './format'
 import type { IOService } from '@/plugins/io'
 import { redactBearer } from '@/errors/sanitize'
 import { Channel } from '@/plugins/io'
@@ -37,7 +38,7 @@ function jsonForm(envelope: ErrorEnvelope, verbose: boolean): ErrorEnvelope {
 export async function printEnvelope(
   err: unknown,
   io: IOService,
-  opts: { readonly verbose: boolean },
+  opts: RenderOptions,
 ): Promise<number> {
   if (isBrokenPipe(err)) return ExitCode.Success
 

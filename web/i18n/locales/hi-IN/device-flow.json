@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "इस सर्वर पर कमांड-लाइन टूल के लिए साइन-इन बंद है। किसी एडमिन से ENABLE_OAUTH_BEARER=true सेट करने को कहें।",
   "approveError.codeInvalid": "यह कोड अब मान्य नहीं है।",
   "approveError.codeMismatch": "यह कोड सक्रिय सत्र से मेल नहीं खाता। difyctl auth login फिर से चलाएँ।",
   "approveError.codeResolved": "इस कोड को पहले ही स्वीकृत या अस्वीकृत किया जा चुका है।",

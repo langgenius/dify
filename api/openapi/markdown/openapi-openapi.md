@@ -1209,7 +1209,7 @@ Upload a file to use as an input variable when running the app
 | 200 | Approved | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
 | 404 | Unknown or expired user code | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | 409 | Already resolved, in progress, or state lost | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
-| 503 | Approval outcome unknown | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 503 | Approval outcome unknown, or sign-in with access tokens is turned off on this server | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/code
@@ -1225,6 +1225,7 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Device code created | **application/json**: [DeviceCodeResponse](#devicecoderesponse)<br> |
 | 400 | Unsupported client | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 503 | Sign-in with access tokens is turned off on this server | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/deny
@@ -1241,7 +1242,7 @@ Upload a file to use as an input variable when running the app
 | 200 | Denied | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
 | 404 | Unknown or expired user code | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | 409 | Already resolved, in progress, or state lost | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
-| 503 | Approval outcome unknown | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 503 | Approval outcome unknown, or sign-in with access tokens is turned off on this server | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /oauth/device/lookup

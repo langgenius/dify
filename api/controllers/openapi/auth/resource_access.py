@@ -1,13 +1,15 @@
 """Adapt machine credential authentication and authorization to OpenAPI admission."""
 
 import uuid
-from typing import override
+from collections.abc import Mapping
+from typing import Final, override
 
 from flask import request
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Unauthorized
 
 from controllers.common.resource_access_token_errors import resource_access_token_errors
+from controllers.openapi._errors import OpenApiError, ResourceNotAuthorized, WorkspaceMismatch, WorkspaceUnavailable
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Rank, Requirement
 from controllers.openapi.auth.subjects import Subject
@@ -17,7 +19,20 @@ from libs.rate_limit import enforce_bearer_rate_limit
 from models.account import TenantStatus
 from models.enums import AppStatus
 from services.app_service import AppService
-from services.auth.resource_access_token_contracts import ResourceAccessTokenInvalidError
+from services.auth.resource_access_token_contracts import (
+    ResourceAccessTokenAppNotAuthorizedError,
+    ResourceAccessTokenForbiddenError,
+    ResourceAccessTokenInvalidError,
+    ResourceAccessTokenWorkspaceMismatchError,
+    ResourceAccessTokenWorkspaceUnavailableError,
+)
+
+# A denial with no entry here falls through to the shared mapping's plain 403.
+_REJECTIONS: Final[Mapping[type[ResourceAccessTokenForbiddenError], type[OpenApiError]]] = {
+    ResourceAccessTokenWorkspaceUnavailableError: WorkspaceUnavailable,
+    ResourceAccessTokenWorkspaceMismatchError: WorkspaceMismatch,
+    ResourceAccessTokenAppNotAuthorizedError: ResourceNotAuthorized,
+}
 
 
 def authenticate_resource_token(token: str) -> AuthContext:
@@ -46,20 +61,26 @@ class CheckResourceAccess(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         app_id = ctx.view_args.get("app_id")
         with resource_access_token_errors():
-            grant = application_services().resource_access_tokens.authorize_openapi(
-                token_id=str(subject.token_id),
-                workspace_id=ctx.view_args.get("workspace_id") or request.args.get("workspace_id"),
-                app_id=app_id,
-            )
+            try:
+                grant = application_services().resource_access_tokens.authorize_openapi(
+                    token_id=str(subject.token_id),
+                    workspace_id=ctx.view_args.get("workspace_id") or request.args.get("workspace_id"),
+                    app_id=app_id,
+                )
+            except ResourceAccessTokenForbiddenError as error:
+                rejection = _REJECTIONS.get(type(error))
+                if rejection is None:
+                    raise
+                raise rejection() from error
         # The current OpenAPI pipeline still needs ORM context. Reconstruct it
         # within admission's session using the authorized owner chain.
         tenant = application_services().workspaces.identity.get_workspace(grant.tenant_id)
         if tenant is None or tenant.status != TenantStatus.NORMAL:
-            raise Forbidden("workspace unavailable")
+            raise WorkspaceUnavailable()
         ctx._workspace = tenant
         ctx.resource_app_ids = grant.app_ids
         if app_id:
             app = AppService.get_app_in_workspace(tenant_id=grant.tenant_id, app_id=app_id, session=session)
             if app is None or app.status != AppStatus.NORMAL or not app.enable_api:
-                raise Forbidden("resource_not_authorized")
+                raise ResourceNotAuthorized()
             ctx._app = app

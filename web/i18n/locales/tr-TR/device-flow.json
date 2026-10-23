@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "Komut satırı araçları için oturum açma bu sunucuda kapalı. Bir yöneticiden ENABLE_OAUTH_BEARER=true ayarlamasını isteyin.",
   "approveError.codeInvalid": "Bu kod artık geçerli değil.",
   "approveError.codeMismatch": "Bu kod etkin oturumla eşleşmiyor. difyctl auth login komutunu yeniden çalıştırın.",
   "approveError.codeResolved": "Bu kod zaten onaylandı veya reddedildi.",

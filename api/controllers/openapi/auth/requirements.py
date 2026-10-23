@@ -15,18 +15,27 @@ from typing import ClassVar, Final, override
 
 from flask import request
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from constants.oauth_bearer import Scope
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace, enforce_rbac_checks
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi._errors import (
+    AccessModeNotAllowed,
+    AppAccessModeUnavailable,
     AppModeMismatch,
+    AppQuotaExceeded,
+    BearerAuthDisabled,
+    InsufficientScope,
+    InsufficientWorkspaceRole,
+    LicenseInvalid,
     MemberLicenseExceeded,
     MemberLimitExceeded,
     PluginInstallForbidden,
+    PrivateAppNotAllowed,
+    PrivateAppUserUnresolved,
     ServiceApiDisabled,
+    UnsupportedTokenType,
     WebAppAccessRequiresEE,
 )
 from controllers.openapi._models import Hint
@@ -82,13 +91,21 @@ class CheckSubject(Requirement):
             client_id=subject.client_id,
             token_id=str(subject.token_id) if subject.token_id else None,
         )
-        raise Forbidden("unsupported_token_type")
+        raise UnsupportedTokenType()
 
 
 def assert_license_valid() -> None:
     """The router's deployment-wide gate, answered before `extract_bearer`."""
     if SystemFeatureService.get_public_system_features().license.status in _DEAD_LICENSE_STATUSES:
-        raise Forbidden("license_invalid")
+        raise LicenseInvalid()
+
+
+def assert_bearer_enabled() -> None:
+    """The authenticator is never bound when ENABLE_OAUTH_BEARER is off, so minted
+    tokens would be unusable and guarded routes would 500.
+    """
+    if not dify_config.ENABLE_OAUTH_BEARER:
+        raise BearerAuthDisabled()
 
 
 # The routes live in `app_info`, which imports this module, so the op ids are spelled out; a test pins them.
@@ -135,7 +152,9 @@ class CheckScope(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if Scope.FULL in subject.scopes or self.scope in subject.scopes:
             return
-        raise Forbidden("insufficient_scope")
+        raise InsufficientScope(
+            hint=f"It needs the {self.scope} scope. Sign in with a Dify account to get a full-scope token."
+        )
 
 
 class CheckWorkspaceInvitationQuota(Requirement):
@@ -217,7 +236,7 @@ class CheckAppQuota(Requirement):
             return
         apps = FeatureService.get_features(load_workspace(ctx).id, exclude_vector_space=True).apps
         if 0 < apps.limit <= apps.size:
-            raise Forbidden("The number of apps has reached the limit of your subscription.")
+            raise AppQuotaExceeded()
 
 
 class CheckWorkspaceRole(Requirement):
@@ -235,7 +254,10 @@ class CheckWorkspaceRole(Requirement):
         if dify_config.RBAC_ENABLED:
             return
         if load_workspace_role(ctx) not in self.allowed_roles:
-            raise Forbidden("insufficient workspace role")
+            roles = ", ".join(sorted(role.value for role in self.allowed_roles))
+            raise InsufficientWorkspaceRole(
+                hint=f"It needs one of these roles: {roles}. Ask a workspace owner or admin to change your role."
+            )
 
 
 class CheckPluginInstallSetting(Requirement):
@@ -296,17 +318,17 @@ class CheckAppAccess(Requirement):
 
     def _assert_mode_allowed(self, subject: Subject, access_mode: WebAppAccessMode | None) -> None:
         if access_mode is None:
-            raise Forbidden("app or access mode not loaded")
+            raise AppAccessModeUnavailable()
         if access_mode not in subject.webapp_modes:
-            raise Forbidden("subject_not_allowed_for_access_mode")
+            raise AccessModeNotAllowed()
 
     def _assert_private_app_permission(self, subject: Subject, ctx: Context, session: Session) -> None:
         user_id = subject.webapp_user_id(session)
         if user_id is None:
-            raise Forbidden("cannot resolve user for private app check")
+            raise PrivateAppUserUnresolved()
         app_id = load_app(ctx).id
         if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id=user_id, app_id=app_id):
-            raise Forbidden("user_not_allowed_for_private_app")
+            raise PrivateAppNotAllowed()
 
 
 class ResolveCaller(Requirement):

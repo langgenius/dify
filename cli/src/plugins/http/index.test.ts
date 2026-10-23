@@ -4,10 +4,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { FORBIDDEN_HINT, startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
+import { OPENAPI_OFF_HINT } from '@/errors/base'
 import { Context } from '@/kernel/context'
 import { catalog, CATALOG_PATH } from '@/plugins/catalog'
 import { CONFIG_FILE_NAME } from '@/plugins/config'
-import { http } from './index'
+import { http, PERMISSION_DENIED_HINT } from './index'
 
 const SHORT_TIMEOUT_MS = 50
 
@@ -98,7 +99,10 @@ describe('http plugin', () => {
     mock.setScenario('auth-expired')
     await expect(h.request(account)).rejects.toMatchObject({ code: 'auth_expired' })
     mock.setScenario('rate-limited')
-    await expect(h.request(account)).rejects.toMatchObject({ code: 'rate_limited' })
+    await expect(h.request(account)).rejects.toMatchObject({
+      code: 'rate_limited',
+      retryAfter: 1,
+    })
   })
 
   it('a 401 says to log in again', async () => {
@@ -117,7 +121,7 @@ describe('http plugin', () => {
     })
   })
 
-  it('a 403 without a server hint says permission denied', async () => {
+  it('a 403 without any server hint says the server refused', async () => {
     process.env.DIFY_TOKEN = 'sk-test-resource'
     const h = await new Context().get(http)
     mock.setScenario('resource-token')
@@ -126,7 +130,7 @@ describe('http plugin', () => {
     ).rejects.toMatchObject({
       code: 'access_denied',
       httpStatus: 403,
-      hint: expect.stringMatching(/^permission denied/),
+      hint: PERMISSION_DENIED_HINT,
     })
   })
 
@@ -185,7 +189,22 @@ describe('http plugin', () => {
     ).rejects.toMatchObject({
       code: 'network_connection',
       message: expect.stringContaining(`timed out after ${SHORT_TIMEOUT_MS}ms`),
+      hint: `raise the limit with difyctl set config http.timeout ${SHORT_TIMEOUT_MS * 2}`,
     })
+  })
+
+  it('a refused connection names its cause and carries no hint', async () => {
+    process.env.DIFY_SERVER = 'http://127.0.0.1:9'
+    const error = await (
+      await new Context().get(http)
+    )
+      .request(() => ({ method: 'GET', path: '/x', auth: false }))
+      .catch((e: unknown) => e)
+    expect(error).toMatchObject({
+      code: 'network_connection',
+      message: expect.stringMatching(/^network error calling GET http:\/\/127\.0\.0\.1:9\/.+: .+/),
+    })
+    expect((error as { hint?: string }).hint).toBeUndefined()
   })
 
   it('a catalog fetch failure names the status and the catalog path', async () => {
@@ -193,7 +212,7 @@ describe('http plugin', () => {
     await expect((await new Context().get(http)).request(account)).rejects.toMatchObject({
       code: 'catalog_unavailable',
       message: `failed to fetch the catalog: HTTP 404 from ${CATALOG_PATH}`,
-      hint: expect.stringContaining('server is reachable'),
+      hint: OPENAPI_OFF_HINT,
     })
   })
 

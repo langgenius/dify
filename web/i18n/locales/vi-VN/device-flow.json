@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "Đăng nhập cho công cụ dòng lệnh đang bị tắt trên máy chủ này. Hãy nhờ quản trị viên đặt ENABLE_OAUTH_BEARER=true.",
   "approveError.codeInvalid": "Mã này không còn hiệu lực.",
   "approveError.codeMismatch": "Mã này không khớp với phiên đang hoạt động. Hãy chạy lại difyctl auth login.",
   "approveError.codeResolved": "Mã này đã được phê duyệt hoặc từ chối trước đó.",

@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "L'accesso per gli strumenti da riga di comando è disattivato su questo server. Chiedi a un amministratore di impostare ENABLE_OAUTH_BEARER=true.",
   "approveError.codeInvalid": "Questo codice non è più valido.",
   "approveError.codeMismatch": "Questo codice non corrisponde alla sessione attiva. Esegui di nuovo difyctl auth login.",
   "approveError.codeResolved": "Questo codice è già stato approvato o rifiutato.",

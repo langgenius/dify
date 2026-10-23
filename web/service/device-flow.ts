@@ -33,14 +33,16 @@ export class DeviceFlowError extends Error {
   }
 }
 
-// Translate a non-2xx fetch Response into a DeviceFlowError. Honours the
-// server contract `{"error": "<code>"}` and falls back to a status-class
-// code so callers can still dispatch (rate_limited / server_error / ...).
+// Translate a non-2xx fetch Response into a DeviceFlowError. Reads the legacy
+// `{"error": "<code>"}` body first, then the openapi `{"code": "<code>"}`
+// body, and falls back to a status-class code so callers can still dispatch
+// (rate_limited / server_error / ...).
 async function failFromResponse(res: Response): Promise<never> {
   let serverCode = ''
   try {
     const body = await res.clone().json()
     if (body && typeof body.error === 'string') serverCode = body.error
+    else if (body && typeof body.code === 'string') serverCode = body.code
   } catch {
     /* non-JSON body — fall through to status mapping */
   }

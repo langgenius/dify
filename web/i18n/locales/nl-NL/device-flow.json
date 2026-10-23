@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "Inloggen voor opdrachtregelprogramma's staat uit op deze server. Vraag een beheerder om ENABLE_OAUTH_BEARER=true in te stellen.",
   "approveError.codeInvalid": "Deze code is niet meer geldig.",
   "approveError.codeMismatch": "Deze code komt niet overeen met de actieve sessie. Voer difyctl auth login opnieuw uit.",
   "approveError.codeResolved": "Deze code is al goedgekeurd of geweigerd.",

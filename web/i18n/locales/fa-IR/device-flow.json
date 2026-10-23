@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "ورود برای ابزارهای خط فرمان در این سرور غیرفعال است. از یک مدیر بخواهید ENABLE_OAUTH_BEARER=true را تنظیم کند.",
   "approveError.codeInvalid": "این کد دیگر معتبر نیست.",
   "approveError.codeMismatch": "این کد با نشست فعال مطابقت ندارد. دوباره difyctl auth login را اجرا کنید.",
   "approveError.codeResolved": "این کد قبلاً تأیید یا رد شده است.",

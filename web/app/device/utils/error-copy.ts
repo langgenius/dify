@@ -25,11 +25,22 @@ const APPROVE_KEY: Record<string, DeviceFlowKey> = {
   approve_in_progress: 'approveError.inProgress',
   conflict: 'approveError.conflict',
   server_error: 'approveError.serverError',
+  unauthorized: 'approveError.sessionExpired',
+  too_many_requests: 'approveError.rateLimited',
+  internal_server_error: 'approveError.serverError',
+  service_unavailable: 'approveError.serverError',
+  bad_gateway: 'approveError.serverError',
+  bearer_auth_disabled: 'approveError.bearerDisabled',
 }
 
+const SERVER_ERROR_MIN_STATUS = 500
+
 export function approveErrorCopy(err: unknown, t: TFunction<['deviceFlow']>): string {
-  if (err instanceof DeviceFlowError)
-    return t(($) => $[APPROVE_KEY[err.code] ?? 'approveError.default'])
+  if (err instanceof DeviceFlowError) {
+    const mapped = APPROVE_KEY[err.code]
+    if (mapped) return t(($) => $[mapped])
+    if (err.status >= SERVER_ERROR_MIN_STATUS) return t(($) => $['approveError.serverError'])
+  }
   return t(($) => $['approveError.default'])
 }
 

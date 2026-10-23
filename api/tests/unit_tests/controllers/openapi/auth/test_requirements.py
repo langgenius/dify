@@ -6,11 +6,19 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi._contract import op_of
-from controllers.openapi._errors import OpenApiErrorCode, OpenApiErrorFormatter, ServiceApiDisabled
+from controllers.openapi._errors import (
+    AppAccessModeUnavailable,
+    LicenseInvalid,
+    OpenApiErrorCode,
+    OpenApiErrorFormatter,
+    PrivateAppUserUnresolved,
+    ServiceApiDisabled,
+    UnsupportedTokenType,
+)
 from controllers.openapi._models import ServiceApiPatch
 from controllers.openapi.app_info import AgentServiceApiApi, ServiceApiApi
 from controllers.openapi.auth.context import RouteContractError
@@ -61,7 +69,7 @@ def test_subject_check_emits_the_wrong_surface_audit(app: Flask, sqlite_session:
     with app.test_request_context("/openapi/v1/account"):
         with patch("controllers.openapi.auth.requirements.emit_wrong_surface") as emit:
             requirement = CheckSubject(allowed=[AccountSubject])
-            with pytest.raises(Forbidden, match="unsupported_token_type"):
+            with pytest.raises(UnsupportedTokenType):
                 requirement.run(subject, make_ctx(sqlite_session, subject=subject), sqlite_session)
 
     emit.assert_called_once_with(
@@ -83,7 +91,7 @@ def test_subject_check_emits_the_wrong_surface_audit(app: Flask, sqlite_session:
 def test_assert_license_valid_denies_only_dead_licences(status: LicenseStatus, denied: bool) -> None:
     with patch(FEATURES, return_value=system_features(license_status=status)):
         if denied:
-            with pytest.raises(Forbidden, match="license_invalid"):
+            with pytest.raises(LicenseInvalid):
                 assert_license_valid()
         else:
             assert_license_valid()
@@ -252,7 +260,7 @@ class TestCheckAppAccess:
 
         with patch(FEATURES, return_value=system_features(webapp_auth=True)):
             with patch(ACCESS_MODE, return_value=settings, side_effect=failure):
-                with pytest.raises(Forbidden, match="app or access mode not loaded"):
+                with pytest.raises(AppAccessModeUnavailable):
                     CheckAppAccess().run(subject, ctx, sqlite_session)
 
     def test_refuses_a_private_app_when_the_user_cannot_be_resolved(self, sqlite_session: Session) -> None:
@@ -262,5 +270,5 @@ class TestCheckAppAccess:
 
         with patch(FEATURES, return_value=system_features(webapp_auth=True)):
             with patch(ACCESS_MODE, return_value=webapp_settings(WebAppAccessMode.PRIVATE.value)):
-                with pytest.raises(Forbidden, match="cannot resolve user for private app check"):
+                with pytest.raises(PrivateAppUserUnresolved):
                     CheckAppAccess().run(subject, ctx, sqlite_session)

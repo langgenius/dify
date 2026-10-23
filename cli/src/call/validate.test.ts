@@ -7,6 +7,8 @@ import { validateInput } from './validate'
 const doc = parseCatalog(readFileSync(join(__dirname, '../../test/fixtures/catalog.json')))
 const run = doc.ops['run.console_app.workflow']!.input
 const list = doc.ops['get.console_app']!.input
+const ALLOWED_MODES_MSG =
+  'must be one of the allowed values: completion, chat, advanced-chat, workflow, agent-chat'
 
 it('returns no details for valid input against the real schemas', () => {
   expect(
@@ -29,7 +31,12 @@ it('reports missing required, wrong types and bad enums in the 422 detail shape'
   expect(validateInput(list, { workspace_id: 'w', mode: 'agent' })).toContainEqual({
     type: 'enum',
     loc: ['mode'],
-    msg: expect.stringContaining('allowed'),
+    msg: ALLOWED_MODES_MSG,
+  })
+  expect(validateInput(list, { workspace_id: 'w', mode: 'advanced_chat' })).toContainEqual({
+    type: 'enum',
+    loc: ['mode'],
+    msg: ALLOWED_MODES_MSG,
   })
 })
 

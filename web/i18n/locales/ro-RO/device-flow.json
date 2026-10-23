@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "Autentificarea pentru instrumentele din linia de comandă este dezactivată pe acest server. Cereți unui administrator să seteze ENABLE_OAUTH_BEARER=true.",
   "approveError.codeInvalid": "Acest cod nu mai este valid.",
   "approveError.codeMismatch": "Acest cod nu se potrivește cu sesiunea activă. Rulează din nou difyctl auth login.",
   "approveError.codeResolved": "Acest cod a fost deja aprobat sau refuzat.",

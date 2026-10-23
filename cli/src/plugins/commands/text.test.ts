@@ -7,7 +7,7 @@ import SkillsInstall from '@/commands/install/skills/index'
 import { parseCatalog } from '@/plugins/catalog'
 import { colorScheme } from '@/sys/io/color'
 import { commandRow } from './describe'
-import { commandExamples, exampleLine } from './examples'
+import { commandExamples, exampleLine, hintLine } from './examples'
 import { helpMap } from './help'
 import { descriptorView, fieldRows, listingView, mapView, SECTIONS } from './text'
 
@@ -244,4 +244,16 @@ it('a listing is one aligned row per entry', () => {
     "get console_app         List apps                    read list
     legacy_run console_app  Deprecated: use the mode op  write sse deprecated"
   `)
+})
+
+const RESERVED = ['input', 'stream', 'only', 'output', 'verbose', 'json', 'help']
+
+it('a hint prints as a runnable command with its input as flags', () => {
+  expect(
+    hintLine(
+      { summary: 'Turn it on', op: 'set.service_api', input: { app_id: 'app-1', enabled: true } },
+      OPS['set.service_api'],
+      RESERVED,
+    ),
+  ).toBe('difyctl set service_api --app-id app-1 --enabled')
 })

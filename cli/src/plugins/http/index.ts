@@ -1,19 +1,27 @@
 import type { ServerErrorBody } from '@/errors/base'
 import type { ErrorCodeValue } from '@/errors/codes'
 import type { CatalogService } from '@/plugins/catalog'
-import { BaseError, HttpClientError, LOGIN_HINT, unknownError } from '@/errors/base'
+import {
+  BaseError,
+  HttpClientError,
+  LOGIN_HINT,
+  OPENAPI_OFF_HINT,
+  unknownError,
+} from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { errorMessage } from '@/errors/message'
+import { parseServerErrorBody } from '@/errors/server-body'
 import { definePlugin } from '@/kernel/plugin'
+import { networkErrorMessage } from '@/net/cause'
 import { buildFetchInit } from '@/net/fetch-init'
 import { proxyDispatcher } from '@/net/proxy'
+import { RETRY_AFTER_HEADER, retryAfterSeconds } from '@/net/retry-after'
 import { catalog, CATALOG_HEADER, CATALOG_PATH, fingerprintOf } from '@/plugins/catalog'
 import { config } from '@/plugins/config'
 import { env } from '@/plugins/env'
 import { session } from '@/plugins/session'
 import { token } from '@/plugins/token'
-import { parseHints } from '@/protocol/hint'
-import { userAgent } from '@/version/info'
+import { BINARY, userAgent } from '@/version/info'
 
 export type HttpRequest = Readonly<{
   method: string
@@ -44,6 +52,15 @@ const CATALOG_UNAVAILABLE_PREFIX = 'failed to fetch the catalog: '
 // `refresh cache` would only repeat the fetch that failed, so it is not suggested.
 const CATALOG_UNAVAILABLE_HINT =
   'check that the saved server URL is right and the server is reachable, then retry'
+const CATALOG_HINT_BY_STATUS: Readonly<Record<number, string>> = {
+  [HttpStatus.NotFound]: OPENAPI_OFF_HINT,
+}
+
+function catalogHint(cause: unknown): string {
+  if (cause instanceof HttpClientError && cause.httpStatus !== undefined)
+    return CATALOG_HINT_BY_STATUS[cause.httpStatus] ?? CATALOG_UNAVAILABLE_HINT
+  return CATALOG_UNAVAILABLE_HINT
+}
 
 // The catalog fetch is the CLI's first request, so its failure has to name itself:
 // a rejected status for the catalog route, or whatever the network said.
@@ -53,7 +70,7 @@ function catalogFailure(cause: unknown): string {
   return errorMessage(cause)
 }
 
-const PERMISSION_DENIED_HINT = 'permission denied: this account may not do this'
+export const PERMISSION_DENIED_HINT = 'the server refused this request; the message says why'
 
 // `hint` replaces the server's hint; `fallbackHint` only fills in when it sent none.
 type StatusMapping = Readonly<{ code: ErrorCodeValue; hint?: string; fallbackHint?: string }>
@@ -65,25 +82,14 @@ const STATUS_MAPPINGS: Readonly<Record<number, StatusMapping>> = {
   [HttpStatus.TooManyRequests]: { code: ErrorCode.RateLimited },
 }
 
-function classifyStatus(res: Response): StatusMapping {
-  return STATUS_MAPPINGS[res.status] ?? { code: ErrorCode.ServerError }
+function serverSentHint(serverError: ServerErrorBody | undefined): boolean {
+  if (serverError?.hint) return true
+  if ((serverError?.hints ?? []).length > 0) return true
+  return false
 }
 
-function parseServerErrorBody(raw: string): ServerErrorBody | undefined {
-  if (raw === '') return undefined
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return undefined
-  }
-  if (parsed === null || typeof parsed !== 'object') return undefined
-  const record = parsed as Record<string, unknown>
-  if (record.code !== undefined && typeof record.code !== 'string') return undefined
-  const message = typeof record.message === 'string' ? record.message : record.error
-  if (typeof message !== 'string') return undefined
-  const body = { ...record, message } as ServerErrorBody
-  return record.hints === undefined ? body : { ...body, hints: parseHints(record.hints) }
+function classifyStatus(res: Response): StatusMapping {
+  return STATUS_MAPPINGS[res.status] ?? { code: ErrorCode.ServerError }
 }
 
 function appendQuery(url: URL, query: HttpRequest['query']): void {
@@ -91,6 +97,12 @@ function appendQuery(url: URL, query: HttpRequest['query']): void {
   for (const [key, value] of Object.entries(query)) {
     for (const v of Array.isArray(value) ? value : [value]) url.searchParams.append(key, v)
   }
+}
+
+const SUGGESTED_TIMEOUT_FACTOR = 2
+
+function timeoutHint(timeoutMs: number): string {
+  return `raise the limit with ${BINARY} set config http.timeout ${timeoutMs * SUGGESTED_TIMEOUT_FACTOR}`
 }
 
 function bodyAndContentType(req: HttpRequest): {
@@ -188,11 +200,17 @@ export const http = definePlugin({
       try {
         res = await fetch(url, init)
       } catch (cause) {
+        if (deadlineExpired) {
+          throw new BaseError({
+            code: ErrorCode.NetworkConnection,
+            message: `${req.method} ${url} timed out after ${timeoutMs}ms`,
+            hint: timeoutHint(timeoutMs),
+            cause,
+          })
+        }
         throw new BaseError({
           code: ErrorCode.NetworkConnection,
-          message: deadlineExpired
-            ? `${req.method} ${url} timed out after ${timeoutMs}ms`
-            : `network error calling ${req.method} ${url}`,
+          message: networkErrorMessage(`network error calling ${req.method} ${url}`, cause),
           cause,
         })
       } finally {
@@ -206,12 +224,16 @@ export const http = definePlugin({
       throw new HttpClientError({
         code,
         message: serverError?.message ?? `HTTP ${res.status}`,
-        hint: hint ?? serverError?.hint ?? fallbackHint,
+        hint: hint ?? serverError?.hint ?? (serverSentHint(serverError) ? undefined : fallbackHint),
         httpStatus: res.status,
         method: req.method,
         url: url.toString(),
         rawResponse,
         serverError,
+        retryAfter:
+          res.status === HttpStatus.TooManyRequests
+            ? retryAfterSeconds(res.headers.get(RETRY_AFTER_HEADER), Date.now())
+            : undefined,
       })
     }
 
@@ -225,7 +247,7 @@ export const http = definePlugin({
         throw new BaseError({
           code: ErrorCode.CatalogUnavailable,
           message: `${CATALOG_UNAVAILABLE_PREFIX}${catalogFailure(cause)}`,
-          hint: CATALOG_UNAVAILABLE_HINT,
+          hint: catalogHint(cause),
           cause,
         })
       }

@@ -23,7 +23,6 @@ from core.logging.context import get_request_id, get_trace_id
 from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from libs.login import current_account_with_tenant, login_required
-from libs.oauth_bearer import bearer_feature_required
 from machinery.context import RequestContext
 from services.system_feature_service import SystemFeatureService
 
@@ -61,7 +60,6 @@ def console_account_admission[T, **P, R](
     require_valid_enterprise_license: bool = False,
     require_owner_transfer_enabled: bool = False,
     billing_resource: str | None = None,
-    require_oauth_bearer_enabled: bool = False,
     allowed_roles: frozenset[TenantAccountRole] | None = None,
     rbac_checks: Sequence[RBACCheck] | None = None,
 ) -> Callable[
@@ -110,8 +108,6 @@ def console_account_admission[T, **P, R](
             admitted = enable_change_email(admitted)
         if require_owner_transfer_enabled:
             admitted = is_allow_transfer_owner(admitted)
-        if require_oauth_bearer_enabled:
-            admitted = bearer_feature_required(admitted)
         if require_valid_enterprise_license:
             admitted = enterprise_license_required(admitted)
         if editions is not None:

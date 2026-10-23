@@ -1,4 +1,5 @@
 {
+  "approveError.bearerDisabled": "Masuk untuk alat baris perintah dimatikan di server ini. Minta admin untuk mengatur ENABLE_OAUTH_BEARER=true.",
   "approveError.codeInvalid": "Kode ini sudah tidak valid lagi.",
   "approveError.codeMismatch": "Kode ini tidak cocok dengan sesi yang aktif. Jalankan difyctl auth login lagi.",
   "approveError.codeResolved": "Kode ini sudah disetujui atau ditolak sebelumnya.",

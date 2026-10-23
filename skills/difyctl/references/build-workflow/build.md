@@ -1,6 +1,6 @@
 # Build phase
 
-Start only when the human approved the plan and chose how to build. `<mode>` is `workflow` for a Workflow app and `advanced_chat` for a Chatflow app.
+Start only when the human approved the plan and chose how to build. `<mode_word>` is the command word for the app's mode: `workflow` for a Workflow app, `advanced_chat` for a Chatflow app (whose `mode` field reads `advanced-chat`).
 
 ## Before the first slice
 
@@ -9,7 +9,7 @@ When you change an existing app, skip creating it and the skeleton slice. Start 
 Otherwise create the app once, and write its `app_id` into `plan.md`:
 
 ```bash
-difyctl create console_app <mode> --name "<name>" --json
+difyctl create console_app <mode_word> --name "<name>" --json
 ```
 
 Build this one app; never make copies.
@@ -47,13 +47,13 @@ Build this one app; never make copies.
 5. Test each new node alone. It reuses the last full run's values; override them with `--inputs`, keyed `#<node_id>.<var>#`. Give a file variable a local file with `--files '{"<variable>": "<path>"}'`.
 
    ```bash
-   difyctl test node <mode> --app-id <app_id> --node-id <node_id> --inputs '{"#<node_id>.<var>#": "<value>"}' --json
+   difyctl test node <mode_word> --app-id <app_id> --node-id <node_id> --inputs '{"#<node_id>.<var>#": "<value>"}' --json
    ```
 
 6. Run the whole draft on the slice's acceptance cases; check each by its check type. Chatflow also takes `--query "<message>"`. Leave out `--inputs` when the start node has no variables.
 
    ```bash
-   difyctl test console_app <mode> --app-id <app_id> --inputs '{"<var>": "<value>"}' --json
+   difyctl test console_app <mode_word> --app-id <app_id> --inputs '{"<var>": "<value>"}' --json
    ```
 
 7. Review the slice against the plan, and the YAML against the node table.

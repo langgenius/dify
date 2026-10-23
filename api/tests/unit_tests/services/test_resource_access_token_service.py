@@ -7,11 +7,14 @@ from machinery.context import RequestContext
 from services.auth.resource_access_token_contracts import (
     BoundResource,
     ResourceAccessTokenAccess,
+    ResourceAccessTokenAppNotAuthorizedError,
     ResourceAccessTokenCreateResult,
     ResourceAccessTokenForbiddenError,
     ResourceAccessTokenInputError,
     ResourceAccessTokenResource,
     ResourceAccessTokenRow,
+    ResourceAccessTokenWorkspaceMismatchError,
+    ResourceAccessTokenWorkspaceUnavailableError,
 )
 from services.resource_access_token_service import ResourceAccessTokenService
 
@@ -114,18 +117,43 @@ def test_openapi_grant_uses_live_store_and_records_usage(
     assert grant.app_ids == frozenset({"app"})
     assert store.usage_calls == [("workspace", "token")]
     store.access = ResourceAccessTokenAccess("token", "workspace", True, ())
-    with pytest.raises(ResourceAccessTokenForbiddenError):
+    with pytest.raises(ResourceAccessTokenAppNotAuthorizedError):
         service.authorize_openapi(token_id="token", workspace_id="workspace", app_id="app")
 
 
 @pytest.mark.parametrize(
-    ("workspace", "active", "resource"),
+    ("workspace", "active", "resource", "denial"),
     [
-        ("foreign", True, BoundResource(ResourceType.APP, "app", True, True)),
-        ("workspace", False, BoundResource(ResourceType.APP, "app", True, True)),
-        ("workspace", True, BoundResource(ResourceType.APP, "app", True, False)),
-        ("workspace", True, BoundResource(ResourceType.APP, "app", False, True)),
-        ("workspace", True, BoundResource(ResourceType.KNOWLEDGE, "app", True, True)),
+        (
+            "foreign",
+            True,
+            BoundResource(ResourceType.APP, "app", True, True),
+            ResourceAccessTokenWorkspaceMismatchError,
+        ),
+        (
+            "workspace",
+            False,
+            BoundResource(ResourceType.APP, "app", True, True),
+            ResourceAccessTokenWorkspaceUnavailableError,
+        ),
+        (
+            "workspace",
+            True,
+            BoundResource(ResourceType.APP, "app", True, False),
+            ResourceAccessTokenAppNotAuthorizedError,
+        ),
+        (
+            "workspace",
+            True,
+            BoundResource(ResourceType.APP, "app", False, True),
+            ResourceAccessTokenAppNotAuthorizedError,
+        ),
+        (
+            "workspace",
+            True,
+            BoundResource(ResourceType.KNOWLEDGE, "app", True, True),
+            ResourceAccessTokenAppNotAuthorizedError,
+        ),
     ],
 )
 def test_openapi_denials_do_not_record_usage(
@@ -134,9 +162,10 @@ def test_openapi_denials_do_not_record_usage(
     workspace: str,
     active: bool,
     resource: BoundResource,
+    denial: type[ResourceAccessTokenForbiddenError],
 ) -> None:
     store.access = ResourceAccessTokenAccess("token", "workspace", active, (resource,))
-    with pytest.raises(ResourceAccessTokenForbiddenError):
+    with pytest.raises(denial):
         service.authorize_openapi(token_id="token", workspace_id=workspace, app_id="app")
     assert store.usage_calls == []
 

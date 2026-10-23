@@ -81,7 +81,18 @@ from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPer
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._app_settings import REGULAR_MODES
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
-from controllers.openapi._errors import ServiceApiDisabled, WebAppAccessRequiresEE
+from controllers.openapi._errors import (
+    AccessModeNotAllowed,
+    AppAccessModeUnavailable,
+    ExternalSsoRequiresEE,
+    InsufficientScope,
+    InsufficientWorkspaceRole,
+    LicenseInvalid,
+    PrivateAppNotAllowed,
+    ServiceApiDisabled,
+    UnsupportedTokenType,
+    WebAppAccessRequiresEE,
+)
 from controllers.openapi.auth import subjects
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -213,18 +224,18 @@ class Scenario:
 
 ADMIT = Expect(ADMITTED)
 DENY_NO_BEARER = Expect(401, "bearer required")
-DENY_WRONG_SUBJECT = Expect(403, "unsupported_token_type")
-DENY_SSO_NEEDS_EE = Expect(403, "external_sso_requires_ee")
-DENY_SCOPE = Expect(403, "insufficient_scope")
+DENY_WRONG_SUBJECT = Expect(403, UnsupportedTokenType.description)
+DENY_SSO_NEEDS_EE = Expect(403, ExternalSsoRequiresEE.description)
+DENY_SCOPE = Expect(403, InsufficientScope.description)
 DENY_NON_MEMBER = Expect(404, "workspace not found")
-DENY_ROLE = Expect(403, "insufficient workspace role")
+DENY_ROLE = Expect(403, InsufficientWorkspaceRole.description)
 DENY_API_DISABLED = Expect(403, ServiceApiDisabled.description)
 DENY_UNKNOWN_APP = Expect(404, "app not found")
-DENY_ACCESS_MODE = Expect(403, "subject_not_allowed_for_access_mode")
-DENY_MODE_UNRESOLVED = Expect(403, "app or access mode not loaded")
-DENY_PRIVATE_APP = Expect(403, "user_not_allowed_for_private_app")
+DENY_ACCESS_MODE = Expect(403, AccessModeNotAllowed.description)
+DENY_MODE_UNRESOLVED = Expect(403, AppAccessModeUnavailable.description)
+DENY_PRIVATE_APP = Expect(403, PrivateAppNotAllowed.description)
 DENY_EDITION = Expect(404, note="endpoint-level edition gate, raised before the bearer is read")
-DENY_LICENSE = Expect(403, "license_invalid")
+DENY_LICENSE = Expect(403, LicenseInvalid.description)
 DENY_RBAC = Expect(403, note="bare werkzeug Forbidden from enforce_rbac_checks")
 ADMIT_NO_RBAC_PERMISSION = Expect(
     ADMITTED,
@@ -2047,7 +2058,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     # deny declare the RFC 8628-style `DeviceFlowErrorResponse` for the statuses their flow
     # errors use.
     ("post", "/oauth/device/approve"): frozenset({"200", "404", "409", "503", "default"}),
-    ("post", "/oauth/device/code"): frozenset({"200", "400", "default"}),
+    ("post", "/oauth/device/code"): frozenset({"200", "400", "503", "default"}),
     ("post", "/oauth/device/deny"): frozenset({"200", "404", "409", "503", "default"}),
     ("get", "/oauth/device/lookup"): frozenset({"200", "default"}),
     ("post", "/oauth/device/token"): frozenset({"200", "400", "default"}),

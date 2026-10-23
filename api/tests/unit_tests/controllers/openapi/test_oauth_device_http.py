@@ -220,15 +220,19 @@ def test_account_decision_uses_admitted_identity(openapi_app: Flask, device_serv
         assert context.active_workspace_id == "workspace-1"
 
 
-@pytest.mark.parametrize("path", ["approve", "deny"])
-def test_disabled_bearer_feature_blocks_account_decisions(
+@pytest.mark.parametrize("path", ["code", "approve", "deny"])
+def test_disabled_bearer_feature_blocks_code_and_account_decisions(
     openapi_app: Flask, device_service: Mock, config_overrides: Callable[..., None], path: str
 ) -> None:
     config_overrides(ENABLE_OAUTH_BEARER=False)
 
-    response = openapi_app.test_client().post(f"{_PREFIX}/{path}", json={"user_code": "ABCD-EFGH"})
+    response = openapi_app.test_client().post(
+        f"{_PREFIX}/{path}", json={"client_id": "difyctl", "user_code": "ABCD-EFGH"}
+    )
 
     assert response.status_code == 503
+    assert response.json is not None
+    assert response.json["code"] == "bearer_auth_disabled"
     assert device_service.mock_calls == []
 
 

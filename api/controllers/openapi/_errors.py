@@ -99,6 +99,22 @@ class OpenApiErrorCode(StrEnum):
     DRAFT_CHANGED = "draft_changed"
     APP_MODE_MISMATCH = "app_mode_mismatch"
     SERVICE_API_DISABLED = "service_api_disabled"
+    SERVICE_UNAVAILABLE = "service_unavailable"
+    BEARER_AUTH_DISABLED = "bearer_auth_disabled"
+    LICENSE_INVALID = "license_invalid"
+    INSUFFICIENT_SCOPE = "insufficient_scope"
+    UNSUPPORTED_TOKEN_TYPE = "unsupported_token_type"
+    APP_QUOTA_EXCEEDED = "app_quota_exceeded"
+    INSUFFICIENT_WORKSPACE_ROLE = "insufficient_workspace_role"
+    WORKSPACE_UNAVAILABLE = "workspace_unavailable"
+    WORKSPACE_MISMATCH = "workspace_mismatch"
+    EXTERNAL_SSO_REQUIRES_EE = "external_sso_requires_ee"
+    ACCESS_MODE_NOT_ALLOWED = "subject_not_allowed_for_access_mode"
+    APP_ACCESS_MODE_UNAVAILABLE = "app_access_mode_unavailable"
+    PRIVATE_APP_NOT_ALLOWED = "user_not_allowed_for_private_app"
+    PRIVATE_APP_USER_UNRESOLVED = "private_app_user_unresolved"
+    RESOURCE_NOT_AUTHORIZED = "resource_not_authorized"
+    PERMITTED_APPS_UNAVAILABLE = "permitted_apps_unavailable"
 
 
 class ErrorDetail(BaseModel):
@@ -134,6 +150,7 @@ _CODE_BY_STATUS: dict[int, OpenApiErrorCode] = {
     429: OpenApiErrorCode.TOO_MANY_REQUESTS,
     500: OpenApiErrorCode.INTERNAL_ERROR,
     502: OpenApiErrorCode.BAD_GATEWAY,
+    503: OpenApiErrorCode.SERVICE_UNAVAILABLE,
 }
 
 _GENERIC_500_MESSAGE = "Internal Server Error"
@@ -476,4 +493,107 @@ class ServiceApiDisabled(OpenApiError):  # noqa: N818
     code = 403
     error_code = OpenApiErrorCode.SERVICE_API_DISABLED
     description = "This app's Service API is turned off."
-    hint = "A workspace admin can turn it on; hints holds the op."
+    hint = "A workspace admin can turn it on."
+
+
+class BearerAuthDisabled(OpenApiError):  # noqa: N818
+    code = 503
+    error_code = OpenApiErrorCode.BEARER_AUTH_DISABLED
+    description = "Sign-in with access tokens is turned off on this server."
+    hint = "Ask an admin to set ENABLE_OAUTH_BEARER=true and restart the API."
+
+
+class LicenseInvalid(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.LICENSE_INVALID
+    description = "This Dify server's license is not active."
+    hint = "Ask an admin to renew or reactivate the license."
+
+
+class InsufficientScope(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.INSUFFICIENT_SCOPE
+    description = "This token's scopes don't allow this operation."
+
+
+class UnsupportedTokenType(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.UNSUPPORTED_TOKEN_TYPE
+    description = "This kind of token can't call this operation."
+    hint = "Sign in with a Dify account for this operation."
+
+
+class AppQuotaExceeded(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.APP_QUOTA_EXCEEDED
+    description = "This workspace has reached its app limit."
+    hint = "Upgrade the plan, or delete an app first."
+
+
+class InsufficientWorkspaceRole(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.INSUFFICIENT_WORKSPACE_ROLE
+    description = "Your workspace role can't do this."
+
+
+class WorkspaceUnavailable(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.WORKSPACE_UNAVAILABLE
+    description = "The workspace of this app or token is archived or no longer exists."
+    hint = "Ask an admin to restore the workspace."
+
+
+class WorkspaceMismatch(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.WORKSPACE_MISMATCH
+    description = "This token belongs to a different workspace than the one in the request."
+    hint = "get.workspace shows the workspace this token belongs to."
+
+
+class ExternalSsoRequiresEE(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.EXTERNAL_SSO_REQUIRES_EE
+    description = "SSO tokens work only on Dify Enterprise."
+    hint = "Sign in with a Dify account instead."
+
+
+class AccessModeNotAllowed(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.ACCESS_MODE_NOT_ALLOWED
+    description = "This app's web-app access setting doesn't allow this kind of sign-in."
+    hint = "Ask the app's owner to change its web-app access."
+
+
+class AppAccessModeUnavailable(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.APP_ACCESS_MODE_UNAVAILABLE
+    description = "This app's web-app access setting could not be read."
+    hint = "Try again. If it keeps failing, ask an admin to check Dify Enterprise."
+
+
+class PrivateAppNotAllowed(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.PRIVATE_APP_NOT_ALLOWED
+    description = "You are not on this private app's member list."
+    hint = "Ask the app's owner to add you."
+
+
+class PrivateAppUserUnresolved(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.PRIVATE_APP_USER_UNRESOLVED
+    description = "Could not tell who is signed in, so the private-app check failed."
+    hint = "Sign in again."
+
+
+class ResourceNotAuthorized(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.RESOURCE_NOT_AUTHORIZED
+    description = "This app token doesn't cover this app, or the app's Service API is off."
+    hint = "get.console_app lists the apps this token covers; a workspace admin can turn on an app's Service API."
+
+
+class PermittedAppsUnavailable(OpenApiError):  # noqa: N818
+    code = 503
+    error_code = OpenApiErrorCode.PERMITTED_APPS_UNAVAILABLE
+    description = "The list of apps you can use could not be loaded."
+    hint = "Dify Enterprise did not answer. Try again later."

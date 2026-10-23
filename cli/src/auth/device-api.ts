@@ -1,6 +1,8 @@
 import type { Dispatcher } from 'undici'
-import { BaseError, HttpClientError } from '@/errors/base'
+import { BaseError, HttpClientError, OPENAPI_OFF_HINT } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
+import { parseServerErrorBody } from '@/errors/server-body'
+import { networkErrorMessage } from '@/net/cause'
 import { buildFetchInit } from '@/net/fetch-init'
 import { proxyDispatcher } from '@/net/proxy'
 
@@ -108,6 +110,7 @@ function unsupportedDeviceFlow(method: string, url: URL): HttpClientError {
   return new HttpClientError({
     code: ErrorCode.ServerError,
     message: DEVICE_FLOW_UNSUPPORTED_MESSAGE,
+    hint: OPENAPI_OFF_HINT,
     httpStatus: HttpStatus.NotFound,
     method,
     url: url.toString(),
@@ -116,13 +119,16 @@ function unsupportedDeviceFlow(method: string, url: URL): HttpClientError {
 
 async function nonOkError(method: string, url: URL, res: Response): Promise<HttpClientError> {
   const rawResponse = await res.text()
+  const serverError = parseServerErrorBody(rawResponse)
   return new HttpClientError({
     code: ErrorCode.ServerError,
-    message: `${method} ${url.pathname} failed: HTTP ${res.status}`,
+    message: serverError?.message ?? `${method} ${url.pathname} failed: HTTP ${res.status}`,
+    hint: serverError?.hint,
     httpStatus: res.status,
     method,
     url: url.toString(),
     rawResponse,
+    serverError,
   })
 }
 
@@ -159,7 +165,7 @@ export function deviceApi(server: string, opts: DeviceApiOptions): DeviceApi {
     } catch (cause) {
       throw new BaseError({
         code: ErrorCode.NetworkConnection,
-        message: `network error calling POST ${url}`,
+        message: networkErrorMessage(`network error calling POST ${url}`, cause),
         cause,
       })
     }
