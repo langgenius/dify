@@ -4,16 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING, NewType, Protocol
+from typing import NewType, Protocol
 
 from pydantic import NaiveDatetime
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.shared.values import DirectoryScope
-
-if TYPE_CHECKING:
-    from models.human_input_v2 import IMEncryptedCredentials
-
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 
 WebhookId = NewType("WebhookId", str)
 IMChannelId = NewType("IMChannelId", str)
@@ -36,7 +33,7 @@ class IMChannel:
     updated_at: NaiveDatetime
     provider: IMProvider
     provider_tenant_id: str
-    encrypted_credentials: IMEncryptedCredentials = field(repr=False)
+    encrypted_credentials: ChannelEncryptedCredentials = field(repr=False)
     app_identifier: str
     webhook_id: WebhookId
     config_version: int

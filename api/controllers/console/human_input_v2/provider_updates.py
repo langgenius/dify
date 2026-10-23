@@ -5,8 +5,6 @@ from typing import Annotated, Literal
 from pydantic import Field, SecretStr, ValidationInfo, field_validator
 
 from core.human_input_v2.entities import EmailProviderType, IMProvider
-from core.human_input_v2.shared import NormalizedEmail
-from libs.helper import EmailStr
 from services.human_input_v2.credential_update import (
     DingTalkCredentialsUpdate,
     FeishuCredentialsUpdate,
@@ -167,16 +165,10 @@ type IMProviderCredentialsUpdateInput = Annotated[
 
 class ResendCredentialsUpdateInput(_SecretValidationMixin, StrictModel):
     provider: Literal[EmailProviderType.RESEND]
-    sender_email: EmailStr | UnchangedInput
-    sender_name: Annotated[str, Field(min_length=1, max_length=255)] | UnchangedInput
     api_key: _RequiredSecret | UnchangedInput
 
     def to_owner_update(self) -> ResendCredentialsUpdate:
         return ResendCredentialsUpdate(
-            sender_email=(
-                Unchanged.VALUE if isinstance(self.sender_email, UnchangedInput) else NormalizedEmail(self.sender_email)
-            ),
-            sender_name=_updated_value(self.sender_name),
             api_key=_secret_update(self.api_key),
         )
 

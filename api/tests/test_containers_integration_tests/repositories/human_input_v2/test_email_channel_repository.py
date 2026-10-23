@@ -15,10 +15,14 @@ from core.human_input_v2.shared import (
 )
 from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.email_channel import (
+    CreateEmailConfigurationResult,
     CreateEmailConfigurationStatus,
+    DeleteEmailConfigurationResult,
     DeleteEmailConfigurationStatus,
     EmailChannelConfiguration,
+    UpdateEmailConfigurationResult,
     UpdateEmailConfigurationStatus,
 )
 from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmailChannelRepository
@@ -31,29 +35,30 @@ def _configuration(tenant_id: TenantId, *, configuration_id: str | None = None) 
         tenant_id,
         NormalizedEmail("sender@example.com"),
         "Sender",
-        "ciphertext",
+        ChannelEncryptedCredentials(ciphertext="ciphertext"),
         AccountId(str(uuid4())),
         now,
         now,
     )
 
 
-def _repository(db_session: Session) -> tuple[SQLAlchemyEmailChannelRepository, TenantId]:
+def _sessions(db_session: Session) -> tuple[sessionmaker[Session], TenantId]:
     tenant = Tenant(name="Email channel concurrency")
     db_session.add(tenant)
     db_session.commit()
     tenant_id = TenantId(tenant.id)
     maker = sessionmaker(bind=db_session.get_bind(), expire_on_commit=False)
-    return SQLAlchemyEmailChannelRepository(maker), tenant_id
+    return maker, tenant_id
 
 
 def test_concurrent_first_creation_has_one_winner(db_session_with_containers: Session) -> None:
-    repository, tenant_id = _repository(db_session_with_containers)
+    sessions, tenant_id = _sessions(db_session_with_containers)
     barrier = Barrier(2)
 
-    def create(configuration: EmailChannelConfiguration):
+    def create(configuration: EmailChannelConfiguration) -> CreateEmailConfigurationResult:
         barrier.wait()
-        return repository.create(configuration)
+        with sessions.begin() as session:
+            return SQLAlchemyEmailChannelRepository(session).create(configuration)
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         results = tuple(
@@ -70,18 +75,20 @@ def test_concurrent_first_creation_has_one_winner(db_session_with_containers: Se
 
 
 def test_concurrent_conditional_updates_have_one_winner(db_session_with_containers: Session) -> None:
-    repository, tenant_id = _repository(db_session_with_containers)
-    current = repository.create(_configuration(tenant_id)).configuration
+    sessions, tenant_id = _sessions(db_session_with_containers)
+    with sessions.begin() as session:
+        current = SQLAlchemyEmailChannelRepository(session).create(_configuration(tenant_id)).configuration
     assert current is not None
     barrier = Barrier(2)
 
-    def update(sender_name: str):
+    def update(sender_name: str) -> UpdateEmailConfigurationResult:
         barrier.wait()
-        return repository.update(
-            replace(current, sender_name=sender_name),
-            expected=current.snapshot,
-            now=naive_utc_now(),
-        )
+        with sessions.begin() as session:
+            return SQLAlchemyEmailChannelRepository(session).update(
+                replace(current, encrypted_credentials=ChannelEncryptedCredentials(ciphertext=sender_name)),
+                expected=current.snapshot,
+                now=naive_utc_now(),
+            )
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         results = tuple(executor.map(update, ("First", "Second")))
@@ -93,22 +100,25 @@ def test_concurrent_conditional_updates_have_one_winner(db_session_with_containe
 
 
 def test_update_delete_race_cannot_restore_deleted_row(db_session_with_containers: Session) -> None:
-    repository, tenant_id = _repository(db_session_with_containers)
-    current = repository.create(_configuration(tenant_id)).configuration
+    sessions, tenant_id = _sessions(db_session_with_containers)
+    with sessions.begin() as session:
+        current = SQLAlchemyEmailChannelRepository(session).create(_configuration(tenant_id)).configuration
     assert current is not None
     barrier = Barrier(2)
 
-    def update():
+    def update() -> UpdateEmailConfigurationResult:
         barrier.wait()
-        return repository.update(
-            replace(current, sender_name="Racing update"),
-            expected=current.snapshot,
-            now=naive_utc_now(),
-        )
+        with sessions.begin() as session:
+            return SQLAlchemyEmailChannelRepository(session).update(
+                replace(current, encrypted_credentials=ChannelEncryptedCredentials(ciphertext="replacement")),
+                expected=current.snapshot,
+                now=naive_utc_now(),
+            )
 
-    def delete():
+    def delete() -> DeleteEmailConfigurationResult:
         barrier.wait()
-        return repository.delete(tenant_id, expected=current.snapshot)
+        with sessions.begin() as session:
+            return SQLAlchemyEmailChannelRepository(session).delete(tenant_id, expected=current.snapshot)
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         update_future = executor.submit(update)
@@ -116,7 +126,8 @@ def test_update_delete_race_cannot_restore_deleted_row(db_session_with_container
         update_result = update_future.result()
         delete_result = delete_future.result()
 
-    persisted = repository.load(tenant_id)
+    with sessions() as session:
+        persisted = SQLAlchemyEmailChannelRepository(session).load(tenant_id)
     if update_result.status is UpdateEmailConfigurationStatus.UPDATED:
         assert delete_result.status is DeleteEmailConfigurationStatus.STALE
         assert update_result.configuration is not None
@@ -128,18 +139,22 @@ def test_update_delete_race_cannot_restore_deleted_row(db_session_with_container
 
 
 def test_delete_recreate_rejects_previous_identity(db_session_with_containers: Session) -> None:
-    repository, tenant_id = _repository(db_session_with_containers)
-    deleted = repository.create(_configuration(tenant_id)).configuration
-    assert deleted is not None
-    repository.delete(tenant_id, expected=deleted.snapshot)
-    recreated = repository.create(_configuration(tenant_id)).configuration
-    assert recreated is not None
+    sessions, tenant_id = _sessions(db_session_with_containers)
+    with sessions.begin() as session:
+        deleted = SQLAlchemyEmailChannelRepository(session).create(_configuration(tenant_id)).configuration
+        assert deleted is not None
+    with sessions.begin() as session:
+        SQLAlchemyEmailChannelRepository(session).delete(tenant_id, expected=deleted.snapshot)
+    with sessions.begin() as session:
+        recreated = SQLAlchemyEmailChannelRepository(session).create(_configuration(tenant_id)).configuration
+        assert recreated is not None
 
-    stale = repository.update(
-        replace(deleted, sender_name="Stale write"),
-        expected=deleted.snapshot,
-        now=naive_utc_now(),
-    )
-
-    assert stale.status is UpdateEmailConfigurationStatus.STALE
-    assert repository.load(tenant_id) == recreated
+    with sessions.begin() as session:
+        repository = SQLAlchemyEmailChannelRepository(session)
+        stale = repository.update(
+            replace(deleted, encrypted_credentials=ChannelEncryptedCredentials(ciphertext="stale")),
+            expected=deleted.snapshot,
+            now=naive_utc_now(),
+        )
+        assert stale.status is UpdateEmailConfigurationStatus.STALE
+        assert repository.load(tenant_id) == recreated

@@ -33,7 +33,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
 )
 from core.human_input_v2.shared import AccountId, TenantId
 from libs.key_providers.base import BaseKeyProvider
-from models.human_input_v2 import IMEncryptedCredentials
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.im_channel_repository import (
     IMChannel,
     IMChannelAlreadyConfiguredError,
@@ -345,7 +345,7 @@ def _channel(
         updated_at=datetime(2026, 8, 30, 9),
         provider=provider,
         provider_tenant_id=provider_tenant_id or f"{provider.value}-tenant",
-        encrypted_credentials=IMEncryptedCredentials(ciphertext="credential-secret-ciphertext"),
+        encrypted_credentials=ChannelEncryptedCredentials(ciphertext="credential-secret-ciphertext"),
         app_identifier=f"{provider.value}-application",
         webhook_id=WebhookId(webhook_id),
         config_version=config_version,

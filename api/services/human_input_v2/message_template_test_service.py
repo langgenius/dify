@@ -9,7 +9,6 @@ from pydantic import JsonValue, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.helper import encrypter
 from core.human_input_v2.entities import DebugChannel
 from core.human_input_v2.im_integration.adapters.entities import MessageSendingError, ProviderUserId
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
@@ -32,6 +31,7 @@ from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemy
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelReader
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
+from services.human_input_v2.email_credential_codec import load_email_credentials
 from services.human_input_v2.form_service import HumanInputDeliveryTestFormService, HumanInputTestFormError
 from services.human_input_v2.im_credential_codec import IMCredentialError
 from services.human_input_v2.resend_channel import ResendProviderGateway
@@ -72,7 +72,7 @@ class MessageTemplateTestService:
         tenant_id: TenantId,
         account_id: AccountId,
         account_email: str,
-        email_repository: EmailChannelRepository,
+        email_repository_factory: Callable[[Session], EmailChannelRepository],
         email_gateway: ResendProviderGateway,
         im_adapter_factory: Callable[[IMChannel], IMProviderAdapter],
         form_service: HumanInputDeliveryTestFormService,
@@ -81,7 +81,7 @@ class MessageTemplateTestService:
         self._tenant_id = tenant_id
         self._account_id = account_id
         self._account_email = account_email
-        self._email_repository = email_repository
+        self._email_repositories = email_repository_factory
         self._email_gateway = email_gateway
         self._im_adapter_factory = im_adapter_factory
         self._forms = form_service
@@ -172,7 +172,8 @@ class MessageTemplateTestService:
         if channel is DebugChannel.EMAIL:
             if not EmailDeliveryConfig.render_markdown_body(preview.body).strip():
                 raise MessageTemplateTestError("The rendered email body must not be blank.")
-            configuration = self._email_repository.load(self._tenant_id)
+            with self._sessions() as session:
+                configuration = self._email_repositories(session).load(self._tenant_id)
             if configuration is None:
                 raise MessageTemplateTestError("An Email channel must be configured in this workspace.")
             if not self._account_email:
@@ -180,7 +181,7 @@ class MessageTemplateTestService:
             candidate = ResendCandidate(
                 sender_email=configuration.sender_email,
                 sender_name=configuration.sender_name,
-                api_key=encrypter.decrypt_token(str(self._tenant_id), configuration.protected_api_key),
+                credentials=load_email_credentials(configuration.tenant_id, configuration.encrypted_credentials),
             )
             return _EmailDestination(candidate, EmailTargetSnapshot(email_address=self._account_email))
 

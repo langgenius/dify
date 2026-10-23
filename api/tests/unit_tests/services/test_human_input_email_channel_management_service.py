@@ -2,10 +2,11 @@
 
 from dataclasses import replace
 from datetime import datetime
-from traceback import format_exception
 from typing import Never
 
 import pytest
+from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from core.helper import encrypter
 from core.human_input_v2.entities import EmailProviderType
@@ -16,6 +17,7 @@ from core.human_input_v2.shared import (
     TenantId,
     WorkspaceScope,
 )
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.email_channel import (
     CreateEmailConfigurationResult,
     CreateEmailConfigurationStatus,
@@ -29,7 +31,9 @@ from repositories.human_input_v2.email_channel import (
     UpdateEmailConfigurationResult,
     UpdateEmailConfigurationStatus,
 )
+from repositories.human_input_v2.email_channel.entities import ResendCredentials
 from services.human_input_v2.email_channel_management_service import HumanInputEmailChannelManagementService
+from services.human_input_v2.email_credential_codec import load_email_credentials, seal_email_credentials
 from services.human_input_v2.errors import (
     ChannelAlreadyConfiguredError,
     ChannelNotFoundError,
@@ -109,8 +113,8 @@ class FakeProviderGateway:
 def _candidate(api_key: str = "new-api-key") -> ResendCandidate:
     return ResendCandidate(
         sender_email=NormalizedEmail("Sender@Example.com"),
-        sender_name=" Sender ",
-        api_key=api_key,
+        sender_name="Sender",
+        credentials=ResendCredentials(api_key=api_key),
     )
 
 
@@ -124,7 +128,7 @@ def _configuration(
         tenant_id=_SCOPE.id,
         sender_email=NormalizedEmail("old@example.com"),
         sender_name="Old Sender",
-        protected_api_key="protected-old-api-key",
+        encrypted_credentials=seal_email_credentials(_SCOPE.id, ResendCredentials(api_key="saved-api-key")),
         configured_by_account_id=_ACTOR_ID,
         created_at=_NOW,
         updated_at=updated_at,
@@ -136,8 +140,9 @@ def _service(
     provider_gateway: FakeProviderGateway,
 ) -> HumanInputEmailChannelManagementService:
     return HumanInputEmailChannelManagementService(
-        repository,
         provider_gateway,
+        session_factory=Session,
+        repository_factory=lambda _session: repository,
         clock=lambda: _LATER,
         id_factory=lambda: "email-new",
     )
@@ -150,27 +155,14 @@ def _protect_email_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
         "encrypt_token",
         lambda tenant_id, api_key: f"{tenant_id}:protected:{api_key}",
     )
+    monkeypatch.setattr(
+        encrypter, "decrypt_token", lambda tenant_id, ciphertext: ciphertext.removeprefix(f"{tenant_id}:protected:")
+    )
 
 
-def test_resend_candidate_requires_a_non_blank_api_key_and_sender_name() -> None:
-    with pytest.raises(ValueError, match="API key must not be blank"):
-        ResendCandidate(
-            sender_email=NormalizedEmail("sender@example.com"),
-            sender_name="Sender",
-            api_key="  ",
-        )
-
-    with pytest.raises(ValueError, match="sender name must not be blank"):
-        ResendCandidate(
-            sender_email=NormalizedEmail("sender@example.com"),
-            sender_name="  ",
-            api_key="new-api-key",
-        )
-
-
-def test_email_configuration_requires_a_protected_api_key() -> None:
-    with pytest.raises(ValueError, match="protected API key must not be empty"):
-        replace(_configuration(), protected_api_key="")
+def test_email_credentials_require_non_empty_ciphertext() -> None:
+    with pytest.raises(ValidationError):
+        ChannelEncryptedCredentials(ciphertext="")
 
 
 def test_create_protects_without_provider_io_and_returns_safe_owner_view(
@@ -279,6 +271,37 @@ def test_update_maps_a_racing_repository_write_to_provider_configuration_updated
     assert repository.current == _configuration()
 
 
+def test_partial_update_cannot_overwrite_credentials_changed_during_encryption(monkeypatch: pytest.MonkeyPatch) -> None:
+    from services.human_input_v2.credential_update import ResendChannelUpdate, ResendCredentialsUpdate, Unchanged
+
+    current = _configuration()
+    winner = replace(
+        current,
+        encrypted_credentials=seal_email_credentials(_SCOPE.id, _candidate("concurrent-api-key").credentials),
+        config_version=2,
+    )
+    repository = FakeRepository(current)
+    gateway = FakeProviderGateway([])
+
+    def encrypt_while_another_save_wins(tenant_id: str, plaintext: str) -> str:
+        repository.current = winner
+        return f"{tenant_id}:protected:{plaintext}"
+
+    monkeypatch.setattr(encrypter, "encrypt_token", encrypt_while_another_save_wins)
+    edit = ResendChannelUpdate(Unchanged.VALUE, "Stale Sender", ResendCredentialsUpdate(api_key=Unchanged.VALUE))
+
+    with pytest.raises(ProviderConfigurationUpdatedError):
+        _service(repository, gateway).update(_SCOPE, current.id, current.snapshot, _ACTOR_ID, edit)
+
+    assert repository.current == winner
+    assert repository.current is not None
+    assert (
+        load_email_credentials(repository.current.tenant_id, repository.current.encrypted_credentials)
+        == _candidate("concurrent-api-key").credentials
+    )
+    assert gateway.settings == []
+
+
 def test_delete_requires_identity_and_snapshot_cas() -> None:
     events: list[str] = []
     repository = FakeRepository(_configuration())
@@ -328,7 +351,7 @@ def test_candidate_test_uses_only_submitted_credentials_and_never_persists() -> 
     assert events == ["send_test"]
     assert repository.events == []
     assert repository.current == current
-    assert provider_gateway.settings[0].api_key == "new-api-key"
+    assert provider_gateway.settings[0].credentials.api_key == "new-api-key"
 
 
 @pytest.mark.parametrize(
@@ -386,85 +409,93 @@ def test_email_test_exposes_upstream_code_in_safe_user_description() -> None:
     assert "sensitive-api-key" not in str(captured.value)
 
 
-def test_credential_protection_failure_is_detail_free_and_never_persists(
+def test_credential_protection_failure_propagates_and_never_persists(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     events: list[str] = []
     repository = FakeRepository()
+    failure = OSError("encryption backend unavailable")
 
-    def fail_protection(_tenant_id: str, _api_key: str) -> str:
-        raise RuntimeError("raw encryption failure with sensitive-api-key")
+    def fail_protection(_tenant_id: str, _api_key: str) -> Never:
+        raise failure
 
     monkeypatch.setattr(encrypter, "encrypt_token", fail_protection)
 
-    with pytest.raises(UnexpectedChannelProviderError) as captured:
+    with pytest.raises(OSError) as captured:
         _service(repository, FakeProviderGateway(events)).create(
             _SCOPE,
             _ACTOR_ID,
             _candidate("sensitive-api-key"),
         )
 
-    assert "raw encryption failure" not in str(captured.value)
-    assert "sensitive-api-key" not in repr(captured.value)
+    assert captured.value is failure
     assert events == []
     assert repository.events == ["load"]
     assert repository.current is None
 
 
 @pytest.mark.parametrize("retain_key", [True, False])
-def test_partial_update_preserves_settings_and_protects_the_complete_key(
-    monkeypatch: pytest.MonkeyPatch, retain_key: bool
+@pytest.mark.parametrize(
+    ("sender_field", "expected_email", "expected_name"),
+    [
+        ("sender_name", "old@example.com", "New Sender"),
+        ("sender_email", "new@example.com", "Old Sender"),
+        (None, "old@example.com", "Old Sender"),
+    ],
+)
+def test_partial_update_preserves_settings_and_protects_the_complete_credentials(
+    retain_key: bool, sender_field: str | None, expected_email: str, expected_name: str
 ) -> None:
-    from services.human_input_v2.credential_update import ResendCredentialsUpdate, Unchanged
+    from services.human_input_v2.credential_update import ResendChannelUpdate, ResendCredentialsUpdate, Unchanged
 
     current = _configuration()
     repository = FakeRepository(current)
     gateway = FakeProviderGateway([])
-    monkeypatch.setattr(encrypter, "decrypt_token", lambda *_args: "saved-api-key")
     service = _service(repository, gateway)
-    edit = ResendCredentialsUpdate(
-        sender_email=Unchanged.VALUE,
-        sender_name="New Sender",
-        api_key=Unchanged.VALUE if retain_key else "replacement-api-key",
+    edit = ResendChannelUpdate(
+        sender_email=NormalizedEmail("new@example.com") if sender_field == "sender_email" else Unchanged.VALUE,
+        sender_name="New Sender" if sender_field == "sender_name" else Unchanged.VALUE,
+        credentials=ResendCredentialsUpdate(api_key=Unchanged.VALUE if retain_key else "replacement-api-key"),
     )
 
     view = service.update(_SCOPE, current.id, current.snapshot, _ACTOR_ID, edit)
 
-    assert view.sender_email == "old@example.com"
-    assert view.sender_name == "New Sender"
+    assert view.sender_email == expected_email
+    assert view.sender_name == expected_name
     assert repository.current is not None
-    assert repository.current.protected_api_key == (
-        "workspace-1:protected:saved-api-key" if retain_key else "workspace-1:protected:replacement-api-key"
-    )
+    assert repository.current.sender_email == NormalizedEmail(expected_email)
+    assert repository.current.sender_name == expected_name
+    assert load_email_credentials(
+        repository.current.tenant_id, repository.current.encrypted_credentials
+    ) == ResendCredentials(api_key="saved-api-key" if retain_key else "replacement-api-key")
     assert view.revision.config_version == 2
     assert gateway.settings == []
 
 
 @pytest.mark.parametrize("temporary_key", [None, "temporary-api-key"])
-def test_saved_test_uses_saved_key_or_override_without_persisting(
-    monkeypatch: pytest.MonkeyPatch, temporary_key: str | None
-) -> None:
-    from services.human_input_v2.credential_update import ResendCredentialsUpdate, Unchanged
+def test_saved_test_uses_saved_key_or_override_without_persisting(temporary_key: str | None) -> None:
+    from services.human_input_v2.credential_update import ResendChannelUpdate, ResendCredentialsUpdate, Unchanged
 
     current = _configuration()
     repository = FakeRepository(current)
     gateway = FakeProviderGateway([])
-    monkeypatch.setattr(encrypter, "decrypt_token", lambda *_args: "saved-api-key")
-    edit = ResendCredentialsUpdate(
-        Unchanged.VALUE, "Temporary Sender", temporary_key if temporary_key is not None else Unchanged.VALUE
+    edit = ResendChannelUpdate(
+        Unchanged.VALUE,
+        "Temporary Sender",
+        ResendCredentialsUpdate(api_key=temporary_key if temporary_key is not None else Unchanged.VALUE),
     )
 
     _service(repository, gateway).test_saved(_SCOPE, current.id, current.snapshot, edit)
 
     assert len(gateway.settings) == 1
-    assert gateway.settings[0].api_key == (temporary_key if temporary_key is not None else "saved-api-key")
+    assert gateway.settings[0].credentials.api_key == (temporary_key if temporary_key is not None else "saved-api-key")
     assert gateway.settings[0].sender_email == NormalizedEmail("old@example.com")
     assert gateway.settings[0].sender_name == "Temporary Sender"
     assert repository.current == current
 
 
 def test_saved_test_rejects_stale_revision_before_decrypting(monkeypatch: pytest.MonkeyPatch) -> None:
-    from services.human_input_v2.credential_update import ResendCredentialsUpdate, Unchanged
+    from services.human_input_v2.credential_update import ResendChannelUpdate, ResendCredentialsUpdate, Unchanged
 
     current = _configuration()
     repository = FakeRepository(current)
@@ -474,34 +505,58 @@ def test_saved_test_rejects_stale_revision_before_decrypting(monkeypatch: pytest
         pytest.fail("a stale test must not decrypt credentials")
 
     monkeypatch.setattr(encrypter, "decrypt_token", unexpected_decrypt)
-    edit = ResendCredentialsUpdate(Unchanged.VALUE, Unchanged.VALUE, Unchanged.VALUE)
+    edit = ResendChannelUpdate(Unchanged.VALUE, Unchanged.VALUE, ResendCredentialsUpdate(api_key=Unchanged.VALUE))
     with pytest.raises(ProviderConfigurationUpdatedError):
         _service(repository, gateway).test_saved(_SCOPE, current.id, replace(current.snapshot, config_version=2), edit)
     assert gateway.settings == []
     assert repository.current == current
 
 
-def test_saved_test_stops_on_unreadable_key_without_exposing_crypto_diagnostics(
+@pytest.mark.parametrize("replacement_key", [None, "replacement-api-key"])
+@pytest.mark.parametrize("operation", ["update", "test"])
+def test_decryption_failure_propagates_without_sending_or_persisting(
     monkeypatch: pytest.MonkeyPatch,
+    replacement_key: str | None,
+    operation: str,
 ) -> None:
-    from services.human_input_v2.credential_update import ResendCredentialsUpdate, Unchanged
+    from services.human_input_v2.credential_update import ResendChannelUpdate, ResendCredentialsUpdate, Unchanged
 
     current = _configuration()
     repository = FakeRepository(current)
     gateway = FakeProviderGateway([])
+    failure = OSError("decryption backend unavailable")
 
     def fail_decryption(*_args: object) -> Never:
-        raise ValueError("private-key-provider-diagnostic")
+        raise failure
 
     monkeypatch.setattr(encrypter, "decrypt_token", fail_decryption)
-    with pytest.raises(UnexpectedChannelProviderError) as captured:
-        _service(repository, gateway).test_saved(
-            _SCOPE,
-            current.id,
-            current.snapshot,
-            ResendCredentialsUpdate(Unchanged.VALUE, Unchanged.VALUE, Unchanged.VALUE),
-        )
-    assert "private-key-provider-diagnostic" not in str(captured.value)
-    assert "private-key-provider-diagnostic" not in "".join(format_exception(captured.value))
+    edit = ResendChannelUpdate(
+        Unchanged.VALUE,
+        Unchanged.VALUE,
+        ResendCredentialsUpdate(api_key=Unchanged.VALUE if replacement_key is None else replacement_key),
+    )
+    service = _service(repository, gateway)
+    if operation == "test":
+        with pytest.raises(OSError) as captured:
+            service.test_saved(_SCOPE, current.id, current.snapshot, edit)
+    else:
+        with pytest.raises(OSError) as captured:
+            service.update(_SCOPE, current.id, current.snapshot, _ACTOR_ID, edit)
+    assert captured.value is failure
     assert gateway.settings == []
     assert repository.current == current
+
+
+def test_reading_sender_metadata_does_not_decrypt_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    repository = FakeRepository(_configuration())
+
+    def unavailable_decryption(*_args: object) -> Never:
+        pytest.fail("configuration metadata must remain readable without decryption")
+
+    monkeypatch.setattr(encrypter, "decrypt_token", unavailable_decryption)
+    service = _service(repository, FakeProviderGateway([]))
+    current = service.get_current(_SCOPE)
+    assert current is not None
+    assert current.sender_email == "old@example.com"
+    assert current.sender_name == "Old Sender"
+    assert service.get(_SCOPE, current.id) == current

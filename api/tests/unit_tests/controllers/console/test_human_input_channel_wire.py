@@ -344,8 +344,6 @@ def test_saved_connection_test_accepts_retention_without_saving(
         if kind == "im"
         else {
             "provider": "resend",
-            "sender_name": {"type": "unchanged"},
-            "sender_email": {"type": "unchanged"},
             "api_key": {"type": "unchanged"},
         }
     )
@@ -355,9 +353,12 @@ def test_saved_connection_test_accepts_retention_without_saving(
         else encode_email_config_version(EmailConfigurationSnapshot(EmailProviderId(_CHANNEL_ID), 1))
     )
 
+    body = {"expected_config_version": version, "credentials": credentials}
+    if kind == "email":
+        body.update({"sender_email": {"type": "unchanged"}, "sender_name": {"type": "unchanged"}})
     response = wire_app.test_client().post(
         f"{_BASE_PATH}/channels/{kind}/{_CHANNEL_ID}/test",
-        json={"expected_config_version": version, "credentials": credentials},
+        json=body,
     )
 
     assert response.status_code == 200
@@ -397,8 +398,6 @@ def test_saved_connection_test_translates_failures_safely(
         if kind == "im"
         else {
             "provider": "resend",
-            "sender_name": "Sender",
-            "sender_email": "sender@example.com",
             "api_key": "api-key",
         }
     )
@@ -407,9 +406,12 @@ def test_saved_connection_test_translates_failures_safely(
         if kind == "im"
         else encode_email_config_version(EmailConfigurationSnapshot(EmailProviderId(_CHANNEL_ID), 1))
     )
+    body = {"expected_config_version": version, "credentials": credentials}
+    if kind == "email":
+        body.update({"sender_email": {"type": "unchanged"}, "sender_name": {"type": "unchanged"}})
     response = wire_app.test_client().post(
         f"{_BASE_PATH}/channels/{kind}/{_CHANNEL_ID}/test",
-        json={"expected_config_version": version, "credentials": credentials},
+        json=body,
     )
 
     assert response.status_code == expected_status

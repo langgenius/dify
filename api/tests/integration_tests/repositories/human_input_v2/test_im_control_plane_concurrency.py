@@ -22,8 +22,8 @@ from models.human_input_v2 import (
     HumanInputIMReconciliationChange,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
-    IMEncryptedCredentials,
 )
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.im_binding_repository import IMBindingAssignment, IMBindingConflictError
 from repositories.human_input_v2.im_channel_repository import (
     IMChannel,
@@ -51,7 +51,7 @@ def _channel() -> IMChannel:
         updated_at=now,
         provider=IMProvider.FEISHU,
         provider_tenant_id=f"provider-{uuidv7()}",
-        encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-ciphertext"),
+        encrypted_credentials=ChannelEncryptedCredentials(ciphertext="opaque-ciphertext"),
         app_identifier="app-1",
         webhook_id=WebhookId(uuidv7().hex),
         config_version=1,

@@ -36,7 +36,7 @@ from core.human_input_v2.shared import AccountId, TenantId
 from libs.datetime_utils import naive_utc_now
 from libs.key_providers.base import BaseKeyProvider
 from libs.uuid_utils import uuidv7
-from models.human_input_v2 import IMEncryptedCredentials
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.im_channel_repository import (
     IMChannel,
     IMChannelAlreadyConfiguredError,
@@ -99,7 +99,7 @@ class _PreparedIMChannelConfiguration:
 
     provider: IMProvider
     provider_tenant_id: str
-    encrypted_credentials: IMEncryptedCredentials
+    encrypted_credentials: ChannelEncryptedCredentials
     app_identifier: str
 
     def __post_init__(self) -> None:

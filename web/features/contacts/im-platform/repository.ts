@@ -286,9 +286,15 @@ const providerMetadata: Record<
   },
 }
 
-function credentialsFor(
-  command: TestContactImConnectionCommand,
-): EmailProviderCredentialsWritable | ImProviderCredentialsInputWritable {
+function emailSettingsFor(command: TestContactImConnectionCommand) {
+  const sender_email = command.values.senderEmail?.trim()
+  const sender_name = command.values.senderName?.trim()
+  if (!sender_email || !sender_name)
+    throw new ContactImRepositoryError(ContactImRepositoryErrorCode.RequiredFieldsMissing)
+  return { sender_email, sender_name }
+}
+
+function credentialsFor(command: TestContactImConnectionCommand) {
   const required = (field: ContactImProviderField) => {
     const value = (field === 'secret' ? command.secret : command.values[field])?.trim()
     if (!value)
@@ -301,10 +307,8 @@ function credentialsFor(
     case 'email':
       return {
         provider: 'resend',
-        sender_email: required('senderEmail'),
-        sender_name: required('senderName'),
         api_key: required('secret'),
-      }
+      } satisfies EmailProviderCredentialsWritable
     case 'feishu':
     case 'lark':
       return {
@@ -313,7 +317,7 @@ function credentialsFor(
         app_secret: required('secret'),
         encrypt_key: optional('encryptKey'),
         verification_token: optional('verificationToken'),
-      }
+      } satisfies ImProviderCredentialsInputWritable
     case 'slack':
       return {
         provider: 'slack',
@@ -322,28 +326,28 @@ function credentialsFor(
         signing_secret: required('signingSecret'),
         bot_token: required('botToken'),
         app_token: optional('appToken'),
-      }
+      } satisfies ImProviderCredentialsInputWritable
     case 'dingtalk':
       return {
         provider: 'ding_talk',
         corp_id: required('corpId'),
         client_id: required('clientId'),
         client_secret: required('secret'),
-      }
+      } satisfies ImProviderCredentialsInputWritable
     case 'ms_teams':
       return {
         provider: 'ms_teams',
         tenant_id: required('tenantId'),
         client_id: required('clientId'),
         client_secret: required('secret'),
-      }
+      } satisfies ImProviderCredentialsInputWritable
     case 'we_com':
       return {
         provider: 'we_com',
         corp_id: required('corpId'),
         agent_id: required('agentId'),
         secret: required('secret'),
-      }
+      } satisfies ImProviderCredentialsInputWritable
   }
 }
 
@@ -498,11 +502,18 @@ export function createContactImApiRepository(
               ? await client.channels.email.byChannelId.put(
                   {
                     params,
-                    body: { credentials, expected_config_version: version },
+                    body: {
+                      ...emailSettingsFor(command),
+                      credentials,
+                      expected_config_version: version,
+                    },
                   },
                   requestOptions,
                 )
-              : await client.channels.email.post({ body: { credentials } }, requestOptions)
+              : await client.channels.email.post(
+                  { body: { ...emailSettingsFor(command), credentials } },
+                  requestOptions,
+                )
         } else if (params && version) {
           const input = { params, body: { credentials, expected_config_version: version } }
           response = command.replaceActiveProvider
@@ -520,7 +531,10 @@ export function createContactImApiRepository(
       return channelRequest(async () => {
         const response =
           credentials.provider === 'resend'
-            ? await client.channels.email.test.post({ body: { credentials } }, requestOptions)
+            ? await client.channels.email.test.post(
+                { body: { ...emailSettingsFor(command), credentials } },
+                requestOptions,
+              )
             : await client.channels.im.test.post({ body: { credentials } }, requestOptions)
         if (response.status !== 'connected')
           throw new ContactImRepositoryError(

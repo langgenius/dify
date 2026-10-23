@@ -180,6 +180,9 @@ function createChannelClient() {
         post: vi.fn<ChannelApiClient['channels']['email']['post']>(),
         test: { post: vi.fn<ChannelApiClient['channels']['email']['test']['post']>() },
         byChannelId: {
+          test: {
+            post: vi.fn<ChannelApiClient['channels']['email']['byChannelId']['test']['post']>(),
+          },
           get: vi.fn<ChannelApiClient['channels']['email']['byChannelId']['get']>(),
           put: vi.fn<ChannelApiClient['channels']['email']['byChannelId']['put']>(),
           delete: vi.fn<ChannelApiClient['channels']['email']['byChannelId']['delete']>(),
@@ -189,6 +192,9 @@ function createChannelClient() {
         post: vi.fn<ChannelApiClient['channels']['im']['post']>(),
         test: { post: vi.fn<ChannelApiClient['channels']['im']['test']['post']>() },
         byChannelId: {
+          test: {
+            post: vi.fn<ChannelApiClient['channels']['im']['byChannelId']['test']['post']>(),
+          },
           get: vi.fn<ChannelApiClient['channels']['im']['byChannelId']['get']>(),
           put: vi.fn<ChannelApiClient['channels']['im']['byChannelId']['put']>(),
           delete: vi.fn<ChannelApiClient['channels']['im']['byChannelId']['delete']>(),
@@ -237,8 +243,6 @@ const credentialCases: {
     values: { senderEmail: ' sender@example.test ', senderName: ' Sender ' },
     expected: {
       provider: 'resend',
-      sender_email: 'sender@example.test',
-      sender_name: 'Sender',
       api_key: 'test-secret',
     },
   },
@@ -362,6 +366,7 @@ describe('Contact IM channel API repository', () => {
       summary: emailSummary,
       sender_email: 'sender@example.test',
       sender_name: 'Approvals',
+      credentials: { provider: 'resend', api_key: { type: 'redacted' } },
     })
     const integrations = await createContactImApiRepository(organization, client).getIntegrations(
       organization.organizationId,
@@ -413,10 +418,11 @@ describe('Contact IM channel API repository', () => {
       })
       const endpoint =
         provider === 'email' ? client.channels.email.test.post : client.channels.im.test.post
-      expect(endpoint).toHaveBeenCalledWith(
-        { body: { credentials: expected } },
-        { context: { silent: true } },
-      )
+      const body =
+        provider === 'email'
+          ? { sender_email: 'sender@example.test', sender_name: 'Sender', credentials: expected }
+          : { credentials: expected }
+      expect(endpoint).toHaveBeenCalledWith({ body }, { context: { silent: true } })
       expect(result).toMatchObject({ provider, status: 'connected', configuredValues: {} })
       expect(JSON.stringify(result)).not.toContain('test-secret')
     },
@@ -520,12 +526,9 @@ describe('Contact IM channel API repository', () => {
     expect(client.channels.email.post).toHaveBeenCalledWith(
       {
         body: {
-          credentials: {
-            provider: 'resend',
-            sender_email: 'sender@example.test',
-            sender_name: 'Sender',
-            api_key: 'email-secret',
-          },
+          sender_email: 'sender@example.test',
+          sender_name: 'Sender',
+          credentials: { provider: 'resend', api_key: 'email-secret' },
         },
       },
       { context: { silent: true } },

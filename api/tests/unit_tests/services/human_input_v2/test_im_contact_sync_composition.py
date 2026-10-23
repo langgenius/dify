@@ -29,7 +29,7 @@ from core.human_input_v2.im_integration.adapters import (
 from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, IMProviderCredentials
 from core.human_input_v2.shared import AccountId, ContactId, DeploymentScope, IMSyncRunId, TenantId, WorkspaceScope
 from libs.uuid_utils import uuidv7
-from models.human_input_v2 import IMEncryptedCredentials
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.contact import Contact
 from repositories.human_input_v2.im_channel_repository import (
     IMChannel,
@@ -123,14 +123,14 @@ class _EmptyContactReader:
         return None
 
 
-def _envelope(ciphertext: bytes) -> IMEncryptedCredentials:
-    return IMEncryptedCredentials(ciphertext=b64encode(ciphertext).decode())
+def _envelope(ciphertext: bytes) -> ChannelEncryptedCredentials:
+    return ChannelEncryptedCredentials(ciphertext=b64encode(ciphertext).decode())
 
 
 def _channel(
     *,
     provider: IMProvider = IMProvider.SLACK,
-    encrypted_credentials: IMEncryptedCredentials | None = None,
+    encrypted_credentials: ChannelEncryptedCredentials | None = None,
 ) -> IMChannel:
     return IMChannel(
         id=_CHANNEL_ID,

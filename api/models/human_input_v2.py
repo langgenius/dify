@@ -59,6 +59,7 @@ from core.workflow.nodes.human_input.enums import (
 from core.workflow.nodes.human_input_v2.entities import RecipientConfig
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials as _ChannelEncryptedCredentials
 from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
 from repositories.human_input_v2.delivery_repository import (
     DeliveryTargetType,
@@ -86,33 +87,6 @@ class _ImmutableJSONObject(RootModel[dict[str, JsonValue]]):
     """Strict immutable base for intentionally opaque JSON object payloads."""
 
     model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
-
-
-class IMEncryptedCredentials(BaseModel):
-    """Versioned opaque credential envelope persisted for one IM Integration."""
-
-    model_config = ConfigDict(
-        extra="forbid", frozen=True, strict=True, validate_default=True
-    )
-
-    version: Literal[1] = Field(
-        default=1, description="Credential envelope format version."
-    )
-    ciphertext: str = Field(
-        min_length=1,
-        repr=False,
-        description="Encrypted complete credential payload.",
-    )
-
-
-class ResendEmailProviderEncryptedCredentials(_ImmutableJSONModel):
-    """Encrypted credentials persisted for a Resend email provider."""
-
-    provider: Literal[_EmailProviderType.RESEND] = Field(
-        default=_EmailProviderType.RESEND,
-        description="Discriminator for Resend encrypted credentials.",
-    )
-    encrypted_api_key: str = Field(description="Encrypted Resend API key.")
 
 
 class IMIdentityRawPayload(RootModel[dict[str, JsonValue]]):
@@ -509,12 +483,10 @@ class HumanInputEmailProvider(DefaultFieldsDCMixin, TypeBase):
     sender_email: Mapped[str] = mapped_column(
         sa.String(320), nullable=False, comment="Configured sender email address."
     )
-    encrypted_credentials: Mapped[ResendEmailProviderEncryptedCredentials] = (
-        mapped_column(
-            FrozenPydanticModelColumn(ResendEmailProviderEncryptedCredentials),
-            nullable=False,
-            comment="Encrypted Resend credential Pydantic model stored as JSON.",
-        )
+    encrypted_credentials: Mapped[_ChannelEncryptedCredentials] = mapped_column(
+        FrozenPydanticModelColumn(_ChannelEncryptedCredentials),
+        nullable=False,
+        comment="Encrypted complete Channel credentials stored as JSON.",
     )
     tenant_id: Mapped[str] = mapped_column(
         StringUUID,
@@ -586,8 +558,8 @@ class HumanInputIMChannel(DefaultFieldsDCMixin, TypeBase):
         nullable=False,
         comment="Confirmed provider-side organization, tenant, or workspace identifier.",
     )
-    encrypted_credentials: Mapped[IMEncryptedCredentials] = mapped_column(
-        FrozenPydanticModelColumn(IMEncryptedCredentials),
+    encrypted_credentials: Mapped[_ChannelEncryptedCredentials] = mapped_column(
+        FrozenPydanticModelColumn(_ChannelEncryptedCredentials),
         nullable=False,
         comment="Versioned opaque encrypted IM Channel credential envelope.",
     )
@@ -1479,7 +1451,6 @@ __all__ = [
     "HumanInputIMSyncRun",
     "HumanInputPlatformContactWorkspaceEntry",
     "IMBindingReconciliationSnapshot",
-    "IMEncryptedCredentials",
     "IMIdentityRawPayload",
     "IMIdentityReconciliationSnapshot",
     "IMMessageInbox",
@@ -1487,5 +1458,4 @@ __all__ = [
     "IMSyncContactSnapshot",
     "IMSyncDirectoryEntryPayload",
     "IMSyncIdentitySnapshot",
-    "ResendEmailProviderEncryptedCredentials",
 ]

@@ -15,9 +15,7 @@ from core.human_input_v2.im_integration.adapters.credentials import (
     SlackCredentials,
     WeComCredentials,
 )
-from core.human_input_v2.shared import NormalizedEmail
-from libs.helper import EmailStr
-from repositories.human_input_v2.email_channel import ResendCandidate
+from repositories.human_input_v2.email_channel.entities import ResendCredentials as _ResendCredentials
 
 from ._common import StrictModel
 
@@ -172,18 +170,10 @@ type IMProviderCredentialsInput = Annotated[
 
 class ResendCredentials(_SecretValidationMixin, StrictModel):
     provider: Literal[EmailProviderType.RESEND] = EmailProviderType.RESEND
-    sender_email: EmailStr = Field(
-        ..., description="The email address shown as the sender. Its domain must be verified in Resend."
-    )
-    sender_name: str = Field(min_length=1, max_length=255)
     api_key: _RequiredSecret = Field(description="Resend API key.")
 
-    def to_owner_candidate(self) -> ResendCandidate:
-        return ResendCandidate(
-            sender_email=NormalizedEmail(self.sender_email),
-            sender_name=self.sender_name,
-            api_key=_secret_value(self.api_key),
-        )
+    def to_owner_credentials(self) -> _ResendCredentials:
+        return _ResendCredentials.model_construct(api_key=_secret_value(self.api_key))
 
 
 type EmailProviderCredentials = Annotated[ResendCredentials, Field(discriminator="provider")]

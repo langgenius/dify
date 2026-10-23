@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.shared import AccountId, TenantId
 from libs.datetime_utils import naive_utc_now
-from models.human_input_v2 import HumanInputIMChannel, IMEncryptedCredentials
+from models.human_input_v2 import HumanInputIMChannel
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.im_channel_repository import (
     IMChannel,
     IMChannelAlreadyConfiguredError,
@@ -71,7 +72,7 @@ def _channel() -> IMChannel:
         updated_at=now,
         provider=IMProvider.FEISHU,
         provider_tenant_id=f"provider-tenant-{uuid4()}",
-        encrypted_credentials=IMEncryptedCredentials(ciphertext=f"opaque-{uuid4()}"),
+        encrypted_credentials=ChannelEncryptedCredentials(ciphertext=f"opaque-{uuid4()}"),
         app_identifier=f"app-{uuid4()}",
         webhook_id=WebhookId(uuid4().hex),
         config_version=1,

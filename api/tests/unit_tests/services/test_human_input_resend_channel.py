@@ -13,6 +13,7 @@ from repositories.human_input_v2.email_channel import (
     EmailProviderValidationError,
     ResendCandidate,
 )
+from repositories.human_input_v2.email_channel.entities import ResendCredentials
 from services.human_input_v2.resend_channel import ResendProviderGateway
 
 
@@ -47,7 +48,7 @@ def _candidate() -> ResendCandidate:
     return ResendCandidate(
         sender_email=NormalizedEmail("approvals@example.com"),
         sender_name="Approvals",
-        api_key="re_secret",
+        credentials=ResendCredentials(api_key="re_secret"),
     )
 
 
@@ -88,7 +89,7 @@ def test_send_test_rejects_invalid_credentials_after_a_successful_test() -> None
 
     gateway.send_test(_candidate())
     with pytest.raises(EmailProviderValidationError):
-        gateway.send_test(replace(_candidate(), api_key="re_invalid"))
+        gateway.send_test(replace(_candidate(), credentials=ResendCredentials(api_key="re_invalid")))
 
     for (_, _, kwargs), api_key in zip(http_client.calls, ("re_secret", "re_invalid"), strict=True):
         headers = kwargs["headers"]

@@ -99,9 +99,11 @@ def test_channel_transport_models_match_the_canonical_schema() -> None:
     assert set(module.ListChannelProvidersResponse.model_fields) == {"email_providers", "im_providers"}
     assert set(module.ChannelProvider.model_fields) == {"provider", "connection_mode"}
     assert set(module.ChannelDeleteResponse.model_fields) == {"channel_id"}
-    assert set(module.EmailChannelTestPayload.model_fields) == {"credentials"}
-    assert set(module.EmailChannelCreatePayload.model_fields) == {"credentials"}
+    assert set(module.EmailChannelTestPayload.model_fields) == {"sender_email", "sender_name", "credentials"}
+    assert set(module.EmailChannelCreatePayload.model_fields) == {"sender_email", "sender_name", "credentials"}
     assert set(module.EmailChannelUpdatePayload.model_fields) == {
+        "sender_email",
+        "sender_name",
         "credentials",
         "expected_config_version",
     }
@@ -239,12 +241,9 @@ def test_email_create_translates_expected_errors_with_cause(
         app.test_request_context(
             method="POST",
             json={
-                "credentials": {
-                    "provider": "resend",
-                    "sender_email": "sender@example.com",
-                    "sender_name": "Dify",
-                    "api_key": "resend-secret",
-                }
+                "credentials": {"provider": "resend", "api_key": "resend-secret"},
+                "sender_email": "sender@example.com",
+                "sender_name": "Dify",
             },
         ),
         pytest.raises(BaseHTTPException) as error_info,
@@ -394,12 +393,9 @@ def test_unexpected_provider_error_is_not_rewrapped(
         app.test_request_context(
             method="POST",
             json={
-                "credentials": {
-                    "provider": "resend",
-                    "sender_email": "sender@example.com",
-                    "sender_name": "Dify",
-                    "api_key": "resend-secret",
-                }
+                "credentials": {"provider": "resend", "api_key": "resend-secret"},
+                "sender_email": "sender@example.com",
+                "sender_name": "Dify",
             },
         ),
         pytest.raises(UnexpectedChannelProviderError) as error_info,
@@ -450,12 +446,9 @@ def test_create_returns_the_resulting_canonical_summary(
     with app.test_request_context(
         method="POST",
         json={
-            "credentials": {
-                "provider": "resend",
-                "sender_email": "sender@example.com",
-                "sender_name": "Dify",
-                "api_key": "resend-secret",
-            }
+            "credentials": {"provider": "resend", "api_key": "resend-secret"},
+            "sender_email": "sender@example.com",
+            "sender_name": "Dify",
         },
     ):
         response = unwrap(module.EmailChannelCreateApi.post)(
@@ -492,19 +485,16 @@ def test_email_candidate_test_delegates_the_submitted_candidate_without_a_recipi
             assert str(scope.id) == "workspace-1"
             assert str(candidate.sender_email) == "sender@example.com"
             assert candidate.sender_name == "Dify"
-            assert candidate.api_key == "resend-secret"
+            assert candidate.credentials.api_key == "resend-secret"
 
     monkeypatch.setattr(module, "build_human_input_email_channel_management_service", EmailOwner)
 
     with app.test_request_context(
         method="POST",
         json={
-            "credentials": {
-                "provider": "resend",
-                "sender_email": "sender@example.com",
-                "sender_name": "Dify",
-                "api_key": "resend-secret",
-            }
+            "credentials": {"provider": "resend", "api_key": "resend-secret"},
+            "sender_email": "sender@example.com",
+            "sender_name": "Dify",
         },
     ):
         response = unwrap(module.EmailChannelTestApi.post)(

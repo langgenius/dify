@@ -159,6 +159,11 @@ def merge_im_credentials(current: IMProviderCredentials, edit: IMCredentialsUpda
 
 @dataclass(frozen=True, slots=True)
 class ResendCredentialsUpdate:
+    api_key: str | Unchanged = field(repr=False)
+
+
+@dataclass(frozen=True, slots=True)
+class ResendChannelUpdate:
     sender_email: NormalizedEmail | Unchanged
     sender_name: str | Unchanged
-    api_key: str | Unchanged = field(repr=False)
+    credentials: ResendCredentialsUpdate = field(repr=False)

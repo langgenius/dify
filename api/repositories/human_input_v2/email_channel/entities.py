@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from pydantic import NaiveDatetime
+from pydantic import BaseModel, ConfigDict, Field, NaiveDatetime
 
 from core.human_input_v2.entities import EmailProviderType
 from core.human_input_v2.shared import (
@@ -13,6 +13,15 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     TenantId,
 )
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
+
+
+class ResendCredentials(BaseModel):
+    """Complete authentication credentials stored inside the Channel envelope."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, hide_input_in_errors=True)
+
+    api_key: str = Field(repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,15 +30,7 @@ class ResendCandidate:
 
     sender_email: NormalizedEmail
     sender_name: str
-    api_key: str = field(repr=False)
-
-    def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("API key must not be blank")
-        sender_name = self.sender_name.strip()
-        if not sender_name:
-            raise ValueError("sender name must not be blank")
-        object.__setattr__(self, "sender_name", sender_name)
+    credentials: ResendCredentials = field(repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,7 +53,7 @@ class EmailChannelConfiguration:
     tenant_id: TenantId
     sender_email: NormalizedEmail
     sender_name: str
-    protected_api_key: str = field(repr=False)
+    encrypted_credentials: ChannelEncryptedCredentials = field(repr=False)
     configured_by_account_id: AccountId | None
     created_at: NaiveDatetime
     updated_at: NaiveDatetime
@@ -62,8 +63,6 @@ class EmailChannelConfiguration:
     def __post_init__(self) -> None:
         if self.provider is not EmailProviderType.RESEND:
             raise ValueError("only the Resend email provider is supported")
-        if not self.protected_api_key:
-            raise ValueError("protected API key must not be empty")
         if self.config_version < 1:
             raise ValueError("config version must be positive")
 

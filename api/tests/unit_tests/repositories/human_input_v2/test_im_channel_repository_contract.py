@@ -18,12 +18,8 @@ from sqlalchemy.orm import Session
 
 from core.human_input_v2.entities import EmailProviderType, IMProvider
 from core.human_input_v2.shared import AccountId, TenantId
-from models.human_input_v2 import (
-    HumanInputEmailProvider,
-    HumanInputIMChannel,
-    IMEncryptedCredentials,
-    ResendEmailProviderEncryptedCredentials,
-)
+from models.human_input_v2 import HumanInputEmailProvider, HumanInputIMChannel
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.im_channel_repository import (
     IMChannel,
     IMChannelAlreadyConfiguredError,
@@ -84,7 +80,7 @@ def _channel(
         updated_at=updated_at,
         provider=provider,
         provider_tenant_id=f"provider-tenant-{index}",
-        encrypted_credentials=IMEncryptedCredentials(ciphertext=f"opaque-ciphertext-{index}"),
+        encrypted_credentials=ChannelEncryptedCredentials(ciphertext=f"opaque-ciphertext-{index}"),
         app_identifier=app_identifier or f"app-{index}",
         webhook_id=WebhookId(f"{webhook_index if webhook_index is not None else index:032x}"),
         config_version=version,
@@ -130,9 +126,9 @@ def _pending_email_configuration() -> HumanInputEmailProvider:
     return HumanInputEmailProvider(
         provider=EmailProviderType.RESEND,
         sender_email="pending@example.com",
-        encrypted_credentials=ResendEmailProviderEncryptedCredentials(encrypted_api_key="opaque-email-key"),
-        tenant_id="00000000-0000-0000-0000-000000000999",
         sender_name="Pending",
+        encrypted_credentials=ChannelEncryptedCredentials(ciphertext="opaque-email-key"),
+        tenant_id="00000000-0000-0000-0000-000000000999",
     )
 
 
@@ -257,7 +253,7 @@ def test_update_uses_id_and_scalar_version_cas_and_is_rollback_safe(
         current,
         updated_at=_LATER,
         provider_tenant_id="provider-tenant-updated",
-        encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-rotated-ciphertext"),
+        encrypted_credentials=ChannelEncryptedCredentials(ciphertext="opaque-rotated-ciphertext"),
         app_identifier="app-updated",
         webhook_id=WebhookId("f" * 32),
         config_version=2,

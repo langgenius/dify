@@ -547,7 +547,8 @@ def test_redis_verification_outage_is_audited_without_logging_its_command(
 
 def test_deleted_tenant_email_channel_does_not_block_deployment_otp(context: Context) -> None:
     from core.human_input_v2.entities import EmailProviderType
-    from models.human_input_v2 import HumanInputEmailProvider, ResendEmailProviderEncryptedCredentials
+    from models.human_input_v2 import HumanInputEmailProvider
+    from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 
     with context.sessions.begin() as session:
         HumanInputEmailProvider.metadata.tables[HumanInputEmailProvider.__tablename__].create(session.connection())
@@ -555,7 +556,7 @@ def test_deleted_tenant_email_channel_does_not_block_deployment_otp(context: Con
             tenant_id=context.form.tenant_id,
             provider=EmailProviderType.RESEND,
             sender_email="old-sender@example.com",
-            encrypted_credentials=ResendEmailProviderEncryptedCredentials(encrypted_api_key="unused-ciphertext"),
+            encrypted_credentials=ChannelEncryptedCredentials(ciphertext="unused-ciphertext"),
         )
         session.add(channel)
         session.flush()

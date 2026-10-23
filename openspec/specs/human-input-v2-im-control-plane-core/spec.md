@@ -111,7 +111,7 @@ IM persistence ports MUST provide Channel-bound run creation, snapshot loading, 
 - **THEN** the current-state transaction MUST roll back while preserving only explicitly committed diagnostic facts
 
 ### Requirement: IM Channel credentials MUST use one versioned opaque persistence envelope
-The IM credential owner MUST serialize the complete validated resolved credential payload, including its provider discriminator, and encrypt it once with an owner-bounded cipher before persistence. Workspace Channel composition MUST bind that cipher to the owning tenant and its existing provisioned key. Deployment cipher provisioning is deferred; production MUST reject deployment configuration when no deployment-bounded cipher is explicitly injected. `IMEncryptedCredentials` MUST inherit `BaseModel` directly and declare `ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)`. It MUST contain exactly `version: Literal[1]` and a non-empty `ciphertext`. `HumanInputIMChannel.encrypted_credentials` MUST use `FrozenPydanticModelColumn(IMEncryptedCredentials)`. The column MUST NOT use a provider-specific model, `TypeAdapter`, discriminated union or `model_types`. The Channel provider, provider tenant identity and safe `app_identifier` metadata MUST remain separately persisted.
+The IM credential owner MUST serialize the complete validated resolved credential payload, including its provider discriminator, and encrypt it once with an owner-bounded cipher before persistence. Workspace Channel composition MUST bind that cipher to the owning tenant and its existing provisioned key. Deployment cipher provisioning is deferred; production MUST reject deployment configuration when no deployment-bounded cipher is explicitly injected. `ChannelEncryptedCredentials` MUST inherit `BaseModel` directly and declare `ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)`. It MUST contain exactly `version: Literal[1]` and a non-empty `ciphertext`. `HumanInputIMChannel.encrypted_credentials` MUST use `FrozenPydanticModelColumn(ChannelEncryptedCredentials)`. The column MUST NOT use a provider-specific model, `TypeAdapter`, discriminated union or `model_types`. The Channel provider, provider tenant identity and safe `app_identifier` metadata MUST remain separately persisted.
 
 #### Scenario: A new workspace IM Channel is configured
 - **WHEN** a workspace create, credential rotation or replacement accepts complete credentials for any supported IM provider
@@ -126,7 +126,7 @@ The IM credential owner MUST serialize the complete validated resolved credentia
 
 #### Scenario: An envelope row is loaded
 - **WHEN** SQLAlchemy loads `HumanInputIMChannel.encrypted_credentials`
-- **THEN** `FrozenPydanticModelColumn` MUST return `IMEncryptedCredentials`
+- **THEN** `FrozenPydanticModelColumn` MUST return `ChannelEncryptedCredentials`
 - **AND** a missing ciphertext, an empty ciphertext, an extra field or a version other than `1` MUST fail strict Pydantic validation
 
 #### Scenario: A malformed or unsupported envelope is read
@@ -178,7 +178,7 @@ The credential owner MUST derive `app_identifier` from validated non-secret prov
 - **AND** Identity、Binding and Sync owners MUST remain unchanged
 
 ### Requirement: Webhook routing configuration MUST remain outside Channel credentials
-`webhook_id` MUST remain Dify-owned routing metadata stored separately from `IMEncryptedCredentials`。Deployment event transport mode and full `webhook_url` MUST NOT be persisted in `IMChannel`、`HumanInputIMChannel` or the credential envelope。Credential rotation MUST preserve `webhook_id`；replacement and delete/recreate MUST use a new value。
+`webhook_id` MUST remain Dify-owned routing metadata stored separately from `ChannelEncryptedCredentials`。Deployment event transport mode and full `webhook_url` MUST NOT be persisted in `IMChannel`、`HumanInputIMChannel` or the credential envelope。Credential rotation MUST preserve `webhook_id`；replacement and delete/recreate MUST use a new value。
 
 #### Scenario: Channel credentials rotate
 - **WHEN** ordinary update preserves Channel identity

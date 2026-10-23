@@ -86,7 +86,7 @@ class ResendProviderGateway:
         sender = f"{candidate.sender_name} <{candidate.sender_email}>"
         body = self._request(
             "/emails",
-            candidate.api_key,
+            candidate.credentials.api_key,
             json={
                 "from": sender,
                 "to": [to],

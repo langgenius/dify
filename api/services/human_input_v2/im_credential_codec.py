@@ -6,7 +6,7 @@ from core.human_input_v2.im_integration.adapters.credentials import (
     IMProviderCredentials,
     IMProviderCredentialsAdapter,
 )
-from models.human_input_v2 import IMEncryptedCredentials
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 
 _SAFE_ERROR = "IM credential configuration is unavailable"
 
@@ -25,14 +25,14 @@ class IMCredentialCodec:
     def __init__(self, cipher: BoundCredentialCipher) -> None:
         self._cipher = cipher
 
-    def seal(self, credentials: IMProviderCredentials) -> IMEncryptedCredentials:
+    def seal(self, credentials: IMProviderCredentials) -> ChannelEncryptedCredentials:
         encrypted = self._cipher.encrypt(credentials.model_dump_json())
-        return IMEncryptedCredentials(ciphertext=b64encode(encrypted).decode())
+        return ChannelEncryptedCredentials(ciphertext=b64encode(encrypted).decode())
 
     def load(
         self,
         provider: IMProvider,
-        envelope: IMEncryptedCredentials,
+        envelope: ChannelEncryptedCredentials,
     ) -> IMProviderCredentials:
         if envelope.version != 1:
             raise IMCredentialError(_SAFE_ERROR)

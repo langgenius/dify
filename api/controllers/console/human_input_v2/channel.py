@@ -28,14 +28,18 @@ from core.human_input_v2.entities import (
 from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
+    NormalizedEmail,
     TenantId,
     WorkspaceScope,
 )
 from fields.base import ResponseModel
 from fields.timestamp import Timestamp
+from libs.helper import EmailStr
 from models.account import Account
 from repositories.human_input_v2.email_channel import EmailChannelView, EmailConfigurationSnapshot
+from repositories.human_input_v2.email_channel.entities import ResendCandidate
 from repositories.human_input_v2.im_channel_repository import IMChannelId, IMChannelStatus
+from services.human_input_v2.credential_update import ResendChannelUpdate, Unchanged
 from services.human_input_v2.email_channel_management_composition import (
     build_human_input_email_channel_management_service,
 )
@@ -67,7 +71,7 @@ from .errors import (
     ChannelProviderConfigurationUpdatedHttpError,
     ChannelReplacementRequiredHttpError,
 )
-from .provider_updates import EmailProviderCredentialsUpdateInput, IMProviderCredentialsUpdateInput
+from .provider_updates import EmailProviderCredentialsUpdateInput, IMProviderCredentialsUpdateInput, UnchangedInput
 from .provider_views import (
     IMProviderCredentialsResponse,
     Redacted,
@@ -150,12 +154,28 @@ class ListChannelsResponse(ResponseModel):
     channels: Sequence[ChannelSummary]
 
 
-class EmailChannelTestPayload(StrictModel):
-    credentials: EmailProviderCredentials
+type _SenderName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
 
 
-class EmailChannelCreatePayload(StrictModel):
+class _EmailChannelCandidatePayload(StrictModel):
+    sender_email: EmailStr
+    sender_name: _SenderName
     credentials: EmailProviderCredentials
+
+    def to_owner_candidate(self) -> ResendCandidate:
+        return ResendCandidate(
+            sender_email=NormalizedEmail(self.sender_email),
+            sender_name=self.sender_name,
+            credentials=self.credentials.to_owner_credentials(),
+        )
+
+
+class EmailChannelTestPayload(_EmailChannelCandidatePayload):
+    pass
+
+
+class EmailChannelCreatePayload(_EmailChannelCandidatePayload):
+    pass
 
 
 class EmailChannelMutationResponse(ResponseModel):
@@ -170,8 +190,19 @@ class EmailChannelDetailResponse(ResponseModel):
 
 
 class EmailChannelUpdatePayload(StrictModel):
+    sender_email: EmailStr | UnchangedInput
+    sender_name: _SenderName | UnchangedInput
     credentials: EmailProviderCredentialsUpdateInput
     expected_config_version: ConfigVersion
+
+    def to_owner_update(self) -> ResendChannelUpdate:
+        return ResendChannelUpdate(
+            sender_email=(
+                Unchanged.VALUE if isinstance(self.sender_email, UnchangedInput) else NormalizedEmail(self.sender_email)
+            ),
+            sender_name=Unchanged.VALUE if isinstance(self.sender_name, UnchangedInput) else self.sender_name,
+            credentials=self.credentials.to_owner_update(),
+        )
 
 
 class ChannelDeleteQuery(StrictModel):
@@ -348,7 +379,7 @@ class EmailChannelTestApi(WorkspaceChannelResource):
     @with_current_tenant_id
     def post(self, tenant_id: str) -> ResponseReturnValue:
         request_body = EmailChannelTestPayload.model_validate(console_ns.payload or {})
-        candidate = request_body.credentials.to_owner_candidate()
+        candidate = request_body.to_owner_candidate()
         try:
             build_human_input_email_channel_management_service().test(
                 _workspace_scope(tenant_id),
@@ -380,7 +411,7 @@ class EmailChannelSavedTestApi(WorkspaceChannelResource):
                 _workspace_scope(tenant_id),
                 addressed_id,
                 _email_revision(request_body.expected_config_version, addressed_id),
-                request_body.credentials.to_owner_update(),
+                request_body.to_owner_update(),
             )
         except ChannelNotFoundError as error:
             raise ChannelNotFoundHttpError() from error
@@ -407,7 +438,7 @@ class EmailChannelCreateApi(WorkspaceChannelResource):
             snapshot = build_human_input_email_channel_management_service().create(
                 _workspace_scope(tenant_id),
                 _actor_id(current_user),
-                request_body.credentials.to_owner_candidate(),
+                request_body.to_owner_candidate(),
             )
         except ChannelAlreadyConfiguredError as error:
             raise ChannelAlreadyConfiguredHttpError() from error
@@ -451,7 +482,7 @@ class EmailChannelApi(WorkspaceChannelResource):
                 addressed_id,
                 _email_revision(request_body.expected_config_version, addressed_id),
                 _actor_id(current_user),
-                request_body.credentials.to_owner_update(),
+                request_body.to_owner_update(),
             )
         except ChannelNotFoundError as error:
             raise ChannelNotFoundHttpError() from error

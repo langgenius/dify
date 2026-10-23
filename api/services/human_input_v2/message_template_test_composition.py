@@ -36,7 +36,7 @@ def build_message_template_test_service(
         tenant_id=TenantId(tenant_id),
         account_id=AccountId(account_id),
         account_email=account_email,
-        email_repository=SQLAlchemyEmailChannelRepository(sessions),
+        email_repository_factory=SQLAlchemyEmailChannelRepository,
         email_gateway=ResendProviderGateway(),
         im_adapter_factory=build_adapter,
         form_service=HumanInputDeliveryTestFormService(

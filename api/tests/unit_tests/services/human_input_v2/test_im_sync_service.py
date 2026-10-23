@@ -25,7 +25,8 @@ from core.human_input_v2.shared import (
     TenantId,
     WorkspaceScope,
 )
-from models.human_input_v2 import HumanInputIMSyncRun, IMEncryptedCredentials
+from models.human_input_v2 import HumanInputIMSyncRun
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.im_binding_repository import IMBindingAssignment
 from repositories.human_input_v2.im_channel_repository import (
     IMChannel,
@@ -65,7 +66,7 @@ def _channel(*, config_version: int = 1) -> IMChannel:
         updated_at=_NOW,
         provider=IMProvider.FEISHU,
         provider_tenant_id="provider-tenant-1",
-        encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-ciphertext"),
+        encrypted_credentials=ChannelEncryptedCredentials(ciphertext="opaque-ciphertext"),
         app_identifier="app-1",
         webhook_id=WebhookId("00000000000000000000000000000001"),
         config_version=config_version,

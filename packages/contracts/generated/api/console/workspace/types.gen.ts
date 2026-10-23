@@ -15,6 +15,8 @@ export type ListChannelsResponse = {
 
 export type EmailChannelCreatePayload = {
   credentials: EmailProviderCredentials
+  sender_email: string
+  sender_name: SenderName
 }
 
 export type EmailChannelMutationResponse = {
@@ -23,6 +25,8 @@ export type EmailChannelMutationResponse = {
 
 export type EmailChannelTestPayload = {
   credentials: EmailProviderCredentials
+  sender_email: string
+  sender_name: SenderName
 }
 
 export type ChannelTestResponse = {
@@ -50,6 +54,8 @@ export type EmailChannelDetailResponse = {
 export type EmailChannelUpdatePayload = {
   credentials: EmailProviderCredentialsUpdateInput
   expected_config_version: ConfigVersion
+  sender_email: string | UnchangedInput
+  sender_name: SenderName | UnchangedInput
 }
 
 export type ImChannelCreatePayload = {
@@ -101,6 +107,8 @@ export type EmailProviderCredentials = {
   provider: 'resend'
 } & ResendCredentials
 
+export type SenderName = string
+
 export type ChannelStatus =
   | 'configured'
   | 'connected'
@@ -119,6 +127,10 @@ export type EmailProviderCredentialsUpdateInput = {
 } & ResendCredentialsUpdateInput
 
 export type ConfigVersion = string
+
+export type UnchangedInput = {
+  type: 'unchanged'
+}
 
 export type ImProviderCredentialsInput =
   | ({
@@ -183,8 +195,6 @@ export type ImProvider = 'ding_talk' | 'feishu' | 'lark' | 'ms_teams' | 'slack' 
 
 export type ResendCredentials = {
   provider?: 'resend'
-  sender_email: string
-  sender_name: string
 }
 
 export type Redacted = {
@@ -194,8 +204,6 @@ export type Redacted = {
 export type ResendCredentialsUpdateInput = {
   api_key: UnchangedInput
   provider: 'resend'
-  sender_email: string | UnchangedInput
-  sender_name: string | UnchangedInput
 }
 
 export type FeishuCredentialsInput = {
@@ -317,10 +325,6 @@ export type WeComCredentialsUpdateInput = {
 
 export type RequiredSecret = string
 
-export type UnchangedInput = {
-  type: 'unchanged'
-}
-
 export type OptionalSecret = string | null
 
 export type Identifier = string
@@ -329,15 +333,21 @@ export type UuidString = string
 
 export type EmailChannelCreatePayloadWritable = {
   credentials: EmailProviderCredentialsWritable
+  sender_email: string
+  sender_name: SenderName
 }
 
 export type EmailChannelTestPayloadWritable = {
   credentials: EmailProviderCredentialsWritable
+  sender_email: string
+  sender_name: SenderName
 }
 
 export type EmailChannelUpdatePayloadWritable = {
   credentials: EmailProviderCredentialsUpdateInputWritable
   expected_config_version: ConfigVersion
+  sender_email: string | UnchangedInput
+  sender_name: SenderName | UnchangedInput
 }
 
 export type ImChannelCreatePayloadWritable = {
@@ -409,15 +419,11 @@ export type ImProviderCredentialsUpdateInputWritable =
 export type ResendCredentialsWritable = {
   api_key: RequiredSecret
   provider?: 'resend'
-  sender_email: string
-  sender_name: string
 }
 
 export type ResendCredentialsUpdateInputWritable = {
   api_key: RequiredSecret | UnchangedInput
   provider: 'resend'
-  sender_email: string | UnchangedInput
-  sender_name: string | UnchangedInput
 }
 
 export type FeishuCredentialsInputWritable = {

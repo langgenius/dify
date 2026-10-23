@@ -18,6 +18,7 @@ Email channel management MUST scope every read and write to one Workspace and MU
 
 - **WHEN** the current Human Input Email configuration is requested
 - **THEN** the result MUST include provider, sender email, sender name and whether an API key is configured
+- **AND** reading the configuration metadata MUST NOT decrypt credentials
 - **AND** it MUST NOT include plaintext, encrypted or masked credential material
 
 #### Scenario: Configuration is requested across Workspaces
@@ -48,7 +49,7 @@ Candidate configurations MUST identify Resend as the provider. SMTP and other Em
 
 ### Requirement: Candidate configuration MUST be protected before persistence
 
-Saving a configuration MUST protect the complete candidate credential before any current configuration is created or replaced. Save MUST NOT perform provider I/O; remote credential and sender validation belongs to the explicit connection test.
+Saving a configuration MUST serialize the complete Resend authentication credentials as `{"api_key": ...}` and encrypt that object before any current configuration is created or replaced. `provider`, `sender_email` and `sender_name` MUST remain separate configuration metadata outside the credential payload. Save MUST NOT perform provider I/O; remote credential and sender validation belongs to the explicit connection test.
 
 #### Scenario: New candidate is structurally valid
 
@@ -95,11 +96,12 @@ Testing a candidate MUST send exactly one email to Resend's `delivered@resend.de
 
 Plaintext API keys MUST exist only for the minimum duration required to handle a command and MUST be protected before persistence.
 
-#### Scenario: New API key is persisted
+#### Scenario: Complete credentials are persisted
 
-- **WHEN** a candidate contains a new API key
-- **THEN** the key MUST be protected using Workspace-scoped credential protection before the repository write
-- **AND** persistence MUST receive only the protected value
+- **WHEN** a candidate is created or saved
+- **THEN** the complete credentials JSON MUST be encrypted once using Workspace-scoped credential protection before the repository write
+- **AND** Email and IM MUST use the same `ChannelEncryptedCredentials` model containing only `version: Literal[1]` and non-empty `ciphertext`
+- **AND** the Email repository MUST persist it through `FrozenPydanticModelColumn(ChannelEncryptedCredentials)` without a provider-specific envelope or union
 
 #### Scenario: Configuration is logged or diagnosed
 
@@ -166,6 +168,7 @@ Deleting the current Email configuration MUST remove only that Workspace provide
 ### Requirement: Persistence MUST expose operation-scoped transactional results
 
 Persistence operations MUST distinguish not-configured, created, updated, deleted, conflict and stale-configuration outcomes without leaking ORM records or credential values.
+The Service MUST own Session and transaction lifecycles. The Repository MUST use the injected Session without creating or closing Sessions or committing or rolling back transactions. Credential encryption, decryption and provider I/O MUST occur outside database transactions.
 
 #### Scenario: Repository operation succeeds
 
@@ -186,18 +189,31 @@ Persistence operations MUST distinguish not-configured, created, updated, delete
 
 ### Requirement: Resend edits and saved tests MUST resolve a complete candidate
 
-Create and unaddressed candidate test MUST require complete `sender_email`、`sender_name` and non-blank `api_key`。Update and ID-addressed test MUST accept the explicit credential edit contract defined by `human-input-channel-management-console-api`。The Email owner MUST load the addressed snapshot、check its version and merge edits into one complete `ResendCandidate`。
+Sender settings MUST be independent of Resend credentials in candidate and edit inputs. Create and unaddressed candidate test MUST require complete `sender_email`、`sender_name` and non-blank `api_key`。Update and ID-addressed test MUST accept the explicit credential edit contract defined by `human-input-channel-management-console-api`。The Email owner MUST load the addressed snapshot、check its version and merge edits into one complete `ResendCandidate`。
 
 #### Scenario: Saved API key is retained
 
 - **WHEN** an edit supplies `{"type":"unchanged"}` for `api_key`
-- **THEN** the owner MUST decrypt the addressed Workspace's saved API key to construct the candidate
-- **AND** save MUST encrypt the complete resulting API key before the existing CAS write
+- **THEN** the owner MUST decrypt the addressed Workspace's complete saved credentials to construct the candidate
+- **AND** save MUST encrypt the complete resulting credentials object before the existing CAS write
+
+#### Scenario: Sender settings are retained while the API key is replaced
+
+- **WHEN** an edit replaces `api_key` and retains either sender field
+- **THEN** the owner MUST decrypt the complete saved credentials and merge the edits with the retained values
+- **AND** the resulting ciphertext MUST contain only the replacement API key object
+- **AND** the sender settings and encrypted credentials MUST be written together through the existing CAS
+
+#### Scenario: Complete credentials change before persistence
+
+- **WHEN** another update wins after the saved credentials were read but before the merged credentials are written
+- **THEN** the existing identity-and-version CAS MUST reject the stale write
+- **AND** neither its ciphertext nor its sender settings may overwrite the winning configuration
 
 #### Scenario: Saved configuration is tested
 
 - **WHEN** an administrator submits edits to the ID-addressed connection test
-- **THEN** the owner MUST test the merged candidate through the existing test Email behavior
+- **THEN** the owner MUST decrypt the complete saved credentials and test the merged candidate through the existing test Email behavior
 - **AND** submitted overrides MUST NOT be persisted
 
 #### Scenario: Required edit instructions are invalid
@@ -205,3 +221,13 @@ Create and unaddressed candidate test MUST require complete `sender_email`、`se
 - **WHEN** an update or saved test omits an edit field or supplies a null or blank API key
 - **THEN** request validation MUST reject it
 - **AND** the current configuration MUST remain unchanged
+
+### Requirement: Email MUST reuse the shared Channel credential envelope
+
+Email MUST reuse the `ChannelEncryptedCredentials` envelope and persistence contract defined by `human-input-v2-im-control-plane-core`. Its decrypted Resend credentials MUST contain only `api_key`. `sender_email` and `sender_name` MUST remain top-level configuration fields stored in their existing columns.
+Credential serialization and deserialization MUST preserve the API key string exactly without interpreting or validating its provider-specific format.
+
+#### Scenario: Complete credentials cannot be decoded
+
+- **WHEN** decryption or Pydantic parsing of the complete credentials fails
+- **THEN** the operation MUST return a safe failure without exposing credential material

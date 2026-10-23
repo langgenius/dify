@@ -45,10 +45,10 @@ from models.human_input_v2 import (
     HumanInputIMIdentity,
     HumanInputPlatformContactWorkspaceEntry,
     HumanInputRecipient,
-    ResendEmailProviderEncryptedCredentials,
 )
 from models.model import EndUser
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
+from repositories.human_input_v2.email_channel.entities import ResendCredentials
 from repositories.human_input_v2.recipient_repository import ContactRecipientSubject, EmailRecipientSubject
 from services.human_input_v2.email_otp_service import AccessChallenge
 from services.human_input_v2.form_service import (
@@ -349,7 +349,7 @@ def test_concurrent_entries_have_one_initial_delivery_owner(context: Context):
 
 
 @pytest.fixture
-def providers(context: Context, monkeypatch: pytest.MonkeyPatch):
+def providers(context: Context, monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, Mock]:
     from cryptography.fernet import Fernet
 
     from configs import dify_config
@@ -369,16 +369,17 @@ def providers(context: Context, monkeypatch: pytest.MonkeyPatch):
     cipher = Fernet(Fernet.generate_key())
     monkeypatch.setattr(encrypter, "encrypt_token", lambda _tenant, token: cipher.encrypt(token.encode()).decode())
     monkeypatch.setattr(encrypter, "decrypt_token", lambda _tenant, token: cipher.decrypt(token.encode()).decode())
+    from services.human_input_v2.email_credential_codec import seal_email_credentials
+
+    credentials = seal_email_credentials(_TENANT, ResendCredentials(api_key="email-key"))
     with context.sessions.begin() as session:
         session.add(
             HumanInputEmailProvider(
                 tenant_id=_TENANT,
                 provider=EmailProviderType.RESEND,
-                sender_name="Approvals",
                 sender_email="approvals@example.com",
-                encrypted_credentials=ResendEmailProviderEncryptedCredentials(
-                    encrypted_api_key=encrypter.encrypt_token(_TENANT, "email-key")
-                ),
+                sender_name="Approvals",
+                encrypted_credentials=credentials,
             )
         )
     active: set[object] = set()
@@ -416,7 +417,8 @@ def providers(context: Context, monkeypatch: pytest.MonkeyPatch):
 
 def _add_im(context: Context):
     from libs.datetime_utils import naive_utc_now
-    from models.human_input_v2 import IMEncryptedCredentials, IMIdentityRawPayload
+    from models.human_input_v2 import IMIdentityRawPayload
+    from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
     from repositories.human_input_v2.im_channel_repository import IMChannel, IMChannelId, IMChannelStatus, WebhookId
     from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelWriter
 
@@ -431,7 +433,7 @@ def _add_im(context: Context):
                 updated_at=now,
                 provider=IMProvider.SLACK,
                 provider_tenant_id="provider-team",
-                encrypted_credentials=IMEncryptedCredentials(ciphertext="protected"),
+                encrypted_credentials=ChannelEncryptedCredentials(ciphertext="protected"),
                 app_identifier="app",
                 webhook_id=WebhookId(str(uuid4())),
                 config_version=1,

@@ -7,8 +7,8 @@ from dataclasses import replace
 from typing import Protocol
 
 from pydantic import NaiveDatetime
+from sqlalchemy.orm import Session
 
-from core.helper import encrypter
 from core.human_input_v2.entities import EmailProviderType
 from core.human_input_v2.shared import AccountId, EmailProviderId, TenantId, WorkspaceScope
 from libs.datetime_utils import naive_utc_now
@@ -25,7 +25,10 @@ from repositories.human_input_v2.email_channel import (
     ResendCandidate,
     UpdateEmailConfigurationStatus,
 )
-from services.human_input_v2.credential_update import ResendCredentialsUpdate, Unchanged, updated_value
+from repositories.human_input_v2.email_channel.entities import ResendCredentials
+from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmailChannelRepository
+from services.human_input_v2.credential_update import ResendChannelUpdate, updated_value
+from services.human_input_v2.email_credential_codec import load_email_credentials, seal_email_credentials
 from services.human_input_v2.errors import (
     ChannelAlreadyConfiguredError,
     ChannelNotFoundError,
@@ -52,13 +55,15 @@ class HumanInputEmailChannelManagementService:
 
     def __init__(
         self,
-        repository: EmailChannelRepository,
         provider_gateway: _ResendProviderGateway,
         *,
+        session_factory: Callable[[], Session],
+        repository_factory: Callable[[Session], EmailChannelRepository] = SQLAlchemyEmailChannelRepository,
         clock: Callable[[], NaiveDatetime] = naive_utc_now,
         id_factory: Callable[[], str] = lambda: str(uuidv7()),
     ) -> None:
-        self._repository = repository
+        self._repositories = repository_factory
+        self._sessions = session_factory
         self._provider_gateway = provider_gateway
         self._clock = clock
         self._id_factory = id_factory
@@ -87,7 +92,7 @@ class HumanInputEmailChannelManagementService:
         scope: WorkspaceScope,
         channel_id: EmailProviderId,
         expected_revision: EmailConfigurationSnapshot,
-        credentials: ResendCredentialsUpdate,
+        credentials: ResendChannelUpdate,
     ) -> None:
         """Test the merged saved snapshot without persisting submitted edits."""
 
@@ -104,19 +109,20 @@ class HumanInputEmailChannelManagementService:
         if self._load_current(scope.id) is not None:
             raise ChannelAlreadyConfiguredError("email channel is already configured")
 
-        protected_api_key = self._protect(scope.id, candidate.api_key)
+        encrypted_credentials = seal_email_credentials(scope.id, candidate.credentials)
         now = self._clock()
         configuration = EmailChannelConfiguration(
             id=EmailProviderId(self._id_factory()),
             tenant_id=scope.id,
             sender_email=candidate.sender_email,
             sender_name=candidate.sender_name,
-            protected_api_key=protected_api_key,
+            encrypted_credentials=encrypted_credentials,
             configured_by_account_id=actor_account_id,
             created_at=now,
             updated_at=now,
         )
-        create_result = self._repository.create(configuration)
+        with self._sessions() as session, session.begin():
+            create_result = self._repositories(session).create(configuration)
         if create_result.status is CreateEmailConfigurationStatus.CONFLICT or create_result.configuration is None:
             raise ChannelAlreadyConfiguredError("email channel is already configured")
         return self._view(create_result.configuration)
@@ -127,24 +133,25 @@ class HumanInputEmailChannelManagementService:
         channel_id: EmailProviderId,
         expected_revision: EmailConfigurationSnapshot,
         actor_account_id: AccountId | None,
-        candidate: ResendCandidate | ResendCredentialsUpdate,
+        candidate: ResendCandidate | ResendChannelUpdate,
     ) -> EmailChannelView:
         current = self._load_addressed(scope, channel_id)
         self._ensure_current_revision(current, expected_revision)
-        if isinstance(candidate, ResendCredentialsUpdate):
+        if isinstance(candidate, ResendChannelUpdate):
             candidate = self._merge_candidate(current, candidate)
         replacement = replace(
             current,
             sender_email=candidate.sender_email,
             sender_name=candidate.sender_name,
-            protected_api_key=self._protect(scope.id, candidate.api_key),
+            encrypted_credentials=seal_email_credentials(scope.id, candidate.credentials),
             configured_by_account_id=actor_account_id,
         )
-        update_result = self._repository.update(
-            replacement,
-            expected=expected_revision,
-            now=self._clock(),
-        )
+        with self._sessions() as session, session.begin():
+            update_result = self._repositories(session).update(
+                replacement,
+                expected=expected_revision,
+                now=self._clock(),
+            )
         if update_result.status is UpdateEmailConfigurationStatus.STALE or update_result.configuration is None:
             raise ProviderConfigurationUpdatedError("email configuration was updated")
         return self._view(update_result.configuration)
@@ -152,18 +159,15 @@ class HumanInputEmailChannelManagementService:
     @staticmethod
     def _merge_candidate(
         current: EmailChannelConfiguration,
-        credentials: ResendCredentialsUpdate,
+        credentials: ResendChannelUpdate,
     ) -> ResendCandidate:
-        api_key = credentials.api_key
-        if isinstance(api_key, Unchanged):
-            try:
-                api_key = encrypter.decrypt_token(str(current.tenant_id), current.protected_api_key)
-            except (ValueError, OSError):
-                raise UnexpectedChannelProviderError() from None
+        saved = load_email_credentials(current.tenant_id, current.encrypted_credentials)
         return ResendCandidate(
             sender_email=updated_value(credentials.sender_email, current.sender_email),
             sender_name=updated_value(credentials.sender_name, current.sender_name),
-            api_key=api_key,
+            credentials=ResendCredentials.model_construct(
+                api_key=updated_value(credentials.credentials.api_key, saved.api_key)
+            ),
         )
 
     def delete(
@@ -174,7 +178,8 @@ class HumanInputEmailChannelManagementService:
     ) -> EmailProviderId:
         current = self._load_addressed(scope, channel_id)
         self._ensure_current_revision(current, expected_revision)
-        delete_result = self._repository.delete(scope.id, expected=expected_revision)
+        with self._sessions() as session, session.begin():
+            delete_result = self._repositories(session).delete(scope.id, expected=expected_revision)
         if delete_result.status is not DeleteEmailConfigurationStatus.DELETED:
             raise ProviderConfigurationUpdatedError("email configuration was updated")
         return current.id
@@ -201,12 +206,6 @@ class HumanInputEmailChannelManagementService:
             # boundary deliberately discards both the message and exception chain.
             raise UnexpectedChannelProviderError() from None
 
-    def _protect(self, tenant_id: TenantId, api_key: str) -> str:
-        try:
-            return encrypter.encrypt_token(str(tenant_id), api_key)
-        except Exception:
-            raise UnexpectedChannelProviderError() from None
-
     def _load_addressed(
         self,
         scope: WorkspaceScope,
@@ -218,7 +217,8 @@ class HumanInputEmailChannelManagementService:
         return current
 
     def _load_current(self, tenant_id: TenantId) -> EmailChannelConfiguration | None:
-        return self._repository.load(tenant_id)
+        with self._sessions() as session:
+            return self._repositories(session).load(tenant_id)
 
     @staticmethod
     def _ensure_current_revision(

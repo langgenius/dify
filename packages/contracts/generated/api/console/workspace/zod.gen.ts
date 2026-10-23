@@ -11,6 +11,8 @@ export const zChannelConflictResponse = z.object({
   status: z.literal(409).optional().default(409),
 })
 
+export const zSenderName = z.string().min(1).max(255)
+
 /**
  * ChannelStatus
  */
@@ -39,6 +41,15 @@ export const zChannelDeleteResponse = z.object({
 })
 
 export const zConfigVersion = z.string().min(1)
+
+/**
+ * UnchangedInput
+ *
+ * Retain the addressed saved field; valid only for updates and saved tests.
+ */
+export const zUnchangedInput = z.object({
+  type: z.literal('unchanged'),
+})
 
 /**
  * EmailProviderType
@@ -112,8 +123,6 @@ export const zImChannelMutationResponse = z.object({
  */
 export const zResendCredentials = z.object({
   provider: z.literal('resend').optional().default('resend'),
-  sender_email: z.string(),
-  sender_name: z.string().min(1).max(255),
 })
 
 export const zEmailProviderCredentials = z
@@ -127,6 +136,8 @@ export const zEmailProviderCredentials = z
  */
 export const zEmailChannelCreatePayload = z.object({
   credentials: zEmailProviderCredentials,
+  sender_email: z.string(),
+  sender_name: zSenderName,
 })
 
 /**
@@ -134,6 +145,8 @@ export const zEmailChannelCreatePayload = z.object({
  */
 export const zEmailChannelTestPayload = z.object({
   credentials: zEmailProviderCredentials,
+  sender_email: z.string(),
+  sender_name: zSenderName,
 })
 
 /**
@@ -161,6 +174,30 @@ export const zEmailChannelDetailResponse = z.object({
   sender_email: z.string(),
   sender_name: z.string(),
   summary: zChannelSummary,
+})
+
+/**
+ * ResendCredentialsUpdateInput
+ */
+export const zResendCredentialsUpdateInput = z.object({
+  api_key: zUnchangedInput,
+  provider: z.literal('resend'),
+})
+
+export const zEmailProviderCredentialsUpdateInput = z
+  .object({
+    provider: z.literal('resend'),
+  })
+  .and(zResendCredentialsUpdateInput)
+
+/**
+ * EmailChannelUpdatePayload
+ */
+export const zEmailChannelUpdatePayload = z.object({
+  credentials: zEmailProviderCredentialsUpdateInput,
+  expected_config_version: zConfigVersion,
+  sender_email: z.union([z.string(), zUnchangedInput]),
+  sender_name: z.union([zSenderName, zUnchangedInput]),
 })
 
 /**
@@ -336,39 +373,6 @@ export const zImChannelDetailResponse = z.object({
 
 export const zRequiredSecret = z.string().min(1)
 
-/**
- * UnchangedInput
- *
- * Retain the addressed saved field; valid only for updates and saved tests.
- */
-export const zUnchangedInput = z.object({
-  type: z.literal('unchanged'),
-})
-
-/**
- * ResendCredentialsUpdateInput
- */
-export const zResendCredentialsUpdateInput = z.object({
-  api_key: zUnchangedInput,
-  provider: z.literal('resend'),
-  sender_email: z.union([z.string(), zUnchangedInput]),
-  sender_name: z.union([z.string().min(1).max(255), zUnchangedInput]),
-})
-
-export const zEmailProviderCredentialsUpdateInput = z
-  .object({
-    provider: z.literal('resend'),
-  })
-  .and(zResendCredentialsUpdateInput)
-
-/**
- * EmailChannelUpdatePayload
- */
-export const zEmailChannelUpdatePayload = z.object({
-  credentials: zEmailProviderCredentialsUpdateInput,
-  expected_config_version: zConfigVersion,
-})
-
 export const zOptionalSecret = z.string().min(1).nullable()
 
 export const zIdentifier = z.string().min(1).regex(/\S/)
@@ -464,8 +468,6 @@ export const zImChannelUpdatePayload = z.object({
 export const zResendCredentialsWritable = z.object({
   api_key: zRequiredSecret,
   provider: z.literal('resend').optional().default('resend'),
-  sender_email: z.string(),
-  sender_name: z.string().min(1).max(255),
 })
 
 export const zEmailProviderCredentialsWritable = z
@@ -479,6 +481,8 @@ export const zEmailProviderCredentialsWritable = z
  */
 export const zEmailChannelCreatePayloadWritable = z.object({
   credentials: zEmailProviderCredentialsWritable,
+  sender_email: z.string(),
+  sender_name: zSenderName,
 })
 
 /**
@@ -486,6 +490,8 @@ export const zEmailChannelCreatePayloadWritable = z.object({
  */
 export const zEmailChannelTestPayloadWritable = z.object({
   credentials: zEmailProviderCredentialsWritable,
+  sender_email: z.string(),
+  sender_name: zSenderName,
 })
 
 /**
@@ -494,8 +500,6 @@ export const zEmailChannelTestPayloadWritable = z.object({
 export const zResendCredentialsUpdateInputWritable = z.object({
   api_key: z.union([zRequiredSecret, zUnchangedInput]),
   provider: z.literal('resend'),
-  sender_email: z.union([z.string(), zUnchangedInput]),
-  sender_name: z.union([z.string().min(1).max(255), zUnchangedInput]),
 })
 
 export const zEmailProviderCredentialsUpdateInputWritable = z
@@ -510,6 +514,8 @@ export const zEmailProviderCredentialsUpdateInputWritable = z
 export const zEmailChannelUpdatePayloadWritable = z.object({
   credentials: zEmailProviderCredentialsUpdateInputWritable,
   expected_config_version: zConfigVersion,
+  sender_email: z.union([z.string(), zUnchangedInput]),
+  sender_name: z.union([zSenderName, zUnchangedInput]),
 })
 
 /**

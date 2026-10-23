@@ -177,7 +177,7 @@ The Console controller MUST build one provider catalog response from the Email a
 - **AND** it MUST NOT infer provider availability from configured state
 
 ### Requirement: IM configuration validation MUST precede atomic persistence
-Every IM create、ordinary update or replacement MUST validate complete credentials、required Provider permissions and Provider tenant identity before opening the write transaction。Credential protection MUST produce canonical `IMEncryptedCredentials` before persistence。Candidate test MUST validate only the submitted candidate and MUST NOT access Channel persistence。
+Every IM create、ordinary update or replacement MUST validate complete credentials、required Provider permissions and Provider tenant identity before opening the write transaction。Credential protection MUST produce canonical `ChannelEncryptedCredentials` before persistence。Candidate test MUST validate only the submitted candidate and MUST NOT access Channel persistence。
 
 #### Scenario: IM configuration validates successfully
 - **WHEN** Provider accepts credentials and required checks pass
@@ -269,3 +269,9 @@ Console controller MUST delegate IM candidate test、create、ordinary update、
 ### Requirement: Editing and testing saved credentials MUST preserve owner boundaries
 
 Update and ID-addressed test MUST use the credential edit contract defined by `human-input-channel-management-console-api`。The application owner MUST read and merge the addressed saved credentials after checking owner、identity and version。Only complete resulting credentials MAY reach provider adapters or credential protection。ID-addressed test MUST NOT persist its candidate。Detail reads MAY decrypt credentials and return `IMProviderCredentials` within the application。The Console controller MUST explicitly construct the Response using the identifier allowlist and secret redaction contract。HTTP responses MUST NOT contain plaintext secrets or encrypted credentials。
+
+#### Scenario: Saved credential edits are tested
+
+- **WHEN** the submitted owner, Channel identity and configuration version match the current saved Channel
+- **THEN** the owner MUST decrypt the saved credentials and merge the submitted edits before testing the complete candidate
+- **AND** the test MUST NOT persist the candidate or expose secrets in its response

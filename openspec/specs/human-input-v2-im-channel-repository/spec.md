@@ -8,7 +8,7 @@ Defines the persistence contract, owner-slot isolation, and repository boundarie
 
 ### Requirement: IM Channel persistence MUST use one owner-free Repository value
 
-`IMChannelReader` and `IMChannelWriter` MUST map persisted `HumanInputIMChannel` rows to immutable `IMChannel` values。`IMChannel` MUST contain Channel ID、timestamps、Provider、Provider tenant ID、canonical `IMEncryptedCredentials`、safe app identifier、`webhook_id`、numeric configuration version and credential-safe status。It MUST NOT contain raw `owner_key`、Dify owner、configuring actor、callback URL、ORM record or another domain's records。
+`IMChannelReader` and `IMChannelWriter` MUST map persisted `HumanInputIMChannel` rows to immutable `IMChannel` values。`IMChannel` MUST contain Channel ID、timestamps、Provider、Provider tenant ID、canonical `ChannelEncryptedCredentials`、safe app identifier、`webhook_id`、numeric configuration version and credential-safe status。It MUST NOT contain raw `owner_key`、Dify owner、configuring actor、callback URL、ORM record or another domain's records。
 
 #### Scenario: Workspace Channel is loaded
 
@@ -179,7 +179,7 @@ Reader and Writer implementations MUST query、insert、update or delete only `H
 
 ### Requirement: Credentials MUST remain opaque to Channel persistence
 
-`IMChannel` and `HumanInputIMChannel` MUST reuse the canonical `IMEncryptedCredentials` model and `FrozenPydanticModelColumn` contract unchanged。Reader、Writer and private mapping code MUST pass that value without decrypting it、parsing provider-specific fields or performing Provider I/O。
+`IMChannel` and `HumanInputIMChannel` MUST reuse the canonical `ChannelEncryptedCredentials` model and `FrozenPydanticModelColumn` contract unchanged。Reader、Writer and private mapping code MUST pass that value without decrypting it、parsing provider-specific fields or performing Provider I/O。
 
 #### Scenario: Credentials are mapped
 

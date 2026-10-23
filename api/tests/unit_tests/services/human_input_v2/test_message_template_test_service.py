@@ -42,16 +42,16 @@ from models.human_input_v2 import (
     HumanInputIMIdentity,
     HumanInputPlatformContactWorkspaceEntry,
     HumanInputRecipient,
-    IMEncryptedCredentials,
     IMIdentityRawPayload,
-    ResendEmailProviderEncryptedCredentials,
 )
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowType
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.delivery_repository import (
     EmailTargetSnapshot,
     IMUserTargetSnapshot,
     SubmissionAuthType,
 )
+from repositories.human_input_v2.email_channel.entities import ResendCredentials
 from repositories.human_input_v2.email_channel.ports import EmailProviderOperationError
 from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmailChannelRepository
 from repositories.human_input_v2.im_channel_repository import IMChannel, IMChannelId, IMChannelStatus, WebhookId
@@ -168,7 +168,7 @@ def context(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Context]:
         tenant_id=_TENANT,
         account_id=_ACCOUNT,
         account_email="editor@example.com",
-        email_repository=SQLAlchemyEmailChannelRepository(sessions),
+        email_repository_factory=SQLAlchemyEmailChannelRepository,
         email_gateway=gateway,
         im_adapter_factory=adapter_factory,
         form_service=HumanInputDeliveryTestFormService(
@@ -181,8 +181,8 @@ def context(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Context]:
         ),
     )
     monkeypatch.setattr(
-        "services.human_input_v2.message_template_test_service.encrypter.decrypt_token",
-        lambda _tenant_id, _token: "decrypted-key",
+        "core.helper.encrypter.decrypt_token",
+        lambda _tenant_id, _token: json.dumps({"api_key": "decrypted-key"}),
     )
     monkeypatch.setattr(dify_config, "CONSOLE_WEB_URL", "https://console.example.com/")
     with sessions.begin() as session:
@@ -210,9 +210,9 @@ def context(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Context]:
                 HumanInputEmailProvider(
                     tenant_id=str(_TENANT),
                     provider=EmailProviderType.RESEND,
-                    sender_name="Approvals",
                     sender_email="approvals@example.com",
-                    encrypted_credentials=ResendEmailProviderEncryptedCredentials(encrypted_api_key="key"),
+                    sender_name="Approvals",
+                    encrypted_credentials=ChannelEncryptedCredentials(ciphertext="key"),
                 ),
             ]
         )
@@ -223,7 +223,7 @@ def context(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Context]:
                 updated_at=_NOW,
                 provider=IMProvider.SLACK,
                 provider_tenant_id="slack-workspace",
-                encrypted_credentials=IMEncryptedCredentials(ciphertext="key"),
+                encrypted_credentials=ChannelEncryptedCredentials(ciphertext="key"),
                 app_identifier="slack-app",
                 webhook_id=WebhookId("webhook"),
                 config_version=1,
@@ -265,7 +265,7 @@ def test_email_renders_and_sends_only_to_editor_with_a_real_test_form(context: _
     context.send(**{"#start.name#": "Alice\r\nBcc: other@example.com"})
 
     candidate = context.gateway.send_message.call_args.args[0]
-    assert candidate.api_key == "decrypted-key"
+    assert candidate.credentials.api_key == "decrypted-key"
     assert str(candidate.sender_email) == "approvals@example.com"
     sent = context.gateway.send_message.call_args.kwargs
     assert sent["to"] == "editor@example.com"
@@ -284,6 +284,35 @@ def test_email_renders_and_sends_only_to_editor_with_a_real_test_form(context: _
         recipient = session.query(HumanInputRecipient).one()
         assert recipient.subject_value == _CONTACT
     context.adapter_factory.assert_not_called()
+
+
+def test_email_template_test_uses_complete_encrypted_credentials(
+    context: _Context, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cryptography.fernet import Fernet
+
+    from core.helper import encrypter
+    from core.human_input_v2.shared import NormalizedEmail
+    from repositories.human_input_v2.email_channel.entities import ResendCandidate
+    from services.human_input_v2.email_credential_codec import seal_email_credentials
+
+    cipher = Fernet(Fernet.generate_key())
+    monkeypatch.setattr(encrypter, "encrypt_token", lambda _tenant, token: cipher.encrypt(token.encode()).decode())
+    monkeypatch.setattr(encrypter, "decrypt_token", lambda _tenant, token: cipher.decrypt(token.encode()).decode())
+    candidate = ResendCandidate(
+        NormalizedEmail("encrypted@example.com"), "Encrypted Sender", ResendCredentials(api_key="complete-api-key")
+    )
+    with context.sessions.begin() as session:
+        record = session.query(HumanInputEmailProvider).one()
+        record.sender_email = str(candidate.sender_email)
+        record.sender_name = candidate.sender_name
+        record.encrypted_credentials = seal_email_credentials(_TENANT, candidate.credentials)
+
+    context.send(**{"#start.name#": "Alice"})
+
+    assert context.gateway.send_message.call_args.args[0] == candidate
+    with context.sessions() as session:
+        assert session.query(HumanInputEmailProvider).one().config_version == 1
 
 
 def test_email_preserves_markdown_headings_and_approval_link(context: _Context) -> None:

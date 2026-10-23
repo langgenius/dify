@@ -113,11 +113,18 @@ The Console `human_input_v2` controller package MUST own provider transport DTOs
 - **AND** `null` MUST clear only a nullable field
 - **AND** blank credentials、unknown marker properties and response-only `redacted` markers MUST be rejected
 
+#### Scenario: Email sender settings are submitted
+
+- **WHEN** create, update or connection test submits an Email Channel
+- **THEN** `sender_email` and `sender_name` MUST be top-level fields outside `credentials`
+- **AND** Resend `credentials` MUST contain only its provider discriminator and API-key input or edit instruction
+- **AND** update and saved test MUST require explicit sender values or `{"type":"unchanged"}` instructions
+
 #### Scenario: Resend configuration is partially edited
 
 - **WHEN** an update changes sender settings and retains `api_key`
 - **THEN** the Email owner MUST combine the submitted settings with the saved API key
-- **AND** save MUST protect the complete API key before persistence without provider I/O
+- **AND** save MUST encrypt the complete `{"api_key": ...}` credential object before persistence without provider I/O
 
 #### Scenario: Extra provider field is submitted
 
@@ -382,4 +389,10 @@ ID-addressed test MUST accept the same credentials and `expected_config_version`
 
 ### Requirement: Partial editing MUST preserve complete encrypted storage
 
-The application owner MUST merge credential edits before protection。IM update MUST serialize and encrypt the complete resulting provider credential document through `IMCredentialCodec`。The edit markers MUST NOT enter persistence or provider adapters。The Repository MUST continue storing one `IMEncryptedCredentials` envelope rather than per-field ciphertexts。Resend MUST retain its existing encrypted API-key storage format。
+The application owner MUST merge credential edits before protection。IM update MUST serialize and encrypt the complete resulting provider credential document through `IMCredentialCodec`。The edit markers MUST NOT enter persistence or provider adapters。The Repository MUST continue storing one `ChannelEncryptedCredentials` envelope rather than per-field ciphertexts。Resend MUST encrypt the complete merged credentials through the same `ChannelEncryptedCredentials` envelope, as defined by `human-input-email-channel-management`。
+
+#### Scenario: Credential edits are saved
+
+- **WHEN** an administrator saves a current Email or IM Channel with retained fields and submitted overrides
+- **THEN** the owner MUST combine saved values and submitted overrides before encrypting one complete credential document
+- **AND** the repository CAS write MUST receive one `ChannelEncryptedCredentials` envelope
