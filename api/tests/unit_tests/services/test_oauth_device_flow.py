@@ -194,7 +194,13 @@ def test_state_reader_tolerates_legacy_approval_fields() -> None:
     assert state.status is DeviceFlowStatus.PENDING
 
 
-@pytest.mark.parametrize("read_method", ["load_by_device_code", "consume_on_poll"])
+@pytest.mark.parametrize(
+    "read_method",
+    [
+        pytest.param(DeviceFlowRedis.load_by_device_code, id="load_by_device_code"),
+        pytest.param(DeviceFlowRedis.consume_on_poll, id="consume_on_poll"),
+    ],
+)
 @pytest.mark.parametrize(
     "payload",
     [
@@ -209,11 +215,15 @@ def test_state_reader_tolerates_legacy_approval_fields() -> None:
         '"poll_payload":{"token":"secret-token"}}',
     ],
 )
-def test_corrupt_state_is_unavailable(read_method: str, payload: str, caplog: pytest.LogCaptureFixture) -> None:
+def test_corrupt_state_is_unavailable(
+    read_method: Callable[[DeviceFlowRedis, str], DeviceFlowState | None],
+    payload: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     redis = _Redis(response=payload)
     store = DeviceFlowRedis(redis)
 
-    assert getattr(store, read_method)("device-1") is None
+    assert read_method(store, "device-1") is None
     assert redis.deleted == []
     assert "secret-token" not in caplog.text
 
