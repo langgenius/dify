@@ -3,9 +3,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
 from graphon.enums import BuiltinNodeTypes
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class DummyNode:
@@ -64,7 +65,7 @@ class TestDifyNodeFactory:
         )
 
     def _factory(self):
-        run_context = build_dify_run_context(
+        init_params = build_test_graph_init_params(
             tenant_id="tenant",
             app_id="app",
             user_id="user",
@@ -73,7 +74,7 @@ class TestDifyNodeFactory:
         )
 
         return DifyNodeFactory(
-            init_params=SimpleNamespace(run_context=run_context),
+            init_params=init_params,
             runtime_state=SimpleNamespace(),
         )
 

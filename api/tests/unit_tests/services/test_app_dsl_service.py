@@ -1141,7 +1141,7 @@ def test_workflow_export_filters_test_credentials_but_keeps_personal_requirement
         "services.app_dsl_service.AgentDslService.export_workflow_packages",
         lambda _self, **kwargs: (kwargs["graph"], {}),
     )
-    exported: dict = {}
+    exported: dict[str, object] = {}
 
     AppDslService._append_workflow_export_data(
         export_data=exported,
@@ -1150,11 +1150,14 @@ def test_workflow_export_filters_test_credentials_but_keeps_personal_requirement
         session=sqlite_session,
     )
 
-    exported_data = exported["workflow"]["graph"]["nodes"][0]["data"]
+    exported_workflow = cast("dict[str, object]", exported["workflow"])
+    exported_graph = cast("dict[str, object]", exported_workflow["graph"])
+    exported_nodes = cast("list[dict[str, object]]", exported_graph["nodes"])
+    exported_data = cast("dict[str, object]", exported_nodes[0]["data"])
     assert ("test_credential_id" in exported_data) is include_secret
     assert exported_data["end_user_auth"] == node_data["end_user_auth"]
     assert exported_data["credential_source"] == "end_user"
-    assert exported["workflow"]["graph"]["nodes"][1]["data"] == reuse_data
+    assert exported_nodes[1]["data"] == reuse_data
     assert workflow.graph_dict["nodes"][0]["data"] == node_data
 
 

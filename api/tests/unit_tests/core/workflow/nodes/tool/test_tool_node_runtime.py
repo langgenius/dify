@@ -87,12 +87,14 @@ def test_missing_execution_graph_cannot_fall_back_to_workspace_credentials(sourc
 
 def test_node_factory_keeps_dify_credential_source_from_the_execution_graph() -> None:
     from core.workflow.node_factory import DifyNodeFactory
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import RuntimeState
 
     data = _build_tool_node_data().model_dump(mode="json")
     data["credential_source"] = "end_user"
     params = build_test_graph_init_params(graph_config={"nodes": [{"id": "personal", "data": data}]})
-    factory = DifyNodeFactory(params, GraphRuntimeState(variable_pool=build_test_variable_pool(), start_at=0))
+    factory = DifyNodeFactory(
+        params, RuntimeState(variable_pool=build_test_variable_pool(), start_at=0, workflow_id=params.workflow_id)
+    )
     node = factory.create_node({"id": "personal", "data": data})
     data["credential_source"] = "workspace"
     assert isinstance(node.node_data, ToolNodeData)

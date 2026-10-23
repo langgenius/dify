@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import TestResponse
 
 from clients.plugin.auth_entities import OAuthRevokeResult
-from configs import dify_config
 from controllers.common import end_user_connection_oauth
 from controllers.console import bp as console_bp
 from controllers.web import bp, connection_oauth, connections, wraps
@@ -30,7 +29,9 @@ def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.M
 
 
 @pytest.fixture
-def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[FlaskClient]:
+def client(
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> Iterator[FlaskClient]:
     def identity() -> tuple[App, EndUser]:
         with harness.base.sessions() as session:
             app = session.get(App, harness.base.context.app_id)
@@ -44,9 +45,11 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
     monkeypatch.setattr(connection_oauth, "application_services", lambda: services)
     monkeypatch.setattr(end_user_connection_oauth, "application_services", lambda: services)
     monkeypatch.setattr(connections, "application_services", lambda: services)
-    monkeypatch.setattr(dify_config, "CONSOLE_API_URL", "https://console-api.example")
-    monkeypatch.setattr(dify_config, "APP_WEB_URL", "https://web.example")
-    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    config_overrides(
+        CONSOLE_API_URL="https://console-api.example",
+        APP_WEB_URL="https://web.example",
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+    )
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.register_blueprint(bp)

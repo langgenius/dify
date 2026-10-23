@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
 from types import SimpleNamespace
@@ -8,7 +9,6 @@ import sqlalchemy as sa
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from constants.end_user_connections import ConnectionCredentialStatus
 from context.connection_execution import ConnectionExecutionContext, ExecutionConnectionSelection
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
@@ -190,8 +190,8 @@ def test_independent_nodes_for_same_provider_keep_distinct_choices(harness: OAut
         assert loader._tool_from_handle(handle).runtime.credentials == {"api_key": secret}
 
 
-def test_guest_owned_connection_can_execute(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dify_config, "END_USER_AUTH_ALLOW_ANONYMOUS", True)
+def test_guest_owned_connection_can_execute(harness: OAuthHarness, config_overrides: Callable[..., None]) -> None:
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=True)
     with harness.base.sessions.begin() as session:
         user = session.get(EndUser, harness.base.context.end_user_id)
         assert user is not None
@@ -205,7 +205,7 @@ def test_guest_owned_connection_can_execute(harness: OAuthHarness, monkeypatch: 
     assert loader._tool_from_handle(handle).runtime.credentials == {"api_key": "original-secret"}
 
     harness.base.auth.calls.clear()
-    monkeypatch.setattr(dify_config, "END_USER_AUTH_ALLOW_ANONYMOUS", False)
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
     with pytest.raises(ToolRuntimeResolutionError, match="Sign in to use personal connections"):
         loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
     assert harness.base.auth.calls == []
