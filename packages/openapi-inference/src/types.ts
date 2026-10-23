@@ -169,17 +169,19 @@ type MediaSchema<C, K, S> = InferSchema<
   [],
   K extends 'application/json' | `${string}+json` ? true : false
 >
-type RequestMedia<C, S, B> = {
-  [K in keyof C]: (B extends { required: true }
-    ? { body: MediaSchema<C[K], K, S> }
-    : { body?: MediaSchema<C[K], K, S> }) &
-    // JSON is the default for mixed media. Other alternatives must be explicit.
-    (K extends 'application/json' | `${string}+json`
-      ? { contentType?: K }
-      : Extract<keyof C, 'application/json' | `${string}+json`> extends never
-        ? { contentType?: K }
-        : { contentType: K })
-}[keyof C]
+type RequestMedia<C, S, B> =
+  | {
+      [K in keyof C]: (B extends { required: true }
+        ? { body: MediaSchema<C[K], K, S> }
+        : { body?: MediaSchema<C[K], K, S> }) &
+        // application/json is the default; a single declared media type is unambiguous.
+        (K extends 'application/json'
+          ? { contentType?: K }
+          : [Exclude<keyof C, K>] extends [never]
+            ? { contentType?: K }
+            : { contentType: K })
+    }[keyof C]
+  | (B extends { required: true } ? never : { body?: never; contentType?: keyof C })
 type RequestBody<S, O> =
   Resolve<Value<O, 'requestBody'>, S> extends infer B
     ? [B] extends [never]
@@ -202,7 +204,7 @@ export type RequestOptions<S, P extends keyof Paths<S>, M extends Method> = Grou
   }
 type ResponseContent<C, S> = {
   [K in keyof C]: K extends 'application/json' | `${string}+json`
-    ? InferSchema<Value<C[K], 'schema'>, S>
+    ? MediaSchema<C[K], K, S>
     : K extends 'text/event-stream'
       ? ReadableStream<Uint8Array>
       : K extends `text/${string}`
@@ -232,21 +234,6 @@ export type ResponseFor<S, P extends keyof Paths<S>, M extends Method> =
                 : never
           }[keyof R]
     : never
-type Args<O> = Record<never, never> extends O ? [options?: O] : [options: O]
-type Entries<S> = {
-  [P in keyof Paths<S>]: {
-    [M in Extract<keyof PathItem<S, P>, Method>]: {
-      path: P
-      method: M
-      operation: Operation<S, P, M>
-    }
-  }[Extract<keyof PathItem<S, P>, Method>]
-}[keyof Paths<S>]
-export type Operations<S> = {
-  [E in Entries<S> as Value<E['operation'], 'operationId'> & string]: (
-    ...args: Args<RequestOptions<S, E['path'], E['method']>>
-  ) => Promise<ResponseFor<S, E['path'], E['method']>>
-}
 export type CallOptions<Context extends object = object> = {
   client?: HttpClient
   signal?: AbortSignal

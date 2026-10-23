@@ -13,7 +13,7 @@ import { openapi } from '../dist/tooling/vite.js'
 const root = resolve(import.meta.dirname, '..')
 const fixture = parse(readFileSync(join(root, 'examples/petstore/pets.openapi.yaml'), 'utf8'))
 
-for (const mode of ['named', 'nested', 'query'])
+for (const mode of ['nested', 'query'])
   test(`${mode}: Vite browser bundle drops 1,000 unused operations and all schema metadata`, async (t) => {
     const dir = mkdtempSync(join(root, 'test/.bundle-'))
     try {
@@ -25,11 +25,9 @@ for (const mode of ['named', 'nested', 'query'])
         } else writeFileSync(join(dir, file), stringify(spec))
         writeFileSync(
           join(dir, 'entry.ts'),
-          mode === 'named'
-            ? `import { getPet } from './${file}'; export { getPet };`
-            : mode === 'nested'
-              ? `import { api } from './${file}'; export const getPet = api.pets.byPetId.get;`
-              : `import { query } from './${file}'; export const getPet = query.pets.byPetId.get.queryOptions;`,
+          mode === 'nested'
+            ? `import { api } from './${file}'; export const getPet = api.pets.byPetId.get;`
+            : `import { query } from './${file}'; export const getPet = query.pets.byPetId.get.queryOptions;`,
         )
         const result = await build({
           configFile: false,

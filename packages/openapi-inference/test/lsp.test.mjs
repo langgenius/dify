@@ -14,12 +14,11 @@ test('native TS 7.1 LSP: operation completions, hover, definition into YAML, liv
   const dir = mkdtempSync(join(root, 'test/.lsp-'))
   const spec = readFileSync(join(root, 'examples/petstore/pets.openapi.yaml'), 'utf8')
   const source = [
-    "import type { Operations } from '@dify/openapi-inference';",
-    "import * as api from './pets.yaml';",
+    "import { api } from './pets.yaml';",
     '// SDK inferred by the content mapper',
-    'const pet = await api.api.pets.byPetId.get({ params: { petId: 1 } });',
+    'const pet = await api.pets.byPetId.get({ params: { petId: 1 } });',
     'pet.name;',
-    'api.api.pets.byPetId.',
+    'api.pets.byPetId.',
   ].join('\n')
   writeFileSync(join(dir, 'pets.yaml'), spec)
   writeFileSync(join(dir, 'index.ts'), source)
@@ -61,19 +60,19 @@ test('native TS 7.1 LSP: operation completions, hover, definition into YAML, liv
     })
     const completions = await rpc.request('textDocument/completion', {
       textDocument: { uri },
-      position: { line: 5, character: source.split('\n')[5].length },
+      position: { line: 4, character: source.split('\n')[4].length },
     })
     const labels = (completions.items ?? completions).map((item) => item.label)
     assert(labels.includes('get'), JSON.stringify(completions))
     assert(labels.includes('delete'))
     const hover = await rpc.request('textDocument/hover', {
       textDocument: { uri },
-      position: { line: 4, character: 5 },
+      position: { line: 3, character: 5 },
     })
     assert.match(JSON.stringify(hover), /name.*string/)
     const definitions = await rpc.request('textDocument/definition', {
       textDocument: { uri },
-      position: { line: 3, character: source.split('\n')[3].indexOf('.get') + 2 },
+      position: { line: 2, character: source.split('\n')[2].indexOf('.get') + 2 },
     })
     assert.match(JSON.stringify(definitions), /pets.yaml/)
     rpc.notify('textDocument/didOpen', {
@@ -87,7 +86,7 @@ test('native TS 7.1 LSP: operation completions, hover, definition into YAML, liv
     })
     const changedHover = await rpc.request('textDocument/hover', {
       textDocument: { uri },
-      position: { line: 4, character: 5 },
+      position: { line: 3, character: 5 },
     })
     assert.match(JSON.stringify(changedHover), /name.*number/)
     await rpc.request('shutdown')

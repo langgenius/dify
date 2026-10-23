@@ -11,13 +11,14 @@ import { ApiError, createClient, client as defaultClient } from '../dist/index.j
 import { describeOperations } from '../dist/operation.js'
 import { createQueryKey, createQueryOperation } from '../dist/query-runtime.js'
 import { compileRuntime, transformSpec } from '../dist/tooling/transform.js'
+import { mediaSpec } from './media.mjs'
 import '../dist/tooling/register.js'
 /* oxlint-enable vitest/no-import-node-test, antfu/no-import-dist */
 
 const { api, query: generatedQuery } = await import('../examples/petstore/pets.openapi.yaml')
 const pet = { id: 1, name: 'Mochi', status: 'available' }
 
-test('document sidecar automatically binds named, nested and query exports in Node', async () => {
+test('document sidecar automatically binds only API and query exports in Node', async () => {
   const dir = await mkdtemp(join(import.meta.dirname, '.config-'))
   try {
     const file = join(dir, 'api.openapi')
@@ -26,7 +27,12 @@ test('document sidecar automatically binds named, nested and query exports in No
       JSON.stringify({
         openapi: '3.1.0',
         paths: {
-          '/pets': { get: { operationId: 'listPets', responses: { 200: { description: 'OK' } } } },
+          ...Object.fromEntries(
+            ['then', 'api', 'query', 'default'].map((operationId, index) => [
+              index ? `/pets/${operationId}` : '/pets',
+              { get: { operationId, responses: { 200: { description: 'OK' } } } },
+            ]),
+          ),
         },
       }),
     )
@@ -45,7 +51,8 @@ export default {
 `,
     )
     const bound = await import(pathToFileURL(file).href)
-    assert.equal((await bound.listPets()).url, 'https://bound.test/pets')
+    assert.deepEqual(Object.keys(bound), ['api', 'query'])
+    assert.equal((await bound.api.pets.get()).url, 'https://bound.test/pets')
     assert.equal(
       (await bound.api.pets.get(undefined, { context: { user: 'alice' } })).user,
       'alice',
@@ -259,10 +266,6 @@ test('mapper and runtime reject the same invalid documents and route names', () 
       /Duplicate operationId/,
     ],
     [
-      { openapi: '3.1.0', paths: { '/x': { get: operation('api') } } },
-      /reserved for the nested client/,
-    ],
-    [
       { openapi: '3.1.0', paths: {}, components: { schemas: { X: { $ref: '#/missing' } } } },
       /Unresolved reference/,
     ],
@@ -306,4 +309,42 @@ test('nested typed headers reach Fetch alongside transport headers without filli
   assert.equal(calls[0].headers.get('X-Transport'), 'extra')
   assert.deepEqual(result, {})
   await assert.rejects(invokeRpcOperation(operation, {}, { client }), /Missing required header/)
+})
+
+test('request media defaults agree with types and JSON responses preserve wire values', async () => {
+  const operations = [...describeOperations(mediaSpec).values()]
+  const operation = (path) => operations.find((operation) => operation.path === path)
+  const calls = []
+  const client = createClient({
+    baseUrl: 'https://example.test',
+    fetch: async (_url, init) => {
+      calls.push(init)
+      return Response.json({ inline: 'inline', referenced: 'referenced' })
+    },
+  })
+  await client.request(operation('/mixed'), { body: { kind: 'standard' } })
+  assert.equal(calls.at(-1).headers.get('content-type'), 'application/json')
+  await client.request(operation('/mixed'), {
+    body: { kind: 'vendor' },
+    contentType: 'application/vnd.example+json',
+  })
+  assert.equal(calls.at(-1).headers.get('content-type'), 'application/vnd.example+json')
+  assert.equal(calls.at(-1).body, '{"kind":"vendor"}')
+  await client.request(operation('/single'), { body: { kind: 'single' } })
+  assert.equal(calls.at(-1).headers.get('content-type'), 'application/vnd.example+json')
+  await assert.rejects(
+    client.request(operation('/vendors'), { body: { kind: 'second' } }),
+    /content type/,
+  )
+  await assert.rejects(client.request(operation('/vendors')), /Missing required request body/)
+  assert.equal(calls.length, 3, 'Ambiguous media and missing bodies fail before sending')
+  await client.request(operation('/vendors'), {
+    body: { kind: 'second' },
+    contentType: 'application/vnd.second+json',
+  })
+  assert.equal(calls.at(-1).headers.get('content-type'), 'application/vnd.second+json')
+  assert.deepEqual(await client.request(operation('/binary')), {
+    inline: 'inline',
+    referenced: 'referenced',
+  })
 })

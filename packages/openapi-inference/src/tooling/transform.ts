@@ -50,17 +50,14 @@ function parseSpec(content: string, fileName: string) {
     },
   })
   const operations = describeOperations(value)
-  if (operations.has('api') || operations.has('query'))
-    throw new Error('operationId "api" and "query" are reserved for the nested client')
-  return { document, value, operations, router: createRouter(operations) }
+  return { document, value, router: createRouter(operations) }
 }
 
 export function transformSpec(content: string, fileName: string): Transform {
   try {
-    const { document, value, operations, router } = parseSpec(content, fileName)
+    const { document, value, router } = parseSpec(content, fileName)
     let text = 'const document = '
     const mappings: Mapping[] = []
-    const operationNodes = new Map<string, Node>()
     const methodNodes = new Map<string, Node>()
     function token(encoded: string, node: Node | null | undefined) {
       const start = text.length
@@ -86,8 +83,6 @@ export function transformSpec(content: string, fileName: string): Transform {
           const key = String(pair.key.value)
           if (path.length === 2 && path[0] === 'paths')
             methodNodes.set(`${path[1]} ${key}`, pair.key)
-          if (key === 'operationId' && isScalar(pair.value) && typeof pair.value.value === 'string')
-            operationNodes.set(pair.value.value, pair.value)
           // Computed keys preserve __proto__ as a data property at runtime.
           text += '['
           token(JSON.stringify(key), pair.key)
@@ -115,7 +110,6 @@ export function transformSpec(content: string, fileName: string): Transform {
     text += config
       ? `type Context = import(${JSON.stringify(config)}).Context;\n`
       : 'type Context = object;\n'
-    text += 'type SDK = import("@dify/openapi-inference").Operations<Document>;\n'
     function emitRouter(node: RouterNode) {
       text += '{\n'
       for (const [method, op] of node.methods) {
@@ -133,14 +127,6 @@ export function transformSpec(content: string, fileName: string): Transform {
     emitRouter(router)
     text += ';\n'
     text += 'export declare const query: import("@orpc/tanstack-query").RouterUtils<typeof api>;\n'
-    let index = 0
-    for (const id of operations.keys()) {
-      if (id.startsWith('\0')) continue // Named exports require operationId; the router does not.
-      const binding = `operation${index++}`
-      text += `declare const ${binding}: SDK[${JSON.stringify(id)}];\nexport { ${binding} as `
-      token(JSON.stringify(id), operationNodes.get(id))
-      text += ' };\n'
-    }
     return { text, extension: '.ts', mappings }
   } catch (error) {
     const position =
@@ -171,18 +157,10 @@ export function compileRuntime(
   runtimeModule = runtimeConfigFile(fileName),
   namespaceFileName = fileName,
 ): (routerPath?: string[], query?: boolean) => string {
-  const { operations, router } = parseSpec(content, fileName)
-  let text = 'import { invokeOperation } from "@dify/openapi-inference/runtime";\n'
-  if (runtimeModule) text += `import runtime from ${JSON.stringify(runtimeModule)};\n`
-  text += `export * as api from ${JSON.stringify(routerModuleId(namespaceFileName, []))};\n`
-  text += `export * as query from ${JSON.stringify(routerModuleId(namespaceFileName, [], true))};\n`
-  let index = 0
-  for (const [id, descriptor] of operations) {
-    if (id.startsWith('\0')) continue
-    const binding = `operation${index++}`
-    text += `const ${binding} = options => invokeOperation(${JSON.stringify(descriptor)}, options${runtimeModule ? ', runtime' : ''});\n`
-    text += `export { ${binding} as ${JSON.stringify(id)} };\n`
-  }
+  const { router } = parseSpec(content, fileName)
+  const text =
+    `export * as api from ${JSON.stringify(routerModuleId(namespaceFileName, []))};\n` +
+    `export * as query from ${JSON.stringify(routerModuleId(namespaceFileName, [], true))};\n`
   return (routerPath, query) =>
     routerPath ? routerModule(router, namespaceFileName, routerPath, query, runtimeModule) : text
 }

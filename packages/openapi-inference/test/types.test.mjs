@@ -5,6 +5,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'n
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { parse, parseDocument } from 'yaml'
+import { mediaSpec } from './media.mjs'
 /* oxlint-enable vitest/no-import-node-test */
 
 const root = resolve(import.meta.dirname, '..')
@@ -84,36 +85,31 @@ for (const [extension, content] of [
       {
         [`pets.${extension}`]: content,
         'index.ts': `
-import * as api from './pets.${extension}';
+import { api, query } from './pets.${extension}';
+import * as document from './pets.${extension}';
+// @ts-expect-error documents expose only api and query
+document.getPet;
 import { createTanstackQueryUtils } from '@orpc/tanstack-query';
-const nestedPet = await api.api.pets.byPetId.get({ params: { petId: 1 } });
-const nestedName: string = nestedPet.name;
-await api.api.pets.get();
-await api.api.pets.post({ body: { name: 'Mochi' } });
-const query = createTanstackQueryUtils(api.api);
-const generatedOptions = api.query.pets.byPetId.get.queryOptions({ input: { params: { petId: 1 } } });
-const generatedKey = api.query.pets.key();
+const wrappedQuery = createTanstackQueryUtils(api);
+const generatedOptions = query.pets.byPetId.get.queryOptions({ input: { params: { petId: 1 } } });
+const generatedKey = query.pets.key();
 // @ts-expect-error generated query helpers retain parameter types
-api.query.pets.byPetId.get.queryOptions({ input: { params: { petId: 'wrong' } } });
-const queryOptions = query.pets.byPetId.get.queryOptions({ input: { params: { petId: 1 } } });
+query.pets.byPetId.get.queryOptions({ input: { params: { petId: 'wrong' } } });
+const queryOptions = wrappedQuery.pets.byPetId.get.queryOptions({ input: { params: { petId: 1 } } });
 type QueryResult = Awaited<ReturnType<typeof queryOptions.queryFn>>;
 const queryName: string = (null! as QueryResult).name;
-// @ts-expect-error query helpers retain required parameter types
-query.pets.byPetId.get.queryOptions({ input: { params: { petId: 'wrong' } } });
-// @ts-expect-error nested call requires params
-api.api.pets.byPetId.get();
-// @ts-expect-error nested return type is not any
-const nestedWrong: number = nestedPet.name;
-const pet = await api.getPet({ path: { petId: 1 } });
+// @ts-expect-error wrapped query helpers retain required parameter types
+wrappedQuery.pets.byPetId.get.queryOptions({ input: { params: { petId: 'wrong' } } });
+const pet = await api.pets.byPetId.get({ params: { petId: 1 } });
 const name: string = pet.name;
 const id: number = pet.id;
 const state: 'available' | 'adopted' = pet.status;
 const nickname: string | null | undefined = pet.nickname;
-const pets = await api.listPets();
+const pets = await api.pets.get();
 const item: typeof pet = pets[0]!;
-const created: typeof pet = await api.createPet({ body: { name: 'Mochi' } });
-const deleted: undefined = await api.deletePet({ path: { petId: 1 } });
-await api.listPets({ query: { limit: 10, status: 'available' } });
+const created: typeof pet = await api.pets.post({ body: { name: 'Mochi' } });
+const deleted: void = await api.pets.byPetId.delete({ params: { petId: 1 } });
+await api.pets.get({ query: { limit: 10, status: 'available' } });
 type IsAny<T> = 0 extends (1 & T) ? true : false;
 const notAny: IsAny<typeof pet> = false;
 // @ts-expect-error response must not silently become any
@@ -121,23 +117,23 @@ const wrong: number = pet.name;
 // @ts-expect-error no invented response fields
 pet.missing;
 // @ts-expect-error required path group
-api.getPet();
+api.pets.byPetId.get();
 // @ts-expect-error required path parameter
-api.getPet({ path: {} });
+api.pets.byPetId.get({ params: {} });
 // @ts-expect-error integer parameter
-api.getPet({ path: { petId: '1' } });
+api.pets.byPetId.get({ params: { petId: '1' } });
 // @ts-expect-error unknown operation
 api.unknown();
 // @ts-expect-error enum values retained from file
-api.listPets({ query: { status: 'lost' } });
+api.pets.get({ query: { status: 'lost' } });
 // @ts-expect-error no undeclared query arguments
-api.listPets({ query: { invented: true } });
+api.pets.get({ query: { invented: true } });
 // @ts-expect-error required body
-api.createPet();
+api.pets.post();
 // @ts-expect-error required property in body
-api.createPet({ body: {} });
+api.pets.post({ body: {} });
 // @ts-expect-error no body on GET
-api.listPets({ body: {} });
+api.pets.get({ body: {} });
 `,
       },
       (dir, check) => {
@@ -155,8 +151,8 @@ test('schema changes invalidate types on the next native compilation', () => {
     {
       'pets.yaml': yaml,
       'index.ts': `
-import { getPet } from './pets.yaml';
-const pet = await getPet({path: {petId: 1}});
+import { api } from './pets.yaml';
+const pet = await api.pets.byPetId.get({params: {petId: 1}});
 const id: number = pet.id;
 `,
     },
@@ -217,14 +213,14 @@ test('schema composition, nullable, parameter overrides, dictionaries and escape
     {
       'spec.openapi': JSON.stringify(spec),
       'index.ts': `
-import * as api from './spec.openapi';
-const pet = await api.getPet({path: {petId: 'abc'}});
+import { api } from './spec.openapi';
+const pet = await api.pets.byPetId.get({params: {petId: 'abc'}});
 const id: number = pet.id;
 const choice: 'yes' | number = pet.choice;
 const nullable: string | null = pet.nullable;
 const dict: number | undefined = pet.dictionary.a;
 // @ts-expect-error operation-level parameter overrides path-level parameter
-api.getPet({path: {petId: 1}});
+api.pets.byPetId.get({params: {petId: 1}});
 // @ts-expect-error composition retains actual types
 const wrong: boolean = pet.choice;
 `,
@@ -352,6 +348,48 @@ const settings = await api.settings.post({headers: {'Idempotency-Key': 'key'}, b
 const enabled: boolean | undefined = settings.enabled;
 // @ts-expect-error a schema default does not guarantee the HTTP response contains a value
 const guaranteed: boolean = settings.enabled;
+`,
+    },
+    (_dir, compile) => {
+      const result = compile()
+      assert.equal(result.status, 0, result.output)
+    },
+  )
+})
+
+test('JSON responses use wire strings and request media selects a matching body', () => {
+  project(
+    {
+      'media.openapi': JSON.stringify(mediaSpec),
+      'index.ts': `
+import { api, query } from './media.openapi';
+const response = await api.binary.get();
+const inline: string = response.inline;
+const referenced: string = response.referenced;
+const vendorBinary: string = await api.vendorBinary.get();
+// @ts-expect-error JSON decoding does not construct Blob instances
+const blob: Blob = response.referenced;
+// @ts-expect-error inline JSON binary schemas also remain strings
+response.inline.arrayBuffer();
+await api.mixed.post({body: {kind: 'standard'}});
+await api.mixed.post({body: {kind: 'vendor'}, contentType: 'application/vnd.example+json'});
+await api.mixed.post({body: {kind: 'form'}, contentType: 'multipart/form-data'});
+// @ts-expect-error only the application/json branch may omit its media type
+api.mixed.post({body: {kind: 'vendor'}});
+// @ts-expect-error content type and body must belong to the same branch
+api.mixed.post({body: {kind: 'vendor'}, contentType: 'application/json'});
+// @ts-expect-error multipart remains explicit when JSON is also declared
+api.mixed.post({body: {kind: 'form'}});
+await api.single.post({body: {kind: 'single'}});
+await api.optionalVendors.post();
+// @ts-expect-error an optional body still requires a media type when provided
+api.optionalVendors.post({body: {kind: 'second'}});
+await api.vendors.post({body: {kind: 'first'}, contentType: 'application/vnd.first+json'});
+// @ts-expect-error multiple vendor types have no implicit default
+api.vendors.post({body: {kind: 'second'}});
+query.mixed.post.queryOptions({input: {body: {kind: 'vendor'}, contentType: 'application/vnd.example+json'}});
+// @ts-expect-error query helpers preserve the same media/body discrimination
+query.mixed.post.queryOptions({input: {body: {kind: 'vendor'}}});
 `,
     },
     (_dir, compile) => {

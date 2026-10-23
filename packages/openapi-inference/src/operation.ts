@@ -33,7 +33,6 @@ export function describeOperations(spec: OpenApiDocument): Map<string, Operation
         typeof operation.operationId === 'string' && operation.operationId
           ? operation.operationId
           : `\0${method} ${path}`
-      if (id === 'default' || id === 'then') throw new Error(`operationId "${id}" is reserved`)
       if (operations.has(id)) throw new Error(`Duplicate operationId: ${id}`)
       const parameters = new Map<string, Parameter>()
       for (const owner of [pathItem, operation]) {
@@ -69,9 +68,11 @@ export function describeOperations(spec: OpenApiDocument): Map<string, Operation
       const body = resolveRef(operation.requestBody, spec)
       const content = record(body.content)
       const contentTypes = Object.keys(content)
-      const contentType =
-        contentTypes.find((type) => type === 'application/json' || type.endsWith('+json')) ??
-        contentTypes[0]
+      const contentType = contentTypes.includes('application/json')
+        ? 'application/json'
+        : contentTypes.length === 1
+          ? contentTypes[0]
+          : undefined
       for (const type of contentTypes) {
         if (
           !['application/json', 'multipart/form-data', 'application/octet-stream'].includes(type) &&
@@ -79,7 +80,7 @@ export function describeOperations(spec: OpenApiDocument): Map<string, Operation
         )
           throw new Error(`${method.toUpperCase()} ${path}: unsupported request media type ${type}`)
       }
-      if (operation.requestBody && !contentType)
+      if (operation.requestBody && !contentTypes.length)
         throw new Error(`${method.toUpperCase()} ${path}: empty request content`)
       const multipartJson: string[] = []
       for (const [name, raw] of Object.entries(
@@ -100,7 +101,8 @@ export function describeOperations(spec: OpenApiDocument): Map<string, Operation
         path,
         ...(parameters.size ? { parameters: [...parameters.values()] } : {}),
         ...(typeof baseUrl === 'string' ? { baseUrl } : {}),
-        ...(contentType ? { contentType, bodyRequired: body.required === true } : {}),
+        ...(contentType ? { contentType } : {}),
+        ...(contentTypes.length ? { bodyRequired: body.required === true } : {}),
         ...(contentTypes.length > 1 ? { contentTypes } : {}),
         ...(multipartJson.length ? { multipartJson } : {}),
       })

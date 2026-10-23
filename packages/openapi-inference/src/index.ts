@@ -3,7 +3,6 @@ export type { ClientOptions, HttpClient, RuntimeConfig } from './client.js'
 export type {
   CallOptions,
   InferSchema,
-  Operations,
   RequestOptions,
   ResponseFor,
   RpcOperation,

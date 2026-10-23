@@ -33,7 +33,7 @@ export default function openapiLoader(this: LoaderContext): string {
   const namespaceResource = `./${relative(dirname(this.resourcePath), namespaceFile).replaceAll('\\', '/')}`
   const namespace = `${namespaceResource}?openapi-document=${encodeURIComponent(fileName)}`
   // Documents can live in a workspace package that has no SDK dependency.
-  // Resolve all runtime imports from the SDK resource, including named operations.
+  // Resolve the API and query namespaces from the SDK resource.
   if (!document) return `export * from ${JSON.stringify(namespace)};\n`
   const key = JSON.stringify([fileName, runtimeModule, namespaceResource])
   const stat = statSync(fileName)

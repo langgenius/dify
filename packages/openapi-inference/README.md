@@ -19,7 +19,7 @@ const options = consoleQuery.pets.byPetId.get.queryOptions({
 
 `/pets/{petId}` becomes `pets.byPetId`; hyphenated and underscored segments become camelCase. Each HTTP method is a leaf function. Colon actions such as `/apps/{app_id}/chat:run` become `apps.byAppId.chat.run`; `/` becomes `root`. When legacy underscore routes collide with camelCase normalization, the canonical route keeps its camelCase member and the alias retains its literal segment (for example `createByFile` and `create_by_file`). Inputs use `params`, `query`, `body`, `headers`, and `cookie`; the optional second argument accepts `client`, `signal`, `headers`, and `credentials`. Calls return response data and throw `ApiError` on non-2xx responses.
 
-Operations with an `operationId` also have a named export, e.g. `getPet({ path: { petId: 1 } })`. The nested API does not require operation IDs.
+Documents export only `api` and `query`. Routes do not require operation IDs.
 
 ## Try the checked-in demo
 
@@ -136,7 +136,7 @@ const runtime: RuntimeConfig = {
 export default runtime
 ```
 
-The native mapper imports only the context type. Vite and Node bind the configuration to named exports, nested calls and query helpers. The client factory runs per call, receives context and cancellation options, and does not share request-specific credentials. Explicit per-call clients take precedence. Query prefixes apply at every namespace level, including `key()` for cache invalidation. Restart the development server after adding or removing a configuration file; edits to an existing configuration follow normal module HMR.
+The native mapper imports only the context type. Vite and Node bind the configuration to API calls and query helpers. The client factory runs per call, receives context and cancellation options, and does not share request-specific credentials. Explicit per-call clients take precedence. Query prefixes apply at every namespace level, including `key()` for cache invalidation. Restart the development server after adding or removing a configuration file; edits to an existing configuration follow normal module HMR.
 
 Expose the entire document through direct ESM re-exports:
 
@@ -163,7 +163,6 @@ Measured with this workspace's Vite/Rolldown build, including the shared runtime
 
 | Entry used               |       JS |    Gzip |
 | ------------------------ | -------: | ------: |
-| One named operation      |  ~5.0 KB | ~2.1 KB |
 | One nested API operation |  ~5.0 KB | ~2.2 KB |
 | One nested query helper  | ~11.2 KB | ~3.6 KB |
 
@@ -238,9 +237,9 @@ The integration checks pagination, CSRF/cookies, cache invalidation, HTTP errors
 
 - OpenAPI 3.0/3.1; local JSON Pointer references; required/optional fields; enum/const; arrays, objects and dictionaries; `oneOf`, `anyOf`, `allOf`; nullable types. Imported local schema references become lazy, type-only aliases, preserving recursive JSON and deeply nested models without finite expansion. No schema types are shipped to the browser or written as SDK files. The standalone `InferSchema` helper and inline expansion retain a 24-step fallback; circular aliases without an object/array boundary remain subject to TypeScript diagnostics.
 - JSON, flat multipart and Blob/File binary request bodies; JSON, text, binary, raw SSE streams and empty responses; path/header `simple`, query `form`/flat `deepObject`, primitive cookies. Browser Fetch controls whether Cookie headers may be set.
-- External references, URL-encoded forms, nested multipart file dictionaries, advanced serialization and YAML aliases are not implemented. Multipart supports repeated array fields and explicit `application/json` part encoding. Select `contentType: 'multipart/form-data'` when the endpoint also accepts JSON. SSE returns a `ReadableStream<Uint8Array>` without buffering or parsing events. Unsupported request serialization fails explicitly. This is not a complete JSON Schema validator, and response bodies are not runtime-validated.
+- External references, URL-encoded forms, nested multipart file dictionaries, advanced serialization and YAML aliases are not implemented. Multipart supports repeated array fields and explicit `application/json` part encoding. When multiple request media types are declared, only `application/json` may omit `contentType`; all other alternatives require it explicitly. A single declared media type may always omit it. SSE returns a `ReadableStream<Uint8Array>` without buffering or parsing events. Unsupported request serialization fails explicitly. This is not a complete JSON Schema validator, and response bodies are not runtime-validated.
 - These are oRPC-shaped functions using a Fetch transport, not a drop-in replacement for every oRPC Link, interceptor, typed error map or Dify `context` policy. Document configurations can implement context behavior through the transport factory; arbitrary existing query policies and defined-error maps are not imported automatically. Errors expose `response` and `data` via `ApiError`.
-- Unresolvable router member collisions are rejected. `key` is reserved as a route segment for query helpers; `api`, `query`, `default` and `then` are reserved operation IDs.
+- Unresolvable router member collisions are rejected. `key` is reserved as a route segment for query helpers. Operation IDs do not become exports and have no reserved names.
 - Vite, Next.js Turbopack and Webpack handle bundling; Node handles direct execution. Other bundlers need an adapter. The compiler's mapper output is used for checking and is not the browser runtime artifact.
 
 References: [TS 7.1 announcement] and [content mapper protocol].
