@@ -123,5 +123,8 @@ class NativeTestPublicReceipt(FrozenDTO):
     decision_public_revision: Counter = 0
     can_resume: bool = False
     resume_blocked_reason: (
-        Literal["not_waiting", "approval_required", "native_resolution_unavailable", "state_unavailable"] | None
+        Literal[
+            "not_waiting", "approval_required", "native_resolution_unavailable", "state_unavailable", "native_expired"
+        ]
+        | None
     ) = "state_unavailable"
