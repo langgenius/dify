@@ -3545,21 +3545,6 @@
       "count": 2
     }
   },
-  "web/app/components/header/account-setting/resource-access-token-page/resource-selector.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/resource-access-token-page/token-table-row.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
-  "web/app/components/header/account-setting/resource-access-token-page/token-table.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
-    }
-  },
   "web/app/components/header/account-setting/update-setting-dialog-form.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
