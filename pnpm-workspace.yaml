@@ -179,6 +179,7 @@ catalog:
   embla-carousel-autoplay: 8.6.0
   embla-carousel-fade: 8.6.0
   embla-carousel-react: 8.6.0
+  es-module-lexer: 2.3.2
   es-toolkit: 1.52.0
   eslint: 10.13.0
   eslint-config-flat-gitignore: 2.4.0
@@ -208,6 +209,7 @@ catalog:
   i18next-resources-to-backend: 1.2.3
   iconify-import-svg: 0.2.0
   immer: 11.1.21
+  import-meta-resolve: 4.2.0
   jotai: 3.0.1
   jotai-scope: 0.12.2
   jotai-tanstack-query: 0.11.0

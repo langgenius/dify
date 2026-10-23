@@ -1,4 +1,8 @@
-import type { GeneralUtils, ProcedureUtils } from '@orpc/tanstack-query'
+import type {
+  experimental_ProcedureUtilsDefaults,
+  GeneralUtils,
+  ProcedureUtils,
+} from '@orpc/tanstack-query'
 import type { RuntimeConfig } from './client.js'
 import type { OperationDescriptor } from './operation.js'
 import type { CallOptions } from './types.js'
@@ -10,14 +14,16 @@ export function createQueryOperation(
   operation: OperationDescriptor,
   path: string[],
   runtime?: RuntimeConfig,
+  defaults?: experimental_ProcedureUtilsDefaults<object, Input, unknown, unknown>,
+  validateError?: (error: unknown) => Promise<unknown>,
 ): ProcedureUtils<object, Input, unknown, unknown> & GeneralUtils<Input> {
   const queryPath = [...(runtime?.queryKeyPrefix ?? []), ...path]
   return {
     ...createGeneralUtils<Input>(queryPath),
     ...createProcedureUtils<object, Input, unknown, unknown>(
       (input: Input, options?: CallOptions) =>
-        invokeRpcOperation(operation, input, options, runtime),
-      { path: queryPath },
+        invokeRpcOperation(operation, input, options, runtime, validateError),
+      { path: queryPath, experimental_defaults: defaults },
     ),
   }
 }

@@ -29,6 +29,12 @@ test('the production metadata integration prunes every unused console operation'
         },
       }),
     )
+    for (const kind of ['queries', 'errors']) {
+      await writeFile(
+        `${reduced}.${kind}.ts`,
+        `export * from ${JSON.stringify(join(web, `service/console/console.openapi.${kind}.ts`))};`,
+      )
+    }
     async function bundle(useReduced) {
       const result = await build({
         configFile: false,
@@ -55,10 +61,31 @@ test('the production metadata integration prunes every unused console operation'
           lib: { entry, formats: ['es'] },
           // Shared application auth/error code is the same for both builds.
           rollupOptions: {
+            output: { chunkFileNames: 'error-[hash].js' },
             external: [join(web, 'service/console/console.openapi.config.ts')],
           },
         },
       })
+      if (!useReduced) {
+        const chunks = (Array.isArray(result) ? result : [result])
+          .flatMap((item) => item.output)
+          .filter((file) => file.type === 'chunk')
+        const initial = chunks
+          .filter((file) => file.isEntry)
+          .map((file) => file.code)
+          .join('\n')
+        const deferred = chunks
+          .filter((file) => !file.isEntry)
+          .map((file) => file.code)
+          .join('\n')
+        assert(
+          !initial.includes('knowledge_fs_access_denied'),
+          'Validators must load only when a request fails',
+        )
+        t.diagnostic(
+          `Metadata entry: ${gzipSync(initial).length} gzip; deferred error validation: ${gzipSync(deferred).length} gzip.`,
+        )
+      }
       return (Array.isArray(result) ? result : [result])
         .flatMap((item) => item.output)
         .filter((item) => item.type === 'chunk')
@@ -74,7 +101,9 @@ test('the production metadata integration prunes every unused console operation'
       '/datasets',
       '/chat-messages',
       'parseDocument',
-      'ZodObject',
+      'draft_workflow_not_sync',
+      'environment_deployments',
+      'zKnowledgeFsSpaceResponse',
     ])
       assert(!full.includes(unused), `Unused code retained: ${unused}`)
     t.diagnostic(

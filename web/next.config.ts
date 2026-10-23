@@ -4,7 +4,10 @@ import { env } from './env'
 
 const openapiLoader = {
   loader: '@dify/openapi-content-mapper/loader',
-  options: { runtime: '../../../web/service/console/console.openapi.config.ts' },
+  options: {
+    runtime: '../../../web/service/console/console.openapi.config.ts',
+    sidecars: '../../../web/service/console/console.openapi',
+  },
 }
 
 const isDev = process.env.NODE_ENV === 'development'

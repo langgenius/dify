@@ -35,7 +35,7 @@ for (const bundler of ['turbopack', 'webpack']) {
       await writeFile(
         join(dir, 'next.config.mjs'),
         `
-const loader = { loader: '@dify/openapi-content-mapper/loader', options: { runtime: ${JSON.stringify(relative(specDir, join(dir, 'runtime.js')))} } };
+const loader = { loader: '@dify/openapi-content-mapper/loader', options: { runtime: ${JSON.stringify(relative(specDir, join(dir, 'runtime.js')))}, sidecars: ${JSON.stringify(relative(specDir, join(dir, 'spec.openapi')))} } };
 export default {
   experimental: { cpus: 2 },
   turbopack: { root: ${JSON.stringify(repository)}, rules: { '*spec.json': { loaders: [loader], as: '*.js' }, '*openapi-namespace.js': { loaders: [loader], as: '*.js' } } },
@@ -57,13 +57,18 @@ export default {
         }),
       )
       await symlink(join(specDir, 'spec.json'), join(dir, 'spec.openapi'))
+      const policy = `const selected = { queryOptions: { staleTime: 4242 } }; const unused = { queryOptions: { meta: { marker: 'UNUSED_POLICY_MUST_DISAPPEAR' } } }; export { selected as 'GET /knowledge-fs/spaces/{control_space_id}/metadata', unused as 'GET /UNUSED_ENDPOINT_MUST_DISAPPEAR' };`
+      const errors = `const selected = { CONFLICT: { status: 409 } }; const unused = { UNUSED: { status: 400, message: 'UNUSED_ERROR_MUST_DISAPPEAR' } }; export { selected as 'GET /knowledge-fs/spaces/{control_space_id}/metadata', unused as 'GET /UNUSED_ENDPOINT_MUST_DISAPPEAR' };`
+      await writeFile(join(dir, 'spec.openapi.queries.ts'), policy)
+      await writeFile(join(dir, 'spec.openapi.errors.ts'), errors)
+
       await writeFile(
         join(dir, 'runtime.js'),
         `
 import { createClient } from '@dify/openapi-content-mapper';
 export default {
   queryKeyPrefix: ['bound'],
-  createClient: ({ context }) => createClient({ baseUrl: 'https://bound.test', fetch: async url => Response.json({ value: String(url) + ':' + context.user }) }),
+  createClient: ({ context }) => createClient({ baseUrl: 'https://bound.test', fetch: async url => context.user === 'conflict' ? Response.json({ code: 'CONFLICT' }, { status: 409 }) : Response.json({ value: String(url) + ':' + context.user }) }),
 };
 `,
       )
@@ -84,11 +89,13 @@ export default function Button() {
       await writeFile(
         join(dir, 'app/page.jsx'),
         `
-import { api } from '../spec.openapi';
+import { api, query } from '../spec.openapi';
 import Button from './button';
 export default async function Page() {
   const response = await api.knowledgeFs.spaces.byControlSpaceId.metadata.get({ params: { control_space_id: 'space-1' } }, { context: { user: 'server' } });
-  return <><p>{response.value}</p><Button /></>;
+  const defined = await api.knowledgeFs.spaces.byControlSpaceId.metadata.get({ params: { control_space_id: 'space-1' } }, { context: { user: 'conflict' } }).catch(error => error.defined);
+  const options = query.knowledgeFs.spaces.byControlSpaceId.metadata.get.queryOptions({ input: { params: { control_space_id: 'space-1' } } });
+  return <><p>{response.value}</p><p>defined-error:{String(defined)};stale:{options.staleTime}</p><Button /></>;
 }
 `,
       )
@@ -109,11 +116,15 @@ export default async function Page() {
       const html = await readFile(join(dir, '.next/server/app/index.html'), 'utf8')
       assert(html.includes('https://bound.test/knowledge-fs/spaces/space-1/metadata:server'))
       assert(html.includes('bound'))
+      assert(html.replaceAll(/<!--.*?-->/g, '').includes('defined-error:true;stale:4242'))
+      assert(html.includes('4242'))
       const client = await javascript(join(dir, '.next/static/chunks'))
       assert(client.includes('/knowledge-fs/spaces/'))
       assert(!client.includes('/datasets'))
       assert(!client.includes('UNUSED_ENDPOINT_MUST_DISAPPEAR'))
       assert(!client.includes('SCHEMA_METADATA_MUST_DISAPPEAR'))
+      assert(!client.includes('UNUSED_POLICY_MUST_DISAPPEAR'))
+      assert(!client.includes('UNUSED_ERROR_MUST_DISAPPEAR'))
     } finally {
       await rm(dir, { recursive: true, force: true })
       await rm(specDir, { recursive: true, force: true })

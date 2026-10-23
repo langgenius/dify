@@ -172,6 +172,55 @@ export default runtime
 
 Both `api` and `query` infer `Context`. The factory runs per call. An optional `onError(error)` hook observes failures; avoid throwing from it if you want the original error to propagate. Restart the development server after adding or removing a sidecar; edits to existing files follow normal HMR.
 
+### Per-operation query defaults and typed errors
+
+Export defaults from `<document>.queries.ts` under the exact `METHOD /path` name:
+
+```ts
+// pets.openapi.queries.ts
+import type { experimental_RouterUtilsDefaults } from '@orpc/tanstack-query'
+import type { api } from './pets.openapi'
+
+const list: experimental_RouterUtilsDefaults<typeof api.pets.get> = {
+  queryOptions: { staleTime: 30_000, retry: false },
+}
+export { list as 'GET /pets' }
+```
+
+Defaults use oRPC's query helpers, including mutation callbacks and infinite queries.
+Caller options override defaults, including callbacks; they are not composed. Return
+cache invalidation promises from mutation callbacks when the mutation must remain
+pending until refresh completes. Keep policy dependencies independent of a complete
+runtime router: importing or enumerating a whole client can retain unrelated operations.
+
+An optional `<document>.errors.ts` exports oRPC error maps with the same names:
+
+```ts
+// pets.openapi.errors.ts
+import type { ErrorMap } from '@orpc/contract'
+import { conflictSchema } from './error-schemas'
+
+const conflicts = {
+  CONFLICT: { status: 409, data: conflictSchema },
+} satisfies ErrorMap
+export { conflicts as 'POST /pets' }
+```
+
+The `data` validator can use any Standard Schema implementation. API calls and query
+helpers infer the map's error union, so `safe` and `isDefinedError` narrow the code and
+validated payload. HTTP status and schema validation must match before an error is
+marked defined. Network/cancellation failures keep their identity. Bare HTTP errors
+with a `code` envelope are converted to `ORPCError` when an error map is configured;
+existing transport `ORPCError`s are preserved and validated.
+
+Each operation imports its own defaults and lazy error module. Error validators load
+on HTTP failure, and unused maps/defaults can be removed by the bundler. A validator
+chunk that fails to load leaves the original HTTP error undefined. Serve the emitted
+chunks together with the entry bundle. Keep validators free of module-level side
+effects; schema construction must be removable when its map is unused. Named
+re-exports and `export *` are supported; sidecars are inspected without executing them.
+Vite and Next track sidecar changes; Node imports follow normal module caching.
+
 ### Query helpers and bundles
 
 Import `query` directly for `queryOptions`, `mutationOptions`, `queryKey` and namespace `key()` helpers. Give each document a distinct `queryKeyPrefix` when routes overlap. For an application-level entry, preserve direct ESM re-exports:
@@ -184,7 +233,7 @@ Static calls retain only used operations. Dynamic indexing, enumeration or passi
 
 ### Comparison with oRPC
 
-This package consumes OpenAPI directly and prunes statically used operations while keeping oRPC-shaped calls and reusing its TanStack Query helpers. It requires the TS 7.1 beta toolchain and does not replace oRPC's full Link, interceptor or defined-error capabilities.
+This package consumes OpenAPI directly and prunes statically used operations while keeping oRPC-shaped calls and reusing its TanStack Query helpers. It requires the TS 7.1 beta toolchain. Per-operation defaults and error maps are opt-in; arbitrary oRPC Links and interceptors still require an application transport adapter.
 
 ## Other runtime adapters
 
@@ -204,7 +253,10 @@ For `pets.openapi` linked to `pets.json`, configure `next.config.mjs`:
 const loader = {
   loader: '@dify/openapi-content-mapper/loader',
   // Optional; relative to the resolved specification, not this config file.
-  options: { runtime: './pets.openapi.config.ts' },
+  options: {
+    runtime: './pets.openapi.config.ts',
+    sidecars: './pets.openapi',
+  },
 }
 
 export default {
@@ -225,7 +277,7 @@ export default {
 }
 ```
 
-Merge these rules into existing configuration. Match the resolved JSON filename for symlinks; match the actual `.openapi` or YAML filename for regular files. Apply the loader to `openapi-namespace.js` too. Omit `options.runtime` to discover `<resolved specification filename>.config.ts`. Next.js runtime options do not change compiler context discovery, which uses the imported document's adjacent sidecar.
+Merge these rules into existing configuration. Match the resolved JSON filename for symlinks; match the actual `.openapi` or YAML filename for regular files. Apply the loader to `openapi-namespace.js` too. Omit `options.runtime` to discover `<resolved specification filename>.config.ts`. Set `options.sidecars` to the logical document path (relative to the resolved specification) when its `.queries.ts` and `.errors.ts` files live beside a symlink. Without this option they are discovered beside the resolved specification. Next.js runtime options do not change compiler context discovery, which uses the imported document's adjacent sidecar.
 
 The loader uses a tiny shared resource for child namespaces so the full specification is not copied into every bundler module. Adapters use internal subpaths (`runtime`, `query-runtime`, `namespace`, `mapper`); application code should use the root, `vite`, `loader` and `register` entry points.
 
@@ -233,7 +285,7 @@ The loader uses a tiny shared resource for child namespaces so the full specific
 
 External references, Swagger 2, URL-encoded forms, advanced parameter serialization, nested multipart file dictionaries and YAML aliases are unsupported. Inline schema inference has a 24-step fallback; local referenced schemas use recursive aliases. Unsupported request serialization fails explicitly. Missing or inaccurate OpenAPI declarations cannot be repaired by inference.
 
-This is not a drop-in replacement for all oRPC Links, interceptors, typed error maps or application-specific query policies. Browser Fetch governs cookie headers. Supported schema features include required/optional properties, enum/const, arrays and dictionaries, `oneOf`, `anyOf`, `allOf`, and nullable types.
+Existing oRPC Links and interceptors require explicit transport adapters; query policies and typed errors require the per-operation sidecars above. Browser Fetch governs cookie headers. Supported schema features include required/optional properties, enum/const, arrays and dictionaries, `oneOf`, `anyOf`, `allOf`, and nullable types.
 
 ## Development and release
 

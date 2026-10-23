@@ -4,8 +4,9 @@ import type { Selection } from './type-document.js'
 import { isMap, isScalar, isSeq, parseDocument, visit } from 'yaml'
 import { assertDocument, pointer } from '../document.js'
 import { describeOperations } from '../operation.js'
+import { operationConfig } from './operation-config.js'
 import { createRouter, routerModule, routerModuleId } from './router.js'
-import { runtimeConfigFile } from './runtime-config.js'
+import { operationConfigFile, runtimeConfigFile } from './runtime-config.js'
 import { schemaTypes } from './schema-types.js'
 import { typeDocument } from './type-document.js'
 
@@ -113,6 +114,10 @@ export function transformSpec(content: string, fileName: string): Transform {
     text += config
       ? `type Context = import(${JSON.stringify(config)}).Context;\n`
       : 'type Context = object;\n'
+    const errors = operationConfigFile(fileName, 'errors')
+    text += errors
+      ? `type Errors = typeof import(${JSON.stringify(errors)});\n`
+      : 'type Errors = object;\n'
     function emitRouter(node: RouterNode) {
       text += '{\n'
       for (const [method, op] of node.methods) {
@@ -130,9 +135,9 @@ export function transformSpec(content: string, fileName: string): Transform {
     emitRouter(router)
     text += ';\n'
     text +=
-      'export declare const api: import("@dify/openapi-content-mapper").RpcRouter<Document, Routes, Context>;\n'
+      'export declare const api: import("@dify/openapi-content-mapper").RpcRouter<Document, Routes, Context, Errors>;\n'
     text +=
-      'export declare const query: import("@dify/openapi-content-mapper").RpcQueryRouter<Document, Routes, Context>;\n'
+      'export declare const query: import("@dify/openapi-content-mapper").RpcQueryRouter<Document, Routes, Context, Errors>;\n'
     return { text, extension: '.ts', mappings }
   } catch (error) {
     const position =
@@ -162,11 +167,30 @@ export function compileRuntime(
   fileName: string,
   runtimeModule = runtimeConfigFile(fileName),
   namespaceFileName = fileName,
-): (routerPath?: string[], query?: boolean) => string {
+  resolveModule: (file: string) => string = (file) => file,
+  sidecarFileName = fileName,
+) {
   const { router } = parseSpec(content, fileName)
+  const configs = {
+    queries: operationConfig(sidecarFileName, 'queries'),
+    errors: operationConfig(sidecarFileName, 'errors'),
+  }
   const text =
     `export * as api from ${JSON.stringify(routerModuleId(namespaceFileName, []))};\n` +
     `export * as query from ${JSON.stringify(routerModuleId(namespaceFileName, [], true))};\n`
-  return (routerPath, query) =>
-    routerPath ? routerModule(router, namespaceFileName, routerPath, query, runtimeModule) : text
+  return Object.assign(
+    (routerPath?: string[], query?: boolean | 'errors') =>
+      routerPath
+        ? routerModule(
+            router,
+            namespaceFileName,
+            routerPath,
+            query,
+            runtimeModule,
+            configs,
+            resolveModule,
+          )
+        : text,
+    { dependencies: [...configs.queries.dependencies, ...configs.errors.dependencies] },
+  )
 }

@@ -1,4 +1,5 @@
 import type { ClientPromiseResult } from '@orpc/client'
+import type { ErrorFromErrorMap, ErrorMap } from '@orpc/contract'
 import type { GeneralUtils, RouterUtils } from '@orpc/tanstack-query'
 import type { HttpClient } from './client.js'
 
@@ -257,33 +258,43 @@ type RpcInput<O> = O extends unknown
   : never
 type RpcResponse<T> = T extends undefined ? void : T
 /** Resolve operation signatures only when a consumer accesses their route. */
-export type RpcRouter<S, Routes, Context extends object = object> = {
+export type RpcRouter<S, Routes, Context extends object = object, Errors = object> = {
   [K in keyof Routes]: Routes[K] extends readonly [
     infer P extends keyof Paths<S>,
     infer M extends Method,
   ]
-    ? RpcOperation<S, P, M, Context>
-    : RpcRouter<S, Routes[K], Context>
+    ? RpcOperation<S, P, M, Context, Errors>
+    : RpcRouter<S, Routes[K], Context, Errors>
 }
 /** Apply oRPC's helper types per procedure without checking the entire client tree. */
-export type RpcQueryRouter<S, Routes, Context extends object = object> = {
+export type RpcQueryRouter<S, Routes, Context extends object = object, Errors = object> = {
   [K in keyof Routes]: Routes[K] extends readonly [
     infer P extends keyof Paths<S>,
     infer M extends Method,
   ]
-    ? RouterUtils<RpcOperation<S, P, M, Context>>
-    : RpcQueryRouter<S, Routes[K], Context>
+    ? RouterUtils<RpcOperation<S, P, M, Context, Errors>>
+    : RpcQueryRouter<S, Routes[K], Context, Errors>
 } & GeneralUtils<unknown>
 export type RpcOperation<
   S,
   P extends keyof Paths<S>,
   M extends Method,
   Context extends object = object,
+  Errors = object,
 > =
   RpcInput<RequestOptions<S, P, M>> extends infer Input
     ? (
         ...args: Record<never, never> extends Input
           ? [input?: Input, options?: CallOptions<Context>]
           : [input: Input, options?: CallOptions<Context>]
-      ) => ClientPromiseResult<RpcResponse<ResponseFor<S, P, M>>, Error>
+      ) => ClientPromiseResult<
+        RpcResponse<ResponseFor<S, P, M>>,
+        Value<
+          Errors,
+          `${Uppercase<M>} ${P & string}`,
+          Record<never, never>
+        > extends infer Map extends ErrorMap
+          ? ErrorFromErrorMap<Map>
+          : Error
+      >
     : never

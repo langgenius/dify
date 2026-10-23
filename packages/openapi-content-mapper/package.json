@@ -65,7 +65,11 @@
       "types": "./dist/query-runtime.d.ts",
       "default": "./dist/query-runtime.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    }
   },
   "publishConfig": {
     "access": "public",
@@ -87,7 +91,10 @@
   },
   "dependencies": {
     "@orpc/client": "catalog:",
+    "@orpc/contract": "catalog:",
     "@orpc/tanstack-query": "catalog:",
+    "es-module-lexer": "catalog:",
+    "import-meta-resolve": "catalog:",
     "yaml": "catalog:"
   },
   "devDependencies": {

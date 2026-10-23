@@ -11,4 +11,6 @@ Initial experimental release. Requires TypeScript 7.1.0-beta for native content 
 - Preserve JSON wire strings for binary-formatted response fields and require explicit media selection for non-default alternatives.
 - Resolve API/query types lazily, omit redundant schema representations and cache serialized mapper results across compiler processes, with invalidation for document, implementation and sidecar changes.
 
+- Add statically selected operation query defaults and typed error maps, with lazy error validators and Vite/Next sidecar tracking.
+
 The beta API and compiler protocol may change between prereleases. See the README for supported scope and compatibility limits.

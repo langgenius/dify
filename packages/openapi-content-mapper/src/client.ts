@@ -226,6 +226,7 @@ export async function invokeRpcOperation(
   } = {},
   options: CallOptions = {},
   runtime?: RuntimeConfig,
+  validateError?: (error: unknown) => Promise<unknown>,
 ): Promise<unknown> {
   const { params, headers, ...request } = input
   const call = { ...request, path: params, ...options, header: headers }
@@ -233,7 +234,8 @@ export async function invokeRpcOperation(
     const transport = call.client ?? runtime?.createClient?.(call) ?? client
     return await transport.request(operation, call)
   } catch (error) {
-    runtime?.onError?.(error)
-    throw error
+    const failure = validateError ? await validateError(error) : error
+    runtime?.onError?.(failure)
+    throw failure
   }
 }

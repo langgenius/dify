@@ -1,4 +1,5 @@
 import type { OperationDescriptor } from '../operation.js'
+import type { operationConfig } from './operation-config.js'
 
 export type RouterNode = {
   children: Map<string, RouterNode>
@@ -56,9 +57,18 @@ export function createRouter(operations: Map<string, OperationDescriptor>): Rout
 
 export const routerQuery = '?openapi-router='
 export const queryQuery = '?openapi-query='
+export const errorsQuery = '?openapi-errors='
 
-export function routerModuleId(fileName: string, path: string[], query = false): string {
-  const marker = query ? queryQuery : routerQuery
+export function moduleQuery(id: string) {
+  return id.includes(errorsQuery) ? errorsQuery : id.includes(queryQuery) ? queryQuery : routerQuery
+}
+
+export function routerModuleId(
+  fileName: string,
+  path: string[],
+  query: boolean | 'errors' = false,
+): string {
+  const marker = query === 'errors' ? errorsQuery : query ? queryQuery : routerQuery
   return `${fileName}${fileName.includes('?') ? marker.replace('?', '&') : marker}${encodeURIComponent(JSON.stringify(path))}`
 }
 
@@ -67,14 +77,26 @@ export function routerModule(
   root: RouterNode,
   fileName: string,
   path: string[],
-  query = false,
+  query: boolean | 'errors' = false,
   runtimeModule?: string,
+  configs?: {
+    queries: ReturnType<typeof operationConfig>
+    errors: ReturnType<typeof operationConfig>
+  },
+  resolveModule: (file: string) => string = (file) => file,
 ): string {
   let node = root
-  for (const key of path) {
+  for (const key of query === 'errors' ? path.slice(0, -1) : path) {
     const child = node.children.get(key)
     if (!child) throw new Error(`Unknown virtual router path: ${path.join('.')}`)
     node = child
+  }
+  if (query === 'errors') {
+    const method = path.at(-1)!
+    const operation = node.methods.get(method)
+    if (!operation || !configs?.errors.file) throw new Error('Unknown operation error module')
+    const key = `${method.toUpperCase()} ${operation.path}`
+    return `export { ${JSON.stringify(key)} as errors } from ${JSON.stringify(resolveModule(configs.errors.file))};\n`
   }
   let text = query
     ? 'import { createQueryOperation, createQueryKey } from "@dify/openapi-content-mapper/query-runtime";\n'
@@ -86,10 +108,25 @@ export function routerModule(
   let index = 0
   for (const [method, op] of node.methods) {
     const binding = `operation${index++}`
+    const key = `${method.toUpperCase()} ${op.path}`
+    const errors = configs?.errors
+    const queries = configs?.queries
+    let errorHandler = 'undefined'
+    let defaults = 'undefined'
+    if (errors?.file && errors.names.has(key)) {
+      text += `import { createErrorHandler as ${binding}Handler } from "@dify/openapi-content-mapper/errors";\n`
+      errorHandler = `${binding}ErrorHandler`
+      text += `const ${errorHandler} = /* @__PURE__ */ ${binding}Handler(async () => { const { errors } = await import(${JSON.stringify(routerModuleId(fileName, [...path, method], 'errors'))}); return errors; });\n`
+    }
+    if (query && queries?.file && queries.names.has(key)) {
+      defaults = `${binding}Defaults`
+      text += `import { ${JSON.stringify(key)} as ${defaults} } from ${JSON.stringify(resolveModule(queries.file))};\n`
+    }
+    const configured = `${runtimeModule ? 'runtime' : 'undefined'}`
     text += `const ${binding} = ${
       query
-        ? `/* @__PURE__ */ createQueryOperation(${JSON.stringify(op)}, ${JSON.stringify([...path, method])}${runtime})`
-        : `(input, options) => invokeRpcOperation(${JSON.stringify(op)}, input, options${runtime})`
+        ? `/* @__PURE__ */ createQueryOperation(${JSON.stringify(op)}, ${JSON.stringify([...path, method])}, ${configured}, ${defaults}, ${errorHandler})`
+        : `(input, options) => invokeRpcOperation(${JSON.stringify(op)}, input, options, ${configured}, ${errorHandler})`
     };\nexport { ${binding} as ${JSON.stringify(method)} };\n`
   }
   for (const key of node.children.keys()) {

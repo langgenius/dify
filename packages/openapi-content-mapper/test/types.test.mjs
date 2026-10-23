@@ -483,3 +483,43 @@ query.mixed.post.queryOptions({input: {body: {kind: 'vendor'}}});
     },
   )
 })
+
+test('API and query errors narrow to the selected operation map, including re-exports', () => {
+  project(
+    {
+      'pets.yaml': yaml,
+      'errors.ts': `
+import { type } from '@orpc/contract';
+export const conflicts = { CONFLICT: { status: 409, data: type<{ revision: number }>() } };
+`,
+      'pets.yaml.errors.ts': `export { conflicts as 'GET /pets' } from './errors.js';`,
+      'index.ts': `
+import { safe } from '@orpc/client';
+import { api, query } from './pets.yaml';
+const [error, , defined] = await safe(api.pets.get());
+if (defined) {
+  const code: 'CONFLICT' = error.code;
+  const revision: number = error.data.revision;
+  // @ts-expect-error other error payloads must not leak into this operation
+  error.data.reason;
+}
+query.pets.get.queryOptions({ input: {}, retry: (_count, failure) => {
+  if (failure instanceof Error && 'defined' in failure && failure.defined) {
+    const code: 'CONFLICT' = failure.code;
+    const revision: number = failure.data.revision;
+  }
+  return false;
+} });
+const [other, , otherDefined] = await safe(api.pets.byPetId.get({ params: { petId: 1 } }));
+if (otherDefined) {
+  // @ts-expect-error this operation has no documented conflict
+  other.data.revision;
+}
+`,
+    },
+    (_dir, compile) => {
+      const result = compile()
+      assert.equal(result.status, 0, result.output)
+    },
+  )
+})

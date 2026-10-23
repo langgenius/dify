@@ -12,7 +12,7 @@ import {
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { runtimeConfigFile } from './runtime-config.js'
+import { operationConfigFile, runtimeConfigFile } from './runtime-config.js'
 
 const maxEntries = 64
 const digest = (value: string) => createHash('sha256').update(value).digest('hex')
@@ -29,7 +29,14 @@ export function createCachedTransform(
   return async (content: string, fileName: string): Promise<string> => {
     // Sidecar contents are checked by TS; its presence changes the generated import.
     const key = createHash('sha256')
-      .update(JSON.stringify([revision, fileName, runtimeConfigFile(fileName)]))
+      .update(
+        JSON.stringify([
+          revision,
+          fileName,
+          runtimeConfigFile(fileName),
+          operationConfigFile(fileName, 'errors'),
+        ]),
+      )
       .update('\n')
       .update(content)
       .digest('hex')
@@ -90,6 +97,7 @@ export function mapperTransform() {
     'mapper-cache.js',
     'transform.js',
     'runtime-config.js',
+    'operation-config.js',
     'type-document.js',
     'schema-types.js',
     'router.js',

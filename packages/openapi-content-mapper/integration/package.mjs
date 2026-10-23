@@ -154,16 +154,29 @@ const runtime: RuntimeConfig<Context> = {
   queryKeyPrefix: ['pets'],
   createClient: ({context}) => createClient({
     baseUrl: 'https://example.test',
-    fetch: async () => Response.json({name: context?.name ?? 'Mochi'}),
+    fetch: async () => context?.name === 'conflict'
+      ? Response.json({code: 'CONFLICT'}, {status: 409})
+      : Response.json({name: context?.name ?? 'Mochi'}),
   }),
 };
 export default runtime;
 `,
     )
     await writeFile(
+      join(directory, 'pets.yaml.queries.ts'),
+      `const defaults = {queryOptions: {staleTime: 1234}}; export {defaults as 'GET /pets/{petId}'};`,
+    )
+    await writeFile(
+      join(directory, 'pets.yaml.errors.ts'),
+      `const errors = {CONFLICT: {status: 409}}; export {errors as 'GET /pets/{petId}'};`,
+    )
+    await writeFile(
       join(directory, 'index.ts'),
       `
 import { api, query } from './pets.yaml';
+import { safe } from '@orpc/client';
+const result = await safe(api.pets.byPetId.get({params: {petId: 1}}));
+if (result.isDefined) { const code: 'CONFLICT' = result.error.code; }
 const pet = await api.pets.byPetId.get({params: {petId: 1}}, {context: {name: 'Mochi'}});
 const name: string = pet.name;
 query.pets.byPetId.get.queryOptions({input: {params: {petId: 1}}, context: {name: 'Mochi'}});
@@ -201,9 +214,14 @@ api.pets.byPetId.get({params: {petId: 1}}, {context: {name: 123}});
       `
 import assert from 'node:assert/strict';
 import * as document from './pets.yaml';
+import { safe } from '@orpc/client';
 assert.deepEqual(Object.keys(document), ['api', 'query']);
 assert.deepEqual(await document.api.pets.byPetId.get({params: {petId: 1}}, {context: {name: 'packed'}}), {name: 'packed'});
 assert.deepEqual(document.query.key(), [['pets'], {}]);
+assert.equal(document.query.pets.byPetId.get.queryOptions({input: {params: {petId: 1}}}).staleTime, 1234);
+const failure = await safe(document.api.pets.byPetId.get({params: {petId: 1}}, {context: {name: 'conflict'}}));
+assert.equal(failure.isDefined, true);
+assert.equal(failure.error.code, 'CONFLICT');
 assert.equal(typeof (await import('@dify/openapi-content-mapper/loader')).default, 'function');
 `,
     )

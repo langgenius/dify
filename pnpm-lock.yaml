@@ -482,6 +482,9 @@ catalogs:
     embla-carousel-react:
       specifier: 8.6.0
       version: 8.6.0
+    es-module-lexer:
+      specifier: 2.3.2
+      version: 2.3.2
     es-toolkit:
       specifier: 1.52.0
       version: 1.52.0
@@ -566,6 +569,9 @@ catalogs:
     immer:
       specifier: 11.1.21
       version: 11.1.21
+    import-meta-resolve:
+      specifier: 4.2.0
+      version: 4.2.0
     jotai:
       specifier: 3.0.1
       version: 3.0.1
@@ -1337,9 +1343,18 @@ importers:
       '@orpc/client':
         specifier: 'catalog:'
         version: 1.15.7
+      '@orpc/contract':
+        specifier: 'catalog:'
+        version: 1.15.7
       '@orpc/tanstack-query':
         specifier: 'catalog:'
         version: 1.15.7(@orpc/client@1.15.7)(@tanstack/query-core@5.104.4)
+      es-module-lexer:
+        specifier: 'catalog:'
+        version: 2.3.2
+      import-meta-resolve:
+        specifier: 'catalog:'
+        version: 4.2.0
       yaml:
         specifier: 'catalog:'
         version: 2.9.1
@@ -17127,6 +17142,7 @@ time:
   embla-carousel-autoplay@8.6.0: '2025-04-04T17:37:46.303Z'
   embla-carousel-fade@8.6.0: '2025-04-04T17:37:50.278Z'
   embla-carousel-react@8.6.0: '2025-04-04T17:37:53.976Z'
+  es-module-lexer@2.3.2: '2026-08-17T01:57:36.160Z'
   es-toolkit@1.52.0: '2026-08-28T07:22:17.687Z'
   eslint-config-flat-gitignore@2.4.0: '2026-08-27T07:24:43.063Z'
   eslint-markdown@0.19.0: '2026-10-15T08:21:09.615Z'
@@ -17156,6 +17172,7 @@ time:
   i18next@26.5.2: '2026-10-17T21:24:19.266Z'
   iconify-import-svg@0.2.0: '2026-04-20T06:18:25.132Z'
   immer@11.1.21: '2026-10-02T18:30:41.965Z'
+  import-meta-resolve@4.2.0: '2025-08-29T18:46:15.488Z'
   jotai-scope@0.12.2: '2026-08-13T23:49:51.764Z'
   jotai-tanstack-query@0.11.0: '2025-08-01T02:55:49.826Z'
   jotai@3.0.1: '2026-09-29T14:18:19.043Z'

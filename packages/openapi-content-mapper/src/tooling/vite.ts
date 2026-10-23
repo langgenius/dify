@@ -1,8 +1,8 @@
-import type { Plugin } from 'vite'
+import type { Plugin, ViteDevServer } from 'vite'
 import { existsSync } from 'node:fs'
 import { readFile, realpath } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
-import { queryQuery, routerQuery } from './router.js'
+import { errorsQuery, moduleQuery, queryQuery } from './router.js'
 import { compileRuntime } from './transform.js'
 
 export function openapi(
@@ -16,14 +16,19 @@ export function openapi(
   const cache = new Map<string, ReturnType<typeof compileRuntime>>()
   const realPaths = new Map<string, string>()
   let root = process.cwd()
+  let server: ViteDevServer | undefined
+  const dependencies = new Map<string, string[]>()
   return {
     name: 'openapi-content-mapper',
     enforce: 'pre',
+    configureServer(value) {
+      server = value
+    },
     configResolved(config) {
       root = config.root
     },
     async resolveId(source, importer) {
-      const marker = source.includes(queryQuery) ? queryQuery : routerQuery
+      const marker = moduleQuery(source)
       const offset = source.indexOf(marker)
       const suffix = offset < 0 ? '' : source.slice(offset)
       const bare = offset < 0 ? source : source.slice(0, offset)
@@ -50,8 +55,9 @@ export function openapi(
       }
     },
     async load(id) {
-      const isQuery = id.includes(queryQuery)
-      const [fileName, encoded] = id.split(isQuery ? queryQuery : routerQuery)
+      const marker = moduleQuery(id)
+      const isQuery = marker === errorsQuery ? 'errors' : marker === queryQuery
+      const [fileName, encoded] = id.split(marker)
       if (!fileName) return
       // Leave ?raw / ?url imports to Vite.
       include.lastIndex = 0
@@ -69,6 +75,9 @@ export function openapi(
         realPaths.set(fileName, physical)
         this.addWatchFile(physical)
       }
+      dependencies.set(fileName, render.dependencies)
+      for (const dependency of render.dependencies) this.addWatchFile(dependency)
+      server?.watcher.add([`${fileName}.queries.ts`, `${fileName}.errors.ts`])
       return {
         code: render(
           encoded === undefined ? undefined : JSON.parse(decodeURIComponent(encoded)),
@@ -82,7 +91,11 @@ export function openapi(
     },
     handleHotUpdate(context) {
       const affected = [...realPaths].filter(
-        ([file, physical]) => file === context.file || physical === context.file,
+        ([file, physical]) =>
+          file === context.file ||
+          physical === context.file ||
+          dependencies.get(file)?.includes(context.file) ||
+          [`${file}.queries.ts`, `${file}.errors.ts`].includes(context.file),
       )
       if (!affected.length) return
       const modules = new Set(context.modules)

@@ -88,3 +88,60 @@ for (const mode of ['nested', 'query'])
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+for (const mode of ['api', 'query'])
+  test(`${mode}: unused operation policies and error validators are removed`, async () => {
+    const dir = mkdtempSync(join(root, 'test/.policies-bundle-'))
+    try {
+      async function bundle(count) {
+        const spec = structuredClone(fixture)
+        const defaults = [
+          `const used = { queryOptions: { staleTime: 1234 } }; export { used as 'GET /pets/{petId}' };`,
+        ]
+        const errors = [
+          `const used = { NOT_FOUND: { status: 404 } }; export { used as 'GET /pets/{petId}' };`,
+        ]
+        for (let i = 0; i < count; i++) {
+          const path = `/UNUSED_OPERATION_${i}`
+          spec.paths[path] = { get: { responses: { 200: { description: 'OK' } } } }
+          defaults.push(
+            `const policy${i} = { queryOptions: { meta: { marker: 'UNUSED_POLICY_${i}' } } }; export { policy${i} as ${JSON.stringify(`GET ${path}`)} };`,
+          )
+          errors.push(
+            `const errors${i} = { UNUSED: { status: 400, message: 'UNUSED_VALIDATOR_${i}' } }; export { errors${i} as ${JSON.stringify(`GET ${path}`)} };`,
+          )
+        }
+        writeFileSync(join(dir, 'api.openapi'), JSON.stringify(spec))
+        writeFileSync(join(dir, 'api.openapi.queries.ts'), defaults.join('\n'))
+        writeFileSync(join(dir, 'api.openapi.errors.ts'), errors.join('\n'))
+        writeFileSync(
+          join(dir, 'entry.ts'),
+          `import { ${mode} } from './api.openapi'; export const operation = ${mode}.pets.byPetId.get${mode === 'query' ? '.queryOptions' : ''};`,
+        )
+        const result = await build({
+          configFile: false,
+          root: dir,
+          logLevel: 'silent',
+          plugins: [openapi()],
+          build: {
+            write: false,
+            minify: true,
+            lib: { entry: join(dir, 'entry.ts'), formats: ['es'] },
+          },
+        })
+        return (Array.isArray(result) ? result : [result])
+          .flatMap((r) => r.output)
+          .filter((f) => f.type === 'chunk')
+          .map((f) => f.code)
+          .join('\n')
+      }
+      const small = await bundle(0)
+      const large = await bundle(1000)
+      assert.equal(large, small)
+      assert(!large.includes('UNUSED_'))
+      if (mode === 'query') assert(large.includes('1234'))
+      else assert(!large.includes('1234'), 'API calls do not retain query defaults')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })

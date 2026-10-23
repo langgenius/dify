@@ -12,14 +12,14 @@ transport for the Python Console API.
   register this transport. Only the transport is shared globally;
   request identity is resolved per request.
 - Shared query/mutation defaults live in
-  [query-policies.ts].
+  [query-defaults.ts].
   In oRPC v1, caller options override defaults, including callbacks.
 - Routes/layouts own prefetching and hydration. Use the existing
   [QueryClient factory].
 
 ## Policy ownership
 
-Shared operation defaults belong in `query-policies.ts`. Call sites own inputs,
+Shared operation defaults belong in `query-defaults.ts`. The existing oRPC router assembles them in `query-policies.ts`; `console.openapi.queries.ts` exposes the same defaults as static per-operation exports for the inferred client. Cache references use `query-keys.ts`, which carries no HTTP client or contract registry. Call sites own inputs,
 execution conditions, projections, and interaction feedback. A local option
 overrides the corresponding default; callbacks are not composed automatically.
 When a mutation uses shared `onSettled` invalidation, keep local toast, close, and
@@ -40,6 +40,6 @@ forwarding hooks and handwritten API DTOs create a second owner.
 [Instrumentation]: ../../instrumentation.ts
 [QueryClient factory]: ../../app/get-query-client.ts
 [Server transport]: ./server.ts
-[query-policies.ts]: ./query-policies.ts
+[query-defaults.ts]: ./query-defaults.ts
 [root layout]: ../../app/layout.tsx
 [server configuration]: ../../config/server.ts

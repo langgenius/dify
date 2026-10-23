@@ -32,8 +32,8 @@ jobs:
       - name: Test Next.js adapters and tree-shaking
         run: pnpm --filter @dify/openapi-content-mapper test:next
 
-      - name: Verify the production console bundle
-        run: pnpm --filter @dify/openapi-content-mapper exec node --test integration/knowledge-fs-console.test.mjs
+      - name: Verify the production console bundle and error maps
+        run: pnpm --filter @dify/openapi-content-mapper exec node --test --test-concurrency=1 integration/knowledge-fs-console.test.mjs integration/orpc-errors.test.mjs
 
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})

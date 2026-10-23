@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, relative, resolve } from 'node:path'
 import { runtimeConfigFile } from './runtime-config.js'
@@ -7,8 +7,9 @@ import { compileRuntime } from './transform.js'
 type LoaderContext = {
   resourcePath: string
   resourceQuery: string
-  getOptions: () => { runtime?: string }
+  getOptions: () => { runtime?: string; sidecars?: string }
   addDependency: (file: string) => void
+  addMissingDependency?: (file: string) => void
 }
 
 type Compiled = {
@@ -27,7 +28,8 @@ export default function openapiLoader(this: LoaderContext): string {
   const document = query.get('openapi-document')
   const fileName = document ?? this.resourcePath
   this.addDependency(fileName)
-  const { runtime } = this.getOptions()
+  const { runtime, sidecars: logicalDocument } = this.getOptions()
+  const sidecarFileName = logicalDocument ? resolve(dirname(fileName), logicalDocument) : fileName
   const config = runtime ? resolve(dirname(fileName), runtime) : runtimeConfigFile(fileName)
   if (config) this.addDependency(config)
   const runtimeModule = config
@@ -38,19 +40,41 @@ export default function openapiLoader(this: LoaderContext): string {
   // Documents can live in a workspace package that has no SDK dependency.
   // Resolve the API and query namespaces from the SDK resource.
   if (!document) return `export * from ${JSON.stringify(namespace)};\n`
-  const key = JSON.stringify([fileName, runtimeModule, namespaceResource])
-  const stat = statSync(fileName)
-  const version = `${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}`
+  const key = JSON.stringify([fileName, sidecarFileName, runtimeModule, namespaceResource])
+  const sidecars = [`${sidecarFileName}.queries.ts`, `${sidecarFileName}.errors.ts`]
+  const versionOf = (dependencies: string[]) =>
+    [...new Set([fileName, ...sidecars, ...dependencies])]
+      .map((file) => {
+        if (!existsSync(file)) return `${file}:missing`
+        const stat = statSync(file)
+        return `${file}:${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}`
+      })
+      .join('\n')
   let compiled = cache.get(key)
+  const version = versionOf(compiled?.render.dependencies ?? [])
   if (!compiled || compiled.version !== version) {
     const source = readFileSync(fileName, 'utf8')
     compiled = {
       version,
-      render: compileRuntime(source, fileName, runtimeModule, namespace),
+      render: compileRuntime(
+        source,
+        fileName,
+        runtimeModule,
+        namespace,
+        (file) => `./${relative(dirname(this.resourcePath), file).replaceAll('\\', '/')}`,
+        sidecarFileName,
+      ),
     }
+    compiled.version = versionOf(compiled.render.dependencies)
     cache.set(key, compiled)
   }
-  const isQuery = query.has('openapi-query')
-  const path = query.get(isQuery ? 'openapi-query' : 'openapi-router')
+  for (const file of new Set([...sidecars, ...compiled.render.dependencies])) {
+    if (existsSync(file)) this.addDependency(file)
+    else this.addMissingDependency?.(file)
+  }
+  const isQuery = query.has('openapi-errors') ? 'errors' : query.has('openapi-query')
+  const path = query.get(
+    isQuery === 'errors' ? 'openapi-errors' : isQuery ? 'openapi-query' : 'openapi-router',
+  )
   return compiled.render(path === null ? undefined : JSON.parse(path), isQuery)
 }
