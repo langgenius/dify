@@ -13,6 +13,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import Actor
 from libs.datetime_utils import ensure_naive_utc
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession
@@ -243,6 +244,13 @@ class NativeTestApiService:
             evidence_refs=(),
         )
         with native_observation_transaction(self.sessions, session_id=lambda: session_id) as session:
+            from services.dify_builder.task_controls import lock_execution, lock_task_admission
+
+            try:
+                lock_task_admission(session, session_id)
+                lock_execution(session)
+            except ConflictError:
+                raise BuilderExecutionPolicyError("native_revision_drift") from None
             self.admission.compiler.recheck_local(session=session, actor=actor, compilation=compilation)
             for row in session.scalars(
                 select(DifyBuilderExecutionRequest).where(
@@ -315,6 +323,9 @@ class NativeTestApiService:
             raise BuilderExecutionPolicyError("native_runtime_unavailable")
         # A queue acknowledgement can be lost; the qualified launch owner must
         # claim request_id durably before runtime execution, including retries.
+        from services.dify_builder.task_controls import check_current
+
+        check_current()
         self.admission.launch.launch(ref=ref)
         with self.loader.locked(ref=ref, settlement=True) as (session, _, _):
             request = session.get(DifyBuilderExecutionRequest, ref.request_id)

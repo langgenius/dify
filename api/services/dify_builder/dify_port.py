@@ -749,6 +749,33 @@ class WorkflowServiceDifyPort:
         with _session_factory()() as session:
             return load_app(session, app_id, actor).mode
 
+    def read_task_dsl(self, app_id: str, actor: Actor) -> tuple[dict, str]:
+        """Capture execution DSL for continuation, with credentials withheld."""
+        from services.dify_builder.credentials import REDACTED, redact_node_config
+
+        with _session_factory()() as sql:
+            app = load_app(sql, app_id, actor)
+            workflow = _load_draft_workflow_or_raise(app, session=sql)
+            graph = dict(workflow.graph_dict)
+            graph["nodes"] = [
+                {**node, "data": redact_node_config(dict(node.get("data") or {}))} for node in graph.get("nodes", [])
+            ]
+            variables = []
+            for variable in workflow.environment_variables:
+                value = variable.model_dump(mode="json")
+                if value.get("value_type") == "secret":
+                    value["value"] = REDACTED
+                variables.append(value)
+            from services.dify_builder.task_controls import draft_binding
+
+            return {
+                "_draft_binding": {"workflow_id": workflow.id, "digest": draft_binding(workflow)},
+                "graph": graph,
+                "features": dict(workflow.features_dict),
+                "environment_variables": variables,
+                "conversation_variables": [v.model_dump(mode="json") for v in workflow.conversation_variables],
+            }, execution_revision(workflow)
+
     def read_graph(self, app_id: str, actor: Actor) -> tuple[Graph, str]:
         with _session_factory()() as session:
             app = load_app(session, app_id, actor)
@@ -1045,6 +1072,9 @@ class WorkflowServiceDifyPort:
         expected_resource_fingerprints: dict[str, str] | None = None,
         expected_node_resources: dict[str, str] | None = None,
     ) -> ApplyResult:
+        from services.dify_builder.task_controls import check_current, lock_execution
+
+        check_current()
         # Build and validate against a snapshot outside the write transaction.
         # The final row lock rechecks this revision before replacing the graph.
         before_graph, revision = self.read_graph(app_id, actor)
@@ -1132,6 +1162,9 @@ class WorkflowServiceDifyPort:
             with _session_factory()() as session:
                 app = load_app(session, app_id, actor)
                 workflow = _load_draft_workflow_or_raise(app, session=session)
+                from services.dify_builder.task_controls import lock_execution
+
+                lock_execution(session, app_id=app_id)
                 session.refresh(workflow, with_for_update=True)
                 if execution_revision(workflow) != revision:
                     raise HashMismatchError(f"workflow execution configuration changed: {app_id}")
@@ -1229,6 +1262,9 @@ class WorkflowServiceDifyPort:
             else None
         )
         with _session_factory()() as session:
+            from services.dify_builder.task_controls import lock_execution
+
+            lock_execution(session, app_id=app_id)
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
             workflow = _load_draft_workflow_or_raise(app, session=session)
@@ -1317,6 +1353,9 @@ class WorkflowServiceDifyPort:
         execution configuration changed since the caller read it. Native Agent
         graph/binding state requires an admitted restore owner and is refused."""
         with _session_factory()() as session:
+            from services.dify_builder.task_controls import lock_execution
+
+            lock_execution(session, app_id=app_id)
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
             workflow = _load_draft_workflow_or_raise(app, session=session)
@@ -1363,6 +1402,9 @@ class WorkflowServiceDifyPort:
         command_id: str | None = None,
         effect_confirmation: Mapping[str, str] | None = None,
     ) -> Run:
+        from services.dify_builder.task_controls import check_current
+
+        check_current()
         if confirmed_consent_id is not None or command_id is not None:
             if not confirmed_consent_id or not command_id:
                 return _unsupported_run(BuilderExecutionPolicyError("confirmed_launch_incomplete"))
@@ -1392,6 +1434,9 @@ class WorkflowServiceDifyPort:
         launch: _BuilderExecutionLaunch | None = None
         try:
             with _session_factory()() as session:
+                from services.dify_builder.task_controls import lock_execution
+
+                lock_execution(session, app_id=app_id)
                 account = resolve_account(session, actor)
                 app = load_app(session, app_id, actor)
                 tenant_id = app.tenant_id
@@ -1525,6 +1570,9 @@ class WorkflowServiceDifyPort:
         # lease, elects the only invocation allowed to call the native generator.
         try:
             with _session_factory()() as session, session.begin():
+                from services.dify_builder.task_controls import lock_execution
+
+                lock_execution(session)
                 session.add(row)
                 session.flush()
             return SqlDifyBuilderRepository._to_domain_run(row), True
@@ -1555,6 +1603,8 @@ class WorkflowServiceDifyPort:
         with _session_factory()() as session, session.begin():
             row = session.get(DifyBuilderRun, reservation_id, with_for_update=True)
             assert row is not None
+            if row.immutable:
+                return
             row.dify_run_id = run.dify_run_id or row.dify_run_id
             row.status = run.status
             row.error = run.error
@@ -1725,6 +1775,9 @@ class WorkflowServiceDifyPort:
         test choice; a previous confirmation cannot authorize that new attempt.
         """
         with _session_factory()() as session:
+            from services.dify_builder.task_controls import lock_execution
+
+            lock_execution(session, app_id=app_id)
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
             tenant_id = app.tenant_id
@@ -2098,6 +2151,9 @@ class WorkflowServiceDifyPort:
                 raise BuilderExecutionPolicyError(receipt.reason_code or "consent_not_confirmed")
             context = policy.prepare_confirmed(context)
             with _session_factory()() as session:
+                from services.dify_builder.task_controls import lock_execution
+
+                lock_execution(session, app_id=app_id)
                 account = resolve_account(session, actor)
                 app = load_app(session, app_id, actor)
                 draft = _load_draft_workflow_or_raise(app, session=session)
@@ -2440,6 +2496,9 @@ class WorkflowServiceDifyPort:
         workflow_service = WorkflowService()
         workflow_service.prepare_draft_tool_publish(app_model=app_to_prepare)
         with _session_factory()() as session:
+            from services.dify_builder.task_controls import lock_execution
+
+            lock_execution(session, app_id=app_id)
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
 

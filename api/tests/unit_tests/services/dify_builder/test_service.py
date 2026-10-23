@@ -68,10 +68,12 @@ class FakeSessionLock:
     def __init__(self) -> None:
         self._held: dict[str, str] = {}
 
-    def acquire(self, session_id: str) -> str | None:
+    def acquire(self, session_id: str, *, generation: int | None = None) -> str | None:
         if session_id in self._held:
             return None
         token = f"tok-{session_id}"
+        if generation is not None:
+            token = f"g{generation}:{token}"
         self._held[session_id] = token
         return token
 
@@ -94,6 +96,9 @@ class FakeSessionLock:
 
     def exists(self, session_id: str) -> bool:
         return session_id in self._held
+
+    def current_owner(self, session_id: str) -> str | None:
+        return self._held.get(session_id)
 
 
 @pytest.fixture
@@ -208,7 +213,7 @@ def test_create_fix_session_dispatches_request_fix_and_holds_lock(
     assert action.base_version == 1
     assert action.command_id
     assert dispatched_actor == actor
-    assert token == f"tok-{view.session_id}"
+    assert token == f"g0:tok-{view.session_id}"
 
 
 def test_create_fix_session_records_failed_run(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
@@ -725,6 +730,7 @@ def test_paused_session_can_resume_before_classifying_external_draft_changes(
         lock,
         lambda *_args: None,
         get_app_revision_fn=lambda _app_id, _actor: current_revision,
+        read_task_dsl_fn=lambda *_: ({"graph": {}, "features": {"changed": True}}, current_revision),
     )
     session = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
     stored, context = repo.get_session(session.id)
@@ -743,7 +749,11 @@ def test_paused_session_can_resume_before_classifying_external_draft_changes(
         _actor(),
         Action(kind="resume", base_version=2, base_app_revision=current_revision),
     )
-    assert expect_advance is True
+    assert expect_advance is False
+    _, resumed = repo.get_session(session.id)
+    assert not resumed.paused
+    assert resumed.last_snapshot_hash == current_revision
+    assert resumed.task_control["dsl"]["features"] == {"changed": True}
     assert initial_items == []
 
 
@@ -810,7 +820,7 @@ def _allow_seeded_verification(service: DifyBuilderService) -> None:
         (PcState.BUILD_AWAIT_TESTDATA, "provide_testdata", AppAccess.TEST_AND_RUN),
         (PcState.CHECKLIST_AWAIT_RECHECK, "recheck", AppAccess.TEST_AND_RUN),
         (PcState.BUILD_AWAIT_REPAIR, "approve_repair", AppAccess.TEST_AND_RUN),
-        (PcState.FIX_AWAIT_VERIFY, "stop", AppAccess.TEST_AND_RUN),
+        (PcState.FIX_AWAIT_VERIFY, "stop", AppAccess.EDIT),
         (PcState.FIX_AWAIT_DECISION, "publish", AppAccess.RELEASE),
         (PcState.BUILD_REVIEW, "publish_workflow", AppAccess.RELEASE),
         (PcState.EDIT_REVIEW, "publish_workflow", AppAccess.RELEASE),
@@ -844,7 +854,7 @@ def test_action_authorization_uses_state_specific_permission_tier(
         session.id, _actor(), Action(kind=kind, base_version=session.version)
     )
 
-    assert expect_advance is True
+    assert expect_advance is (kind != "stop")
     assert initial_items == []
     assert accesses[0] == AppAccess.EDIT
     assert accesses[-1] == expected_access
@@ -868,9 +878,9 @@ def test_submit_repair_approval_requires_a_persisted_repair(
             self.acquisitions: list[str] = []
 
         @override
-        def acquire(self, session_id: str) -> str | None:
+        def acquire(self, session_id: str, *, generation: int | None = None) -> str | None:
             self.acquisitions.append(session_id)
-            return super().acquire(session_id)
+            return super().acquire(session_id, generation=generation)
 
     lock = RecordingSessionLock()
     session = Session(
@@ -1012,7 +1022,7 @@ def test_internal_action_state_guards(
     assert items == []
 
 
-def test_stop_resume_and_recovery_actions_require_current_context(
+def test_controls_preserve_recovery_admission_and_resume_only_paused_task(
     repo: SqlDifyBuilderRepository, lock: FakeSessionLock
 ) -> None:
     session = Session(
@@ -1023,35 +1033,40 @@ def test_stop_resume_and_recovery_actions_require_current_context(
         current_state=PcState.BUILD_REVIEW,
     )
     repo.create_session(session, DifyBuilderContext(), [])
-    svc = DifyBuilderService(repo, lock, lambda *_args: None)
-
-    svc._prepare_action(session.id, _actor(), Action(kind="stop", base_version=1))
-    for kind in ("resume", "recovery_continue", "recovery_restart"):
+    svc = DifyBuilderService(repo, lock, lambda *_args: None, read_task_dsl_fn=lambda *_: ({"graph": {}}, "current"))
+    with pytest.raises(ConflictError, match="settled"):
+        svc._prepare_action(session.id, _actor(), Action(kind="resume", base_version=1))
+    for kind in ("recovery_continue", "recovery_restart"):
         with pytest.raises(BadRequestError, match="not allowed"):
             svc._prepare_action(session.id, _actor(), Action(kind=kind, base_version=1))
-
-    _session, context = repo.get_session(session.id)
-    context.paused = True
-    context.recovery_class = "config_only"
-    repo.compare_and_advance(session.id, 1, PcState.BUILD_REVIEW, context, [])
-
-    svc._prepare_action(session.id, _actor(), Action(kind="resume", base_version=2))
-    for kind in ("recovery_continue", "recovery_restart", "stop"):
+    stopped, advance, _ = svc._prepare_action(session.id, _actor(), Action(kind="stop", base_version=1))
+    assert not advance
+    assert stopped.run_status == "paused"
+    for kind in ("recovery_continue", "recovery_restart"):
         with pytest.raises(BadRequestError, match="not allowed"):
-            svc._prepare_action(session.id, _actor(), Action(kind=kind, base_version=2))
+            svc._prepare_action(session.id, _actor(), Action(kind=kind, base_version=stopped.version))
+    resumed, advance, _ = svc._prepare_action(session.id, _actor(), Action(kind="resume", base_version=stopped.version))
+    assert not advance
+    assert resumed.run_status == "processing"
+    assert not repo.get_session(session.id)[1].paused
 
-    context.paused = False
-    repo.compare_and_advance(session.id, 2, PcState.BUILD_REVIEW, context, [])
+    recovery_session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_REVIEW,
+    )
+    repo.create_session(recovery_session, DifyBuilderContext(recovery_class="config_only"), [])
     for kind, payload in (
         ("message", {"text": "context", "client_turn_id": "turn-1"}),
-        ("update_model", dict[str, object]()),
-        ("check_recovery", dict[str, object]()),
-        ("stop", dict[str, object]()),
+        ("update_model", {}),
+        ("check_recovery", {}),
     ):
         with pytest.raises(BadRequestError, match="not allowed"):
-            svc._prepare_action(session.id, _actor(), Action(kind=kind, payload=payload, base_version=3))
-    svc._prepare_action(session.id, _actor(), Action(kind="recovery_continue", base_version=3))
-    svc._prepare_action(session.id, _actor(), Action(kind="recovery_restart", base_version=3))
+            svc._prepare_action(recovery_session.id, _actor(), Action(kind=kind, payload=payload, base_version=1))
+    svc._prepare_action(recovery_session.id, _actor(), Action(kind="recovery_continue", base_version=1))
+    svc._prepare_action(recovery_session.id, _actor(), Action(kind="recovery_restart", base_version=1))
 
 
 def test_get_session_view_actions_for_fix_await_decision(

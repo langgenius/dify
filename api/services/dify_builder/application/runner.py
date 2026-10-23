@@ -335,6 +335,9 @@ class Runner:
         *,
         settled: bool,
     ) -> None:
+        from services.dify_builder.task_controls import check_current
+
+        check_current()
         at_version = session.version + 1
         for item in items:
             # Handler helpers own conversation sequence numbers; the runner is
@@ -360,6 +363,9 @@ class Runner:
             context,
             items,
         )
+        from services.dify_builder.task_controls import adopt_committed_generation
+
+        adopt_committed_generation(context)
         session.version = new_version
         session.current_state = next_state
         for item in items:
@@ -488,6 +494,53 @@ class Runner:
                 f"for session {session_id} (current {s.version})"
             )
 
+        if fc.paused and action_kind != "resume":
+            raise ConflictError("task is paused")
+
+        if action_kind == "task_continue":
+            # A continuation carries no old action/approval. Rebuild a current
+            # input card when an interrupted test needs a new saved attempt.
+            test_states = {PcState.BUILD_AWAIT_TESTDATA, PcState.EDIT_AWAIT_TESTDATA, PcState.FIX_AWAIT_TESTDATA}
+            if s.current_state in test_states:
+                from core.dify_builder.input_schema import start_schema
+                from services.dify_builder.application.handlers_fix import (
+                    append_assistant,
+                    append_card,
+                    saved_test_inputs,
+                    testdata_form,
+                )
+
+                graph, revision = self._env.dify.read_graph(s.app_id, turn.actor)
+                schema = start_schema(graph, self._env.dify.get_app_mode(s.app_id, turn.actor))
+                card, reply = testdata_form(
+                    self._env,
+                    s,
+                    fc,
+                    turn.actor,
+                    schema,
+                    saved_test_inputs(self._env, fc),
+                    copy_text(BuilderCopyId.REPLIES_PROVIDE_TEST_INPUTS_OR_USE_MOCK_DATA_TO_RUN_VALIDATION),
+                )
+                items = [
+                    *append_card(fc, card),
+                    *append_assistant(self._env, s, fc, reply, cards=["form"]),
+                ]
+                fc.last_snapshot_hash = revision
+                self._commit(s, s.current_state, fc, items, settled=True)
+                return s
+            if s.current_state == PcState.EDIT_IMPACT_ANALYSIS:
+                from core.dify_builder.models import Action
+
+                turn = Turn(
+                    actor=turn.actor,
+                    action=Action(
+                        kind="submit_edit_rules",
+                        payload=dict(fc.edit_rules),
+                        base_version=s.version,
+                        command_id=self._env.command_id,
+                    ),
+                )
+
         if action_kind in ("stop", "resume"):
             fc.paused = action_kind == "stop"
             self._commit(s, s.current_state, fc, [], settled=True)
@@ -596,6 +649,9 @@ class Runner:
 
         first = True
         while True:
+            from services.dify_builder.task_controls import check_current
+
+            check_current()
             if is_waiting(s.current_state) and first and turn.action is None:
                 return s  # nothing to do
             if is_terminal(s.current_state):
@@ -610,6 +666,7 @@ class Runner:
             step_turn = turn if first else Turn(actor=turn.actor)  # action consumed; keep actor for working steps
             with trace_diagnostics.scope(self._env.record_diagnostic, str(s.current_state).replace(".", "-")):
                 res = handler(self._env, step_turn, s, fc)
+            check_current()
             if res.context is None:
                 res.context = fc
 

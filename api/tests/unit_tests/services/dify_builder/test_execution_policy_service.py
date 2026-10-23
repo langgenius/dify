@@ -18,15 +18,16 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 from typing_extensions import TypedDict
 
-from core.dify_builder.models import Actor, Graph
+from core.dify_builder.models import Actor, DifyBuilderContext, Graph
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import Base, TypeBase
-from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
+from models.dify_builder import DifyBuilderSession, DifyBuilderSessionCommit, DifyBuilderTestInput
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
 from runtime_contracts.builder.execution import TrustedExecutionCompletion
 from services.dify_builder.application import execution_policy as domain
+from services.dify_builder.serde import context_to_dict
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, policy
 
@@ -254,6 +255,13 @@ def owned() -> Iterator[Owned]:
                     owner_account_id=account.id,
                     entry_mode="build",
                     current_state="build.await_testdata",
+                ),
+                DifyBuilderSessionCommit(
+                    session_id=session_id,
+                    version=1,
+                    state="build.await_testdata",
+                    context=context_to_dict(DifyBuilderContext()),
+                    actor="",
                 ),
                 DifyBuilderTestInput(
                     id=ti_id, session_id=session_id, source="mock", inputs={"n": "41"}, start_schema_hash=""

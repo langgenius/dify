@@ -3,6 +3,7 @@
 from typing import NoReturn
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.dify_builder.input_schema import schema_hash, start_schema
@@ -25,15 +26,15 @@ def prepare(owned: Owned) -> None:
     factory, _actor, _app, workflow, sid, tid = owned
     with factory.begin() as session:
         required_input(session, tid).start_schema_hash = schema_hash(start_schema(dict(workflow.graph_dict)))
-        session.add(
-            DifyBuilderSessionCommit(
-                session_id=sid,
-                version=1,
-                state="build.review",
-                actor="user",
-                context={"test_input_ref": tid, "retained_test_input_ref": "old"},
+        commit = session.scalar(
+            select(DifyBuilderSessionCommit).where(
+                DifyBuilderSessionCommit.session_id == sid, DifyBuilderSessionCommit.version == 1
             )
         )
+        assert commit is not None
+        commit.state = "build.review"
+        commit.actor = "user"
+        commit.context = {"test_input_ref": tid, "retained_test_input_ref": "old"}
 
 
 def test_current_input_public_binding_is_owned_and_has_no_values(owned: Owned) -> None:

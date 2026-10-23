@@ -12,6 +12,7 @@ import time
 from collections.abc import Callable, Generator, Iterator, Sequence
 from typing import Any, cast
 
+from flask import current_app
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
@@ -161,6 +162,7 @@ def build_real_call_consent_service() -> BuilderRealCallConsentService:
 
 
 def build_service() -> DifyBuilderService:
+    app = current_app._get_current_object()
     repo = SqlDifyBuilderRepository(sessionmaker(bind=db.engine, expire_on_commit=False))
     return DifyBuilderService(
         repo,
@@ -174,6 +176,7 @@ def build_service() -> DifyBuilderService:
         get_app_name_fn=_get_app_name,
         real_call_consent=build_real_call_consent_service(),
         test_actions=_build_test_actions(),
+        stream_read_scope_fn=app.app_context,
     )
 
 
@@ -718,12 +721,12 @@ def stream_advance_frames(
                     # heartbeats must not become receipt polling in disguise.
                     if native_receipts is None and read_session_view is not None:
                         latest = read_session_view()
-                        if latest["run_status"] != "processing" or latest["interrupted"]:
+                        if latest.get("_task_paused") or latest["run_status"] != "processing" or latest["interrupted"]:
                             yield _event_frame(
                                 "command_finished",
                                 {
                                     **_public_session_view(latest, include_last_command_id=False),
-                                    "command_id": latest["last_command_id"],
+                                    "command_id": command_id or latest["last_command_id"],
                                 },
                             )
                             return
@@ -734,11 +737,24 @@ def stream_advance_frames(
                     continue
                 kind, data = progress_event
                 if kind == "native_state_changed":
-                    if (
-                        native_receipts is None
-                        or not isinstance(data, dict)
-                        or data.get("session_id") != view_dict.get("session_id")
-                    ):
+                    if not isinstance(data, dict) or data.get("session_id") != view_dict.get("session_id"):
+                        continue
+                    if native_receipts is None:
+                        if read_session_view is not None:
+                            latest = read_session_view()
+                            if (
+                                latest.get("_task_paused")
+                                or latest["run_status"] != "processing"
+                                or latest["interrupted"]
+                            ):
+                                yield _event_frame(
+                                    "command_finished",
+                                    {
+                                        **_public_session_view(latest, include_last_command_id=False),
+                                        "command_id": command_id or latest.get("last_command_id", ""),
+                                    },
+                                )
+                                return
                         continue
                     yield from native_frames()
                     if read_session_view is not None:

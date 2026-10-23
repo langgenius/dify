@@ -56,13 +56,15 @@ def active_advance_time_limit() -> int:
     return dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS + _HARD_LIMIT_GRACE_SECONDS
 
 
-def acquire(session_id: str) -> str | None:
+def acquire(session_id: str, *, generation: int | None = None) -> str | None:
     """Try to acquire the advance lock for ``session_id``.
 
     Returns a token to be passed to :func:`release` if the lock was
     acquired, or ``None`` if another process already holds it.
     """
     token = str(uuid4())
+    if generation is not None:
+        token = f"g{generation}:{token}"
     ok = redis_client.set(_key(session_id), token, nx=True, px=_max_advance_ms())
     return token if ok else None
 
