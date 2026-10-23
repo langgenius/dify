@@ -6,7 +6,7 @@ run_draft path. Browser payloads identify a disclosed operation, never authority
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -18,6 +18,9 @@ from models.dify_builder import DifyBuilderConversationItem, DifyBuilderExecutio
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, Digest
 from runtime_contracts.builder.native.contracts import ID, Counter, FrozenDTO
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
 
 TEST_ACTIONS = frozenset({"confirm_test_operation", "deny_test_operation", "resume_test", "cancel_test"})
 
@@ -89,7 +92,7 @@ class TestActionPort(Protocol):
 class BuilderTestActions:
     """Only control the current saved-input attempt; GET never reconciles work."""
 
-    def __init__(self, sessions: sessionmaker[Session], command_factory: Callable[..., Any]):
+    def __init__(self, sessions: sessionmaker[Session], command_factory: Callable[..., "ProfiledNativeTestCommands"]):
         self.sessions = sessions
         self.command_factory = command_factory
 
@@ -141,7 +144,8 @@ class BuilderTestActions:
             raise ConflictError("test request is no longer current")
         try:
             commands = self.command_factory(actor=actor)
-            return getattr(commands, command.method)(
+            execute = {"decide": commands.decide, "resume": commands.resume, "cancel": commands.cancel}[command.method]
+            return execute(
                 actor=actor,
                 session_id=session_id,
                 request_id=command.request_id,

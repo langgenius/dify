@@ -169,12 +169,22 @@ def test_unrelated_or_failed_tool_output_cannot_prove_terminal_file() -> None:
 @pytest.mark.parametrize(
     "blob",
     [
-        b"renamed text",
-        b"PK malformed",
-        docx({"word/document.xml": DOCUMENT}),
-        docx({"[Content_Types].xml": b"not XML", "word/document.xml": DOCUMENT, "_rels/.rels": ROOT_RELATIONSHIPS}),
-        docx(
-            {"[Content_Types].xml": CONTENT_TYPES, "word/document.xml": b"<fake/>", "_rels/.rels": ROOT_RELATIONSHIPS}
+        pytest.param(b"renamed text", id="renamed-text"),
+        pytest.param(b"PK malformed", id="malformed-zip"),
+        pytest.param(docx({"word/document.xml": DOCUMENT}), id="missing-content-types"),
+        pytest.param(
+            docx({"[Content_Types].xml": b"not XML", "word/document.xml": DOCUMENT, "_rels/.rels": ROOT_RELATIONSHIPS}),
+            id="invalid-content-types-xml",
+        ),
+        pytest.param(
+            docx(
+                {
+                    "[Content_Types].xml": CONTENT_TYPES,
+                    "word/document.xml": b"<fake/>",
+                    "_rels/.rels": ROOT_RELATIONSHIPS,
+                }
+            ),
+            id="invalid-document-xml",
         ),
     ],
 )
