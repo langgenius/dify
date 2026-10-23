@@ -81,13 +81,7 @@ export function KnowledgeSpaceActions({
               {canDelete && (
                 <>
                   {canEdit && <DropdownMenuSeparator />}
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => {
-                      deleteMutation.reset()
-                      setDeleteOpen(true)
-                    }}
-                  >
+                  <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
                     <span aria-hidden className="mr-1 i-ri-delete-bin-line size-4" />
                     {tCommon(($) => $['operation.delete'])}
                   </DropdownMenuItem>
@@ -103,6 +97,9 @@ export function KnowledgeSpaceActions({
         onOpenChange={(open, details) => {
           if (!open && deleteMutation.isPending) details.cancel()
           else setDeleteOpen(open)
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) deleteMutation.reset()
         }}
       >
         <AlertDialogContent>

@@ -494,10 +494,7 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
             <AgentRosterItem
               key={agent.id}
               agent={agent}
-              onDelete={(target) => {
-                deletion.reset()
-                deleteDialog.openWithPayload(target)
-              }}
+              onDelete={(target) => deleteDialog.openWithPayload(target)}
             />
           ))}
         </ul>
@@ -525,6 +522,9 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
         onOpenChange={(open, details) => {
           if (!open && deletion.isPending && details.reason !== 'imperative-action')
             details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) deletion.reset()
         }}
       >
         {({ payload }) => (

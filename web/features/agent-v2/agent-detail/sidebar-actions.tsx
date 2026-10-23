@@ -121,10 +121,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
             <DropdownMenuItem
               variant="destructive"
               className="gap-2"
-              onClick={() => {
-                deletion.reset()
-                setIsDeleteOpen(true)
-              }}
+              onClick={() => setIsDeleteOpen(true)}
             >
               <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
               <span>{tCommon(($) => $['operation.delete'])}</span>
@@ -148,6 +145,9 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
           onOpenChange={(open, details) => {
             if (!open && deletion.isPending) details.cancel()
             else setIsDeleteOpen(open)
+          }}
+          onOpenChangeComplete={(open) => {
+            if (!open) deletion.reset()
           }}
         >
           <AlertDialogContent>
