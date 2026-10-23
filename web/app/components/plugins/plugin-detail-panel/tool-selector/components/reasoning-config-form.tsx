@@ -302,7 +302,6 @@ export function ReasoningConfigForm({
             {isAppSelector && (
               <AppSelector
                 disabled={false}
-                scope={scope || 'all'}
                 value={(varInput?.value ?? varInput) as AppSelectorValue | undefined}
                 onSelect={handleAppChange(variable)}
               />

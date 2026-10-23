@@ -65,7 +65,8 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
           }
         />
         <PopoverContent
-          placement="top-end"
+          side="top"
+          align="end"
           sideOffset={4}
           alignOffset={-148}
           className="border-none bg-transparent shadow-none"

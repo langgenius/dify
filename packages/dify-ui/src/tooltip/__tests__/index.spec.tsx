@@ -7,7 +7,7 @@ const renderWithSafeViewport = (ui: React.ReactNode) =>
 
 describe('TooltipContent', () => {
   describe('Placement and offsets', () => {
-    it('should use default top placement when placement is not provided', async () => {
+    it('should use default top placement when side and align are not provided', async () => {
       const screen = await renderWithSafeViewport(
         <Tooltip open>
           <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
@@ -19,11 +19,11 @@ describe('TooltipContent', () => {
       await expect.element(screen.getByText('Tooltip body')).toHaveAttribute('data-align', 'center')
     })
 
-    it('should apply custom placement when placement props are provided', async () => {
+    it('should apply custom placement when positioning props are provided', async () => {
       const screen = await renderWithSafeViewport(
         <Tooltip open>
           <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
-          <TooltipContent placement="bottom-start" sideOffset={16} alignOffset={6}>
+          <TooltipContent side="bottom" align="start" sideOffset={16} alignOffset={6}>
             Custom tooltip body
           </TooltipContent>
         </Tooltip>,

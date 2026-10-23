@@ -125,7 +125,7 @@ describe('Popover anatomy', () => {
             </DropdownMenuItem>
             <PopoverPortal>
               <PopoverBackdrop ref={backdropRef} />
-              <PopoverPositioner placement="right-start">
+              <PopoverPositioner side="right" align="start">
                 <PopoverPopup>
                   <PopoverTitle>More options</PopoverTitle>
                   <input aria-label="Filter options" />
@@ -177,7 +177,7 @@ describe('Popover anatomy', () => {
       <Popover open>
         <PopoverTrigger>Open</PopoverTrigger>
         <PopoverPortal>
-          <PopoverPositioner placement="top-end" data-testid="anatomy-positioner">
+          <PopoverPositioner side="top" align="end" data-testid="anatomy-positioner">
             <PopoverPopup>
               <PopoverTitle>Anatomy popover</PopoverTitle>
               <PopoverDescription>Anatomy content</PopoverDescription>

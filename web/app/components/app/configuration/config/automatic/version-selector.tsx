@@ -39,12 +39,7 @@ function VersionSelector({ versionLen, value, onChange }: VersionSelectorProps) 
         </div>
         {moreThanOneVersion && <RiArrowDownSLine className="size-3" />}
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-start"
-        sideOffset={4}
-        alignOffset={-12}
-        className="w-52 p-1"
-      >
+      <DropdownMenuContent align="start" alignOffset={-12} className="w-52 p-1">
         <DropdownMenuRadioGroup
           value={value}
           onValueChange={(nextValue) => {

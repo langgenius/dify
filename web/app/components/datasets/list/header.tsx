@@ -155,8 +155,6 @@ const DatasetListHeader = ({
                 }
               />
               <DropdownMenuContent
-                placement="bottom-end"
-                sideOffset={4}
                 {...getStepByStepTourDropdownMenuContentProps({
                   disableMotion: createMenu.controlled,
                   highlightPart: createMenu.controlled

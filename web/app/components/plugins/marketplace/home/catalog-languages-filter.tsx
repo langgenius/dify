@@ -122,7 +122,7 @@ export default function CatalogLanguagesFilter() {
         )}
       </div>
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
         alignOffset={-6}
         className="border-none bg-transparent shadow-none"

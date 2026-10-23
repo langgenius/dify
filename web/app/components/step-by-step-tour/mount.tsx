@@ -821,7 +821,8 @@ export default function StepByStepTourMount({
                   {overlayVisible && (
                     <PopoverPortal>
                       <PopoverPositioner
-                        placement="top-start"
+                        side="top"
+                        align="start"
                         sideOffset={0}
                         anchor={anchorRef}
                         collisionPadding={8}
@@ -892,7 +893,8 @@ function SkipRecoveryPrompt({
     >
       <PopoverPortal>
         <PopoverPositioner
-          placement="top-end"
+          side="top"
+          align="end"
           sideOffset={28}
           anchor={anchorRef}
           arrowPadding={8}

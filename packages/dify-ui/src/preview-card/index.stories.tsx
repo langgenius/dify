@@ -109,45 +109,43 @@ export const LinkPreview: Story = {
   render: () => <LinkPreviewDemo />,
 }
 
-type PreviewCardPlacement = NonNullable<PreviewCardContentProps['placement']>
-
-const PLACEMENTS: PreviewCardPlacement[] = [
-  'top-start',
-  'top',
-  'top-end',
-  'right-start',
-  'right',
-  'right-end',
-  'bottom-start',
-  'bottom',
-  'bottom-end',
-  'left-start',
-  'left',
-  'left-end',
-  'inline-start-start',
-  'inline-start',
-  'inline-start-end',
-  'inline-end-start',
-  'inline-end',
-  'inline-end-end',
-]
+const POSITIONS = [
+  { side: 'top', align: 'start' },
+  { side: 'top', align: 'center' },
+  { side: 'top', align: 'end' },
+  { side: 'right', align: 'start' },
+  { side: 'right', align: 'center' },
+  { side: 'right', align: 'end' },
+  { side: 'bottom', align: 'start' },
+  { side: 'bottom', align: 'center' },
+  { side: 'bottom', align: 'end' },
+  { side: 'left', align: 'start' },
+  { side: 'left', align: 'center' },
+  { side: 'left', align: 'end' },
+  { side: 'inline-start', align: 'start' },
+  { side: 'inline-start', align: 'center' },
+  { side: 'inline-start', align: 'end' },
+  { side: 'inline-end', align: 'start' },
+  { side: 'inline-end', align: 'center' },
+  { side: 'inline-end', align: 'end' },
+] satisfies Array<Pick<PreviewCardContentProps, 'side' | 'align'>>
 
 function PlacementsDemo() {
-  const [placement, setPlacement] = React.useState<PreviewCardPlacement>('bottom')
+  const [position, setPosition] = React.useState(POSITIONS[7]!)
 
   return (
     <div className="flex flex-col items-center gap-4 p-20">
       <div className="grid grid-cols-3 gap-2 text-xs">
-        {PLACEMENTS.map((value) => (
+        {POSITIONS.map((value) => (
           <button
-            key={value}
+            key={`${value.side}-${value.align}`}
             type="button"
-            onClick={() => setPlacement(value)}
+            onClick={() => setPosition(value)}
             className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden ${
-              placement === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
+              position === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
             }`}
           >
-            {value}
+            {value.side} / {value.align}
           </button>
         ))}
       </div>
@@ -155,11 +153,10 @@ function PlacementsDemo() {
         <PreviewCardTrigger href="#preview-card-placement" className={triggerButtonClassName}>
           Hover me
         </PreviewCardTrigger>
-        <PreviewCardContent placement={placement} className="w-56 p-3">
+        <PreviewCardContent side={position.side} align={position.align} className="w-56 p-3">
           <div className="flex flex-col gap-1">
             <div className="text-sm font-semibold text-text-primary">
-              placement="
-              {placement}"
+              {`side="${position.side}" align="${position.align}"`}
             </div>
             <div className="text-xs text-text-secondary">
               Preview positions itself relative to the trigger.

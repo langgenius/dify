@@ -50,7 +50,8 @@ export function ServiceApi({ apiBaseUrl, apiReferenceUrl }: ServiceApiProps) {
             )}
           />
           <PopoverContent
-            placement="top-start"
+            side="top"
+            align="start"
             sideOffset={4}
             alignOffset={-4}
             className="border-none bg-transparent shadow-none"

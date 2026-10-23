@@ -167,7 +167,7 @@ export function PublisherEnvironmentTabs({
               </button>
             }
           />
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-42 p-0">
+          <DropdownMenuContent className="w-42 p-0">
             {overflowEnvironments.length > 0 && (
               <DropdownMenuGroup className="p-1">
                 {overflowEnvironments.map((environment) => (

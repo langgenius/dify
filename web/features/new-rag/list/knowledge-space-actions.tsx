@@ -71,7 +71,7 @@ export function KnowledgeSpaceActions({
                 </IconButton>
               }
             />
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-46.5">
+            <DropdownMenuContent className="min-w-46.5">
               {canEdit && (
                 <DropdownMenuLinkItem
                   render={<Link href={newKnowledgeSettingsPath(knowledgeSpace.control_space_id)} />}

@@ -72,7 +72,6 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
           }
         />
         <PopoverContent
-          placement="bottom"
           sideOffset={13}
           className="relative flex max-h-[calc(100dvh-2rem)] min-h-40.5 w-80 max-w-[calc(100vw-2rem)] flex-col"
         >

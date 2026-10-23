@@ -296,7 +296,7 @@ function BadCaseRow({
               question: item.question ?? '',
             })}
           />
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
+          <DropdownMenuContent className="w-50">
             {canEdit &&
               (item.status === 'fixed' ? (
                 <DropdownMenuItem className="gap-2 px-3" onClick={() => onPromote(item)}>

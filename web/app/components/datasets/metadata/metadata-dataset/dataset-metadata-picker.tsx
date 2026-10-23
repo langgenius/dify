@@ -33,7 +33,7 @@ type PickerView = (typeof PickerView)[keyof typeof PickerView]
 
 export type DatasetMetadataPickerProps = Pick<
   PopoverContentProps,
-  'placement' | 'sideOffset' | 'alignOffset'
+  'side' | 'align' | 'sideOffset' | 'alignOffset'
 > & {
   datasetId: string
   onSelectMetadata: (metadata: MetadataItem) => void
@@ -51,7 +51,8 @@ function metadataFilter(metadata: MetadataItem, query: string) {
 
 export function DatasetMetadataPicker({
   datasetId,
-  placement = 'left-start',
+  side = 'left',
+  align = 'start',
   sideOffset = -38,
   alignOffset = 4,
   onSelectMetadata,
@@ -122,7 +123,8 @@ export function DatasetMetadataPicker({
         }
       />
       <PopoverContent
-        placement={placement}
+        side={side}
+        align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
         className="w-[320px] bg-components-panel-bg-blur backdrop-blur-[5px]"
