@@ -41,6 +41,16 @@ REDIS_TTL_NO_EXPIRY = -1
 REDIS_TTL_MISSING = -2
 
 
+def _remaining_lifetime(device_code: str, ttl: int) -> int | None:
+    """Seconds a device code has left; None when the key is gone or, wrongly, has no expiry."""
+    if ttl == REDIS_TTL_MISSING:
+        return None
+    if ttl == REDIS_TTL_NO_EXPIRY:
+        logger.error("device_code %s has no expiry; treating as invalid", device_code)
+        return None
+    return ttl
+
+
 # ============================================================================
 # Redis state machine — device_code + user_code ephemeral state
 # ============================================================================
@@ -293,7 +303,7 @@ class DeviceFlowRedis:
             return ApprovalTransitionConfirmation.PUBLISHED
         return ApprovalTransitionConfirmation.NOT_PUBLISHED
 
-    def consume_on_poll(self, device_code: str) -> tuple[DeviceFlowState, int] | None:
+    def consume_on_poll(self, device_code: str) -> tuple[DeviceFlowState, int | None] | None:
         """Race-safe via Lua EVAL: GET + status-check + DEL execute in a
         single Redis transaction so only one of N concurrent pollers
         observes the APPROVED state. Losers get None, mapped to
@@ -316,10 +326,7 @@ class DeviceFlowRedis:
             self._redis.delete(USER_CODE_KEY_FMT.format(code=state.user_code))
         except Exception:
             logger.exception("device_flow: failed to clean consumed user-code mapping")
-        ttl = int(ttl)
-        if ttl in (REDIS_TTL_NO_EXPIRY, REDIS_TTL_MISSING):
-            return state, 0
-        return state, ttl
+        return state, _remaining_lifetime(device_code, int(ttl))
 
     def restore(self, device_code: str, state: DeviceFlowStateView, ttl_seconds: int) -> bool:
         """Put a consumed state back for the time it had left. Never overwrites a state that exists again."""
@@ -332,13 +339,7 @@ class DeviceFlowRedis:
         return True
 
     def remaining_seconds(self, device_code: str) -> int | None:
-        ttl = int(self._redis.ttl(DEVICE_CODE_KEY_FMT.format(code=device_code)))
-        if ttl == REDIS_TTL_MISSING:
-            return None
-        if ttl == REDIS_TTL_NO_EXPIRY:
-            logger.error("device_code %s has no expiry; treating as invalid", device_code)
-            return None
-        return ttl
+        return _remaining_lifetime(device_code, int(self._redis.ttl(DEVICE_CODE_KEY_FMT.format(code=device_code))))
 
     def record_poll(self, device_code: str, interval_seconds: int) -> SlowDownDecision:
         now = time.time()

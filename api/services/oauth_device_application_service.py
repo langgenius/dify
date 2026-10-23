@@ -81,7 +81,7 @@ class DeviceFlowStore(Protocol):
 
     def confirm_approval(self, device_code: str, transition_id: str) -> ApprovalTransitionConfirmation: ...
 
-    def consume_on_poll(self, device_code: str) -> tuple[DeviceFlowStateView, int] | None: ...
+    def consume_on_poll(self, device_code: str) -> tuple[DeviceFlowStateView, int | None] | None: ...
 
     def restore(self, device_code: str, state: DeviceFlowStateView, ttl_seconds: int) -> bool: ...
 
@@ -532,7 +532,13 @@ class OAuthDeviceApplicationService:
                 raise ApprovalOutcomeUnknownError from publish_error
             raise
 
-    def _restore_approval(self, device_code: str, state: DeviceFlowStateView, ttl_seconds: int) -> None:
+    def _restore_approval(self, device_code: str, state: DeviceFlowStateView, ttl_seconds: int | None) -> None:
+        """``ttl_seconds`` is None when the consumed code had no usable lifetime (gone, or no expiry)."""
+        if ttl_seconds is None:
+            logger.warning(
+                "device_flow: approval for %s not restored because the code has no usable lifetime", device_code
+            )
+            return
         if ttl_seconds <= 0:
             logger.warning("device_flow: approval for %s not restored because the code has expired", device_code)
             return

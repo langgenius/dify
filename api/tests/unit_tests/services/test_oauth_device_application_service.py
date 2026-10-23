@@ -117,7 +117,7 @@ class FakeStore:
             return ApprovalTransitionConfirmation.PUBLISHED
         return ApprovalTransitionConfirmation.NOT_PUBLISHED
 
-    def consume_on_poll(self, device_code: str) -> tuple[DeviceFlowStateView, int] | None:
+    def consume_on_poll(self, device_code: str) -> tuple[DeviceFlowStateView, int | None] | None:
         for user_code, (code, state) in self.states.items():
             if code == device_code:
                 del self.states[user_code]
