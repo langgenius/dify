@@ -7393,11 +7393,6 @@
       "count": 1
     }
   },
-  "web/features/home/continue-work/continue-work.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/features/home/continue-work/item.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
