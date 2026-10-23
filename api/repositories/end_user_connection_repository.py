@@ -120,19 +120,19 @@ class EndUserConnectionRepository:
         app: App,
         workflow_id: str,
         conversation_id: str | None,
-        *,
-        require_current_publication: bool = True,
     ) -> None:
-        # New requests pin the current publication. Accepted executions retain
-        # their selected workflow across queueing and pause/resume boundaries.
-        if (require_current_publication and app.workflow_id != workflow_id) or session.scalar(
-            sa.select(Workflow.id).where(
-                Workflow.id == workflow_id,
-                Workflow.app_id == context.app_id,
-                Workflow.tenant_id == context.tenant_id,
-                Workflow.version != "draft",
+        if (
+            app.workflow_id != workflow_id
+            or session.scalar(
+                sa.select(Workflow.id).where(
+                    Workflow.id == workflow_id,
+                    Workflow.app_id == context.app_id,
+                    Workflow.tenant_id == context.tenant_id,
+                    Workflow.version != "draft",
+                )
             )
-        ) is None:
+            is None
+        ):
             raise ConnectionWorkflowChangedError()
         if conversation_id is None:
             return
@@ -188,14 +188,11 @@ class EndUserConnectionRepository:
             app = self._require_context(session, context, lock=False)
             self._require_workflow_scope(session, context, app, workflow_id, conversation_id)
 
-    def validate_execution_context(
-        self, context: WebConnectionContext, workflow_id: str, conversation_id: str | None
-    ) -> None:
+    def validate_execution_identity(self, context: WebConnectionContext, conversation_id: str | None) -> None:
         with self._sessions() as session:
             app = self._require_context(session, context, lock=False)
-            self._require_workflow_scope(
-                session, context, app, workflow_id, conversation_id, require_current_publication=False
-            )
+            if conversation_id is not None:
+                self._require_conversation(session, context, app, conversation_id, lock=False)
 
     def access_records(
         self, context: WebConnectionContext, connection_ids: frozenset[str]
@@ -292,9 +289,10 @@ class EndUserConnectionRepository:
         with self._sessions.begin() as session:
             # Acceptance order is serialized under the stable App/EndUser lock.
             # Workers and resume paths never update App defaults again.
-            context, selections = self._execution_selections(
-                session, execution, conversation_id, require_current_publication=True
-            )
+            context, app, selections = self._execution_selections(session, execution)
+            self._require_workflow_scope(session, context, app, execution.workflow_id, None)
+            if conversation_id is not None:
+                self._require_conversation(session, context, app, conversation_id, lock=True)
             session.execute(sa.delete(AppConnection).where(*self._app_selection_scope(context)))
             session.add_all(
                 AppConnection(
@@ -317,32 +315,28 @@ class EndUserConnectionRepository:
 
     @classmethod
     def initialize_conversation_selections(
-        cls, session: Session, execution: ConnectionExecutionContext, conversation_id: str
+        cls, session: Session, execution: ConnectionExecutionContext, conversation: Conversation
     ) -> None:
-        """Persist initial choices with the new Conversation, without rewriting App defaults."""
-        context, selections = cls._execution_selections(
-            session, execution, conversation_id, require_current_publication=False
-        )
-        cls._insert_conversation_selections(session, context, conversation_id, selections)
+        """Persist choices with the just-created row, using the accepted Workflow."""
+        if (
+            conversation.app_id != execution.app_id
+            or conversation.from_end_user_id != execution.end_user_id
+            or conversation.from_account_id is not None
+            or conversation.from_source != ConversationFromSource.API
+            or conversation.mode != AppMode.ADVANCED_CHAT
+        ):
+            raise ConnectionIdentityError()
+        context, _, selections = cls._execution_selections(session, execution)
+        cls._insert_conversation_selections(session, context, conversation.id, selections)
 
     @classmethod
     def _execution_selections(
-        cls,
-        session: Session,
-        execution: ConnectionExecutionContext,
-        conversation_id: str | None,
-        *,
-        require_current_publication: bool,
-    ) -> tuple[WebConnectionContext, tuple[SavedConnectionSelection, ...]]:
+        cls, session: Session, execution: ConnectionExecutionContext
+    ) -> tuple[WebConnectionContext, App, tuple[SavedConnectionSelection, ...]]:
         context = WebConnectionContext(
             execution.tenant_id, execution.app_id, execution.end_user_id, execution.account_id
         )
         app = cls._require_context(session, context, lock=True)
-        cls._require_workflow_scope(
-            session, context, app, execution.workflow_id, None, require_current_publication=require_current_publication
-        )
-        if conversation_id is not None:
-            cls._require_conversation(session, context, app, conversation_id, lock=True)
         records = cls._access_records(
             session,
             context,
@@ -355,7 +349,7 @@ class EndUserConnectionRepository:
             if record is None or record.provider != item.provider:
                 raise ConnectionConflictError()
             selections.append(SavedConnectionSelection(execution.workflow_id, item.node_id, record.provider, record.id))
-        return context, tuple(selections)
+        return context, app, tuple(selections)
 
     @staticmethod
     def _insert_conversation_selections(

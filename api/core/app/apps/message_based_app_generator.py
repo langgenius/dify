@@ -247,7 +247,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 and application_generate_entity.connection_context is not None
             ):
                 initialize_conversation_connections(
-                    session, application_generate_entity.connection_context, conversation.id
+                    session, application_generate_entity.connection_context, conversation
                 )
 
             session.commit()

@@ -96,4 +96,6 @@ def validate_connection_execution(
         or workflow.app_id != identity.app_id
     ):
         raise ConnectionIdentityError()
-    repository.validate_execution_context(identity, context.workflow_id, conversation_id)
+    if workflow.version == Workflow.VERSION_DRAFT:
+        raise ConnectionWorkflowChangedError()
+    repository.validate_execution_identity(identity, conversation_id)

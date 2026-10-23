@@ -280,3 +280,20 @@ def test_workspace_only_run_clears_old_defaults_without_preflight(harness: Conve
     assert harness.service.get(base.context, None).connections == {}
     assert harness.saved(conversation_id) == {}
     assert base.auth.calls == []
+
+
+@pytest.mark.parametrize("field", ["app_id", "from_end_user_id"])
+def test_initial_choices_cannot_be_bound_to_another_conversation_owner(
+    harness: ConversationHarness, field: str
+) -> None:
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    accepted = harness.run(None, {"tool-1": selected.id})
+    conversation_id = harness.create_conversation()
+    with harness.sessions() as session:
+        conversation = session.get(Conversation, conversation_id)
+        assert conversation is not None
+        setattr(conversation, field, str(uuid4()))
+        with pytest.raises(ConnectionIdentityError):
+            base.repository.initialize_conversation_selections(session, accepted, conversation)
+    assert harness.saved(conversation_id) == {}

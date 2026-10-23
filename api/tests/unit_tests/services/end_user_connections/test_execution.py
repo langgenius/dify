@@ -200,6 +200,13 @@ def test_async_authority_revalidated_without_rebinding_to_new_publication(
     validate_connection_execution(
         context, app=app, user=user, workflow=workflow, conversation_id=None, repository=harness.base.repository
     )
+    published_version = workflow.version
+    workflow.version = Workflow.VERSION_DRAFT
+    with pytest.raises(ConnectionWorkflowChangedError):
+        validate_connection_execution(
+            context, app=app, user=user, workflow=workflow, conversation_id=None, repository=harness.base.repository
+        )
+    workflow.version = published_version
     with pytest.raises(ConnectionWorkflowChangedError):
         prepare(harness, service, {})
     changed = context.model_copy(update={"account_id": str(uuid4())})
