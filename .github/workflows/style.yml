@@ -239,6 +239,9 @@ jobs:
       - name: Static check
         run: vp run -w check
 
+      - name: Type check with tsrs
+        run: vp run -r type-check
+
       - name: Tooling rule tests
         run: vp run @dify/tooling#test run
 
