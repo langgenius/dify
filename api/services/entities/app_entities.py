@@ -207,6 +207,8 @@ class AppExportOptions:
     workflow_id: str | None = None
     version_id: UUID | None = None
     preserve_agent_bindings: bool = False
+    # Knowledge-retrieval dataset IDs are encrypted per tenant unless the trusted caller needs the real IDs.
+    plain_dataset_ids: bool = False
 
 
 @dataclass(frozen=True, slots=True)

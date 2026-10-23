@@ -50,6 +50,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         workflow,
         workflow_events,
     )
+    from .appdeploy import knowledge
     from .dataset import (
         dataset,
         document,
@@ -63,6 +64,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     return (
         index,
+        knowledge,
         annotation,
         app,
         audio,
@@ -88,6 +90,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 (
     index,
+    knowledge,
     annotation,
     app,
     audio,
@@ -124,6 +127,7 @@ __all__ = [
     "hit_testing",
     "human_input_form",
     "index",
+    "knowledge",
     "message",
     "metadata",
     "models",

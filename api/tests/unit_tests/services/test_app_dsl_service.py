@@ -1112,6 +1112,46 @@ def test_append_workflow_export_data_reports_missing_selected_workflow(
         )
 
 
+@pytest.mark.parametrize("plain_dataset_ids", [False, True])
+def test_workflow_export_encrypts_knowledge_dataset_ids_unless_plain_ids_are_requested(
+    plain_dataset_ids: bool, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    dataset_id = "5b3a1c2e-7f64-4c1d-9e0a-2f8b6d4c3a10"
+    app = _app(mode=AppMode.WORKFLOW)
+    workflow = _workflow(
+        graph={
+            "nodes": [{"id": "kr", "data": {"type": "knowledge-retrieval", "dataset_ids": [dataset_id]}}],
+            "edges": [],
+        }
+    )
+    monkeypatch.setattr(AppDslService, "_load_export_workflow", lambda *_args, **_kwargs: workflow)
+    monkeypatch.setattr(AppDslService, "_extract_dependencies_from_workflow", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        "services.app_dsl_service.AgentDslService.export_workflow_packages",
+        lambda _self, *, graph, **_kwargs: (graph, {}),
+    )
+    monkeypatch.setattr(
+        "services.app_dsl_service.AgentDslService.extract_package_dependencies", lambda _self, _packages: []
+    )
+    export_data: dict[str, object] = {}
+
+    AppDslService._append_workflow_export_data(
+        export_data=export_data,
+        app_model=app,
+        include_secret=False,
+        session=unbound_session,
+        plain_dataset_ids=plain_dataset_ids,
+    )
+
+    graph = cast(dict[str, dict[str, list[dict[str, dict[str, list[str]]]]]], export_data["workflow"])["graph"]
+    exported = graph["nodes"][0]["data"]["dataset_ids"]
+    if plain_dataset_ids:
+        assert exported == [dataset_id]
+    else:
+        assert exported != [dataset_id]
+        assert AppDslService.decrypt_dataset_id(exported[0], app.tenant_id) == dataset_id
+
+
 @pytest.mark.parametrize(
     "mode",
     [AppMode.AGENT, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION],

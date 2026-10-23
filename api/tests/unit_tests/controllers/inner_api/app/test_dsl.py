@@ -195,14 +195,21 @@ class TestEnterpriseAppDSLExport:
         assert params["include_secret"]["in"] == "query"
         assert params["workflow_id"]["in"] == "query"
         assert params["workflow_id"]["format"] == "uuid"
+        assert params["plain_dataset_ids"]["in"] == "query"
 
     @pytest.mark.parametrize(
-        ("query", "secret", "workflow_id"),
+        ("query", "secret", "workflow_id", "plain_dataset_ids"),
         [
-            ("", False, None),
-            ("?include_secret=TRUE", True, None),
-            ("?include_secret=1", False, None),
-            ("?workflow_id=F1FD7266-56FC-45C7-9D81-A72CD5A1B4F6", False, "f1fd7266-56fc-45c7-9d81-a72cd5a1b4f6"),
+            ("", False, None, False),
+            ("?include_secret=TRUE", True, None, False),
+            ("?include_secret=1", False, None, False),
+            ("?plain_dataset_ids=true", False, None, True),
+            (
+                "?workflow_id=F1FD7266-56FC-45C7-9D81-A72CD5A1B4F6",
+                False,
+                "f1fd7266-56fc-45c7-9d81-a72cd5a1b4f6",
+                False,
+            ),
         ],
     )
     def test_export_parses_options(
@@ -213,6 +220,7 @@ class TestEnterpriseAppDSLExport:
         query: str,
         secret: bool,
         workflow_id: str | None,
+        plain_dataset_ids: bool,
     ) -> None:
         calls: list[tuple[str, AppExportOptions]] = []
 
@@ -224,7 +232,12 @@ class TestEnterpriseAppDSLExport:
         with app.test_request_context(query):
             result = inspect.unwrap(EnterpriseAppDSLExport.get)(EnterpriseAppDSLExport(), app_id="app-id")
         assert result == ({"data": "yaml-data"}, 200)
-        assert calls == [("app-id", AppExportOptions(include_secret=secret, workflow_id=workflow_id))]
+        assert calls == [
+            (
+                "app-id",
+                AppExportOptions(include_secret=secret, workflow_id=workflow_id, plain_dataset_ids=plain_dataset_ids),
+            )
+        ]
 
     @pytest.mark.parametrize(
         ("error", "query", "expected"),

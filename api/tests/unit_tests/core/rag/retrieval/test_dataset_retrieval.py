@@ -4004,6 +4004,15 @@ class TestDatasetRetrievalAdditionalHelpers:
                 user_from="account",
                 user_id=user_id,
             )
+            # AppDeploy runners forward the Service API caller's own user string.
+            retrieval._on_query(
+                query="python",
+                attachment_ids=None,
+                dataset_ids=dataset_ids,
+                app_id=app_id,
+                user_from="end-user",
+                user_id="api-user-42",
+            )
         added_queries = sqlite_session.scalars(select(DatasetQuery).order_by(DatasetQuery.dataset_id)).all()
         assert [row.dataset_id for row in added_queries] == sorted(dataset_ids)
         assert all(row.created_by == user_id for row in added_queries)

@@ -35,7 +35,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     from .app import app, dsl, file_grants
     from .knowledge import retrieval
     from .plugin import agent_config, plugin, skills
-    from .workspace import workspace
+    from .workspace import access_token, workspace
 
     return (
         mail,
@@ -52,6 +52,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         agent_config,
         plugin,
         skills,
+        access_token,
         workspace,
     )
 
@@ -71,6 +72,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     _agent_config,
     _plugin,
     _skills,
+    _workspace_access_token,
     _workspace,
 ) = _register_controllers()
 
@@ -91,6 +93,7 @@ __all__ = [
     "_runtime_credentials",
     "_skills",
     "_workspace",
+    "_workspace_access_token",
     "api",
     "bp",
     "inner_api_ns",

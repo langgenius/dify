@@ -39,4 +39,5 @@ class AppExportRepository(AppExportStore):
                 include_secret=options.include_secret,
                 workflow_id=options.workflow_id,
                 version_id=options.version_id,
+                plain_dataset_ids=options.plain_dataset_ids,
             )

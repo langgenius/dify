@@ -1,8 +1,9 @@
 """Workspace machine-credential policies; storage owns sessions and transactions."""
 
+from collections.abc import Sequence
 from typing import Protocol
 
-from constants.resource_access_token import ResourceAccessTokenResourceType
+from constants.resource_access_token import ResourceAccessTokenManagedBy, ResourceAccessTokenResourceType
 from machinery.context import RequestContext
 from services.auth.resource_access_token_contracts import (
     ResourceAccessTokenAccess,
@@ -10,15 +11,25 @@ from services.auth.resource_access_token_contracts import (
     ResourceAccessTokenForbiddenError,
     ResourceAccessTokenGrant,
     ResourceAccessTokenInputError,
+    ResourceAccessTokenInvalidError,
     ResourceAccessTokenResource,
     ResourceAccessTokenRow,
 )
 
 
 class ResourceAccessTokenStore(Protocol):
+    """Account-facing reads and writes (list, count, update, delete) only see user-managed tokens."""
+
     def create(
-        self, tenant_id: str, created_by: str, name: str, resources: tuple[ResourceAccessTokenResource, ...]
-    ) -> ResourceAccessTokenCreateResult: ...
+        self,
+        tenant_id: str,
+        created_by: str | None,
+        name: str,
+        resources: tuple[ResourceAccessTokenResource, ...],
+        managed_by: ResourceAccessTokenManagedBy,
+    ) -> ResourceAccessTokenCreateResult:
+        """A None creator means no account created the token; a given creator must belong to the tenant."""
+        ...
 
     def list_rows(
         self, tenant_id: str, page: int, limit: int, keyword: str | None = None
@@ -33,6 +44,10 @@ class ResourceAccessTokenStore(Protocol):
         ...
 
     def delete(self, tenant_id: str, token_id: str, relation_id: str) -> None: ...
+
+    def delete_token(self, tenant_id: str, token_id: str) -> None:
+        """Delete any token in the tenant with its bindings; a missing token is not an error."""
+        ...
 
     def access_by_secret(self, token: str) -> ResourceAccessTokenAccess: ...
 
@@ -49,8 +64,35 @@ class ResourceAccessTokenService:
         self, context: RequestContext, *, name: str, resources: tuple[ResourceAccessTokenResource, ...]
     ) -> ResourceAccessTokenCreateResult:
         return self._tokens.create(
-            context.active_workspace_id, context.account_id, self._normalize_name(name), self._resources(resources)
+            context.active_workspace_id,
+            context.account_id,
+            self._normalize_name(name),
+            self._resources(resources),
+            ResourceAccessTokenManagedBy.USER,
         )
+
+    def create_for_enterprise(
+        self,
+        *,
+        tenant_id: str,
+        managed_by: ResourceAccessTokenManagedBy,
+        name: str,
+        created_by: str | None,
+        resources: tuple[ResourceAccessTokenResource, ...],
+    ) -> ResourceAccessTokenCreateResult:
+        """Create a token for the trusted enterprise caller.
+
+        User tokens appear in the workspace console, so they need an accountable creator. Managed tokens are
+        invisible to members and may have none.
+        """
+        if managed_by == ResourceAccessTokenManagedBy.USER and created_by is None:
+            raise ResourceAccessTokenInputError("created_by is required for user tokens.")
+        return self._tokens.create(
+            tenant_id, created_by, self._normalize_name(name), self._resources(resources), managed_by
+        )
+
+    def delete_for_enterprise(self, *, tenant_id: str, token_id: str) -> None:
+        self._tokens.delete_token(tenant_id, token_id)
 
     def list_rows(
         self, context: RequestContext, *, page: int, limit: int, keyword: str | None = None
@@ -80,13 +122,13 @@ class ResourceAccessTokenService:
         self._tokens.delete(context.active_workspace_id, token_id, relation_id)
 
     def authenticate(self, token: str) -> ResourceAccessTokenAccess:
-        return self._tokens.access_by_secret(token)
+        return self._user_access(self._tokens.access_by_secret(token))
 
     def authorize_openapi(
         self, *, token_id: str, workspace_id: str | None, app_id: str | None
     ) -> ResourceAccessTokenGrant:
         """None ids mean the discovery route has not selected a workspace or app."""
-        access = self._tokens.access_by_id(token_id)
+        access = self._user_access(self._tokens.access_by_id(token_id))
         if not access.workspace_active:
             raise ResourceAccessTokenForbiddenError("workspace unavailable")
         if workspace_id and workspace_id != access.tenant_id:
@@ -99,7 +141,7 @@ class ResourceAccessTokenService:
 
     def resolve_app_for_service_api(self, *, token: str, requested_app_id: str | None) -> ResourceAccessTokenGrant:
         """With no app id, require exactly one bound app."""
-        access = self._tokens.access_by_secret(token)
+        access = self._user_access(self._tokens.access_by_secret(token))
         apps = tuple(
             r
             for r in access.resources
@@ -118,7 +160,7 @@ class ResourceAccessTokenService:
 
     def resolve_tenant_for_dataset_service_api(self, *, token: str, dataset_id: str | None) -> str:
         """With no dataset id, authorize the collection route using any knowledge binding."""
-        access = self._tokens.access_by_secret(token)
+        access = self._user_access(self._tokens.access_by_secret(token))
         if not any(
             r.type == ResourceAccessTokenResourceType.KNOWLEDGE and (not dataset_id or r.id == dataset_id)
             for r in access.resources
@@ -128,6 +170,31 @@ class ResourceAccessTokenService:
             )
         self._tokens.record_usage(access.tenant_id, access.token_id)
         return access.tenant_id
+
+    def authorize_appdeploy_knowledge(self, *, token: str, dataset_ids: Sequence[str]) -> str:
+        """Return the tenant an AppDeploy runner retrieves from; every requested dataset must be bound.
+
+        The tenant comes from the token, never from the caller. Usage is not recorded: managed tokens are
+        invisible to members, and the per-token row lock would serialize a deployment's concurrent runs.
+        """
+        access = self._tokens.access_by_secret(token)
+        if access.managed_by != ResourceAccessTokenManagedBy.APPDEPLOY:
+            raise ResourceAccessTokenInvalidError("Resource access token is invalid.")
+        if not access.workspace_active:
+            raise ResourceAccessTokenForbiddenError("workspace unavailable")
+        bound = {r.id for r in access.resources if r.type == ResourceAccessTokenResourceType.KNOWLEDGE}
+        if not set(dataset_ids) <= bound:
+            raise ResourceAccessTokenForbiddenError(
+                "Resource access token is not allowed to access this knowledge base."
+            )
+        return access.tenant_id
+
+    @staticmethod
+    def _user_access(access: ResourceAccessTokenAccess) -> ResourceAccessTokenAccess:
+        """Managed tokens serve only their owner's dedicated routes and look invalid everywhere else."""
+        if access.managed_by != ResourceAccessTokenManagedBy.USER:
+            raise ResourceAccessTokenInvalidError("Resource access token is invalid.")
+        return access
 
     @staticmethod
     def _normalize_name(name: str) -> str:

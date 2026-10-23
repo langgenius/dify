@@ -3,7 +3,11 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from constants.resource_access_token import TOKEN_PREFIX, ResourceAccessTokenResourceType
+from constants.resource_access_token import (
+    TOKEN_PREFIX,
+    ResourceAccessTokenManagedBy,
+    ResourceAccessTokenResourceType,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +52,7 @@ class ResourceAccessTokenAccess:
     tenant_id: str
     workspace_active: bool
     resources: tuple[BoundResource, ...]
+    managed_by: ResourceAccessTokenManagedBy
 
 
 @dataclass(frozen=True, slots=True)

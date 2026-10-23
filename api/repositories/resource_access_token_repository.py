@@ -7,9 +7,13 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql.elements import ColumnElement
 
-from constants.resource_access_token import TOKEN_PREFIX, ResourceAccessTokenResourceType
+from constants.resource_access_token import (
+    TOKEN_PREFIX,
+    ResourceAccessTokenManagedBy,
+    ResourceAccessTokenResourceType,
+)
 from libs.datetime_utils import naive_utc_now
-from models.account import Tenant, TenantStatus
+from models.account import Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset
 from models.model import App
 from models.resource_access_token import ResourceAccessToken, ResourceAccessTokenRelation
@@ -33,20 +37,30 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
 
     @override
     def create(
-        self, tenant_id: str, created_by: str, name: str, resources: tuple[ResourceAccessTokenResource, ...]
+        self,
+        tenant_id: str,
+        created_by: str | None,
+        name: str,
+        resources: tuple[ResourceAccessTokenResource, ...],
+        managed_by: ResourceAccessTokenManagedBy,
     ) -> ResourceAccessTokenCreateResult:
         with self._session_factory.begin() as session:
+            if created_by is not None:
+                self._ensure_member(session, tenant_id, created_by)
             token = ResourceAccessToken(
                 tenant_id=tenant_id,
                 name=name,
                 created_by=created_by,
+                managed_by=managed_by,
                 token=self._generate_token(session),
                 track_id=self._generate_track_id(session),
             )
             session.add(token)
             session.flush()
+            # Managed tokens back runtime features, not the per-resource Service API switch.
+            require_api_enabled = managed_by == ResourceAccessTokenManagedBy.USER
             for resource in resources:
-                self._ensure_resource_available(session, tenant_id, resource)
+                self._ensure_resource_available(session, tenant_id, resource, require_api_enabled=require_api_enabled)
                 session.add(self._relation(token.id, resource))
             session.flush()
             return ResourceAccessTokenCreateResult(
@@ -74,7 +88,10 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
                     Dataset,
                     (Dataset.id == ResourceAccessTokenRelation.dataset_id) & (Dataset.tenant_id == tenant_id),
                 )
-                .where(ResourceAccessToken.tenant_id == tenant_id)
+                .where(
+                    ResourceAccessToken.tenant_id == tenant_id,
+                    ResourceAccessToken.managed_by == ResourceAccessTokenManagedBy.USER,
+                )
             )
             if keyword:
                 token_query = token_query.where(self._keyword_filter(keyword))
@@ -106,7 +123,10 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
                     Dataset,
                     (Dataset.id == ResourceAccessTokenRelation.dataset_id) & (Dataset.tenant_id == tenant_id),
                 )
-                .where(ResourceAccessToken.tenant_id == tenant_id)
+                .where(
+                    ResourceAccessToken.tenant_id == tenant_id,
+                    ResourceAccessToken.managed_by == ResourceAccessTokenManagedBy.USER,
+                )
             )
             if keyword:
                 count_query = count_query.where(self._keyword_filter(keyword))
@@ -134,7 +154,7 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
             token.name = name
             if resources is not None:
                 for resource in resources:
-                    self._ensure_resource_available(session, tenant_id, resource)
+                    self._ensure_resource_available(session, tenant_id, resource, require_api_enabled=True)
                 existing = session.scalars(
                     select(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token.id)
                 ).all()
@@ -165,6 +185,19 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
             session.delete(token)
 
     @override
+    def delete_token(self, tenant_id: str, token_id: str) -> None:
+        with self._session_factory.begin() as session:
+            token = session.scalar(
+                select(ResourceAccessToken)
+                .where(ResourceAccessToken.id == token_id, ResourceAccessToken.tenant_id == tenant_id)
+                .with_for_update()
+            )
+            if token is None:
+                return
+            session.execute(delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token.id))
+            session.delete(token)
+
+    @override
     def access_by_secret(self, token: str) -> ResourceAccessTokenAccess:
         with self._session_factory() as session:
             row = session.scalar(select(ResourceAccessToken).where(ResourceAccessToken.token == token))
@@ -189,9 +222,14 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
 
     @staticmethod
     def _get_token(session: Session, tenant_id: str, token_id: str) -> ResourceAccessToken:
+        """Load a user-managed token for account-facing writes; managed tokens are reported as missing."""
         token = session.scalar(
             select(ResourceAccessToken)
-            .where(ResourceAccessToken.id == token_id, ResourceAccessToken.tenant_id == tenant_id)
+            .where(
+                ResourceAccessToken.id == token_id,
+                ResourceAccessToken.tenant_id == tenant_id,
+                ResourceAccessToken.managed_by == ResourceAccessTokenManagedBy.USER,
+            )
             .with_for_update()
         )
         if token is None:
@@ -216,18 +254,29 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
         return relation.resource_type, resource_id
 
     @staticmethod
-    def _ensure_resource_available(session: Session, tenant_id: str, resource: ResourceAccessTokenResource) -> None:
+    def _ensure_member(session: Session, tenant_id: str, account_id: str) -> None:
+        if not session.scalar(
+            select(TenantAccountJoin.id).where(
+                TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == account_id
+            )
+        ):
+            raise ResourceAccessTokenNotFoundError(f"Account {account_id} is not a member of the workspace.")
+
+    @staticmethod
+    def _ensure_resource_available(
+        session: Session, tenant_id: str, resource: ResourceAccessTokenResource, *, require_api_enabled: bool
+    ) -> None:
         if resource.type == ResourceAccessTokenResourceType.APP:
             app = session.scalar(select(App).where(App.id == resource.id, App.tenant_id == tenant_id))
             if app is None:
-                raise ResourceAccessTokenNotFoundError("App not found.")
-            if app.status != "normal" or not app.enable_api:
+                raise ResourceAccessTokenNotFoundError(f"App {resource.id} not found.")
+            if app.status != "normal" or (require_api_enabled and not app.enable_api):
                 raise ResourceAccessTokenForbiddenError("App API access is not enabled.")
         else:
             dataset = session.scalar(select(Dataset).where(Dataset.id == resource.id, Dataset.tenant_id == tenant_id))
             if dataset is None:
-                raise ResourceAccessTokenNotFoundError("Knowledge base not found.")
-            if not dataset.enable_api:
+                raise ResourceAccessTokenNotFoundError(f"Knowledge base {resource.id} not found.")
+            if require_api_enabled and not dataset.enable_api:
                 raise ResourceAccessTokenForbiddenError("Knowledge base API access is not enabled.")
 
     @staticmethod
@@ -302,7 +351,11 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
             for relation, app_id, app_status, app_enabled, dataset_id, dataset_enabled in rows
         )
         return ResourceAccessTokenAccess(
-            token.id, token.tenant_id, tenant is not None and tenant.status == TenantStatus.NORMAL, resources
+            token.id,
+            token.tenant_id,
+            tenant is not None and tenant.status == TenantStatus.NORMAL,
+            resources,
+            token.managed_by,
         )
 
 
