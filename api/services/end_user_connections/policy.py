@@ -1,5 +1,6 @@
-"""Pure ownership and applicability rules, with no persistence or external I/O."""
+"""Deployment admission, ownership and applicability rules for personal Connections."""
 
+from configs import dify_config
 from constants.end_user_connections import ConnectionCredentialType
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
@@ -8,11 +9,17 @@ from services.end_user_connections.entities import (
     WebConnectionContext,
 )
 from services.end_user_connections.errors import (
+    ConnectionAccountRequiredError,
     ConnectionConfigurationError,
     ConnectionNotFoundError,
     ConnectionReauthorizationRequiredError,
     ConnectionWorkflowChangedError,
 )
+
+
+def require_personal_connection_access(context: WebConnectionContext) -> None:
+    if context.account_id is None and not dify_config.END_USER_AUTH_ALLOW_ANONYMOUS:
+        raise ConnectionAccountRequiredError()
 
 
 def require_owned_connection(

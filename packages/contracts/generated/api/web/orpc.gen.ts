@@ -265,6 +265,7 @@ export const post3 = oc
     },
     connection_required: { status: 400, data: zConnectionRequiredError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
@@ -386,6 +387,7 @@ export const post7 = oc
       data: zConnectionReauthorizationRequiredError,
     },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     workflow_changed: { status: 409, data: zWorkflowChangedError },
   })
 
@@ -1625,6 +1627,7 @@ export const post28 = oc
     },
     connection_required: { status: 400, data: zConnectionRequiredError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_workflow_app: { status: 400, data: zNotWorkflowAppError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },

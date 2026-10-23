@@ -21,13 +21,13 @@ from controllers.common.end_user_connections import (
 )
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
-from controllers.web.connections import _context
 from controllers.web.wraps import WebApiResource
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App, EndUser
+from services.end_user_connection_identity import connection_context_from_web_passport
 from services.end_user_connections.contracts import ConnectionOAuthStart, StartConnectionOAuthInput
 from services.end_user_connections.errors import ConnectionError
 from services.plugin.oauth_service import OAuthProxyService
@@ -74,7 +74,7 @@ class EndUserConnectionOAuthApi(WebApiResource):
     )
     def post(self, app_model: App, end_user: EndUser):
         try:
-            context = _context(app_model, end_user)
+            context = connection_context_from_web_passport(app=app_model, end_user=end_user)
             payload = EndUserConnectionOAuthPayload.model_validate(web_ns.payload or {})
             result = application_services().end_user_connection_oauth.start_oauth(
                 context,
@@ -104,7 +104,7 @@ class EndUserConnectionReauthorizeApi(WebApiResource):
     def post(self, app_model: App, end_user: EndUser, connection_id: UUID):
         try:
             result = application_services().end_user_connection_oauth.reauthorize_oauth(
-                _context(app_model, end_user),
+                connection_context_from_web_passport(app=app_model, end_user=end_user),
                 str(connection_id),
                 callback_url=request.url_root.rstrip("/") + "/api/connections/oauth",
             )
@@ -118,6 +118,7 @@ class EndUserConnectionReauthorizeApi(WebApiResource):
 class EndUserConnectionOAuthCallbackApi(Resource):
     @web_ns.response(302, "Redirect to OAuth completion page")
     @error_responses(
+        ConnectionLoginRequiredError,
         ConnectionConfigurationHTTPError,
         ConnectionConflictHTTPError,
         ConnectionNotFoundHTTPError,

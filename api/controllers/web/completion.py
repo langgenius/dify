@@ -11,6 +11,7 @@ from controllers.common.end_user_connections import (
     ConnectionConfigurationHTTPError,
     ConnectionConflictHTTPError,
     ConnectionCredentialsHTTPError,
+    ConnectionLoginRequiredError,
     ConnectionNotFoundHTTPError,
     ConnectionReauthorizationHTTPError,
     ConnectionRequiredHTTPError,
@@ -215,6 +216,7 @@ class ChatApi(WebApiResource):
     @error_responses(
         ConnectionCheckUnavailableHTTPError,
         ConnectionConfigurationHTTPError,
+        ConnectionLoginRequiredError,
         ConnectionConflictHTTPError,
         ConnectionCredentialsHTTPError,
         ConnectionNotFoundHTTPError,

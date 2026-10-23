@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
 from clients.plugin.auth_entities import CredentialCheckResult
+from configs import dify_config
 from constants.end_user_connections import ConnectionCredentialStatus
 from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from models.enums import EndUserType
@@ -212,7 +213,10 @@ def test_deleting_api_key_cascades_live_selections_only(harness: ConnectionHarne
         assert session.get(App, harness.context.app_id) is not None
 
 
-def test_anonymous_store_scope_isolated_by_end_user(harness: ConnectionHarness) -> None:
+def test_anonymous_store_scope_isolated_by_end_user(
+    harness: ConnectionHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(dify_config, "END_USER_AUTH_ALLOW_ANONYMOUS", True)
     with harness.sessions.begin() as session:
         session.execute(sa.update(EndUser).where(EndUser.id == harness.context.end_user_id).values(account_id=None))
     guest = replace(harness.context, account_id=None)

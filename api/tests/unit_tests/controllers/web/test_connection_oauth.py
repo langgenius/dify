@@ -1,4 +1,5 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from dataclasses import replace
 from datetime import datetime
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlsplit
@@ -135,7 +136,10 @@ def test_reauthorize_keeps_id_without_requiring_published_node(client: FlaskClie
     assert result.location.endswith(f"connection_id={connection.id}")
 
 
-def test_guest_cannot_start_authorization(client: FlaskClient, harness: OAuthHarness) -> None:
+def test_guest_cannot_start_authorization(
+    client: FlaskClient, harness: OAuthHarness, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
     with harness.base.sessions.begin() as session:
         session.execute(
             sa.update(EndUser).where(EndUser.id == harness.base.context.end_user_id).values(account_id=None)
@@ -204,3 +208,45 @@ def test_refresh_timeout_is_a_check_result_without_invalidating_connection(
     assert response.get_json()["check"]["status"] == "temporarily_unavailable"
     assert response.get_json()["credential_status"] == "connected"
     assert "private-provider-response" not in response.get_data(as_text=True)
+
+
+@pytest.mark.parametrize("disable_before_callback", [False, True])
+def test_guest_oauth_rechecks_policy_before_exchanging_and_persisting_credentials(
+    client: FlaskClient, harness: OAuthHarness, config_overrides: Callable[..., None], disable_before_callback: bool
+) -> None:
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=True)
+    with harness.base.sessions.begin() as session:
+        session.execute(
+            sa.update(EndUser).where(EndUser.id == harness.base.context.end_user_id).values(account_id=None)
+        )
+    harness.base.context = replace(harness.base.context, account_id=None)
+    response = start(client, harness)
+    assert response.status_code == 200
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=not disable_before_callback)
+    completed = client.get(
+        f"https://web-api.example/api/connections/oauth/{PROVIDER}/callback?{callback_query(response)}"
+    )
+    if disable_before_callback:
+        assert completed.status_code == 401
+        assert completed.get_json()["code"] == "end_user_login_required"
+        assert harness.handler.exchanges == 0
+        with harness.base.sessions() as session:
+            assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnection)) == 0
+        return
+    assert completed.status_code == 302
+    connection_id = parse_qs(urlsplit(completed.location).query)["connection_id"][0]
+    with harness.base.sessions() as session:
+        stored = session.get(EndUserConnection, connection_id)
+        assert stored is not None
+        assert stored.account_id is None
+        assert stored.end_user_id == harness.base.context.end_user_id
+    renewed = client.post(f"/api/connections/{connection_id}/reauthorize", base_url="https://web-api.example")
+    assert renewed.status_code == 200
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
+    denied = client.post(f"/api/connections/{connection_id}/reauthorize", base_url="https://web-api.example")
+    assert denied.status_code == 401
+    completed = client.get(
+        f"https://web-api.example/api/connections/oauth/{PROVIDER}/callback?{callback_query(renewed)}"
+    )
+    assert completed.status_code == 401
+    assert harness.handler.exchanges == 1

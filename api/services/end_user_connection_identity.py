@@ -9,8 +9,8 @@ from services.end_user_connections.errors import ConnectionConfigurationError, C
 def connection_context_from_web_passport(*, app: App, end_user: EndUser) -> WebConnectionContext:
     """Call only with the persisted objects returned by the Web authentication guard.
 
-    This does not verify JWTs or replace App Access/Guest feature gating. Those
-    entry policies run before connection management. Do not pass request DTOs here
+    This does not verify JWTs or replace Web App entry admission. Personal
+    Connection services enforce the deployment's anonymous Connection policy. Do not pass request DTOs here
     or infer an Account from external_user_id, session_id, or workspace membership.
     Service API/Portal identity reconstruction remains their separate entry task.
     """

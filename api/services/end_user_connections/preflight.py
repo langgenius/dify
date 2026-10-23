@@ -25,7 +25,7 @@ from services.end_user_connections.errors import (
     ConnectionNotFoundError,
     ConnectionReauthorizationRequiredError,
 )
-from services.end_user_connections.policy import require_applicable_connection
+from services.end_user_connections.policy import require_applicable_connection, require_personal_connection_access
 from services.end_user_connections.status import resolve_node_connection_state
 
 ConnectionId = Annotated[UUID, Field(strict=False)]
@@ -132,6 +132,8 @@ class ConnectionPreflightService:
         self._connections.validate_preflight_context(context, workflow_id, conversation_id)
         selections = {key: str(value) if value is not None else None for key, value in command.connections.items()}
         ids = frozenset(value for value in selections.values() if value is not None)
+        if ids:
+            require_personal_connection_access(context)
         records = self._connections.access_records(context, ids)
         oauth_providers = frozenset(
             record.provider for record in records.values() if record.credential_type == ConnectionCredentialType.OAUTH2
@@ -139,6 +141,8 @@ class ConnectionPreflightService:
         requirements = self._requirements.resolve(
             context, workflow_id, conversation_id, oauth_providers=oauth_providers
         )
+        if requirements:
+            require_personal_connection_access(context)
         if command.connections.keys() - {requirement.target.node_id for requirement in requirements}:
             raise ConnectionConfigurationError()
         snapshots: dict[str, ConnectionCheckSnapshot] = {}
