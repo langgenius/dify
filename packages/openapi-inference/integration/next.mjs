@@ -7,9 +7,6 @@ import { test } from 'node:test'
 const repository = resolve(import.meta.dirname, '../../..')
 const web = join(repository, 'web')
 const next = join(web, 'node_modules/next/dist/bin/next')
-const consoleSpec = JSON.parse(
-  await readFile(join(repository, 'packages/contracts/openapi/console-openapi.json'), 'utf8'),
-)
 
 async function javascript(directory) {
   const entries = await readdir(directory, { withFileTypes: true })
@@ -26,6 +23,9 @@ async function javascript(directory) {
 
 for (const bundler of ['turbopack', 'webpack']) {
   test(`Next ${bundler}: full console JSON imports bind transport and prune unused operations`, async () => {
+    const consoleSpec = JSON.parse(
+      await readFile(join(repository, 'packages/contracts/openapi/console-openapi.json'), 'utf8'),
+    )
     const dir = await mkdtemp(join(web, '.openapi-next-'))
     try {
       await mkdir(join(dir, 'app'))
@@ -36,8 +36,8 @@ for (const bundler of ['turbopack', 'webpack']) {
 const loader = { loader: '@dify/openapi-inference/loader', options: { runtime: './runtime.js' } };
 export default {
   experimental: { cpus: 2 },
-  turbopack: { root: ${JSON.stringify(repository)}, rules: { '*spec.json': { loaders: [loader], as: '*.js' } } },
-  webpack(config) { config.module.rules.push({ test: /spec\\.json$/, type: 'javascript/auto', use: [loader] }); return config; },
+  turbopack: { root: ${JSON.stringify(repository)}, rules: { '*spec.json': { loaders: [loader], as: '*.js' }, '*openapi-namespace.js': { loaders: [loader], as: '*.js' } } },
+  webpack(config) { config.module.rules.push({ test: /(?:spec\\.json|openapi-namespace\\.js)$/, type: 'javascript/auto', use: [loader] }); return config; },
 };
 `,
       )
@@ -100,6 +100,7 @@ export default async function Page() {
         },
         encoding: 'utf8',
         timeout: 120_000,
+        killSignal: 'SIGKILL',
         maxBuffer: 4 * 1024 * 1024,
       })
       assert.equal(result.status, 0, `${result.error ?? ''}\n${result.stdout}\n${result.stderr}`)

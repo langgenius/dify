@@ -22,11 +22,12 @@ const nextConfig: NextConfig = {
       ...codeInspectorPlugin({ bundler: 'turbopack' }),
       // Next resolves the .openapi symlink to its JSON target before applying loaders.
       '*console-openapi.json': { loaders: [openapiLoader], as: '*.js' },
+      '*openapi-namespace.js': { loaders: [openapiLoader], as: '*.js' },
     },
   },
   webpack(config) {
     config.module.rules.push({
-      test: /console-openapi\.json$/,
+      test: /(?:console-openapi\.json|openapi-namespace\.js)$/,
       type: 'javascript/auto',
       use: [openapiLoader],
     })

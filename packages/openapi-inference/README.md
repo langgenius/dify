@@ -89,11 +89,11 @@ For Node:
 node --import @dify/openapi-inference/register app.ts
 ```
 
-For Next.js, use `@dify/openapi-inference/loader` in both `turbopack.rules` and `webpack` rules, as shown in `web/next.config.ts`. Turbopack rules need `as: '*.js'`; Webpack rules need `type: 'javascript/auto'` for JSON targets. Match the resolved JSON filename when importing through an `.openapi` symlink. The optional `runtime` loader option is a path relative to the specification directory; this selects the sidecar when symlink resolution moves the specification to another directory. Without the option, the loader discovers `<resolved filename>.config.ts`.
+For Next.js, use `@dify/openapi-inference/loader` in both `turbopack.rules` and `webpack` rules, as shown in `web/next.config.ts`. Turbopack rules need `as: '*.js'`; Webpack rules need `type: 'javascript/auto'` for JSON targets. Match the resolved JSON filename when importing through an `.openapi` symlink, and apply the same loader to `*openapi-namespace.js`. The optional `runtime` loader option is a path relative to the specification directory; this selects the sidecar when symlink resolution moves the specification to another directory. Without the option, the loader discovers `<resolved filename>.config.ts`.
 
-The loader emits ESM namespaces as separate query modules, keeping API calls and query helpers tree-shakable. It tracks the runtime configuration as a dependency and refreshes compiled descriptors when the document changes.
+The loader emits ESM namespaces as query modules of a tiny shared resource, keeping API calls and query helpers tree-shakable without copying the full specification into every bundler module. It tracks the runtime configuration as a dependency and refreshes compiled descriptors when the document changes.
 
-`pnpm --filter @dify/openapi-inference test:next` builds disposable Next.js apps sequentially with Turbopack and Webpack. It verifies server transport/context, query-key binding and removal of unused endpoints/schema metadata from client chunks. This production-build test is separate from `test` and `test:repository`; CI runs it with bounded workers and memory.
+`pnpm --filter @dify/openapi-inference test:next` builds disposable Next.js apps sequentially with Turbopack and Webpack. Using the committed full console specification and the KnowledgeFS metadata endpoint, it verifies server transport/context, query-key binding and removal of unused endpoints/schema metadata from client chunks. This production-build test is separate from `test` and `test:repository`; CI runs it with bounded workers and memory.
 
 Use an independent transport when requests need different hosts, credentials, or fetch implementations:
 

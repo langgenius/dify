@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs'
 import { isMap, isScalar, isSeq, parseDocument, visit } from 'yaml'
 import { assertDocument, pointer } from '../document.js'
 import { describeOperations } from '../operation.js'
-import { createRouter, queryQuery, routerModule, routerQuery } from './router.js'
+import { createRouter, routerModule, routerModuleId } from './router.js'
 import { schemaTypes } from './schema-types.js'
 
 // Positions use UTF-16, as do YAML's ranges and JavaScript string offsets.
@@ -169,12 +169,13 @@ export function compileRuntime(
   content: string,
   fileName: string,
   runtimeModule = runtimeConfigFile(fileName),
+  namespaceFileName = fileName,
 ): (routerPath?: string[], query?: boolean) => string {
   const { operations, router } = parseSpec(content, fileName)
   let text = 'import { invokeOperation } from "@dify/openapi-inference/runtime";\n'
   if (runtimeModule) text += `import runtime from ${JSON.stringify(runtimeModule)};\n`
-  text += `export * as api from ${JSON.stringify(`${fileName}${routerQuery}${encodeURIComponent('[]')}`)};\n`
-  text += `export * as query from ${JSON.stringify(`${fileName}${queryQuery}${encodeURIComponent('[]')}`)};\n`
+  text += `export * as api from ${JSON.stringify(routerModuleId(namespaceFileName, []))};\n`
+  text += `export * as query from ${JSON.stringify(routerModuleId(namespaceFileName, [], true))};\n`
   let index = 0
   for (const [id, descriptor] of operations) {
     if (id.startsWith('\0')) continue
@@ -183,5 +184,5 @@ export function compileRuntime(
     text += `export { ${binding} as ${JSON.stringify(id)} };\n`
   }
   return (routerPath, query) =>
-    routerPath ? routerModule(router, fileName, routerPath, query, runtimeModule) : text
+    routerPath ? routerModule(router, namespaceFileName, routerPath, query, runtimeModule) : text
 }

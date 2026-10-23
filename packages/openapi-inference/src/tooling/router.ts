@@ -57,6 +57,11 @@ export function createRouter(operations: Map<string, OperationDescriptor>): Rout
 export const routerQuery = '?openapi-router='
 export const queryQuery = '?openapi-query='
 
+export function routerModuleId(fileName: string, path: string[], query = false): string {
+  const marker = query ? queryQuery : routerQuery
+  return `${fileName}${fileName.includes('?') ? marker.replace('?', '&') : marker}${encodeURIComponent(JSON.stringify(path))}`
+}
+
 /** Every namespace is a separate ESM module, enabling static property tree-shaking. */
 export function routerModule(
   root: RouterNode,
@@ -90,7 +95,7 @@ export function routerModule(
     };\nexport { ${binding} as ${JSON.stringify(method)} };\n`
   }
   for (const key of node.children.keys()) {
-    const id = `${fileName}${query ? queryQuery : routerQuery}${encodeURIComponent(JSON.stringify([...path, key]))}`
+    const id = routerModuleId(fileName, [...path, key], query)
     text += `export * as ${JSON.stringify(key)} from ${JSON.stringify(id)};\n`
   }
   return text

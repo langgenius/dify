@@ -13,6 +13,7 @@
     ".": "./dist/index.js",
     "./vite": "./dist/tooling/vite.js",
     "./loader": "./dist/tooling/loader.js",
+    "./namespace": "./dist/tooling/openapi-namespace.js",
     "./register": "./dist/tooling/register.js",
     "./mapper": "./dist/tooling/mapper.js",
     "./runtime": "./dist/client.js",

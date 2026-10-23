@@ -1,4 +1,5 @@
-import { basename, dirname, relative, resolve } from 'node:path'
+import { readFileSync, statSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import { compileRuntime, runtimeConfigFile } from './transform.js'
 
 type LoaderContext = {
@@ -8,27 +9,37 @@ type LoaderContext = {
   addDependency: (file: string) => void
 }
 
-const cache = new Map<string, { content: string; render: ReturnType<typeof compileRuntime> }>()
+type Compiled = {
+  version: string
+  content: string
+  render: ReturnType<typeof compileRuntime>
+}
 
-/** Webpack and Turbopack retain each router namespace as a distinct query module. */
+const cache = new Map<string, Compiled>()
+
+/** Namespace modules use an empty resource so bundlers don't retain a spec copy per module. */
 export default function openapiLoader(this: LoaderContext, content: string): string {
+  const query = new URLSearchParams(this.resourceQuery)
+  const document = query.get('openapi-document')
+  const fileName = document ?? this.resourcePath
+  this.addDependency(fileName)
   const { runtime } = this.getOptions()
-  const directory = dirname(this.resourcePath)
-  const config = runtime ? resolve(directory, runtime) : runtimeConfigFile(this.resourcePath)
+  const config = runtime ? resolve(dirname(fileName), runtime) : runtimeConfigFile(fileName)
   if (config) this.addDependency(config)
-  const runtimeModule = config
-    ? `./${relative(directory, config).replaceAll('\\', '/')}`
-    : undefined
-  const key = JSON.stringify([this.resourcePath, runtimeModule])
+  const key = JSON.stringify([fileName, config])
+  const stat = statSync(fileName)
+  const version = `${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}`
   let compiled = cache.get(key)
-  if (!compiled || compiled.content !== content) {
+  if (!compiled || compiled.version !== version || (!document && compiled.content !== content)) {
+    const source = document ? readFileSync(fileName, 'utf8') : content
+    const namespace = `@dify/openapi-inference/namespace?openapi-document=${encodeURIComponent(fileName)}`
     compiled = {
-      content,
-      render: compileRuntime(content, `./${basename(this.resourcePath)}`, runtimeModule),
+      version,
+      content: source,
+      render: compileRuntime(source, fileName, config, namespace),
     }
     cache.set(key, compiled)
   }
-  const query = new URLSearchParams(this.resourceQuery)
   const isQuery = query.has('openapi-query')
   const path = query.get(isQuery ? 'openapi-query' : 'openapi-router')
   return compiled.render(path === null ? undefined : JSON.parse(path), isQuery)
