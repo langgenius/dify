@@ -328,6 +328,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                         </div>
                         <Textarea
                           aria-label={t(($) => $['createTool.schema'], { ns: 'tools' })}
+                          dir="ltr"
                           className="h-60 resize-none"
                           value={schema}
                           onValueChange={(value) => setSchema(value)}
@@ -379,7 +380,9 @@ const EditCustomCollectionModal: FC<Props> = ({
                                   <td className="p-2 ps-3">{item.operation_id}</td>
                                   <td className="w-59 p-2 ps-3">{item.summary}</td>
                                   <td className="p-2 ps-3">{item.method}</td>
-                                  <td className="p-2 ps-3">{getPath(item.server_url)}</td>
+                                  <td className="p-2 ps-3">
+                                    <bdi dir="ltr">{getPath(item.server_url)}</bdi>
+                                  </td>
                                   <td className="w-15.5 p-2 ps-3">
                                     <Button
                                       size="small"
