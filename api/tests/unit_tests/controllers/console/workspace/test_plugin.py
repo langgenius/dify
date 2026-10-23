@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
@@ -14,8 +13,6 @@ from controllers.console.workspace.plugin import (
     ParserAsset,
     ParserAutoUpgradeChange,
     ParserAutoUpgradeFetch,
-    ParserDynamicOptions,
-    ParserDynamicOptionsWithCredentials,
     ParserExcludePlugin,
     ParserGithubInstall,
     ParserGithubUpgrade,
@@ -40,8 +37,6 @@ from controllers.console.workspace.plugin import (
     PluginDeleteInstallTaskApi,
     PluginDeleteInstallTaskItemApi,
     PluginFetchAutoUpgradeApi,
-    PluginFetchDynamicSelectOptionsApi,
-    PluginFetchDynamicSelectOptionsWithCredentialsApi,
     PluginFetchInstallTaskApi,
     PluginFetchInstallTasksApi,
     PluginFetchManifestApi,
@@ -65,7 +60,6 @@ from controllers.console.workspace.plugin import (
     PluginUploadFromPkgApi,
     _list_hardcoded_builtin_tool_providers,
 )
-from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin import PluginCategory, PluginDeclaration, PluginEntity, PluginInstallation
 from core.plugin.entities.plugin_daemon import PluginInstallTask
 from core.plugin.impl.exc import PluginDaemonClientSideError
@@ -73,9 +67,6 @@ from core.plugin.plugin_service import PluginService
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
-from enums import DeploymentEdition
-from extensions.ext_application_services import build_application_services
-from extensions.ext_redis import RedisClientWrapper
 from models.account import (
     Account,
     TenantAccountRole,
@@ -87,11 +78,8 @@ from models.account import (
     TenantPluginInstallPermission,
 )
 from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client
 from tests.unit_tests.controllers.error_body import raised_error
 from tests.unit_tests.model_factories import make_account
-
-application_redis = test_trigger_oauth_client.application_redis
 
 
 def _plugin_category_list_item(category: str = "tool") -> dict[str, Any]:
@@ -345,24 +333,6 @@ def _expected_latest_plugin_cache_dump() -> dict[str, str]:
         "status": "active",
         "deprecated_reason": "",
         "alternative_plugin_id": "",
-    }
-
-
-def _dynamic_option() -> PluginParameterOption:
-    return PluginParameterOption.model_validate(
-        {
-            "value": 101,
-            "label": {"en_US": "Dataset 101"},
-            "icon": None,
-        }
-    )
-
-
-def _expected_dynamic_option_dump() -> dict[str, Any]:
-    return {
-        "value": "101",
-        "label": _expected_i18n("Dataset 101"),
-        "icon": None,
     }
 
 
@@ -764,44 +734,6 @@ class TestPluginFetchPermissionApi:
 
         assert result["install_permission"] == TenantPluginInstallPermission.ADMINS
         assert result["debug_permission"] == TenantPluginDebugPermission.EVERYONE
-
-
-class TestPluginFetchDynamicSelectOptionsApi:
-    def test_fetch_dynamic_options(
-        self,
-        user: Account,
-        sqlite_session_factory: sessionmaker[Session],
-        application_redis: RedisClientWrapper,
-    ) -> None:
-        app = Flask(__name__)
-        services = build_application_services(
-            database_client=sqlite_session_factory,
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            initialization_password="",
-            redis=application_redis,
-        )
-        app.extensions["application_services"] = services
-        api = PluginFetchDynamicSelectOptionsApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/?plugin_id=p&provider=x&action=y&parameter=z&provider_type=tool"),
-            patch(
-                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options",
-                return_value=[_dynamic_option()],
-            ) as get_options,
-        ):
-            result = method(
-                api,
-                ParserDynamicOptions.model_validate(
-                    {"plugin_id": "p", "provider": "x", "action": "y", "parameter": "z", "provider_type": "tool"}
-                ),
-                "t1",
-                user,
-            )
-
-        assert result == {"options": [_expected_dynamic_option_dump()]}
-        assert get_options.call_args.kwargs["builders"] is services.workspaces.trigger_builders
 
 
 class TestPluginReadmeApi:
@@ -1343,57 +1275,6 @@ class TestPluginUpgradeFromGithubApi:
             ),
         ):
             result = raised_error(lambda: method(api, ParserGithubUpgrade.model_validate(payload), "t1"))
-            assert result == ({"code": "plugin_error", "message": "error"}, 400)
-
-
-class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
-    def test_success(self, app: Flask, user):
-        api = PluginFetchDynamicSelectOptionsWithCredentialsApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "plugin_id": "p",
-            "provider": "x",
-            "action": "y",
-            "parameter": "z",
-            "credential_id": "c",
-            "credentials": {"k": "v"},
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options_with_credentials",
-                return_value=[_dynamic_option()],
-            ),
-        ):
-            result = method(api, ParserDynamicOptionsWithCredentials.model_validate(payload), "t1", user)
-
-        assert result == {"options": [_expected_dynamic_option_dump()]}
-
-    def test_daemon_error(self, app: Flask, user):
-        api = PluginFetchDynamicSelectOptionsWithCredentialsApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "plugin_id": "p",
-            "provider": "x",
-            "action": "y",
-            "parameter": "z",
-            "credential_id": "c",
-            "credentials": {"k": "v"},
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options_with_credentials",
-                side_effect=PluginDaemonClientSideError("error"),
-            ),
-        ):
-            result = raised_error(
-                lambda: method(api, ParserDynamicOptionsWithCredentials.model_validate(payload), "t1", user)
-            )
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 

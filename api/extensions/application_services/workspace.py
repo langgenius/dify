@@ -10,6 +10,7 @@ from core.trigger.utils.encryption import delete_cache_for_subscription
 from extensions.ext_redis import RedisClientWrapper
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
+from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
@@ -17,8 +18,9 @@ from repositories.trigger.subscription_repository import RedisTriggerSubscriptio
 from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
-from services.credentials.query import CredentialQuery
 from services.file_service import FileService
+from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
+from services.plugin.plugin_parameter_service import PluginParameterService
 from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqueue_triggered_workflows
 from services.trigger.endpoint_service import TriggerEndpointService
 from services.trigger.oauth_client_service import TriggerOAuthClientService
@@ -70,6 +72,7 @@ class WorkspaceServices:
     invitations: WorkspaceInvitationService
     identity: WorkspaceIdentityGateway
     resource_cleanup: WorkspaceResourceCleanupService
+    plugin_parameters: PluginParameterService
     trigger_providers: TriggerProviderQuery
     trigger_subscriptions: TriggerSubscriptionQueryService
     trigger_subscription_management: TriggerSubscriptionService
@@ -112,7 +115,7 @@ def build_workspace_services(
     provisioning: WorkspaceProvisioningService,
     registration: InvitedAccountRegistration,
     invitation_tokens: RedisInvitationTokenStore,
-    credentials: CredentialQuery,
+    credentials: CredentialQueryRepository,
 ) -> WorkspaceServices:
     trigger_providers = PluginTriggerProviderQuery()
     subscriptions = TriggerSubscriptionRepository(session_factory=database_client)
@@ -164,6 +167,12 @@ def build_workspace_services(
             apps=ConsoleAppRepository(session_factory=database_client),
             datasets=SQLAlchemyDatasetRepository(session_factory=database_client),
             agent_resources=WorkspaceResourceCleanupRepository(session_factory=database_client),
+        ),
+        plugin_parameters=PluginParameterService(
+            credentials=credentials,
+            subscriptions=subscriptions,
+            builders=trigger_builders,
+            plugins=DaemonPluginParameterGateway(),
         ),
         trigger_providers=trigger_providers,
         trigger_subscriptions=TriggerSubscriptionQueryService(credentials=credentials, schemas=trigger_providers),
