@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select, update
@@ -36,11 +36,24 @@ class _TokenRowValues:
 
     @classmethod
     def of(cls, record: OAuthAccessToken) -> _TokenRowValues:
-        return cls(**{value_field.name: getattr(record, value_field.name) for value_field in fields(cls)})
+        return cls(
+            token_hash=record.token_hash,
+            prefix=record.prefix,
+            account_id=record.account_id,
+            expires_at=record.expires_at,
+            revoked_at=record.revoked_at,
+            last_used_at=record.last_used_at,
+            created_at=record.created_at,
+        )
 
     def apply_to(self, record: OAuthAccessToken) -> None:
-        for value_field in fields(self):
-            setattr(record, value_field.name, getattr(self, value_field.name))
+        record.token_hash = self.token_hash
+        record.prefix = self.prefix
+        record.account_id = self.account_id
+        record.expires_at = self.expires_at
+        record.revoked_at = self.revoked_at
+        record.last_used_at = self.last_used_at
+        record.created_at = self.created_at
 
 
 class SQLAlchemyOAuthDeviceTokenRepository:
