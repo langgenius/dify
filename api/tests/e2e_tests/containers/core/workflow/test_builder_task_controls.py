@@ -13,6 +13,7 @@ import threading
 import time
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 from typing import Literal, cast
@@ -237,15 +238,15 @@ def _session_lock_statement(statement: str) -> bool:
 def test_stop_commits_before_old_worker_actual_draft_write(task_world: TaskWorld, mutation: Mutation) -> None:
     world = task_world
     at_write_fence, continue_worker = threading.Event(), threading.Event()
-    role = threading.local()
+    role: ContextVar[Literal["worker"] | None] = ContextVar("sql_role", default=None)
 
     def before_sql(_connection, _cursor, statement, _parameters, _context, _many):
-        if getattr(role, "name", "") == "worker" and _session_lock_statement(statement):
+        if role.get() == "worker" and _session_lock_statement(statement):
             at_write_fence.set()
             assert continue_worker.wait(_TIMEOUT), "worker was not released from the write barrier"
 
     def worker():
-        role.name = "worker"
+        role.set("worker")
         return world.mutate(mutation)
 
     engine = world.factory.kw["bind"]
@@ -274,17 +275,17 @@ def test_stop_commits_before_old_worker_actual_draft_write(task_world: TaskWorld
 def test_old_worker_draft_commit_before_stop_is_retained(task_world: TaskWorld, mutation: Mutation) -> None:
     world = task_world
     worker_has_lock, finish_worker, stop_attempting_lock = (threading.Event() for _ in range(3))
-    role = threading.local()
+    role: ContextVar[Literal["worker", "stop"] | None] = ContextVar("sql_role", default=None)
     pids: dict[str, int] = {}
     worker_locks: list[str] = []
 
     def before_sql(connection, _cursor, statement, _parameters, _context, _many):
-        if getattr(role, "name", "") == "stop" and _session_lock_statement(statement):
+        if role.get() == "stop" and _session_lock_statement(statement):
             pids["stop"] = connection.connection.driver_connection.get_backend_pid()
             stop_attempting_lock.set()
 
     def after_sql(connection, _cursor, statement, _parameters, _context, _many):
-        if getattr(role, "name", "") != "worker" or "FOR UPDATE" not in statement:
+        if role.get() != "worker" or "FOR UPDATE" not in statement:
             return
         if _session_lock_statement(statement):
             pids["worker"] = connection.connection.driver_connection.get_backend_pid()
@@ -295,11 +296,11 @@ def test_old_worker_draft_commit_before_stop_is_retained(task_world: TaskWorld, 
             worker_locks.append("workflow")
 
     def worker():
-        role.name = "worker"
+        role.set("worker")
         return world.mutate(mutation)
 
     def stop():
-        role.name = "stop"
+        role.set("stop")
         return world.stop()
 
     engine = world.factory.kw["bind"]
@@ -423,11 +424,11 @@ def test_control_receipt_replay_survives_resume_without_new_commit(task_world: T
 def test_simultaneous_same_stop_identity_commits_one_durable_projection(task_world: TaskWorld) -> None:
     world = task_world
     both_at_lock = threading.Barrier(2, timeout=_TIMEOUT)
-    role = threading.local()
+    arrived: ContextVar[bool] = ContextVar("arrived_at_sql_lock", default=False)
 
     def before_sql(_connection, _cursor, statement, _parameters, _context, _many):
-        if not getattr(role, "arrived", False) and _session_lock_statement(statement):
-            role.arrived = True
+        if not arrived.get() and _session_lock_statement(statement):
+            arrived.set(True)
             both_at_lock.wait()
 
     engine = world.factory.kw["bind"]
