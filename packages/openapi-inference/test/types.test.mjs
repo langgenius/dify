@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process'
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
-import { parse } from 'yaml'
+import { parse, parseDocument } from 'yaml'
 /* oxlint-enable vitest/no-import-node-test */
 
 const root = resolve(import.meta.dirname, '..')
@@ -162,10 +162,9 @@ const id: number = pet.id;
     },
     (dir, check) => {
       assert.equal(check().status, 0)
-      writeFileSync(
-        join(dir, 'pets.yaml'),
-        yaml.replace('id: { type: integer }', 'id: { type: string }'),
-      )
+      const changed = parseDocument(yaml)
+      changed.setIn(['components', 'schemas', 'Pet', 'properties', 'id', 'type'], 'string')
+      writeFileSync(join(dir, 'pets.yaml'), changed.toString())
       const result = check()
       assert.notEqual(result.status, 0)
       assert.match(result.output, /Type 'string' is not assignable to type 'number'/)

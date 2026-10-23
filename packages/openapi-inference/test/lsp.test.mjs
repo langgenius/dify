@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
+import { parseDocument } from 'yaml'
 import { rpcProcess } from './rpc.mjs'
 /* oxlint-enable vitest/no-import-node-test */
 
@@ -78,15 +79,11 @@ test('native TS 7.1 LSP: operation completions, hover, definition into YAML, liv
     rpc.notify('textDocument/didOpen', {
       textDocument: { uri: specUri, languageId: 'yaml', version: 1, text: spec },
     })
+    const changed = parseDocument(spec)
+    changed.setIn(['components', 'schemas', 'Pet', 'properties', 'name', 'type'], 'number')
     rpc.notify('textDocument/didChange', {
       textDocument: { uri: specUri, version: 2 },
-      contentChanges: [
-        {
-          text: spec
-            .replace('name: { type: string }', 'name: { type: number }')
-            .replace('name: { type: string }', 'name: { type: number }'),
-        },
-      ],
+      contentChanges: [{ text: changed.toString() }],
     })
     const changedHover = await rpc.request('textDocument/hover', {
       textDocument: { uri },
