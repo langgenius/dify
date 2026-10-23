@@ -4219,10 +4219,8 @@ class TestWorkflowGeneratorStructuredErrors:
         codes = [e["code"] for e in result["errors"]]
         assert "MISSING_TERMINAL" in codes
 
-    def test_repairs_unresolved_reference_when_source_has_one_output(self):
-        # The LLM node references a key the CODE node never declares, but the
-        # source exposes exactly one output. Postprocessing can therefore
-        # repair the selector without guessing or changing the graph shape.
+    def test_rejects_undeclared_code_reference_even_with_one_output(self):
+        # A sole declared output does not establish what an invented name meant.
         planner = self._planner(
             [
                 {"label": "Start", "node_type": "start", "purpose": "x"},
@@ -4284,11 +4282,11 @@ class TestWorkflowGeneratorStructuredErrors:
             mode="workflow",
             instruction="x",
         )
-        assert result["error"] == ""
+        assert [error["code"] for error in result["errors"]] == ["UNRESOLVED_REFERENCE"]
         llm_node = next(node for node in result["graph"]["nodes"] if node["id"] == "node3")
-        assert llm_node["data"]["prompt_template"][0]["text"] == "Look at {{#node2.summary#}}."
+        assert llm_node["data"]["prompt_template"][0]["text"] == "Look at {{#node2.mystery#}}."
         end_node = next(node for node in result["graph"]["nodes"] if node["id"] == "node4")
-        assert end_node["data"]["outputs"][0]["value_selector"] == ["node2", "summary"]
+        assert end_node["data"]["outputs"][0]["value_selector"] == ["node2", "mystery"]
 
     def test_keeps_unresolved_reference_when_source_outputs_are_ambiguous(self):
         nodes = [
@@ -5672,8 +5670,9 @@ class TestKnownCodeToolOutputContract:
         assert [case["conditions"][0]["value"] for case in conditions] == ["true", "false"]
         assert graph["nodes"][3]["data"]["outputs"][1]["value_selector"] == ["node2", "items"]
 
-    def test_generation_returns_failure_for_the_known_impossible_reference(self):
-        graph = self._graph(self._producer())
+    @pytest.mark.parametrize("variables", [("valid", "items"), ("result",)])
+    def test_generation_returns_failure_for_the_known_impossible_reference(self, variables):
+        graph = self._graph(self._producer(), variables)
         planner = {
             "title": "Validate JSON",
             "description": "Validate input and process items",
@@ -5695,11 +5694,37 @@ class TestKnownCodeToolOutputContract:
         )
 
         assert result["error"]
-        assert [error["code"] for error in result["errors"]] == ["UNRESOLVED_REFERENCE", "UNRESOLVED_REFERENCE"]
+        assert [error["code"] for error in result["errors"]] == ["UNRESOLVED_REFERENCE"] * len(variables)
         assert result["graph"]["nodes"][2]["data"]["cases"][0]["conditions"][0]["variable_selector"] == [
             "node2",
-            "valid",
+            variables[0],
         ]
+
+    @pytest.mark.parametrize("padded", [False, True])
+    @pytest.mark.parametrize("producer_type", ["simple_code", "boolean", "array[string]"])
+    @pytest.mark.parametrize("variable", ["result", "invented"])
+    def test_illegal_outputs_are_not_guessed_from_alias_or_sole_declaration(self, producer_type, variable, padded):
+        producer = self._producer()
+        if producer_type != "simple_code":
+            producer["data"] = {
+                "type": "code",
+                "title": "Typed validation",
+                "code_language": "python3",
+                "variables": [],
+                "code": "def main():\n    return {'actual': " + ("False" if producer_type == "boolean" else "[]") + "}",
+                "outputs": {"actual": {"type": producer_type}},
+            }
+        graph = self._graph(producer, (variable,))
+        selector = [" node2 ", f" {variable} "] if padded else ["node2", variable]
+        graph["nodes"][3]["data"]["outputs"][0]["value_selector"] = selector
+        graph["nodes"][3]["data"]["description"] = "Read {{#node2." + variable + "#}}"
+
+        graph, errors = self._postprocess_and_validate(graph)
+
+        assert [(error["code"], error["node_id"]) for error in errors] == [("UNRESOLVED_REFERENCE", "node2")]
+        assert graph["nodes"][2]["data"]["cases"][0]["conditions"][0]["variable_selector"] == ["node2", variable]
+        assert graph["nodes"][3]["data"]["outputs"][0]["value_selector"] == selector
+        assert graph["nodes"][3]["data"]["description"] == "Read {{#node2." + variable + "#}}"
 
     def test_standard_envelope_roots_remain_accepted(self):
         _, errors = self._postprocess_and_validate(self._graph(self._producer(), ("text", "files", "json")))
@@ -5752,7 +5777,8 @@ class TestKnownCodeToolOutputContract:
             "result" if declared else "text",
         ]
 
-    def test_native_code_declared_boolean_and_array_outputs_are_accepted(self):
+    @pytest.mark.parametrize("boolean_output", ["valid", "result"])
+    def test_native_code_declared_boolean_and_array_outputs_are_accepted(self, boolean_output):
         producer = {
             "id": "node2",
             "data": {
@@ -5760,16 +5786,17 @@ class TestKnownCodeToolOutputContract:
                 "title": "Typed validation",
                 "code_language": "python3",
                 "variables": [],
-                "code": "def main() -> dict:\n    return {'valid': False, 'items': []}",
-                "outputs": {"valid": {"type": "boolean"}, "items": {"type": "array[string]"}},
+                "code": "def main() -> dict:\n    return {" + repr(boolean_output) + ": False, 'items': []}",
+                "outputs": {boolean_output: {"type": "boolean"}, "items": {"type": "array[string]"}},
             },
         }
-        graph = self._graph(producer)
+        graph = self._graph(producer, (boolean_output, "items"))
         for case in graph["nodes"][2]["data"]["cases"]:
             case["conditions"][0].update(varType="boolean", value=case["case_id"] == "valid")
         graph, errors = self._postprocess_and_validate(graph)
 
         assert errors == []
+        assert graph["nodes"][2]["data"]["cases"][0]["conditions"][0]["variable_selector"] == ["node2", boolean_output]
         assert graph["nodes"][3]["data"]["outputs"][1]["value_selector"] == ["node2", "items"]
 
     def test_known_scalar_text_placeholder_cannot_expose_json_fields(self):
@@ -6576,7 +6603,7 @@ class TestDottedReferencesResolveByTheirRoot:
         to strip too — otherwise a padded selector is harvested, found
         unresolved, and then silently left alone."""
         nodes = [
-            {"id": "node2", "data": {"type": "code", "outputs": {"summary": {"type": "string", "children": None}}}},
+            _llm_node("node2"),
             {
                 "id": "node3",
                 "data": {
@@ -6588,7 +6615,7 @@ class TestDottedReferencesResolveByTheirRoot:
 
         WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
 
-        assert nodes[1]["data"]["outputs"][0]["value_selector"] == ["node2", "summary"]
+        assert nodes[1]["data"]["outputs"][0]["value_selector"] == ["node2", "text"]
         assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
 
     def test_a_padded_three_element_structured_selector_is_repaired(self):
