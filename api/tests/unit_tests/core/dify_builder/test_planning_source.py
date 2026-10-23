@@ -35,7 +35,9 @@ class RecordingAgent(StubAgent):
         self.calls = []
 
     @override
-    def propose_plan_v1(self, requirements: dict[str, object], *, goal_text: str) -> WorkflowPlan | None:
+    def propose_plan_v1(
+        self, requirements: dict[str, object], *, goal_text: str, reply_language: str | None = None
+    ) -> WorkflowPlan | None:
         self.calls.append(("plan", goal_text, copy.deepcopy(requirements)))
         return self.plan
 

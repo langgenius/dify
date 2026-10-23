@@ -80,8 +80,10 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytes
         agent_source_error: str | None = None,
         goal_text: str,
         mode: str,
+        reply_language: str | None = None,
     ) -> WorkflowPlan | None:
         assert mode == "workflow"
+        assert reply_language is None
         seen["propose_plan_v1"] = (model, requirements, list(tools), list(agents), agent_source_error, goal_text)
         return None
 
@@ -131,8 +133,10 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytes
         mode: str,
         trusted_text: str = "",
         account_id: str | None = None,  # noqa: ARG001
+        reply_language: str | None = None,
     ) -> list[object]:
         assert mode == "workflow"
+        assert reply_language is None
         seen["build_nodes"] = (tenant_id, model_config, plan_items, resource_ids, trusted_text)
         return []
 
@@ -230,14 +234,18 @@ def test_fix_methods_call_fix_module_with_resolved_model(monkeypatch: pytest.Mon
         _g: Graph,
         _no: list[NodeOutput],
         _reasoning: Callable[[str], None] | None = None,
+        *,
+        reply_language: str | None = None,
     ) -> str:
         seen["m"] = model
+        seen["reply_language"] = reply_language
         return "DIAG"
 
     monkeypatch.setattr(fix_mod, "diagnose", mock_diagnose)
     agent = LlmBuilderAgent("t1", {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}})
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
-    assert agent.diagnose("run", {"nodes": []}, []) == "DIAG"
+    assert agent.diagnose("run", {"nodes": []}, [], reply_language="zh-Hans") == "DIAG"
+    assert seen["reply_language"] == "zh-Hans"
     assert seen["m"] == "MODEL"
 
 
@@ -246,7 +254,7 @@ def test_model_or_none_swallows_resolution_error(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(
         fix_mod,
         "propose_repair",
-        lambda model, d, g, _reasoning=None: seen.setdefault("m", model) or ([], None),  # noqa: ARG005
+        lambda model, d, g, _reasoning=None, *, reply_language=None: seen.setdefault("m", model) or ([], None),  # noqa: ARG005
     )
     agent = LlmBuilderAgent("t1", None)
 
