@@ -6,6 +6,13 @@ import { renderWorkflowBrowserComponent as render } from '@/app/components/workf
 import { BlockEnum } from '@/app/components/workflow/types'
 import Item from '../item'
 
+const unexpectedFetch = vi.fn<typeof fetch>(() => new Promise(() => {}))
+beforeEach(() => vi.stubGlobal('fetch', unexpectedFetch))
+afterEach(() => {
+  vi.unstubAllGlobals()
+  expect(unexpectedFetch).not.toHaveBeenCalled()
+})
+
 function SelectedNodes() {
   const nodes = useNodes<CommonNodeType>()
   return (
