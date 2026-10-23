@@ -18,8 +18,11 @@ import ModelName from '../model-name'
 import { useCredentialPanelState as useCredentialPanelInfo } from '../provider-added-card/use-credential-panel-state'
 
 type ModelSelectorTriggerProps = {
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
   ref?: Ref<HTMLButtonElement>
   'aria-labelledby'?: string
+  'aria-required'?: boolean
   currentProvider?: ModelSelectorProvider
   currentModel?: ModelSelectorModel
   defaultModel?: ModelSelectorValue
@@ -37,8 +40,11 @@ type ModelSelectorTriggerProps = {
 }
 
 function ModelSelectorTrigger({
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-required': ariaRequired,
   ref,
-  'aria-labelledby': labelledBy,
   currentProvider,
   currentModel,
   defaultModel,
@@ -56,6 +62,7 @@ function ModelSelectorTrigger({
 }: ModelSelectorTriggerProps) {
   const { t } = useTranslation(['common', 'plugin', 'modelProvider'])
   const valueId = useId()
+  const requiredTextId = useId()
 
   const showClear = !!defaultModel && !!onClear
   const isSelected = !!currentProvider && !!currentModel
@@ -106,6 +113,13 @@ function ModelSelectorTrigger({
       : isSelected && !isStatusUnavailable && ((!isActive && statusI18nKey) || !isModelCompatible)
         ? tooltipLabel
         : undefined
+  const configureModelLabel = t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })
+  const requiredText = ariaRequired
+    ? t(($) => $['errorMsg.fieldRequired'], { field: '', ns: 'common' }).trim()
+    : undefined
+  const triggerLabelledBy = [ariaLabelledBy, valueId, requiredText ? requiredTextId : undefined]
+    .filter(Boolean)
+    .join(' ')
 
   const trigger = (
     <Tooltip>
@@ -118,9 +132,12 @@ function ModelSelectorTrigger({
             render={
               <button
                 type="button"
-                aria-labelledby={labelledBy ? `${labelledBy} ${valueId}` : undefined}
+                aria-describedby={ariaDescribedBy}
+                aria-labelledby={ariaLabelledBy ? triggerLabelledBy : undefined}
                 data-deprecated={isDeprecated && !isStatusUnavailable ? '' : undefined}
+                data-invalid={ariaInvalid ? '' : undefined}
                 data-model-status={status}
+                data-required={ariaRequired ? '' : undefined}
                 data-shape={shape}
                 data-size={size}
                 data-surface={surface}
@@ -142,6 +159,11 @@ function ModelSelectorTrigger({
               />
             }
           >
+            {requiredText && (
+              <span id={requiredTextId} className="sr-only">
+                {requiredText}
+              </span>
+            )}
             <span
               className={cn(
                 'flex min-w-0 grow items-center gap-0.5',
@@ -202,7 +224,7 @@ function ModelSelectorTrigger({
                 )}
                 {isEmpty && (
                   <span className="grow truncate text-[13px] text-text-secondary group-disabled/model-selector-trigger:text-components-input-text-placeholder">
-                    {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
+                    {configureModelLabel}
                   </span>
                 )}
 
@@ -250,9 +272,7 @@ function ModelSelectorTrigger({
           </PopoverTrigger>
         }
       />
-      {triggerTooltipLabel && (
-        <TooltipContent placement="top">{triggerTooltipLabel}</TooltipContent>
-      )}
+      {triggerTooltipLabel && <TooltipContent>{triggerTooltipLabel}</TooltipContent>}
     </Tooltip>
   )
 

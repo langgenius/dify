@@ -546,7 +546,7 @@ function Form<
     }
 
     if (formSchema.type === FormTypeEnum.appSelector) {
-      const { variable, label, required, scope } = formSchema as
+      const { variable, label, required } = formSchema as
         | CredentialFormSchemaTextInput
         | CredentialFormSchemaSecretInput
 
@@ -564,7 +564,6 @@ function Form<
           </div>
           <AppSelector
             disabled={readonly}
-            scope={scope}
             value={value[variable]}
             onSelect={(item) =>
               handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector })
