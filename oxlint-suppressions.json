@@ -3794,11 +3794,6 @@
       "count": 3
     }
   },
-  "web/app/components/plugins/marketplace/home/home-trending-navigation.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/app/components/plugins/marketplace/home/home-trending-slides.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
