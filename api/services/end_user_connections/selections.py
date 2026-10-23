@@ -8,7 +8,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from context.connection_execution import ConnectionExecutionContext
-from services.end_user_connections.entities import ConnectionAccessRecord, WebConnectionContext
+from services.end_user_connections.contracts import ConnectionSummary
+from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionWorkflowChangedError
 
 
@@ -23,10 +24,9 @@ class SavedConnectionSelection:
 class ConnectionConfiguration(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    workflow_id: str | None = Field(description="Workflow of the saved choices; null when no choices remain saved.")
-    connections: dict[str, str | None] = Field(
+    connections: dict[str, ConnectionSummary | None] = Field(
         description=(
-            "Last accepted choices keyed by authorization node ID, not a readiness result. "
+            "Saved Connection details keyed by authorization node ID, not a readiness result. "
             "Inaccessible Connection references are returned as null."
         )
     )
@@ -48,9 +48,9 @@ class ConnectionSelections(Protocol):
         self, context: WebConnectionContext, conversation_id: str
     ) -> tuple[SavedConnectionSelection, ...]: ...
 
-    def access_records(
+    def connection_summaries(
         self, context: WebConnectionContext, connection_ids: frozenset[str]
-    ) -> Mapping[str, ConnectionAccessRecord]: ...
+    ) -> Mapping[str, ConnectionSummary]: ...
 
 
 class ConnectionSelectionService:
@@ -67,10 +67,9 @@ class ConnectionSelectionService:
         saved = self._store.conversation_selections(context, conversation_id) if conversation_id is not None else ()
         if not saved:
             saved = self._store.app_selections(context)
-        records = self._store.access_records(context, frozenset(item.connection_id for item in saved))
+        summaries = self._store.connection_summaries(context, frozenset(item.connection_id for item in saved))
         return ConnectionConfiguration(
-            workflow_id=saved[0].workflow_id if saved else None,
-            connections={item.node_id: item.connection_id if item.connection_id in records else None for item in saved},
+            connections={item.node_id: summaries.get(item.connection_id) for item in saved},
         )
 
     def save_run(

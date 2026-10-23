@@ -1380,8 +1380,7 @@ The connection is not compatible with this tool configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| connections | object | Last accepted choices keyed by authorization node ID, not a readiness result. Inaccessible Connection references are returned as null. | Yes |
-| workflow_id | string | Workflow of the saved choices; null when no choices remain saved. | Yes |
+| connections | object | Saved Connection details keyed by authorization node ID, not a readiness result. Inaccessible Connection references are returned as null. | Yes |
 
 #### ConnectionConflictError
 
