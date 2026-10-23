@@ -225,7 +225,7 @@ function MetadataPickerActions({
       <Button
         variant="ghost"
         size="medium"
-        className="min-w-0 justify-start gap-1 px-2 text-left text-text-secondary"
+        className="min-w-0 justify-start gap-1 px-2 text-start text-text-secondary"
         onClick={onStartMetadataCreation}
       >
         <span className="i-ri-add-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
@@ -238,14 +238,14 @@ function MetadataPickerActions({
         <Button
           variant="ghost"
           size="medium"
-          className="justify-start gap-1 px-2 text-left text-text-secondary"
+          className="justify-start gap-1 px-2 text-start text-text-secondary"
           onClick={onOpenMetadataManagement}
         >
           <span className="system-sm-medium">
             {t(($) => $[`${i18nPrefix}.manageAction`], { ns: 'dataset' })}
           </span>
           <span
-            className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
+            className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary rtl:-scale-x-100"
             aria-hidden="true"
           />
         </Button>
