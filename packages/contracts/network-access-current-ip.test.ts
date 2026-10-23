@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { currentIp, workspaces } from './generated/api/console/workspaces/orpc.gen'
+import { currentIp, workspaces } from './generated/api/console/workspaces/orpc.gen.js'
 import {
   zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpPath,
   zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponse,
   zGetWorkspacesCurrentNetworkAccessGroupsCurrentIpResponse,
-} from './generated/api/console/workspaces/zod.gen'
+} from './generated/api/console/workspaces/zod.gen.js'
 
 describe('generated network access current-IP contract', () => {
   it('exposes the policy-independent operation alongside the group preflight', () => {

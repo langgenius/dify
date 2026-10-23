@@ -870,33 +870,6 @@ export type PendingActionDisclosure = {
   wait_reason: 'approval' | 'configuration' | 'interaction'
 }
 
-export type CancellationReceipt = {
-  generation: number
-  operation_states: {
-    [key: string]: 'completed' | 'failed' | 'not_dispatched' | 'unknown'
-  }
-  request_id: string
-  status: 'cancelled' | 'cancelling' | 'unknown'
-}
-
-export type PendingActionDisclosure = {
-  account_label: string | null
-  action: string
-  approval_limits: NativeApprovalTerms | null
-  continuation_blocked_reason?: 'native_resolution_unavailable' | null
-  decision?: 'confirm' | 'deny' | null
-  decision_status?: 'awaiting_decision' | 'confirmed' | 'denied' | 'exhausted' | 'expired' | null
-  native_form_ref: string | null
-  parameters_summary: JsonValue
-  pending_operation_id: string
-  required_configuration: Array<string>
-  risk_notice: string | null
-  scope_digest: string | null
-  target: JsonValue
-  version: number
-  wait_reason: 'approval' | 'configuration' | 'interaction'
-}
-
 export type DifyBuilderReceiptFieldSnapshot = {
   display_value: string
   key: string
