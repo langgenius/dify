@@ -7768,7 +7768,7 @@
   },
   "web/features/skills/page.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
-      "count": 11
+      "count": 4
     }
   },
   "web/features/tag-management/components/tag-filter.tsx": {
