@@ -147,6 +147,31 @@ describe('Blocks', () => {
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.LLM)
   })
 
+  it('marks Agent Knowledge Retrieval as beta while Knowledge Retrieval stays unmarked', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    render(
+      <Blocks
+        searchText=""
+        onSelect={onSelect}
+        availableBlocksTypes={[BlockEnum.KnowledgeRetrieval, BlockEnum.KnowledgeRetrievalV2]}
+        blocks={[
+          createBlock(BlockEnum.KnowledgeRetrieval, 'Knowledge Retrieval'),
+          createBlock(BlockEnum.KnowledgeRetrievalV2, 'Agent Knowledge Retrieval'),
+        ]}
+      />,
+    )
+
+    const agentKnowledge = screen.getByRole('button', { name: /^Agent Knowledge Retrieval/ })
+    expect(agentKnowledge).toHaveTextContent('navigation.menus.status')
+    expect(screen.getByRole('button', { name: 'Knowledge Retrieval' })).not.toHaveTextContent(
+      'navigation.menus.status',
+    )
+
+    await user.click(agentKnowledge)
+    expect(onSelect).toHaveBeenCalledWith(BlockEnum.KnowledgeRetrievalV2)
+  })
+
   it('should show the empty state when no block matches the search text', () => {
     render(
       <Blocks

@@ -317,6 +317,33 @@ describe('knowledge-retrieval path', () => {
       expect(onSelect.mock.calls[0]?.[0]).toBe(MetadataFilteringModeEnum.manual)
     })
 
+    it('can limit the reusable selector to manual metadata filtering', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <MetadataFilterSelector
+          allowedModes={[MetadataFilteringModeEnum.disabled, MetadataFilteringModeEnum.manual]}
+          value={MetadataFilteringModeEnum.disabled}
+          onSelect={vi.fn()}
+        />,
+      )
+
+      await user.click(
+        screen.getByRole('button', {
+          name: /workflowModels.nodes.knowledgeRetrieval.metadata.options.disabled.title/i,
+        }),
+      )
+
+      expect(
+        screen.queryByText(
+          'workflowModels.nodes.knowledgeRetrieval.metadata.options.automatic.title',
+        ),
+      ).toBeNull()
+      expect(
+        screen.getByText('workflowModels.nodes.knowledgeRetrieval.metadata.options.manual.title'),
+      ).toBeInTheDocument()
+    })
+
     it('removes stale metadata conditions before showing the manual metadata panel', async () => {
       const user = userEvent.setup()
       const handleRemoveCondition = vi.fn()

@@ -6,6 +6,7 @@ import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { API_PREFIX } from '@/config'
 // oxlint-disable-next-line no-restricted-imports -- The Console HTTP adapter must preserve existing auth refresh, CSRF, and error handling.
 import { request } from '../base'
+import { reportClientError } from '../client-error'
 import { createConsoleContractLink } from './contract-loader'
 import { validateDefinedErrors } from './defined-errors'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
@@ -26,7 +27,7 @@ function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClien
       options.context.onResponseHeaders?.(response.headers)
       return response
     },
-    interceptors: [validateDefinedErrors(contract), onError((error) => console.error(error))],
+    interceptors: [validateDefinedErrors(contract), onError((error) => reportClientError(error))],
   })
 }
 

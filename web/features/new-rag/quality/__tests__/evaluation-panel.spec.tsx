@@ -1,0 +1,653 @@
+import { QueryClient } from '@tanstack/react-query'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { createHttpError } from '@/service/http-error'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
+import { EvaluationReport, QualityEvaluationPanel } from '../quality-evaluation-panel'
+
+const serviceMock = vi.hoisted(() => ({
+  createReplay: vi.fn(),
+  getReplay: vi.fn(),
+  listGoldenQuestions: vi.fn(),
+  listReplays: vi.fn(),
+}))
+
+vi.mock('@/app/notifications', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const space = 'knowledgeFs.spaces.byControlSpaceId'
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      [`${space}.goldenQuestions.get`]: serviceMock.listGoldenQuestions,
+      [`${space}.quality.replayRuns.byRunId.get`]: serviceMock.getReplay,
+      [`${space}.quality.replayRuns.get`]: serviceMock.listReplays,
+      [`${space}.quality.replayRuns.post`]: serviceMock.createReplay,
+    }),
+  }
+})
+
+const completedRun = {
+  attempt: 1,
+  created_at: '2026-08-19T12:00:00.000Z',
+  id: 'run-1',
+  items: [
+    {
+      golden_question_id: 'question-1',
+      id: 'item-1',
+      match_policy: 'any',
+      ordinal: 0,
+      question: 'Who can change workspace permissions?',
+      result: {
+        evidence_diff: {
+          expected_count: 2,
+          matched_count: 1,
+          missing_count: 1,
+          retrieved_count: 10,
+        },
+        metrics: { total_ms: 1250 },
+        passed: true,
+      },
+      state: 'passed',
+    },
+  ],
+  knowledge_space_id: 'space-1',
+  mode: 'fast',
+  provenance: {
+    projection: { projection_version: 7 },
+    retrieval: {
+      profile_revision: 4,
+      reasoning_model: 'gpt-5.6',
+      rerank_model: 'rerank-v3.5',
+    },
+  },
+  revision: 2,
+  state: 'passed',
+  summary: { completed: 1, failed: 0, hit_rate: 1, passed: 1, total: 1 },
+  updated_at: '2026-08-19T12:00:02.000Z',
+} as const
+
+const queuedRun = {
+  ...completedRun,
+  items: completedRun.items.map((item) => ({
+    ...item,
+    result: null,
+    state: 'queued' as const,
+  })),
+  revision: 1,
+  state: 'queued' as const,
+  summary: { completed: 0, failed: 0, hit_rate: 0, passed: 0, total: 1 },
+  updated_at: completedRun.created_at,
+}
+
+const completedRunWithEvidence = {
+  ...completedRun,
+  items: [
+    {
+      ...completedRun.items[0],
+      result: {
+        ...completedRun.items[0].result,
+        evidence_diff: {
+          ...completedRun.items[0].result.evidence_diff,
+          evidence_items: [
+            {
+              available: true,
+              document_name: 'Workspace permissions.pdf',
+              matched: true,
+              ordinal: 1,
+              page_number: 2,
+              section_path: ['Permissions', 'Roles'],
+              text: 'Workspace owners can change member permissions.',
+            },
+            {
+              available: true,
+              document_name: 'Workspace permissions.pdf',
+              matched: false,
+              ordinal: 2,
+              page_number: 3,
+              section_path: ['Permissions', 'Limitations'],
+              text: 'Editors cannot promote themselves to owner.',
+            },
+          ],
+        },
+      },
+    },
+  ],
+} as const
+
+function renderPanel(queryClient?: QueryClient) {
+  function Harness() {
+    const [runId, setRunId] = useState<string>()
+    return runId ? (
+      <EvaluationReport runId={runId} onBack={() => setRunId(undefined)} onRunStarted={setRunId} />
+    ) : (
+      <QualityEvaluationPanel onOpenReport={setRunId} />
+    )
+  }
+  return renderWithConsoleQuery(
+    <KnowledgeSpaceTestProvider>
+      <Harness />
+    </KnowledgeSpaceTestProvider>,
+    { queryClient },
+  )
+}
+
+describe('QualityEvaluationPanel', () => {
+  beforeEach(() => {
+    serviceMock.listGoldenQuestions.mockResolvedValue({
+      data: Array.from({ length: 6 }, (_, index) => ({
+        id: `golden-${index + 1}`,
+        status: 'active',
+      })),
+      next_cursor: null,
+    })
+    serviceMock.listReplays.mockResolvedValue({ data: [], next_cursor: null })
+    serviceMock.createReplay.mockResolvedValue({ ...completedRun, state: 'queued' })
+    serviceMock.getReplay.mockResolvedValue(completedRun)
+  })
+
+  it('explains the empty state before the first evaluation run', async () => {
+    renderPanel()
+
+    expect(
+      await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
+      }),
+    ).toBeEnabled()
+  })
+
+  it('shows evaluation creation time as a relative list label', async () => {
+    const now = Date.parse(completedRun.created_at) + 2 * 60 * 60 * 1000
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(now)
+    serviceMock.listReplays.mockResolvedValue({
+      data: [
+        { ...completedRun, created_at: new Date(now).toISOString(), id: 'run-now' },
+        completedRun,
+      ],
+      next_cursor: null,
+    })
+
+    renderPanel()
+
+    expect(await screen.findByText('knowledgeSpace.retrievalTest.justNow')).toBeVisible()
+    expect(await screen.findByText('2 hours ago')).toBeVisible()
+    dateNowSpy.mockRestore()
+  })
+
+  it('opens evaluation settings with the run size and default retrieval mode', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
+      }),
+    )
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
+    })
+    expect(dialog).toHaveAccessibleDescription(
+      'knowledgeQuality.qualityPage.evaluation.dialogDescription:{"count":6}',
+    )
+    expect(
+      screen.getByRole('radio', {
+        name: 'knowledgeSpace.settings.retrievalMode.fast',
+      }),
+    ).toBeChecked()
+    expect(screen.getAllByRole('radio')).toHaveLength(3)
+  })
+
+  it('passes a singular count for one active golden question', async () => {
+    const user = userEvent.setup()
+    serviceMock.listGoldenQuestions.mockResolvedValue({
+      data: [{ id: 'golden-1', status: 'active' }],
+      next_cursor: null,
+    })
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
+      }),
+    )
+
+    expect(
+      screen.getByRole('dialog', {
+        name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
+      }),
+    ).toHaveAccessibleDescription(
+      'knowledgeQuality.qualityPage.evaluation.dialogDescription:{"count":1}',
+    )
+  })
+
+  it('counts active golden questions across every page before describing the run', async () => {
+    const user = userEvent.setup()
+    serviceMock.listGoldenQuestions.mockImplementation(
+      ({ query }: { query: { cursor?: string } }) =>
+        Promise.resolve(
+          query.cursor === 'page-2'
+            ? {
+                data: [
+                  { id: 'golden-101', status: 'active' },
+                  { id: 'golden-102', status: 'active' },
+                ],
+                next_cursor: null,
+              }
+            : {
+                data: [{ id: 'golden-1', status: 'draft' }],
+                next_cursor: 'page-2',
+              },
+        ),
+    )
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('dialog', {
+          name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
+        }),
+      ).toHaveAccessibleDescription(
+        'knowledgeQuality.qualityPage.evaluation.dialogDescription:{"count":2}',
+      ),
+    )
+    expect(serviceMock.listGoldenQuestions).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1' },
+      query: { cursor: 'page-2', limit: 100 },
+    })
+  })
+
+  it('describes the run without a count until every page is counted', async () => {
+    const user = userEvent.setup()
+    serviceMock.listGoldenQuestions.mockImplementation(() => new Promise(() => {}))
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
+      }),
+    )
+
+    expect(
+      screen.getByRole('dialog', {
+        name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
+      }),
+    ).toHaveAccessibleDescription(
+      'knowledgeQuality.qualityPage.evaluation.dialogDescriptionPending',
+    )
+  })
+
+  it('starts each evaluation dialog session with the default retrieval mode', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
+      }),
+    )
+    await user.click(
+      screen.getByRole('radio', {
+        name: 'knowledgeSpace.settings.retrievalMode.deep',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.cancel' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
+      }),
+    )
+
+    expect(
+      screen.getByRole('radio', {
+        name: 'knowledgeSpace.settings.retrievalMode.fast',
+      }),
+    ).toBeChecked()
+  })
+
+  it('queues every active golden question and opens the persisted evidence report', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.start',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(serviceMock.createReplay).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: { mode: 'fast', selection: 'all-active' },
+          headers: { 'Idempotency-Key': expect.any(String) },
+          params: { control_space_id: 'space-1' },
+        }),
+      ),
+    )
+    expect(await screen.findByText('Who can change workspace permissions?')).toBeVisible()
+    expect(screen.getByText('1 / 2')).toBeVisible()
+    expect(serviceMock.getReplay).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', run_id: 'run-1' },
+    })
+
+    await user.click(screen.getByRole('button', { name: 'workflow.singleRun.reRun' }))
+    expect(
+      screen.getByRole('dialog', {
+        name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
+      }),
+    ).toBeVisible()
+  })
+
+  it('shows the queued run without waiting for the evaluation list to refresh', async () => {
+    const user = userEvent.setup()
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        mutations: { retry: false },
+        queries: { retry: false, staleTime: Number.POSITIVE_INFINITY },
+      },
+    })
+    let listRequestCount = 0
+    serviceMock.createReplay.mockResolvedValue(queuedRun)
+    serviceMock.getReplay.mockImplementation(() => new Promise(() => {}))
+    serviceMock.listReplays.mockImplementation(() => {
+      listRequestCount += 1
+      return listRequestCount === 1
+        ? Promise.resolve({ data: [], next_cursor: null })
+        : new Promise(() => {})
+    })
+
+    renderPanel(queryClient)
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.start',
+      }),
+    )
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'knowledgeQuality.qualityPage.evaluation.reportTitle',
+      }),
+    ).toBeVisible()
+    expect(
+      screen.getAllByText('knowledgeQuality.qualityPage.evaluation.state.queued'),
+    ).not.toHaveLength(0)
+  })
+
+  it('opens a completed evaluation with the latest progress from the list', async () => {
+    const user = userEvent.setup()
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        mutations: { retry: false },
+        queries: { retry: false, staleTime: Number.POSITIVE_INFINITY },
+      },
+    })
+    let detailRequestCount = 0
+    serviceMock.listReplays
+      .mockResolvedValueOnce({ data: [queuedRun], next_cursor: null })
+      .mockResolvedValueOnce({ data: [completedRun], next_cursor: null })
+    serviceMock.getReplay.mockImplementation(() => {
+      detailRequestCount += 1
+      return detailRequestCount === 1 ? Promise.resolve(queuedRun) : new Promise(() => {})
+    })
+
+    renderPanel(queryClient)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
+      }),
+    )
+    await screen.findAllByText('knowledgeQuality.qualityPage.evaluation.state.queued')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluationTab',
+      }),
+    )
+
+    expect(
+      await screen.findAllByText('knowledgeQuality.qualityPage.evaluation.state.passed'),
+    ).not.toHaveLength(0)
+    expect(serviceMock.listReplays).toHaveBeenCalledTimes(2)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
+      }),
+    )
+
+    expect(
+      await screen.findAllByText('knowledgeQuality.qualityPage.evaluation.state.passed'),
+    ).not.toHaveLength(0)
+    expect(screen.getByText('1 / 1')).toBeVisible()
+  })
+
+  it('keeps newer report progress when the evaluation list is stale', async () => {
+    const user = userEvent.setup()
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        mutations: { retry: false },
+        queries: { retry: false, staleTime: Number.POSITIVE_INFINITY },
+      },
+    })
+    let detailRequestCount = 0
+    serviceMock.listReplays.mockResolvedValue({ data: [queuedRun], next_cursor: null })
+    serviceMock.getReplay.mockImplementation(() => {
+      detailRequestCount += 1
+      return detailRequestCount === 1 ? Promise.resolve(completedRun) : new Promise(() => {})
+    })
+
+    renderPanel(queryClient)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
+      }),
+    )
+    expect(
+      await screen.findAllByText('knowledgeQuality.qualityPage.evaluation.state.passed'),
+    ).not.toHaveLength(0)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluationTab',
+      }),
+    )
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
+      }),
+    )
+
+    expect(
+      screen.getAllByText('knowledgeQuality.qualityPage.evaluation.state.passed'),
+    ).not.toHaveLength(0)
+    expect(screen.getByText('1 / 1')).toBeVisible()
+  })
+
+  it('opens evidence hit details and identifies matched and missing passages', async () => {
+    const user = userEvent.setup()
+    serviceMock.listReplays.mockResolvedValue({ data: [completedRun], next_cursor: null })
+    serviceMock.getReplay.mockImplementation(async (input) =>
+      'query' in input && input.query.evidence_item_id ? completedRunWithEvidence : completedRun,
+    )
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
+      }),
+    )
+    await screen.findByText('Who can change workspace permissions?')
+    expect(screen.getByText('1 / 2')).toBeVisible()
+    await user.click(
+      screen.getByRole('button', {
+        name: /^knowledgeQuality\.qualityPage\.evaluation\.openEvidenceDetails/,
+      }),
+    )
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'knowledgeQuality.qualityPage.evaluation.evidenceDetailsTitle',
+      }),
+    ).toBeVisible()
+    const matchedSection = screen.getByRole('region', {
+      name: 'knowledgeQuality.qualityPage.evaluation.passed',
+    })
+    const missingSection = screen.getByRole('region', {
+      name: 'knowledgeQuality.qualityPage.evaluation.missed',
+    })
+    expect(
+      within(matchedSection).getByText('Workspace owners can change member permissions.'),
+    ).toBeVisible()
+    expect(
+      within(missingSection).getByText('Editors cannot promote themselves to owner.'),
+    ).toBeVisible()
+    expect(serviceMock.getReplay).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', run_id: 'run-1' },
+      query: { evidence_item_id: 'item-1' },
+    })
+
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.closeDialog' }),
+    )
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'knowledgeQuality.qualityPage.evaluation.evidenceDetailsTitle',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('reuses the idempotency key when retrying a start whose outcome is unknown', async () => {
+    serviceMock.createReplay
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockRejectedValueOnce(
+        createHttpError({ headers: new Headers(), status: 502, statusText: '' }),
+      )
+      .mockResolvedValueOnce({ ...completedRun, state: 'queued' })
+    const user = userEvent.setup()
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.evaluation.run' }),
+    )
+    const start = screen.getByRole('button', {
+      name: 'knowledgeQuality.qualityPage.evaluation.start',
+    })
+    await user.click(start)
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(start).not.toHaveAttribute('aria-disabled', 'true'))
+    await user.click(start)
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(start).not.toHaveAttribute('aria-disabled', 'true'))
+    await user.click(start)
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(3))
+
+    const keys = serviceMock.createReplay.mock.calls.map(
+      ([request]) => request.headers['Idempotency-Key'],
+    )
+    expect(new Set(keys).size).toBe(1)
+  })
+
+  it('uses a new idempotency key after a definitive rejection or a changed mode', async () => {
+    serviceMock.createReplay
+      .mockRejectedValueOnce(
+        createHttpError({ headers: new Headers(), status: 409, statusText: '' }),
+      )
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    const user = userEvent.setup()
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.evaluation.run' }),
+    )
+    const start = screen.getByRole('button', {
+      name: 'knowledgeQuality.qualityPage.evaluation.start',
+    })
+    await user.click(start)
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(start).not.toHaveAttribute('aria-disabled', 'true'))
+    await user.click(start)
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(start).not.toHaveAttribute('aria-disabled', 'true'))
+    await user.click(
+      screen.getByRole('radio', { name: 'knowledgeSpace.settings.retrievalMode.deep' }),
+    )
+    await user.click(start)
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(3))
+
+    const [first, second, third] = serviceMock.createReplay.mock.calls.map(([request]) => request)
+    expect(second.headers['Idempotency-Key']).not.toBe(first.headers['Idempotency-Key'])
+    expect(third.body.mode).toBe('deep')
+    expect(third.headers['Idempotency-Key']).not.toBe(second.headers['Idempotency-Key'])
+  })
+
+  it('exposes evaluation runs and report items as tables with column headers', async () => {
+    serviceMock.listReplays.mockResolvedValue({ data: [completedRun], next_cursor: null })
+    const user = userEvent.setup()
+    renderPanel()
+
+    const runsTable = await screen.findByRole('table', {
+      name: 'knowledgeQuality.qualityPage.evaluationTab',
+    })
+    expect(
+      within(runsTable)
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent),
+    ).toEqual([
+      'knowledgeQuality.qualityPage.evaluation.createdAt',
+      'knowledgeQuality.qualityPage.statusLabel',
+      'knowledgeQuality.qualityPage.evaluation.modeLabel',
+      'knowledgeQuality.qualityPage.evaluation.hitRate',
+      'knowledgeQuality.qualityPage.evaluation.progress',
+    ])
+    expect(within(runsTable).getAllByRole('row')).toHaveLength(2)
+
+    await user.click(
+      within(runsTable).getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
+      }),
+    )
+    const itemsTable = await screen.findByRole('table', {
+      name: 'knowledgeQuality.qualityPage.evaluation.reportTitle',
+    })
+    expect(
+      within(itemsTable).getByRole('rowheader', { name: 'Who can change workspace permissions?' }),
+    ).toBeVisible()
+    expect(within(itemsTable).getAllByRole('columnheader')).toHaveLength(4)
+  })
+})

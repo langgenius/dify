@@ -168,6 +168,7 @@
   "operation.deSelectAll": "Batalkan pilihan Semua",
   "operation.decreaseValue": "Kurangi nilai",
   "operation.delete": "Menghapus",
+  "operation.deleteConfirmTitle": "Hapus?",
   "operation.download": "Mengunduh",
   "operation.downloadFailed": "Unduhan gagal. Silakan coba lagi nanti.",
   "operation.downloadSuccess": "Unduh Selesai.",

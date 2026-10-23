@@ -168,6 +168,7 @@
   "operation.deSelectAll": "取消全选",
   "operation.decreaseValue": "减少数值",
   "operation.delete": "删除",
+  "operation.deleteConfirmTitle": "删除？",
   "operation.download": "下载",
   "operation.downloadFailed": "下载失败，请稍后重试。",
   "operation.downloadSuccess": "下载完毕",

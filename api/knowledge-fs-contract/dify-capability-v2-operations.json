@@ -1,0 +1,2333 @@
+{
+  "schemaVersion": 1,
+  "operations": [
+    {
+      "action": "upload_sessions.abort",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "abortUploadSession",
+      "parentResourceBinding": {
+        "bodyField": "knowledgeSpaceId"
+      },
+      "path": "/upload-sessions/{id}/abort",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "upload_session"
+    },
+    {
+      "action": "dify_integration.activate",
+      "allowedCallerKinds": [
+        "internal_worker"
+      ],
+      "method": "POST",
+      "operationId": "activateDifyWorkspaceIntegration",
+      "parentResourceBinding": null,
+      "path": "/internal/dify-integration/activate",
+      "resourceBinding": {
+        "namespace": true
+      },
+      "resourceType": "namespace"
+    },
+    {
+      "action": "knowledge_spaces.status.batch",
+      "allowedCallerKinds": [
+        "interactive",
+        "service"
+      ],
+      "method": "POST",
+      "operationId": "batchKnowledgeSpaceProductSummaries",
+      "parentResourceBinding": null,
+      "path": "/internal/knowledge-spaces/product-summaries/batch",
+      "resourceBinding": {
+        "namespace": true
+      },
+      "resourceType": "namespace"
+    },
+    {
+      "action": "golden-questions.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "bulkImportGoldenQuestions",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/golden-questions/bulk-import",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "logical_documents.availability.update",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "bulkPatchLogicalDocumentAvailability",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/logical-documents/bulk/availability",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "documents.bulk.reindex",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "bulkReindexDocuments",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/documents/bulk/reindex",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "background_tasks.cancel",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "cancelBackgroundTask",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/background-tasks/{taskKind}/{taskId}/cancel",
+      "resourceBinding": {
+        "pathParameter": "taskId"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "document_jobs.cancel",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "DELETE",
+      "operationId": "cancelDocumentCompilationJob",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/jobs/{id}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "namespace_source_previews.cancel",
+      "allowedCallerKinds": [
+        "interactive",
+        "service"
+      ],
+      "method": "DELETE",
+      "operationId": "cancelNamespaceSourcePreview",
+      "parentResourceBinding": null,
+      "path": "/namespace/source-preview-jobs/{jobId}",
+      "resourceBinding": {
+        "namespace": true
+      },
+      "resourceType": "namespace"
+    },
+    {
+      "action": "research_tasks.cancel",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "DELETE",
+      "operationId": "cancelResearchTask",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/research-tasks/{id}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "research_task"
+    },
+    {
+      "action": "source_workflows.cancel",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "cancelSourceWorkflow",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/source-workflows/{runId}/cancel",
+      "resourceBinding": {
+        "pathParameter": "runId"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "queries.agent_investigation.capture",
+      "allowedCallerKinds": [
+        "agent",
+        "workflow",
+        "interactive"
+      ],
+      "method": "POST",
+      "operationId": "captureAgentKnowledgeInvestigation",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/agent-investigations",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "queries.failed_retrieval.capture",
+      "allowedCallerKinds": [
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "captureWorkflowFailedRetrieval",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/failed-queries/workflow-retrieval-misses",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_fs.cat",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "catKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/cat",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "upload_sessions.complete",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "completeUploadSession",
+      "parentResourceBinding": {
+        "bodyField": "knowledgeSpaceId"
+      },
+      "path": "/upload-sessions/{id}/complete",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "upload_session"
+    },
+    {
+      "action": "namespace_source_previews.consume",
+      "allowedCallerKinds": [
+        "interactive",
+        "service"
+      ],
+      "method": "POST",
+      "operationId": "consumeNamespaceSourcePreview",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/namespace-preview-import",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "sources.crawl",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "crawlKnowledgeSpaceSource",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/crawl",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "golden-questions.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createGoldenQuestion",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/golden-questions",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.metadata.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createKnowledgeSpaceMetadataField",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/metadata-fields",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "sources.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createKnowledgeSpaceSource",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/sources",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "namespace_source_previews.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service"
+      ],
+      "method": "POST",
+      "operationId": "createNamespaceSourcePreview",
+      "parentResourceBinding": null,
+      "path": "/namespace/source-preview-jobs",
+      "resourceBinding": {
+        "namespace": true
+      },
+      "resourceType": "namespace"
+    },
+    {
+      "action": "quality.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createQualityBadCase",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/bad-cases",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "quality.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createQualityReplay",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/replay-runs",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "queries.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createQuery",
+      "parentResourceBinding": null,
+      "path": "/queries",
+      "resourceBinding": {
+        "bodyField": "knowledgeSpaceId"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "research_tasks.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createResearchTask",
+      "parentResourceBinding": null,
+      "path": "/research-tasks",
+      "resourceBinding": {
+        "bodyField": "knowledgeSpaceId"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "source_connections.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createSourceConnection",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/source-connections",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "source_workflows.crawl_import.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createSourceCrawlImportWorkflow",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/crawl-import",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "source_workflows.preview.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createSourceCrawlPreviewWorkflow",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/crawl-preview",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "source_workflows.import.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createSourceImportWorkflow",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/workflow-imports",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "source_workflows.sync.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createSourceSyncWorkflow",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/sync",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "upload_sessions.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createUploadSession",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/upload-sessions",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "golden-questions.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "DELETE",
+      "operationId": "deleteGoldenQuestion",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/golden-questions/{questionId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.delete",
+      "allowedCallerKinds": [
+        "internal_worker"
+      ],
+      "method": "POST",
+      "operationId": "deleteIntegratedKnowledgeSpace",
+      "parentResourceBinding": null,
+      "path": "/internal/knowledge-spaces/{id}/delete",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.metadata.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "DELETE",
+      "operationId": "deleteKnowledgeSpaceMetadataField",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/metadata-fields/{fieldId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_fs.diff",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "diffKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/diff",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.fence",
+      "allowedCallerKinds": [
+        "service",
+        "internal_worker"
+      ],
+      "method": "POST",
+      "operationId": "fenceCapabilityKnowledgeSpace",
+      "parentResourceBinding": null,
+      "path": "/internal/knowledge-spaces/{id}/capability-fence",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_fs.find",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "findKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/find",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "dify_integration.freeze",
+      "allowedCallerKinds": [
+        "internal_worker"
+      ],
+      "method": "POST",
+      "operationId": "freezeDifyWorkspaceIntegration",
+      "parentResourceBinding": null,
+      "path": "/internal/dify-integration/freeze",
+      "resourceBinding": {
+        "namespace": true
+      },
+      "resourceType": "namespace"
+    },
+    {
+      "action": "queries.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getAnswerTrace",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/queries/{traceId}",
+      "resourceBinding": {
+        "pathParameter": "traceId"
+      },
+      "resourceType": "query"
+    },
+    {
+      "action": "bulk_jobs.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getBulkOperation",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/bulk-jobs/{id}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "documents.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getDocument",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/documents/{documentId}",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "documents.chunks.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getDocumentChunk",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks/{chunkId}",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "document_jobs.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getDocumentCompilationJob",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/jobs/{id}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "documents.multimodal.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getDocumentMultimodalAsset",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/documents/{documentId}/multimodal/{itemId}/asset",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "documents.multimodal.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getDocumentMultimodalManifest",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/documents/{documentId}/multimodal",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "documents.outline.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getDocumentOutline",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/documents/{documentId}/outline",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "document_processing_tasks.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getDocumentProcessingTask",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}",
+      "resourceBinding": {
+        "pathParameter": "taskId"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "deletion_batches.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getDurableDeletionBatch",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/deletion-batches/{batchId}",
+      "resourceBinding": {
+        "pathParameter": "batchId"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "deletion_jobs.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getDurableDeletionJob",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/deletion-jobs/{jobId}",
+      "resourceBinding": {
+        "pathParameter": "jobId"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "knowledge_spaces.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getKnowledgeSpace",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.overview.inventory.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getKnowledgeSpaceOverviewInventory",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/overview/inventory",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.overview.query_outcomes.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getKnowledgeSpaceOverviewQueryOutcomes",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/overview/query-outcomes",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.overview.stats.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getKnowledgeSpaceOverviewStats",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/overview/stats",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.overview.health.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getKnowledgeSpaceProductHealth",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/overview/health",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.settings.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getKnowledgeSpaceProductSettings",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/product-settings",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.settings.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getKnowledgeSpaceProfileMigration",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/profile-migrations/{migrationId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "sources.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getKnowledgeSpaceSource",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "logical_documents.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getLogicalDocument",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/logical-documents/{documentId}",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "namespace_source_previews.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service"
+      ],
+      "method": "GET",
+      "operationId": "getNamespaceSourcePreview",
+      "parentResourceBinding": null,
+      "path": "/namespace/source-preview-jobs/{jobId}",
+      "resourceBinding": {
+        "namespace": true
+      },
+      "resourceType": "namespace"
+    },
+    {
+      "action": "quality.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getQualityBadCase",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/bad-cases/{badCaseId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "quality.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getQualityBadCaseTraceReference",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/bad-cases/{badCaseId}/trace-reference",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "quality.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getQualityReplay",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/replay-runs/{runId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "research_tasks.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getResearchTask",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/research-tasks/{id}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "research_task"
+    },
+    {
+      "action": "source_sync_policies.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getSourceSyncPolicy",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/sync-policy",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "source_workflows.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getSourceWorkflow",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/source-workflows/{runId}",
+      "resourceBinding": {
+        "pathParameter": "runId"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "knowledge_fs.grep",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "grepKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/grep",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "sources.files.import",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "importKnowledgeSpaceSourceFiles",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/import-files",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "sources.pages.import",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "importKnowledgeSpaceSourcePages",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/import",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "background_tasks.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listBackgroundTasks",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/background-tasks",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "source_workflows.pages.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listCrawlPreviewPages",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/source-workflows/{runId}/pages",
+      "resourceBinding": {
+        "pathParameter": "runId"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "documents.chunks.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listDocumentChunks",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "document_processing_tasks.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listDocumentProcessingTasks",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/documents/{documentId}/processing-tasks",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "documents.revisions.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listDocumentRevisions",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/documents/{documentId}/revisions",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "documents.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listDocuments",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/documents",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "golden-questions.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listGoldenQuestions",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/golden-questions",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_fs.ls",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/ls",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.metadata.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listKnowledgeSpaceMetadataFields",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/metadata-fields",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.overview.activity.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listKnowledgeSpaceOverviewActivity",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/overview/activity",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.overview.attention.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listKnowledgeSpaceOverviewAttention",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/overview/attention",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "quality.traces.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listKnowledgeSpaceQualityTraces",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/traces",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "research_tasks.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listKnowledgeSpaceResearchTasks",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/research-tasks",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "internal_worker"
+      ],
+      "method": "GET",
+      "operationId": "listKnowledgeSpaces",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces",
+      "resourceBinding": {
+        "namespace": true
+      },
+      "resourceType": "namespace"
+    },
+    {
+      "action": "sources.files.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listKnowledgeSpaceSourceFiles",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/files",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "sources.pages.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listKnowledgeSpaceSourcePages",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/pages",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "sources.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listKnowledgeSpaceSources",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/sources",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "logical_documents.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listLogicalDocuments",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/logical-documents",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "quality.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listQualityBadCases",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/bad-cases",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "quality.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listQualityReplays",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/replay-runs",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "queries.conflicts.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listQueryConflicts",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/queries/{traceId}/conflicts",
+      "resourceBinding": {
+        "pathParameter": "traceId"
+      },
+      "resourceType": "query"
+    },
+    {
+      "action": "queries.evidence.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listQueryEvidence",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/queries/{traceId}/evidence",
+      "resourceBinding": {
+        "pathParameter": "traceId"
+      },
+      "resourceType": "query"
+    },
+    {
+      "action": "queries.missing.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listQueryMissing",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/queries/{traceId}/missing",
+      "resourceBinding": {
+        "pathParameter": "traceId"
+      },
+      "resourceType": "query"
+    },
+    {
+      "action": "research_tasks.partials.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listResearchTaskPartials",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/research-tasks/{id}/partials",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "research_task"
+    },
+    {
+      "action": "source_connections.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listSourceConnections",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/source-connections",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "source_providers.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listSourceProviders",
+      "parentResourceBinding": null,
+      "path": "/source-providers",
+      "resourceBinding": {
+        "namespace": true
+      },
+      "resourceType": "namespace"
+    },
+    {
+      "action": "source_workflows.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listSourceWorkflows",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/source-workflows",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "golden-questions.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "matchGoldenQuestionEvidence",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/golden-questions/evidence-matches",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_fs.open_node",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "openNodeKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/open_node",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "documents.metadata.update",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "patchDocumentMetadata",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/documents/{documentId}/metadata",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "logical_documents.availability.update",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "patchLogicalDocumentAvailability",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/logical-documents/{documentId}/availability",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "research_tasks.plan",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "planResearchTask",
+      "parentResourceBinding": null,
+      "path": "/research-tasks/plan",
+      "resourceBinding": {
+        "bodyField": "knowledgeSpaceId"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "upload_sessions.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "presignUploadSessionPart",
+      "parentResourceBinding": {
+        "bodyField": "knowledgeSpaceId"
+      },
+      "path": "/upload-sessions/{id}/parts/{partNumber}/presign",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "upload_session"
+    },
+    {
+      "action": "knowledge_spaces.provision",
+      "allowedCallerKinds": [
+        "service",
+        "internal_worker"
+      ],
+      "method": "POST",
+      "operationId": "provisionIntegratedKnowledgeSpace",
+      "parentResourceBinding": null,
+      "path": "/internal/knowledge-spaces/provision",
+      "resourceBinding": {
+        "namespace": true
+      },
+      "resourceType": "namespace"
+    },
+    {
+      "action": "source_sync_policies.update",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PUT",
+      "operationId": "putSourceSyncPolicy",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/sync-policy",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "source_connections.refresh",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "refreshSourceConnection",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/source-connections/{connectionId}/refresh",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "documents.bulk.delete",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "DELETE",
+      "operationId": "requestBulkDocumentDeletion",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/documents/bulk",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "logical_documents.delete",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "DELETE",
+      "operationId": "requestBulkLogicalDocumentDeletion",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/logical-documents/bulk",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "documents.delete",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "DELETE",
+      "operationId": "requestDocumentDeletion",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/documents/{documentId}",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "logical_documents.delete",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "DELETE",
+      "operationId": "requestLogicalDocumentDeletion",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/logical-documents/{documentId}",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "sources.delete",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "DELETE",
+      "operationId": "requestSourceDeletion",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "logical_documents.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "resolveDocumentReference",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/document-references/resolve",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "research_tasks.resume",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "resumeResearchTask",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/research-tasks/{id}/resume",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "research_task"
+    },
+    {
+      "action": "background_tasks.retry",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "retryBackgroundTask",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/background-tasks/{taskKind}/{taskId}/retry",
+      "resourceBinding": {
+        "pathParameter": "taskId"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "document_jobs.retry",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "retryDocumentCompilationJob",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/jobs/{id}/retry",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "deletion_jobs.retry",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "retryDurableDeletionJob",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/deletion-jobs/{jobId}/retry",
+      "resourceBinding": {
+        "pathParameter": "jobId"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "source_workflows.retry",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "retrySourceWorkflow",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/source-workflows/{runId}/retry",
+      "resourceBinding": {
+        "pathParameter": "runId"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "capability_grants.revoke",
+      "allowedCallerKinds": [
+        "service",
+        "internal_worker"
+      ],
+      "method": "POST",
+      "operationId": "revokeCapabilityGrant",
+      "parentResourceBinding": null,
+      "path": "/internal/capability-grants/{grantId}/revoke",
+      "resourceBinding": {
+        "bodyField": "knowledgeSpaceId"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "queries.retrieval_test",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "runRetrievalTest",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/retrieval-tests",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "source_workflows.selection.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "selectCrawlPreviewPages",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/source-workflows/{runId}/selection",
+      "resourceBinding": {
+        "pathParameter": "runId"
+      },
+      "resourceType": "job"
+    },
+    {
+      "action": "knowledge_fs.stat",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "statKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/stat",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "research_tasks.stream",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "streamResearchTaskProgress",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/research-tasks/{id}/events",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "research_task"
+    },
+    {
+      "action": "sources.test",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "testKnowledgeSpaceSource",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/test",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "knowledge_fs.tree",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "treeKnowledgeFs",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/fs/tree",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "golden-questions.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "updateGoldenQuestion",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/golden-questions/{questionId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.update",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "updateKnowledgeSpace",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.settings.update",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PUT",
+      "operationId": "updateKnowledgeSpaceEmbeddingProfile",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/embedding-profile",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.metadata.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "updateKnowledgeSpaceMetadataField",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/metadata-fields/{fieldId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.settings.update",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "updateKnowledgeSpaceProductSettings",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/product-settings",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.settings.update",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PUT",
+      "operationId": "updateKnowledgeSpaceRetrievalProfile",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/retrieval-profile",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "sources.update",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "updateKnowledgeSpaceSource",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
+      "action": "quality.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "updateQualityBadCase",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/bad-cases/{badCaseId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "documents.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "uploadDocument",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/documents",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "upload_sessions.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "uploadSmallFile",
+      "parentResourceBinding": {
+        "queryParameter": "knowledgeSpaceId"
+      },
+      "path": "/upload-sessions/{id}/small-file",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "upload_session"
+    }
+  ]
+}

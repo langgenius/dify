@@ -1,0 +1,23 @@
+{
+  "addAndProcess": "Verarbeitung starten",
+  "crawlPreview": "Crawl-Vorschau",
+  "createAndProcess": "Erstellen und Dokumente verarbeiten",
+  "createFailed": "Wir konnten diese Agent-Wissensdatenbank nicht erstellen. Überprüfen Sie Ihren Zugang und versuchen Sie es erneut.",
+  "createTitle": "Agent-Wissensdatenbank erstellen",
+  "description": "Beschreibung",
+  "descriptionHelp": "Eine klare Beschreibung hilft Apps zu entscheiden, wann sie diese Agent-Wissensdatenbank durchsuchen sollen.",
+  "descriptionPlaceholder": "z.B. Rückerstattungsrichtlinien, häufig gestellte Fragen zum Versand und Eskalationsschritte – für Fragen zum Kundensupport verwenden",
+  "illustrationHeadline": "Verbinde deine Inhalte einmal – und jede App antwortet mit dem neuesten Wissen.",
+  "namePlaceholder": "z.B. Kundendiensthandbuch",
+  "nameRequired": "Geben Sie einen Namen für die Agent-Wissensdatenbank ein.",
+  "retryRemainingFiles": "Verbleibende Dateien erneut versuchen",
+  "selectedFiles": "Ausgewählte Dateien ({{valid}} von {{total}} gültig)",
+  "startWith": "Beginnen Sie mit",
+  "startWithHelp": "Sie können jederzeit weitere Quellen oder Dokumente hinzufügen.",
+  "uploadCharactersUnavailable": "Zeichen: —",
+  "uploadCompleted": "Hinzugefügt",
+  "uploadDocuments": "Dokumente hochladen",
+  "uploadDropZoneTitle": "Dateien ziehen und ablegen oder durchsuchen",
+  "uploadFilesDescription": "Dateien von Ihrem Computer hinzufügen. Die Dokumente werden nach dem Erstellen der Wissensdatenbank verarbeitet.",
+  "uploadingFiles": "Wird hochgeladen…"
+}

@@ -213,7 +213,9 @@ def test_member_queries_observe_committed_roles_and_release_session_before_role_
     event.listen(sqlite_engine, "checkin", checkin)
     try:
         repository = WorkspaceRepository(sqlite_session_factory)
-        repository.update_member_role(workspace_id="workspace", account_id="member", role=TenantAccountRole.EDITOR)
+        repository.update_member_role(
+            workspace_id="workspace", account_id="member", role=TenantAccountRole.EDITOR, actor_account_id="owner"
+        )
         service = WorkspaceMemberQueryService(members=repository, roles=RoleResolver())
         result = service.list_current(RequestContext("request", None, "actor", "workspace"))
         assert result[0].role == "editor"

@@ -1,0 +1,248 @@
+'use client'
+
+import type { Ref } from 'react'
+import type { KnowledgeFsUploadPhase } from './knowledge-fs-upload'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
+import { ModelCostNotice } from '../components/model-cost-notice'
+import { DocumentUploadFileList } from './file-list'
+import { DocumentUploadPlanNotice } from './plan-notice'
+import {
+  DOCUMENT_UPLOAD_ACCEPT,
+  documentUploadFingerprint,
+  documentUploadIssue,
+  uniqueDocumentUploadFiles,
+} from './policy'
+
+export type DocumentUploadFormHandle = {
+  addFiles: (files: File[]) => void
+}
+
+type DocumentUploadFormProps = {
+  fileSizeLimitMb: number
+  supportBatchUpload: boolean
+  initialFiles?: File[]
+  onCancel: () => void
+  onFilesAdded: (files: File[]) => Promise<void>
+  onFileRemoved: (file: File) => void
+  onSubmit: (files: File[]) => Promise<boolean>
+  uploadProgress?: ReadonlyMap<File, KnowledgeFsUploadPhase>
+  uploading: boolean
+  ref?: Ref<DocumentUploadFormHandle>
+}
+
+export function DocumentUploadForm({
+  fileSizeLimitMb,
+  supportBatchUpload,
+  initialFiles = [],
+  onCancel,
+  onFilesAdded,
+  onFileRemoved,
+  onSubmit,
+  uploadProgress = new Map(),
+  uploading,
+  ref,
+}: DocumentUploadFormProps) {
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeCreate'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tDatasetCreation } = useTranslation(['datasetCreation'])
+  const inputRef = useRef<HTMLInputElement>(null)
+  const modelCostNoticeId = useId()
+  const initialFilesAnnouncedRef = useRef(false)
+  const filesRef = useRef(initialFiles)
+  const [files, setFiles] = useState(initialFiles)
+  const [stagingFiles, setStagingFiles] = useState<ReadonlySet<File>>(
+    () => new Set(initialFiles.filter((file) => !documentUploadIssue(file, fileSizeLimitMb))),
+  )
+  const validFiles = useMemo(
+    () => files.filter((file) => !documentUploadIssue(file, fileSizeLimitMb)),
+    [fileSizeLimitMb, files],
+  )
+  const remainingFiles = validFiles.filter((file) => uploadProgress.get(file) !== 'completed')
+  const canRetryRemainingFiles = !uploading && remainingFiles.length < validFiles.length
+  const effectiveUploadProgress = useMemo(() => {
+    const progress = new Map(uploadProgress)
+    for (const file of stagingFiles) progress.set(file, 'pending')
+    return progress
+  }, [stagingFiles, uploadProgress])
+
+  const stageAddedFiles = useCallback(
+    (addedFiles: File[]) => {
+      if (!addedFiles.length) return
+      setStagingFiles((current) => new Set([...current, ...addedFiles]))
+      void onFilesAdded(addedFiles)
+        .catch(() => undefined)
+        .finally(() => {
+          setStagingFiles((current) => {
+            const next = new Set(current)
+            for (const file of addedFiles) next.delete(file)
+            return next
+          })
+        })
+    },
+    [onFilesAdded],
+  )
+
+  const addFiles = useCallback(
+    (nextFiles: File[]) => {
+      const uniqueFiles = uniqueDocumentUploadFiles(filesRef.current, nextFiles)
+      if (!supportBatchUpload && filesRef.current.length + uniqueFiles.length > 1) {
+        toast.error(
+          tDatasetCreation(($) => $['stepOne.uploader.validation.filesNumber'], { filesNumber: 1 }),
+        )
+        return
+      }
+      const validUniqueFiles = uniqueFiles.filter(
+        (file) => !documentUploadIssue(file, fileSizeLimitMb),
+      )
+      filesRef.current = [...filesRef.current, ...uniqueFiles]
+      setFiles(filesRef.current)
+      stageAddedFiles(validUniqueFiles)
+    },
+    [fileSizeLimitMb, stageAddedFiles, supportBatchUpload, tDatasetCreation],
+  )
+
+  useImperativeHandle(ref, () => ({ addFiles }), [addFiles])
+
+  useEffect(() => {
+    if (initialFilesAnnouncedRef.current) return
+    initialFilesAnnouncedRef.current = true
+    const validInitialFiles = initialFiles.filter(
+      (file) => !documentUploadIssue(file, fileSizeLimitMb),
+    )
+    if (!validInitialFiles.length) return
+    void onFilesAdded(validInitialFiles)
+      .catch(() => undefined)
+      .finally(() => {
+        setStagingFiles((current) => {
+          const next = new Set(current)
+          for (const file of validInitialFiles) next.delete(file)
+          return next
+        })
+      })
+  }, [fileSizeLimitMb, initialFiles, onFilesAdded])
+
+  return (
+    <form
+      aria-labelledby="new-knowledge-documents-title"
+      className="flex w-full max-w-160 flex-1 flex-col"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (!remainingFiles.length || uploading) return
+        void onSubmit(validFiles)
+      }}
+    >
+      <input
+        ref={inputRef}
+        multiple={supportBatchUpload}
+        hidden
+        accept={DOCUMENT_UPLOAD_ACCEPT}
+        aria-label={t(($) => $.uploadDocuments, { ns: 'knowledgeCreate' })}
+        tabIndex={-1}
+        type="file"
+        onChange={(event) => {
+          addFiles([...(event.currentTarget.files ?? [])])
+          event.currentTarget.value = ''
+        }}
+      />
+      <button
+        className="flex h-41 w-full flex-col items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-divider-deep bg-background-section px-6 text-center outline-hidden transition-colors hover:border-state-accent-solid hover:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={uploading}
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        onDragOver={(event) => {
+          event.preventDefault()
+          event.dataTransfer.dropEffect = uploading ? 'none' : 'copy'
+        }}
+        onDrop={(event) => {
+          event.preventDefault()
+          if (!uploading) addFiles([...event.dataTransfer.files])
+        }}
+      >
+        <span className="flex size-11 items-center justify-center rounded-[10px] bg-components-icon-bg-midnight-soft">
+          <span aria-hidden className="i-ri-file-text-fill size-5.5 text-text-accent" />
+        </span>
+        <span className="text-[14px] leading-4.25 font-medium text-text-primary">
+          {t(($) => $.uploadDropZoneTitle, { ns: 'knowledgeCreate' })}
+        </span>
+        <span className="text-[12px] leading-3.75 font-normal text-text-placeholder">
+          {t(($) => $.documentUploadFormats, { size: fileSizeLimitMb })}
+        </span>
+      </button>
+
+      <DocumentUploadPlanNotice fileSizeLimitMb={fileSizeLimitMb} />
+
+      {files.length > 0 && (
+        <section
+          className="mt-4"
+          aria-label={t(($) => $.uploadDocuments, { ns: 'knowledgeCreate' })}
+        >
+          <h3 className="system-sm-semibold text-text-primary">
+            {t(($) => $.selectedFiles, {
+              ns: 'knowledgeCreate',
+              total: files.length,
+              valid: validFiles.length,
+            })}
+          </h3>
+          <DocumentUploadFileList
+            className="mt-2"
+            disabled={uploading}
+            fileSizeLimitMb={fileSizeLimitMb}
+            items={files.map((file) => ({
+              file,
+              id: documentUploadFingerprint(file),
+            }))}
+            uploadProgress={effectiveUploadProgress}
+            onRemove={(item) => {
+              filesRef.current = filesRef.current.filter((file) => file !== item.file)
+              setFiles(filesRef.current)
+              setStagingFiles((current) => {
+                const next = new Set(current)
+                next.delete(item.file)
+                return next
+              })
+              if (!documentUploadIssue(item.file, fileSizeLimitMb)) onFileRemoved(item.file)
+            }}
+          />
+        </section>
+      )}
+
+      <ModelCostNotice
+        id={modelCostNoticeId}
+        className="mt-4"
+        summary={
+          remainingFiles.length > 0 &&
+          t(($) => $['modelCost.uploadSummary'], { count: remainingFiles.length })
+        }
+        description={t(($) => $['modelCost.uploadDescription'])}
+      />
+
+      <div className="flex justify-end gap-3 pt-5">
+        <Button disabled={uploading} type="button" onClick={onCancel}>
+          {tCommon(($) => $['operation.cancel'])}
+        </Button>
+        <Button
+          disabled={!remainingFiles.length}
+          loading={uploading}
+          type="submit"
+          variant="primary"
+          aria-describedby={modelCostNoticeId}
+        >
+          {t(($) => (canRetryRemainingFiles ? $.retryRemainingFiles : $.addAndProcess), {
+            ns: 'knowledgeCreate',
+          })}
+        </Button>
+      </div>
+    </form>
+  )
+}

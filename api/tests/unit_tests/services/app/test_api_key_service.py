@@ -202,3 +202,35 @@ def test_agent_resolution_checks_entire_owner_chain(
     sqlite_session.commit()
     with pytest.raises(ApiKeyResourceNotFoundError, match="Agent not found"):
         service.list_agent_keys(context, "agent")
+
+
+@pytest.mark.parametrize("status", [AgentStatus.ACTIVE, AgentStatus.ARCHIVED])
+@pytest.mark.parametrize("operation", ["list", "create", "delete"])
+def test_hidden_workflow_app_keys_remain_inaccessible(
+    service: AppApiKeyService, sqlite_session: Session, status: AgentStatus, operation: str
+) -> None:
+    app = sqlite_session.get(App, "app")
+    assert app is not None
+    app.mode = AppMode.AGENT
+    sqlite_session.add(
+        Agent(
+            id="hidden",
+            tenant_id="tenant",
+            name="Workflow agent",
+            scope=AgentScope.WORKFLOW_ONLY,
+            source=AgentSource.WORKFLOW,
+            status=status,
+            backing_app_id="app",
+        )
+    )
+    sqlite_session.add(ApiToken(id="hidden-key", tenant_id="tenant", app_id="app", type="app", token="secret"))
+    sqlite_session.commit()
+    context = RequestContext("request", None, "actor", "tenant")
+    invoke = {
+        "list": lambda: service.list_keys(context, "app"),
+        "create": lambda: service.create_key(context, "app"),
+        "delete": lambda: service.delete_key(context, "app", "hidden-key"),
+    }[operation]
+    with pytest.raises(ApiKeyResourceNotFoundError, match="App not found"):
+        invoke()
+    assert sqlite_session.get(ApiToken, "hidden-key") is not None

@@ -54,6 +54,23 @@ it('rejects short API keys without sending a request', async () => {
   expect(props.onCancel).not.toHaveBeenCalled()
 })
 
+it('shows one localized field error and does not request an invalid endpoint', async () => {
+  const user = userEvent.setup()
+  render(<AddExternalAPIModal {...props} />)
+  await user.type(screen.getByLabelText(/Name/), data.name)
+  const endpointInput = screen.getByLabelText(/API Endpoint/)
+  await user.type(endpointInput, 'not-a-url')
+  await user.type(screen.getByLabelText(/API Key/), 'key12345')
+  await user.click(save())
+  const alerts = await screen.findAllByRole('alert')
+  expect(alerts).toHaveLength(1)
+  expect(alerts[0]).toHaveTextContent('dataset.validation.invalidHttpUrl')
+  expect(endpointInput).toHaveAttribute('aria-invalid', 'true')
+  expect(endpointInput).toHaveAccessibleDescription('dataset.validation.invalidHttpUrl')
+  expect(createExternalAPI).not.toHaveBeenCalled()
+  expect(error).not.toHaveBeenCalled()
+})
+
 it('preserves entered settings for retry when creation fails', async () => {
   const user = userEvent.setup()
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -63,7 +80,7 @@ it('preserves entered settings for retry when creation fails', async () => {
   render(<AddExternalAPIModal {...props} />)
   await fill(user)
   await user.click(save())
-  await waitFor(() => expect(error).toHaveBeenCalledWith('Failed to save/update External API'))
+  await waitFor(() => expect(error).toHaveBeenCalledWith('common.api.actionFailed'))
   expect(props.onCancel).not.toHaveBeenCalled()
   expect(screen.getByLabelText(/API Endpoint/)).toHaveValue(data.settings.endpoint)
   await user.click(save())

@@ -3,7 +3,7 @@ import type {
   TrialAppDetailResponse,
 } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { CurrentWorkspaceSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterAll, describe, expect, it, vi } from 'vite-plus/test'
@@ -136,6 +136,7 @@ describe('AgentAppPreview', () => {
 
   it('opens the existing resource dialogs through trial app endpoints', async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    client.setQueryData(systemFeaturesQueryOptions().queryKey, createSystemFeaturesFixture())
     const user = userEvent.setup()
     const requests: string[] = []
     vi.stubGlobal(
@@ -172,9 +173,9 @@ describe('AgentAppPreview', () => {
     )
 
     render(
-      <QueryClientProvider client={client}>
+      <QueryClientTestProvider queryClient={client}>
         <AgentAppPreview appDetail={appDetail} composer={composer} />
-      </QueryClientProvider>,
+      </QueryClientTestProvider>,
     )
 
     await user.click(screen.getByRole('button', { name: 'Tender Analyzer' }))
