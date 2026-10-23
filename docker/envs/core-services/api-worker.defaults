@@ -177,7 +177,6 @@ LOG_DATEFORMAT=${LOG_DATEFORMAT-%Y-%m-%d %H:%M:%S}
 # EVALUATION_FRAMEWORK=none
 # Allow Evaluation to select and score Knowledge Retrieval v2 workflow nodes.
 # Keep disabled until the Knowledge Retrieval v2 node implementation is deployed.
-# EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED=false
 # Prevent DeepEval from loading local dotenv files or exporting telemetry from API/worker processes.
 DEEPEVAL_DISABLE_DOTENV=${DEEPEVAL_DISABLE_DOTENV-1}
 DEEPEVAL_TELEMETRY_OPT_OUT=${DEEPEVAL_TELEMETRY_OPT_OUT-1}

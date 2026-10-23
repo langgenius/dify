@@ -42,6 +42,7 @@ from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
+from extensions.ext_storage import storage
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.node_events.base import NodeRunResult
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
@@ -764,13 +765,11 @@ class EvaluationService:
             category = cls.NODE_TYPE_CATEGORY_MAPPING[node_type]
         except KeyError as exc:
             raise ValueError(f"Evaluation does not support node type '{node_type}'.") from exc
-        if node_type == KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE and not dify_config.EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED:
-            raise ValueError(f"Evaluation support for node type '{node_type}' is disabled.")
         return category
 
     @classmethod
     def validate_default_metric_node_types(cls, default_metrics: Sequence[DefaultMetric]) -> None:
-        """Reject task payloads that reference unsupported or disabled node types."""
+        """Reject task payloads that reference unsupported node types."""
         for metric in default_metrics:
             for node_info in metric.node_info_list:
                 cls.category_for_node_type(node_info.type)
@@ -2546,9 +2545,11 @@ class EvaluationService:
 
             result[node.node_id] = NodeRunResult(
                 status=WorkflowNodeExecutionStatus(node.status),
-                inputs=node.inputs_dict or {},
+                inputs=node.load_full_inputs(session, storage) or {},
                 process_data=node.process_data_dict or {},
-                outputs=node.outputs_dict or {},
+                # Workflow outputs can be truncated in the row and offloaded to storage.
+                # Evaluation metrics must use every retrieved context, not the preview.
+                outputs=node.load_full_outputs(session, storage) or {},
                 metadata=typed_metadata,
                 error=node.error or "",
             )
