@@ -1,5 +1,6 @@
 """A failed replacement plan keeps the durable plan and an actionable gate."""
 
+import json
 from copy import deepcopy
 from dataclasses import asdict
 from datetime import datetime
@@ -11,20 +12,23 @@ from core.dify_builder.contract import ProgressEventData
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Graph, MutationIntent, Session, Turn
 from core.dify_builder.state import PcState
 from runtime_contracts.builder.copy_ids import BuilderCopyId
+from services.dify_builder.agent import edit
 from services.dify_builder.application.handlers_edit import edit_registry
 from services.dify_builder.application.placeholder_agent import PlaceholderAgent
 from services.dify_builder.application.runner import Env, Runner
 from services.dify_builder.plan import WorkflowPlan, make_plan_card
 from services.dify_builder.serde import context_from_dict, context_to_dict
 from tests.unit_tests.core.dify_builder.fakes import FakeEditDifyPort, InMemoryRepository
+from tests.unit_tests.services.dify_builder.test_edit_plan_generation import RecordingModel
 
 
 @pytest.mark.parametrize(
     "entry_state",
     [PcState.EDIT_IMPACT_ANALYSIS, PcState.EDIT_PLAN_APPROVAL, PcState.EDIT_REVIEW, PcState.EDIT_REVERTED],
 )
+@pytest.mark.parametrize("failure", ["invalid_response", "already_satisfied", "infeasible"])
 def test_failed_replanning_preserves_snapshot_and_recovers_on_retry(
-    monkeypatch: pytest.MonkeyPatch, entry_state: PcState
+    monkeypatch: pytest.MonkeyPatch, entry_state: PcState, failure: str
 ) -> None:
     agent = PlaceholderAgent()
     new_plan = WorkflowPlan("New title", "New input", "New output", ["New step", "Return answer"])
@@ -32,7 +36,11 @@ def test_failed_replanning_preserves_snapshot_and_recovers_on_retry(
 
     def propose_edit_plan(*_: object, reply_language: str | None = None) -> WorkflowPlan | None:
         assert reply_language == "zh-Hans"
-        return next(proposals)
+        proposal = next(proposals)
+        if proposal is None and failure != "invalid_response":
+            model = RecordingModel([json.dumps({"status": failure, "reason": "请修改目标或使用 Build 重新构建。"})])
+            return edit.propose_edit_plan(model, {}, {}, reply_language=reply_language)
+        return proposal
 
     monkeypatch.setattr(agent, "propose_edit_plan", propose_edit_plan)
     repo = InMemoryRepository()
@@ -112,7 +120,10 @@ def test_failed_replanning_preserves_snapshot_and_recovers_on_retry(
         assistant = next(item for item in reversed(items) if item.kind == "assistant_turn")
         assert assistant.payload["execution"]["status"] == "error"
         assert assistant.payload["reply_language"] == "zh-Hans"
-        assert assistant.payload["reply_text"]["id"] == BuilderCopyId.REPLIES_BUILDER_COULDN_T_PRODUCE_A_USABLE
+        if failure == "invalid_response":
+            assert assistant.payload["reply_text"]["id"] == BuilderCopyId.REPLIES_BUILDER_COULDN_T_PRODUCE_A_USABLE
+        else:
+            assert "请修改目标或使用 Build" in assistant.payload["reply_text"]
         if waiting_state == PcState.EDIT_IMPACT_ANALYSIS:
             form = next(item for item in reversed(items) if item.kind == "form")
             assert form.payload["values"] == {"tone": "formal"}

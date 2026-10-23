@@ -52,6 +52,53 @@ VALID_PLAN = {
 }
 
 
+@pytest.mark.parametrize("status", ["already_satisfied", "infeasible"])
+def test_non_actionable_edit_is_explained_without_schema_retry(status: str) -> None:
+    model = RecordingModel([json.dumps({"status": status, "reason": "请修改目标；需要重新构建时请使用 Build。"})])
+    with pytest.raises(RuntimeError, match="请修改目标"):
+        edit.propose_edit_plan(model, {}, workflow(), reply_language="zh-Hans")
+    assert len(model.prompts) == 1
+    assert "already_satisfied" in model.systems[0]
+    assert "infeasible" in model.systems[0]
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        {"status": "infeasible", "reason": ""},
+        {"status": "already_satisfied", "reason": "Done", "plan": ["Change it"]},
+        {"status": []},
+    ],
+)
+def test_invalid_non_actionable_response_uses_existing_correction_budget(response: dict[str, object]) -> None:
+    model = RecordingModel([json.dumps(response), json.dumps(VALID_PLAN)])
+    assert edit.propose_edit_plan(model, {}, workflow()) is not None
+    assert len(model.prompts) == 2
+
+
+def test_non_actionable_reason_redacts_full_graph_and_submitted_credentials() -> None:
+    graph = workflow()
+    graph["nodes"].append({"id": "hidden", "data": {"api_key": "graph-credential"}})
+    model = RecordingModel(
+        [json.dumps({"status": "infeasible", "reason": " " * 2001 + "graph-credential and rule-credential"})]
+    )
+    with pytest.raises(RuntimeError) as failure:
+        edit.propose_edit_plan(model, {"credentials": "rule-credential"}, graph)
+    assert "graph-credential" not in str(failure.value)
+    assert "rule-credential" not in str(failure.value)
+    assert str(failure.value).strip()
+    assert str(failure.value) == str(failure.value).strip()
+
+
+def test_edit_planning_can_compare_requested_configuration_with_current_values() -> None:
+    graph = workflow()
+    graph["nodes"][0]["data"]["template"] = "Existing business greeting"
+    model = RecordingModel([json.dumps(VALID_PLAN)])
+    assert edit.propose_edit_plan(model, {"template": "Existing business greeting"}, graph) is not None
+    graph_context = model.prompts[0].split("GRAPH:\n", 1)[1]
+    assert "Existing business greeting" in graph_context
+
+
 def workflow(*inputs: dict[str, object]) -> Graph:
     return {
         "nodes": [

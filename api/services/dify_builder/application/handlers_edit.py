@@ -87,7 +87,7 @@ from services.dify_builder.business_acceptance import (
     record_run_acceptance,
 )
 from services.dify_builder.execution_messages import change_scope_label
-from services.dify_builder.plan import WorkflowPlan, make_plan_card, store_plan
+from services.dify_builder.plan import EditPlanNotActionableError, WorkflowPlan, make_plan_card, store_plan
 from services.dify_builder.plan_failure import edit_planning_failed
 from services.dify_builder.repair_gate import NO_REPAIR_REASON
 
@@ -172,13 +172,19 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     )
     execution = progress.finish()
     target_text = ", ".join(fc.edit_target_node_ids)
+    from services.dify_builder.resource_grounding import edit_resource_guidance
+
+    resource_guidance = edit_resource_guidance(fc.form_fields, fc.reply_language)
     turn_items = append_assistant(
         env,
         s,
         fc,
-        copy_text(BuilderCopyId.EDIT_INSPECTED, nodes=node_count, connections=edge_count, targets=target_text)
-        if target_text
-        else copy_text(BuilderCopyId.EDIT_INSPECTED_WITHOUT_TARGETS, nodes=node_count, connections=edge_count),
+        text_parts(
+            copy_text(BuilderCopyId.EDIT_INSPECTED, nodes=node_count, connections=edge_count, targets=target_text)
+            if target_text
+            else copy_text(BuilderCopyId.EDIT_INSPECTED_WITHOUT_TARGETS, nodes=node_count, connections=edge_count),
+            text_parts("\n\n", resource_guidance) if resource_guidance is not None else "",
+        ),
         execution=execution,
         cards=["form"],
         turn_id=progress.operation_id,
@@ -247,7 +253,10 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         resolve_plan_resources(env.agent, fc, graph)
     except ResourceBindingError as exc:
         return selection_failure_step(env, s, fc, turn.actor, graph, progress, exc, failed_step="edit-draft-plan")
-    plan = env.agent.propose_edit_plan(dict(fc.edit_rules), graph, reply_language=fc.reply_language or None)
+    try:
+        plan = env.agent.propose_edit_plan(dict(fc.edit_rules), graph, reply_language=fc.reply_language or None)
+    except EditPlanNotActionableError as exc:
+        return edit_planning_failed(env, s, fc, progress, "edit-draft-plan", guidance=str(exc))
     if plan is None:
         return edit_planning_failed(env, s, fc, progress, "edit-draft-plan")
     store_plan(fc, plan)
@@ -1322,7 +1331,10 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     )
     progress.activate("edit-rebuild-plan")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
-    plan = env.agent.propose_edit_plan(dict(fc.edit_rules), graph, reply_language=fc.reply_language or None)
+    try:
+        plan = env.agent.propose_edit_plan(dict(fc.edit_rules), graph, reply_language=fc.reply_language or None)
+    except EditPlanNotActionableError as exc:
+        return edit_planning_failed(env, s, fc, progress, "edit-rebuild-plan", guidance=str(exc))
     if plan is None:
         return edit_planning_failed(env, s, fc, progress, "edit-rebuild-plan")
     store_plan(fc, plan)

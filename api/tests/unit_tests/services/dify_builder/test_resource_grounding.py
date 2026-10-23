@@ -254,6 +254,72 @@ def test_edit_resource_form_uses_canonical_unique_match() -> None:
     assert selected["bindings"][field["key"]]["name"] == "claude-fable-5-1"
 
 
+@pytest.mark.parametrize("kind", ["model", "tool"])
+def test_named_missing_resource_never_offers_unrequested_alternatives(kind: str) -> None:
+    from services.dify_builder.resource_grounding import ground_edit_impact
+
+    ref = resources.ResourceRef(id="provider/other", label="Other", binding={})
+    directory = resources.TenantResources(
+        models=[ref] if kind == "model" else [], tools=[ref] if kind == "tool" else [], datasets=[]
+    )
+    impact = ground_edit_impact(
+        {"fields": [], "values": {}, "resource_requests": [{"kind": kind, "query": "missing-requested"}]}, directory
+    )
+    assert impact["fields"][0]["options"] == []
+    assert list(impact["values"].values()) == [""]
+
+
+def test_open_resource_discovery_still_offers_available_choices() -> None:
+    from services.dify_builder.resource_grounding import ground_edit_impact
+
+    ref = resources.ResourceRef(id="provider/other", label="Other", binding={})
+    impact = ground_edit_impact(
+        {"fields": [], "values": {}, "resource_requests": [{"kind": "model", "query": ""}]},
+        resources.TenantResources(models=[ref], tools=[], datasets=[]),
+    )
+    assert impact["fields"][0]["options"] == ["model:" + ref.id]
+    assert list(impact["values"].values()) == [""]
+
+
+@pytest.mark.parametrize("language", ["en-US", "zh-Hans"])
+@pytest.mark.parametrize("source_error", [None, "inventory_unavailable"])
+def test_named_missing_resource_is_explained_before_approval(
+    monkeypatch: pytest.MonkeyPatch, language: str, source_error: str | None
+) -> None:
+    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
+    from core.dify_builder.state import PcState
+    from runtime_contracts.builder.copy_ids import BuilderCopyId
+    from services.dify_builder.application.handlers_edit import handle_capability_check
+    from services.dify_builder.resource_grounding import ground_edit_impact
+    from tests.unit_tests.core.dify_builder.test_runner import _new_env
+
+    env, _ = _new_env()
+    impact = ground_edit_impact(
+        {"fields": [], "values": {}, "resource_requests": [{"kind": "model", "query": "absent"}]},
+        resources.TenantResources(models=[], tools=[], datasets=[], model_source_error=source_error),
+    )
+    monkeypatch.setattr(env.agent, "analyze_impact", lambda *_args, **_kwargs: impact)
+    session = Session(app_id="app", entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_CAPABILITY_CHECK)
+    context = DifyBuilderContext(reply_language=language)
+    result = handle_capability_check(
+        env,
+        Turn(
+            actor=Actor(account_id="u", tenant_id="t"), action=Action(kind="send_edit_goal", payload={"text": "absent"})
+        ),
+        session,
+        context,
+    )
+    assert result.next == PcState.EDIT_IMPACT_ANALYSIS
+    assistant = next(item for item in result.items if item.kind == "assistant_turn")
+    reply = str(assistant.payload["reply_text"])
+    if source_error:
+        assert BuilderCopyId.RESOURCES_CATALOGUE_UNAVAILABLE in reply
+    else:
+        assert ("未找到" if language.startswith("zh") else "No available resource matches") in reply
+    assert not any(item.kind == "plan" for item in result.items)
+    assert not context.checkpoint_id
+
+
 def test_ambiguous_resources_have_no_automatic_choice() -> None:
     import pytest
 

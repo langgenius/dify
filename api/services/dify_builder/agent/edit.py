@@ -14,8 +14,9 @@ from typing import Any, TypedDict
 import json_repair
 
 from core.dify_builder.errors import ProposalWouldRunWrongError
-from core.dify_builder.models import MutationIntent
+from core.dify_builder.models import MutationIntent, NodeOutput, Run
 from core.dify_builder.node_defaults import default_config_or_empty
+from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.generator.prompts.builder_prompts import (
     CODE_FAILURE_POLICY_RULES,
     TOOL_PARAMETER_SEMANTICS_RULES,
@@ -23,11 +24,16 @@ from core.workflow.generator.prompts.builder_prompts import (
 from graphon.enums import BUILT_IN_NODE_TYPES
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import copy_text
-from services.dify_builder import credentials, graph_ops, preflight
+from services.dify_builder import credentials, diagnostic_context, graph_ops, preflight
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import form_schema, graph_prompt, llm
 from services.dify_builder.agent.plan_context import workflow_io_context
-from services.dify_builder.plan import PLAN_PRESENTATION_INSTRUCTION, WorkflowPlan, parse_plan_response
+from services.dify_builder.plan import (
+    PLAN_PRESENTATION_INSTRUCTION,
+    EditPlanNotActionableError,
+    WorkflowPlan,
+    parse_plan_response,
+)
 from services.workflow_generation.graph_normalizers import declared_branch_handles
 
 _ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
@@ -132,13 +138,17 @@ def _detailed_ids(graph: dict, target_node_ids: Sequence[str]) -> set[str]:
     return detailed
 
 
-def _graph_context(graph: dict, target_node_ids: Sequence[str] = ()) -> str:
+def _graph_context(graph: dict, target_node_ids: Sequence[str] = (), *, for_plan: bool = False) -> str:
     detailed = _detailed_ids(graph, target_node_ids)
     node_lines: list[str] = []
     rendered_any_config = False
     for n in graph.get("nodes", []):
         node_lines.append(graph_prompt.node_line(n))
-        if str(n.get("id")) in detailed:
+        # Planning receives boundary definitions through workflow_io_context;
+        # full trigger bindings include private subscription/parameter values.
+        if str(n.get("id")) in detailed and (
+            not for_plan or (n.get("data") or {}).get("type") not in TRIGGER_NODE_TYPES | {"start"}
+        ):
             block = _config_block(n)
             if block:
                 node_lines.append(f"    config: {block}")
@@ -184,6 +194,9 @@ def analyze_impact(
         '"query": "<requested resource>", "binding_required": true}]}.'
         "For every requested model/tool replacement or addition, include a resource_request using the user's "
         "resource description, not a guessed canonical ID. For a replacement use the resource node's existing ID; "
+        "Use an empty query for open discovery when the user asks for alternatives without a specific identity. "
+        "For an explicitly named resource preserve its description even if it may be unavailable; "
+        "never silently substitute another model or tool. "
         "for an addition choose an unused new node ID and use that same ID in the later plan. "
         "Never use an existing neighbour's ID for the added resource. "
         "For an explicitly requested new, unconfigured and disconnected Tool canvas draft, use an empty query "
@@ -246,6 +259,7 @@ def propose_edit_plan(
 
     A missing overview is a failed proposal, even when its steps are valid.
     Parsing and schema correction together may spend at most two model calls.
+    Raises EditPlanNotActionableError for an explained infeasible/already-satisfied goal.
     """
     if model is None:
         return None
@@ -261,12 +275,20 @@ def propose_edit_plan(
         "Assign each resource only to its node in __builder_resource_node_targets, and respect "
         "the declared mode/features in __builder_resource_model_contracts; unknown capabilities are not verified. "
         + PLAN_PRESENTATION_INSTRUCTION
+        + " Before proposing steps, compare the requested outcome with the current graph and confirmed resources. "
+        'If it is already satisfied, reply ONLY with {"status": "already_satisfied", "reason": "..."}. '
+        "If it cannot be fulfilled with this edit and confirmed resources, reply ONLY with "
+        '{"status": "infeasible", "reason": "..."}. Explain the concrete reason in the session language '
+        "and suggest revising the goal, or using Build when substantial reconstruction is needed. "
+        "Do not propose no-op steps, pretend an unavailable capability exists, or silently substitute a different "
+        "model/tool than the explicit request. These non-actionable responses must have no plan steps. "
         + llm.json_language_instruction(
             "the plan title, input and output summaries, and plan steps", reply_language=reply_language
         )
     )
     source = (
-        f"EDIT RULES:\n{json.dumps(edit_rules, ensure_ascii=False)}\n\nGRAPH:\n{_graph_context(graph)}"
+        f"EDIT RULES:\n{json.dumps(edit_rules, ensure_ascii=False)}\n\nGRAPH:\n"
+        f"{_graph_context(graph, sorted(_node_ids(graph)), for_plan=True)}"
         f"\n\nWORKFLOW INPUTS AND OUTPUTS:\n{workflow_io_context(graph)}"
     )
     if reply_language:
@@ -291,6 +313,18 @@ def propose_edit_plan(
             diagnostics.report("json_decode_failed", error=exc, attempt=attempt + 1)
             data = None
         try:
+            if isinstance(data, dict) and "status" in data:
+                status = data["status"]
+                if not isinstance(status, str) or status not in {"ready", "already_satisfied", "infeasible"}:
+                    raise ValueError("The status must be ready, already_satisfied or infeasible.")
+                if status != "ready":
+                    reason = data.get("reason")
+                    if not isinstance(reason, str) or not reason.strip() or data.get("plan") not in (None, []):
+                        raise ValueError("A non-actionable response requires a nonblank reason and no plan steps.")
+                    safe_reason = diagnostic_context.redact_diagnostic_text(
+                        reason, Run(), graph, [NodeOutput(inputs=edit_rules)]
+                    )
+                    raise EditPlanNotActionableError(safe_reason.strip()[:2000])
             return parse_plan_response(data)
         except ValueError as exc:
             if isinstance(data, dict):
