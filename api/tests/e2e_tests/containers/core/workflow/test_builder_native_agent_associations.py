@@ -835,6 +835,11 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
 
         monkeypatch.setattr(execution_policy_service, "check_execution_permission", revoked)
     if guard_change not in {"none", "canvas"}:
+        if for_projection:
+            with pytest.raises(BuilderExecutionPolicyError):
+                store.read_checkpoint_for_cancellation(ref=ref, checkpoint=saved)
+            with pytest.raises(BuilderExecutionPolicyError):
+                store.read_agent_association_for_cancellation(ref=ref, parent_node=parent, wait=wait)
         with pytest.raises(BuilderExecutionPolicyError):
             store.read_checkpoint(ref=ref, checkpoint=saved, for_projection=for_projection)
         if operations is not None and resolved is not None:
@@ -848,6 +853,10 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
         return
     selected = store.read_checkpoint(ref=ref, checkpoint=saved, for_projection=for_projection)
     assert selected.agent_associations == (wait,)
+    if for_projection:
+        assert store.read_checkpoint_for_cancellation(ref=ref, checkpoint=saved).agent_associations == (wait,)
+        protected = store.read_agent_association_for_cancellation(ref=ref, parent_node=parent, wait=wait)
+        assert protected.association == association
     if not for_projection:
         protected = store.load_agent_association(ref=ref, parent_node=parent, wait=selected.agent_associations[0])
         assert protected.association.home_snapshot_id is None
@@ -880,6 +889,10 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
     if operations is not None and resolved is not None:
         with pytest.raises(BuilderExecutionPolicyError):
             operations.describe(actor=actor, resolved=resolved)
+        with pytest.raises(BuilderExecutionPolicyError):
+            store.read_checkpoint_for_cancellation(ref=ref, checkpoint=saved)
+        with pytest.raises(BuilderExecutionPolicyError):
+            store.read_agent_association_for_cancellation(ref=ref, parent_node=parent, wait=wait)
 
 
 @pytest.mark.parametrize("association_case", ["legacy_confirmed", "isolated"], indirect=True)
