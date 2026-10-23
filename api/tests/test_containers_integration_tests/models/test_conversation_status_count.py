@@ -13,8 +13,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from graphon.enums import WorkflowExecutionStatus
-from models.enums import ConversationFromSource, CreatorUserRole, CustomizeTokenStrategy, InvokeFrom
-from models.enums import ConversationFromSource, ConversationStatus, CustomizeTokenStrategy, InvokeFrom
+from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole, CustomizeTokenStrategy, InvokeFrom
 from models.model import App, AppMode, Conversation, Message, Site
 from models.workflow import Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 
