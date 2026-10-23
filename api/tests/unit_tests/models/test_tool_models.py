@@ -7,18 +7,25 @@ This test suite covers:
 - ApiToolProvider credential storage and encryption
 - Tool OAuth client models
 - ToolLabelBinding relationships
+- Typed parsing of JSON-backed properties
 """
 
 import json
 from uuid import uuid4
 
-from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolProviderType
+import pytest
+from pydantic import ValidationError
+
+from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolParameter, ToolProviderType
 from models.tools import (
     ApiToolProvider,
     BuiltinToolProvider,
+    DeprecatedPublishedAppTool,
+    MCPToolProvider,
     ToolLabelBinding,
     ToolOAuthSystemClient,
     ToolOAuthTenantClient,
+    WorkflowToolProvider,
 )
 
 
@@ -964,3 +971,157 @@ class TestToolProviderRelationships:
         assert binding1.tool_id == tool_id
         assert binding2.tool_id == tool_id
         assert binding1.label_name != binding2.label_name
+
+
+def _mcp_provider(**kwargs) -> MCPToolProvider:
+    return MCPToolProvider(
+        name="MCP Provider",
+        server_identifier="mcp-provider",
+        server_url="https://example.com/mcp",
+        server_url_hash=uuid4().hex,
+        icon="icon",
+        tenant_id=str(uuid4()),
+        user_id=str(uuid4()),
+        **kwargs,
+    )
+
+
+class TestTypedJsonProperties:
+    """Test JSON-backed properties validate the stored payload against their declared types."""
+
+    def test_api_tool_provider_credentials_rejects_non_object_json(self):
+        """A stored JSON array must not be coerced into a dict."""
+        api_provider = ApiToolProvider(
+            tenant_id=str(uuid4()),
+            user_id=str(uuid4()),
+            name="Broken API",
+            icon="{}",
+            schema="{}",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
+            description="Broken API",
+            tools_str="[]",
+            credentials_str=json.dumps(["ab"]),
+        )
+
+        with pytest.raises(ValidationError):
+            _ = api_provider.credentials
+
+    def test_api_tool_provider_credentials_rejects_malformed_json(self):
+        api_provider = ApiToolProvider(
+            tenant_id=str(uuid4()),
+            user_id=str(uuid4()),
+            name="Broken API",
+            icon="{}",
+            schema="{}",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
+            description="Broken API",
+            tools_str="[]",
+            credentials_str="{not json",
+        )
+
+        with pytest.raises(ValidationError):
+            _ = api_provider.credentials
+
+    def test_builtin_tool_provider_credentials_rejects_non_object_json(self):
+        builtin_provider = BuiltinToolProvider(
+            name="Default",
+            tenant_id=str(uuid4()),
+            user_id=str(uuid4()),
+            provider="google",
+            encrypted_credentials="null",
+        )
+
+        with pytest.raises(ValidationError):
+            _ = builtin_provider.credentials
+
+    def test_oauth_tenant_client_params_rejects_non_object_json(self):
+        oauth_client = ToolOAuthTenantClient(
+            tenant_id=str(uuid4()),
+            plugin_id="langgenius/google",
+            provider="google",
+        )
+        oauth_client.encrypted_oauth_params = json.dumps(["client_id"])
+
+        with pytest.raises(ValidationError):
+            _ = oauth_client.oauth_params
+
+    def test_mcp_provider_credentials_empty_when_not_an_object(self):
+        provider = _mcp_provider(encrypted_credentials=json.dumps(["token"]))
+
+        assert provider.credentials == {}
+
+    def test_mcp_provider_headers_parses_string_mapping(self):
+        provider = _mcp_provider(encrypted_headers=json.dumps({"Authorization": "Bearer token"}))
+
+        assert provider.headers == {"Authorization": "Bearer token"}
+
+    def test_mcp_provider_headers_empty_when_not_a_string_mapping(self):
+        provider = _mcp_provider(encrypted_headers=json.dumps(["Authorization"]))
+
+        assert provider.headers == {}
+
+    def test_mcp_provider_tool_dict_parses_tool_list(self):
+        tools = [{"name": "search", "inputSchema": {"type": "object"}}]
+        provider = _mcp_provider(tools=json.dumps(tools))
+
+        assert provider.tool_dict == tools
+
+    @pytest.mark.parametrize("stored_tools", [json.dumps({"name": "search"}), "not json"])
+    def test_mcp_provider_tool_dict_empty_when_not_a_list_of_objects(self, stored_tools: str):
+        provider = _mcp_provider(tools=stored_tools)
+
+        assert provider.tool_dict == []
+
+    def test_workflow_tool_provider_parameter_configurations(self):
+        configurations = [{"name": "query", "description": "Search query", "form": "llm"}]
+        provider = WorkflowToolProvider(
+            name="workflow_tool",
+            label="Workflow Tool",
+            icon="{}",
+            app_id=str(uuid4()),
+            user_id=str(uuid4()),
+            tenant_id=str(uuid4()),
+            description="Workflow tool",
+            parameter_configuration=json.dumps(configurations),
+            version="1",
+        )
+
+        result = provider.parameter_configurations
+
+        assert len(result) == 1
+        assert result[0].name == "query"
+        assert result[0].form == ToolParameter.ToolParameterForm.LLM
+
+    def test_workflow_tool_provider_parameter_configurations_rejects_invalid_item(self):
+        configurations = [{"name": "query", "description": "Search query", "form": "unknown"}]
+        provider = WorkflowToolProvider(
+            name="workflow_tool",
+            label="Workflow Tool",
+            icon="{}",
+            app_id=str(uuid4()),
+            user_id=str(uuid4()),
+            tenant_id=str(uuid4()),
+            description="Workflow tool",
+            parameter_configuration=json.dumps(configurations),
+            version="1",
+        )
+
+        with pytest.raises(ValidationError):
+            _ = provider.parameter_configurations
+
+    def test_deprecated_published_app_tool_description_i18n(self):
+        tool = DeprecatedPublishedAppTool(
+            app_id=str(uuid4()),
+            user_id=str(uuid4()),
+            description=json.dumps({"en_US": "Search the web", "zh_Hans": "搜索网页"}),
+            llm_description="Search the web",
+            query_description="Search query",
+            query_name="query",
+            tool_name="search",
+            author="test",
+        )
+
+        result = tool.description_i18n
+
+        assert result.en_US == "Search the web"
+        assert result.zh_Hans == "搜索网页"
