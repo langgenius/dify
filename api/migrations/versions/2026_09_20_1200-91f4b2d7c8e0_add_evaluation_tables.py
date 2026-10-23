@@ -1,7 +1,7 @@
 """Add evaluation configuration, run, and item tables.
 
 Revision ID: 91f4b2d7c8e0
-Revises: d8e4a6b1c902
+Revises: b9d3f7a5c102
 Create Date: 2026-09-20 12:00:00.000000
 """
 
@@ -11,7 +11,7 @@ from alembic import op
 import models.types
 
 revision = "91f4b2d7c8e0"
-down_revision = "d8e4a6b1c902"
+down_revision = "b9d3f7a5c102"
 branch_labels = None
 depends_on = None
 

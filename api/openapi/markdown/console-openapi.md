@@ -4527,6 +4527,24 @@ Get all published workflows for an application
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /apps/{app_id}/workflows/convert-type
+Convert the active published workflow between standard and evaluation kinds
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| target_type | query |  | Yes | string, <br>**Available values:** "evaluation", "workflow" |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow kind converted successfully | **application/json**: [WorkflowKindConvertResponse](#workflowkindconvertresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /apps/{app_id}/workflows/default-workflow-block-configs
 **Get default block config**
 
@@ -5425,6 +5443,29 @@ Get published workflow for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/workflows/publish/evaluation
+Publish the draft as a reusable evaluation workflow
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PublishWorkflowPayload](#publishworkflowpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7040,6 +7081,166 @@ Get dataset error documents
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /datasets/{dataset_id}/evaluation
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation configuration | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /datasets/{dataset_id}/evaluation
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationConfigPayload](#evaluationconfigpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /datasets/{dataset_id}/evaluation/files/{file_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| file_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation file | **application/json**: [EvaluationFileResponse](#evaluationfileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /datasets/{dataset_id}/evaluation/logs
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| page_size | query |  | No | integer, <br>**Default:** 20 |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation runs | **application/json**: [EvaluationRunPaginationResponse](#evaluationrunpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /datasets/{dataset_id}/evaluation/metrics
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Retrieval evaluation metrics | **application/json**: [EvaluationMetricsResponse](#evaluationmetricsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /datasets/{dataset_id}/evaluation/run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationRunPayload](#evaluationrunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /datasets/{dataset_id}/evaluation/runs/{run_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| page_size | query |  | No | integer, <br>**Default:** 50 |
+| dataset_id | path |  | Yes | string (uuid) |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run detail | **application/json**: [EvaluationRunDetailResponse](#evaluationrundetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /datasets/{dataset_id}/evaluation/runs/{run_id}/cancel
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run cancelled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /datasets/{dataset_id}/evaluation/runs/{run_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /datasets/{dataset_id}/evaluation/template/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Knowledge base evaluation template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /datasets/{dataset_id}/external-hit-testing
 Test external knowledge retrieval for dataset
 
@@ -7482,6 +7683,14 @@ Delete an API key for a dataset
 | 200 | Success | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
 | 400 | Bad Request | **application/json**: [EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [EmailRegisterLimitError](#emailregisterlimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /evaluation/available-metrics
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Available evaluation metrics | **application/json**: [EvaluationAvailableMetricsResponse](#evaluationavailablemetricsresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /explore/apps
@@ -14214,6 +14423,24 @@ Get list of available agent providers
 | 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /workspaces/current/available-evaluation-workflows
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 10 |
+| named_only | query |  | No | boolean |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| user_id | query |  | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Available evaluation workflows | **application/json**: [AvailableEvaluationWorkflowPaginationResponse](#availableevaluationworkflowpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /workspaces/current/customized-snippets
 **List customized snippets with pagination and search**
 
@@ -14622,6 +14849,20 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Endpoint updated successfully | **application/json**: [EndpointMutationResponse](#endpointmutationresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/evaluation-workflows/{workflow_id}/associated-targets
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workflow_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Associated evaluation targets | **application/json**: [EvaluationAssociatedTargetListResponse](#evaluationassociatedtargetlistresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/members
@@ -18062,6 +18303,239 @@ Import a Skill zip package from multipart form field `file`.
 | 200 | Model provider icon |  |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /{evaluate_target_type}/{evaluate_target_id}/dataset-template/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationConfigPayload](#evaluationconfigpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation dataset template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation configuration | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /{evaluate_target_type}/{evaluate_target_id}/evaluation
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationConfigPayload](#evaluationconfigpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/default-metrics
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default metrics | **application/json**: [EvaluationDefaultMetricsResponse](#evaluationdefaultmetricsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/files/{file_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+| file_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation file | **application/json**: [EvaluationFileResponse](#evaluationfileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/logs
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| page_size | query |  | No | integer, <br>**Default:** 20 |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation runs | **application/json**: [EvaluationRunPaginationResponse](#evaluationrunpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/metrics
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation metrics | **application/json**: [EvaluationMetricsResponse](#evaluationmetricsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/node-info
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationNodeInfoPayload](#evaluationnodeinfopayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation node info | **application/json**: [EvaluationNodeInfoResponse](#evaluationnodeinforesponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationRunPayload](#evaluationrunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| page_size | query |  | No | integer, <br>**Default:** 50 |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run detail | **application/json**: [EvaluationRunDetailResponse](#evaluationrundetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/cancel
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run cancelled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/template-columns
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationConfigPayload](#evaluationconfigpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation template columns | **application/json**: [EvaluationTemplateColumnsResponse](#evaluationtemplatecolumnsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ---
 ## default
 Default namespace
@@ -18601,6 +19075,8 @@ Account not link tenant.
 | updated_by | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
 | workflow | [WorkflowPartial](#workflowpartial) |  | Yes |
+| workflow_kind | string |  | No |
+| workflow_type | string |  | No |
 
 #### AgentAppFeaturesPayload
 
@@ -18683,6 +19159,8 @@ default (the config form sends the full desired feature state on save).
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
+| workflow_kind | string |  | No |
+| workflow_type | string |  | No |
 
 #### AgentAppPublishedReferenceResponse
 
@@ -21005,6 +21483,8 @@ This class is used to store the schema information of an api based tool.
 | updated_by | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
 | workflow | [WorkflowPartial](#workflowpartial) |  | Yes |
+| workflow_kind | string |  | No |
+| workflow_type | string |  | No |
 
 #### AppDetailSiteResponse
 
@@ -21068,6 +21548,8 @@ This class is used to store the schema information of an api based tool.
 | updated_by | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
 | workflow | [WorkflowPartial](#workflowpartial) |  | Yes |
+| workflow_kind | string |  | No |
+| workflow_type | string |  | No |
 
 #### AppDisabledExternalDataToolResponse
 
@@ -21749,6 +22231,8 @@ The app preview owner is unavailable.
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
+| workflow_kind | string |  | No |
+| workflow_type | string |  | No |
 
 #### AppPromptMessagePayload
 
@@ -22120,6 +22604,43 @@ Invalid email or password.
 | ---- | ---- | ----------- | -------- |
 | count | integer |  | Yes |
 | document_ids | [ string ] |  | Yes |
+
+#### AvailableEvaluationWorkflowPaginationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| has_more | boolean |  | Yes |
+| items | [ [AvailableEvaluationWorkflowResponse](#availableevaluationworkflowresponse) ] |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+
+#### AvailableEvaluationWorkflowQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string |  | No |
+| limit | integer, <br>**Default:** 10 |  | No |
+| named_only | boolean |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| user_id | string |  | No |
+
+#### AvailableEvaluationWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| app_name | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| hash | string |  | Yes |
+| id | string |  | Yes |
+| kind | string |  | Yes |
+| marked_comment | string |  | Yes |
+| marked_name | string |  | Yes |
+| type | string |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| version | string |  | Yes |
 
 #### AvailableModelListResponse
 
@@ -23186,6 +23707,28 @@ Site token customization strategy
 | ---- | ---- | ----------- | -------- |
 | CustomizeTokenStrategy | string | Site token customization strategy |  |
 
+#### CustomizedMetricOutputField
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| value_type | string |  | Yes |
+| variable | string |  | Yes |
+
+#### CustomizedMetrics
+
+Custom evaluator selection.
+
+``evaluation_workflow_id`` is the evaluator App ID retained for API
+compatibility. ``evaluation_workflow_version_id`` is resolved at run
+creation so an in-flight or historical run never follows a later publish.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| evaluation_workflow_id | string |  | Yes |
+| evaluation_workflow_version_id | string |  | No |
+| input_fields | object |  | Yes |
+| output_fields | [ [CustomizedMetricOutputField](#customizedmetricoutputfield) ] |  | Yes |
+
 #### CustomizedPipelineTemplatePayload
 
 | Name | Type | Description | Required |
@@ -24042,6 +24585,14 @@ Per-output retry configuration that mirrors ``graphon.RetryConfig`` shape.
 | ---- | ---- | ----------- | -------- |
 | DefaultBlockConfigsResponse | array |  |  |
 
+#### DefaultMetric
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| metric | string |  | Yes |
+| node_info_list | [ [NodeInfo](#nodeinfo) ] |  | Yes |
+| value_type | string |  | No |
+
 #### DefaultModelDataResponse
 
 | Name | Type | Description | Required |
@@ -24869,6 +25420,195 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | message | string |  | Yes |
 | params | string |  | No |
 | status | integer |  | Yes |
+
+#### EvaluationAssociatedTargetListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [EvaluationAssociatedTargetResponse](#evaluationassociatedtargetresponse) ] |  | Yes |
+
+#### EvaluationAssociatedTargetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| target_id | string |  | Yes |
+| target_name | string |  | Yes |
+| target_type | string |  | Yes |
+
+#### EvaluationAvailableMetricsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| metrics | [ string ] |  | Yes |
+
+#### EvaluationConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| customized_metrics | [CustomizedMetrics](#customizedmetrics) |  | No |
+| default_metrics | [ [DefaultMetric](#defaultmetric) ] |  | No |
+| evaluation_model | string |  | No |
+| evaluation_model_provider | string |  | No |
+| judgment_config | [JudgmentConfig](#judgmentconfig) |  | No |
+
+#### EvaluationConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| customized_metrics | [CustomizedMetrics](#customizedmetrics) |  | No |
+| default_metrics | [ [DefaultMetric](#defaultmetric) ] |  | No |
+| evaluation_model | string |  | No |
+| evaluation_model_provider | string |  | No |
+| judgment_config | [JudgmentConfig](#judgmentconfig) |  | No |
+
+#### EvaluationDefaultMetricsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_metrics | [ [DefaultMetric](#defaultmetric) ] |  | Yes |
+
+#### EvaluationFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| download_url | string |  | Yes |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+
+#### EvaluationMetric
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| details | object |  | No |
+| name | string |  | Yes |
+| node_info | [NodeInfo](#nodeinfo) |  | No |
+| value |  |  | Yes |
+
+#### EvaluationMetricsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| metrics | object<br>[ string ] |  | Yes |
+
+#### EvaluationNodeInfoPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| metrics | [ string ] |  | No |
+
+#### EvaluationNodeInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationNodeInfoResponse | object |  |  |
+
+#### EvaluationRunDetailQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| page | integer, <br>**Default:** 1 |  | No |
+| page_size | integer, <br>**Default:** 50 |  | No |
+
+#### EvaluationRunDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [EvaluationRunItemPaginationResponse](#evaluationrunitempaginationresponse) |  | Yes |
+| run | [EvaluationRunResponse](#evaluationrunresponse) |  | Yes |
+
+#### EvaluationRunItemPaginationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [EvaluationRunItemResponse](#evaluationrunitemresponse) ] |  | Yes |
+| page | integer |  | Yes |
+| page_size | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### EvaluationRunItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actual_output | string |  | No |
+| error | string |  | No |
+| expected_output | string |  | No |
+| id | string |  | Yes |
+| inputs | object |  | No |
+| item_index | integer |  | Yes |
+| judgment | object |  | No |
+| metadata | object |  | No |
+| metrics | [ [EvaluationMetric](#evaluationmetric) ] |  | No |
+| overall_score | number |  | No |
+| workflow_run_id | string |  | No |
+
+#### EvaluationRunListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| page | integer, <br>**Default:** 1 |  | No |
+| page_size | integer, <br>**Default:** 20 |  | No |
+
+#### EvaluationRunPaginationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [EvaluationRunResponse](#evaluationrunresponse) ] |  | Yes |
+| page | integer |  | Yes |
+| page_size | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### EvaluationRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| customized_metrics | [CustomizedMetrics](#customizedmetrics) |  | No |
+| default_metrics | [ [DefaultMetric](#defaultmetric) ] |  | No |
+| evaluation_model | string |  | No |
+| evaluation_model_provider | string |  | No |
+| file_id | string |  | Yes |
+| judgment_config | [JudgmentConfig](#judgmentconfig) |  | No |
+
+#### EvaluationRunResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed_at | integer |  | No |
+| completed_items | integer |  | Yes |
+| created_at | integer |  | No |
+| created_by | string |  | Yes |
+| dataset_file_id | string |  | No |
+| error | string |  | No |
+| evaluation_config_id | string |  | Yes |
+| failed_items | integer |  | Yes |
+| id | string |  | Yes |
+| metrics_summary | object |  | No |
+| progress | number |  | Yes |
+| result_file_id | string |  | No |
+| started_at | integer |  | No |
+| status | string |  | Yes |
+| target_agent_config_snapshot_id | string |  | No |
+| target_id | string |  | Yes |
+| target_type | string |  | Yes |
+| target_workflow_version_id | string |  | No |
+| tenant_id | string |  | Yes |
+| total_items | integer |  | Yes |
+
+#### EvaluationTemplateColumnResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### EvaluationTemplateColumnsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| columns | [ [EvaluationTemplateColumnResponse](#evaluationtemplatecolumnresponse) ] |  | Yes |
 
 #### EventApiEntity
 
@@ -25918,6 +26658,39 @@ This invitation was sent to another account. Please sign in with the invited acc
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
+
+#### JudgmentCondition
+
+A single judgment condition that checks one metric value.
+
+Mirrors ``graphon.utils.condition.entities.Condition`` with the left-hand
+side being a metric selector instead of a workflow variable selector.
+
+Attributes:
+    variable_selector: ``[node_id, metric_name]`` identifying the metric.
+    comparison_operator: Reuses workflow's ``SupportedComparisonOperator``.
+    value: The comparison target (right side).  For unary operators such
+        as ``empty`` or ``null`` this can be ``None``.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| comparison_operator | [SupportedComparisonOperator](#supportedcomparisonoperator) |  | Yes |
+| value | string<br>[ string ]<br>boolean |  | No |
+| variable_selector | [ string ] |  | Yes |
+
+#### JudgmentConfig
+
+A group of judgment conditions combined with a logical operator.
+
+Attributes:
+    logical_operator: How to combine condition results — "and" requires
+        all conditions to pass, "or" requires at least one.
+    conditions: The list of individual conditions to evaluate.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conditions | [ [JudgmentCondition](#judgmentcondition) ] |  | No |
+| logical_operator | string, <br>**Available values:** "and", "or", <br>**Default:** and | *Enum:* `"and"`, `"or"` | No |
 
 #### KnowledgeConfig
 
@@ -29639,6 +30412,14 @@ Please upload your file.
 | ---- | ---- | ----------- | -------- |
 | node_id | string |  | Yes |
 
+#### NodeInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string |  | Yes |
+| title | string |  | Yes |
+| type | string |  | Yes |
+
 #### NodeNotInWorkflowRunError
 
 The node is not part of this workflow run.
@@ -33265,6 +34046,12 @@ The subscription constructor of the trigger provider
 | not_started | integer |  | No |
 | timeout | integer |  | No |
 
+#### SupportedComparisonOperator
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SupportedComparisonOperator | string |  |  |
+
 #### SwitchWorkspacePayload
 
 | Name | Type | Description | Required |
@@ -34743,6 +35530,23 @@ Data entity
 | total_tokens | integer |  | Yes |
 | workflow_id | string |  | Yes |
 
+#### WorkflowAppLogEvaluationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| details | object |  | No |
+| name | string |  | Yes |
+| node_info | [WorkflowAppLogEvaluationNodeInfoResponse](#workflowapplogevaluationnodeinforesponse) |  | No |
+| value |  |  | No |
+
+#### WorkflowAppLogEvaluationNodeInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string |  | Yes |
+| title | string |  | Yes |
+| type | string |  | Yes |
+
 #### WorkflowAppLogPaginationResponse
 
 | Name | Type | Description | Required |
@@ -34763,6 +35567,7 @@ Data entity
 | created_by_role | string |  | No |
 | created_from | string |  | No |
 | details |  |  | No |
+| evaluation | [ [WorkflowAppLogEvaluationItemResponse](#workflowapplogevaluationitemresponse) ] |  | No |
 | id | string |  | Yes |
 | workflow_run | [WorkflowRunForLogResponse](#workflowrunforlogresponse) |  | No |
 
@@ -35299,6 +36104,22 @@ tenant's default model. The underlying generator never raises — an empty
 | ---- | ---- | ----------- | -------- |
 | suggestions | [ string ] |  | Yes |
 
+#### WorkflowKindConvertQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| target_type | string, <br>**Available values:** "evaluation", "workflow" | *Enum:* `"evaluation"`, `"workflow"` | Yes |
+
+#### WorkflowKindConvertResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string |  | Yes |
+| result | string |  | Yes |
+| type | string |  | Yes |
+| updated_at | integer |  | Yes |
+| workflow_id | string |  | Yes |
+
 #### WorkflowListQuery
 
 | Name | Type | Description | Required |
@@ -35396,6 +36217,8 @@ Enabled routes require at least two exits; drafts may omit conditions.
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | id | string |  | Yes |
+| kind | string |  | No |
+| type | string |  | Yes |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 

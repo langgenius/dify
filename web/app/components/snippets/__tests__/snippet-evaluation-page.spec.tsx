@@ -59,7 +59,9 @@ describe('SnippetEvaluationPage', () => {
   })
 
   it('renders evaluation for a published snippet', () => {
-    renderWithConsoleQuery(<SnippetEvaluationPage snippetId="snippet-1" />)
+    renderWithConsoleQuery(<SnippetEvaluationPage snippetId="snippet-1" />, {
+      systemFeatures: { deployment_edition: 'ENTERPRISE' },
+    })
 
     expect(mockUseSnippetApiDetail).toHaveBeenCalledWith('snippet-1')
     expect(screen.getByTestId('evaluation')).toHaveTextContent('snippet-1')
@@ -75,7 +77,9 @@ describe('SnippetEvaluationPage', () => {
       isLoading: false,
     })
 
-    renderWithConsoleQuery(<SnippetEvaluationPage snippetId="snippet-1" />)
+    renderWithConsoleQuery(<SnippetEvaluationPage snippetId="snippet-1" />, {
+      systemFeatures: { deployment_edition: 'ENTERPRISE' },
+    })
 
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/snippets/snippet-1/orchestrate')

@@ -5,8 +5,9 @@ import logging
 import math
 import uuid
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import suppress
 from decimal import Decimal, InvalidOperation
-from typing import Any, TypedDict, Union, cast
+from typing import Any, TypedDict, cast
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -113,7 +114,7 @@ class EvaluationService:
     @classmethod
     def generate_dataset_template(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         data: EvaluationConfigData,
         session: Session,
@@ -1460,16 +1461,8 @@ class EvaluationService:
     ) -> None:
         """Stop selected workflow phases for the selected original row positions."""
         from core.app.apps.base_app_queue_manager import AppQueueManager
-        from extensions.ext_redis import redis_client
-        from graphon.graph_engine.manager import GraphEngineManager
+        from core.app.apps.execution_coordinator import send_abort_command
 
-        try:
-            manager = GraphEngineManager(redis_client)
-        except Exception:
-            logger.exception(
-                "Failed to initialize graph engine manager while stopping evaluation run %s", evaluation_run_id
-            )
-            manager = None
         for position in positions:
             for phase in phases:
                 task_id = cls.workflow_task_id(evaluation_run_id, phase, position)
@@ -1477,10 +1470,8 @@ class EvaluationService:
                     AppQueueManager.set_stop_flag_no_user_check(task_id)
                 except Exception:
                     logger.exception("Failed to set stop flag for evaluation workflow task %s", task_id)
-                if manager is None:
-                    continue
                 try:
-                    manager.send_stop_command(task_id)
+                    send_abort_command(task_id)
                 except Exception:
                     logger.exception("Failed to send stop command for evaluation workflow task %s", task_id)
 
@@ -1871,7 +1862,7 @@ class EvaluationService:
     @classmethod
     def get_dataset_column_names(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         data: EvaluationConfigData,
         session: Session,
@@ -1931,7 +1922,7 @@ class EvaluationService:
     @classmethod
     def _get_target_input_columns(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         session: Session,
     ) -> list[EvaluationTemplateColumn]:
@@ -2131,7 +2122,7 @@ class EvaluationService:
     @classmethod
     def get_default_metrics_with_nodes_for_published_target(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         session: Session,
     ) -> list[DefaultMetric]:
@@ -2176,7 +2167,7 @@ class EvaluationService:
     @classmethod
     def get_nodes_for_metrics(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         session: Session,
         metrics: list[str] | None = None,
@@ -2214,7 +2205,7 @@ class EvaluationService:
     @classmethod
     def _resolve_published_workflow(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         session: Session,
     ) -> Workflow | None:
@@ -2228,7 +2219,7 @@ class EvaluationService:
     @classmethod
     def _resolve_workflow(
         cls,
-        target: Union[App, CustomizedSnippet, Agent],
+        target: App | CustomizedSnippet | Agent,
         target_type: str,
         session: Session,
     ) -> Workflow | None:
@@ -2550,10 +2541,8 @@ class EvaluationService:
             raw_metadata = node.execution_metadata_dict
             typed_metadata: dict[WorkflowNodeExecutionMetadataKey, object] = {}
             for key, val in raw_metadata.items():
-                try:
+                with suppress(ValueError):  # skip unknown metadata keys
                     typed_metadata[WorkflowNodeExecutionMetadataKey(key)] = val
-                except ValueError:
-                    pass  # skip unknown metadata keys
 
             result[node.node_id] = NodeRunResult(
                 status=WorkflowNodeExecutionStatus(node.status),

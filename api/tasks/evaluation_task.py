@@ -20,7 +20,6 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
-    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendRunCancelledInternalEvent,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedInternalEvent,
@@ -175,7 +174,7 @@ def run_evaluation(task: Task, run_data_dict: dict[str, Any]) -> None:
             if not retry_scheduled:
                 logger.info("Evaluation run %s became terminal before retry", run_data.evaluation_run_id)
                 return
-            raise retry_signal
+            raise retry_signal from exc
 
 
 def _renew_evaluation_run_heartbeat(lease: EvaluationRunLease) -> bool:
@@ -208,7 +207,7 @@ def _renew_evaluation_run_heartbeat_while_running(lease: EvaluationRunLease, sto
 
 
 @contextmanager
-def _maintain_evaluation_run_heartbeat(lease: EvaluationRunLease) -> Generator[None, None, None]:
+def _maintain_evaluation_run_heartbeat(lease: EvaluationRunLease) -> Generator[None]:
     stop_event = Event()
     heartbeat_thread = Thread(
         target=_renew_evaluation_run_heartbeat_while_running,
@@ -694,7 +693,6 @@ def _execute_agent_target(
         AgentBackendRunSucceededInternalEvent
         | AgentBackendRunFailedInternalEvent
         | AgentBackendRunCancelledInternalEvent
-        | AgentBackendDeferredToolCallInternalEvent
         | None
     ) = None
     stop_error: EvaluationRunCancelledError | EvaluationRunOwnershipLostError | None = None
@@ -721,8 +719,7 @@ def _execute_agent_target(
                 event,
                 AgentBackendRunSucceededInternalEvent
                 | AgentBackendRunFailedInternalEvent
-                | AgentBackendRunCancelledInternalEvent
-                | AgentBackendDeferredToolCallInternalEvent,
+                | AgentBackendRunCancelledInternalEvent,
             ):
                 terminal = event
                 break
@@ -738,9 +735,6 @@ def _execute_agent_target(
     if isinstance(terminal, AgentBackendRunSucceededInternalEvent):
         agent_item = collector.build_item(dataset_item=dataset_item, node_info=node_info, output=terminal.output)
         target_error = None
-    elif isinstance(terminal, AgentBackendDeferredToolCallInternalEvent):
-        agent_item = None
-        target_error = "Agent requested human input, which dataset evaluation does not support."
     elif isinstance(terminal, AgentBackendRunFailedInternalEvent):
         agent_item = None
         target_error = f"Agent execution failed: {terminal.error}"
@@ -1510,7 +1504,7 @@ def _build_missing_result_errors(
     target_errors: Sequence[str | None] | None = None,
 ) -> dict[int, str]:
     errors: dict[int, str] = {}
-    for position, (item, node_results) in enumerate(zip(input_list, node_run_result_mapping_list)):
+    for position, (item, node_results) in enumerate(zip(input_list, node_run_result_mapping_list, strict=False)):
         target_error = target_errors[position] if target_errors and position < len(target_errors) else None
         errors[item.index] = (
             f"Target execution failed: {target_error}"

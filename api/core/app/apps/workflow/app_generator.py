@@ -112,7 +112,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
-    ) -> Generator[Mapping[str, Any] | str, None, None]: ...
+    ) -> Generator[Mapping[str, Any] | str]: ...
 
     @overload
     def generate(
@@ -154,7 +154,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
         self,
@@ -174,7 +174,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
 

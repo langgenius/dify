@@ -535,7 +535,7 @@ def test_agent_node_captures_trace_only_for_evaluation_execution() -> None:
         )._run()
     )
 
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    result = next(event for event in events if isinstance(event, StreamCompletedEvent)).node_run_result
     trace = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["evaluation_trace"]
     assert trace["schema_version"] == "1.0"
     assert trace["trajectory"]["source"] == "agent_v2"

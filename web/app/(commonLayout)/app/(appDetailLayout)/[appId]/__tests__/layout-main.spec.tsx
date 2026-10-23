@@ -53,7 +53,7 @@ const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
     name: 'Demo App',
     mode: 'workflow' as const,
     permission_keys: [AppACLPermission.ViewLayout, AppACLPermission.Monitor],
-    workflow: { id: 'workflow-1', created_at: 1, updated_at: 1 },
+    workflow: { id: 'workflow-1', type: 'workflow', created_at: 1, updated_at: 1 },
     ...overrides,
   })
 

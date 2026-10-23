@@ -1644,144 +1644,6 @@ export const zHitTestingPayload = z.object({
   retrieval_model: zRetrievalModel.nullish(),
 })
 
-export const zSupportedComparisonOperator = z.enum([
-  '<',
-  '=',
-  '>',
-  'all of',
-  'contains',
-  'empty',
-  'end with',
-  'exists',
-  'in',
-  'is',
-  'is not',
-  'not contains',
-  'not empty',
-  'not exists',
-  'not in',
-  'not null',
-  'null',
-  'start with',
-  '≠',
-  '≤',
-  '≥',
-])
-
-/**
- * JudgmentCondition
- *
- * A single judgment condition that checks one metric value.
- *
- * Mirrors ``graphon.utils.condition.entities.Condition`` with the left-hand
- * side being a metric selector instead of a workflow variable selector.
- *
- * Attributes:
- * variable_selector: ``[node_id, metric_name]`` identifying the metric.
- * comparison_operator: Reuses workflow's ``SupportedComparisonOperator``.
- * value: The comparison target (right side).  For unary operators such
- * as ``empty`` or ``null`` this can be ``None``.
- */
-export const zJudgmentCondition = z.object({
-  comparison_operator: zSupportedComparisonOperator,
-  value: z.union([z.string(), z.array(z.string()), z.boolean()]).nullish(),
-  variable_selector: z.array(z.string()),
-})
-
-/**
- * JudgmentConfig
- *
- * A group of judgment conditions combined with a logical operator.
- *
- * Attributes:
- * logical_operator: How to combine condition results — "and" requires
- * all conditions to pass, "or" requires at least one.
- * conditions: The list of individual conditions to evaluate.
- */
-export const zJudgmentConfig = z.object({
-  conditions: z.array(zJudgmentCondition).optional(),
-  logical_operator: z.enum(['and', 'or']).optional().default('and'),
-})
-
-/**
- * EvaluationConfigResponse
- */
-export const zEvaluationConfigResponse = z.object({
-  customized_metrics: zCustomizedMetrics.nullish(),
-  default_metrics: z.array(zDefaultMetric).nullish(),
-  evaluation_model: z.string().nullish(),
-  evaluation_model_provider: z.string().nullish(),
-  judgment_config: zJudgmentConfig.nullish(),
-})
-
-/**
- * EvaluationConfigPayload
- */
-export const zEvaluationConfigPayload = z.object({
-  customized_metrics: zCustomizedMetrics.nullish(),
-  default_metrics: z.array(zDefaultMetric).optional(),
-  evaluation_model: z.string().optional().default(''),
-  evaluation_model_provider: z.string().optional().default(''),
-  judgment_config: zJudgmentConfig.nullish(),
-})
-
-/**
- * EvaluationRunPayload
- */
-export const zEvaluationRunPayload = z.object({
-  customized_metrics: zCustomizedMetrics.nullish(),
-  default_metrics: z.array(zDefaultMetric).optional(),
-  evaluation_model: z.string().optional().default(''),
-  evaluation_model_provider: z.string().optional().default(''),
-  file_id: z.string(),
-  judgment_config: zJudgmentConfig.nullish(),
-})
-
-/**
- * EvaluationMetric
- */
-export const zEvaluationMetric = z.object({
-  details: z.record(z.string(), z.unknown()).optional(),
-  name: z.string(),
-  node_info: zNodeInfo.nullish(),
-  value: z.unknown(),
-})
-
-/**
- * EvaluationRunItemResponse
- */
-export const zEvaluationRunItemResponse = z.object({
-  actual_output: z.string().nullish(),
-  error: z.string().nullish(),
-  expected_output: z.string().nullish(),
-  id: z.string(),
-  inputs: z.record(z.string(), z.unknown()).optional(),
-  item_index: z.int(),
-  judgment: z.record(z.string(), z.unknown()).optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-  metrics: z.array(zEvaluationMetric).optional(),
-  overall_score: z.number().nullish(),
-  workflow_run_id: z.string().nullish(),
-})
-
-/**
- * EvaluationRunItemPaginationResponse
- */
-export const zEvaluationRunItemPaginationResponse = z.object({
-  data: z.array(zEvaluationRunItemResponse),
-  page: z.int(),
-  page_size: z.int(),
-  total: z.int(),
-})
-
-/**
- * EvaluationRunDetailResponse
- */
-export const zEvaluationRunDetailResponse = z.object({
-  items: zEvaluationRunItemPaginationResponse,
-  run: zEvaluationRunResponse,
-})
-
 /**
  * NotionPageType
  */
@@ -1969,6 +1831,144 @@ export const zDocumentWithSegmentsListResponse = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
+})
+
+export const zSupportedComparisonOperator = z.enum([
+  '<',
+  '=',
+  '>',
+  'all of',
+  'contains',
+  'empty',
+  'end with',
+  'exists',
+  'in',
+  'is',
+  'is not',
+  'not contains',
+  'not empty',
+  'not exists',
+  'not in',
+  'not null',
+  'null',
+  'start with',
+  '≠',
+  '≤',
+  '≥',
+])
+
+/**
+ * JudgmentCondition
+ *
+ * A single judgment condition that checks one metric value.
+ *
+ * Mirrors ``graphon.utils.condition.entities.Condition`` with the left-hand
+ * side being a metric selector instead of a workflow variable selector.
+ *
+ * Attributes:
+ * variable_selector: ``[node_id, metric_name]`` identifying the metric.
+ * comparison_operator: Reuses workflow's ``SupportedComparisonOperator``.
+ * value: The comparison target (right side).  For unary operators such
+ * as ``empty`` or ``null`` this can be ``None``.
+ */
+export const zJudgmentCondition = z.object({
+  comparison_operator: zSupportedComparisonOperator,
+  value: z.union([z.string(), z.array(z.string()), z.boolean()]).nullish(),
+  variable_selector: z.array(z.string()),
+})
+
+/**
+ * JudgmentConfig
+ *
+ * A group of judgment conditions combined with a logical operator.
+ *
+ * Attributes:
+ * logical_operator: How to combine condition results — "and" requires
+ * all conditions to pass, "or" requires at least one.
+ * conditions: The list of individual conditions to evaluate.
+ */
+export const zJudgmentConfig = z.object({
+  conditions: z.array(zJudgmentCondition).optional(),
+  logical_operator: z.enum(['and', 'or']).optional().default('and'),
+})
+
+/**
+ * EvaluationConfigResponse
+ */
+export const zEvaluationConfigResponse = z.object({
+  customized_metrics: zCustomizedMetrics.nullish(),
+  default_metrics: z.array(zDefaultMetric).nullish(),
+  evaluation_model: z.string().nullish(),
+  evaluation_model_provider: z.string().nullish(),
+  judgment_config: zJudgmentConfig.nullish(),
+})
+
+/**
+ * EvaluationConfigPayload
+ */
+export const zEvaluationConfigPayload = z.object({
+  customized_metrics: zCustomizedMetrics.nullish(),
+  default_metrics: z.array(zDefaultMetric).optional(),
+  evaluation_model: z.string().optional().default(''),
+  evaluation_model_provider: z.string().optional().default(''),
+  judgment_config: zJudgmentConfig.nullish(),
+})
+
+/**
+ * EvaluationRunPayload
+ */
+export const zEvaluationRunPayload = z.object({
+  customized_metrics: zCustomizedMetrics.nullish(),
+  default_metrics: z.array(zDefaultMetric).optional(),
+  evaluation_model: z.string().optional().default(''),
+  evaluation_model_provider: z.string().optional().default(''),
+  file_id: z.string(),
+  judgment_config: zJudgmentConfig.nullish(),
+})
+
+/**
+ * EvaluationMetric
+ */
+export const zEvaluationMetric = z.object({
+  details: z.record(z.string(), z.unknown()).optional(),
+  name: z.string(),
+  node_info: zNodeInfo.nullish(),
+  value: z.unknown(),
+})
+
+/**
+ * EvaluationRunItemResponse
+ */
+export const zEvaluationRunItemResponse = z.object({
+  actual_output: z.string().nullish(),
+  error: z.string().nullish(),
+  expected_output: z.string().nullish(),
+  id: z.string(),
+  inputs: z.record(z.string(), z.unknown()).optional(),
+  item_index: z.int(),
+  judgment: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  metrics: z.array(zEvaluationMetric).optional(),
+  overall_score: z.number().nullish(),
+  workflow_run_id: z.string().nullish(),
+})
+
+/**
+ * EvaluationRunItemPaginationResponse
+ */
+export const zEvaluationRunItemPaginationResponse = z.object({
+  data: z.array(zEvaluationRunItemResponse),
+  page: z.int(),
+  page_size: z.int(),
+  total: z.int(),
+})
+
+/**
+ * EvaluationRunDetailResponse
+ */
+export const zEvaluationRunDetailResponse = z.object({
+  items: zEvaluationRunItemPaginationResponse,
+  run: zEvaluationRunResponse,
 })
 
 /**

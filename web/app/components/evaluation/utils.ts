@@ -36,7 +36,7 @@ type WorkflowComparisonOperatorKey = `nodes.ifElse.comparisonOperator.${Exclude<
 
 export const getComparisonOperatorLabel = (
   operator: ComparisonOperator,
-  t: TFunction<'workflow'>,
+  t: TFunction<'workflowLogic'>,
 ) => {
   if (rawOperatorLabels.has(operator)) return operator
 

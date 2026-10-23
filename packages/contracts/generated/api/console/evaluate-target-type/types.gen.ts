@@ -12,6 +12,16 @@ export type EvaluationConfigPayload = {
   judgment_config?: JudgmentConfig | null
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type EvaluationConfigResponse = {
   customized_metrics?: CustomizedMetrics | null
   default_metrics?: Array<DefaultMetric> | null
@@ -211,6 +221,13 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadDat
   url: '/{evaluate_target_type}/{evaluate_target_id}/dataset-template/download'
 }
 
+export type PostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadErrors = {
+  default: ErrorResponse
+}
+
+export type PostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadError =
+  PostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadErrors[keyof PostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadErrors]
+
 export type PostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadResponses = {
   200: Blob | File
 }
@@ -227,6 +244,13 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationData = {
   query?: never
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation'
 }
+
+export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationErrors = {
+  default: ErrorResponse
+}
+
+export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationError =
+  GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationErrors[keyof GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationErrors]
 
 export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationResponses = {
   200: EvaluationConfigResponse
@@ -245,6 +269,13 @@ export type PutByEvaluateTargetTypeByEvaluateTargetIdEvaluationData = {
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation'
 }
 
+export type PutByEvaluateTargetTypeByEvaluateTargetIdEvaluationErrors = {
+  default: ErrorResponse
+}
+
+export type PutByEvaluateTargetTypeByEvaluateTargetIdEvaluationError =
+  PutByEvaluateTargetTypeByEvaluateTargetIdEvaluationErrors[keyof PutByEvaluateTargetTypeByEvaluateTargetIdEvaluationErrors]
+
 export type PutByEvaluateTargetTypeByEvaluateTargetIdEvaluationResponses = {
   200: EvaluationConfigResponse
 }
@@ -261,6 +292,13 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsDat
   query?: never
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/default-metrics'
 }
+
+export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsErrors = {
+  default: ErrorResponse
+}
+
+export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsError =
+  GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsErrors[keyof GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsErrors]
 
 export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsResponses = {
   200: EvaluationDefaultMetricsResponse
@@ -279,6 +317,13 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationFilesByFileIdData
   query?: never
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/files/{file_id}'
 }
+
+export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationFilesByFileIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationFilesByFileIdError =
+  GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationFilesByFileIdErrors[keyof GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationFilesByFileIdErrors]
 
 export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationFilesByFileIdResponses = {
   200: EvaluationFileResponse
@@ -300,6 +345,13 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationLogsData = {
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/logs'
 }
 
+export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationLogsErrors = {
+  default: ErrorResponse
+}
+
+export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationLogsError =
+  GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationLogsErrors[keyof GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationLogsErrors]
+
 export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationLogsResponses = {
   200: EvaluationRunPaginationResponse
 }
@@ -316,6 +368,13 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsData = {
   query?: never
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/metrics'
 }
+
+export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsErrors = {
+  default: ErrorResponse
+}
+
+export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsError =
+  GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsErrors[keyof GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsErrors]
 
 export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsResponses = {
   200: EvaluationMetricsResponse
@@ -334,6 +393,13 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationNodeInfoData = {
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/node-info'
 }
 
+export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationNodeInfoErrors = {
+  default: ErrorResponse
+}
+
+export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationNodeInfoError =
+  PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationNodeInfoErrors[keyof PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationNodeInfoErrors]
+
 export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationNodeInfoResponses = {
   200: EvaluationNodeInfoResponse
 }
@@ -350,6 +416,13 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunData = {
   query?: never
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/run'
 }
+
+export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunErrors = {
+  default: ErrorResponse
+}
+
+export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunError =
+  PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunErrors[keyof PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunErrors]
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunResponses = {
   200: EvaluationRunResponse
@@ -372,6 +445,13 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdData =
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}'
 }
 
+export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdError =
+  GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdErrors[keyof GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdErrors]
+
 export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdResponses = {
   200: EvaluationRunDetailResponse
 }
@@ -389,6 +469,13 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdCance
   query?: never
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/cancel'
 }
+
+export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdCancelErrors = {
+  default: ErrorResponse
+}
+
+export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdCancelError =
+  PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdCancelErrors[keyof PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdCancelErrors]
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdCancelResponses = {
   200: EvaluationRunResponse
@@ -408,6 +495,13 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetry
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/retry'
 }
 
+export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetryErrors = {
+  default: ErrorResponse
+}
+
+export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetryError =
+  PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetryErrors[keyof PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetryErrors]
+
 export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetryResponses = {
   200: EvaluationRunResponse
 }
@@ -424,6 +518,13 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationTemplateColumnsD
   query?: never
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/template-columns'
 }
+
+export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationTemplateColumnsErrors = {
+  default: ErrorResponse
+}
+
+export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationTemplateColumnsError =
+  PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationTemplateColumnsErrors[keyof PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationTemplateColumnsErrors]
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationTemplateColumnsResponses = {
   200: EvaluationTemplateColumnsResponse

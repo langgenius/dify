@@ -31,7 +31,9 @@ const PipelineResultsPanel = ({ resourceType, resourceId }: EvaluationResourcePr
   const runDetail = runDetailQuery.data
   const items = runDetail?.items.data ?? []
   const metricColumns = getMetricColumns(resource, items)
-  const thresholdColumns = metricColumns.filter((column) => column.threshold !== undefined)
+  const thresholdColumns = metricColumns.filter(
+    (column): column is typeof column & { threshold: number } => column.threshold !== undefined,
+  )
   const isEmpty = !selectedRunId || (!runDetailQuery.isLoading && items.length === 0)
 
   if (isEmpty) {
