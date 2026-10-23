@@ -8,6 +8,9 @@ Rotation keyed on ``device_label`` (the hostname), so two installs on one
 host logged each other out and a renamed host kept a stale live token.
 ``device_key`` carries the install identity instead; existing rows take
 their label, which keeps today's rotation for CLIs that send no install id.
+The column stays nullable: API pods from before this revision keep inserting
+without it during a rolling deploy or after a rollback, and NULL keys never
+collide.
 """
 
 from dataclasses import dataclass
@@ -72,7 +75,6 @@ def upgrade():
         op.add_column(_TABLE, sa.Column(_DEVICE_KEY, sa.String(255), nullable=True))
     tokens = sa.table(_TABLE, sa.column(_DEVICE_KEY), sa.column(_DEVICE_LABEL))
     op.execute(tokens.update().where(tokens.c[_DEVICE_KEY].is_(None)).values({_DEVICE_KEY: tokens.c[_DEVICE_LABEL]}))
-    op.alter_column(_TABLE, _DEVICE_KEY, existing_type=sa.String(255), nullable=False)
 
     if indexes.lacks(_KEY_INDEX):
         _create_device_index(_KEY_INDEX, _DEVICE_KEY)

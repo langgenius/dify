@@ -129,7 +129,8 @@ class OAuthAccessToken(TypeBase):
     subject_email: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     client_id: Mapped[str] = mapped_column(sa.String(64), nullable=False)
     device_label: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    device_key: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    # Nullable for rows written by API pods older than this column; new writes always set it.
+    device_key: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     prefix: Mapped[str] = mapped_column(sa.String(8), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     subject_issuer: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)

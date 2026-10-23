@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import override
-
 import pytest
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
@@ -32,31 +30,22 @@ def _index_columns(dialect_name: str, device_column: str) -> str:
     return f"(subject_email(191), subject_issuer(191), client_id, {device_column}(191), active_guard)"
 
 
-@pytest.mark.parametrize(
-    ("dialect_name", "not_null_phrase"),
-    [
-        ("postgresql", "ALTER COLUMN device_key SET NOT NULL"),
-        ("mysql", "MODIFY device_key VARCHAR(255) NOT NULL"),
-    ],
-)
-def test_upgrade_backfills_the_key_and_builds_its_index_before_dropping_the_label_index(
-    dialect_name: str, not_null_phrase: str
-) -> None:
+@pytest.mark.parametrize("dialect_name", ["postgresql", "mysql"])
+def test_upgrade_backfills_the_key_and_builds_its_index_before_dropping_the_label_index(dialect_name: str) -> None:
     migration, output = offline_migration(_MIGRATION_PATH, dialect_name)
     migration.upgrade()
     statements = split_statements(output)
 
     add_column = single_statement(statements, "ADD COLUMN device_key")
-    assert "NOT NULL" not in add_column
     backfill = single_statement(statements, "UPDATE oauth_access_tokens SET device_key")
     assert "device_label" in backfill
-    not_null = single_statement(statements, not_null_phrase)
+    assert not [statement for statement in statements if "NOT NULL" in statement]
     create = single_statement(statements, f"CREATE UNIQUE INDEX {_KEY_INDEX}")
     assert create.endswith(f"ON {_TABLE} {_index_columns(dialect_name, 'device_key')}")
     assert "WHERE" not in create
     drop = single_statement(statements, f"DROP INDEX {_LABEL_INDEX}")
 
-    order = [statements.index(statement) for statement in (add_column, backfill, not_null, create, drop)]
+    order = [statements.index(statement) for statement in (add_column, backfill, create, drop)]
     assert order == sorted(order)
 
 
@@ -73,19 +62,6 @@ def test_downgrade_restores_the_label_index_before_dropping_the_key(dialect_name
     drop_column = single_statement(statements, "DROP COLUMN device_key")
 
     assert statements.index(create) < statements.index(drop_index) < statements.index(drop_column)
-
-
-class _SQLiteOperations(Operations):
-    """SQLite cannot ALTER COLUMN, so record it; the offline tests cover that DDL."""
-
-    def __init__(self, connection: Connection) -> None:
-        super().__init__(MigrationContext.configure(connection))
-        self.altered: list[tuple[str, object]] = []
-
-    @override
-    def alter_column(self, table_name: str, column_name: str, **kw: object) -> None:
-        assert table_name == _TABLE
-        self.altered.append((column_name, kw["nullable"]))
 
 
 def _token_table(metadata: sa.MetaData, *, device_key: sa.Column[str] | None) -> sa.Table:
@@ -150,17 +126,47 @@ def test_sqlite_upgrade_is_retryable_and_rotates_on_the_key(
         _insert(connection, id="live", device_label="Laptop")
         if has_column:
             _insert(connection, id="keyed", device_label="Desktop", device_key="install:cccc3333")
-        operations = _SQLiteOperations(connection)
-        migration.__dict__["op"] = operations
+        migration.__dict__["op"] = Operations(MigrationContext.configure(connection))
         migration.upgrade()
 
         assert _index_names(connection) == {_KEY_INDEX}
-        assert operations.altered == [("device_key", False)]
         keys = dict(connection.execute(sa.text("SELECT id, device_key FROM oauth_access_tokens")).tuples().all())
         assert keys == {"revoked": "Laptop", "live": "Laptop"} | ({"keyed": "install:cccc3333"} if has_column else {})
 
         _insert(connection, id="other-install", device_label="Laptop", device_key="install:aaaa1111")
         _assert_rejected(connection, id="second-live", device_label="Renamed", device_key="Laptop")
+
+    engine.dispose()
+
+
+def test_sqlite_rows_from_pods_without_device_key_never_collide() -> None:
+    engine = sa.create_engine("sqlite:///:memory:")
+    metadata = sa.MetaData()
+    tokens = _token_table(metadata, device_key=None)
+    _add_index(tokens, _LABEL_INDEX, "device_label")
+    metadata.create_all(engine)
+    migration = load_migration_module(_MIGRATION_PATH)
+
+    with engine.begin() as connection:
+        migration.__dict__["op"] = Operations(MigrationContext.configure(connection))
+        migration.upgrade()
+        assert {column["name"]: column["nullable"] for column in sa.inspect(connection).get_columns(_TABLE)}[
+            "device_key"
+        ]
+
+        _insert(connection, id="backfilled-key", device_label="Laptop", device_key="Laptop")
+        _insert(connection, id="install-key", device_label="Laptop", device_key="install:aaaa1111")
+        _insert(connection, id="old-pod", device_label="Laptop")
+        _insert(connection, id="old-pod-again", device_label="Laptop")
+
+        keys = dict(connection.execute(sa.text("SELECT id, device_key FROM oauth_access_tokens")).tuples().all())
+        assert keys == {
+            "backfilled-key": "Laptop",
+            "install-key": "install:aaaa1111",
+            "old-pod": None,
+            "old-pod-again": None,
+        }
+        _assert_rejected(connection, id="second-install-key", device_label="Laptop", device_key="install:aaaa1111")
 
     engine.dispose()
 
@@ -174,9 +180,7 @@ def test_sqlite_downgrade_is_retryable_and_restores_label_rotation(
 ) -> None:
     engine = sa.create_engine("sqlite:///:memory:")
     metadata = sa.MetaData()
-    tokens = _token_table(
-        metadata, device_key=sa.Column("device_key", sa.String(255), nullable=False) if has_column else None
-    )
+    tokens = _token_table(metadata, device_key=sa.Column("device_key", sa.String(255)) if has_column else None)
     if has_label_index:
         _add_index(tokens, _LABEL_INDEX, "device_label")
     if has_key_index:
