@@ -3668,11 +3668,6 @@
       "count": 2
     }
   },
-  "web/app/components/main-nav/components/account-section.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/app/components/main-nav/components/web-apps-section.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
@@ -3694,11 +3689,6 @@
     },
     "jsx-a11y/no-autofocus": {
       "count": 1
-    }
-  },
-  "web/app/components/main-nav/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
     }
   },
   "web/app/components/main-nav/skip-nav.tsx": {
