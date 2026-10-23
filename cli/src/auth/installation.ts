@@ -8,12 +8,12 @@ import { io } from '@/plugins/io'
 import { localFile } from '@/store/local-file'
 
 const INSTALLATION_FILE_NAME = 'installation.yml'
-const INSTALLATION_ID_PATTERN = /^[a-z0-9-]{8,64}$/i
 // The server indexes only the first 191 characters of a device label; the id part must fit inside them.
 export const DEVICE_LABEL_HOSTNAME_MAX = 64
 export const DEVICE_LABEL_ID_LENGTH = 8
 
-const INSTALLATION_SCHEMA = z.object({ id: z.string().regex(INSTALLATION_ID_PATTERN) })
+// Only a v4 id: it is random from the first character, so the label's id prefix is random too.
+const INSTALLATION_SCHEMA = z.object({ id: z.uuidv4() })
 
 /** This config dir's stable id. A missing or unusable file gets a fresh id, under the file lock. */
 export async function installationId(ctx: CommandContext): Promise<string> {
