@@ -64,7 +64,7 @@ const MemberRow = ({
     >
       <td className="px-3 py-2">
         <div className="flex min-w-0 items-center">
-          <Avatar size="sm" className="mr-2" aria-hidden="true">
+          <Avatar size="sm" className="me-2" aria-hidden="true">
             <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
             <AvatarImage src={member.avatar_url || undefined} alt="" />
           </Avatar>
@@ -72,13 +72,13 @@ const MemberRow = ({
             <div className="system-sm-medium text-text-secondary">
               <button
                 type="button"
-                className="max-w-full cursor-pointer rounded-sm text-left wrap-break-word hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                className="max-w-full cursor-pointer rounded-sm text-start wrap-break-word hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={openDetails}
               >
                 {member.name}
               </button>
               {member.status === 'pending' && (
-                <span className="ml-1 system-xs-medium text-text-warning">
+                <span className="ms-1 system-xs-medium text-text-warning">
                   {t(($) => $['members.pending'], { ns: 'workspaceMembers' })}
                 </span>
               )}
@@ -89,7 +89,7 @@ const MemberRow = ({
               )}
             </div>
             <div className="system-xs-regular wrap-break-word text-text-tertiary">
-              {member.email}
+              <span dir="ltr">{member.email}</span>
             </div>
           </div>
         </div>
