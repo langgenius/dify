@@ -73,6 +73,7 @@ from services.entities.dsl_entities import (
 )
 from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
+from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.rbac import contracts as rbac_contracts
 from services.rbac.members import MemberService
 from services.recommended_app_package_service import RecommendedAppPackageService
@@ -491,7 +492,7 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         with self._session_factory() as session:
             app = require_console_app(session, context, app_id)
             prepared = self._dsl_factory(session).load_export_data(app_model=app, session=session)
-        return AppDslService.find_missing_dependencies(
+        return DependenciesAnalysisService.find_missing_dependencies(
             tenant_id=prepared.tenant_id, plugin_ids=prepared.dependency_identifiers
         )
 

@@ -49,5 +49,5 @@ class AppImportService:
     def confirm_import(self, context: RequestContext, import_id: str) -> Import:
         return self._definitions.confirm_definition(context, import_id)
 
-    def check_dependencies(self, context: RequestContext, app_id: str) -> DraftDependencyCheck:
+    def check_draft_dependencies(self, context: RequestContext, app_id: str) -> DraftDependencyCheck:
         return self._definitions.check_draft_dependencies(context, app_id)

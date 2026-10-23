@@ -693,6 +693,53 @@ def test_draft_dependency_check_ignores_api_workflow_and_mcp_tool_nodes(
     assert result.leaked_dependencies == []
 
 
+def _plugin_tool_graph(provider_type: str) -> str:
+    return json.dumps(
+        {
+            "nodes": [
+                {
+                    "id": "tool",
+                    "data": {
+                        "type": "tool",
+                        "title": "tool",
+                        "provider_id": "acme/search/search",
+                        "provider_type": provider_type,
+                        "provider_name": "acme/search/search",
+                        "tool_name": "t",
+                        "tool_label": "t",
+                        "tool_configurations": {},
+                        "tool_parameters": {},
+                    },
+                }
+            ],
+            "edges": [],
+        }
+    )
+
+
+@pytest.mark.parametrize("provider_type", ["builtin", "plugin"])
+@pytest.mark.parametrize("added_after_seed", [False, True])
+def test_draft_dependency_check_reports_an_uninstalled_plugin_tool(
+    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, provider_type: str, added_after_seed: bool
+) -> None:
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
+    graph = _plugin_tool_graph(provider_type)
+    app_id, workspace, actor = _seed_draft_app(
+        factory, AppMode.WORKFLOW, graph=EMPTY_GRAPH if added_after_seed else graph
+    )
+    monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", lambda *_args: [])
+    monkeypatch.setattr(dify_config, "MARKETPLACE_ENABLED", False)
+    gateway = _transfer_gateway(factory)
+    context = RequestContext("r", None, actor, workspace)
+    if added_after_seed:
+        with factory.begin() as session:
+            session.execute(update(Workflow).where(Workflow.app_id == app_id).values(graph=graph))
+
+    result = gateway.check_draft_dependencies(context, app_id)
+
+    assert result.unresolved_plugin_ids == ["acme/search"]
+
+
 def test_draft_dependency_check_ignores_api_tools_of_an_agent_chat_app(
     sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
