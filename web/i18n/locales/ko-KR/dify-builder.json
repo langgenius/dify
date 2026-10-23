@@ -11,8 +11,6 @@
   "changeScope.structure": "구조",
   "checklistIssues": "체크리스트 문제",
   "configureModel": "모델을 구성하세요",
-  "copy.actions.cancelTest": "테스트 취소",
-  "copy.actions.confirmTestOperation": "이 작업 승인",
   "copy.actions.applyTheFix": "수정 적용",
   "copy.actions.approveChanges": "변경 승인",
   "copy.actions.approveFix": "수정 승인",
