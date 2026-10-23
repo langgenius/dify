@@ -7375,16 +7375,6 @@
       "count": 1
     }
   },
-  "web/features/home/continue-work/item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/features/home/template-card.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/features/network-access/app-binding/chip-affix.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
