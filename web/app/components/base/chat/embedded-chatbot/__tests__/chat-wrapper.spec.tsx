@@ -174,6 +174,7 @@ describe('Embedded chatbot orchestration', () => {
   ])('enforces required %s input readiness for %j', (type, value, disabled) => {
     renderSubject({
       inputsForms: [{ variable: 'value', label: 'Value', required: true, type }],
+      newConversationInputs: { value },
       newConversationInputsRef: { current: { value } },
     })
     const input = screen.getByPlaceholderText('Ask the assistant')
@@ -214,6 +215,10 @@ describe('Embedded chatbot orchestration', () => {
     const completed = vi.fn()
     const { user } = renderSubject({
       newConversationInputs: { topic: 'new' },
+      newConversationInputsRef: { current: { topic: 'new' } },
+      inputsForms: [
+        { variable: 'topic', label: 'Topic', required: false, type: InputVarType.textInput },
+      ],
       appParams: createChatConfigFixture({ suggested_questions_after_answer: { enabled: true } }),
       handleNewConversationCompleted: completed,
     })
