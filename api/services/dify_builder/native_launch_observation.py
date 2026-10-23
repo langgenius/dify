@@ -53,6 +53,9 @@ def begin_preparation() -> None:
 
 
 def mark_dispatched() -> None:
+    from services.dify_builder.task_controls import check_current
+
+    check_current()
     # Mark before Thread.start: a start acknowledgement failure is conservative.
     if (observation := _active.get()) is not None:
         observation.dispatched = True

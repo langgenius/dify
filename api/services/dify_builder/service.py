@@ -11,7 +11,7 @@ caller (P3b Task 4: the Flask controller + the Celery task's ``.delay``).
 import json
 import logging
 from collections.abc import Callable, Iterator
-from contextlib import suppress
+from contextlib import AbstractContextManager, nullcontext, suppress
 from dataclasses import asdict, replace
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
@@ -103,11 +103,13 @@ class SessionLock(Protocol):
     """The per-session advance gate. Both the ``session_lock`` module and
     the in-memory fake used in tests satisfy this structurally."""
 
-    def acquire(self, session_id: str) -> str | None: ...
+    def acquire(self, session_id: str, *, generation: int | None = None) -> str | None: ...
 
     def release(self, session_id: str, token: str) -> None: ...
 
     def exists(self, session_id: str) -> bool: ...
+
+    def current_owner(self, session_id: str) -> str | None: ...
 
 
 class _SessionSubscription(Protocol):
@@ -931,15 +933,14 @@ def _run_status(state: PcState, paused: bool = False) -> RunStatus:
     ``SUCCESS``/``FAILED`` -- without this ordering they'd wrongly fall
     through to PROCESSING.
 
-    ``paused`` (Task 7, ``fc.paused``) only applies at a waiting state -- the
-    canvas stays editable while paused -- and never overrides a terminal
-    outcome (FAILED/COMPLETE win regardless of the flag).
+    A safely settled task Stop pauses working and waiting states while retaining
+    their program counter. Terminal outcomes always win over the paused flag.
     """
     if state == PcState.FAILED:
         return RunStatus.FAILED
     if is_terminal(state):  # SUCCESS, BUILD_COMPLETE, EDIT_COMPLETE
         return RunStatus.COMPLETE
-    if paused and is_waiting(state):
+    if paused:
         return RunStatus.PAUSED
     if state in _WAITING_INPUT_STATES:
         return RunStatus.WAITING_INPUT
@@ -969,10 +970,21 @@ class DifyBuilderService:
         stamp_http_fixtures_fn: Callable[..., HttpFixtureSetV1] | None = None,
         real_call_consent: "BuilderRealCallConsentService | None" = None,
         test_actions: TestActionPort | None = None,
+        read_task_dsl_fn: Callable | None = None,
+        stream_read_scope_fn: Callable[[], AbstractContextManager] | None = None,
     ) -> None:
         # None: this instance cannot execute confirmed Tool tests (all existing callers).
         self._real_call_consent = real_call_consent
         self._test_actions = test_actions
+        if read_task_dsl_fn is None:
+
+            def read_task_dsl_fn(app_id, actor):
+                from services.dify_builder.dify_port import WorkflowServiceDifyPort
+
+                return WorkflowServiceDifyPort().read_task_dsl(app_id, actor)
+
+        self._read_task_dsl_fn = read_task_dsl_fn
+        self._stream_read_scope_fn = stream_read_scope_fn or nullcontext
         self._stamp_http_fixtures_fn = stamp_http_fixtures_fn
         self._repo = repo
         self._session_lock = session_lock
@@ -1210,6 +1222,7 @@ class DifyBuilderService:
             expect_advance=True,
             command_id=command_id,
             initial_items=initial_items,
+            read_session_view=lambda: self._read_stream_session_view(session_id, actor),
         )
 
     def _prepare_build_session(
@@ -1295,6 +1308,7 @@ class DifyBuilderService:
             expect_advance=True,
             command_id=command_id,
             initial_items=initial_items,
+            read_session_view=lambda: self._read_stream_session_view(session_id, actor),
         )
 
     def _prepare_edit_session(
@@ -1380,11 +1394,53 @@ class DifyBuilderService:
             expect_advance=True,
             command_id=command_id,
             initial_items=initial_items,
+            read_session_view=lambda: self._read_stream_session_view(session_id, actor),
+        )
+
+    def _read_stream_session_view(self, session_id: str, actor: Actor) -> dict[str, object]:
+        with self._stream_read_scope_fn():
+            view = asdict(self.get_session_view(session_id, actor))
+            _, context = self._repo.get_session(session_id)
+            return {**view, "_task_paused": context.paused}
+
+    def stop_task(
+        self, session_id: str, actor: Actor, *, base_version: int, client_action_id: str, base_app_revision: str = ""
+    ) -> SessionView:
+        from services.dify_builder.task_control_service import control
+
+        return control(
+            self,
+            session_id,
+            actor,
+            kind="stop",
+            base_version=base_version,
+            client_action_id=client_action_id,
+            base_app_revision=base_app_revision,
+        )
+
+    def resume_task(
+        self, session_id: str, actor: Actor, *, base_version: int, client_action_id: str, base_app_revision: str = ""
+    ) -> SessionView:
+        from services.dify_builder.task_control_service import control
+
+        return control(
+            self,
+            session_id,
+            actor,
+            kind="resume",
+            base_version=base_version,
+            client_action_id=client_action_id,
+            base_app_revision=base_app_revision,
         )
 
     def get_session_view(self, session_id: str, actor: Actor) -> SessionView:
         """Return the bounded session projection; history has its own API."""
         s, fc = self._get_authorized_session(session_id, actor)
+        if fc.paused and fc.task_control.get("settlement") in {"pending", "unknown"}:
+            from services.dify_builder.task_control_service import observe_stop
+
+            observe_stop(self._repo, self._test_actions, session_id, actor)
+            s, fc = self._get_authorized_session(session_id, actor)
         return self._build_session_view(s, fc)
 
     def get_conversation_page(
@@ -1451,7 +1507,8 @@ class DifyBuilderService:
         app_revision_conflicted = bool(
             fc.last_snapshot_hash and current_app_revision and fc.last_snapshot_hash != current_app_revision
         )
-        interrupted = is_working(st) and not lock_held
+        stopped = fc.paused and not is_terminal(st) and fc.task_control.get("settlement", "settled") == "settled"
+        interrupted = is_working(st) and not lock_held and not fc.paused
         actions = _actions_for(
             st,
             fc,
@@ -1507,9 +1564,15 @@ class DifyBuilderService:
             app_id=s.app_id,
             version=s.version,
             state=str(st),
-            canvas_read_only=lock_held or canvas_read_only(st),
+            canvas_read_only=False if stopped else lock_held or canvas_read_only(st) or fc.paused,
             run_status=(
-                RunStatus.WAITING_CONFIRMATION
+                RunStatus.PAUSED
+                if stopped
+                else RunStatus.PROCESSING
+                if fc.paused and fc.task_control.get("settlement") == "pending"
+                else RunStatus.FAILED
+                if fc.paused and fc.task_control.get("settlement") == "unknown"
+                else RunStatus.WAITING_CONFIRMATION
                 if receipt is not None and receipt.status == "waiting"
                 else RunStatus.PROCESSING
                 if receipt is not None and receipt.status in {"prepared", "running"}
@@ -1556,7 +1619,7 @@ class DifyBuilderService:
         ``dispatch``; ``items`` contains rows committed synchronously before a
         worker is needed. This method never dispatches itself, so a streaming
         caller can subscribe before the advance is enqueued."""
-        if not action.command_id and action.kind in TEST_ACTIONS:
+        if not action.command_id and action.kind in TEST_ACTIONS | {"stop", "resume"}:
             action.command_id = str(
                 uuid5(
                     NAMESPACE_URL,
@@ -1577,7 +1640,7 @@ class DifyBuilderService:
         kind = action.kind.strip() if isinstance(action.kind, str) else ""
         if not kind:
             raise BadRequestError("action kind is required")
-        if kind == CONFIRMED_TOOL_ACTION:
+        if kind in {CONFIRMED_TOOL_ACTION, "task_continue"}:
             # Only the confirmed dispatch owner's reservation winner may enqueue it.
             raise BadRequestError(f"action {kind} is not allowed")
         action.kind = kind
@@ -1599,6 +1662,19 @@ class DifyBuilderService:
             action.payload = {**action.payload, "text": text, "client_turn_id": client_turn_id}
 
         s, fc = self._get_authorized_session(session_id, actor)
+        if action.kind in {"stop", "resume"}:
+            control = self.stop_task if action.kind == "stop" else self.resume_task
+            return (
+                control(
+                    session_id,
+                    actor,
+                    base_version=action.base_version,
+                    client_action_id=action.command_id,
+                    base_app_revision=action.base_app_revision,
+                ),
+                False,
+                [],
+            )
         if action.kind in TEST_ACTIONS:
             return self._prepare_test_action(s, fc, actor, action)
         if self._test_actions is not None:
@@ -1824,7 +1900,8 @@ class DifyBuilderService:
                 asdict(view),
                 None,
                 expect_advance=False,
-                emit_command_finished_when_settled=action.kind in {"message", "update_model"} | TEST_ACTIONS,
+                emit_command_finished_when_settled=action.kind
+                in {"message", "update_model", "stop", "resume"} | TEST_ACTIONS,
                 command_id=action.command_id,
                 initial_items=settled_items,
             )
@@ -1836,7 +1913,13 @@ class DifyBuilderService:
             if subscription is not None:
                 subscription.close()
             raise
-        return stream_advance_frames(view_dict, subscription, expect_advance=True, command_id=command_id)
+        return stream_advance_frames(
+            view_dict,
+            subscription,
+            expect_advance=True,
+            command_id=command_id,
+            read_session_view=lambda: self._read_stream_session_view(session_id, actor),
+        )
 
     def submit_message_stream(
         self,
@@ -1885,6 +1968,8 @@ class DifyBuilderService:
             raise BadRequestError("confirmed tool execution is unavailable")
         consent = self._real_call_consent
         s, _fc = self._get_authorized_session(session_id, actor, AppAccess.TEST_AND_RUN)
+        if _fc.paused:
+            raise ConflictError("task is paused")
         token = self._session_lock.acquire(session_id)
         if token is None:
             replay = consent.replay_execution(
@@ -1933,10 +2018,26 @@ class DifyBuilderService:
         """Port of Go ``dispatch``: acquire-or-busy + enqueue, release on
         enqueue failure."""
         action.command_id = action.command_id or str(uuid4())
-        token = self._session_lock.acquire(session_id)
+        from services.dify_builder.task_controls import generation
+
+        _, context = self._repo.get_session(session_id)
+        if context.paused:
+            raise ConflictError("task is paused")
+        if action.execution_generation is None:
+            if action.base_version > 0:
+                _, observed = self._repo.get_session_at_version(session_id, action.base_version)
+                action.execution_generation = generation(observed)
+            else:
+                action.execution_generation = generation(context)
+        if generation(context) != action.execution_generation:
+            raise ConflictError("task dispatch stopped or superseded")
+        token = self._session_lock.acquire(session_id, generation=action.execution_generation)
         if token is None:
             raise BusyError(f"session {session_id} is busy")
         try:
+            _, current = self._repo.get_session(session_id)
+            if current.paused or generation(current) != action.execution_generation:
+                raise ConflictError("task dispatch stopped or superseded")
             self._enqueue_fn(session_id, action, actor, token)
         except Exception:
             self._session_lock.release(session_id, token)

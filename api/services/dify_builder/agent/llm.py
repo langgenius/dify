@@ -7,6 +7,7 @@ WorkflowGenerator._invoke_and_parse_json: parse with json_repair, and on
 failure retry ONCE with a corrective hint before raising.
 """
 
+import json
 from collections.abc import Callable, Generator, Iterator, Mapping
 from typing import Any, cast
 
@@ -75,6 +76,9 @@ def _emit_reasoning(callback: ReasoningCallback | None, reasoning: str) -> None:
 
 
 def _complete(model_instance, messages, model_parameters, stop, on_reasoning: ReasoningCallback | None) -> str:
+    from services.dify_builder.task_controls import check_current
+
+    check_current()
     try:
         result = model_instance.invoke_llm(
             prompt_messages=messages, model_parameters=model_parameters or {}, stop=stop, stream=False
@@ -82,6 +86,7 @@ def _complete(model_instance, messages, model_parameters, stop, on_reasoning: Re
     except Exception as exc:
         diagnostics.report("provider_invocation_failed", error=exc)
         raise
+    check_current()
     native_reasoning = _direct_reasoning(result)
     _emit_reasoning(on_reasoning, native_reasoning)
     try:
@@ -117,6 +122,11 @@ def invoke_text(
     stop: list[str] | None = None,
     on_reasoning: ReasoningCallback | None = None,
 ) -> str:
+    from services.dify_builder.task_controls import synchronized_dsl
+
+    dsl = synchronized_dsl()
+    if dsl:
+        user += "\n\nCURRENT SYNCHRONIZED WORKFLOW DSL:\n" + json.dumps(dsl, ensure_ascii=False)
     messages = [SystemPromptMessage(content=system), UserPromptMessage(content=user)]
     return _complete(model_instance, messages, model_parameters, stop, on_reasoning)
 
@@ -131,7 +141,15 @@ def invoke_text_stream(
     on_reasoning: ReasoningCallback | None = None,
 ) -> Iterator[str]:
     """Yield answer deltas while routing model reasoning to its own callback."""
+    from services.dify_builder.task_controls import synchronized_dsl
+
+    dsl = synchronized_dsl()
+    if dsl:
+        user += "\n\nCURRENT SYNCHRONIZED WORKFLOW DSL:\n" + json.dumps(dsl, ensure_ascii=False)
     messages = [SystemPromptMessage(content=system), UserPromptMessage(content=user)]
+    from services.dify_builder.task_controls import check_current
+
+    check_current()
     try:
         result = model_instance.invoke_llm(
             prompt_messages=messages,
@@ -142,6 +160,7 @@ def invoke_text_stream(
     except Exception as exc:
         diagnostics.report("provider_invocation_failed", error=exc)
         raise
+    check_current()
     if isinstance(result, LLMResult):
         native_reasoning = _direct_reasoning(result)
         _emit_reasoning(on_reasoning, native_reasoning)
@@ -154,6 +173,7 @@ def invoke_text_stream(
 
     think_filter = ThinkStreamFilter()
     for chunk in _stream_chunks(cast(Generator[LLMResultChunk], result)):
+        check_current()
         native_reasoning = next(
             (
                 reasoning
@@ -180,6 +200,7 @@ def invoke_text_stream(
             elif piece.chunk:
                 yield piece.chunk
     for piece in think_filter.finalize():
+        check_current()
         if piece.kind == "reasoning":
             _emit_reasoning(on_reasoning, piece.chunk)
         elif piece.chunk:
@@ -203,6 +224,11 @@ def invoke_json(
     stop: list[str] | None = None,
     on_reasoning: ReasoningCallback | None = None,
 ) -> dict[str, Any]:
+    from services.dify_builder.task_controls import synchronized_dsl
+
+    dsl = synchronized_dsl()
+    if dsl:
+        user += "\n\nCURRENT SYNCHRONIZED WORKFLOW DSL:\n" + json.dumps(dsl, ensure_ascii=False)
     messages = [SystemPromptMessage(content=system), UserPromptMessage(content=user)]
     text = _complete(model_instance, messages, model_parameters, stop, on_reasoning)
     parsed = _as_dict(text)

@@ -218,12 +218,25 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         dify = WorkflowServiceDifyPort()
         actor = Actor(**actor_dict)
         action = Action(**action_dict)
+        if action.kind == "task_continue":
+            from services.dify_builder.task_control_service import claim_continuation, refresh_continuation
+
+            claim_continuation(repo, session_id, actor, action)
+            refresh_continuation(repo, dify, session_id, actor, action)
         confirmed = action.kind == CONFIRMED_TOOL_ACTION
         if confirmed:
             confirmed_context = _require_reserved_launch(repo, session_id, action, actor)
         # The per-session model choice lives on the context (stable for the session).
         # Read the head so the real agent is constructed with the user's chosen model.
         loaded_session, _fc = repo.get_session(session_id)
+        from services.dify_builder.task_controls import generation, require_active
+
+        expected_generation = action.execution_generation
+        if expected_generation is None:
+            _, observed = repo.get_session_at_version(session_id, action.base_version)
+            expected_generation = generation(observed)
+        action.execution_generation = expected_generation
+        require_active(repo, session_id, expected_generation)
         agent = build_dify_builder_agent(
             tenant_id=actor.tenant_id,
             model_config=_fc.model_config,
@@ -231,7 +244,18 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             app_mode=dify.get_app_mode(loaded_session.app_id, actor),
         )
 
+        fence = None
+
+        def delivery_active() -> bool:
+            try:
+                require_active(repo, session_id, fence.generation if fence else expected_generation)
+                return True
+            except ConflictError:
+                return False
+
         def emit_workflow(payload: Mapping[str, object]) -> None:
+            if not delivery_active():
+                return
             assert env is not None
             try:
                 progress_bus.publish(
@@ -251,6 +275,8 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 logger.exception("dify_builder workflow event publish failed for session %s", session_id)
 
         def emit_canvas(event: dict) -> None:
+            if not delivery_active():
+                return
             assert env is not None
             try:
                 progress_bus.publish(
@@ -269,6 +295,8 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 logger.exception("dify_builder canvas event publish failed for session %s", session_id)
 
         def emit_message(message: AgentMessageEventData) -> None:
+            if not delivery_active():
+                return
             try:
                 progress_bus.publish(session_id, asdict(message))
             except Exception:
@@ -282,6 +310,8 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 )
 
         def emit_item(event: ConversationItemAppendedEventData) -> None:
+            if not delivery_active():
+                return
             try:
                 progress_bus.publish(session_id, asdict(event))
             except Exception:
@@ -294,6 +324,8 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 )
 
         def emit_reasoning(reasoning: ReasoningEventData) -> None:
+            if not delivery_active():
+                return
             try:
                 progress_bus.publish(session_id, asdict(reasoning))
             except Exception:
@@ -305,6 +337,8 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
 
         def emit_progress(progress: ProgressEventData) -> None:
             nonlocal last_progress, progress_operation_id
+            if not delivery_active():
+                return
             if progress.operation_id != progress_operation_id:
                 progress_activities.clear()
                 progress_operation_id = progress.operation_id
@@ -373,9 +407,23 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             _graph, current_app_revision = dify.read_graph(loaded_session.app_id, actor)
             if action.base_app_revision != current_app_revision:
                 raise ConflictError(f"stale app revision for app {loaded_session.app_id}")
-        runner.advance(session_id, Turn(action=action, actor=actor))
+        from services.dify_builder.task_controls import ExecutionFence, execution_scope
+
+        fence = ExecutionFence(
+            session_id,
+            expected_generation,
+            lambda: require_active(repo, session_id, fence.generation),
+            _fc.task_control.get("dsl", {}),
+        )
+        with execution_scope(fence):
+            runner.advance(session_id, Turn(action=action, actor=actor))
+        action.execution_generation = fence.generation
         completed = (repo, dify, actor)
     except (ConflictError, HashMismatchError):
+        if repo is not None and action is not None and action.kind == "task_continue":
+            from services.dify_builder.task_control_service import release_unstarted_continuation
+
+            release_unstarted_continuation(repo, session_id, action)
         terminal_error = {
             "kind": "error",
             "error": "conflict",
@@ -517,6 +565,22 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
     finally:
         # Only this worker's owner value releases the activated lease.
         session_lock.release(session_id, owner)
+        if repo is not None and actor is not None:
+            from services.dify_builder.task_control_service import observe_stop
+
+            try:
+                observe_stop(repo, _build_test_actions(repo), session_id, actor)
+            except Exception:
+                logger.exception("dify_builder stop settlement observation failed for session %s", session_id)
+
+    if repo is not None and action is not None:
+        from services.dify_builder.task_controls import generation
+
+        _, head_context = repo.get_session(session_id)
+        if head_context.paused or (
+            action.execution_generation is not None and generation(head_context) != action.execution_generation
+        ):
+            return
 
     # Publish terminal frames only after releasing the lock so the
     # authoritative SSE state no longer projects a completed/waiting

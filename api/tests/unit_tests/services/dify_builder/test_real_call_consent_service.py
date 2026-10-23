@@ -216,16 +216,15 @@ def consent_owner(
         assert test_input is not None
         test_input.inputs = {"note": "hello"}
         test_input.start_schema_hash = schema_hash(start_schema(graph))
-        db.add(
-            DifyBuilderSessionCommit(
-                session_id=session_id,
-                version=1,
-                state=str(PcState.BUILD_AWAIT_TESTDATA),
-                context=context_to_dict(
-                    DifyBuilderContext(plan_items=["Read one message"], plan_version_tag="plan-1", next_seq=1)
-                ),
-                actor="",
+        commit = db.scalar(
+            select(DifyBuilderSessionCommit).where(
+                DifyBuilderSessionCommit.session_id == session_id, DifyBuilderSessionCommit.version == 1
             )
+        )
+        assert commit is not None
+        commit.state = str(PcState.BUILD_AWAIT_TESTDATA)
+        commit.context = context_to_dict(
+            DifyBuilderContext(plan_items=["Read one message"], plan_version_tag="plan-1", next_seq=1)
         )
         db.add(DifyBuilderConversationItem(session_id=session_id, seq=0, kind="notice", payload={}, at_version=1))
         credential_id, client_id = credential.id, client.id

@@ -23,7 +23,7 @@ session version commits atomically with the reservation rows.
 """
 
 import dataclasses
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from itertools import islice
 from typing import cast
 
@@ -228,6 +228,78 @@ class SqlDifyBuilderRepository:
 
             fc = context_from_dict(commit.context)
             return self._to_domain_session(row), fc
+
+    def get_session_at_version(self, session_id: str, version: int) -> tuple[DomainSession, DifyBuilderContext]:
+        with self._session_factory() as sql:
+            row = sql.get(DifyBuilderSession, session_id)
+            commit = sql.scalar(
+                select(DifyBuilderSessionCommit).where(
+                    DifyBuilderSessionCommit.session_id == session_id,
+                    DifyBuilderSessionCommit.version == version,
+                )
+            )
+            if row is None or commit is None:
+                raise ConflictError("unknown task control base version")
+            domain = self._to_domain_session(row)
+            domain.version = version
+            domain.current_state = PcState(commit.state)
+            return domain, context_from_dict(commit.context)
+
+    def is_task_active(self, session_id: str, expected_generation: int) -> bool:
+        with self._session_factory() as sql:
+            result = sql.execute(
+                select(
+                    DifyBuilderSessionCommit.context["paused"].as_boolean(),
+                    DifyBuilderSessionCommit.context["task_control"]["generation"].as_integer(),
+                )
+                .join(
+                    DifyBuilderSession,
+                    (DifyBuilderSession.id == DifyBuilderSessionCommit.session_id)
+                    & (DifyBuilderSession.version == DifyBuilderSessionCommit.version),
+                )
+                .where(DifyBuilderSession.id == session_id)
+            ).one_or_none()
+            return result is not None and not result[0] and int(result[1] or 0) == expected_generation
+
+    def find_task_control(self, session_id: str, client_action_id: str, *, sql=None):
+        def find(session):
+            return session.scalar(
+                select(DifyBuilderSessionCommit)
+                .where(
+                    DifyBuilderSessionCommit.session_id == session_id,
+                    DifyBuilderSessionCommit.context["task_control"]["receipt"]["id"].as_string() == client_action_id,
+                )
+                .order_by(DifyBuilderSessionCommit.version.desc())
+                .limit(1)
+            )
+
+        if sql is not None:
+            row = find(sql)
+            return row.context["task_control"]["receipt"] if row else None
+        with self._session_factory() as session:
+            row = find(session)
+            return row.context["task_control"]["receipt"] if row else None
+
+    def control_transaction(self, session_id: str, change: Callable) -> tuple[DomainSession, DifyBuilderContext]:
+        """Serialize a bounded, I/O-free control writer with all draft writers."""
+        with self._session_factory() as sql, sql.begin():
+            row = sql.scalar(select(DifyBuilderSession).where(DifyBuilderSession.id == session_id).with_for_update())
+            if row is None:
+                raise NotFoundError("session not found")
+            commit = sql.scalar(
+                select(DifyBuilderSessionCommit).where(
+                    DifyBuilderSessionCommit.session_id == session_id,
+                    DifyBuilderSessionCommit.version == row.version,
+                )
+            )
+            if commit is None:
+                raise NotFoundError("session commit not found")
+            domain, context = self._to_domain_session(row), context_from_dict(commit.context)
+            if change(sql, domain, context):
+                domain.version = self._compare_and_advance_in_session(
+                    sql, session_id, domain.version, domain.current_state, context, []
+                )
+            return domain, context
 
     def compare_and_advance(
         self,

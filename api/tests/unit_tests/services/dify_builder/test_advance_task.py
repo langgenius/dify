@@ -215,7 +215,7 @@ def queued_commands(monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderReposit
         "edges": [],
     }
     monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
-    monkeypatch.setattr(mod.session_lock, "acquire", lambda _sid: "queued-token")
+    monkeypatch.setattr(mod.session_lock, "acquire", lambda _sid, **_kwargs: "queued-token")
     monkeypatch.setattr(mod.session_lock, "exists", lambda _sid: False)
     queued: list[Action] = []
     service = DifyBuilderService(
@@ -615,6 +615,12 @@ def test_applied_repair_follow_up_respects_the_completed_views_lifecycle_restric
     mod.advance_session(session.id, _act("approve_repair", session.version), _ACTOR_DICT, "repair-token")
 
     stored, context = repo.get_session(session.id)
+    if restriction == "paused":
+        assert stored.current_state == repair_state
+        assert stored.version == 1
+        assert context.last_snapshot_hash == port.hash == "h0"
+        assert not any(event["kind"] == "command_finished" for _, event in events)
+        return
     finished = next(event for _sid, event in events if event["kind"] == "command_finished")
     assert stored.current_state == applied_state
     assert context.last_snapshot_hash == port.hash == "h1"

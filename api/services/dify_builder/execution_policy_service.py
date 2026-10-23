@@ -502,6 +502,9 @@ class BuilderExecutionPolicyService:
             initial_json = JsonToolExecutionContext.model_validate({**json_values, "context_digest": "0" * 64})
             json_context = initial_json.model_copy(update={"context_digest": context_digest(initial_json)})
             with self._session_factory.begin() as db:
+                from services.dify_builder.task_controls import lock_execution
+
+                lock_execution(db)
                 owner = load_execution_owners(
                     db,
                     app_id=app_id,
@@ -534,6 +537,9 @@ class BuilderExecutionPolicyService:
             return json_context
         assert context is not None
         with self._session_factory.begin() as db:
+            from services.dify_builder.task_controls import lock_execution
+
+            lock_execution(db)
             db.add(
                 DifyBuilderExecutionRequest(
                     id=context.request_id,
@@ -626,6 +632,10 @@ class BuilderExecutionPolicyService:
         except ValidationError:
             raise BuilderExecutionPolicyError("invalid_launch_identity") from None
         with self._session_factory.begin() as db:
+            from services.dify_builder.task_controls import lock_execution, lock_task_admission
+
+            lock_task_admission(db, context.session_id)
+            lock_execution(db)
             row = _bound_request(db, context, lock=True)
             if row.state != "prepared" or row.native_run_id is not None or row.task_id is not None:
                 raise BuilderExecutionPolicyError("execution_already_claimed")
@@ -644,6 +654,9 @@ class BuilderExecutionPolicyService:
         transport: Literal["in_process", "celery"],
         resume: bool,
     ) -> None:
+        from services.dify_builder.task_controls import check_current
+
+        check_current()
         _validate_context(context)
         if transport != "in_process" or resume or call_depth != 0:
             raise BuilderExecutionPolicyError("unsupported_execution_transport")

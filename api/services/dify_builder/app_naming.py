@@ -31,6 +31,9 @@ def rename_app_from_proposal(*, app_id: str, tenant_id: str, account_id: str, pr
     try:
         factory = sessionmaker(bind=db.engine, expire_on_commit=False)
         with factory() as session:
+            from services.dify_builder.task_controls import lock_execution
+
+            lock_execution(session, app_id=app_id)
             app = _load_app(session, app_id=app_id, tenant_id=tenant_id)
             if app is None:
                 return ""
