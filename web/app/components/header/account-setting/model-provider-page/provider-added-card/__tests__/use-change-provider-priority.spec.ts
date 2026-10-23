@@ -89,14 +89,16 @@ it('does not submit an empty provider identifier', () => {
   expect(changePriority).not.toHaveBeenCalled()
 })
 
-it('reports a failed preference change without invalidating model caches', async () => {
-  changePriority.mockRejectedValue(new Error('network error'))
+it('leaves failure feedback to the request layer without invalidating model caches', async () => {
+  const response = createDeferred<{ result: string }>()
+  changePriority.mockReturnValue(response.promise)
   const notify = vi.spyOn(toast, 'error')
   const { result, queryClient, keys } = setup()
   act(() => result.current.handleChangePriority(PreferredProviderTypeEnum.custom))
-  await waitFor(() =>
-    expect(notify).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully'),
-  )
+  await waitFor(() => expect(result.current.isChangingPriority).toBe(true))
+  await act(async () => response.reject(new Error('network error')))
+  await waitFor(() => expect(result.current.isChangingPriority).toBe(false))
+  expect(notify).not.toHaveBeenCalled()
   keys.forEach((key) => expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false))
   expect(result.current.isChangingPriority).toBe(false)
 })
