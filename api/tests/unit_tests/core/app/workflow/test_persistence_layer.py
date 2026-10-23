@@ -722,6 +722,40 @@ def _make_caller_agent(
     return node
 
 
+@pytest.mark.parametrize(
+    ("kind", "node_version"),
+    [(BuiltinNodeTypes.START, "1"), (BuiltinNodeTypes.AGENT, "1"), (BuiltinNodeTypes.AGENT, "2")],
+)
+def test_node_start_requires_persistence_coordination_only_for_agent_v2(kind: str, node_version: str) -> None:
+    layer, _, repo, state = _make_layer()
+
+    class UncoordinatedNode(StartNode):
+        node_type = kind
+
+        @classmethod
+        @override
+        def version(cls) -> str:
+            return node_version
+
+    node = UncoordinatedNode(
+        node_id="node",
+        data=StartNodeData(title="Node", type=kind),
+        init_params=build_test_graph_init_params(workflow_id="workflow-id"),
+        runtime_state=state,
+    )
+    node.bind_execution_id("exec")
+
+    if kind == BuiltinNodeTypes.AGENT and node_version == "2":
+        with pytest.raises(TypeError, match="Agent v2 node must support caller persistence coordination"):
+            layer.on_node_run_start(node)
+    else:
+        layer.on_node_run_start(node)
+
+    assert repo.synchronously_saved == []
+    assert repo.saved == []
+    assert layer._node_execution_cache == {}
+
+
 @pytest.mark.parametrize("dispatch_immediately", [False, True])
 @pytest.mark.parametrize("fail_commit", [False, True])
 def test_worker_commits_caller_before_agent_body(dispatch_immediately: bool, fail_commit: bool) -> None:
