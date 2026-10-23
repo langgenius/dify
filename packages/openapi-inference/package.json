@@ -19,6 +19,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepare": "pnpm run build",
     "type-check": "tsc -p tsconfig.json --noEmit && tsc --runExternalCode --noEmit -p examples/petstore/tsconfig.json",
     "test": "node --test test/*.test.mjs",
     "demo": "node --import ./dist/tooling/register.js examples/petstore/demo.ts",
