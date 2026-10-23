@@ -1,5 +1,6 @@
 'use client'
 
+import { useDirection } from '@langgenius/dify-ui/direction-provider'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,7 @@ const isTheme = (value: string): value is Theme => {
 }
 
 export default function ThemeSelector() {
+  const direction = useDirection()
   const { t } = useTranslation(['common'])
   const { theme, setTheme } = useTheme()
   const currentTheme: Theme = theme && isTheme(theme) ? theme : 'system'
@@ -48,7 +50,7 @@ export default function ThemeSelector() {
           </IconButton>
         }
       />
-      <DropdownMenuContent sideOffset={6} className="w-36">
+      <DropdownMenuContent dir={direction} sideOffset={6} className="w-36">
         <DropdownMenuRadioGroup<Theme>
           value={currentTheme}
           onValueChange={(nextTheme) => setTheme(nextTheme)}
