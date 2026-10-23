@@ -35,6 +35,7 @@ import {
 } from '.'
 import { Button } from '../button'
 import { cn } from '../cn'
+import { useDirection } from '../direction-provider'
 import { Field, FieldDescription, FieldLabel } from '../field'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '../popover'
 import {
@@ -818,6 +819,7 @@ export const Grouped: Story = {
 
 function MultipleChipsDemo() {
   const [value, setValue] = React.useState<Option[]>(defaultReviewers)
+  const direction = useDirection()
 
   return (
     <Field name="reviewers" className={fieldWidth}>
@@ -862,7 +864,7 @@ function MultipleChipsDemo() {
         Selected reviewers wrap inside the input instead of scrolling horizontally.
         {value.length > 0 && (
           <span className="sr-only">
-            {` ${value.length} selected. From the start of the input, press Left Arrow to focus the selected items`}
+            {` ${value.length} selected. From the start of the input, press ${direction === 'rtl' ? 'Right' : 'Left'} Arrow to focus the selected items`}
           </span>
         )}
       </FieldDescription>
@@ -882,17 +884,19 @@ export const MultipleChips: Story = {
     )
 
     const input = canvas.getByRole('combobox', { name: 'Reviewers' })
+    const isRtl = getComputedStyle(input).direction === 'rtl'
+    const previousArrow = isRtl ? 'Right' : 'Left'
     await expect(input).toHaveAccessibleDescription(
-      'Selected reviewers wrap inside the input instead of scrolling horizontally. 2 selected. From the start of the input, press Left Arrow to focus the selected items',
+      `Selected reviewers wrap inside the input instead of scrolling horizontally. 2 selected. From the start of the input, press ${previousArrow} Arrow to focus the selected items`,
     )
 
     input.focus()
-    await userEvent.keyboard('{ArrowLeft}{Delete}')
+    await userEvent.keyboard(`{Arrow${previousArrow}}{Delete}`)
 
     await expect(canvas.queryByText('Liam Brooks')).not.toBeInTheDocument()
     await expect(canvas.getByText('Maya Chen')).toBeVisible()
     await expect(input).toHaveAccessibleDescription(
-      'Selected reviewers wrap inside the input instead of scrolling horizontally. 1 selected. From the start of the input, press Left Arrow to focus the selected items',
+      `Selected reviewers wrap inside the input instead of scrolling horizontally. 1 selected. From the start of the input, press ${previousArrow} Arrow to focus the selected items`,
     )
   },
 }

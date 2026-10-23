@@ -241,7 +241,8 @@ function Toaster({
       <BaseToast.Portal>
         <BaseToast.Viewport
           className={
-            // oxlint-disable-next-line better-tailwindcss/enforce-logical-properties -- The viewport and offset.right stay physically right-aligned with rightward swipe dismissal.
+            // Once the offset API is removed, migrate placement, horizontal swipe, and exit animations together to logical inline-end.
+            // oxlint-disable-next-line better-tailwindcss/enforce-logical-properties -- Dify's offset.right API currently requires physical right positioning, paired with rightward swipe dismissal.
             'pointer-events-none fixed top-4 right-4 z-50 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8'
           }
           style={offset}
