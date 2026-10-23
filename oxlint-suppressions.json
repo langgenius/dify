@@ -3836,9 +3836,6 @@
     }
   },
   "web/app/components/plugins/marketplace/list/carousel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
     "eslint-react/set-state-in-effect": {
       "count": 4
     }
