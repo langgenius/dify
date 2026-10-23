@@ -314,18 +314,24 @@ class WorkflowAgentOutputAdapter:
         *,
         metadata: dict[str, Any],
         agent_log: Sequence[AgentLogEvent] = (),
-    ) -> dict[str, Any]:
+    ) -> dict[WorkflowNodeExecutionMetadataKey, Any]:
         """Shape one node execution's ``execution_metadata`` payload.
 
         ``metadata`` carries the Agent backend run statistics (``agent_backend``,
-        ``attempt``, ``terminal_event_type``, …). They are flattened to the top
-        level so ``agent_log`` keeps the array contract the legacy Agent node and
+        ``attempt``, ``terminal_event_type``, …). ``NodeRunResult.metadata`` only
+        accepts the official execution metadata keys, so everything else is dropped
+        here instead of failing validation: the run statistics reach the top level
+        through the engine's own ``total_tokens`` / ``total_price`` / ``currency``
+        keys, and ``agent_log`` keeps the array contract the legacy Agent node and
         the workflow tracing page already agree on.
         """
-        return {
-            **metadata,
-            WorkflowNodeExecutionMetadataKey.AGENT_LOG: list(agent_log),
+        node_metadata: dict[WorkflowNodeExecutionMetadataKey, Any] = {
+            key: value
+            for key, value in metadata.items()
+            if key in WorkflowNodeExecutionMetadataKey
         }
+        node_metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG] = list(agent_log)
+        return node_metadata
 
     @staticmethod
     def _build_node_metadata(

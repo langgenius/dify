@@ -147,10 +147,45 @@ def test_success_output_adapter_preserves_dict_output():
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"summary": "ok"}
-    assert result.metadata["agent_backend"]["status"] == "succeeded"
-    assert result.metadata["agent_backend"]["session_snapshot"] == {
-        "layer_count": 0,
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG] == []
+
+
+def test_terminal_metadata_records_the_terminal_event_and_run_statistics():
+    metadata = WorkflowAgentOutputAdapter._with_terminal_metadata(
+        {"agent_backend": {"run_id": "run-1"}},
+        AgentBackendRunSucceededInternalEvent(
+            run_id="run-1",
+            source_event_id="2-0",
+            output={},
+            session_snapshot=SessionSnapshot(layers={}),
+        ),
+        "succeeded",
+    )
+
+    assert metadata["agent_backend"]["run_id"] == "run-1"
+    assert metadata["agent_backend"]["status"] == "succeeded"
+    assert metadata["agent_backend"]["terminal_event_id"] == "2-0"
+    assert metadata["agent_backend"]["session_snapshot"] == {"layer_count": 0}
+    assert metadata["terminal_event_type"] == "run_succeeded"
+
+
+def test_node_metadata_keeps_only_official_keys():
+    """``NodeRunResult.metadata`` rejects anything outside the execution metadata enum."""
+    metadata = WorkflowAgentOutputAdapter.build_node_execution_metadata(
+        metadata={
+            "agent_backend": {"run_id": "run-1"},
+            "attempt": 0,
+            "terminal_event_type": "run_succeeded",
+            "total_tokens": 7,
+        },
+        agent_log=[],
+    )
+
+    assert set(metadata) == {
+        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS,
+        WorkflowNodeExecutionMetadataKey.AGENT_LOG,
     }
+    assert metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG] == []
 
 
 def test_failure_output_adapter_preserves_backend_failed_reason():
@@ -180,9 +215,7 @@ def test_failure_output_adapter_preserves_backend_failed_reason():
     assert result.llm_usage.total_tokens == 21
     assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 21
     assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] == Decimal("0.000210")
-    assert result.metadata["agent_backend"]["session_snapshot"] == {
-        "layer_count": 0
-    }
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG] == []
 
 
 def test_failure_output_adapter_prefers_run_failure_type_over_reason():
@@ -616,7 +649,7 @@ def test_stream_exhausted_result_is_failed_with_stream_error():
 
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error_type == "agent_backend_stream_error"
-    assert result.metadata["agent_backend"]["run_id"] == "run-1"
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG] == []
 
 
 # ── Agent process projection and execution metadata flatting ──────────────
@@ -897,7 +930,7 @@ def test_projection_entries_is_idempotent():
     assert len(first) == 1
 
 
-def test_node_execution_metadata_flattens_statistics_and_keeps_agent_log_array():
+def test_node_execution_metadata_keeps_official_keys_and_the_agent_log_array():
     projection = _projection()
     projection.observe(_stream_event(
         "function_tool_call",
@@ -906,12 +939,14 @@ def test_node_execution_metadata_flattens_statistics_and_keeps_agent_log_array()
     ))
 
     metadata = WorkflowAgentOutputAdapter.build_node_execution_metadata(
-        metadata={"agent_backend": {"run_id": "run-1"}, "attempt": 0},
+        metadata={"agent_backend": {"run_id": "run-1"}, "attempt": 0, "total_tokens": 9},
         agent_log=projection.entries(),
     )
 
-    assert set(metadata) == {"agent_backend", "attempt", WorkflowNodeExecutionMetadataKey.AGENT_LOG}
-    assert metadata["agent_backend"] == {"run_id": "run-1"}
+    assert set(metadata) == {
+        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS,
+        WorkflowNodeExecutionMetadataKey.AGENT_LOG,
+    }
     assert isinstance(metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG], list)
     assert len(metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]) == 1
 
@@ -935,16 +970,22 @@ def test_build_node_metadata_keeps_usage_fields_after_flatting():
     assert node_metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 12
     assert node_metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] == usage.total_price
     assert node_metadata[WorkflowNodeExecutionMetadataKey.CURRENCY] == usage.currency
-    assert node_metadata["agent_backend"] == {"usage": {"total_tokens": 12}}
     assert node_metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG] == []
 
 
-def test_build_node_metadata_keeps_flattened_sibling_keys():
+def test_build_node_metadata_keeps_official_sibling_keys_only():
     node_metadata = WorkflowAgentOutputAdapter._build_node_metadata(
-        metadata={"agent_backend": {"run_id": "run-1"}, "attempt": 1, "terminal_event_type": "run_failed"},
+        metadata={
+            "agent_backend": {"run_id": "run-1"},
+            "attempt": 1,
+            "terminal_event_type": "run_failed",
+            "total_tokens": 3,
+        },
         usage=None,
     )
 
-    assert node_metadata["agent_backend"] == {"run_id": "run-1"}
-    assert node_metadata["attempt"] == 1
-    assert node_metadata["terminal_event_type"] == "run_failed"
+    assert set(node_metadata) == {
+        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS,
+        WorkflowNodeExecutionMetadataKey.AGENT_LOG,
+    }
+    assert node_metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 3
