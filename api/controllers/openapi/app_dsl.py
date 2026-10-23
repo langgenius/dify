@@ -297,7 +297,7 @@ class AppDslCheckDependenciesApi(Resource):
     def get(self, ctx: RequestContext, app_id: str):
         try:
             with plugin_errors():
-                result = application_services().apps.imports.check_dependencies(ctx, str(UUID(app_id)))
+                result = application_services().apps.imports.check_draft_dependencies(ctx, str(UUID(app_id)))
         except ConsoleAppNotFoundError as exc:
             raise NotFound(str(exc)) from exc
         except WorkflowNotFoundError as exc:

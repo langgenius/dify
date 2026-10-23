@@ -616,7 +616,7 @@ def test_dependency_check_returns_unresolved_ids_and_an_install_hint(
         ],
         unresolved_plugin_ids=["corp/private"],
     )
-    monkeypatch.setattr(app_query_services.apps.imports, "check_dependencies", lambda *_args: result)
+    monkeypatch.setattr(app_query_services.apps.imports, "check_draft_dependencies", lambda *_args: result)
 
     response, status = _check_dependencies(app, _DEPENDENCY_APP_ID)
 
@@ -630,7 +630,7 @@ def test_dependency_check_without_missing_marketplace_plugins_has_no_hint(
     app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     result = DraftDependencyCheck(unresolved_plugin_ids=["corp/private"])
-    monkeypatch.setattr(app_query_services.apps.imports, "check_dependencies", lambda *_args: result)
+    monkeypatch.setattr(app_query_services.apps.imports, "check_draft_dependencies", lambda *_args: result)
 
     response, _status = _check_dependencies(app, _DEPENDENCY_APP_ID)
 
@@ -652,10 +652,10 @@ def test_dependency_check_maps_marketplace_and_daemon_failures(
     raised: Exception,
     expected: type[Exception],
 ) -> None:
-    def check_dependencies(*_args: object) -> DraftDependencyCheck:
+    def check_draft_dependencies(*_args: object) -> DraftDependencyCheck:
         raise raised
 
-    monkeypatch.setattr(app_query_services.apps.imports, "check_dependencies", check_dependencies)
+    monkeypatch.setattr(app_query_services.apps.imports, "check_draft_dependencies", check_draft_dependencies)
 
     with pytest.raises(expected):
         _check_dependencies(app, _DEPENDENCY_APP_ID)
@@ -672,10 +672,10 @@ def test_dependency_check_maps_missing_app_and_draft(
     raised: Exception,
     expected: type[Exception],
 ) -> None:
-    def check_dependencies(*_args: object) -> DraftDependencyCheck:
+    def check_draft_dependencies(*_args: object) -> DraftDependencyCheck:
         raise raised
 
-    monkeypatch.setattr(app_query_services.apps.imports, "check_dependencies", check_dependencies)
+    monkeypatch.setattr(app_query_services.apps.imports, "check_draft_dependencies", check_draft_dependencies)
 
     with pytest.raises(expected):
         _check_dependencies(app, _DEPENDENCY_APP_ID)
