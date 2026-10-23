@@ -448,9 +448,9 @@ class Workflow(Base):  # bug
             image_transfer_methods = features["file_upload"]["image"].get(
                 "transfer_methods", ["remote_url", "local_file"]
             )
-            features["file_upload"]["enabled"] = True
-            features["file_upload"]["number_limits"] = image_number_limits
-            features["file_upload"]["allowed_file_upload_methods"] = image_transfer_methods
+            features["file_upload"].setdefault("enabled", True)
+            features["file_upload"].setdefault("number_limits", image_number_limits)
+            features["file_upload"].setdefault("allowed_file_upload_methods", image_transfer_methods)
             features["file_upload"]["allowed_file_types"] = features["file_upload"].get("allowed_file_types", ["image"])
             features["file_upload"]["allowed_file_extensions"] = features["file_upload"].get(
                 "allowed_file_extensions", []

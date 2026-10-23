@@ -858,3 +858,56 @@ it('imports a DSL file and replaces the graph through the real update event', as
     body: { mode: 'yaml-content', yaml_content: yaml, app_id: 'app-1' },
   })
 })
+
+it('keeps imported feature settings when the imported draft replaces the workflow', async () => {
+  const user = userEvent.setup()
+  vi.mocked(collaborationManager.isConnected).mockReturnValue(false)
+  api.fetchDraft.mockResolvedValue(
+    draft({
+      features: {
+        file_upload: {
+          enabled: true,
+          allowed_file_types: ['image'],
+          allowed_file_extensions: ['.png'],
+          allowed_file_upload_methods: ['local_file'],
+          number_limits: 10,
+        },
+        opening_statement: '',
+        suggested_questions: ['What can you do?'],
+        suggested_questions_after_answer: { enabled: true, prompt: 'Suggest follow-ups' },
+        speech_to_text: { enabled: true },
+        text_to_speech: { enabled: true, language: 'en-US', voice: 'alloy', autoPlay: 'enabled' },
+        retriever_resource: { enabled: true },
+        sensitive_word_avoidance: {
+          enabled: true,
+          type: 'keywords',
+          config: { keywords: 'blocked' },
+        },
+      },
+    }),
+  )
+  const { features } = await renderMain({
+    collaboration: false,
+    initialStoreState: { showImportDSLModal: true },
+  })
+  const dialog = await screen.findByRole('dialog', { name: 'app.importApp' })
+  const input = dialog.querySelector<HTMLInputElement>('input[type="file"]')!
+  await user.upload(
+    input,
+    new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
+  )
+  await user.click(
+    within(dialog).getByRole('button', { name: 'workflow.common.overwriteAndImport' }),
+  )
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+  expect(features.getState().features).toMatchObject({
+    file: { enabled: true, number_limits: 10, allowed_file_upload_methods: ['local_file'] },
+    opening: { enabled: true, opening_statement: '', suggested_questions: ['What can you do?'] },
+    suggested: { enabled: true, prompt: 'Suggest follow-ups' },
+    speech2text: { enabled: true },
+    text2speech: { enabled: true, language: 'en-US', voice: 'alloy', autoPlay: 'enabled' },
+    citation: { enabled: true },
+    moderation: { enabled: true, type: 'keywords', config: { keywords: 'blocked' } },
+  })
+})
