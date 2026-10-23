@@ -1142,6 +1142,141 @@ def test_initial_ordinary_run_without_dispatch_settles_same_declined_attempt_onc
     )
 
 
+@pytest.mark.parametrize("declining", [0], indirect=True)
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "none",
+        "unsealed",
+        "later-generation",
+        "missing-outcome",
+        "foreign-native",
+        "live-parent",
+        "completed-source",
+        "unknown-source",
+        "unknown-effect",
+        "missing-context",
+        "active",
+        "foreign-effect",
+        "foreign-source",
+        "outcome-ref",
+    ],
+)
+def test_initial_sealed_cancel_public_receipt_is_readonly_terminal(declining: CompletedOwner, fault: str) -> None:
+    from sqlalchemy import event
+
+    from models.dify_builder_native_tests import (
+        NativeDispatch,
+        NativeEffectGrant,
+        NativePayloadObject,
+        NativePendingAction,
+        NativeTestInvocation,
+    )
+
+    owner = declining
+    owner.commands.cancel(
+        actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="deny"
+    )
+    with owner.factory.begin() as sql:
+        for model in (NativeEffectGrant, NativePendingAction):
+            table = model.__table__
+            assert isinstance(table, Table)
+            table.create(sql.connection(), checkfirst=True)
+        state = sql.scalar(select(NativeInvocationState))
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        native = sql.get(WorkflowRun, owner.native_id)
+        assert state is not None
+        assert request is not None
+        assert native is not None
+        assert not state.cleanup_complete
+        sql.add(
+            NativePayloadObject(
+                id="context",
+                tenant_id=owner.case.actor.tenant_id,
+                request_id=owner.request_id,
+                invocation_id=owner.ref.invocation_id,
+                kind="context",
+                logical_key="context",
+                storage_key="context-storage",
+                payload_digest="a" * 64,
+                value_digest="b" * 64,
+            )
+        )
+        assert sql.scalars(select(NativeDispatch)).all() == []
+        if fault == "unsealed":
+            request.state = "waiting"
+        elif fault == "later-generation":
+            scope = sql.get(NativeTestScope, owner.request_id)
+            assert scope is not None
+            scope.generation = state.generation = 1
+        elif fault == "missing-outcome":
+            state.outcome = None
+        elif fault == "foreign-native":
+            native.created_by = str(uuid4())
+        elif fault == "live-parent":
+            native.status = WorkflowExecutionStatus.PAUSED
+        elif fault == "active":
+            invocation = sql.scalar(select(NativeTestInvocation))
+            assert invocation is not None
+            invocation.active = True
+        elif fault == "outcome-ref":
+            assert state.outcome is not None
+            state.outcome = {**state.outcome, "native_run_id": str(uuid4())}
+        elif fault.endswith("-source"):
+            sql.add(
+                NativeDispatch(
+                    id="late-source",
+                    tenant_id="foreign" if fault == "foreign-source" else owner.case.actor.tenant_id,
+                    request_id=owner.request_id,
+                    invocation_id=owner.ref.invocation_id,
+                    generation=0,
+                    state="unknown" if fault == "unknown-source" else "completed",
+                    checkpoint_id="checkpoint",
+                    idempotency_digest="f" * 64,
+                )
+            )
+        elif fault in {"unknown-effect", "foreign-effect"}:
+            operation = sql.scalar(select(NativeEffectOperation))
+            assert operation is not None
+            if fault == "unknown-effect":
+                operation.state = "unknown"
+            else:
+                operation.tenant_id = "foreign"
+        elif fault == "missing-context":
+            state.context_object_id = "absent-context"
+    api = owner.commands.api
+    api.get = lambda **kwargs: NativeTestApiService.get(api, **kwargs)
+    owner.commands.backend.client.get_run_sync = lambda _: pytest.fail("public read queried the child runtime")
+    statements: list[str] = []
+
+    def capture(
+        _connection: object, _cursor: object, statement: str, _parameters: object, _context: object, _many: object
+    ) -> None:
+        statements.append(statement)
+
+    engine = owner.factory.kw["bind"]
+    event.listen(engine, "before_cursor_execute", capture)
+    try:
+        receipt = owner.commands.peek(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
+    finally:
+        event.remove(engine, "before_cursor_execute", capture)
+    assert not any(s.lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE")) for s in statements)
+    assert receipt.cancellation is not None
+    if fault == "none":
+        assert receipt.cancellation.status == "cancelled"
+        assert receipt.status == "terminal"
+        assert receipt.outcome == "cancelled"
+        assert receipt.native_status == "stopped"
+    else:
+        assert receipt.outcome != "cancelled"
+        assert receipt.cancellation.status != "cancelled"
+    with owner.factory() as sql:
+        state = sql.scalar(select(NativeInvocationState))
+        assert state is not None
+        assert not state.cleanup_complete
+    assert owner.cancel_calls == ["original-child"]
+
+
 @pytest.mark.parametrize("source", ["missing", "earlier_generation"])
 def test_later_generation_requires_its_completed_source_before_declined_settlement(
     declining: CompletedOwner, source: str

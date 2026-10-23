@@ -193,6 +193,24 @@ class ConfirmedAgentCommands:
         """
         self._request(actor=actor, session_id=session_id, request_id=request_id)
         receipt = self.api.get(actor=actor, session_id=session_id, request_id=request_id)
+        if receipt.cancellation is not None and receipt.cancellation.status != "unknown":
+            from services.dify_builder.native_testing.confirmed_agent_cancellation import ConfirmedAgentCancellation
+
+            ref = self._root_ref(actor=actor, request_id=request_id)
+            if ConfirmedAgentCancellation(self).initial_stop_is_saved(ref=ref):
+                return receipt.model_copy(
+                    update={
+                        "status": "terminal",
+                        "outcome": "cancelled",
+                        "native_status": "stopped",
+                        "can_resume": False,
+                        "wait_reason": None,
+                        "pending": (),
+                        # Public request cancellation is logical; C02 retains its
+                        # independent, conservative physical cleanup facts.
+                        "cancellation": receipt.cancellation.model_copy(update={"status": "cancelled"}),
+                    }
+                )
         if (
             receipt.cancellation is not None
             and receipt.cancellation.status == "cancelled"
