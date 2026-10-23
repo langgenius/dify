@@ -309,7 +309,7 @@
   "sort.started": "{{item}} dipilih, posisi {{position}} dari {{count}}.",
   "sorting.ascending": "Urutkan secara menaik",
   "sorting.descending": "Urutkan secara menurun",
-  "sorting.sortBy": "Urutkan berdasarkan",
+  "sorting.sortBy": "Urutkan berdasarkan:",
   "svgRenderer.generatingImage": "Sedang membuat gambar…",
   "swaggerAPIAsToolPage.description": "Impor API apa pun sebagai alat menggunakan spesifikasi OpenAPI/Swagger. Konfigurasikan sekali dan gunakan kembali di workflow Anda.",
   "tag.addNew": "Tambahkan tag baru",
