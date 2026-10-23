@@ -507,7 +507,7 @@ export function QualityActions({
             <span aria-hidden className="i-ri-thumb-down-line size-4" />
             {t(($) => $['retrievalTest.makeBadCase'], { ns: 'knowledgeRetrieval' })}
           </DropdownMenuTrigger>
-          <DropdownMenuContent placement="top-end" sideOffset={4} className="w-44">
+          <DropdownMenuContent side="top" className="w-44">
             <DropdownMenuItem onClick={() => void onBadCase('low-score')}>
               {t(($) => $['qualityPage.reasonValues.lowScore'], { ns: 'knowledgeSpace' })}
             </DropdownMenuItem>

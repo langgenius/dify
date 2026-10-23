@@ -629,7 +629,8 @@ function PickerContent({
   const mergedRef = useMergedRefs(popupRef, ref, focusRef)
   return (
     <PopoverContent
-      placement="bottom-start"
+      side="bottom"
+      align="start"
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy ?? (ariaLabel ? undefined : labelId)}
       dir={direction}

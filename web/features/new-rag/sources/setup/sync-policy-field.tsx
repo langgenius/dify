@@ -141,7 +141,7 @@ function CustomIntervalPopover({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverPortal>
-        <PopoverPositioner anchor={anchorRef} placement="bottom-start" sideOffset={4}>
+        <PopoverPositioner anchor={anchorRef} align="start" sideOffset={4}>
           <PopoverPopup className="w-75 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-3.5 shadow-lg">
             <CustomIntervalEditor
               disabled={disabled}

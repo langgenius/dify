@@ -162,7 +162,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
         )}
       </div>
       <div className="flex shrink-0 items-center justify-between p-3">
-        <MenuDropdown hideLogout={isInstalledApp} placement="top-start" data={appData?.site} />
+        <MenuDropdown hideLogout={isInstalledApp} side="top" align="start" data={appData?.site} />
         {/* powered by */}
         <div className="shrink-0">
           {!appData?.custom_config?.remove_webapp_brand && (

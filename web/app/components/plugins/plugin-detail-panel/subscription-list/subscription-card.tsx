@@ -65,7 +65,7 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
                 {data.endpoint}
               </PopoverTrigger>
               <PopoverContent
-                placement="left"
+                side="left"
                 className="max-w-[320px] px-3 py-2 system-xs-regular break-all text-text-tertiary"
               >
                 {data.endpoint}

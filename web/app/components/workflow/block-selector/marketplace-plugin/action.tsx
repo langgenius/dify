@@ -65,7 +65,7 @@ function OperationDropdown({ open, onOpenChange, author, name, version }: Props)
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-44">
+      <DropdownMenuContent className="min-w-44">
         <DropdownMenuItem className="system-md-regular" onClick={handleDownload}>
           {t(($) => $['operation.download'], { ns: 'common' })}
         </DropdownMenuItem>

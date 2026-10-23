@@ -142,7 +142,8 @@ function CreateMetadataPopover() {
         }
       />
       <PopoverContent
-        placement="left-start"
+        side="left"
+        align="start"
         sideOffset={20}
         alignOffset={-38}
         className="w-[320px]"

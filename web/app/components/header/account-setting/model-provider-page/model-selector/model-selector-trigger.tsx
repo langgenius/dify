@@ -272,9 +272,7 @@ function ModelSelectorTrigger({
           </PopoverTrigger>
         }
       />
-      {triggerTooltipLabel && (
-        <TooltipContent placement="top">{triggerTooltipLabel}</TooltipContent>
-      )}
+      {triggerTooltipLabel && <TooltipContent>{triggerTooltipLabel}</TooltipContent>}
     </Tooltip>
   )
 

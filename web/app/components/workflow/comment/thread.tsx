@@ -485,7 +485,7 @@ function CommentThreadComponent({
                   </button>
                 }
               />
-              <TooltipContent placement="top">
+              <TooltipContent>
                 {t(($) => $['comments.aria.deleteComment'], { ns: 'workflowComments' })}
               </TooltipContent>
             </Tooltip>
@@ -511,7 +511,7 @@ function CommentThreadComponent({
                   </button>
                 }
               />
-              <TooltipContent placement="top">
+              <TooltipContent>
                 {t(($) => $['comments.aria.resolveComment'], { ns: 'workflowComments' })}
               </TooltipContent>
             </Tooltip>
@@ -534,7 +534,7 @@ function CommentThreadComponent({
                   </button>
                 }
               />
-              <TooltipContent placement="top">
+              <TooltipContent>
                 {t(($) => $['comments.aria.previousComment'], { ns: 'workflowComments' })}
               </TooltipContent>
             </Tooltip>
@@ -556,7 +556,7 @@ function CommentThreadComponent({
                   </button>
                 }
               />
-              <TooltipContent placement="top">
+              <TooltipContent>
                 {t(($) => $['comments.aria.nextComment'], { ns: 'workflowComments' })}
               </TooltipContent>
             </Tooltip>
@@ -585,11 +585,7 @@ function CommentThreadComponent({
                 >
                   <RiMoreFill className="size-4" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  placement="bottom-end"
-                  sideOffset={4}
-                  className="w-36 backdrop-blur-[10px]"
-                >
+                <DropdownMenuContent className="w-36 backdrop-blur-[10px]">
                   <DropdownMenuItem
                     className="px-3"
                     onClick={(e) => {
@@ -678,12 +674,7 @@ function CommentThreadComponent({
                         >
                           <RiMoreFill className="size-4" />
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          placement="bottom-end"
-                          sideOffset={4}
-                          className="w-36 backdrop-blur-[10px]"
-                          data-reply-menu
-                        >
+                        <DropdownMenuContent className="w-36 backdrop-blur-[10px]" data-reply-menu>
                           <DropdownMenuItem
                             onClick={(event) => {
                               event.stopPropagation()

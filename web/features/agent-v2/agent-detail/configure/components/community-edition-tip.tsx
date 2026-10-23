@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
-type CommunityEditionTipProps = Pick<PopoverContentProps, 'className' | 'placement'> & {
+type CommunityEditionTipProps = Pick<PopoverContentProps, 'className' | 'side' | 'align'> & {
   tip: string
 }
 
@@ -15,11 +15,7 @@ type CommunityEditionTipProps = Pick<PopoverContentProps, 'className' | 'placeme
  * Renders nothing on enterprise or cloud deployments, so callers do not repeat
  * the edition check.
  */
-export function CommunityEditionTip({
-  tip,
-  placement = 'bottom',
-  className,
-}: CommunityEditionTipProps) {
+export function CommunityEditionTip({ tip, side, align, className }: CommunityEditionTipProps) {
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -47,7 +43,8 @@ export function CommunityEditionTip({
         }
       />
       <PopoverContent
-        placement={placement}
+        side={side}
+        align={align}
         className={cn('px-3 py-2 system-xs-regular text-text-tertiary', className)}
       >
         {tip}

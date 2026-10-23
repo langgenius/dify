@@ -253,7 +253,7 @@ export function SourceActions({
             )}
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
+        <DropdownMenuContent className="w-50">
           {canSync && (
             <DropdownMenuItem
               onClick={() => void (syncAction === 'retry' ? retrySource() : syncSource())}

@@ -295,7 +295,8 @@ const Item: FC<ItemProps> = ({
     <Popover open={open} onOpenChange={noop}>
       <PopoverTrigger nativeButton={false} render={itemTrigger} />
       <PopoverContent
-        placement="left-start"
+        side="left"
+        align="start"
         sideOffset={0}
         className={cn(
           VAR_REFERENCE_CHILD_POPUP_CLASS_NAME,

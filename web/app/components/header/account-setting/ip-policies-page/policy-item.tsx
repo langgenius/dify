@@ -145,7 +145,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                 {t(($) => $['settings.ipPolicyMore'], { ns: 'common' })}
               </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-35">
+            <DropdownMenuContent className="min-w-35">
               <DropdownMenuItem
                 disabled={!canMutate}
                 className="system-sm-semibold text-text-secondary"

@@ -354,7 +354,7 @@ export function DocumentActionsDropdown({
             )}
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
+        <DropdownMenuContent className="w-50">
           <RenameDocumentMenuItem document={document} onOpen={() => setRenameDialogOpen(true)} />
           <ReprocessDocumentMenuItem document={document} />
           <DownloadDocumentMenuItem document={document} />

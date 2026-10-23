@@ -108,7 +108,7 @@ function GoldenAnnotation({ annotation }: { annotation: string }) {
           </button>
         }
       />
-      <PopoverContent placement="top" className="max-w-67 px-3 py-2">
+      <PopoverContent side="top" className="max-w-67 px-3 py-2">
         <p className="system-xs-regular wrap-break-word text-text-tertiary">{annotation}</p>
       </PopoverContent>
     </Popover>
@@ -432,7 +432,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
                             question: item.question,
                           })}
                         />
-                        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
+                        <DropdownMenuContent className="w-50">
                           <DropdownMenuItem
                             className="gap-2 px-3"
                             onClick={() => void openEdit(item)}
