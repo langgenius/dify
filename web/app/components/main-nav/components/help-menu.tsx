@@ -181,7 +181,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
           }
         />
         <DropdownMenuContent
-          placement="top-end"
+          side="top"
           sideOffset={8}
           className="w-60 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >

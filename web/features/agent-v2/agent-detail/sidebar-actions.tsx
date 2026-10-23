@@ -82,7 +82,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
             </IconButton>
           }
         />
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-max min-w-40">
+        <DropdownMenuContent className="w-max min-w-40">
           {capabilities.canEdit && (
             <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />

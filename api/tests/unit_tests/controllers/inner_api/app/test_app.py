@@ -104,10 +104,11 @@ def _app(tenant_id: str, name: str, *, mode: AppMode = AppMode.WORKFLOW, created
         mode=mode,
         enable_site=False,
         enable_api=False,
-        created_at=created_at,
-        updated_at=created_at,
-        **kwargs,
     )
+    for name, value in kwargs.items():
+        setattr(app, name, value)
+    app.created_at = created_at
+    app.updated_at = created_at
     app.id = str(uuid4())
     return app
 
@@ -418,7 +419,7 @@ def _message(app_id: str, status: MessageStatus, created_at: datetime, invoke_fr
     message = Message(
         app_id=app_id,
         conversation_id=str(uuid4()),
-        inputs={},
+        _inputs={},
         query="q",
         message={},
         message_unit_price=Decimal(0),

@@ -34,7 +34,7 @@ function ModelSettingsTrigger({ disabled, surface = 'default' }: ModelSettingsTr
           />
         }
       />
-      <TooltipContent placement="top">{label}</TooltipContent>
+      <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   )
 }

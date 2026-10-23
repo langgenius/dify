@@ -1,29 +1,38 @@
 # Dify UI Review Routing
 
-Use this reference when a review touches `packages/dify-ui/` or consumes
-`@langgenius/dify-ui/*`. It routes to owner documentation; it does not redefine package
-contracts.
+Use this reference for changes to `packages/dify-ui/` or its application consumers. Review the
+contract owned by the changed layer: upstream behavior, Dify primitive integration, or feature
+composition.
 
-Read `packages/dify-ui/AGENTS.md` and the primitive implementation first, then only the matching
-owner:
+## Find The Owner
 
-| Review area                                | Canonical owner                                                     |
-| ------------------------------------------ | ------------------------------------------------------------------- |
-| Package boundary and document routing      | `packages/dify-ui/AGENTS.md`                                        |
-| Imports, exports, public types, and anatomy | `packages/dify-ui/docs/authoring.md`                                 |
-| Button or icon-only actions                | `packages/dify-ui/src/button/README.md`, `packages/dify-ui/src/icon-button/README.md` |
-| Compound inputs                            | `packages/dify-ui/src/input-group/README.md`                         |
-| Forms and field semantics                  | `packages/dify-ui/docs/forms.md`                                     |
-| Selection and typed values                 | `packages/dify-ui/docs/selection.md`                                 |
-| Portals, layers, and floating surfaces     | `packages/dify-ui/docs/overlays.md`                                  |
-| State styling, callbacks, and Tailwind     | `packages/dify-ui/docs/styling.md`                                   |
-| Package tests and Storybook                | `packages/dify-ui/docs/testing.md`                                   |
+- Package changes follow [Package rules]; Web consumers follow [Web rules]. Keep their respective
+  package boundaries and application requirements in scope.
+- If the affected contract is known, read its owner guide directly. Use the [Package index] only
+  to discover available primitives, public subpaths, or the matching guide; do not load every guide.
+- Trace implementation, public types, tests, and stories as needed to decide a candidate. If they
+  disagree with documentation, establish which contract applies before reporting a violation.
+- For upstream-derived behavior, check the installed API and current official [Base UI docs].
+  Do not assume the latest upstream example matches the installed version or Dify wrapper.
 
-For consumer code under `web/`, also read `web/AGENTS.md` for application-owned reuse policy and
-`packages/dify-ui/README.md` for the available public subpaths.
+## Check The Changed Boundary
 
-Treat the implementation, public types, tests, and stories as evidence for the documented
-contract. If they disagree, identify the actual owner before reporting a finding. Read current
-official Base UI documentation and installed type declarations for upstream-derived behavior.
-Report only a reproducible contract violation or observable defect, not a preference inferred from
-this routing file.
+- Does a wrapper preserve the public types, value relationships, events, and anatomy its consumers
+  rely on? Follow the package's public API authoring contract when that surface changes.
+- Does `render` composition forward the required props and ref, preserve event handling, and read
+  state from the owning part? Use the styling and upstream composition contracts to check callback
+  merging; do not introduce parallel React state merely to reproduce primitive state styles.
+- Does the change preserve the documented owner of focus, positioning, portals, and dismissal?
+  Check shared fixes at that owner and feature-specific composition at the consumer. Consult the
+  overlay contract for presence and the form/control contract for labels, values, and validation.
+- For custom primitive integrations, trace the upstream APIs they actually use and verify the
+  resulting public behavior. A thin passthrough and a Dify-authored Field/Form integration have
+  different responsibilities; test those responsibilities without duplicating upstream coverage.
+
+Report an observable defect or an applicable explicit contract violation. Do not turn a preferred
+composition, a newer upstream example, or a missing call-site style into a finding on its own.
+
+[Base UI docs]: https://base-ui.com/react
+[Package index]: ../../../../packages/dify-ui/README.md
+[Package rules]: ../../../../packages/dify-ui/AGENTS.md
+[Web rules]: ../../../../web/AGENTS.md

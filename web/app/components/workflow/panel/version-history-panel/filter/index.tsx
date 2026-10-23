@@ -52,7 +52,7 @@ const Filter: FC<FilterProps> = ({
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
         alignOffset={55}
         className="border-none bg-transparent shadow-none"

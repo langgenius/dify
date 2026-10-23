@@ -51,7 +51,7 @@ from services.skill_management_service import (
     SkillRestorePayload,
     SkillVersionUpdatePayload,
 )
-from tests.unit_tests.controllers.error_body import raised_error
+from tests.helpers.unit.controllers.error_body import raised_error
 
 
 @dataclass(frozen=True)
