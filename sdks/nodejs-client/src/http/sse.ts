@@ -17,17 +17,31 @@ const toBufferChunk = (chunk: unknown): Buffer => {
 const readLines = async function* (stream: Readable): AsyncIterable<string> {
   const decoder = new StringDecoder('utf8')
   let buffered = ''
+  let skipLeadingLf = false
   for await (const chunk of stream) {
-    buffered += decoder.write(toBufferChunk(chunk))
-    let index = buffered.indexOf('\n')
+    let decoded = decoder.write(toBufferChunk(chunk))
+    if (skipLeadingLf && decoded.length > 0) {
+      if (decoded.startsWith('\n')) {
+        decoded = decoded.slice(1)
+      }
+      skipLeadingLf = false
+    }
+    buffered += decoded
+    let index = buffered.search(/[\r\n]/)
     while (index >= 0) {
-      let line = buffered.slice(0, index)
+      const line = buffered.slice(0, index)
+      const carriageReturn = buffered[index] === '\r'
       buffered = buffered.slice(index + 1)
-      if (line.endsWith('\r')) {
-        line = line.slice(0, -1)
+      if (carriageReturn) {
+        if (buffered.startsWith('\n')) {
+          buffered = buffered.slice(1)
+        } else if (buffered.length === 0) {
+          // A CRLF pair may be split between transport chunks.
+          skipLeadingLf = true
+        }
       }
       yield line
-      index = buffered.indexOf('\n')
+      index = buffered.search(/[\r\n]/)
     }
   }
   buffered += decoder.end()
@@ -66,7 +80,14 @@ export const parseSseStream = async function* <T>(stream: Readable): AsyncIterab
     dataLines.length = 0
   }
 
-  for await (const line of readLines(stream)) {
+  let firstLine = true
+  for await (let line of readLines(stream)) {
+    if (firstLine) {
+      firstLine = false
+      if (line.startsWith('\uFEFF')) {
+        line = line.slice(1)
+      }
+    }
     if (!line) {
       yield* emitEvent()
       continue
