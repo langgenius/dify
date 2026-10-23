@@ -30,7 +30,7 @@ from services.agent.errors import (
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService, validate_home_snapshot_binding
 from services.agent.workspace_service import AgentWorkspaceBindingGenerationMismatchError, AgentWorkspaceService
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _build_draft(*, home_snapshot_id: str | None = "home-old") -> AgentConfigDraft:

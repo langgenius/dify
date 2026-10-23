@@ -19,7 +19,7 @@ from core.ops.exceptions import PendingTraceParentContextError, RetryableTraceDi
 from services.tracing.provider_dispatch import TraceExportUncertainError
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from tasks.ops_trace_task import process_trace_tasks
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 @pytest.fixture(autouse=True)

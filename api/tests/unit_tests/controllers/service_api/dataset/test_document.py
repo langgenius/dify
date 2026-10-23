@@ -65,8 +65,8 @@ from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.knowledge.dataset_service import DocumentService
 from services.knowledge.entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.knowledge.resource_scope import DatasetRef
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account, make_upload_file
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_account, make_upload_file
 
 
 def _document_data_source_info() -> dict[str, str]:

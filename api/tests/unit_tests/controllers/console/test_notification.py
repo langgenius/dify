@@ -15,8 +15,8 @@ from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from services.entities.notification_entities import NotificationItem, NotificationResult
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_account
 
 
 def _request_context() -> RequestContext:
