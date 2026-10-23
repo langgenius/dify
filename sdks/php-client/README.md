@@ -35,6 +35,9 @@ $apiKey = 'your-api-key-here';
 $conversation_id = null; // Start a new conversation.
 
 $difyClient = new DifyClient($apiKey);
+// For a self-hosted instance, pass your API directory URL as the second argument.
+// The trailing slash is optional — the SDK normalizes it either way, e.g.:
+// new DifyClient($apiKey, 'https://your-dify-host/v1');
 
 // Create a completion client
 $completionClient = new CompletionClient($apiKey);

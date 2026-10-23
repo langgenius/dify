@@ -9,7 +9,10 @@ class DifyClient {
 
     public function __construct($api_key, $base_url = null) {
         $this->api_key = $api_key;
-        $this->base_url = $base_url ?? 'https://api.dify.ai/v1/';
+        // Guzzle resolves relative endpoints against base_uri per RFC 3986: without a
+        // trailing slash the last path segment (e.g. the "v1" API directory) is
+        // treated as a filename and dropped. Always normalize to a directory URL.
+        $this->base_url = rtrim($base_url ?? 'https://api.dify.ai/v1/', '/') . '/';
         $this->client = new Client([
             'base_uri' => $this->base_url,
             'headers' => [
