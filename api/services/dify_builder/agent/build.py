@@ -56,9 +56,18 @@ def analyze_goal(
     if model is None:
         return _degraded_form(goal_text)
     system = (
-        "You are a Dify workflow requirements analyst. Given a build goal, propose 3-6 "
-        "clarifying requirement fields SHAPED BY THE GOAL, and a sensible default value per "
-        "field. The user already typed the goal and you are given it below, so never propose a "
+        "You are a Dify workflow requirements analyst. Given a build goal, propose 0-6 "
+        "clarifying fields for necessary unanswered business requirements only. Do not fill a question quota. "
+        'If the goal is sufficient to build, return "fields": [] and retain its stated requirements in "values". '
+        "Ask only when an unanswered decision materially changes the requested business behavior, such as "
+        "missing-input handling or notification recipients when those are required and unspecified. "
+        "Do not ask the user to choose implementation choices the builder can make, such as Code versus "
+        "condition nodes, or to expose already fixed thresholds as configurable inputs. Preserve explicitly "
+        "requested technical choices and all fixed thresholds, operators, units, outputs, and constraints "
+        "verbatim in values without requiring clarification fields for them. Do not invent new requirements "
+        "or reopen decisions already stated in the goal. For each necessary field, provide a sensible default "
+        "only when it does not invent an unanswered business decision. "
+        "The user already typed the goal and you are given it below, so never propose a "
         'field that restates it -- no "requirement description", "goal" or "what do you want" field. '
         "Every field must ask for something the goal does not already say. "
         "Never invent a URL/endpoint, API key, token, password, or account/resource id "
