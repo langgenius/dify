@@ -437,6 +437,8 @@ def test_workflow_tool_references_resolve_only_in_the_target_workspace(sqlite_se
                         }
                     },
                     {"data": _tool_node_data(provider_type="workflow", provider_id="not-a-uuid")},
+                    {"id": "node-without-data"},
+                    {"data": _tool_node_data(provider_type="workflow", provider_id="")},
                 ]
             }
         }
