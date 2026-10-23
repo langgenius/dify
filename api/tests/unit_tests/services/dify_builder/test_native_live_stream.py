@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from typing import NoReturn, TypedDict
 
 import pytest
@@ -289,6 +289,33 @@ def test_native_snapshots_never_call_execution_recovery(
     assert receipts[0].native_status == "paused"
     assert owner.repo.get_run(owner.verify_id).status == "running"
     assert not any(item.kind == "test_result" for item in owner.repo.list_conversation(owner.session.id))
+
+
+@pytest.mark.parametrize("expired", [False, True])
+@pytest.mark.parametrize("clock_offset", [None, 0, -8, 8])
+def test_native_snapshot_scope_expiry_preserves_utc_microsecond_boundary(
+    declining: CompletedOwner, monkeypatch: pytest.MonkeyPatch, expired: bool, clock_offset: int | None
+) -> None:
+    owner = declining
+    _restore_public_reads(owner, monkeypatch)
+    deadline = datetime(2030, 1, 1, 12, 0, 0, 123456, tzinfo=UTC)
+    now = deadline if expired else deadline - timedelta(microseconds=1)
+    now = now.replace(tzinfo=None) if clock_offset is None else now.astimezone(timezone(timedelta(hours=clock_offset)))
+    with owner.factory.begin() as sql:
+        scope = sql.get(NativeTestScope, owner.request_id)
+        assert scope is not None
+        scope.expires_at = deadline
+    with owner.factory() as sql:
+        scope = sql.get(NativeTestScope, owner.request_id)
+        assert scope is not None
+        assert scope.expires_at.tzinfo is None
+    monkeypatch.setattr(api_service, "utc_now", lambda: now)
+    (receipt,) = owner.commands.snapshots(actor=owner.case.actor, session_id=owner.session.id)
+    assert receipt.status == "waiting"
+    assert (receipt.resume_blocked_reason == "native_expired") is expired
+    if expired:
+        assert not receipt.can_resume
+    assert owner.repo.get_run(owner.verify_id).status == "running"
 
 
 def test_read_only_snapshot_keeps_physically_clean_paused_parent_unresolved(
