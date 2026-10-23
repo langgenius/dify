@@ -1,16 +1,8 @@
-"""SQLite-backed tests for trigger provider subscription lifecycle.
-
-The service intentionally owns short-lived sessions for subscription and OAuth
-client operations.  Tests bind those session constructors to an isolated SQLite
-engine and assert persisted tenant scope, commits, rollbacks, and constraints;
-provider daemons, encryption, Redis locks, and caches remain external mocks.
-"""
+"""Legacy ORM subscription reads; renewal coverage uses the injected service tests."""
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -19,7 +11,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.entities import Subscription as TriggerSubscriptionEntity
 from models.base import TypeBase
 from models.provider_ids import TriggerProviderID
 from models.trigger import (
@@ -28,7 +19,6 @@ from models.trigger import (
     TriggerSubscription,
     WorkflowPluginTrigger,
 )
-from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.trigger import trigger_provider_service as service_module
 from services.trigger.trigger_provider_service import TriggerProviderService
 
@@ -137,23 +127,6 @@ def _encrypter(
     return result
 
 
-def _patch_identity_encryption(mocker) -> Mock:
-    encrypter = _encrypter()
-    cache = Mock()
-    mocker.patch.object(service_module, "create_provider_encrypter", return_value=(encrypter, cache))
-    mocker.patch.object(
-        service_module,
-        "create_trigger_provider_encrypter_for_subscription",
-        return_value=(encrypter, cache),
-    )
-    mocker.patch.object(
-        service_module,
-        "create_trigger_provider_encrypter_for_properties",
-        return_value=(encrypter, cache),
-    )
-    return cache
-
-
 def test_get_subscription_scopes_tenant_and_decrypts(
     mocker, trigger_db: TriggerDatabase, provider_controller: Mock
 ) -> None:
@@ -179,124 +152,3 @@ def test_get_subscription_scopes_tenant_and_decrypts(
     )
     assert result.credentials == {"token": "plain"}
     assert result.properties == {"project": "plain"}
-
-
-@pytest.mark.parametrize("client_credentials", [None, {}, {"client": "system"}])
-def test_refresh_oauth_token_persists_credentials_after_commit(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock, client_credentials: dict[str, str] | None
-) -> None:
-    subscription = trigger_db.add_subscription(credential_type=CredentialType.OAUTH2)
-    _patch_provider(mocker, provider_controller)
-    encrypter = _encrypter(decrypted={"refresh": "old"}, encrypted={"access": "new"})
-    mocker.patch.object(service_module, "create_provider_encrypter", return_value=(encrypter, Mock()))
-    mocker.patch.object(
-        TriggerProviderService,
-        "get_oauth_client",
-        return_value=(
-            PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, client_credentials)
-            if client_credentials is not None
-            else None
-        ),
-    )
-    handler = Mock()
-    handler.refresh_credentials.return_value = SimpleNamespace(credentials={"access": "plain"}, expires_at=1234)
-    mocker.patch.object(service_module, "OAuthHandler", return_value=handler)
-    clear_cache = mocker.patch.object(service_module, "delete_cache_for_subscription")
-
-    result = TriggerProviderService.refresh_oauth_token(trigger_db.tenant_id, subscription.id)
-
-    persisted = trigger_db.get_subscription(subscription.id)
-    assert result == {"result": "success", "expires_at": 1234}
-    assert persisted.credentials == {"access": "new"}  # type: ignore[union-attr]
-    assert persisted.credential_expires_at == 1234  # type: ignore[union-attr]
-    clear_cache.assert_called_once()
-    handler.refresh_credentials.assert_called_once()
-    assert handler.refresh_credentials.call_args.kwargs["system_credentials"] == (client_credentials or {})
-    assert handler.refresh_credentials.call_args.kwargs["plugin_unique_identifier"] == (
-        provider_controller.plugin_unique_identifier
-    )
-
-
-def test_refresh_oauth_rejects_missing_and_non_oauth(trigger_db: TriggerDatabase) -> None:
-    with pytest.raises(ValueError, match="not found"):
-        TriggerProviderService.refresh_oauth_token(trigger_db.tenant_id, str(uuid4()))
-    subscription = trigger_db.add_subscription(credential_type=CredentialType.API_KEY)
-    with pytest.raises(ValueError, match="Only OAuth"):
-        TriggerProviderService.refresh_oauth_token(trigger_db.tenant_id, subscription.id)
-
-
-def test_refresh_subscription_skips_or_persists_refreshed_properties(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
-) -> None:
-    skipped = trigger_db.add_subscription(name="future", expires_at=500)
-    assert TriggerProviderService.refresh_subscription(trigger_db.tenant_id, skipped.id, now=100) == {
-        "result": "skipped",
-        "expires_at": 500,
-    }
-    due = trigger_db.add_subscription(name="due", expires_at=50)
-    _patch_provider(mocker, provider_controller)
-    _patch_identity_encryption(mocker)
-    provider_controller.refresh_trigger.return_value = TriggerSubscriptionEntity(
-        expires_at=900,
-        endpoint="https://example.test/hook",
-        parameters={"event": "push"},
-        properties={"project": "refreshed"},
-    )
-
-    result = TriggerProviderService.refresh_subscription(trigger_db.tenant_id, due.id, now=100)
-
-    persisted = trigger_db.get_subscription(due.id)
-    assert result == {"result": "success", "expires_at": 900}
-    assert persisted.properties == {"project": "refreshed"}  # type: ignore[union-attr]
-
-
-def test_oauth_client_prefers_enabled_tenant_record(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
-) -> None:
-    with trigger_db.session_maker.begin() as session:
-        session.add(
-            TriggerOAuthTenantClient(
-                tenant_id=trigger_db.tenant_id,
-                plugin_id=trigger_db.provider_id.plugin_id,
-                provider=trigger_db.provider_id.provider_name,
-                enabled=True,
-                encrypted_oauth_params=json.dumps({"client": "encrypted"}),
-            )
-        )
-    _patch_provider(mocker, provider_controller)
-    mocker.patch.object(
-        service_module, "create_provider_encrypter", return_value=(_encrypter(decrypted={"client": "tenant"}), Mock())
-    )
-
-    assert TriggerProviderService.get_oauth_client(
-        trigger_db.tenant_id, trigger_db.provider_id
-    ) == PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, {"client": "tenant"})
-
-
-def test_oauth_client_falls_back_to_verified_system_record(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
-) -> None:
-    with trigger_db.session_maker.begin() as session:
-        session.add(
-            TriggerOAuthSystemClient(
-                plugin_id=trigger_db.provider_id.plugin_id,
-                provider=trigger_db.provider_id.provider_name,
-                encrypted_oauth_params="system-encrypted",
-            )
-        )
-    _patch_provider(mocker, provider_controller)
-    mocker.patch.object(service_module.PluginService, "is_plugin_verified", return_value=True)
-    mocker.patch.object(service_module, "decrypt_system_params", return_value={"client": "system"})
-
-    assert TriggerProviderService.get_oauth_client(
-        trigger_db.tenant_id, trigger_db.provider_id
-    ) == PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, {"client": "system"})
-
-
-def test_unverified_plugin_cannot_read_system_oauth(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
-) -> None:
-    _patch_provider(mocker, provider_controller)
-    mocker.patch.object(service_module.PluginService, "is_plugin_verified", return_value=False)
-
-    assert TriggerProviderService.get_oauth_client(trigger_db.tenant_id, trigger_db.provider_id) is None

@@ -1191,6 +1191,7 @@ source_modules =
     services.trigger.provider_query
     services.trigger.subscription_query_service
     services.trigger.subscription_service
+    services.trigger.subscription_renewal_service
 forbidden_modules =
     controllers
     extensions

@@ -2,10 +2,10 @@
 
 import logging
 import sqlite3
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from contextlib import AbstractContextManager, contextmanager
 from copy import deepcopy
-from typing import override
+from typing import Any, override
 
 from psycopg2.errors import UniqueViolation
 from pymysql.err import IntegrityError as MySQLIntegrityError
@@ -139,6 +139,41 @@ class TriggerSubscriptionRepository(TriggerSubscriptionStore):
                 raise
             raise self._name_conflict(replacement) from error
 
+    def update_renewed_credentials(
+        self,
+        *,
+        expected: TriggerSubscriptionSnapshot,
+        credentials: Mapping[str, str],
+        credential_expires_at: int,
+    ) -> None:
+        with self._session_factory.begin() as session:
+            row = self._require_renewal_credentials(session, expected)
+            if row.credential_expires_at != expected.credential_expires_at:
+                raise TriggerSubscriptionChangedError(f"Trigger subscription {expected.id} changed. Reload and retry.")
+            # A concurrent rename or subscription edit must not discard a successfully rotated token.
+            row.credentials = deepcopy(dict(credentials))
+            row.credential_expires_at = credential_expires_at
+
+    def update_renewed_subscription(
+        self,
+        *,
+        expected: TriggerSubscriptionSnapshot,
+        properties: Mapping[str, Any],
+        expires_at: int,
+    ) -> None:
+        with self._session_factory.begin() as session:
+            row = self._require_renewal_credentials(session, expected)
+            if (
+                row.endpoint_id != expected.endpoint_id
+                or row.parameters != expected.parameters
+                or row.properties != expected.properties
+                or row.expires_at != expected.expires_at
+            ):
+                raise TriggerSubscriptionChangedError(f"Trigger subscription {expected.id} changed. Reload and retry.")
+            # Only the provider inputs participate in CAS; preserve concurrent name/visibility edits.
+            row.properties = deepcopy(dict(properties))
+            row.expires_at = expires_at
+
     @override
     def delete(self, *, expected: TriggerSubscriptionSnapshot) -> None:
         with self._session_factory.begin() as session:
@@ -153,14 +188,35 @@ class TriggerSubscriptionRepository(TriggerSubscriptionStore):
 
     @classmethod
     def _require_unchanged(cls, session: Session, expected: TriggerSubscriptionSnapshot) -> TriggerSubscription:
+        row = cls._get_locked(session, expected)
+        # Compare in Python so database JSON/text collations cannot consider
+        # different ciphertext or nested configuration values equivalent.
+        if cls._snapshot(row) != expected:
+            raise TriggerSubscriptionChangedError(f"Trigger subscription {expected.id} changed. Reload and retry.")
+        return row
+
+    @classmethod
+    def _require_renewal_credentials(
+        cls, session: Session, expected: TriggerSubscriptionSnapshot
+    ) -> TriggerSubscription:
+        row = cls._get_locked(session, expected)
+        if (
+            row.user_id != expected.user_id
+            or row.provider_id != expected.provider_id
+            or row.credential_type != expected.credential_type
+            or row.credentials != expected.credentials
+        ):
+            raise TriggerSubscriptionChangedError(f"Trigger subscription {expected.id} changed. Reload and retry.")
+        return row
+
+    @staticmethod
+    def _get_locked(session: Session, expected: TriggerSubscriptionSnapshot) -> TriggerSubscription:
         row = session.scalar(
             select(TriggerSubscription)
             .where(TriggerSubscription.tenant_id == expected.tenant_id, TriggerSubscription.id == expected.id)
             .with_for_update()
         )
-        # Compare in Python so database JSON/text collations cannot consider
-        # different ciphertext or nested configuration values equivalent.
-        if row is None or cls._snapshot(row) != expected:
+        if row is None:
             raise TriggerSubscriptionChangedError(f"Trigger subscription {expected.id} changed. Reload and retry.")
         return row
 
