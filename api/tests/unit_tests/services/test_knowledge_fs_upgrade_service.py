@@ -17,7 +17,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetMetadata, DatasetPermissionEnum, Document
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.knowledge_fs import (
     KnowledgeFSAppSpaceJoinType,
     KnowledgeFSControlSpace,
@@ -647,7 +647,7 @@ def test_snapshot_is_immutable_after_the_legacy_dataset_changes(
             created_by=owner.id,
             enabled=False,
             archived=True,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             doc_metadata={"department": "support"},
         )
         session.add_all([upload_file, metadata, document])

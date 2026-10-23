@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Document
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.knowledge_fs import (
     KnowledgeFSUpgradeFileLease,
     KnowledgeFSUpgradeFileLeaseStatus,
@@ -217,7 +217,7 @@ def test_lease_release_keeps_file_referenced_by_another_legacy_document(
             created_by=_ACCOUNT_ID,
             enabled=True,
             archived=False,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
         lease = KnowledgeFSUpgradeFileLease(
             job_id=job.id,
