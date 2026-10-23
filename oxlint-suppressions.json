@@ -2835,7 +2835,7 @@
   },
   "web/app/components/datasets/documents/detail/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
+      "count": 6
     }
   },
   "web/app/components/datasets/documents/detail/metadata/index.tsx": {
