@@ -36,7 +36,7 @@ from repositories.credentials.query_repository import CredentialQueryRepository
 from services.data_source.provider_service import DatasourceProviderService
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.plugin.oauth_service import OAuthProxyService
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 _PROVIDER_ID = "langgenius/notion_datasource/notion"
 

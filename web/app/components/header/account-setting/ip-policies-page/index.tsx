@@ -4,11 +4,18 @@ import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/wor
 import type { IpPolicySource } from '@/features/network-access/analytics'
 import type { IpPolicyFormSession } from '@/features/network-access/policy-editor/policy-form-analytics'
 import { Button } from '@langgenius/dify-ui/button'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import Image from 'next/image'
 import { useQueryState } from 'nuqs'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
@@ -65,6 +72,7 @@ function IpPoliciesListSkeleton() {
 
 export default function IpPoliciesPage() {
   const { t } = useTranslation(['common', 'deployments'])
+  const titleId = useId()
   const queryClient = useQueryClient()
   const { plan } = useAtomValue(currentWorkspaceAtom)
   const canReadPolicies = useAtomValue(canReadNetworkAccessAtom)
@@ -160,10 +168,10 @@ export default function IpPoliciesPage() {
   if (!canReadPolicies) return null
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex min-h-15 items-start justify-between gap-4 py-2">
+    <div className="@container flex flex-col gap-4">
+      <div className="flex min-h-15 items-start justify-between gap-4 py-2 @max-[480px]:flex-col">
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="title-2xl-semi-bold text-text-primary">
+          <h2 id={titleId} className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['settings.ipPolicies'], { ns: 'common' })}
           </h2>
           <p className="system-sm-regular text-text-tertiary">
@@ -217,37 +225,55 @@ export default function IpPoliciesPage() {
       )}
 
       {!isPending && groups.length > 0 && (
-        <div className="min-w-0">
-          <div
-            className={`${policyRowClassName} border-b border-divider-subtle py-2 system-xs-medium-uppercase text-text-tertiary`}
+        <ScrollArea className="min-w-0">
+          <ScrollAreaViewport
+            role="region"
+            aria-labelledby={titleId}
+            style={{ overflowY: 'hidden' }}
           >
-            <div className={policyNameColClassName}>
-              {t(($) => $['settings.ipPolicyColumnName'], { ns: 'common' })}
-            </div>
-            <div className={policyIpEntriesColClassName}>
-              {t(($) => $['settings.ipPolicyColumnIpEntries'], { ns: 'common' })}
-            </div>
-            <div className={policyUsedByColClassName}>
-              {t(($) => $['settings.ipPolicyColumnUsedBy'], { ns: 'common' })}
-            </div>
-            <div className={policyUpdatedColClassName}>
-              {t(($) => $['settings.ipPolicyColumnUpdatedAt'], { ns: 'common' })}
-            </div>
-            <div className={policyActionsColClassName} />
-          </div>
-          {groups.map((group) => (
-            <PolicyItem
-              key={group.id}
-              group={group}
-              canMutate={canMutate}
-              onView={(group) => openDialog({ mode: canMutate ? 'edit' : 'view', group })}
-              onEdit={(group) => {
-                if (!canMutate) return
-                openDialog({ mode: 'edit', group }, 'list_row_menu')
-              }}
-            />
-          ))}
-        </div>
+            <ScrollAreaContent style={{ minWidth: 0 }}>
+              <div role="table" aria-labelledby={titleId} className="w-full min-w-160">
+                <div
+                  role="row"
+                  className={`${policyRowClassName} border-b border-divider-subtle py-2 system-xs-medium-uppercase text-text-tertiary`}
+                >
+                  <div role="columnheader" className={policyNameColClassName}>
+                    {t(($) => $['settings.ipPolicyColumnName'], { ns: 'common' })}
+                  </div>
+                  <div role="columnheader" className={policyIpEntriesColClassName}>
+                    {t(($) => $['settings.ipPolicyColumnIpEntries'], { ns: 'common' })}
+                  </div>
+                  <div role="columnheader" className={policyUsedByColClassName}>
+                    {t(($) => $['settings.ipPolicyColumnUsedBy'], { ns: 'common' })}
+                  </div>
+                  <div role="columnheader" className={policyUpdatedColClassName}>
+                    {t(($) => $['settings.ipPolicyColumnUpdatedAt'], { ns: 'common' })}
+                  </div>
+                  <div role="columnheader" className={policyActionsColClassName}>
+                    <span className="sr-only">
+                      {t(($) => $['operation.moreActions'], { ns: 'common' })}
+                    </span>
+                  </div>
+                </div>
+                {groups.map((group) => (
+                  <PolicyItem
+                    key={group.id}
+                    group={group}
+                    canMutate={canMutate}
+                    onView={(group) => openDialog({ mode: canMutate ? 'edit' : 'view', group })}
+                    onEdit={(group) => {
+                      if (!canMutate) return
+                      openDialog({ mode: 'edit', group }, 'list_row_menu')
+                    }}
+                  />
+                ))}
+              </div>
+            </ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar orientation="horizontal" className="bottom-0">
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
+        </ScrollArea>
       )}
 
       {dialogState && (dialogState.mode !== 'create' || canMutate) && (

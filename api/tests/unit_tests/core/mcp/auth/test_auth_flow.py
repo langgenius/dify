@@ -43,7 +43,7 @@ from core.mcp.types import (
     ProtectedResourceMetadata,
 )
 from services.tools.mcp_oauth_scope import MCPConfiguredScopeError
-from tests.unit_tests.core.mcp.fixtures import make_provider
+from tests.helpers.unit.core.mcp.fixtures import make_provider
 
 
 @pytest.fixture

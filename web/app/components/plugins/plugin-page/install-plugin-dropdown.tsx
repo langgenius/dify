@@ -175,11 +175,7 @@ const InstallPluginDropdown = ({
             </Button>
           }
         />
-        <DropdownMenuContent
-          placement="bottom-start"
-          sideOffset={4}
-          className={cn('w-50 pb-2', popupClassName)}
-        >
+        <DropdownMenuContent align="start" className={cn('w-50 pb-2', popupClassName)}>
           <DropdownMenuGroup>
             <DropdownMenuGroupLabel>
               {t(($) => $.installFrom, { ns: 'plugin' })}

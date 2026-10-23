@@ -25,6 +25,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { isBoundAgentV2Execution } from '@/app/components/workflow/nodes/agent-v2/execution'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { localizeKnowledgeRetrievalV2Error } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/error-message'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import { useDocLink } from '@/context/i18n'
@@ -121,6 +122,10 @@ const NodePanel: FC<Props> = ({
   const isRetryNode = hasRetryNode(nodeInfo.node_type) && !!nodeInfo.retryDetail?.length
   const isAgentNode = nodeInfo.node_type === BlockEnum.Agent && !!nodeInfo.agentLog?.length
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
+
+  const localizedError = localizeKnowledgeRetrievalV2Error(nodeInfo.error, (key) =>
+    t(($) => $[key], { ns: 'workflow' }),
+  )
 
   const inputsTitle = useMemo(() => {
     let text: string = t(($) => $['common.input'], { ns: 'workflow' })
@@ -301,7 +306,7 @@ const NodePanel: FC<Props> = ({
                   )}
                   {nodeInfo.status === 'exception' && (
                     <StatusContainer status="stopped">
-                      {nodeInfo.error}
+                      {localizedError}
                       <a
                         href={docLink('/use-dify/debug/error-type')}
                         target="_blank"
@@ -313,10 +318,10 @@ const NodePanel: FC<Props> = ({
                     </StatusContainer>
                   )}
                   {nodeInfo.status === 'failed' && (
-                    <StatusContainer status="failed">{nodeInfo.error}</StatusContainer>
+                    <StatusContainer status="failed">{localizedError}</StatusContainer>
                   )}
                   {nodeInfo.status === 'retry' && (
-                    <StatusContainer status="failed">{nodeInfo.error}</StatusContainer>
+                    <StatusContainer status="failed">{localizedError}</StatusContainer>
                   )}
                   {nodeInfo.status === 'paused' && (
                     <StatusContainer status="paused">

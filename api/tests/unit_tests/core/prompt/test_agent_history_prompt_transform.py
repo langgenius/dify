@@ -10,7 +10,7 @@ from graphon.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from tests.unit_tests.core.model_fixtures import make_model_config, make_token_buffer_memory
+from tests.helpers.unit.core.model_fixtures import make_model_config, make_token_buffer_memory
 
 
 def test_get_prompt(mocker: MockerFixture) -> None:
