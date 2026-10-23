@@ -69,7 +69,9 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
             <span className="grow truncate system-sm-medium text-text-secondary">
               {currentValue.name}
             </span>
-            <span className="system-xs-regular text-text-quaternary">{currentValue.email}</span>
+            <span dir="ltr" className="system-xs-regular text-text-quaternary">
+              {currentValue.email}
+            </span>
           </>
         )}
         <span
@@ -106,7 +108,7 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
               <button
                 type="button"
                 key={account.id}
-                className="flex w-full cursor-pointer appearance-none items-center gap-2 rounded-lg py-1 pr-3 pl-2 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="flex w-full cursor-pointer appearance-none items-center gap-2 rounded-lg py-1 ps-2 pe-3 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 onClick={() => {
                   onSelect(account.id)
                   setOpen(false)
@@ -119,7 +121,9 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
                 <span className="grow truncate system-sm-medium text-text-secondary">
                   {account.name}
                 </span>
-                <span className="system-xs-regular text-text-quaternary">{account.email}</span>
+                <span dir="ltr" className="system-xs-regular text-text-quaternary">
+                  {account.email}
+                </span>
               </button>
             ))}
           </div>

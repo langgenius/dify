@@ -109,7 +109,7 @@ const MembersPage = () => {
   return (
     <>
       <div className="flex flex-col">
-        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-subtle bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 py-2 pr-5 pl-2">
+        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border-s-[0.5px] border-t-[0.5px] border-divider-subtle bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 py-2 ps-2 pe-5 rtl:bg-linear-to-l">
           <div className="flex min-w-0 grow basis-48 items-center gap-3">
             <WorkspaceAvatar name={currentWorkspace.name} size="2xl" className="shrink-0" />
             <div className="min-w-0 grow">
@@ -186,7 +186,7 @@ const MembersPage = () => {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-150 table-fixed text-left">
+          <table className="w-full min-w-150 table-fixed text-start">
             <colgroup>
               <col className="w-65" />
               <col className="w-30" />
@@ -195,13 +195,13 @@ const MembersPage = () => {
             </colgroup>
             <thead>
               <tr className="border-b border-divider-regular">
-                <th className="px-3 py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
+                <th className="px-3 py-1.75 text-start system-xs-medium-uppercase text-text-tertiary">
                   {t(($) => $['members.name'], { ns: 'workspaceMembers' })}
                 </th>
-                <th className="py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
+                <th className="py-1.75 text-start system-xs-medium-uppercase text-text-tertiary">
                   {t(($) => $['members.lastActive'], { ns: 'workspaceMembers' })}
                 </th>
-                <th className="px-3 py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
+                <th className="px-3 py-1.75 text-start system-xs-medium-uppercase text-text-tertiary">
                   {roleColumnLabel}
                 </th>
                 {canManageMembers && <td />}
