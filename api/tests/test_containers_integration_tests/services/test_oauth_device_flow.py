@@ -58,6 +58,7 @@ def test_approval_record_is_stored_without_a_token_and_claimed_once(approval: De
         consumed = store.consume_on_poll(device_code)
         assert consumed is not None
         state, ttl = consumed
+        assert ttl is not None
         assert 0 < ttl <= DEVICE_FLOW_TTL_SECONDS
         assert state.approval == approval
         assert store.consume_on_poll(device_code) is None
