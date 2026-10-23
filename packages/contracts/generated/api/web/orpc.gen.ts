@@ -60,6 +60,7 @@ import {
   zUnsupportedFileTypeError,
   zUploadTokenRequiredError,
   zWebFormRateLimitExceededError,
+  zWebLoginUnavailableError,
   zWorkflowChangedError,
 } from './zod.gen.ts'
 import {
@@ -156,6 +157,9 @@ import {
   zPostMessagesByMessageIdFeedbacksPath,
   zPostMessagesByMessageIdFeedbacksQuery,
   zPostMessagesByMessageIdFeedbacksResponse,
+  zPostPassportBody,
+  zPostPassportHeaders,
+  zPostPassportResponse,
   zPostRemoteFilesUploadBody,
   zPostRemoteFilesUploadResponse,
   zPostSavedMessagesBody,
@@ -1242,9 +1246,31 @@ export const get11 = oc
   })
   .input(z.object({ query: zGetPassportQuery.optional() }).optional())
   .output(zGetPassportResponse)
+  .errors({ end_user_login_required: { status: 401, data: zEndUserLoginRequiredError } })
+
+/**
+ * Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and a Web-only login proof for subsequent visits.
+ */
+export const post24 = oc
+  .route({
+    description:
+      'Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and a Web-only login proof for subsequent visits.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postPassport',
+    path: '/passport',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostPassportBody, headers: zPostPassportHeaders }))
+  .output(zPostPassportResponse)
+  .errors({
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+    web_login_unavailable: { status: 503, data: zWebLoginUnavailableError },
+  })
 
 export const passport = {
   get: get11,
+  post: post24,
 }
 
 /**
@@ -1275,7 +1301,7 @@ export const passport = {
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
  */
-export const post24 = oc
+export const post25 = oc
   .route({
     description:
       'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileInvalidUrlError: Remote file URL is invalid\n    RemoteFileUrlBlockedError: Remote file URL is blocked\n    RemoteFileNotFoundError: Remote file does not exist\n    RemoteFileAccessDeniedError: Remote file requires authorization\n    RemoteFileUnavailableError: Remote file is unavailable\n    RemoteFileInvalidResponseError: Remote file response is invalid\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
@@ -1302,7 +1328,7 @@ export const post24 = oc
   })
 
 export const upload2 = {
-  post: post24,
+  post: post25,
 }
 
 /**
@@ -1394,7 +1420,7 @@ export const get13 = oc
 /**
  * Save a specific message for later reference.
  */
-export const post25 = oc
+export const post26 = oc
   .route({
     description: 'Save a specific message for later reference.',
     inputStructure: 'detailed',
@@ -1409,7 +1435,7 @@ export const post25 = oc
 
 export const savedMessages = {
   get: get13,
-  post: post25,
+  post: post26,
   byMessageId: byMessageId2,
 }
 
@@ -1465,7 +1491,7 @@ export const systemFeatures = {
  *
  * Convert text to audio using text-to-speech service.
  */
-export const post26 = oc
+export const post27 = oc
   .route({
     description: 'Convert text to audio using text-to-speech service.',
     inputStructure: 'detailed',
@@ -1486,7 +1512,7 @@ export const post26 = oc
   })
 
 export const textToAudio = {
-  post: post26,
+  post: post27,
 }
 
 /**
@@ -1571,7 +1597,7 @@ export const workflow = {
  *
  * Execute a workflow with provided inputs and files.
  */
-export const post27 = oc
+export const post28 = oc
   .route({
     description: 'Execute a workflow with provided inputs and files.',
     inputStructure: 'detailed',
@@ -1612,7 +1638,7 @@ export const post27 = oc
   })
 
 export const run = {
-  post: post27,
+  post: post28,
 }
 
 /**
@@ -1620,7 +1646,7 @@ export const run = {
  *
  * Stop a running workflow task.
  */
-export const post28 = oc
+export const post29 = oc
   .route({
     description: 'Stop a running workflow task.',
     inputStructure: 'detailed',
@@ -1635,7 +1661,7 @@ export const post28 = oc
   .errors({ not_workflow_app: { status: 400, data: zNotWorkflowAppError } })
 
 export const stop3 = {
-  post: post28,
+  post: post29,
 }
 
 export const byTaskId4 = {

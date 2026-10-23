@@ -7,6 +7,7 @@ export type ClientOptions = {
 export type EmailCodeSendPayload = {
   email: string
   language?: string | null
+  mode?: LoginMode
   turnstile_token?: string | null
 }
 
@@ -69,6 +70,7 @@ export type EmailCodeLoginPayload = {
   code: string
   email: string
   language?: string | null
+  mode?: LoginMode
   timezone?: string | null
   token: string
   turnstile_token?: string | null
@@ -112,6 +114,8 @@ export type NotAllowedCreateWorkspaceError = ErrorResponse & {
   code: 'not_allowed_create_workspace'
   status: 400
 }
+
+export type LoginMode = 'console' | 'end_user'
 
 export type PostEmailCodeLoginData = {
   body: EmailCodeSendPayload

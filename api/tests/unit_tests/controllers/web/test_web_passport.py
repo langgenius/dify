@@ -81,7 +81,7 @@ def test_existing_passport_endpoint_keeps_web_login_and_does_not_select_account_
 
 
 def test_passport_query_keeps_its_existing_contract() -> None:
-    assert set(PassportQuery.model_fields) == {"user_id"}
+    assert set(PassportQuery.model_fields) == {"user_id", "mode"}
 
 
 @pytest.mark.parametrize(

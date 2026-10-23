@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any, Protocol
 
+from services.entities.account_login_entities import LoginMode
 from services.entities.passport_entities import (
     EndUserRecord,
     WebAppLoginClaims,
@@ -95,6 +96,8 @@ class WebPassportService:
         self._access_token_expire_minutes = access_token_expire_minutes
 
     def issue(self, request: WebPassportRequest) -> WebPassportResult:
+        if request.mode == LoginMode.END_USER:
+            return self.issue_for_account(app_code=request.app_code, access_token=request.access_token or "")
         app = self._passports.get_active_web_app(request.app_code)
         if app is None:
             raise WebPassportNotFoundError()
@@ -125,11 +128,11 @@ class WebPassportService:
         return WebPassportResult(access_token=token)
 
     def issue_for_account(self, *, app_code: str, access_token: str) -> WebPassportResult:
-        """Internal Account issuance for the future identity-binding flow.
+        """Explicit Account issuance for the Web login flow.
 
-        The legacy HTTP Passport endpoint does not call this method. Account and
-        App identities remain independent until a binding flow explicitly chooses
-        the Account identity; no Guest record or history is modified here.
+        The existing Passport endpoint selects this path only in End User mode.
+        Legacy anonymous restoration remains independent; no Guest record or
+        conversation history is claimed by selecting the Account identity.
         """
         if not self._account_passports_enabled:
             raise WebPassportAccountExchangeDisabledError("Account Passport exchange is not enabled.")
@@ -139,7 +142,7 @@ class WebPassportService:
         claims = self._decode_login_token(access_token)
         if claims is None:
             raise WebPassportAuthenticationRequiredError("Account login required.")
-        if claims.token_source is not None or claims.account_id is None:
+        if claims.token_source not in {None, "webapp_account_login"} or claims.account_id is None:
             raise WebPassportUnauthorizedError("Account login required.")
         auth_type = (
             self._auth.get_app_auth_type(app.app_id) if self._auth.is_webapp_auth_enabled() else WebAppAuthType.PUBLIC

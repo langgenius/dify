@@ -95,6 +95,10 @@ class DifyConfig(
 
     @model_validator(mode="after")
     def resolve_edition_defaults(self) -> Self:
+        if "END_USER_AUTH_ALLOW_ANONYMOUS" not in self.model_fields_set:
+            object.__setattr__(
+                self, "END_USER_AUTH_ALLOW_ANONYMOUS", self.DEPLOYMENT_EDITION == DeploymentEdition.COMMUNITY
+            )
         if "WEBAPP_ACCOUNT_PASSPORT_ENABLED" not in self.model_fields_set:
             # Keep the derived default out of fields_set so revalidation still
             # distinguishes it from an explicit environment or remote setting.

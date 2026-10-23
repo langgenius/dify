@@ -863,6 +863,11 @@ export const zLicenseStatusModel = z.object({
 })
 
 /**
+ * LoginMode
+ */
+export const zLoginMode = z.enum(['console', 'end_user'])
+
+/**
  * LoginPayload
  */
 export const zLoginPayload = z.object({
@@ -875,6 +880,7 @@ export const zLoginPayload = z.object({
  */
 export const zLoginStatusQuery = z.object({
   app_code: z.string().nullish(),
+  mode: zLoginMode.optional().default('console'),
   user_id: z.string().nullish(),
 })
 
@@ -1053,9 +1059,26 @@ export const zPassportAccessTokenResponse = z.object({
 })
 
 /**
+ * PassportLoginPayload
+ */
+export const zPassportLoginPayload = z.object({
+  code_verifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/),
+  login_code: z.string().min(1).max(256),
+})
+
+/**
+ * PassportLoginResponse
+ */
+export const zPassportLoginResponse = z.object({
+  access_token: z.string(),
+  webapp_access_token: z.string(),
+})
+
+/**
  * PassportQuery
  */
 export const zPassportQuery = z.object({
+  mode: zLoginMode.optional().default('console'),
   user_id: z.string().nullish(),
 })
 
@@ -1647,6 +1670,9 @@ export const zWebAppCustomConfigResponse = z.object({
  * WebAppParametersResponse
  */
 export const zWebAppParametersResponse = z.object({
+  account_login_enabled: z.boolean(),
+  account_login_url: z.string().nullable(),
+  allow_anonymous_end_user_auth: z.boolean(),
   annotation_reply: z.object({
     enabled: z.boolean().optional(),
   }),
@@ -1978,6 +2004,18 @@ export const zWebFormRateLimitExceededError = zErrorResponse.and(
   z.object({
     code: z.literal('web_form_rate_limit_exceeded'),
     status: z.literal(429),
+  }),
+)
+
+/**
+ * WebLoginUnavailableError
+ *
+ * Web App login is temporarily unavailable. Please retry.
+ */
+export const zWebLoginUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('web_login_unavailable'),
+    status: z.literal(503),
   }),
 )
 
@@ -2450,6 +2488,7 @@ export const zPostLoginResponse = zAccessTokenResultResponse
 
 export const zGetLoginStatusQuery = z.object({
   app_code: z.string().optional(),
+  mode: z.enum(['console', 'end_user']).optional().default('console'),
   user_id: z.string().optional(),
 })
 
@@ -2523,6 +2562,7 @@ export const zGetMetaResponse = zAppMetaResponse
 export const zGetParametersResponse = zWebAppParametersResponse
 
 export const zGetPassportQuery = z.object({
+  mode: z.enum(['console', 'end_user']).optional().default('console'),
   user_id: z.string().optional(),
 })
 
@@ -2530,6 +2570,17 @@ export const zGetPassportQuery = z.object({
  * Passport retrieved successfully
  */
 export const zGetPassportResponse = zPassportAccessTokenResponse
+
+export const zPostPassportBody = zPassportLoginPayload
+
+export const zPostPassportHeaders = z.object({
+  'X-App-Code': z.string(),
+})
+
+/**
+ * Web login completed
+ */
+export const zPostPassportResponse = zPassportLoginResponse
 
 export const zPostRemoteFilesUploadBody = zRemoteFileUploadPayload
 

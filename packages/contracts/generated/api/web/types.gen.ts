@@ -576,6 +576,8 @@ export type LicenseStatusModel = {
   status: LicenseStatus
 }
 
+export type LoginMode = 'console' | 'end_user'
+
 export type LoginPayload = {
   email: string
   password: string
@@ -583,6 +585,7 @@ export type LoginPayload = {
 
 export type LoginStatusQuery = {
   app_code?: string | null
+  mode?: LoginMode
   user_id?: string | null
 }
 
@@ -665,7 +668,18 @@ export type PassportAccessTokenResponse = {
   access_token: string
 }
 
+export type PassportLoginPayload = {
+  code_verifier: string
+  login_code: string
+}
+
+export type PassportLoginResponse = {
+  access_token: string
+  webapp_access_token: string
+}
+
 export type PassportQuery = {
+  mode?: LoginMode
   user_id?: string | null
 }
 
@@ -971,6 +985,9 @@ export type WebAppCustomConfigResponse = {
 }
 
 export type WebAppParametersResponse = {
+  account_login_enabled: boolean
+  account_login_url: string | null
+  allow_anonymous_end_user_auth: boolean
   annotation_reply: {
     enabled?: boolean
   }
@@ -1311,6 +1328,11 @@ export type WebAppSiteResponse = {
 export type WebFormRateLimitExceededError = ErrorResponse & {
   code: 'web_form_rate_limit_exceeded'
   status: 429
+}
+
+export type WebLoginUnavailableError = ErrorResponse & {
+  code: 'web_login_unavailable'
+  status: 503
 }
 
 export type WebMessageInfiniteScrollPagination = {
@@ -2289,6 +2311,7 @@ export type GetLoginStatusData = {
   path?: never
   query?: {
     app_code?: string
+    mode?: 'console' | 'end_user'
     user_id?: string
   }
   url: '/login/status'
@@ -2503,13 +2526,14 @@ export type GetPassportData = {
   body?: never
   path?: never
   query?: {
+    mode?: 'console' | 'end_user'
     user_id?: string
   }
   url: '/passport'
 }
 
 export type GetPassportErrors = {
-  401: ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2521,6 +2545,30 @@ export type GetPassportResponses = {
 }
 
 export type GetPassportResponse = GetPassportResponses[keyof GetPassportResponses]
+
+export type PostPassportData = {
+  body: PassportLoginPayload
+  headers: {
+    'X-App-Code': string
+  }
+  path?: never
+  query?: never
+  url: '/passport'
+}
+
+export type PostPassportErrors = {
+  401: EndUserLoginRequiredError | ErrorResponse
+  503: WebLoginUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostPassportError = PostPassportErrors[keyof PostPassportErrors]
+
+export type PostPassportResponses = {
+  200: PassportLoginResponse
+}
+
+export type PostPassportResponse = PostPassportResponses[keyof PostPassportResponses]
 
 export type PostRemoteFilesUploadData = {
   body: RemoteFileUploadPayload

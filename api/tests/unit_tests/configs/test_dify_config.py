@@ -419,6 +419,19 @@ def test_account_passport_default_depends_on_edition_only_when_unset(edition: De
 
 
 @pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [None, True, False])
+def test_anonymous_end_user_auth_edition_defaults_and_overrides(
+    edition: DeploymentEdition, enabled: bool | None
+) -> None:
+    values = {} if enabled is None else {"END_USER_AUTH_ALLOW_ANONYMOUS": enabled}
+    config = _make_config(DEPLOYMENT_EDITION=edition, **values)
+    assert config.END_USER_AUTH_ALLOW_ANONYMOUS is (
+        edition == DeploymentEdition.COMMUNITY if enabled is None else enabled
+    )
+    assert ("END_USER_AUTH_ALLOW_ANONYMOUS" in config.model_fields_set) is (enabled is not None)
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
 @pytest.mark.parametrize("enabled", [True, False])
 def test_explicit_account_passport_setting_overrides_every_edition(edition: DeploymentEdition, enabled: bool) -> None:
     config = _make_config(DEPLOYMENT_EDITION=edition, WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled)

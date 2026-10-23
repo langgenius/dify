@@ -7,6 +7,7 @@ from typing import override
 
 from configs import dify_config
 from extensions.ext_redis import RedisClientWrapper
+from extensions.redis_names import serialize_redis_name
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
@@ -37,7 +38,12 @@ from services.billing_service import BillingService
 from services.email_code_login_challenge import EmailCodeLoginChallengeStore, EmailCodeLoginChallengeUnavailableError
 from services.entities.account_activation_entities import InvitationLookup
 from services.entities.account_entities import AccountSessionTokens
-from services.entities.account_login_entities import EmailCodeChallengeStatus, LoginInvitation, RefreshAccountStatus
+from services.entities.account_login_entities import (
+    EmailCodeChallengeStatus,
+    LoginInvitation,
+    LoginMode,
+    RefreshAccountStatus,
+)
 from services.entities.auth_audit_entities import LoginFailureReason
 from services.system_feature_service import SystemFeatureService
 from services.turnstile_service import (
@@ -179,10 +185,10 @@ class RedisAccountSessionGateway(AccountSessionGateway):
         return self._issue(account_id)
 
     @override
-    def revoke(self, account_id: str) -> None:
-        refresh_token = self._redis.get(self._account_refresh_token_key(account_id))
-        if refresh_token:
-            self._delete_refresh_token(refresh_token.decode("utf-8"), account_id)
+    def revoke(self, refresh_token: str) -> None:
+        account_id = self.resolve_refresh_token(refresh_token)
+        if account_id is not None:
+            self._delete_refresh_token(refresh_token, account_id)
 
     @override
     def resolve_refresh_token(self, refresh_token: str) -> str | None:
@@ -219,7 +225,13 @@ class RedisAccountSessionGateway(AccountSessionGateway):
 
     def _delete_refresh_token(self, refresh_token: str, account_id: str) -> None:
         self._redis.delete(self._refresh_token_key(refresh_token))
-        self._redis.delete(self._account_refresh_token_key(account_id))
+        # A later login may already have replaced this Account's current session.
+        self._redis.eval(
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0",
+            1,
+            serialize_redis_name(self._account_refresh_token_key(account_id)),
+            refresh_token,
+        )
 
     @staticmethod
     def _refresh_token_key(refresh_token: str) -> str:
@@ -235,9 +247,13 @@ class SQLAlchemyAccountRefreshPreparationGateway(AccountRefreshPreparationGatewa
         self._accounts = accounts
 
     @override
-    def prepare(self, account_id: str) -> RefreshAccountStatus:
+    def prepare(self, account_id: str, *, mode: LoginMode = LoginMode.CONSOLE) -> RefreshAccountStatus:
         now = naive_utc_now()
-        account = self._accounts.load_identity(account_id, now=now)
+        account = (
+            self._accounts.get(account_id)
+            if mode == LoginMode.END_USER
+            else self._accounts.load_identity(account_id, now=now)
+        )
         if account is None:
             return RefreshAccountStatus.NOT_FOUND
         if account.status == AccountStatus.BANNED:
