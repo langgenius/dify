@@ -125,7 +125,7 @@ class BaiduVector(BaseVector):
 
     @override
     def text_exists(self, id: str) -> bool:
-        res = self._db.table(self._collection_name).query(primary_key={VDBField.PRIMARY_KEY: id})
+        res = self._db.table(self._collection_name).query(primary_key={VDBField.PRIMARY_KEY.value: id})
         return bool(res and res.code == 0)
 
     @override
