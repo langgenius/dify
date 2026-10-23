@@ -195,16 +195,15 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
                 name="Test Conversation",
                 status="normal",
                 from_source=ConversationFromSource.API,
-                inputs={},
+                _inputs={},
             )
 
         @pytest.fixture
         def message(self):
             """Create a transient mapped message."""
-            return Message(
-                id="test-message-id",
-                created_at=datetime.fromtimestamp(1234567890, tz=UTC),
-            )
+            message = Message(id="test-message-id")
+            message.created_at = datetime.fromtimestamp(1234567890, tz=UTC)
+            return message
 
         @pytest.fixture
         def task_state(self):
@@ -578,7 +577,7 @@ def _make_conversation(app_mode: AppMode) -> Conversation:
         model_id=None,
         mode=app_mode,
         name="conversation",
-        inputs={},
+        _inputs={},
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
@@ -597,7 +596,7 @@ def _make_message() -> Message:
     message = Message(
         app_id="app",
         conversation_id="conv",
-        inputs={},
+        _inputs={},
         query="query",
         message="",
         message_tokens=0,
@@ -2230,9 +2229,10 @@ class TestEasyUiMessageEndFilesCases:
                 mode=AppMode.CHAT,
                 name="Conversation",
                 from_source=ConversationFromSource.API,
-                inputs={},
+                _inputs={},
             )
-            message = Message(id=str(uuid.uuid4()), created_at=datetime.now())
+            message = Message(id=str(uuid.uuid4()))
+            message.created_at = datetime.now()
             queue = MessageBasedAppQueueManager(
                 task_id=request.task_id,
                 user_id=request.user_id,

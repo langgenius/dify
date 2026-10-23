@@ -353,10 +353,10 @@ class TestMessageListCases:
                     ],
                 }
             ),
-            created_at=created_at,
             status="normal",
             error=None,
         )
+        message.created_at = created_at
         message.set_extra_contents(
             [
                 HumanInputContent(

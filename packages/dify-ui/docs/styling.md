@@ -34,6 +34,9 @@ See Base UI's [styling] and [composition] guides for the upstream contracts.
 
 ## Tailwind CSS v4
 
+When merging default classes with an incoming `className`, use the local `cn(...)` helper and put
+defaults first so callers can override them. Resolve state callbacks before merging their classes.
+
 Import Tailwind from the consumer's root stylesheet as described in the [Tailwind CSS v4 upgrade
 guide], then import the Dify UI CSS entry:
 
@@ -52,6 +55,14 @@ stylesheet:
 @source not '../../../packages/dify-ui/src/**/*.{spec,test}.{ts,tsx}';
 @source not '../../../packages/dify-ui/src/**/*.stories.{ts,tsx}';
 ```
+
+## Writing direction
+
+Use logical inline-direction utilities for spacing, offsets, borders, corners, and alignment.
+Caller overrides must use the same family: `cn` does not merge `pl-*` with `ps-*`.
+
+Keep block-axis and sizing utilities unchanged. Preserve physical directions for swipe geometry
+and transform-based centering; explain deliberate physical exceptions with a scoped lint directive.
 
 ## Border radius
 

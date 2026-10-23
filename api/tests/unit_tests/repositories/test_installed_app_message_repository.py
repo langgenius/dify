@@ -47,7 +47,7 @@ def _conversation(session: Session, installation: InstalledAppRef) -> Conversati
         app_id=installation.app_id,
         mode=AppMode.CHAT,
         name="Chat",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=_ACCOUNT_ID,
         from_end_user_id=None,
@@ -62,7 +62,7 @@ def _message(session: Session, conversation: Conversation, *, created_at: dateti
     message = Message(
         app_id=conversation.app_id,
         conversation_id=conversation.id,
-        inputs={"empty": "", "list": [], "zero": 0, "false": False, "none": None},
+        _inputs={"empty": "", "list": [], "zero": 0, "false": False, "none": None},
         query="Question",
         message={},
         answer="Answer",
@@ -76,8 +76,8 @@ def _message(session: Session, conversation: Conversation, *, created_at: dateti
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=_ACCOUNT_ID,
         from_end_user_id=None,
-        created_at=created_at,
     )
+    message.created_at = created_at
     session.add(message)
     session.flush()
     return message

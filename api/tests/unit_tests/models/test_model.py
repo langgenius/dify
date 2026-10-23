@@ -13,7 +13,7 @@ from opentelemetry.sdk.trace import Tracer, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from pydantic import TypeAdapter
-from sqlalchemy import select
+from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
 from core.ops.entities.trace_entity import MessageTraceInfo
@@ -22,24 +22,30 @@ from core.workflow.file_reference import build_file_reference
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
 from models import model as model_module
 from models.account import Account, Tenant
+from models.base import Base, TypeBase
 from models.dataset import DatasetCollectionBinding
 from models.enums import (
+    ApiTokenType,
     CollectionBindingType,
     ConversationFromSource,
     CustomizeTokenStrategy,
+    EndUserType,
     FeedbackFromSource,
     FeedbackRating,
 )
 from models.model import (
     AccountTrialAppRecord,
     AnnotationReplyConfig,
+    ApiToken,
     App,
     AppAnnotationHitHistory,
     AppAnnotationSetting,
     AppMCPServer,
     AppMode,
     AppModelConfig,
+    AppStar,
     Conversation,
+    EndUser,
     IconType,
     InstalledApp,
     Message,
@@ -969,8 +975,8 @@ class TestAppModelsCases:
                 answer_unit_price=Decimal(0),
                 currency="USD",
                 from_source=ConversationFromSource.API,
-                created_at=datetime(2024, 1, 1),
             )
+            first_message.created_at = datetime(2024, 1, 1)
             first_message._inputs = {}
             later_message = Message(
                 app_id=conversation.app_id,
@@ -982,8 +988,8 @@ class TestAppModelsCases:
                 answer_unit_price=Decimal(0),
                 currency="USD",
                 from_source=ConversationFromSource.API,
-                created_at=datetime(2024, 1, 2),
             )
+            later_message.created_at = datetime(2024, 1, 2)
             later_message._inputs = {}
             sqlite_session.add_all([later_message, first_message])
             sqlite_session.flush()
@@ -1271,9 +1277,9 @@ class TestAppModelsCases:
                 status="normal",
                 id=str(uuid4()),
                 _inputs={"query": "test"},
-                created_at=now,
-                updated_at=now,
             )
+            message.created_at = now
+            message.updated_at = now
 
             # Act
             result = message.to_dict(session=sqlite_session)
@@ -2455,3 +2461,87 @@ class TestRecommendedAppSessionAccessorsCases:
             record = _persist_trial_record(sqlite_session, account_id=str(uuid4()), app_id=str(uuid4()))
 
             assert record.user(session=sqlite_session) is None
+
+
+TARGET_MODELS = (App, AppStar, Conversation, Message, EndUser, ApiToken)
+
+
+def test_app_conversation_models_use_typebase_registry() -> None:
+    for model in TARGET_MODELS:
+        mapper = inspect(model)
+        assert mapper.registry is TypeBase.registry
+        assert mapper.registry is not Base.registry
+
+
+def test_generated_identifiers_and_collection_defaults_are_independent() -> None:
+    first = Conversation(
+        app_id="app-1",
+        mode=AppMode.CHAT,
+        name="First",
+        from_source=ConversationFromSource.API,
+    )
+    second = Conversation(
+        app_id="app-1",
+        mode=AppMode.CHAT,
+        name="Second",
+        from_source=ConversationFromSource.API,
+    )
+
+    assert first.id != second.id
+    assert first._inputs == second._inputs == {}
+    assert first._inputs is not second._inputs
+
+
+@pytest.mark.parametrize("sqlite_session", [TARGET_MODELS], indirect=True)
+def test_app_conversation_models_persist_with_relationships(sqlite_session: Session) -> None:
+    app = App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Typed app",
+        mode=AppMode.CHAT,
+        enable_site=True,
+        enable_api=True,
+    )
+    star = AppStar(id="star-1", tenant_id=app.tenant_id, app_id=app.id, account_id="account-1")
+    conversation = Conversation(
+        id="conversation-1",
+        app_id=app.id,
+        mode=AppMode.CHAT,
+        name="Typed conversation",
+        from_source=ConversationFromSource.API,
+    )
+    message = Message(
+        id="message-1",
+        app_id=app.id,
+        conversation_id=conversation.id,
+        query="hello",
+        message={"role": "user"},
+        answer="world",
+        from_source=ConversationFromSource.API,
+        total_price=Decimal(0),
+    )
+    end_user = EndUser(
+        id="end-user-1",
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        type=EndUserType.BROWSER,
+        session_id="session-1",
+    )
+    token = ApiToken(
+        id="token-1",
+        app_id=app.id,
+        tenant_id=app.tenant_id,
+        type=ApiTokenType.APP,
+        token="secret",
+    )
+
+    sqlite_session.add_all([app, star, conversation, message, end_user, token])
+    sqlite_session.commit()
+
+    persisted_conversation = sqlite_session.get(Conversation, conversation.id)
+    assert persisted_conversation is not None
+    assert [item.id for item in persisted_conversation.messages] == [message.id]
+    assert sqlite_session.get(AppStar, star.id) is not None
+    assert sqlite_session.get(EndUser, end_user.id) is not None
+    assert sqlite_session.get(ApiToken, token.id) is not None
+    assert message.created_at is not None

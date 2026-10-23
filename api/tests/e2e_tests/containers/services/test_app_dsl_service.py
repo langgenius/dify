@@ -104,7 +104,12 @@ def _app_record(**overrides: Any) -> App:
         "icon_background": "#fff",
         "use_icon_as_answer_icon": False,
     }
-    return App(**(defaults | overrides))
+    attributes = defaults | overrides
+    timestamps = {name: attributes.pop(name) for name in ("created_at", "updated_at") if name in attributes}
+    app = App(**attributes)
+    for name, value in timestamps.items():
+        setattr(app, name, value)
+    return app
 
 
 class TestAppDslService:

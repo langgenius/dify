@@ -2853,9 +2853,9 @@ class TestTrialPreviewDetailsCases:
             enable_site=False,
             enable_api=False,
             max_active_requests=0,
-            created_at=_TRIAL_PREVIEW_DETAILS_CREATED_AT,
-            updated_at=_UPDATED_AT,
         )
+        target.created_at = _TRIAL_PREVIEW_DETAILS_CREATED_AT
+        target.updated_at = _UPDATED_AT
         config = AppModelConfig(
             app_id=target.id,
             opening_statement="",
@@ -3671,7 +3671,7 @@ class TestTrialSuggestedQuestionsCases:
                 app_model_config_id=config.id,
                 mode=_trial_suggested_questions_AppMode.CHAT,
                 name="Trial conversation",
-                inputs={},
+                _inputs={},
                 from_source=ConversationFromSource.CONSOLE,
                 from_account_id=account.id,
             )
@@ -3680,7 +3680,7 @@ class TestTrialSuggestedQuestionsCases:
             message = Message(
                 app_id=target.id,
                 conversation_id=conversation.id,
-                inputs={},
+                _inputs={},
                 query="What is a trial?",
                 message={},
                 message_unit_price=Decimal(0),

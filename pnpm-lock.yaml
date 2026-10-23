@@ -835,6 +835,9 @@ importers:
       node:
         specifier: runtime:24.22.1
         version: runtime:24.22.1
+      tsrs:
+        specifier: 'catalog:'
+        version: 0.18.0-ts7.1.0-dev.20260929
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'

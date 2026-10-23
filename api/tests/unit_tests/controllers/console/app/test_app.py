@@ -889,7 +889,7 @@ def _app(
     created_at: datetime | None = None,
 ) -> _app_response_models_App:
     timestamp = created_at or _ts()
-    return _app_response_models_App(
+    app = _app_response_models_App(
         id=app_id,
         tenant_id=tenant_id,
         name=name,
@@ -901,9 +901,10 @@ def _app(
         enable_site=True,
         enable_api=True,
         max_active_requests=0,
-        created_at=timestamp,
-        updated_at=timestamp,
     )
+    app.created_at = timestamp
+    app.updated_at = timestamp
+    return app
 
 
 def _workflow(

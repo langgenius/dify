@@ -127,7 +127,7 @@ def _make_conversation(*, conversation_id: str = "conversation-id", app_id: str 
         app_id=app_id,
         mode=AppMode.ADVANCED_CHAT,
         name="Advanced Chat Conversation",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.API,
     )
 
@@ -135,11 +135,11 @@ def _make_conversation(*, conversation_id: str = "conversation-id", app_id: str 
 def _make_message(
     *, message_id: str = "message-id", conversation_id: str = "conversation-id", app_id: str = "app"
 ) -> Message:
-    return Message(
+    message = Message(
         id=message_id,
         app_id=app_id,
         conversation_id=conversation_id,
-        inputs={},
+        _inputs={},
         query="hello",
         message={},
         answer="",
@@ -148,8 +148,9 @@ def _make_message(
         answer_unit_price=Decimal(0),
         currency="USD",
         from_source=ConversationFromSource.API,
-        created_at=naive_utc_now(),
     )
+    message.created_at = naive_utc_now()
+    return message
 
 
 class TestAdvancedChatAppGeneratorValidation:
@@ -1569,7 +1570,7 @@ def test_init_generate_records_marks_existing_conversation(sqlite_session: Sessi
         model_id=None,
         mode=app_config.app_mode.value,
         name="existing",
-        inputs={},
+        _inputs={},
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
@@ -1885,7 +1886,7 @@ def _pause_resume_make_conversation() -> Conversation:
         app_id="app",
         mode=AppMode.ADVANCED_CHAT,
         name="Pause Resume Conversation",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.API,
     )
 
@@ -1895,7 +1896,7 @@ def _pause_resume_make_message() -> Message:
         id="msg",
         app_id="app",
         conversation_id="conv",
-        inputs={},
+        _inputs={},
         query="query",
         message={},
         answer="answer",

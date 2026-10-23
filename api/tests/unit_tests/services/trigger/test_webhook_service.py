@@ -1260,6 +1260,7 @@ class TestWebhookServiceRelationshipsCases:
             App,
             SimpleNamespace(id="00000000-0000-0000-0000-000000000001", tenant_id="tenant-1", created_by="user-1"),
         )
+        assert app.created_by is not None
         webhook_trigger = WorkflowWebhookTrigger(
             app_id=app.id,
             tenant_id=app.tenant_id,
@@ -1306,6 +1307,7 @@ class TestWebhookServiceRelationshipsCases:
             App,
             SimpleNamespace(id="00000000-0000-0000-0000-000000000001", tenant_id="tenant-1", created_by="user-1"),
         )
+        assert app.created_by is not None
         webhook_trigger = WorkflowWebhookTrigger(
             app_id=app.id,
             tenant_id=app.tenant_id,

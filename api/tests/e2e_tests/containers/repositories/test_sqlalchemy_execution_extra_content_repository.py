@@ -148,7 +148,7 @@ def _create_message(
     message = Message(
         app_id=scope.app_id,
         conversation_id=conversation_id,
-        inputs={},
+        _inputs={},
         query="test query",
         message={"messages": []},
         answer="test answer",

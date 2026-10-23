@@ -176,7 +176,7 @@ def test_capture_policy_round_trip_and_legacy_defaults(sqlite_session_factory: s
                 id="app",
                 tenant_id="tenant",
                 name="Trace app",
-                mode="workflow",
+                mode=AppMode.WORKFLOW,
                 enable_site=False,
                 enable_api=False,
                 tracing=json.dumps({"enabled": True, "tracing_provider": "langfuse"}),

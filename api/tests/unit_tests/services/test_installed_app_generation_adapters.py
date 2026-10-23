@@ -1,6 +1,7 @@
 import json
 from collections.abc import Callable, Generator, Mapping
 from dataclasses import dataclass, field
+from decimal import Decimal
 from inspect import GEN_CLOSED, getgeneratorstate
 from typing import cast, override
 from unittest.mock import MagicMock
@@ -395,7 +396,7 @@ def _seed_more_like_this_message(harness: _RuntimeHarness, session_factory: sess
             app_id=harness.app_id,
             mode=AppMode.COMPLETION,
             name="Earlier completion",
-            inputs={},
+            _inputs={},
             from_source=ConversationFromSource.CONSOLE,
             from_account_id=harness.account_id,
         )
@@ -404,12 +405,12 @@ def _seed_more_like_this_message(harness: _RuntimeHarness, session_factory: sess
         message = Message(
             app_id=harness.app_id,
             conversation_id=conversation.id,
-            inputs={"count": 0},
+            _inputs={"count": 0},
             query="Earlier query",
             message={},
             answer="Earlier answer",
-            message_unit_price=0,
-            answer_unit_price=0,
+            message_unit_price=Decimal(0),
+            answer_unit_price=Decimal(0),
             currency="USD",
             from_source=ConversationFromSource.CONSOLE,
             from_account_id=harness.account_id,
@@ -564,7 +565,7 @@ def _seed_chat_conversation(
             app_id=app.id,
             mode=mode,
             name="Existing conversation",
-            inputs={},
+            _inputs={},
             from_source=ConversationFromSource.CONSOLE,
             from_account_id=harness.account_id,
             from_end_user_id=None,
