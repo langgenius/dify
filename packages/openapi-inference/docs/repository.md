@@ -1,6 +1,6 @@
 # Dify integration and repository validation
 
-These instructions are for contributors working in the Dify monorepo. Package users should start with the [README](../README.md).
+These instructions are for contributors working in the Dify monorepo. Package users should start with the [README].
 
 ## Verification with the repository's actual specifications
 
@@ -74,5 +74,6 @@ The integration checks pagination, CSRF/cookies, cache invalidation, HTTP errors
 
 References: [TS 7.1 announcement] and [content mapper protocol].
 
+[README]: ../README.md
 [TS 7.1 announcement]: https://devblogs.microsoft.com/typescript/announcing-typescript-7-1-beta
 [content mapper protocol]: https://github.com/microsoft/typescript-go/pull/4712
