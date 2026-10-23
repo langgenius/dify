@@ -215,7 +215,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
                 <DropdownMenuCheckboxItem
                   checked={!learnDifyHidden}
                   closeOnClick={false}
-                  className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
+                  className="mx-0 h-8 gap-1 py-1 ps-3 pe-2"
                   onCheckedChange={(checked) => setLearnDifyHidden(!checked)}
                 >
                   <span
@@ -232,7 +232,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
                 <DropdownMenuCheckboxItem
                   checked={stepByStepTourEnabled}
                   closeOnClick={!stepByStepTourEnabled}
-                  className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
+                  className="mx-0 h-8 gap-1 py-1 ps-3 pe-2"
                   disabled={!canToggleStepByStepTour}
                   onCheckedChange={handleStepByStepTourCheckedChange}
                 >

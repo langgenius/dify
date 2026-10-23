@@ -85,7 +85,7 @@ function AgentRosterSkeleton() {
           key={id}
           className="relative h-36.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3"
         >
-          <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
+          <div className="flex items-center gap-3 ps-3.5 pe-4 pt-3.5 pb-2">
             <SkeletonRectangle className="my-0 size-12 shrink-0 rounded-full opacity-20" />
             <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-1">
               <SkeletonRectangle className="my-0 h-3 w-36 max-w-full rounded-md opacity-20" />
@@ -288,7 +288,7 @@ function AgentRosterItem({
 
   const cardContent = (
     <>
-      <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
+      <div className="flex items-center gap-3 ps-3.5 pe-4 pt-3.5 pb-2">
         <span aria-hidden className="shrink-0">
           <AppIcon size="xl" shape="circle" icon={agent} />
         </span>
@@ -305,11 +305,11 @@ function AgentRosterItem({
         </div>
       </div>
       {isDraft && (
-        <div className="pointer-events-none absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden">
-          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
+        <div className="pointer-events-none absolute inset-e-0 top-[-0.5px] flex h-5 items-start overflow-hidden">
+          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)] rtl:-scale-x-100" />
           <div
             id={draftStatusId}
-            className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary"
+            className="flex h-5 items-center bg-background-section-burn ps-0.5 pe-2 system-2xs-medium-uppercase text-text-tertiary"
           >
             {t(($) => $['roster.usageStatus.draft'], { ns: 'agentRoster' })}
           </div>
@@ -347,7 +347,7 @@ function AgentRosterItem({
                 type="button"
                 aria-labelledby={nameId}
                 aria-describedby={accessibleDescriptionIds || undefined}
-                className={cn(cardClassName, 'w-full cursor-not-allowed text-left')}
+                className={cn(cardClassName, 'w-full cursor-not-allowed text-start')}
                 onClick={showPreviewOnlyAccessWarning}
               >
                 {cardContent}
@@ -371,7 +371,7 @@ function AgentRosterItem({
         )}
       </ContextMenu>
       {hasActions && (
-        <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
+        <div className="pointer-events-none absolute inset-e-[-0.5px] top-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 rtl:bg-[linear-gradient(293deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] [@media(hover:none)]:opacity-100">
           <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
