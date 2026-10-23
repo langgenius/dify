@@ -44,8 +44,6 @@ export type DifyMock = {
   lastRequest: LastRequest | null
   /** Number of requests received, including GET _catalog */
   requestCount: number
-  /** Body of the most recent POST /oauth/device/code */
-  lastDeviceCodeBody: Record<string, unknown> | null
   /** Number of DELETE /account/sessions/self calls that passed the bearer check */
   sessionRevokeCount: number
   /** Runs before each device-token poll is answered: lets a test act while a resume waits. */
@@ -269,7 +267,6 @@ export type MockState = {
   lastImportBody: Record<string, unknown> | null
   lastRequest: LastRequest | null
   requestCount: number
-  lastDeviceCodeBody: Record<string, unknown> | null
   sessionRevokeCount: number
   beforeDeviceToken?: () => void
 }
@@ -787,8 +784,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
 
   app.get('/openapi/v1/apps/:id/tasks/:task_id/events', (_c) => sseResponse(hitlResumedResponse()))
 
-  app.post('/openapi/v1/oauth/device/code', async (c) => {
-    if (state !== undefined) state.lastDeviceCodeBody = await c.req.json()
+  app.post('/openapi/v1/oauth/device/code', (c) => {
     const scenario = getScenario()
     if (scenario === 'no-device-flow')
       return errorResponse(ServerErrorCode.NotFound, 'not found', 404)
@@ -867,7 +863,6 @@ export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
     lastImportBody: null,
     lastRequest: null,
     requestCount: 0,
-    lastDeviceCodeBody: null,
     sessionRevokeCount: 0,
   }
   const app = buildApp(() => scenario, state)
@@ -909,9 +904,6 @@ export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
         },
         get requestCount() {
           return state.requestCount
-        },
-        get lastDeviceCodeBody() {
-          return state.lastDeviceCodeBody
         },
         get sessionRevokeCount() {
           return state.sessionRevokeCount

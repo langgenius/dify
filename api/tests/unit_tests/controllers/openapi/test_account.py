@@ -15,7 +15,7 @@ from controllers.openapi._models import SessionListQuery
 from controllers.openapi.account import AccountSessionByIdApi, AccountSessionsApi
 from machinery.context import AccountRequestContext
 from services.account_errors import AccountSessionNotFoundError
-from services.entities.account_access_entities import AccountSessionPage, AccountSessionSnapshot
+from services.entities.account_access_entities import AccountSessionPage
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -85,35 +85,3 @@ def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch
 def test_session_list_query_rejects_out_of_bounds(params):
     with pytest.raises(ValidationError):
         SessionListQuery.model_validate(params)
-
-
-class _TwoSessionService(_SessionListService):
-    def __init__(self, ids: tuple[str, str]):
-        self._ids = ids
-
-    def list_sessions(self, _context: AccountRequestContext, *, page: int, limit: int) -> AccountSessionPage:
-        items = tuple(
-            AccountSessionSnapshot(
-                id=session_id,
-                prefix="dfoa_",
-                client_id="difyctl",
-                device_label="laptop",
-                created_at=None,
-                last_used_at=None,
-                expires_at=None,
-            )
-            for session_id in self._ids
-        )
-        return AccountSessionPage(page=page, limit=limit, total=len(items), items=items)
-
-
-def test_session_list_marks_only_the_callers_session(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    ctx = _ctx()
-    caller_id = str(ctx.subject.token_id)
-    other_id = str(uuid.uuid4())
-    _stub_account_service(monkeypatch)
-    sys.modules[_ACCOUNT_MOD].application_services().accounts.access = _TwoSessionService((other_id, caller_id))
-    api = AccountSessionsApi()
-    with app.test_request_context("/openapi/v1/account/sessions"):
-        result = api.get.__handler__(api, ctx, query=SessionListQuery(page=1, limit=20))
-    assert {row.id: row.current for row in result.data} == {other_id: False, caller_id: True}

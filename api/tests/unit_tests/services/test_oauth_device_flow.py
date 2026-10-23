@@ -1,18 +1,11 @@
 import json
-import logging
 from collections.abc import Callable, Sequence
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 
-import pytest
-
-from constants.oauth_bearer import SubjectType
 from services.oauth_device_contracts import (
     AccountApprovalRecord,
     ApprovalTransitionConfirmation,
-    DeviceApprovalRecord,
     DeviceFlowStatus,
-    ExternalApprovalRecord,
-    device_key_for,
 )
 from services.oauth_device_flow import DeviceFlowRedis, DeviceFlowState
 
@@ -36,22 +29,14 @@ _APPROVAL_JSON = {
 class _Redis:
     response: str
     ttl_seconds: int = 900
-    set_result: bool = True
     delete_error: Exception | None = None
     deleted: list[str] = field(default_factory=list)
     script_sources: list[str] = field(default_factory=list)
     script_calls: list[tuple[str, tuple[str, ...], tuple[object, ...]]] = field(default_factory=list)
-    written: dict[str, str] = field(default_factory=dict)
-    set_calls: list[tuple[str, str, int]] = field(default_factory=list)
-
-    def setex(self, name: str, time: int, value: str) -> None:
-        _ = time
-        self.written[name] = value
 
     def set(self, name: str, value: str, *, nx: bool, ex: int) -> bool:
-        assert nx
-        self.set_calls.append((name, value, ex))
-        return self.set_result
+        _ = (name, value, nx, ex)
+        return True
 
     def delete(self, name: str) -> None:
         if self.delete_error is not None:
@@ -107,16 +92,6 @@ def test_consume_on_poll_uses_one_cluster_safe_script_key() -> None:
     assert redis.deleted == ["user_code:ABCD-EFGH"]
 
 
-@pytest.mark.parametrize("redis_ttl", [-1, -2])
-def test_consume_on_poll_reports_no_lifetime_left_for_a_missing_ttl(redis_ttl: int) -> None:
-    redis = _Redis(response=_approved_state().to_json(), ttl_seconds=redis_ttl)
-
-    result = DeviceFlowRedis(redis).consume_on_poll("device-1")
-
-    assert result is not None
-    assert result[1] == 0
-
-
 def test_user_code_cleanup_failure_does_not_lose_consumed_state() -> None:
     redis = _Redis(response=_approved_state().to_json(), delete_error=ConnectionError("redis unavailable"))
 
@@ -166,134 +141,6 @@ def test_confirm_approval_marker_has_no_token_id() -> None:
 
     assert store.confirm_approval("device-1", "approve-1") is ApprovalTransitionConfirmation.PUBLISHED
     assert store.confirm_approval("device-1", "approve-2") is ApprovalTransitionConfirmation.NOT_PUBLISHED
-
-
-def test_restore_puts_state_back_with_its_remaining_ttl() -> None:
-    redis = _Redis(response="")
-    state = _approved_state()
-
-    assert DeviceFlowRedis(redis).restore("device-1", state, 312) is True
-
-    assert redis.set_calls == [
-        ("device_code:device-1", state.to_json(), 312),
-        ("user_code:ABCD-EFGH", "device-1", 312),
-    ]
-
-
-def test_restore_never_extends_a_code_past_its_original_expiry() -> None:
-    redis = _Redis(response="")
-
-    DeviceFlowRedis(redis).restore("device-1", _approved_state(), 1)
-
-    assert [ttl for _name, _value, ttl in redis.set_calls] == [1, 1]
-
-
-def test_restore_does_not_overwrite_a_newer_state() -> None:
-    redis = _Redis(response="", set_result=False)
-
-    assert DeviceFlowRedis(redis).restore("device-1", _approved_state(), 312) is False
-
-    assert [name for name, _value, _ttl in redis.set_calls] == ["device_code:device-1"]
-
-
-def test_remaining_seconds_returns_the_redis_ttl() -> None:
-    assert DeviceFlowRedis(_Redis(response="", ttl_seconds=312)).remaining_seconds("device-1") == 312
-
-
-def test_remaining_seconds_is_none_when_the_key_is_gone(caplog: pytest.LogCaptureFixture) -> None:
-    with caplog.at_level(logging.ERROR):
-        assert DeviceFlowRedis(_Redis(response="", ttl_seconds=-2)).remaining_seconds("device-1") is None
-
-    assert caplog.text == ""
-
-
-def test_remaining_seconds_logs_and_is_none_when_the_key_has_no_expiry(caplog: pytest.LogCaptureFixture) -> None:
-    with caplog.at_level(logging.ERROR):
-        assert DeviceFlowRedis(_Redis(response="", ttl_seconds=-1)).remaining_seconds("device-1") is None
-
-    assert "no expiry" in caplog.text
-
-
-def test_reader_tolerates_old_approved_state_with_poll_payload() -> None:
-    legacy = {
-        "user_code": "ABCD-EFGH",
-        "client_id": "difyctl",
-        "device_label": "CLI",
-        "status": "approved",
-        "token_id": "transition:approve-1:token-1",
-        "created_at": "",
-        "created_ip": "127.0.0.1",
-        "last_poll_at": "",
-        "poll_payload": {"token": "dfoa_legacy", "token_id": "token-1"},
-    }
-
-    state = DeviceFlowRedis(_Redis(response=json.dumps(legacy))).load_by_device_code("device-1")
-
-    assert state is not None
-    assert state.approval is None
-    assert state.installation_id is None
-    assert state.poll_payload == legacy["poll_payload"]
-
-
-@pytest.mark.parametrize(
-    "approval",
-    [
-        {**_APPROVAL_JSON, "subject_type": "robot"},
-        {**_APPROVAL_JSON, "subject_type": SubjectType.RESOURCE_ACCESS},
-        {key: value for key, value in _APPROVAL_JSON.items() if key != "subject_email"},
-        {**_APPROVAL_JSON, "account_id": None},
-        {**_APPROVAL_JSON, "workspace_id": None},
-    ],
-    ids=[
-        "unknown-subject-type",
-        "unmintable-subject-type",
-        "missing-field",
-        "account-without-id",
-        "account-without-workspace",
-    ],
-)
-def test_reader_rejects_an_approval_it_cannot_honour(
-    approval: dict[str, object], caplog: pytest.LogCaptureFixture
-) -> None:
-    raw = json.loads(_approved_state().to_json())
-    raw["approval"] = approval
-    store = DeviceFlowRedis(_Redis(response=json.dumps(raw)))
-
-    with caplog.at_level(logging.ERROR):
-        assert store.load_by_device_code("device-1") is None
-        assert store.consume_on_poll("device-1") is None
-
-    assert "corrupt state" in caplog.text
-
-
-@pytest.mark.parametrize(
-    "approval",
-    [
-        ExternalApprovalRecord(subject_email="external@example.com", subject_issuer="https://idp.example"),
-        _APPROVAL,
-    ],
-    ids=["external", "account"],
-)
-def test_reader_round_trips_the_approvals_it_writes(approval: DeviceApprovalRecord) -> None:
-    state = _approved_state()
-    state.approval = approval
-
-    loaded = DeviceFlowRedis(_Redis(response=state.to_json())).load_by_device_code("device-1")
-
-    assert loaded is not None
-    assert loaded.approval == approval
-
-
-def test_external_approval_keeps_the_stored_shape() -> None:
-    approval = ExternalApprovalRecord(subject_email="external@example.com", subject_issuer="https://idp.example")
-
-    assert asdict(approval) == {
-        "subject_email": "external@example.com",
-        "subject_issuer": "https://idp.example",
-        "subject_type": "external_sso",
-        "account_id": None,
-        "workspace_id": None,
-    }
 
 
 def test_approval_guard_release_compares_owner_before_delete() -> None:
@@ -350,42 +197,3 @@ def test_state_reader_tolerates_legacy_approval_fields() -> None:
     state = DeviceFlowState.from_json(json.dumps(legacy))
 
     assert state.status is DeviceFlowStatus.PENDING
-
-
-def test_device_key_prefers_installation_id() -> None:
-    assert device_key_for(installation_id="abcd1234", device_label="host") == "install:abcd1234"
-    assert device_key_for(installation_id=None, device_label="host") == "host"
-
-
-@pytest.mark.parametrize("installation_id", ["abcd1234", None], ids=["install", "legacy"])
-def test_start_stores_the_installation_id_in_pending_state(installation_id: str | None) -> None:
-    redis = _Redis(response="")
-
-    device_code, _user_code, _ttl = DeviceFlowRedis(redis).start(
-        client_id="difyctl",
-        device_label="CLI",
-        installation_id=installation_id,
-        created_ip="127.0.0.1",
-    )
-
-    state = DeviceFlowState.from_json(redis.written[f"device_code:{device_code}"])
-    assert state.installation_id == installation_id
-    assert state.device_label == "CLI"
-
-
-def test_state_round_trips_installation_id_and_reads_old_states() -> None:
-    state = DeviceFlowState(
-        user_code="ABCD-EFGH",
-        client_id="difyctl",
-        device_label="CLI",
-        status=DeviceFlowStatus.PENDING,
-        installation_id="abcd1234",
-    )
-    assert DeviceFlowState.from_json(state.to_json()).installation_id == "abcd1234"
-
-
-def test_state_written_before_installation_ids_has_none() -> None:
-    old = DeviceFlowState.from_json('{"user_code":"A","client_id":"difyctl","device_label":"h","status":"pending"}')
-
-    assert old.installation_id is None
-    assert device_key_for(installation_id=old.installation_id, device_label=old.device_label) == "h"

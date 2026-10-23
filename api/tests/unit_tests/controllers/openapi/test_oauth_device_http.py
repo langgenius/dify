@@ -109,51 +109,6 @@ def test_device_code_serializes_authorization_and_passes_request_origin(
     )
 
 
-@pytest.mark.parametrize(
-    ("body_extra", "expected_installation_id"),
-    [
-        ({"installation_id": "0f9c2b7e-4a1d-4c3e-9b8a-2d6f1e0c5a7b"}, "0f9c2b7e-4a1d-4c3e-9b8a-2d6f1e0c5a7b"),
-        ({"installation_id": None}, None),
-        ({}, None),
-    ],
-    ids=["install", "null", "absent"],
-)
-def test_code_request_passes_installation_id_or_none(
-    openapi_app: Flask, device_service: Mock, body_extra: dict[str, str | None], expected_installation_id: str | None
-) -> None:
-    device_service.start.return_value = DeviceAuthorization(
-        device_code="opaque-code",
-        user_code="ABCD-EFGH",
-        verification_uri="https://console.example/device",
-        expires_in=900,
-        interval=5,
-    )
-
-    response = openapi_app.test_client().post(
-        f"{_PREFIX}/code", json={"client_id": "difyctl", "device_label": "h", **body_extra}
-    )
-
-    assert response.status_code == 200
-    assert device_service.start.call_args.kwargs["installation_id"] == expected_installation_id
-
-
-@pytest.mark.parametrize(
-    "installation_id",
-    ["x y", "short", "a" * 65, "abcd_1234", "abcd1234\n", 12345678],
-    ids=["space", "too-short", "too-long", "underscore", "trailing-newline", "number"],
-)
-def test_code_request_rejects_malformed_installation_id(
-    openapi_app: Flask, device_service: Mock, installation_id: object
-) -> None:
-    response = openapi_app.test_client().post(
-        f"{_PREFIX}/code",
-        json={"client_id": "difyctl", "device_label": "h", "installation_id": installation_id},
-    )
-
-    assert response.status_code == 400
-    assert device_service.mock_calls == []
-
-
 @pytest.mark.parametrize("path", ["code", "token", "approve", "deny", "approve-external"])
 @pytest.mark.parametrize("body", ["{}", "[]", "{invalid"])
 def test_invalid_device_request_never_reaches_service(

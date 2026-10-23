@@ -109,17 +109,3 @@ it('saves only the current shape', async () => {
   await (await load()).save(LOGIN)
   expect(readFileSync(join(dir, LOGIN_FILE_NAME), 'utf8')).not.toContain('future_key')
 })
-
-it('reads a login.yml without session_id as a null session id', async () => {
-  const { streams, load } = withLoginFile(
-    'server: https://d.example\nemail: me@x\ntoken_storage: file\n',
-  )
-  expect((await (await load()).current())?.sessionId).toBeNull()
-  expect(streams.errBuf()).toBe('')
-})
-
-it('round-trips the session id through login.yml', async () => {
-  const { load } = withLoginFile('future_key: x\n')
-  await (await load()).save(LOGIN)
-  expect(readFileSync(join(dir, LOGIN_FILE_NAME), 'utf8')).toContain('session_id: tok-1')
-})

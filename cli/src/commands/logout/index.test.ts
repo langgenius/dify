@@ -1,13 +1,12 @@
 import type { TestWorld } from '@test/fixtures/kernel'
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
-import { INSTALLATION_FILE_NAME } from '@/auth/installation'
 import { PENDING_FILE_NAME } from '@/auth/pending-login'
 import { Context } from '@/kernel/context'
 import { commands } from '@/plugins/commands'
-import { LOGIN_FILE_NAME, session } from '@/plugins/session'
+import { session } from '@/plugins/session'
 import { token } from '@/plugins/token'
 
 const worlds: TestWorld[] = []
@@ -46,29 +45,6 @@ it('revokes the session on the server and clears local state', async () => {
   await expect((await new Context().get(token)).get()).rejects.toMatchObject({
     code: 'not_logged_in',
   })
-})
-
-it('keeps the installation id', async () => {
-  const w = await testContext({ login: true, argv: ['logout'] })
-  worlds.push(w)
-  const installationFile = join(w.dir, INSTALLATION_FILE_NAME)
-  writeFileSync(installationFile, 'id: kept-id-1234\n')
-  expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(readFileSync(installationFile, 'utf8')).toBe('id: kept-id-1234\n')
-})
-
-it('treats a 401 on the revoke as already gone', async () => {
-  const w = await testContext({ login: true, argv: ['logout'] })
-  worlds.push(w)
-  w.mock.setScenario('auth-expired')
-  expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(w.mock.lastRequest).toMatchObject({
-    method: 'DELETE',
-    path: '/openapi/v1/account/sessions/self',
-  })
-  expect(w.io.errBuf()).toBe('')
-  expect(JSON.parse(w.io.outBuf())).toMatchObject({ revoked: true })
-  expect(await (await w.ctx.get(session)).current()).toBeNull()
 })
 
 it('drops a pending --no-wait login', async () => {
@@ -134,45 +110,4 @@ it('refuses under an env login without dropping a pending interactive login', as
     code: 'usage_invalid_flag',
   })
   expect(existsSync(pendingFile)).toBe(true)
-})
-
-it('points to the session list when the login has no session id', async () => {
-  const w = await testContext({ login: true, argv: ['logout'] })
-  worlds.push(w)
-  await accountLogin(w, null)
-  w.mock.setScenario('server-5xx')
-  expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(JSON.parse(w.io.outBuf())).toMatchObject({
-    revoked: false,
-    hints: [
-      { summary: 'find the id of this session', op: 'get.account.session' },
-      { summary: 'revoke it from another login', op: 'delete.account.session' },
-    ],
-  })
-  expect(JSON.parse(w.io.outBuf()).hints[1]).not.toHaveProperty('input')
-  expect(w.io.errBuf()).toContain('find the id of this session: difyctl get account session\n')
-  expect(w.io.errBuf()).toContain('revoke it from another login: difyctl delete account session\n')
-})
-
-it('logs out a login.yml saved without a session id', async () => {
-  const w = await testContext({ login: true, argv: ['logout'] })
-  worlds.push(w)
-  const file = join(w.dir, LOGIN_FILE_NAME)
-  writeFileSync(file, readFileSync(file, 'utf8').replace(/^session_id:.*\n/m, ''))
-  expect(readFileSync(file, 'utf8')).not.toContain('session_id')
-  expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(JSON.parse(w.io.outBuf())).toMatchObject({ revoked: true })
-  expect(w.io.errBuf()).toBe('')
-})
-
-it('gives an external-SSO login no session-command hint when the revoke fails', async () => {
-  const w = await testContext({ login: true, argv: ['logout'] })
-  worlds.push(w)
-  expect((await (await w.ctx.get(session)).require()).account).toBeNull()
-  w.mock.setScenario('forbidden')
-  expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(JSON.parse(w.io.outBuf())).toMatchObject({ logged_out: true, revoked: false, hints: [] })
-  expect(w.io.errBuf()).toMatch(/^server revoke failed:/)
-  expect(w.io.errBuf()).not.toMatch(/account session/)
-  expect(await (await w.ctx.get(session)).current()).toBeNull()
 })

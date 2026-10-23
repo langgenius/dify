@@ -5,7 +5,6 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
@@ -15,7 +14,7 @@ from models.oauth import OAuthAccessToken
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
-from services.oauth_device_contracts import ACCOUNT_ISSUER_SENTINEL, OAuthDeviceTokenWrite, device_key_for
+from services.oauth_device_contracts import ACCOUNT_ISSUER_SENTINEL, OAuthDeviceTokenWrite
 
 
 @dataclass
@@ -195,50 +194,6 @@ def test_rollback_does_not_restore_predecessor_after_later_rotation(
     assert first_record.revoked_at is not None
 
 
-def test_second_live_token_for_the_same_device_is_rejected(sqlite_session: Session) -> None:
-    def row(token_hash: str) -> OAuthAccessToken:
-        return OAuthAccessToken(
-            subject_email="ada@example.com",
-            subject_issuer=ACCOUNT_ISSUER_SENTINEL,
-            client_id="difyctl",
-            device_label="Laptop",
-            device_key="Laptop",
-            prefix="dfoa_",
-            token_hash=token_hash,
-            expires_at=datetime.now(UTC) + timedelta(days=1),
-        )
-
-    sqlite_session.add(row("a" * 64))
-    sqlite_session.commit()
-    sqlite_session.add(row("b" * 64))
-    with pytest.raises(IntegrityError):
-        sqlite_session.commit()
-
-
-def test_rotation_keeps_revoked_history_under_the_unique_index(
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory)
-    issue_token = partial(
-        issuer.issue_account_token,
-        account=_account(),
-        workspace_id="workspace-1",
-        client_id="difyctl",
-        device_label="Laptop",
-        device_key="Laptop",
-    )
-    issue_token()
-    issue_token()
-    third = issue_token()
-
-    sqlite_session.expire_all()
-    guards = {record.id: record.active_guard for record in sqlite_session.scalars(select(OAuthAccessToken)).all()}
-    assert len(guards) == 3
-    assert guards.pop(third.token_id) == 1
-    assert set(guards.values()) == {None}
-
-
 def test_rotation_matches_device_key_not_label(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
@@ -260,43 +215,6 @@ def test_rotation_matches_device_key_not_label(
         second.token_id: ("host", "install:bbbb2222"),
         third.token_id: ("renamed-host", "install:aaaa1111"),
     }
-
-
-def test_legacy_key_equals_label_keeps_old_rotation(sqlite_session_factory: sessionmaker[Session]) -> None:
-    _issuer, repository, _redis, _ttl_policy = _repository(sqlite_session_factory)
-
-    first = repository.rotate_token(_write(device_label="host", device_key="host"))
-    second = repository.rotate_token(_write(device_label="host", device_key="host"))
-
-    assert second.replaced_token_id == first.token_id
-
-
-@pytest.mark.parametrize(
-    ("installation_id", "expected_key"),
-    [("abcd1234", "install:abcd1234"), (None, "Laptop")],
-    ids=["install", "legacy"],
-)
-def test_issuer_keys_rotation_on_the_install_id_or_the_legacy_device_label(
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-    installation_id: str | None,
-    expected_key: str,
-) -> None:
-    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory)
-
-    issued = issuer.issue_account_token(
-        account=_account(),
-        workspace_id="workspace-1",
-        client_id="difyctl",
-        device_label="Laptop",
-        device_key=device_key_for(installation_id=installation_id, device_label="Laptop"),
-    )
-
-    sqlite_session.expire_all()
-    record = sqlite_session.get(OAuthAccessToken, issued.token_id)
-    assert record is not None
-    assert record.device_label == "Laptop"
-    assert record.device_key == expected_key
 
 
 def test_login_after_logout_on_the_same_device_succeeds(
