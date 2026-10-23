@@ -4,14 +4,17 @@ import type { Role } from '@/models/access-control'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import {
+  Dialog,
   DialogBody,
+  DialogContent,
   DialogFooter,
   DialogHeader,
   DialogHeaderCloseButton,
   DialogTitle,
+  DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -19,7 +22,7 @@ import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
 import { toRole } from '../../workspace-role-list-query'
-import AssignRolesModal from '../assign-roles-modal'
+import AssignRolesContent from '../assign-roles-content'
 import PermissionRoleChip from './permission-role-chip'
 
 type MemberDetailsContentProps = {
@@ -39,6 +42,7 @@ const MemberDetailsContent = ({
 }: MemberDetailsContentProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const locale = useLocale()
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const [assignOpen, setAssignOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
@@ -84,10 +88,6 @@ const MemberDetailsContent = ({
     () => selectedRoles.filter((role) => !role.is_builtin),
     [selectedRoles],
   )
-
-  const handleClose = useCallback(() => {
-    setAssignOpen(false)
-  }, [])
 
   const handleAssignSubmit = useCallback(
     (roles: Role[]) => {
@@ -161,16 +161,29 @@ const MemberDetailsContent = ({
             )}
           </div>
           {canAssignRoles && (
-            <Button
-              variant="ghost"
-              size="small"
-              className="ms-auto shrink-0"
-              disabled={isSaving}
-              onClick={() => setAssignOpen(true)}
-            >
-              <span aria-hidden className={assignActionIconClassName} />
-              {assignActionLabel}
-            </Button>
+            <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+              <DialogTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="small"
+                    className="ms-auto shrink-0"
+                    disabled={isSaving || isLoadingRolesOfMember}
+                  />
+                }
+              >
+                <span aria-hidden className={assignActionIconClassName} />
+                {assignActionLabel}
+              </DialogTrigger>
+              <DialogContent className="h-121" initialFocus={searchInputRef}>
+                <AssignRolesContent
+                  searchInputRef={searchInputRef}
+                  selectedRoles={selectedRoles}
+                  allowMultipleRoles={allowMultipleRoles}
+                  onSubmit={handleAssignSubmit}
+                />
+              </DialogContent>
+            </Dialog>
           )}
         </div>
 
@@ -241,15 +254,6 @@ const MemberDetailsContent = ({
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
         </DialogFooter>
-      )}
-
-      {assignOpen && (
-        <AssignRolesModal
-          selectedRoles={selectedRoles}
-          allowMultipleRoles={allowMultipleRoles}
-          onClose={handleClose}
-          onSubmit={handleAssignSubmit}
-        />
       )}
     </>
   )

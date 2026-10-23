@@ -20,7 +20,6 @@ type MemberRowProps = {
   canManage: boolean
   canTransferOwnership: boolean
   allowMultipleRoles: boolean
-  onTransferOwnership: () => void
 }
 
 const MemberRow = ({
@@ -30,7 +29,6 @@ const MemberRow = ({
   canManage,
   canTransferOwnership,
   allowMultipleRoles,
-  onTransferOwnership,
 }: MemberRowProps) => {
   const { t } = useTranslation(['workspaceMembers'])
   const detailsTriggerRef = useRef<HTMLButtonElement>(null)
@@ -103,7 +101,6 @@ const MemberRow = ({
             isCurrentUser={isCurrentUser}
             canTransferOwnership={canTransferOwnership}
             allowMultipleRoles={allowMultipleRoles}
-            onTransferOwnership={onTransferOwnership}
           />
         </td>
       )}

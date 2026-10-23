@@ -297,6 +297,33 @@ describe('MembersPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('discards canceled role selection and search before reopening from the member menu', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage({ systemFeatures: { rbac_enabled: false } })
+    const more = within(screen.getByRole('row', { name: /admin@example.com/ })).getByRole(
+      'button',
+      { name: /members\.memberActions/ },
+    )
+    const openRoles = async () => {
+      await user.click(more)
+      await user.click(screen.getByRole('menuitem', { name: /members\.editRole(?=$|:)/ }))
+      const search = await screen.findByRole('searchbox')
+      await waitFor(() => expect(search).toHaveFocus())
+      return search
+    }
+    const search = await openRoles()
+    await user.click(await screen.findByRole('radio', { name: /Next role/ }))
+    await user.type(search, 'Next')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(await openRoles()).toHaveValue('')
+    expect(await screen.findByRole('radio', { name: /Next role/ })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    )
+    expect(updateRoles).not.toHaveBeenCalled()
+  })
+
   it('disables ownership transfer when the feature is unavailable', async () => {
     await renderMembersPage({ features: { is_allow_transfer_workspace: false } })
     expect(
@@ -312,6 +339,7 @@ describe('MembersPage', () => {
     const edit = screen.getByRole('button', { name: /account\.editWorkspaceInfo/ })
     await user.click(edit)
     const input = screen.getByRole('textbox', { name: /account\.workspaceName$/ })
+    await waitFor(() => expect(input).toHaveFocus())
     await user.clear(input)
     await user.type(input, 'Unsaved name')
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
@@ -332,6 +360,31 @@ describe('MembersPage', () => {
       features: { billing: { subscription: { plan } }, members: { size: 2, limit } },
     })
     expect(screen.getByText(new RegExp(label))).toBeInTheDocument()
+  })
+
+  it('hands invitation results to a persistent dialog and closes them normally', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage()
+    const invite = screen.getByRole('button', { name: /members\.invite$/ })
+    await user.click(invite)
+    await user.type(
+      screen.getByRole('textbox', { name: /members\.emailRecipients/ }),
+      'sent@example.com',
+    )
+    await user.click(screen.getByRole('combobox', { name: /members\.role$/ }))
+    await user.click(await screen.findByRole('option', { name: /Admin/ }))
+    await user.click(screen.getByRole('button', { name: /members\.sendInviteCount/ }))
+    const results = await screen.findByRole('dialog', { name: /members\.invitationSent$/ })
+    expect(results).toHaveTextContent('http://invite/link')
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: /members\.inviteTeamMember$/ }),
+      ).not.toBeInTheDocument(),
+    )
+    await user.click(within(results).getByRole('button', { name: /members\.ok$/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(invite)
+    expect(screen.getByRole('textbox', { name: /members\.emailRecipients/ })).toHaveValue('')
   })
 
   it('keeps invitation available at the displayed plan limit', async () => {

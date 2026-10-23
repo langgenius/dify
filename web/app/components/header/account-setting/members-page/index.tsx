@@ -4,11 +4,17 @@ import type {
   MemberInviteResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  createDialogHandle,
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
@@ -21,15 +27,20 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
-import EditWorkspaceModal from './edit-workspace-modal'
+import EditWorkspaceContent from './edit-workspace-content'
+import InvitationResultsContent from './invitation-results-content'
 import { InviteModal } from './invite-modal'
-import InvitedModal from './invited-modal'
 import MemberDetailsContent from './member-details-content'
 import MemberRow from './member-row'
-import TransferOwnershipModal from './transfer-ownership-modal'
 
 const MembersPage = () => {
-  const { t } = useTranslation(['billing', 'common', 'workspaceMembers', 'accountSettings'])
+  const { t } = useTranslation([
+    'billing',
+    'common',
+    'workspaceMembers',
+    'accountSettings',
+    'permission',
+  ])
   const locale = useLocale()
   const language = getAccessControlTemplateLanguage(locale)
 
@@ -44,9 +55,10 @@ const MembersPage = () => {
     consoleQuery.workspaces.current.members.get.queryOptions({ input: { query: { language } } }),
   )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const [invitationResults, setInvitationResults] = useState<
-    MemberInviteResponse['invitation_results'] | null
-  >(null)
+  const [invitationDialogHandle] = useState(() =>
+    createDialogHandle<MemberInviteResponse['invitation_results']>(),
+  )
+  const workspaceNameInputRef = useRef<HTMLInputElement>(null)
   const accounts = data?.accounts || []
   const deploymentEdition = systemFeatures.deployment_edition
   const { data: features } = useQuery(
@@ -66,8 +78,6 @@ const MembersPage = () => {
     isNotUnlimitedMemberPlan &&
     features.members.limit > 0 &&
     accounts.length >= features.members.limit
-  const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
-  const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
   const [detailsDialogHandle] = useState(() => createDialogHandle<AccountWithRoleResponse>())
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
@@ -95,10 +105,6 @@ const MembersPage = () => {
     )
   }
 
-  const handleTransferOwnership = useCallback(() => {
-    setShowTransferOwnershipModal(true)
-  }, [])
-
   return (
     <Dialog
       handle={detailsDialogHandle}
@@ -117,30 +123,37 @@ const MembersPage = () => {
                     <span className="min-w-0 wrap-anywhere">{currentWorkspace?.name}</span>
                     {isCurrentWorkspaceOwner && (
                       <span className="shrink-0">
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <button
-                                type="button"
-                                aria-label={t(($) => $['account.editWorkspaceInfo'], {
-                                  ns: 'accountSettings',
-                                })}
-                                className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-black/5"
-                                onClick={() => {
-                                  setEditWorkspaceModalVisible(true)
-                                }}
-                              >
-                                <span
-                                  aria-hidden="true"
-                                  className="i-ri-pencil-line size-4 text-text-tertiary"
+                        <Dialog>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <DialogTrigger
+                                  render={
+                                    <IconButton
+                                      aria-label={t(($) => $['account.editWorkspaceInfo'], {
+                                        ns: 'accountSettings',
+                                      })}
+                                    >
+                                      <span
+                                        aria-hidden
+                                        className="i-ri-pencil-line size-4 text-text-tertiary"
+                                      />
+                                    </IconButton>
+                                  }
                                 />
-                              </button>
-                            }
-                          />
-                          <TooltipContent>
-                            {t(($) => $['account.editWorkspaceInfo'], { ns: 'accountSettings' })}
-                          </TooltipContent>
-                        </Tooltip>
+                              }
+                            />
+                            <TooltipContent>
+                              {t(($) => $['account.editWorkspaceInfo'], { ns: 'accountSettings' })}
+                            </TooltipContent>
+                          </Tooltip>
+                          <DialogContent
+                            initialFocus={workspaceNameInputRef}
+                            backdropProps={{ forceRender: true }}
+                          >
+                            <EditWorkspaceContent inputRef={workspaceNameInputRef} />
+                          </DialogContent>
+                        </Dialog>
                       </span>
                     )}
                   </div>
@@ -179,7 +192,7 @@ const MembersPage = () => {
                   <div className="shrink-0">
                     <InviteModal
                       isEmailSetup={systemFeatures.is_email_setup}
-                      onSend={setInvitationResults}
+                      onSend={(results) => invitationDialogHandle.openWithPayload(results)}
                     />
                   </div>
                 )}
@@ -219,28 +232,19 @@ const MembersPage = () => {
                         isCurrentWorkspaceOwner && features?.is_allow_transfer_workspace === true
                       }
                       allowMultipleRoles={systemFeatures.rbac_enabled}
-                      onTransferOwnership={handleTransferOwnership}
                     />
                   ))}
                 </tbody>
               </table>
             </div>
           </div>
-          {invitationResults && (
-            <InvitedModal
-              invitationResults={invitationResults}
-              onCancel={() => setInvitationResults(null)}
-            />
-          )}
-          {editWorkspaceModalVisible && (
-            <EditWorkspaceModal onCancel={() => setEditWorkspaceModalVisible(false)} />
-          )}
-          {showTransferOwnershipModal && (
-            <TransferOwnershipModal
-              show={showTransferOwnershipModal}
-              onClose={() => setShowTransferOwnershipModal(false)}
-            />
-          )}
+          <Dialog handle={invitationDialogHandle}>
+            {({ payload: results }) => (
+              <DialogContent backdropProps={{ forceRender: true }}>
+                {results && <InvitationResultsContent invitationResults={results} />}
+              </DialogContent>
+            )}
+          </Dialog>
           <DialogContent className="w-110" backdropProps={{ forceRender: true }}>
             {member && (
               <MemberDetailsContent

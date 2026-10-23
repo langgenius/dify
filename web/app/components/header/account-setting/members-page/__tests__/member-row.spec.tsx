@@ -33,7 +33,6 @@ const renderMemberRow = () => {
                 canManage
                 canTransferOwnership={false}
                 allowMultipleRoles={false}
-                onTransferOwnership={vi.fn()}
               />
             </tbody>
           </table>
