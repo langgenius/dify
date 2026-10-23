@@ -26,10 +26,6 @@ function serverInstallationIdPattern(): RegExp {
 
 const SERVER_ID_PATTERN = serverInstallationIdPattern()
 
-function serverAccepts(id: string): boolean {
-  return SERVER_ID_PATTERN.test(id)
-}
-
 const worlds: TestWorld[] = []
 afterEach(async () => {
   for (const w of worlds.splice(0)) await w.stop()
@@ -44,7 +40,7 @@ async function world(): Promise<TestWorld> {
 it('creates one installation id and keeps it', async () => {
   const w = await world()
   const first = await installationId(w.ctx)
-  expect(serverAccepts(first)).toBe(true)
+  expect(first).toMatch(SERVER_ID_PATTERN)
   expect(await installationId(w.ctx)).toBe(first)
   expect(await installationId(new Context())).toBe(first)
   expect(readFileSync(join(w.dir, INSTALLATION_FILE_NAME), 'utf8')).toBe(`id: ${first}\n`)
@@ -53,7 +49,7 @@ it('creates one installation id and keeps it', async () => {
 it('generates an id the server accepts', async () => {
   const w = await world()
   const id = await installationId(w.ctx)
-  expect(serverAccepts(id)).toBe(true)
+  expect(id).toMatch(SERVER_ID_PATTERN)
   expect(id).toMatch(INSTALLATION_ID_PATTERN)
 })
 
@@ -67,14 +63,14 @@ it('accepts exactly the ids the server accepts', () => {
     'x y-1234',
     'ab_cdefgh',
   ])
-    expect(INSTALLATION_ID_PATTERN.test(id)).toBe(serverAccepts(id))
+    expect(INSTALLATION_ID_PATTERN.test(id)).toBe(SERVER_ID_PATTERN.test(id))
 })
 
 it('replaces an invalid stored id instead of sending it', async () => {
   const w = await world()
   writeFileSync(join(w.dir, INSTALLATION_FILE_NAME), 'id: "x y"\n')
   const id = await installationId(w.ctx)
-  expect(serverAccepts(id)).toBe(true)
+  expect(id).toMatch(SERVER_ID_PATTERN)
   expect(readFileSync(join(w.dir, INSTALLATION_FILE_NAME), 'utf8')).toBe(`id: ${id}\n`)
 })
 
@@ -87,7 +83,7 @@ it.each([
   const w = await world()
   writeFileSync(join(w.dir, INSTALLATION_FILE_NAME), content)
   const id = await installationId(w.ctx)
-  expect(serverAccepts(id)).toBe(true)
+  expect(id).toMatch(SERVER_ID_PATTERN)
   expect(await installationId(w.ctx)).toBe(id)
 })
 
