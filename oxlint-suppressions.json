@@ -3493,7 +3493,7 @@
   },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
-      "count": 16
+      "count": 2
     }
   },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/lazy-custom-model-actions.tsx": {
