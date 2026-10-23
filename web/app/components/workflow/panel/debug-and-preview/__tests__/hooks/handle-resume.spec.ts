@@ -720,13 +720,13 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-2' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-2' },
         })
       })
 
@@ -735,14 +735,14 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human-2', form_token: 'rt-3' },
+          data: { form_id: 'form-rn-human-2', node_id: 'rn-human-2', form_token: 'rt-3' },
         })
       })
 
       answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.humanInputFormDataList).toEqual([
-        { node_id: 'rn-human', form_token: 'rt-2' },
-        { node_id: 'rn-human-2', form_token: 'rt-3' },
+        { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-2' },
+        { form_id: 'form-rn-human-2', node_id: 'rn-human-2', form_token: 'rt-3' },
       ])
     })
 
@@ -764,7 +764,7 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
@@ -780,13 +780,13 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
       act(() => {
         capturedResumeOptions.onHumanInputFormFilled({
-          data: { node_id: 'rn-human', submitted_data: { a: 'one' } },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', submitted_data: { a: 'one' } },
         })
       })
 
@@ -803,20 +803,26 @@ describe('useChat – handleResume', () => {
       const { result } = await setupResumeWithTree()
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'submitted', form_token: 'one' },
+          data: { form_id: 'form-submitted', node_id: 'submitted', form_token: 'one' },
         })
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'pending', form_token: 'two' },
+          data: { form_id: 'form-pending', node_id: 'pending', form_token: 'two' },
         })
         capturedResumeOptions.onHumanInputFormFilled({
-          data: { node_id: 'submitted', submitted_data: { answer: 'yes' } },
+          data: {
+            form_id: 'form-submitted',
+            node_id: 'submitted',
+            submitted_data: { answer: 'yes' },
+          },
         })
         capturedResumeOptions.onHumanInputFormTimeout({
-          data: { node_id: 'submitted', expiration_time: 1748736000 },
+          data: { form_id: 'form-submitted', node_id: 'submitted', expiration_time: 1748736000 },
         })
       })
       const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
-      expect(answer!.humanInputFormDataList).toEqual([{ node_id: 'pending', form_token: 'two' }])
+      expect(answer!.humanInputFormDataList).toEqual([
+        { form_id: 'form-pending', node_id: 'pending', form_token: 'two' },
+      ])
       expect(answer!.humanInputFilledFormDataList).toEqual([
         expect.objectContaining({ node_id: 'submitted', submitted_data: { answer: 'yes' } }),
       ])
@@ -827,13 +833,13 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputRequired({
-          data: { node_id: 'rn-human', form_token: 'rt-1' },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', form_token: 'rt-1' },
         })
       })
 
       act(() => {
         capturedResumeOptions.onHumanInputFormTimeout({
-          data: { node_id: 'rn-human', expiration_time: 1748736000 },
+          data: { form_id: 'form-rn-human', node_id: 'rn-human', expiration_time: 1748736000 },
         })
       })
 

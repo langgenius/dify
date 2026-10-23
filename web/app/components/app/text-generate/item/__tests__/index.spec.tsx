@@ -129,7 +129,7 @@ describe('GenerationItem', () => {
     expect(mockUpdateFeedback).toHaveBeenCalledWith(
       {
         body: { rating: 'like' },
-        url: '/messages/msg-2/feedbacks',
+        messageId: 'msg-2',
       },
       AppSourceType.webApp,
       undefined,

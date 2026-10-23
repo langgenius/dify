@@ -13,7 +13,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidV4 } from 'uuid'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
-import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
+import {
+  updateFilledHumanInputForm,
+  updateHumanInputFormTimeout,
+  updatePendingHumanInputForm,
+} from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
@@ -22,6 +26,11 @@ import { isInstalledAppPath } from '@/app/components/explore/installed-app/route
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import {
+  captureAppAccessScope,
+  hasAppAccessError,
+  isAppAccessScopeCurrent,
+} from '@/features/app-access-error/state'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
@@ -37,6 +46,7 @@ type HistoryMessageFile = Partial<FileResponse> & {
 type HistoryConversationMessage = {
   id: string
   answer?: string
+  status?: string
   message?: { role: string; text: string; files?: FileEntity[] }[]
   message_files?: HistoryMessageFile[]
   agent_thoughts?: ThoughtItem[] | null
@@ -204,13 +214,13 @@ export const useChat = (
     inputsForm: InputForm[]
   },
   prevChatTree?: ChatItemInTree[],
-  stopChat?: (taskId: string) => void,
+  stopChat?: (taskId: string) => void | Promise<unknown>,
   clearChatList?: boolean,
   clearChatListCallback?: (state: boolean) => void,
   initialConversationId?: string,
   options: UseChatOptions = {},
 ) => {
-  const { t } = useTranslation(['appDebug'])
+  const { t } = useTranslation(['appDebug', 'common'])
   const { formatTime } = useTimestamp({ timezone: options.timezone })
   const conversationIdRef = useRef(initialConversationId ?? '')
   const initialConversationIdRef = useRef(initialConversationId ?? '')
@@ -218,6 +228,7 @@ export const useChat = (
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
   const taskIdRef = useRef('')
+  const stopPendingRef = useRef<number | null>(null)
   const pausedStateRef = useRef(false)
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
@@ -536,28 +547,64 @@ export const useChat = (
 
   useEffect(() => resetWorkflowEventsSubscription, [resetWorkflowEventsSubscription])
 
-  const handleStop = useCallback(() => {
+  const stopLocalResponse = useCallback(() => {
     hasStopRespondedRef.current = true
     handleResponding(false)
-    if (stopChat && taskIdRef.current && !pausedStateRef.current) stopChat(taskIdRef.current)
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
     if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
     resetWorkflowEventsSubscription()
-  }, [stopChat, handleResponding, resetWorkflowEventsSubscription])
+  }, [handleResponding, resetWorkflowEventsSubscription])
+
+  const handleStop = useCallback(async () => {
+    if (options.isNewAgent && isRespondingRef.current) {
+      const generation = workflowRequestGenerationRef.current
+      if (stopPendingRef.current === generation) return
+      const taskId = taskIdRef.current
+      if (!stopChat || !taskId) {
+        toast.error(
+          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${t(($) => $['api.actionFailed'], { ns: 'common' })}`,
+        )
+        return
+      }
+      stopPendingRef.current = generation
+      try {
+        await stopChat(taskId)
+      } catch {
+        toast.error(
+          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${t(($) => $['api.actionFailed'], { ns: 'common' })}`,
+        )
+        return
+      } finally {
+        if (stopPendingRef.current === generation) stopPendingRef.current = null
+      }
+      if (generation !== workflowRequestGenerationRef.current) return
+    }
+    if (!options.isNewAgent && stopChat && taskIdRef.current && !pausedStateRef.current) {
+      void (async () => {
+        try {
+          await stopChat(taskIdRef.current)
+        } catch {
+          // The request layer owns error feedback; stopping locally must still finish.
+        }
+      })()
+    }
+    stopLocalResponse()
+    return true
+  }, [stopChat, stopLocalResponse, options.isNewAgent, t])
 
   const handleRestart = useCallback(
     (cb?: () => void) => {
       conversationIdRef.current = initialConversationIdRef.current
       taskIdRef.current = ''
-      handleStop()
+      stopLocalResponse()
       setChatTree([])
       setSuggestedQuestions([])
       cb?.()
     },
-    [handleStop],
+    [stopLocalResponse],
   )
 
   const createAudioPlayerManager = useCallback(() => {
@@ -955,18 +1002,7 @@ export const useChat = (
             options: otherOptions,
           }
           updateChatTreeNode(messageId, (responseItem) => {
-            if (!responseItem.humanInputFormDataList) {
-              responseItem.humanInputFormDataList = [humanInputRequiredData]
-            } else {
-              const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
-                (item) => item.node_id === humanInputRequiredData.node_id,
-              )
-              if (currentFormIndex > -1) {
-                responseItem.humanInputFormDataList[currentFormIndex] = humanInputRequiredData
-              } else {
-                responseItem.humanInputFormDataList.push(humanInputRequiredData)
-              }
-            }
+            updatePendingHumanInputForm(responseItem, humanInputRequiredData)
             if (responseItem.workflowProcess?.tracing) {
               const currentTracingIndex = responseItem.workflowProcess.tracing.findIndex(
                 (item) => item.node_id === humanInputRequiredData.node_id,
@@ -981,38 +1017,12 @@ export const useChat = (
           workflowPauseConfirmedRef.current = false
           handleResponding(true)
           updateChatTreeNode(messageId, (responseItem) => {
-            let requiredFormData:
-              | NonNullable<ChatItem['humanInputFormDataList']>[number]
-              | undefined
-            if (responseItem.humanInputFormDataList?.length) {
-              const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
-                (item) => item.node_id === humanInputFilledFormData.node_id,
-              )
-              if (currentFormIndex > -1) {
-                requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
-                responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
-              }
-            }
-            const enrichedHumanInputFilledFormData = enrichSubmittedHumanInputFormData(
-              humanInputFilledFormData,
-              requiredFormData,
-            )
-            if (!responseItem.humanInputFilledFormDataList) {
-              responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
-            } else {
-              responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
-            }
+            updateFilledHumanInputForm(responseItem, humanInputFilledFormData)
           })
         },
         onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
           updateChatTreeNode(messageId, (responseItem) => {
-            if (responseItem.humanInputFormDataList?.length) {
-              const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
-                (item) => item.node_id === humanInputFormTimeoutData.node_id,
-              )
-              responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
-                humanInputFormTimeoutData.expiration_time
-            }
+            updateHumanInputFormTimeout(responseItem, humanInputFormTimeoutData)
           })
         },
         onWorkflowPaused: ({ data: workflowPausedData }) => {
@@ -1107,9 +1117,15 @@ export const useChat = (
         return false
       }
 
+      taskIdRef.current = ''
       pausedStateRef.current = false
       resetWorkflowEventsSubscription()
       const requestGeneration = ++workflowRequestGenerationRef.current
+      const appAccessScope = isPublicAPI ? captureAppAccessScope() : null
+      const isCurrentRequest = () =>
+        requestGeneration === workflowRequestGenerationRef.current &&
+        isAppAccessScopeCurrent(appAccessScope) &&
+        !hasAppAccessError(appAccessScope)
 
       const parentMessage = threadMessages.find((item) => item.id === data.parent_message_id)
 
@@ -1182,13 +1198,13 @@ export const useChat = (
       let hasNotifiedConversationComplete = false
       let currentWorkflowRunId = ''
       const settleSend = (hasError?: boolean) => {
-        if (hasSettled) return
+        if (hasSettled || !isCurrentRequest()) return
 
         hasSettled = true
         onSendSettled?.(hasError)
       }
       const notifyConversationComplete = (workflowRunId?: string) => {
-        if (hasNotifiedConversationComplete) return
+        if (hasNotifiedConversationComplete || !isCurrentRequest()) return
 
         hasNotifiedConversationComplete = true
         onConversationComplete?.(conversationIdRef.current, workflowRunId)
@@ -1229,7 +1245,7 @@ export const useChat = (
 
           if (isFirstMessage && newConversationId) conversationIdRef.current = newConversationId
 
-          taskIdRef.current = taskId
+          if (taskId) taskIdRef.current = taskId
           if (messageId) responseItem.id = messageId
 
           updateCurrentQAOnTree({
@@ -1255,12 +1271,12 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean) {
-          if (requestGeneration !== workflowRequestGenerationRef.current) return
+          if (!isCurrentRequest()) return
 
           handleResponding(false)
 
           try {
-            if (hasError) return
+            if (hasError && !options.isNewAgent) return
 
             let completedWorkflowRunId = responseItem.workflow_run_id
 
@@ -1269,11 +1285,22 @@ export const useChat = (
               !hasStopRespondedRef.current &&
               onGetConversationMessages
             ) {
-              const conversationMessagesResponse = await onGetConversationMessages(
-                conversationIdRef.current,
-                (newAbortController) =>
-                  (conversationMessagesAbortControllerRef.current = newAbortController),
-              )
+              let conversationMessagesResponse: unknown
+              try {
+                conversationMessagesResponse = await onGetConversationMessages(
+                  conversationIdRef.current,
+                  (newAbortController) => {
+                    if (isCurrentRequest())
+                      conversationMessagesAbortControllerRef.current = newAbortController
+                    else newAbortController.abort()
+                  },
+                )
+              } catch {
+                // Keep the streamed answer and its settlement when history cannot be refreshed.
+                return
+              }
+              if (!isCurrentRequest()) return
+
               const data = getConversationMessagesData(conversationMessagesResponse)
               const newResponseItem = data.find((item) => item.id === responseItem.id)
               completedWorkflowRunId = newResponseItem?.workflow_run_id ?? completedWorkflowRunId
@@ -1293,6 +1320,9 @@ export const useChat = (
               const historyAnswerFiles = getHistoryAnswerFiles(newResponseItem)
               updateChatTreeNode(responseItem.id, {
                 content: isUseAgentThought ? '' : historyAnswer,
+                isError:
+                  options.isNewAgent &&
+                  (newResponseItem.status === 'error' || (!!hasError && !newResponseItem.status)),
                 agent_thoughts: historyAgentThoughts,
                 agent_response_parts: undefined,
                 citation: newResponseItem.retriever_resources,
@@ -1336,6 +1366,8 @@ export const useChat = (
             notifyConversationComplete(completedWorkflowRunId)
 
             if (
+              isCurrentRequest() &&
+              !hasError &&
               config?.suggested_questions_after_answer?.enabled &&
               !hasStopRespondedRef.current &&
               onGetSuggestedQuestions
@@ -1343,12 +1375,15 @@ export const useChat = (
               try {
                 const { data }: any = await onGetSuggestedQuestions(
                   responseItem.id,
-                  (newAbortController) =>
-                    (suggestedQuestionsAbortControllerRef.current = newAbortController),
+                  (newAbortController) => {
+                    if (isCurrentRequest())
+                      suggestedQuestionsAbortControllerRef.current = newAbortController
+                    else newAbortController.abort()
+                  },
                 )
-                setSuggestedQuestions(data)
+                if (isCurrentRequest()) setSuggestedQuestions(data)
               } catch {
-                setSuggestedQuestions([])
+                if (isCurrentRequest()) setSuggestedQuestions([])
               }
             }
           } finally {
@@ -1423,6 +1458,8 @@ export const useChat = (
         },
         onThought(thought) {
           isAgentMode = true
+          if (thought.task_id) taskIdRef.current = thought.task_id
+          if (thought.conversation_id) conversationIdRef.current = thought.conversation_id
           const response = responseItem as any
           if (thought.message_id && !hasSetResponseId) response.id = thought.message_id
           if (thought.conversation_id) response.conversationId = thought.conversation_id
@@ -1475,9 +1512,17 @@ export const useChat = (
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
         },
-        onError() {
+        onError(_message, _code, identity) {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
 
+          if (identity?.conversationId) conversationIdRef.current = identity.conversationId
+          if (identity?.messageId) {
+            responseItem.id = identity.messageId
+            questionItem.id = `question-${identity.messageId}`
+            responseItem.parentMessageId = questionItem.id
+          }
+          if (options.isNewAgent && hasStopRespondedRef.current) return
+          if (options.isNewAgent) responseItem.isError = true
           handleResponding(false)
           settleSend(true)
           updateCurrentQAOnTree({
@@ -1684,18 +1729,7 @@ export const useChat = (
             workflowRunId: pausedWorkflowRunId || currentWorkflowRunId,
             options: otherOptions,
           }
-          if (!responseItem.humanInputFormDataList) {
-            responseItem.humanInputFormDataList = [humanInputRequiredData]
-          } else {
-            const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(
-              (item) => item.node_id === humanInputRequiredData.node_id,
-            )
-            if (currentFormIndex > -1) {
-              responseItem.humanInputFormDataList[currentFormIndex] = humanInputRequiredData
-            } else {
-              responseItem.humanInputFormDataList.push(humanInputRequiredData)
-            }
-          }
+          updatePendingHumanInputForm(responseItem, humanInputRequiredData)
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(
             (item) => item.node_id === humanInputRequiredData.node_id,
           )
@@ -1713,25 +1747,7 @@ export const useChat = (
         onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
           workflowPauseConfirmedRef.current = false
           handleResponding(true)
-          let requiredFormData: NonNullable<ChatItem['humanInputFormDataList']>[number] | undefined
-          if (responseItem.humanInputFormDataList?.length) {
-            const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(
-              (item) => item.node_id === humanInputFilledFormData.node_id,
-            )
-            if (currentFormIndex > -1) {
-              requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
-              responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
-            }
-          }
-          const enrichedHumanInputFilledFormData = enrichSubmittedHumanInputFormData(
-            humanInputFilledFormData,
-            requiredFormData,
-          )
-          if (!responseItem.humanInputFilledFormDataList) {
-            responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
-          } else {
-            responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
-          }
+          updateFilledHumanInputForm(responseItem, humanInputFilledFormData)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -1740,13 +1756,7 @@ export const useChat = (
           })
         },
         onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
-          if (responseItem.humanInputFormDataList?.length) {
-            const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(
-              (item) => item.node_id === humanInputFormTimeoutData.node_id,
-            )
-            responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
-              humanInputFormTimeoutData.expiration_time
-          }
+          updateHumanInputFormTimeout(responseItem, humanInputFormTimeoutData)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,

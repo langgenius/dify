@@ -84,7 +84,7 @@ describe('ConfigSelect Component', () => {
     'adds an option with %s without submitting the enclosing form',
     async (key) => {
       const user = userEvent.setup()
-      const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault())
+      const onSubmit = vi.fn((event: React.SubmitEvent) => event.preventDefault())
       render(
         <form onSubmit={onSubmit}>
           <ConfigSelect options={[]} onChange={defaultProps.onChange} />

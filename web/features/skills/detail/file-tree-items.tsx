@@ -291,7 +291,6 @@ function FileActions({
         <DropdownMenuContent
           data-skill-file-menu
           onKeyDown={onMenuKeyDown}
-          placement="bottom-end"
           className={skillFileMenuPopupClassName}
         >
           <FileActionMenuItems

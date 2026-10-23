@@ -120,7 +120,6 @@ const Annotation: FC<Props> = (props) => {
       params: { app_id: appDetail.id },
       body: payload,
     })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -129,7 +128,6 @@ const Annotation: FC<Props> = (props) => {
     await consoleClient.apps.byAppId.annotations.byAnnotationId.delete({
       params: { app_id: appDetail.id, annotation_id: id },
     })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -140,7 +138,6 @@ const Annotation: FC<Props> = (props) => {
         params: { app_id: appDetail.id },
         query: { annotation_id: selectedIds },
       })
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       fetchList()
       setControlUpdateList(Date.now())
       setSelectedIds([])
@@ -161,7 +158,6 @@ const Annotation: FC<Props> = (props) => {
       params: { app_id: appDetail.id, annotation_id: currItem.id },
       body: { question, answer },
     })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }

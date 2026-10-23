@@ -126,7 +126,10 @@ export default function RosterPage() {
               {t(($) => $['roster.learnMore'], { ns: 'agentRoster' })}
             </span>
             <span aria-hidden className="i-ri-book-open-line size-4 sm:hidden" />
-            <span aria-hidden className="i-ri-external-link-line hidden size-3 sm:inline-block" />
+            <span
+              aria-hidden
+              className="i-ri-external-link-line hidden size-3 sm:inline-block [&:dir(rtl)]:-scale-x-100"
+            />
           </a>
         </div>
         <div className="mt-3.5">

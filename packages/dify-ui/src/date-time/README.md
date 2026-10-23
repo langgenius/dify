@@ -44,7 +44,9 @@ Provide an accessible name at the call site. Root has no labeling props and does
 Label composition through its types. Prefer one visible Label with its text as children; it names
 both Trigger and Content through `aria-labelledby`. Clicking plain label text focuses the actual
 trigger without opening it. Links and controls inside a custom label keep their own behavior.
-Do not use native `label[for]` or `FieldLabel` for the trigger: native activation can click its button.
+Picker Label shares Base UI Field's label association and state callbacks. Alternatively, use
+`FieldLabel nativeLabel={false} render={<div />}`. Do not use native `label[for]` for the trigger:
+native label activation can click its button.
 
 For compact layouts, a Label with `className="sr-only"` shares one name without visible text.
 Without a Label, name Trigger and Content explicitly using standard ARIA attributes:
@@ -82,6 +84,14 @@ actions visible. A viewport too short for natural content needs a consumer layou
 Use `defaultValue` for uncontrolled fields or `value` with `onValueChange` for controlled fields.
 `null` means empty; clearing emits `null`. Do not switch controlledness during a field's lifetime.
 `open`/`defaultOpen` follow the same ownership choice. `onOpenChange` details support `cancel()`.
+
+`onValueChange(value, details)` receives Base UI event details. Reasons are `item-press` for a
+selected day or OK, `clear-press` for Clear, and `reset` for a native form reset. The native event
+is preserved; `trigger` identifies the clicked day, OK or Clear button. `details.cancel()` prevents
+the value change and its follow-up focus/close action. It cancels only this picker's reset, not the
+whole form reset; use the form's `onReset` and `event.preventDefault()` to cancel all controls.
+Unchanged values do not emit duplicate callbacks. Open/close events remain Popover events; a
+successful confirmation, Clear or reset closes through its `imperative-action` mechanism.
 
 Time and date-time edits, including Now, stay in the open session until OK. Switching date/time
 views preserves the draft. Dismissal discards it; reopening starts from the committed value.
@@ -125,8 +135,29 @@ With `name`, the committed value participates in native FormData; an empty field
 `form` can associate an external form. Required/invalid fields block native validated submission
 and focus the first invalid trigger. Reset restores `defaultValue` and closes the popup; a
 controlled owner must accept the reset callback. Disabled fields are omitted from submission;
-read-only fields remain focusable and submit their value without allowing edits. These pickers do
-not register with Base UI Field/Form. See [Forms] for the surrounding form boundary.
+read-only fields remain focusable and submit their value without allowing edits. With a surrounding `Field`, pickers also register with Base UI Form:
+
+- `Field.name` takes precedence over the picker's `name`; otherwise the picker supplies the name.
+- `Field.validate` receives the committed domain value (`string | null` or `Date | null`).
+  `Form.onFormSubmit` receives the same serialized strings as native FormData, including `''` for
+  an empty value. Use `Form` with `Field` to collect structured values; a native form needs neither.
+- Field disabled state is inherited. Disabled inputs, including those in native disabled fieldsets,
+  and inputs explicitly associated with another form are excluded from the contextual Form.
+  Unassociated portalled inputs still participate in contextual Form and its reset, following Base UI.
+- Filled and dirty follow committed values; DateTimePicker compares instants by timestamp. Moving
+  focus between Trigger, Clear and the popup stays within the field. Clicking associated label text
+  returns focus to Trigger without marking the field touched. Leaving it marks touched and
+  runs onBlur validation; editing popup drafts does not run value validation or clear server errors.
+- Native reset restores default values and clears field feedback after the reset is accepted.
+  Required input validity remains available for the next submit.
+- Changing a picker constraint message revalidates a field that has already been validated, or
+  uses onChange validation. Untouched fields otherwise wait for their normal validation boundary.
+
+The proxy input uses Base UI's visually hidden styles, `aria-hidden` and `tabIndex={-1}`. It remains
+an input of type text so native constraint validation works, and redirects programmatic focus to
+the visible trigger. It is not a second editable input or an autofill interface.
+
+See [Forms] for the surrounding form boundary.
 
 ## Examples and verification
 
