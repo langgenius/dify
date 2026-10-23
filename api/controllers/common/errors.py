@@ -123,7 +123,7 @@ class InvalidArgumentError(BaseHTTPException):
 def register_permission_error_handler(api: ExternalApi) -> None:
     """Preserve the default permission-error response for Console and Service API."""
 
-    @api.errorhandler(NoPermissionError)
+    @api.errorhandler(NoPermissionError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
     def handle_permission_error(error: NoPermissionError) -> tuple[dict[str, str | int], int]:
         got_request_exception.send(current_app, exception=error)
         return {
