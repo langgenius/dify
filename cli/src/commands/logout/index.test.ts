@@ -98,7 +98,16 @@ it('still clears local state and reports a failed server revoke', async () => {
   expect(w.io.errBuf()).toMatch(/^server revoke failed:/)
   expect(JSON.parse(w.io.outBuf())).toMatchObject({ logged_out: true, revoked: false })
   expect(JSON.parse(w.io.outBuf()).revoke_error).toEqual(expect.any(String))
-  expect(w.io.errBuf()).toContain('delete account session --session-id tok-1')
+  expect(JSON.parse(w.io.outBuf()).hints).toEqual([
+    {
+      summary: 'revoke it from another login',
+      op: 'delete.account.session',
+      input: { session_id: 'tok-1' },
+    },
+  ])
+  expect(w.io.errBuf()).toContain(
+    'revoke it from another login: difyctl delete account session --session-id tok-1',
+  )
 
   expect(await (await w.ctx.get(session)).current()).toBeNull()
   expect(catalogFiles(w.dir)).toEqual([])
@@ -133,8 +142,16 @@ it('points to the session list when the login has no session id', async () => {
   await accountLogin(w, null)
   w.mock.setScenario('server-5xx')
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(JSON.parse(w.io.outBuf())).toMatchObject({ revoked: false })
-  expect(w.io.errBuf()).toContain('difyctl get account session, then delete account session')
+  expect(JSON.parse(w.io.outBuf())).toMatchObject({
+    revoked: false,
+    hints: [
+      { summary: 'find the id of this session', op: 'get.account.session' },
+      { summary: 'revoke it from another login', op: 'delete.account.session' },
+    ],
+  })
+  expect(JSON.parse(w.io.outBuf()).hints[1]).not.toHaveProperty('input')
+  expect(w.io.errBuf()).toContain('find the id of this session: difyctl get account session\n')
+  expect(w.io.errBuf()).toContain('revoke it from another login: difyctl delete account session\n')
 })
 
 it('logs out a login.yml saved without a session id', async () => {
@@ -154,7 +171,7 @@ it('gives an external-SSO login no session-command hint when the revoke fails', 
   expect((await (await w.ctx.get(session)).require()).account).toBeNull()
   w.mock.setScenario('forbidden')
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(JSON.parse(w.io.outBuf())).toMatchObject({ logged_out: true, revoked: false })
+  expect(JSON.parse(w.io.outBuf())).toMatchObject({ logged_out: true, revoked: false, hints: [] })
   expect(w.io.errBuf()).toMatch(/^server revoke failed:/)
   expect(w.io.errBuf()).not.toMatch(/account session/)
   expect(await (await w.ctx.get(session)).current()).toBeNull()

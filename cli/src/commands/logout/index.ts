@@ -21,13 +21,6 @@ export default class Logout extends Command<typeof INPUT> {
     await (await pendingLoginStore(ctx)).clear()
     const login = await sessionService.require()
     const outcome = await revokeAndClearSession(ctx, login)
-
-    if (outcome.revoked) return { logged_out: true, server: login.server, revoked: true }
-    return {
-      logged_out: true,
-      server: login.server,
-      revoked: false,
-      revoke_error: outcome.error,
-    }
+    return { logged_out: true, server: login.server, ...outcome }
   }
 }

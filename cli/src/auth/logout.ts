@@ -1,5 +1,6 @@
 import type { CommandContext } from '@/plugins/base'
 import type { Login } from '@/plugins/session'
+import type { Hint } from '@/protocol/hint'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { errorMessage } from '@/errors/message'
@@ -8,19 +9,45 @@ import { http } from '@/plugins/http'
 import { io } from '@/plugins/io'
 import { session } from '@/plugins/session'
 import { token } from '@/plugins/token'
+import { COMMAND_SEPARATOR, spacedId } from '@/protocol/op-id'
+import { flagToken } from '@/util/flag-name'
+import { BINARY } from '@/version/info'
 
 const SESSIONS_SELF_PATH = '/openapi/v1/account/sessions/self'
 const REVOKE_FAILED_PREFIX = 'server revoke failed: '
-const REVOKE_ELSEWHERE_PREFIX = 'revoke it from another login: '
+const LIST_SESSIONS_OP = 'get.account.session'
+const DELETE_SESSION_OP = 'delete.account.session'
+const REVOKE_ELSEWHERE_SUMMARY = 'revoke it from another login'
 
-export type RevokeOutcome = Readonly<{ revoked: true } | { revoked: false; error: string }>
+type RevokeHint = Hint & { input?: Readonly<Record<string, string>> }
+
+export type RevokeOutcome = Readonly<
+  { revoked: true } | { revoked: false; revoke_error: string; hints: RevokeHint[] }
+>
 
 // The session commands accept only account logins, so an external-SSO login gets no hint.
-function revokeElsewhereHint(login: Login): string | undefined {
-  if (login.account === null) return undefined
+function revokeElsewhereHints(login: Login): RevokeHint[] {
+  if (login.account === null) return []
   if (login.sessionId === null)
-    return `${REVOKE_ELSEWHERE_PREFIX}difyctl get account session, then delete account session`
-  return `${REVOKE_ELSEWHERE_PREFIX}difyctl delete account session --session-id ${login.sessionId}`
+    return [
+      { summary: 'find the id of this session', op: LIST_SESSIONS_OP },
+      { summary: REVOKE_ELSEWHERE_SUMMARY, op: DELETE_SESSION_OP },
+    ]
+  return [
+    {
+      summary: REVOKE_ELSEWHERE_SUMMARY,
+      op: DELETE_SESSION_OP,
+      input: { session_id: login.sessionId },
+    },
+  ]
+}
+
+function hintNotice(hint: RevokeHint): string {
+  const flags = Object.entries(hint.input ?? {}).flatMap(([name, value]) => [
+    flagToken(name),
+    value,
+  ])
+  return `${hint.summary}: ${[BINARY, spacedId(hint.op), ...flags].join(COMMAND_SEPARATOR)}`
 }
 
 /** Throws when the current login comes from DIFY_SERVER/DIFY_TOKEN, which neither
@@ -53,10 +80,14 @@ export async function revokeAndClearSession(
     await httpService.request(() => ({ method: 'DELETE', path: SESSIONS_SELF_PATH }))
   } catch (err) {
     if (!alreadyRevoked(err)) {
-      outcome = { revoked: false, error: errorMessage(err) }
-      streams.notice(`${REVOKE_FAILED_PREFIX}${outcome.error}`)
-      const hint = revokeElsewhereHint(login)
-      if (hint !== undefined) streams.notice(hint)
+      const failed = {
+        revoked: false,
+        revoke_error: errorMessage(err),
+        hints: revokeElsewhereHints(login),
+      } as const
+      streams.notice(`${REVOKE_FAILED_PREFIX}${failed.revoke_error}`)
+      for (const hint of failed.hints) streams.notice(hintNotice(hint))
+      outcome = failed
     }
   }
 
