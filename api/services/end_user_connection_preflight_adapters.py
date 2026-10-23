@@ -13,7 +13,11 @@ from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGat
 from services.end_user_connections.entities import ConnectionOAuthClient, ToolConnectionTarget, WebConnectionContext
 from services.end_user_connections.errors import ConnectionConfigurationError, ConnectionReauthorizationRequiredError
 from services.end_user_connections.preflight import ConnectionRequirement
-from services.workflow.tool_credentials import ToolCredentialConfig, check_tool_credentials
+from services.workflow.tool_credentials import (
+    ToolCredentialConfig,
+    check_tool_credentials,
+    get_tool_connection_requirements,
+)
 
 
 class PreflightGraphQuery(Protocol):
@@ -58,9 +62,9 @@ class PublishedPreflightRequirements:
             providers: dict[str, PluginToolProviderController] = {}
             clients: dict[tuple[str, OAuthClientSource], ConnectionOAuthClient | None] = {}
             requirements: list[ConnectionRequirement] = []
-            for node_id, config in configs.items():
-                if config.credential_source != "end_user":
-                    continue
+            for requirement in get_tool_connection_requirements(graph):
+                node_id = requirement.node_id
+                config = configs[node_id]
                 auth = config.end_user_auth
                 if auth is None or auth.purpose is None:
                     raise ConnectionConfigurationError()
@@ -93,7 +97,6 @@ class PublishedPreflightRequirements:
                         ).snapshot.reference
                     except ConnectionReauthorizationRequiredError:
                         clients[client_key] = None
-                title = data.get("title")
                 requirements.append(
                     ConnectionRequirement(
                         target=ToolConnectionTarget(
@@ -107,9 +110,9 @@ class PublishedPreflightRequirements:
                             oauth_client_source=source,
                             oauth_client=clients.get(client_key) if client_key is not None else None,
                         ),
-                        title=title if isinstance(title, str) and title else node_id,
-                        purpose=auth.purpose,
-                        node_ids=(node_id, *(key for key, value in configs.items() if value.reuse_node_id == node_id)),
+                        title=requirement.title,
+                        purpose=requirement.purpose,
+                        node_ids=requirement.node_ids,
                     )
                 )
             return tuple(requirements)

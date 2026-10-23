@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from constants.end_user_connections import OAuthClientSource
+from constants.end_user_connections import ConnectionCredentialType, OAuthClientSource
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from models.provider_ids import ToolProviderID
@@ -56,6 +56,60 @@ class ToolCredentialConfig(BaseModel):
 
 class ToolNodeSpec(ToolNodeData, ToolCredentialConfig):
     """The editor-facing schema includes Dify policy without changing Graphon's node model."""
+
+
+class ToolConnectionRequirement(BaseModel):
+    """Published authorization requirements, independent of personal connection readiness."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    node_id: str = Field(description="Independent authorization node ID to use as the selection key.")
+    node_ids: tuple[str, ...] = Field(description="The authorization node and all nodes explicitly reusing it.")
+    title: str
+    purpose: str
+    provider: str
+    allowed_credential_types: tuple[ConnectionCredentialType, ...]
+
+
+def get_tool_connection_requirements(graph: Mapping[str, Any]) -> tuple[ToolConnectionRequirement, ...]:
+    """Project static requirements without loading providers, clients, or personal credentials."""
+    nodes = {
+        node["id"]: node["data"]
+        for node in graph.get("nodes", [])
+        if isinstance(node, Mapping)
+        and node.get("type") != "custom-note"
+        and isinstance(node.get("data"), Mapping)
+        and node["data"].get("type") == BuiltinNodeTypes.TOOL
+    }
+    requirements: list[ToolConnectionRequirement] = []
+    for node_id, data in nodes.items():
+        if data.get("credential_source") != "end_user":
+            continue
+        config = ToolCredentialConfig.model_validate(data)
+        auth = config.end_user_auth
+        if auth is None or auth.purpose is None or not auth.allowed_credential_types:
+            raise ValueError("Published EndUser authentication settings are incomplete.")
+        title = data.get("title")
+        requirements.append(
+            ToolConnectionRequirement(
+                node_id=node_id,
+                node_ids=(
+                    node_id,
+                    *(
+                        key
+                        for key, value in nodes.items()
+                        if value.get("credential_source") == "reuse_node" and value.get("reuse_node_id") == node_id
+                    ),
+                ),
+                title=title if isinstance(title, str) and title else node_id,
+                purpose=auth.purpose,
+                provider=str(ToolProviderID(data["provider_id"])),
+                allowed_credential_types=tuple(
+                    sorted(ConnectionCredentialType(value) for value in auth.allowed_credential_types)
+                ),
+            )
+        )
+    return tuple(requirements)
 
 
 @dataclass(frozen=True)

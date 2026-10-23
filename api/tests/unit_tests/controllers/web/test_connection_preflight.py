@@ -65,21 +65,34 @@ def test_explicit_version_and_selection_response(client: FlaskClient, harness: O
     version = parameters.get_json()["workflow_id"]
     assert version == harness.base.workflow_id
     assert parameters.get_json()["requires_end_user_connections"] is True
+    assert parameters.get_json()["connection_requirements"] == [
+        {
+            "node_id": "tool-1",
+            "node_ids": ["tool-1"],
+            "title": "tool-1",
+            "purpose": "Read calendar",
+            "provider": "vendor/calendar/calendar",
+            "allowed_credential_types": ["api-key", "oauth2"],
+        }
+    ]
     assert harness.base.auth.calls == []
     response = client.post("/api/connections/preflight", json={"workflow_id": version, "connections": {}})
     assert response.status_code == 200
     data = response.get_json()
     assert data["workflow_id"] == harness.base.workflow_id
     assert data["ready"] is False
-    assert data["requirements"][0]["status"] == "disconnected"
-    assert data["requirements"][0]["connection_id"] is None
+    assert data["connections"][0]["status"] == "disconnected"
+    assert data["connections"] == [
+        {"node_id": "tool-1", "connection_id": None, "status": "disconnected", "check": None}
+    ]
+    assert set(data) == {"workflow_id", "connections", "ready"}
     created = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     response = client.post(
         "/api/connections/preflight", json={"workflow_id": data["workflow_id"], "connections": {"tool-1": created.id}}
     )
     assert response.status_code == 200
     assert response.get_json()["ready"] is True
-    assert response.get_json()["requirements"][0]["connection_id"] == created.id
+    assert response.get_json()["connections"][0]["connection_id"] == created.id
     assert "original-secret" not in response.get_data(as_text=True)
     assert "revision" not in response.get_data(as_text=True)
     assert "account_id" not in response.get_data(as_text=True)
@@ -106,7 +119,7 @@ def test_temporary_check_failure_has_unknown_effective_state(client: FlaskClient
     )
     assert response.status_code == 200
     assert response.get_json()["ready"] is False
-    requirement = response.get_json()["requirements"][0]
+    requirement = response.get_json()["connections"][0]
     assert requirement["status"] is None
     assert requirement["check"]["status"] == "temporarily_unavailable"
 
@@ -129,16 +142,18 @@ def test_foreign_or_missing_chatflow_session_is_not_found(client: FlaskClient, h
     assert response.get_json()["code"] == "not_found"
 
 
-def test_guest_can_discover_requirements(client: FlaskClient, harness: OAuthHarness) -> None:
+def test_guest_can_discover_requirements(
+    client: FlaskClient, harness: OAuthHarness, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
     with harness.base.sessions.begin() as session:
         session.execute(
             sa.update(EndUser).where(EndUser.id == harness.base.context.end_user_id).values(account_id=None)
         )
-    response = client.post(
-        "/api/connections/preflight", json={"workflow_id": harness.base.workflow_id, "connections": {}}
-    )
+    response = client.get("/api/parameters")
     assert response.status_code == 200
-    assert response.get_json()["ready"] is False
+    assert response.get_json()["connection_requirements"][0]["node_id"] == "tool-1"
+    assert harness.base.auth.calls == []
 
 
 @pytest.mark.parametrize(
@@ -180,6 +195,7 @@ def test_anonymous_policy_preserves_page_access_and_workflows_without_personal_c
     parameters = client.get("/api/parameters")
     assert parameters.status_code == 200
     assert parameters.get_json()["allow_anonymous_end_user_auth"] is False
+    assert bool(parameters.get_json()["connection_requirements"]) is personal_tools
     response = client.post(
         "/api/connections/preflight", json={"workflow_id": harness.base.workflow_id, "connections": {}}
     )
@@ -188,6 +204,6 @@ def test_anonymous_policy_preserves_page_access_and_workflows_without_personal_c
         assert response.get_json()["code"] == "end_user_login_required"
     else:
         assert response.status_code == 200
-        assert response.get_json()["requirements"] == []
+        assert response.get_json()["connections"] == []
         assert response.get_json()["ready"] is True
     assert harness.base.auth.calls == []

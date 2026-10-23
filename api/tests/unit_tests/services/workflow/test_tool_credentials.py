@@ -7,7 +7,12 @@ from graphon.nodes.tool.entities import ToolNodeData
 from models import AppMode
 from services.workflow.graph_check import IssueCode, check_graph
 from services.workflow.node_defaults import node_data_type
-from services.workflow.tool_credentials import ToolCredentialConfig, ToolNodeSpec, check_tool_credentials
+from services.workflow.tool_credentials import (
+    ToolCredentialConfig,
+    ToolNodeSpec,
+    check_tool_credentials,
+    get_tool_connection_requirements,
+)
 
 
 class ToolNodeFixture(TypedDict):
@@ -443,3 +448,27 @@ def test_unknown_oauth_client_type_is_rejected_in_drafts() -> None:
 
     [issue] = check_tool_credentials(graph, complete=False)
     assert issue.path == ("end_user_auth", "oauth_client_type")
+
+
+def test_connection_requirements_keep_independent_nodes_and_explicit_reuse_groups() -> None:
+    graph = {
+        "nodes": [
+            tool_node("root", title="Calendar"),
+            tool_node("independent", title=""),
+            tool_node("reuse", credential_source="reuse_node", reuse_node_id="root", end_user_auth=None),
+            tool_node("workspace", credential_source="workspace", end_user_auth=None),
+            {**tool_node("note"), "type": "custom-note"},
+        ]
+    }
+    original = deepcopy(graph)
+
+    requirements = get_tool_connection_requirements(graph)
+
+    assert [item.node_id for item in requirements] == ["root", "independent"]
+    assert requirements[0].node_ids == ("root", "reuse")
+    assert requirements[1].node_ids == ("independent",)
+    assert requirements[0].title == "Calendar"
+    assert requirements[1].title == "independent"
+    assert requirements[0].provider == "langgenius/calendar/calendar"
+    assert requirements[0].allowed_credential_types == ("oauth2",)
+    assert graph == original

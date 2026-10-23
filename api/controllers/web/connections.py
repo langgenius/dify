@@ -16,7 +16,6 @@ from controllers.common.end_user_connections import (
     ConnectionCredentialsHTTPError,
     ConnectionLoginRequiredError,
     ConnectionNotFoundHTTPError,
-    ConnectionReauthorizationHTTPError,
     ConnectionSecretUnavailableHTTPError,
     ConnectionWorkflowChangedHTTPError,
 )
@@ -34,7 +33,6 @@ from libs.helper import dump_response
 from models.model import App, EndUser
 from services.end_user_connection_identity import connection_context_from_web_passport
 from services.end_user_connections.contracts import (
-    ConnectionCheckView,
     ConnectionInput,
     ConnectionSummary,
     CreateApiKeyConnectionInput,
@@ -125,16 +123,10 @@ class EndUserConnectionListResponse(ResponseModel):
     next_cursor: str | None
 
 
-class EndUserConnectionCheckResponse(ConnectionCheckView, ResponseModel):
-    pass
-
-
 register_schema_models(
     web_ns, EndUserConnectionCreatePayload, EndUserConnectionUpdatePayload, EndUserConnectionListQuery
 )
-register_response_schema_models(
-    web_ns, EndUserConnectionResponse, EndUserConnectionListResponse, EndUserConnectionCheckResponse
-)
+register_response_schema_models(web_ns, EndUserConnectionResponse, EndUserConnectionListResponse)
 
 
 @web_ns.route("/connections")
@@ -223,24 +215,3 @@ class EndUserConnectionApi(WebApiResource):
         except ConnectionError as error:
             _raise_error(error)
         return "", 204
-
-
-@web_ns.route("/connections/<uuid:connection_id>/check")
-class EndUserConnectionCheckApi(WebApiResource):
-    @web_ns.response(200, "Credential check result", web_ns.models[EndUserConnectionCheckResponse.__name__])
-    @error_responses(
-        ConnectionLoginRequiredError,
-        ConnectionConfigurationHTTPError,
-        ConnectionNotFoundHTTPError,
-        ConnectionConflictHTTPError,
-        ConnectionReauthorizationHTTPError,
-        ConnectionCheckUnavailableHTTPError,
-        ConnectionSecretUnavailableHTTPError,
-    )
-    def post(self, app_model: App, end_user: EndUser, connection_id: UUID):
-        try:
-            context = connection_context_from_web_passport(app=app_model, end_user=end_user)
-            result = application_services().end_user_connections.check_connection(context, str(connection_id))
-        except ConnectionError as error:
-            _raise_error(error)
-        return dump_response(EndUserConnectionCheckResponse, result)

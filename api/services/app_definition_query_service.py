@@ -6,6 +6,7 @@ from typing import Any, NamedTuple, Protocol
 
 from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from services.workflow.tool_credentials import ToolConnectionRequirement, get_tool_connection_requirements
 
 
 class AppParameterConfig(NamedTuple):
@@ -18,11 +19,13 @@ class WebAppParameterConfig(NamedTuple):
     # Non-workflow app modes have no workflow version or personal tool requirements.
     workflow_id: str | None
     requires_end_user_connections: bool
+    graph: Mapping[str, Any] | None
 
 
 class WebAppParametersDict(AppParametersDict):
     workflow_id: str | None
     requires_end_user_connections: bool
+    connection_requirements: tuple[ToolConnectionRequirement, ...]
 
 
 class AppToolIconSource(NamedTuple):
@@ -129,10 +132,15 @@ class AppDefinitionQueryService:
             raise AppDefinitionUnavailableError from None
         if config is None:
             raise AppDefinitionUnavailableError()
+        try:
+            requirements = get_tool_connection_requirements(config.graph) if config.graph is not None else ()
+        except (KeyError, TypeError, ValueError):
+            raise AppDefinitionUnavailableError() from None
         return {
             **self._map_parameters(config.parameters),
             "workflow_id": config.workflow_id,
             "requires_end_user_connections": config.requires_end_user_connections,
+            "connection_requirements": requirements,
         }
 
     @staticmethod

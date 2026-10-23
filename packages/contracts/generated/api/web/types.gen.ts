@@ -188,16 +188,11 @@ export type ConnectionOauthFailedError = ErrorResponse & {
   status: 400
 }
 
-export type ConnectionPreflightRequirement = {
-  allowed_credential_types: Array<ConnectionCredentialType>
+export type ConnectionPreflightStatus = {
   check: CredentialCheckResult | null
   connection_id: string | null
   node_id: string
-  node_ids: Array<string>
-  provider: string
-  purpose: string
   status: NodeConnectionStatus | null
-  title: string
 }
 
 export type ConnectionReauthorizationRequiredError = ErrorResponse & {
@@ -285,12 +280,6 @@ export type EmailSendIpLimitError = ErrorResponse & {
   status: 429
 }
 
-export type EndUserConnectionCheckResponse = {
-  check: CredentialCheckResult
-  connection_id: string
-  credential_status: ConnectionCredentialStatus
-}
-
 export type EndUserConnectionCreatePayload = {
   credentials: {
     [key: string]: JsonValue
@@ -331,8 +320,8 @@ export type EndUserConnectionPreflightPayload = {
 }
 
 export type EndUserConnectionPreflightResponse = {
+  connections: Array<ConnectionPreflightStatus>
   readonly ready: boolean
-  requirements: Array<ConnectionPreflightRequirement>
   workflow_id: string
 }
 
@@ -939,6 +928,15 @@ export type TooManyFilesError = ErrorResponse & {
   status: 400
 }
 
+export type ToolConnectionRequirement = {
+  allowed_credential_types: Array<ConnectionCredentialType>
+  node_id: string
+  node_ids: Array<string>
+  provider: string
+  purpose: string
+  title: string
+}
+
 export type TriggerWorkflowServiceModeUnavailableError = ErrorResponse & {
   code: 'trigger_workflow_service_mode_unavailable'
   status: 403
@@ -998,6 +996,7 @@ export type WebAppParametersResponse = {
   annotation_reply: {
     enabled?: boolean
   }
+  connection_requirements: Array<ToolConnectionRequirement>
   file_upload: {
     allowed_file_extensions?: Array<string>
     allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
@@ -1449,7 +1448,7 @@ export type WorkflowRunPayload = {
 }
 
 export type EndUserConnectionPreflightResponseWritable = {
-  requirements: Array<ConnectionPreflightRequirement>
+  connections: Array<ConnectionPreflightStatus>
   workflow_id: string
 }
 
@@ -1856,34 +1855,6 @@ export type PatchConnectionsByConnectionIdResponses = {
 
 export type PatchConnectionsByConnectionIdResponse =
   PatchConnectionsByConnectionIdResponses[keyof PatchConnectionsByConnectionIdResponses]
-
-export type PostConnectionsByConnectionIdCheckData = {
-  body?: never
-  path: {
-    connection_id: string
-  }
-  query?: never
-  url: '/connections/{connection_id}/check'
-}
-
-export type PostConnectionsByConnectionIdCheckErrors = {
-  400: ConnectionConfigurationInvalidError | ErrorResponse
-  401: EndUserLoginRequiredError | ErrorResponse
-  404: ConnectionNotFoundError | ErrorResponse
-  409: ConnectionConflictError | ConnectionReauthorizationRequiredError | ErrorResponse
-  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type PostConnectionsByConnectionIdCheckError =
-  PostConnectionsByConnectionIdCheckErrors[keyof PostConnectionsByConnectionIdCheckErrors]
-
-export type PostConnectionsByConnectionIdCheckResponses = {
-  200: EndUserConnectionCheckResponse
-}
-
-export type PostConnectionsByConnectionIdCheckResponse =
-  PostConnectionsByConnectionIdCheckResponses[keyof PostConnectionsByConnectionIdCheckResponses]
 
 export type PostConnectionsByConnectionIdReauthorizeData = {
   body?: never

@@ -63,15 +63,12 @@ class ConnectionRequirement:
     node_ids: tuple[str, ...]
 
 
-class ConnectionPreflightRequirement(BaseModel):
+class ConnectionPreflightStatus(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     node_id: str = Field(description="Independent authorization node ID to use as the selection key.")
-    node_ids: tuple[str, ...] = Field(description="The authorization node and all nodes explicitly reusing it.")
-    title: str
-    purpose: str
-    provider: str
-    allowed_credential_types: tuple[ConnectionCredentialType, ...]
+    # Execution consumes the provider from the checked snapshot without re-reading the graph.
+    provider: str = Field(exclude=True)
     connection_id: str | None
     # None means availability is unknown because the check could not complete;
     # it is not a fifth credential/selection status.
@@ -85,12 +82,12 @@ class ConnectionPreflightView(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     workflow_id: str = Field(description="Connection contract revision evaluated by this preflight.")
-    requirements: tuple[ConnectionPreflightRequirement, ...]
+    connections: tuple[ConnectionPreflightStatus, ...]
 
     @computed_field
     @property
     def ready(self) -> bool:
-        return all(item.status == NodeConnectionStatus.CONNECTED for item in self.requirements)
+        return all(item.status == NodeConnectionStatus.CONNECTED for item in self.connections)
 
 
 class PreflightRequirements(Protocol):
@@ -193,7 +190,7 @@ class ConnectionPreflightService:
                 raise ConnectionConflictError()
         self._connections.validate_preflight_context(context, workflow_id, conversation_id)
 
-        views: list[ConnectionPreflightRequirement] = []
+        views: list[ConnectionPreflightStatus] = []
         for requirement in requirements:
             target = requirement.target
             connection_id = selections.get(target.node_id)
@@ -224,16 +221,12 @@ class ConnectionPreflightService:
                         checked_at=int(time.time()),
                     )
             views.append(
-                ConnectionPreflightRequirement(
+                ConnectionPreflightStatus(
                     node_id=target.node_id,
-                    node_ids=requirement.node_ids,
-                    title=requirement.title,
-                    purpose=requirement.purpose,
                     provider=target.provider,
-                    allowed_credential_types=tuple(sorted(target.allowed_credential_types)),
                     connection_id=visible_id,
                     status=status,
                     check=check,
                 )
             )
-        return ConnectionPreflightView(workflow_id=workflow_id, requirements=tuple(views))
+        return ConnectionPreflightView(workflow_id=workflow_id, connections=tuple(views))

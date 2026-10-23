@@ -73,9 +73,9 @@ def test_empty_selection_checks_explicit_version_without_credentials_or_run(
     result = service.check(harness.base.context, command(harness, {}))
     assert result.workflow_id == harness.base.workflow_id
     assert not result.ready
-    assert result.requirements[0].status == NodeConnectionStatus.DISCONNECTED
-    assert result.requirements[0].connection_id is None
-    assert result.requirements[0].check is None
+    assert result.connections[0].status == NodeConnectionStatus.DISCONNECTED
+    assert result.connections[0].connection_id is None
+    assert result.connections[0].check is None
     assert harness.base.auth.calls == []
     with harness.base.sessions() as session:
         for model in (WorkflowRun, AppConnection, SessionConnection, EndUserConnection):
@@ -90,9 +90,9 @@ def test_same_connection_is_checked_once_for_independent_nodes(
     harness.base.auth.calls.clear()
     result = service.check(harness.base.context, command(harness, {"tool-1": connection.id, "tool-2": connection.id}))
     assert result.ready
-    assert len(result.requirements) == 2
+    assert len(result.connections) == 2
     assert len(harness.base.auth.calls) == 1
-    assert all(item.connection_id == connection.id for item in result.requirements)
+    assert all(item.connection_id == connection.id for item in result.connections)
     assert "original-secret" not in result.model_dump_json()
     assert "revision" not in result.model_dump_json()
 
@@ -104,8 +104,8 @@ def test_reuse_nodes_share_root_requirement_without_provider_wide_merging(
     add_node(harness, reuse=True)
     result = service.check(harness.base.context, command(harness, {"tool-1": connection.id}))
     assert result.ready
-    assert len(result.requirements) == 1
-    assert result.requirements[0].node_ids == ("tool-1", "tool-2")
+    assert len(result.connections) == 1
+    assert result.connections[0].node_id == "tool-1"
     with pytest.raises(ConnectionConfigurationError):
         service.check(harness.base.context, command(harness, {"tool-2": connection.id}))
 
@@ -119,7 +119,7 @@ def test_preflight_preserves_check_outcomes(
         {"status": status, "reason_code": None, "retryable": False, "checked_at": 1}
     )
     result = service.check(harness.base.context, command(harness, {"tool-1": connection.id}))
-    item = result.requirements[0]
+    item = result.connections[0]
     assert item.check is not None
     assert item.check.status == status
     assert result.ready == (status in {"valid", "unsupported"})
@@ -170,7 +170,7 @@ def test_saved_defaults_are_not_execution_selection_fallback(
         )
     result = service.check(harness.base.context, command(harness, {}))
     assert not result.ready
-    assert result.requirements[0].connection_id is None
+    assert result.connections[0].connection_id is None
     with harness.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(AppConnection)) == 1
 
@@ -206,7 +206,7 @@ def test_oauth_client_change_is_reconnect_required_without_mutating_grant(
         )
     result = service.check(harness.base.context, command(harness, {"tool-1": connection.id}))
     assert not result.ready
-    assert result.requirements[0].status == NodeConnectionStatus.RECONNECT_REQUIRED
+    assert result.connections[0].status == NodeConnectionStatus.RECONNECT_REQUIRED
     assert harness.base.auth.calls == []
     stored = harness.base.repository.find(harness.base.context, connection.id)
     assert stored is not None
@@ -247,7 +247,7 @@ def test_same_provider_nodes_resolve_clients_independently_and_reuse_inherits_se
 
     result = service.check(harness.base.context, command(harness, {"tool-1": custom.id, "tool-2": default.id}))
     assert result.ready
-    assert result.requirements[1].node_ids == ("tool-2", "reuse")
+    assert [item.node_id for item in result.connections] == ["tool-1", "tool-2"]
     stored = harness.base.repository.find(harness.base.context, default.id)
     assert stored is not None
     assert stored.access.oauth_client is not None
@@ -255,7 +255,7 @@ def test_same_provider_nodes_resolve_clients_independently_and_reuse_inherits_se
 
     result = service.check(harness.base.context, command(harness, {"tool-1": default.id, "tool-2": custom.id}))
     assert not result.ready
-    assert all(item.status == NodeConnectionStatus.RECONNECT_REQUIRED for item in result.requirements)
+    assert all(item.status == NodeConnectionStatus.RECONNECT_REQUIRED for item in result.connections)
     stored = harness.base.repository.find(harness.base.context, custom.id)
     assert stored is not None
     assert stored.access.revision == 1
@@ -346,7 +346,7 @@ def test_two_conversations_check_independent_choices_without_persisting_selectio
         )
         result = service.check(harness.base.context, payload)
         assert result.ready
-        assert result.requirements[0].connection_id == connection.id
+        assert result.connections[0].connection_id == connection.id
     with harness.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(SessionConnection)) == 0
         assert session.scalar(sa.select(sa.func.count()).select_from(AppConnection)) == 0
@@ -404,7 +404,7 @@ def test_workspace_only_graph_requires_no_personal_connections(
         workflow.graph = json.dumps(graph)
     result = service.check(harness.base.context, command(harness, {}))
     assert result.ready
-    assert result.requirements == ()
+    assert result.connections == ()
     assert harness.base.auth.calls == []
 
 
