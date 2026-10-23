@@ -26,6 +26,9 @@ jobs:
       - name: Test SDK types, runtime and Vite integration
         run: pnpm --filter @dify/openapi-inference test
 
+      - name: Verify the packed SDK in an independent npm project
+        run: pnpm --filter @dify/openapi-inference test:package
+
       - name: Test Next.js adapters and tree-shaking
         run: pnpm --filter @dify/openapi-inference test:next
 

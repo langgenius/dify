@@ -1,50 +1,74 @@
-# OpenAPI inference with TypeScript 7.1
+# @dify/openapi-inference
 
-An experimental SDK using **TypeScript 7.1 Content Mappers**. Import an OpenAPI document, get typed oRPC-style calls and TanStack Query helpers, and bundle only the operations you use. There is no SDK generation command and no generated SDK or declaration files to commit.
+Import OpenAPI documents as typed, tree-shakable API calls and TanStack Query helpers using **TypeScript 7.1 Content Mappers**. No generated SDK source or declaration files need to be committed.
 
-```ts
-import { client } from '@dify/openapi-inference'
-import { api as consoleClient, query as consoleQuery } from './pets.openapi.yaml'
+**Experimental beta:** the compiler integration targets TypeScript `7.1.0-beta`. The API and compiler protocol may change between prereleases. This package is ESM-only.
 
-client.setConfig({ baseUrl: 'https://example.com' })
+## Compatibility
 
-const pet = await consoleClient.pets.byPetId.get({ params: { petId: 1 } })
-// pet.name: string; pet.status: 'available' | 'adopted'
+| Environment           | Supported setup                                                        |
+| --------------------- | ---------------------------------------------------------------------- |
+| Compiler              | TypeScript `7.1.0-beta`, with `--runExternalCode`                      |
+| Editor                | TypeScript 7 extension, workspace compiler and content mappers enabled |
+| Build/runtime tooling | Node.js 24+                                                            |
+| Vite                  | Official Vite 8.3.5; optional peer dependency                          |
+| Next.js               | Next.js 16.4.2, Turbopack and Webpack with the loader below            |
+| Browser runtime       | Modern Fetch, Headers, FormData, Blob and ReadableStream APIs          |
+| Specification         | OpenAPI 3.0/3.1, local JSON Pointer references                         |
 
-const options = consoleQuery.pets.byPetId.get.queryOptions({
-  input: { params: { petId: 1 } },
-})
-// useQuery(options), queryClient.fetchQuery(options), etc.
-```
+## Install and try
 
-`/pets/{petId}` becomes `pets.byPetId`; hyphenated and underscored segments become camelCase. Each HTTP method is a leaf function. Colon actions such as `/apps/{app_id}/chat:run` become `apps.byAppId.chat.run`; `/` becomes `root`. When legacy underscore routes collide with camelCase normalization, the canonical route keeps its camelCase member and the alias retains its literal segment (for example `createByFile` and `create_by_file`). Inputs use `params`, `query`, `body`, `headers`, and `cookie`; the optional second argument accepts `client`, `signal`, `headers`, and `credentials`. Calls return response data and throw `ApiError` on non-2xx responses.
-
-Documents export only `api` and `query`. Routes do not require operation IDs.
-
-## Try the checked-in demo
-
-From the repository root:
+After the beta is published:
 
 ```sh
-pnpm install --filter @dify/openapi-inference --ignore-scripts
-pnpm --filter @dify/openapi-inference build
-pnpm --filter @dify/openapi-inference type-check
-pnpm --filter @dify/openapi-inference test
-pnpm --filter @dify/openapi-inference demo
+npm install @dify/openapi-inference@beta
+npm install --save-dev typescript@7.1.0-beta vite@8.3.5
 ```
 
-The demo starts an ephemeral local HTTP server, exercises YAML and JSON-backed imports, creates and deletes a pet, checks a 404 response, and closes the server. Node 24+ is required for the synchronous module hooks. This package pins TypeScript **7.1.0-beta** in its own catalog. The workspace's `@typescript/native` alias also points to 7.1.0-beta. Existing checks still use the unchanged tsrs version; Web adds `--runExternalCode` for Content Mappers. The TS 6 JavaScript Compiler API remains available to code-generation, lint and i18n tools.
+Before publication, install a locally packed release candidate with `npm install /path/to/dify-openapi-inference-0.1.0-beta.0.tgz`. See [release preparation](docs/releasing.md) for the packaging and independent-consumer checks.
 
-## Native compiler setup
+Create `pets.openapi.yaml`:
 
-Build the package first, then configure the consuming project:
+```yaml
+openapi: 3.1.0
+info:
+  title: Pets
+  version: '1'
+servers:
+  - url: https://api.example.com
+paths:
+  /pets/{petId}:
+    get:
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: A pet
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, name]
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+```
+
+Configure `tsconfig.json`:
 
 ```json
 {
   "compilerOptions": {
     "strict": true,
-    "module": "NodeNext",
     "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "noEmit": true
   },
   "contentMappers": [
@@ -56,25 +80,7 @@ Build the package first, then configure the consuming project:
 }
 ```
 
-Run `tsc --runExternalCode --noEmit`. This is the actual TS 7.1 compiler, not a wrapper or a TS 6 language-service plugin. The local example uses `"package": "../.."` to resolve this uninstalled package directly.
-
-For editor support, open this package directory in VS Code, use Microsoft's **TypeScript 7** extension (`TypeScriptTeam.native-preview`), and select the workspace TypeScript **7.1.0-beta** installation. The workspace must be trusted and content mappers enabled. Open a consuming `.ts` file first so the language server discovers its config. Native LSP tests cover nested completions, inferred response hover, navigation from a method to its YAML declaration, and unsaved YAML updates.
-
-### JSON in the 7.1 beta
-
-The beta rejects content mapper registrations for built-in `.json` files, including `.openapi.json` (`TS18066`). Use JSON content in a file ending in `.openapi`, or keep an existing JSON file and add a symlink:
-
-```sh
-ln -s pets.json pets.openapi
-```
-
-Then import `./pets.openapi`. The example includes this exact setup. Nothing copies or regenerates the JSON. Both the Node hook and Vite plugin preserve the logical `.openapi` extension when resolving the symlink. Native `.json` imports are **not** advertised as supported.
-
-## Runtime setup
-
-Content mappers provide types; they do not implement runtime loading. Vite and Node adapters use the same parsed document to expose matching runtime modules.
-
-For Vite:
+Configure `vite.config.ts`:
 
 ```ts
 import { openapi } from '@dify/openapi-inference/vite'
@@ -83,166 +89,148 @@ import { defineConfig } from 'vite'
 export default defineConfig({ plugins: [openapi()] })
 ```
 
-For Node:
+Then call the API:
 
-```sh
-node --import @dify/openapi-inference/register app.ts
+```ts
+import { api, query } from './pets.openapi.yaml'
+
+const pet = await api.pets.byPetId.get({ params: { petId: 1 } })
+pet.name // string
+
+const options = query.pets.byPetId.get.queryOptions({
+  input: { params: { petId: 1 } },
+})
+// Pass options to useQuery(), queryClient.fetchQuery(), etc.
 ```
 
-For Next.js, use `@dify/openapi-inference/loader` in both `turbopack.rules` and `webpack` rules, as shown in `web/next.config.ts`. Turbopack rules need `as: '*.js'`; Webpack rules need `type: 'javascript/auto'` for JSON targets. Match the resolved JSON filename when importing through an `.openapi` symlink, and apply the same loader to `*openapi-namespace.js`. The optional `runtime` loader option is a path relative to the specification directory; this selects the sidecar when symlink resolution moves the specification to another directory. Without the option, the loader discovers `<resolved filename>.config.ts`.
+Run `npx tsc --runExternalCode --noEmit`. The compiler supplies types; the Vite plugin supplies runtime modules. Both are required for this setup.
 
-The loader emits ESM namespaces as query modules of a tiny shared resource, keeping API calls and query helpers tree-shakable without copying the full specification into every bundler module. It tracks the runtime configuration as a dependency and refreshes compiled descriptors when the document changes.
+For VS Code, install Microsoft's TypeScript 7 extension (`TypeScriptTeam.native-preview`), select the workspace TypeScript 7.1 compiler, trust the workspace and enable content mappers. Open a consuming `.ts` file so the language server discovers its config.
 
-`pnpm --filter @dify/openapi-inference test:next` builds disposable Next.js apps sequentially with Turbopack and Webpack. Using the committed full console specification and the KnowledgeFS metadata endpoint, it verifies server transport/context, query-key binding and removal of unused endpoints/schema metadata from client chunks. This production-build test is separate from `test` and `test:repository`; CI runs it with bounded workers and memory.
+### Existing JSON files
 
-Use an independent transport when requests need different hosts, credentials, or fetch implementations:
+The TS 7.1 beta cannot register mappers for built-in `.json` imports, including `.openapi.json`. Store JSON in a file ending in `.openapi`, or symlink an existing JSON file:
+
+```sh
+ln -s pets.json pets.openapi
+```
+
+Import `./pets.openapi`. On platforms where symlinks are unavailable, use a regular `.openapi` file containing JSON. Vite and Node preserve the logical extension of symlinks.
+
+## API and transport
+
+Documents export only `api` and `query`; operation IDs are not exports. `/pets/{petId}` becomes `pets.byPetId`, hyphenated segments become camelCase and HTTP methods are leaf functions. Colon actions such as `/chat:run` become `chat.run`. Unresolvable member collisions fail during compilation.
+
+The first argument contains `params`, `query`, `headers`, `cookie`, `body` and `contentType` as declared by the specification. The optional second argument accepts `client`, `signal`, additional transport `headers`, `credentials` and document `context`.
 
 ```ts
 import { createClient } from '@dify/openapi-inference'
 import { api } from './pets.openapi.yaml'
 
 const transport = createClient({
-  baseUrl: 'https://example.com/v1',
+  baseUrl: 'https://api.example.com/v1',
   headers: { Authorization: 'Bearer …' },
   fetch: globalThis.fetch,
 })
 
 await api.pets.byPetId.get(
   { params: { petId: 1 } },
-  { client: transport, signal: controller.signal },
+  { client: transport, signal: AbortSignal.timeout(5000) },
 )
 ```
 
-The shared `client` can be configured once for a browser app. Passing an independent transport per call also avoids sharing request-specific credentials in a server process.
+A client override takes precedence over document configuration. Otherwise the document's `servers` URL is used; relative server URLs require a browser origin or an explicit absolute `baseUrl` in Node. The exported shared `client` also supports `setConfig()`, but request-specific credentials should use independent clients.
 
-## Configure an entire document
+Successful calls return decoded response data. Non-2xx responses throw `ApiError` with `response` and decoded `data`; network and cancellation failures propagate. Responses are not runtime-validated and schema defaults are not filled in. JSON binary-formatted fields remain strings; binary response media return Blob objects; SSE returns a raw `ReadableStream<Uint8Array>`.
 
-Place a `<document filename>.config.ts` module beside an imported specification (for example `console.openapi.config.ts` beside `console.openapi`). It exports a `Context` type for native checking and a default `RuntimeConfig` for execution:
+With one request media type, `contentType` can be omitted. With multiple media types, only `application/json` is implicit; other alternatives require an explicit matching `contentType`. Multipart accepts flat objects with scalar, Blob/File or repeated array fields, plus explicit JSON part encodings. Fetch supplies its boundary. Optional request bodies may be omitted entirely.
+
+### Document configuration
+
+Place `pets.openapi.yaml.config.ts` next to `pets.openapi.yaml`:
 
 ```ts
 import type { RuntimeConfig } from '@dify/openapi-inference'
 import { createClient } from '@dify/openapi-inference'
 
-export type Context = { silent?: boolean }
-const runtime: RuntimeConfig = {
-  createClient: (options) =>
+export type Context = { token?: string }
+
+const runtime: RuntimeConfig<Context> = {
+  createClient: ({ context }) =>
     createClient({
-      baseUrl: 'https://example.com/console/api',
-      // Bind your existing auth/error Fetch adapter here, using options.context.
+      baseUrl: 'https://api.example.com',
+      headers: context?.token ? { Authorization: `Bearer ${context.token}` } : {},
     }),
-  queryKeyPrefix: ['console'],
-  onError: (error) => console.error(error),
+  queryKeyPrefix: ['pets'],
 }
 export default runtime
 ```
 
-The native mapper imports only the context type. Vite and Node bind the configuration to API calls and query helpers. The client factory runs per call, receives context and cancellation options, and does not share request-specific credentials. Explicit per-call clients take precedence. Query prefixes apply at every namespace level, including `key()` for cache invalidation. Restart the development server after adding or removing a configuration file; edits to an existing configuration follow normal module HMR.
+Both `api` and `query` infer `Context`. The factory runs per call. An optional `onError(error)` hook observes failures; avoid throwing from it if you want the original error to propagate. Restart the development server after adding or removing a sidecar; edits to existing files follow normal HMR.
 
-Expose the entire document through direct ESM re-exports:
+### Query helpers and bundles
 
-```ts
-export { api as consoleClient, query as consoleQuery } from './console.openapi'
-```
-
-Avoid wrapping the full router in a dynamic factory or assigning its namespaces to exported constants: the latter also retained unused operations in this workspace's bundler. Direct re-exports preserve per-operation pruning. Vite also accepts a `runtime(fileName)` resolver for applications that keep runtime configuration elsewhere; typed contexts come from the adjacent configuration file.
-
-## Bundle behavior
-
-The compiler sees a literal representation of the full schema **in memory**. The browser sees separate ESM namespace modules containing only request paths, methods, serialization settings, and JSON content types. Response schemas, descriptions, examples, and YAML parsing code stay out of the bundle. Build-time conversion is still necessary; “no codegen” here means no separate generation step or generated SDK files on disk.
-
-Both of these remain statically traceable:
+Import `query` directly for `queryOptions`, `mutationOptions`, `queryKey` and namespace `key()` helpers. Give each document a distinct `queryKeyPrefix` when routes overlap. For an application-level entry, preserve direct ESM re-exports:
 
 ```ts
-import { api, query } from './pets.openapi.yaml'
-
-api.pets.byPetId.get({ params: { petId: 1 } })
-query.pets.byPetId.get.queryOptions({ input: { params: { petId: 1 } } })
+export { api as apiClient, query as apiQuery } from './pets.openapi.yaml'
 ```
 
-Measured with this workspace's Vite/Rolldown build, including the shared runtime:
+Static calls retain only used operations. Dynamic indexing, enumeration or passing whole namespaces to opaque functions can retain other operations. The runtime does not bundle response schemas or the YAML parser. Tests verify that adding 1,000 unused operations does not increase a static consumer's bundle.
 
-| Entry used               |       JS |    Gzip |
-| ------------------------ | -------: | ------: |
-| One nested API operation |  ~5.0 KB | ~2.2 KB |
-| One nested query helper  | ~11.2 KB | ~3.6 KB |
+## Other runtime adapters
 
-Tests add **1,000 unused endpoints within the same resource group** and a large description, then assert unchanged output size and absence of unused endpoint markers. JSON-backed and YAML inputs also produce equivalent code.
-
-`createTanstackQueryUtils(api)` is structurally compatible and tested, but passing the entire router to a dynamic factory may retain its operations. Import the prebuilt `query` namespace for per-operation pruning. Dynamic property access, enumeration, spreading or passing whole namespace objects across opaque function boundaries can also prevent pruning. This follows normal ESM tree-shaking rules.
-
-The exported query helpers include `queryOptions`, `queryKey`, `mutationOptions`, and `key()` on both procedures and namespaces. Keys are based on route segments; applications combining multiple API documents with overlapping routes must namespace their query keys explicitly.
-
-## Verification with the repository's actual specifications
-
-Run after building:
+### Node.js
 
 ```sh
-pnpm --filter @dify/openapi-inference test:repository
+node --import @dify/openapi-inference/register app.ts
 ```
 
-This reads the existing generated files in `packages/contracts/openapi/` and the tracked `api/knowledge-fs-contract/knowledge-fs.openapi.json`. The console snapshot is committed for frontend consumers; the other generated documents remain ignored by Git and must be exported for the full repository suite. Set `DIFY_OPENAPI_DIR=/path/to/existing/openapi` if those documents live in another checkout. Missing inputs fail explicitly. The suite uses temporary `.openapi` symlinks and verifies source SHA-256 hashes are unchanged.
+The hook loads YAML and `.openapi` files; Node's native TypeScript support loads configuration sidecars. Native execution does not replace the separate type check.
 
-Refresh the local OpenAPI documents from the current backend before comparing with checked-in contracts (run from the repository root):
+### Next.js
 
-```sh
-uv run --project api api/dev/generate_swagger_specs.py --output-dir packages/contracts/openapi
-uv run --project api api/dev/generate_fastopenapi_specs.py --output-dir packages/contracts/openapi
+For `pets.openapi` linked to `pets.json`, configure `next.config.mjs`:
+
+```js
+const loader = {
+  loader: '@dify/openapi-inference/loader',
+  // Optional; relative to the resolved specification, not this config file.
+  options: { runtime: './pets.openapi.config.ts' },
+}
+
+export default {
+  turbopack: {
+    rules: {
+      '*pets.json': { loaders: [loader], as: '*.js' },
+      '*openapi-namespace.js': { loaders: [loader], as: '*.js' },
+    },
+  },
+  webpack(config) {
+    config.module.rules.push({
+      test: /(?:pets\.json|openapi-namespace\.js)$/,
+      type: 'javascript/auto',
+      use: [loader],
+    })
+    return config
+  },
+}
 ```
 
-| Document            | Operations checked |
-| ------------------- | -----------------: |
-| console             |                978 |
-| fastopenapi-console |                  6 |
-| inner               |                 63 |
-| openapi             |                111 |
-| service             |                156 |
-| web                 |                 43 |
-| knowledge-fs        |                203 |
-| Total               |               1560 |
+Merge these rules into existing configuration. Match the resolved JSON filename for symlinks; match the actual `.openapi` or YAML filename for regular files. Apply the loader to `openapi-namespace.js` too. Omit `options.runtime` to discover `<resolved specification filename>.config.ts`. Next.js runtime options do not change compiler context discovery, which uses the imported document's adjacent sidecar.
 
-The suite checks full-document mapping without dropping operations; native TS 7.1 signatures for every route; positive and negative request/response assertions; full-console LSP completions and hover; and real local HTTP requests for queries, relative server URLs, multipart files/arrays/JSON parts, binary bodies, historical aliases and SSE cancellation. It does not call the running Dify or KnowledgeFS services or mutate business data. Relative server URLs use the browser origin; Node callers provide an absolute `baseUrl`.
+The loader uses a tiny shared resource for child namespaces so the full specification is not copied into every bundler module. Adapters use internal subpaths (`runtime`, `query-runtime`, `namespace`, `mapper`); application code should use the root, `vite`, `loader` and `register` entry points.
 
-The oRPC spot check reads input/output types from the actual generated procedures' Standard Schema definitions. It verifies bidirectional assignability for dataset listing (including `knowledge_fs_upgrade`), dataset creation, file upload, and the JSON portion of service chat responses. The public chat-run output also matches. Intentional differences are asserted explicitly: SSE uses a raw `ReadableStream` instead of oRPC's generated `string`, and chat-run inputs distinguish JSON strings from multipart files using `contentType`. These checks cover five endpoints, not all generated contracts or runtime validation behavior.
+## Limitations
 
-For a full comparison, run `pnpm --filter @dify/openapi-inference compare:orpc` after building. This matches every exported procedure in `packages/contracts/generated/api` by HTTP method and path, including the FastOpenAPI console prefix adjustment, and checks both assignability directions plus top-level `any`, `unknown`, and `never`. It writes `reports/orpc-comparison.json` with every result, missing counterparts, source hashes and compiler diagnostics. A successful command means the audit completed; it does **not** mean every type is compatible. Representation checks (schema defaults, omitted input, `void`, streaming and multipart) are separate from the raw comparisons and never change the SDK.
+External references, Swagger 2, URL-encoded forms, advanced parameter serialization, nested multipart file dictionaries and YAML aliases are unsupported. Inline schema inference has a 24-step fallback; local referenced schemas use recursive aliases. Unsupported request serialization fails explicitly. Missing or inaccurate OpenAPI declarations cannot be repaired by inference.
 
-The current full audit covers all **1,286** existing generated procedures: **914** have mutually assignable inputs and outputs; **97** have an input difference and **301** an output difference (26 overlap). Another **274** OpenAPI operations lack a generated counterpart: 63 inner, 203 KnowledgeFS, and 8 console redirects filtered out by codegen. Request headers now use oRPC's `headers` key, typed dictionaries reject extra `undefined` values, empty RPC responses use `void`, and local schema references use recursive virtual aliases. Remaining input differences are 87 missing oRPC input schemas (inferred as `unknown`) and 10 explicit multipart choices. Remaining output differences are 270 parsed defaults, 21 undocumented bodies, 9 raw streams, and one stream combined with parsed defaults. There are no unexplained differences in this snapshot.
+This is not a drop-in replacement for all oRPC Links, interceptors, typed error maps or application-specific query policies. Browser Fetch governs cookie headers. For the complete supported scope and Dify-specific verification, see the [repository guide](https://github.com/langgenius/dify/blob/main/packages/openapi-inference/docs/repository.md).
 
-Run `pnpm --filter @dify/openapi-inference check:orpc` to fail on unexplained differences, vacuous top-level types or an unmatched generated procedure. Known differences are established by additional type checks; they do not replace the raw results. The repository's `OpenAPILink` does not apply Zod response defaults: an omitted field stays omitted at runtime. Likewise, a procedure without an input schema infers `unknown`, even though the detailed transport rejects primitive input. The SDK keeps optional wire fields and rejects invalid arguments instead of copying these overbroad guarantees. Undocumented successful response bodies stay `unknown` rather than becoming invented object shapes.
+## Development and release
 
-Full-console imports produce approximately **5.7 KB JS / 2.2 KB gzip** for `api.datasets.get`, or **11.7 KB / 3.6 KB gzip** for its query helper. KnowledgeFS `health.get` is approximately **5.1 KB / 2.2 KB gzip**, or **11.2 KB / 3.6 KB gzip** for its query helper. Each full-document result is compared against a one-path document and must produce identical code after removing bundler module-label comments.
+See [release preparation](docs/releasing.md) and [CHANGELOG](CHANGELOG.md). The independent package check installs a real tarball outside this monorepo and exercises its types, Node runtime and official Vite adapter. It performs no registry publication.
 
-Specification limitations remain visible: Swagger 2 input files are rejected (use the corresponding converted OpenAPI 3 files); undocumented successful responses and redirect-only operations infer `unknown`. Some current documents omit upload request schemas or label SSE as JSON (for example public `/apps/{app_id}/chat:run`). Inference follows those declarations and cannot repair missing or incorrect server contracts. Runtime SSE detection uses the actual response Content-Type.
+## License
 
-## Prototype boundaries
-
-### KnowledgeFS console integration pilot
-
-`web/service/console/inferred.ts` exposes the complete imported console document as `consoleClient` and `consoleQuery`. Only `web/service/knowledge-fs/metadata.ts` is migrated: it reads metadata through the inferred `GET /knowledge-fs/spaces/{control_space_id}/metadata` operation. It is used by the document metadata drawer/card and the Knowledge Retrieval v2 panel. `console.openapi` is a relative symlink to the existing `packages/contracts/openapi/console-openapi.json`; this is the Dify console contract, not the direct KnowledgeFS service contract. The console snapshot is committed, so both the application import and repository example resolve in a fresh checkout without Python or a local backend. Update it through `pnpm --dir packages/contracts gen-api-contract` when the backend changes. The existing `autofix.ci` frontend-contract job runs that same command for backend or contract changes and includes the refreshed snapshot in its generated changes. Keep the exporter's sorted JSON verbatim; do not edit the snapshot by hand.
-
-`console.openapi.config.ts` binds every operation to the existing console transport and supplies the shared context type and query-key prefix. Endpoint inputs and outputs come from the imported specification. The migrated owner keeps its existing nested API calls and only switches its import to `@/service/console/inferred`; there is no metadata-specific client wrapper. The browser keeps cookie auth, CSRF, refresh handling, `silent`, cancellation and response-header callbacks. Server calls use the existing `@/service/console/server` registration and request-local identity. HTTP errors retain the existing `ORPCError` envelope; the pilot does not load generated error maps or mark errors as validated defined errors. The unchanged query-key prefix lets existing oRPC consumers invalidate the same cache. Pagination now forwards the cancellation signal and silent context to every request.
-
-Normal workspace installation builds this package through its `prepare` script. When installing with `--ignore-scripts`, build it explicitly before running Web; the Docker build does this too. Web configures the mapper runtime for Vinext, unit tests and Storybook, and an OpenAPI loader for Next.js Turbopack and Webpack. The Next.js rules match the resolved `console-openapi.json` target of the `.openapi` symlink and bind the same console runtime configuration. Use the existing Vinext command (`pnpm --dir web dev`) or Next.js command (`pnpm --dir web dev:next`) with a configured Dify console backend and KnowledgeFS enabled.
-
-```sh
-pnpm --filter @dify/openapi-inference build
-pnpm --dir web type-check
-pnpm --dir web exec vp test run --project unit service/knowledge-fs/__tests__/metadata.spec.ts service/console/server.spec.ts app/components/workflow/nodes/knowledge-retrieval-v2/__tests__/panel.spec.tsx
-pnpm --filter @dify/openapi-inference exec node --test integration/knowledge-fs-console.test.mjs
-```
-
-The integration checks pagination, CSRF/cookies, cache invalidation, HTTP errors, cancellation, response headers and server identity forwarding at the network boundary. It does not prove a running Dify/KnowledgeFS deployment is configured. The production metadata module bundles to approximately **13.3 KB JS / 4.1 KB gzip**, including the SDK and query helpers, with the shared application runtime configuration external. Full-console and single-operation imports produce identical code after removing module-label comments. Only metadata reading is migrated; other KnowledgeFS operations retain their existing clients. The shared setup is also tested with an unmigrated space-list query. FastOpenAPI/enterprise documents and existing endpoint-specific query policies are not automatically composed into this entry; preserve or migrate their behavior when moving the corresponding consumers.
-
-### Supported scope
-
-- OpenAPI 3.0/3.1; local JSON Pointer references; required/optional fields; enum/const; arrays, objects and dictionaries; `oneOf`, `anyOf`, `allOf`; nullable types. Imported local schema references become lazy, type-only aliases, preserving recursive JSON and deeply nested models without finite expansion. No schema types are shipped to the browser or written as SDK files. The standalone `InferSchema` helper and inline expansion retain a 24-step fallback; circular aliases without an object/array boundary remain subject to TypeScript diagnostics.
-- JSON, flat multipart and Blob/File binary request bodies; JSON, text, binary, raw SSE streams and empty responses; path/header `simple`, query `form`/flat `deepObject`, primitive cookies. Browser Fetch controls whether Cookie headers may be set.
-- External references, URL-encoded forms, nested multipart file dictionaries, advanced serialization and YAML aliases are not implemented. Multipart supports repeated array fields and explicit `application/json` part encoding. When multiple request media types are declared, only `application/json` may omit `contentType`; all other alternatives require it explicitly. A single declared media type may always omit it. SSE returns a `ReadableStream<Uint8Array>` without buffering or parsing events. Unsupported request serialization fails explicitly. This is not a complete JSON Schema validator, and response bodies are not runtime-validated.
-- These are oRPC-shaped functions using a Fetch transport, not a drop-in replacement for every oRPC Link, interceptor, typed error map or Dify `context` policy. Document configurations can implement context behavior through the transport factory; arbitrary existing query policies and defined-error maps are not imported automatically. Errors expose `response` and `data` via `ApiError`.
-- Unresolvable router member collisions are rejected. `key` is reserved as a route segment for query helpers. Operation IDs do not become exports and have no reserved names.
-- Vite, Next.js Turbopack and Webpack handle bundling; Node handles direct execution. Other bundlers need an adapter. The compiler's mapper output is used for checking and is not the browser runtime artifact.
-
-References: [TS 7.1 announcement] and [content mapper protocol].
-
-[TS 7.1 announcement]: https://devblogs.microsoft.com/typescript/announcing-typescript-7-1-beta
-[content mapper protocol]: https://github.com/microsoft/typescript-go/pull/4712
+This package retains the repository's modified Apache 2.0 terms, including its additional conditions. See [LICENSE](LICENSE); it is not licensed under unmodified Apache-2.0 or MIT.

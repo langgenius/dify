@@ -33,8 +33,8 @@ export type RuntimeOptions = {
 }
 
 /** Bound per document at build time; never wraps or enumerates the router. */
-export type RuntimeConfig = {
-  createClient?: (options: CallOptions) => HttpClient
+export type RuntimeConfig<Context extends object = object> = {
+  createClient?: (options: CallOptions<Context>) => HttpClient
   queryKeyPrefix?: readonly string[]
   onError?: (error: unknown) => void
 }

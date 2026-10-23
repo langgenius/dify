@@ -19,7 +19,15 @@ test('document configuration types context for both the API and query namespaces
       'pets.yaml.config.ts': `
 import type { RuntimeConfig } from '@dify/openapi-inference';
 export type Context = { silent?: boolean };
-const runtime: RuntimeConfig = { queryKeyPrefix: ['console'] };
+const runtime: RuntimeConfig<Context> = {
+  queryKeyPrefix: ['console'],
+  createClient: ({context}) => {
+    const silent: boolean | undefined = context?.silent;
+    // @ts-expect-error the runtime factory uses the same context contract as callers
+    const wrong: number = context?.silent;
+    throw new Error('Type-check only');
+  },
+};
 export default runtime;
 `,
       'index.ts': `

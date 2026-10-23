@@ -1,34 +1,90 @@
 {
   "name": "@dify/openapi-inference",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0-beta.0",
+  "description": "Typed OpenAPI imports with TypeScript 7.1 Content Mappers, tree-shakable API calls and query helpers.",
+  "keywords": [
+    "content-mapper",
+    "nextjs",
+    "openapi",
+    "sdk",
+    "tanstack-query",
+    "tree-shaking",
+    "typescript",
+    "vite"
+  ],
+  "homepage": "https://github.com/langgenius/dify/tree/main/packages/openapi-inference#readme",
+  "bugs": {
+    "url": "https://github.com/langgenius/dify/issues"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/langgenius/dify.git",
+    "directory": "packages/openapi-inference"
+  },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "CHANGELOG.md",
+    "docs/releasing.md"
   ],
   "type": "module",
   "sideEffects": [
     "./dist/tooling/register.js"
   ],
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./vite": "./dist/tooling/vite.js",
-    "./loader": "./dist/tooling/loader.js",
-    "./namespace": "./dist/tooling/openapi-namespace.js",
-    "./register": "./dist/tooling/register.js",
-    "./mapper": "./dist/tooling/mapper.js",
-    "./runtime": "./dist/client.js",
-    "./query-runtime": "./dist/query-runtime.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./vite": {
+      "types": "./dist/tooling/vite.d.ts",
+      "default": "./dist/tooling/vite.js"
+    },
+    "./loader": {
+      "types": "./dist/tooling/loader.d.ts",
+      "default": "./dist/tooling/loader.js"
+    },
+    "./namespace": {
+      "types": "./dist/tooling/openapi-namespace.d.ts",
+      "default": "./dist/tooling/openapi-namespace.js"
+    },
+    "./register": {
+      "types": "./dist/tooling/register.d.ts",
+      "default": "./dist/tooling/register.js"
+    },
+    "./mapper": {
+      "types": "./dist/tooling/mapper.d.ts",
+      "default": "./dist/tooling/mapper.js"
+    },
+    "./runtime": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    },
+    "./query-runtime": {
+      "types": "./dist/query-runtime.d.ts",
+      "default": "./dist/query-runtime.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "beta"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node scripts/build.mjs",
     "prepare": "pnpm run build",
     "type-check": "tsc -p tsconfig.json --noEmit && tsc --runExternalCode --noEmit -p examples/petstore/tsconfig.json",
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test --test-concurrency=1 test/*.test.mjs",
     "demo": "node --import ./dist/tooling/register.js examples/petstore/demo.ts",
     "test:next": "node --test integration/next.mjs",
     "test:repository": "node --test integration/*.test.mjs",
     "compare:orpc": "node integration/compare-orpc.mjs",
-    "check:orpc": "node integration/compare-orpc.mjs --check"
+    "check:orpc": "node integration/compare-orpc.mjs --check",
+    "prepack": "pnpm run build",
+    "test:package": "node --test integration/package.mjs"
   },
   "dependencies": {
     "@orpc/client": "catalog:",
@@ -40,6 +96,14 @@
     "@types/node": "catalog:",
     "typescript": "catalog:ts71",
     "vite": "catalog:"
+  },
+  "peerDependencies": {
+    "vite": "^8.3.5"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
   },
   "typescript": {
     "contentMapper": {
