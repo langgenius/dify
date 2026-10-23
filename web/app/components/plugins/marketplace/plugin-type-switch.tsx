@@ -19,7 +19,7 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
   const setSearchMode = useSetAtom(searchModeAtom)
   const isHero = variant === 'hero'
   const isHome = variant === 'home'
-  const iconClassName = 'mr-1.5 size-4'
+  const iconClassName = 'size-4'
 
   const options: Array<{
     value: ActivePluginType
@@ -104,7 +104,7 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
               type="button"
               aria-pressed={isActive}
               className={cn(
-                'flex h-8 cursor-pointer appearance-none items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                'flex h-8 cursor-pointer appearance-none items-center gap-1.5 rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                 isHero
                   ? 'text-text-primary-on-surface'
                   : isHome
