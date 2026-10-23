@@ -15,7 +15,9 @@ const REVOKE_ELSEWHERE_PREFIX = 'revoke it from another login: '
 
 export type RevokeOutcome = Readonly<{ revoked: true } | { revoked: false; error: string }>
 
-function revokeElsewhereHint(login: Login): string {
+// The session commands accept only account logins, so an external-SSO login gets no hint.
+function revokeElsewhereHint(login: Login): string | undefined {
+  if (login.account === null) return undefined
   if (login.sessionId === null)
     return `${REVOKE_ELSEWHERE_PREFIX}difyctl get account session, then delete account session`
   return `${REVOKE_ELSEWHERE_PREFIX}difyctl delete account session --session-id ${login.sessionId}`
@@ -52,7 +54,9 @@ export async function revokeAndClearSession(
   } catch (err) {
     if (!alreadyRevoked(err)) {
       outcome = { revoked: false, error: errorMessage(err) }
-      streams.notice(`${REVOKE_FAILED_PREFIX}${outcome.error}\n${revokeElsewhereHint(login)}`)
+      streams.notice(`${REVOKE_FAILED_PREFIX}${outcome.error}`)
+      const hint = revokeElsewhereHint(login)
+      if (hint !== undefined) streams.notice(hint)
     }
   }
 

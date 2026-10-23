@@ -158,7 +158,8 @@ async function replacePrevious(ctx: CommandContext): Promise<void> {
   if (previous === null) return
   const streams = await ctx.get(io)
   try {
-    await revokeAndClearSession(ctx, previous)
+    const outcome = await revokeAndClearSession(ctx, previous)
+    if (!outcome.revoked) return
   } catch (err) {
     streams.notice(`${PREVIOUS_CLEANUP_FAILED_PREFIX}${errorMessage(err)}`)
     return

@@ -360,6 +360,7 @@ it('a 403 on the previous session revoke is reported, not taken as gone', async 
   const w = await loginWorld(seed.mock.url, seed)
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(w.io.errBuf()).toMatch(/server revoke failed: /)
+  expect(w.io.errBuf()).not.toMatch(/logged out/)
   expect((await (await new Context().get(session)).current())?.email).toBe('tester@dify.ai')
 })
 

@@ -20,6 +20,16 @@ function catalogFiles(dir: string): string[] {
   return existsSync(catalogDir) ? readdirSync(catalogDir) : []
 }
 
+async function accountLogin(w: TestWorld, sessionId: string | null = 'tok-1'): Promise<void> {
+  const sessionService = await w.ctx.get(session)
+  const login = await sessionService.require()
+  await sessionService.save({
+    ...login,
+    account: { id: 'acc-1', email: login.email, name: 'Me' },
+    sessionId,
+  })
+}
+
 it('revokes the session on the server and clears local state', async () => {
   const w = await testContext({ login: true, argv: ['logout'] })
   worlds.push(w)
@@ -82,6 +92,7 @@ it('drops a pending --no-wait login when nobody is logged in', async () => {
 it('still clears local state and reports a failed server revoke', async () => {
   const w = await testContext({ login: true, argv: ['logout'] })
   worlds.push(w)
+  await accountLogin(w)
   w.mock.setScenario('server-5xx')
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(w.io.errBuf()).toMatch(/^server revoke failed:/)
@@ -119,8 +130,7 @@ it('refuses under an env login without dropping a pending interactive login', as
 it('points to the session list when the login has no session id', async () => {
   const w = await testContext({ login: true, argv: ['logout'] })
   worlds.push(w)
-  const sessionService = await w.ctx.get(session)
-  await sessionService.save({ ...(await sessionService.require()), sessionId: null })
+  await accountLogin(w, null)
   w.mock.setScenario('server-5xx')
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(w.io.outBuf())).toMatchObject({ revoked: false })
@@ -136,4 +146,16 @@ it('logs out a login.yml saved without a session id', async () => {
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(w.io.outBuf())).toMatchObject({ revoked: true })
   expect(w.io.errBuf()).toBe('')
+})
+
+it('gives an external-SSO login no session-command hint when the revoke fails', async () => {
+  const w = await testContext({ login: true, argv: ['logout'] })
+  worlds.push(w)
+  expect((await (await w.ctx.get(session)).require()).account).toBeNull()
+  w.mock.setScenario('forbidden')
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(w.io.outBuf())).toMatchObject({ logged_out: true, revoked: false })
+  expect(w.io.errBuf()).toMatch(/^server revoke failed:/)
+  expect(w.io.errBuf()).not.toMatch(/account session/)
+  expect(await (await w.ctx.get(session)).current()).toBeNull()
 })
