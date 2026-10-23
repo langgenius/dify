@@ -131,7 +131,7 @@ export default function ResourcePicker({
   }
 
   const filters: { value: ResourceFilter; label: string }[] = [
-    { value: 'all', label: t(($) => $['resourceAccessToken.tabAll']) },
+    { value: 'all', label: t(($) => $['resourceAccessToken.tabAllTypes']) },
     { value: 'app', label: t(($) => $['resourceAccessToken.tabApps']) },
     { value: 'dataset', label: t(($) => $['resourceAccessToken.tabKnowledgeBases']) },
   ]

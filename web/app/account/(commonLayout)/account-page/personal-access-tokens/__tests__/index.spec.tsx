@@ -593,7 +593,7 @@ it('shows expiration status and deployment beside the workspace in scope details
   })
   expect(dialog).toHaveTextContent('accountSettings.resourceAccessToken.createdColumn · 2026-10-15')
   const expirationMessage = within(dialog).getByText(
-    'accountSettings.personalAccessToken.expired on 2026-09-29',
+    'accountSettings.personalAccessToken.expiredDate:{"date":"2026-09-29"}',
   )
   expect(expirationMessage).toHaveClass('text-text-destructive')
   expect(expirationMessage).toHaveClass('mt-1')
@@ -612,6 +612,29 @@ it('shows expiration status and deployment beside the workspace in scope details
       'accountSettings.personalAccessToken.unavailableResourcesAndWorkspaces:{"count":2}',
     ),
   ).toBeInTheDocument()
+})
+
+it('hides the expired date for a token that has not expired yet', async () => {
+  const user = userEvent.setup()
+  const activeToken = { ...token, expires_at: '2099-01-01T00:00:00Z' }
+  transport.call.mockImplementation(async (path: string[]) =>
+    path.includes('byTokenId')
+      ? { token: activeToken, resources: [], workspaces: [] }
+      : { data: [activeToken], page: 1, limit: 20, total: 1, has_more: false },
+  )
+  render(
+    <QueryClientProvider client={createTestQueryClient()}>
+      <PersonalAccessTokens />
+    </QueryClientProvider>,
+  )
+  await user.click(await screen.findByRole('button', { name: 'release-pipeline' }))
+  const dialog = await screen.findByRole('dialog', {
+    name: 'accountSettings.personalAccessToken.scopeTitle',
+  })
+
+  expect(
+    within(dialog).queryByText(/accountSettings\.personalAccessToken\.expiredDate/),
+  ).not.toBeInTheDocument()
 })
 
 it.each([
@@ -1098,7 +1121,7 @@ it('selects a built-in app, knowledge base, and nested runner deployment with th
   expect(within(dialog).queryByRole('checkbox', { name: 'Production' })).not.toBeInTheDocument()
   await user.click(
     within(resourceTabs).getByRole('button', {
-      name: 'accountSettings.resourceAccessToken.tabAll',
+      name: 'accountSettings.resourceAccessToken.tabAllTypes',
     }),
   )
   const builtInLabel = 'dataset.metadata.datasetMetadata.builtIn'
