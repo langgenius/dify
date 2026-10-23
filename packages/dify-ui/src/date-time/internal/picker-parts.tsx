@@ -238,8 +238,7 @@ function PickerRoot({
     if (field.validationMode === 'onBlur') field.validation.commit(value)
   })
   React.useLayoutEffect(() => {
-    if (disabled || !eligible) releaseFocus()
-    return releaseFocus
+    if (disabled || inputRef.current?.matches(':disabled')) releaseFocus()
   }, [disabled, eligible, releaseFocus])
 
   const resetTimeout = useTimeout()

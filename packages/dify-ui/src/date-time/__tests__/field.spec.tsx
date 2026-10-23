@@ -431,6 +431,37 @@ it('registers and resets a portalled picker with its contextual Form', async () 
   expect(submitted).toHaveBeenLastCalledWith({ departure: '2025-01-15' }, expect.anything())
 })
 
+it.each([false, true])(
+  'validates after leaving an autofocused picker (strict mode: %s)',
+  async (strict) => {
+    const validate = vi.fn(() => 'Choose another date.')
+    const example = (
+      <Form validationMode="onBlur">
+        <ObservedField name="departure" validate={validate}>
+          <DatePicker defaultValue="2025-01-15">
+            <DatePickerLabel>Departure</DatePickerLabel>
+            {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- Reproduces focus before Field registration completes. */}
+            <DatePickerTrigger autoFocus />
+          </DatePicker>
+          <FieldError />
+        </ObservedField>
+        <button type="button">Next field</button>
+      </Form>
+    )
+    const screen = await render(strict ? <React.StrictMode>{example}</React.StrictMode> : example)
+    await expect
+      .element(screen.getByRole('button', { name: 'Departure Jan 15, 2025' }))
+      .toHaveFocus()
+    expect(stateOf(screen)).toMatchObject({ focused: true, touched: false })
+    expect(validate).not.toHaveBeenCalled()
+    await userEvent.tab()
+    await expect.element(screen.getByRole('button', { name: 'Next field' })).toHaveFocus()
+    expect(validate).toHaveBeenCalledExactlyOnceWith('2025-01-15', { departure: '2025-01-15' })
+    expect(stateOf(screen)).toMatchObject({ focused: false, touched: true })
+    await expect.element(screen.getByText('Choose another date.', { exact: true })).toBeVisible()
+  },
+)
+
 it('validates on leaving the complete picker, not when focus enters its portalled draft', async () => {
   const validate = vi.fn((value: unknown) => (value === '13:30' ? 'Choose another time.' : null))
   const screen = await render(
@@ -738,14 +769,17 @@ it('ignores a pending validation result after reset', async () => {
   expect(stateOf(screen)).toMatchObject({ dirty: false, touched: false, valid: null })
 })
 
-it.each(['disabled', 'unmounted'] as const)(
+it.each(['disabled', 'fieldset-disabled', 'unmounted'] as const)(
   'releases Field focus when its focused picker becomes %s without a blur event',
   async (transition) => {
     function Example({ changed = false }: { changed?: boolean }) {
       return (
-        <ObservedField name="departure">
-          {!(changed && transition === 'unmounted') && families[0]!.render({ disabled: changed })}
-        </ObservedField>
+        <fieldset disabled={changed && transition === 'fieldset-disabled'}>
+          <ObservedField name="departure">
+            {!(changed && transition === 'unmounted') &&
+              families[0]!.render({ disabled: changed && transition === 'disabled' })}
+          </ObservedField>
+        </fieldset>
       )
     }
     const screen = await render(<Example />)
