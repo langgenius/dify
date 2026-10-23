@@ -15,7 +15,7 @@ import { definePlugin } from '@/kernel/plugin'
 import { networkErrorMessage } from '@/net/cause'
 import { buildFetchInit } from '@/net/fetch-init'
 import { proxyDispatcher } from '@/net/proxy'
-import { retryAfterSeconds } from '@/net/retry-after'
+import { RETRY_AFTER_HEADER, retryAfterSeconds } from '@/net/retry-after'
 import { catalog, CATALOG_HEADER, CATALOG_PATH, fingerprintOf } from '@/plugins/catalog'
 import { config } from '@/plugins/config'
 import { env } from '@/plugins/env'
@@ -99,8 +99,10 @@ function appendQuery(url: URL, query: HttpRequest['query']): void {
   }
 }
 
+const SUGGESTED_TIMEOUT_FACTOR = 2
+
 function timeoutHint(timeoutMs: number): string {
-  return `raise the limit with ${BINARY} set config http.timeout ${timeoutMs * 2}`
+  return `raise the limit with ${BINARY} set config http.timeout ${timeoutMs * SUGGESTED_TIMEOUT_FACTOR}`
 }
 
 function bodyAndContentType(req: HttpRequest): {
@@ -230,7 +232,7 @@ export const http = definePlugin({
         serverError,
         retryAfter:
           res.status === HttpStatus.TooManyRequests
-            ? retryAfterSeconds(res.headers.get('retry-after'), Date.now())
+            ? retryAfterSeconds(res.headers.get(RETRY_AFTER_HEADER), Date.now())
             : undefined,
       })
     }
