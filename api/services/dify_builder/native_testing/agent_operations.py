@@ -107,6 +107,8 @@ class AgentShellCapability:
     capability_description: str
     account_ref: str | None = None
     account_label: str | None = None
+    # None means this caller supplied no verified execution-scope facts.
+    execution_context: dict[str, JsonValue] | None = None
 
 
 @dataclass(frozen=True)
@@ -567,6 +569,17 @@ class AgentOperationService:
                     "Execute a bounded shell operation in the Agent workspace. "
                     "Configured CLI tools, skills and files: "
                     + canonical_json({"shell": configs["shell"], "config": configs.get("config")}).decode(),
+                    execution_context={
+                        "initial_working_directory": "request_owned_agent_workspace",
+                        "may_contain_cloned_files": True,
+                        "filesystem_confinement_guaranteed": False,
+                        "configured_asset_cli": {
+                            "skills_default_relative_directory": ".dify_conf/skills",
+                            "files_default_relative_directory": ".dify_conf/files",
+                            "may_overwrite_local_copies": True,
+                            "may_download_remote_assets": True,
+                        },
+                    },
                 ),
                 target=target,
                 parameters=parameters,
