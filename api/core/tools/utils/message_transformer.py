@@ -5,9 +5,9 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import numpy as np
-import pytz
 
 from core.app.file_access import grant_tool_file_access
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -28,7 +28,7 @@ def safe_json_value(v):
             tz_name = "UTC"
             if isinstance(current_user, Account) and current_user.timezone is not None:
                 tz_name = current_user.timezone
-            return v.astimezone(pytz.timezone(tz_name)).isoformat()
+            return v.astimezone(ZoneInfo(tz_name)).isoformat()
         case date():
             return v.isoformat()
         case UUID():
