@@ -218,7 +218,7 @@ class SQLAlchemyDocumentOperations:
     def get_detail(self, ref: DocumentRef, *, metadata_only: bool) -> dict[str, Any]:
         with self._sessions() as session:
             document = _require_document(session, ref)
-            result = {
+            result: dict[str, Any] = {
                 "id": document.id,
                 "doc_type": document.doc_type,
                 "doc_metadata": get_document_metadata_details(document, session=session),
