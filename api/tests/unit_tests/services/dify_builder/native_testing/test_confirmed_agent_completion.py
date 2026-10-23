@@ -2065,11 +2065,11 @@ def test_native_control_receipt_cannot_hide_an_intervening_user_change(completed
 def test_paused_initial_ack_without_dispatch_is_selected_for_worker_recovery(
     completed: CompletedOwner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from types import SimpleNamespace
-
     from models.dify_builder_native_tests import NativeDispatch
     from schedule import dify_builder_reconcile_task as task
     from services.dify_builder import wiring
+    from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
+    from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
 
     owner = completed
     with owner.factory.begin() as sql:
@@ -2093,12 +2093,16 @@ def test_paused_initial_ack_without_dispatch_is_selected_for_worker_recovery(
         return 0
 
     monkeypatch.setattr(task, "_session_factory", lambda: owner.factory)
-    monkeypatch.setattr(
-        wiring,
-        "build_native_test_api_service",
-        lambda **_: SimpleNamespace(reconcile_pending=recover, recover_observation=recover),
+    service = ProfiledNativeTestCommands(
+        sessions=owner.factory,
+        actor=owner.case.actor,
+        confirmed_factory=lambda: owner.commands,
+        legacy_factory=lambda: pytest.fail("confirmed recovery changed runtime profile"),
     )
-    monkeypatch.setattr(wiring, "native_runtime_owner", lambda: SimpleNamespace(retire_closed=lambda **_: None))
+    monkeypatch.setattr(service, "reconcile_pending", recover)
+    monkeypatch.setattr(service, "recover_observation", recover)
+    monkeypatch.setattr(wiring, "build_native_test_api_service", lambda **_: service)
+    monkeypatch.setattr(wiring, "native_runtime_owner", DifyNativeRuntimeOwner)
     task.reconcile_native_tests()
     assert calls == [owner.request_id]
 
@@ -2173,11 +2177,10 @@ def test_delayed_cancel_is_settled_by_worker_without_get_or_another_cancel(
     declining: CompletedOwner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A delayed child ACK must close the same attempt while public reads stay inert."""
-    from types import SimpleNamespace
-
     from schedule import dify_builder_reconcile_task as task
     from services.dify_builder import wiring
     from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
+    from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
 
     owner = declining
     owner.child_status = "cancelling"
@@ -2197,7 +2200,7 @@ def test_delayed_cancel_is_settled_by_worker_without_get_or_another_cancel(
     )
     monkeypatch.setattr(task, "_session_factory", lambda: owner.factory)
     monkeypatch.setattr(wiring, "build_native_test_api_service", lambda **_: service)
-    monkeypatch.setattr(wiring, "native_runtime_owner", lambda: SimpleNamespace(retire_closed=lambda **_: None))
+    monkeypatch.setattr(wiring, "native_runtime_owner", DifyNativeRuntimeOwner)
     task.reconcile_native_tests()
     assert owner.repo.get_run(owner.verify_id).status == "running"
     owner.child_status = "cancelled"
