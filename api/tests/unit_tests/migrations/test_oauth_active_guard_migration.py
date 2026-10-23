@@ -57,7 +57,7 @@ def test_downgrade_restores_the_original_index(dialect_name: str) -> None:
         assert create.endswith(f"ON oauth_access_tokens ({', '.join(_KEY_COLUMNS)}) WHERE revoked_at IS NULL")
     else:
         assert create.endswith(f"ON oauth_access_tokens ({_MYSQL_KEY})")
-    assert statements.index(drop_index) < statements.index(drop_column) < statements.index(create)
+    assert statements.index(create) < statements.index(drop_index) < statements.index(drop_column)
 
 
 @pytest.mark.parametrize(
@@ -114,5 +114,43 @@ def test_sqlite_upgrade_is_retryable_and_lets_history_coexist(
 
         guards = dict(connection.execute(sa.text("SELECT id, active_guard FROM oauth_access_tokens")).tuples().all())
         assert guards == {"revoked": None, "live": 1}
+
+    engine.dispose()
+
+
+def test_sqlite_downgrade_keeps_the_guard_index_when_history_blocks_the_legacy_index() -> None:
+    engine = sa.create_engine("sqlite:///:memory:")
+    metadata = sa.MetaData()
+    tokens = sa.Table(
+        "oauth_access_tokens",
+        metadata,
+        sa.Column("id", sa.String(36), primary_key=True),
+        *(sa.Column(name, sa.String(255), nullable=name == "subject_issuer") for name in _KEY_COLUMNS),
+        sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("active_guard", sa.SmallInteger(), sa.Computed(_GUARD_SQL), nullable=True),
+    )
+    sa.Index(
+        "uq_oauth_active_guard_per_device",
+        *(tokens.c[name] for name in _KEY_COLUMNS),
+        tokens.c.active_guard,
+        unique=True,
+    )
+    metadata.create_all(engine)
+    migration = load_migration_module(_MIGRATION_PATH)
+    key = dict(zip(_KEY_COLUMNS, ("ada@example.com", "dify:account", "difyctl", "Laptop"), strict=True))
+
+    with engine.begin() as connection:
+        connection.execute(sa.insert(tokens).values(id="revoked", revoked_at=sa.func.current_timestamp(), **key))
+        connection.execute(sa.insert(tokens).values(id="live", **key))
+        migration.__dict__["op"] = Operations(MigrationContext.configure(connection))
+        # No savepoint: MySQL auto-commits each DDL step, so earlier steps stay applied.
+        with pytest.raises(IntegrityError):
+            migration.downgrade()
+
+        index_names = {index["name"] for index in sa.inspect(connection).get_indexes("oauth_access_tokens")}
+        assert index_names == {"uq_oauth_active_guard_per_device"}
+        assert "active_guard" in {
+            column["name"] for column in sa.inspect(connection).get_columns("oauth_access_tokens")
+        }
 
     engine.dispose()

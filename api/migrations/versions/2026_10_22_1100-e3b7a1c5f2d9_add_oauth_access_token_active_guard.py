@@ -59,12 +59,9 @@ def downgrade():
     columns = {column["name"] for column in inspector.get_columns(_TABLE)} if inspector else set()
     indexes = {index["name"] for index in inspector.get_indexes(_TABLE)} if inspector else set()
 
-    if inspector is None or _GUARD_INDEX in indexes:
-        op.drop_index(_GUARD_INDEX, table_name=_TABLE)
-    if inspector is None or "active_guard" in columns:
-        op.drop_column(_TABLE, "active_guard")
     if _LEGACY_INDEX not in indexes:
         # On MySQL this fails while revoked rows share a device key: that is the bug this revision fixes.
+        # It runs first so a failure leaves the guard index in place.
         op.create_index(
             _LEGACY_INDEX,
             _TABLE,
@@ -73,3 +70,7 @@ def downgrade():
             postgresql_where=sa.text("revoked_at IS NULL"),
             mysql_length=_MYSQL_LENGTH,
         )
+    if inspector is None or _GUARD_INDEX in indexes:
+        op.drop_index(_GUARD_INDEX, table_name=_TABLE)
+    if inspector is None or "active_guard" in columns:
+        op.drop_column(_TABLE, "active_guard")
