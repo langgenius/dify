@@ -14,7 +14,6 @@ from sqlalchemy import Engine, event, select, update
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from core.plugin.entities.plugin import PluginDependency, PluginInstallation
 from core.plugin.impl.plugin import PluginInstaller
 from enums import CloudPlan, DeploymentEdition
@@ -602,7 +601,11 @@ def _seed_draft_app(
 )
 @pytest.mark.parametrize("remote_fails", [False, True])
 def test_draft_dependency_check_reads_the_draft_and_releases_the_connection(
-    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, mode: AppMode, remote_fails: bool
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: AppMode,
+    remote_fails: bool,
+    config_overrides: Callable[..., None],
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     app_id, workspace, actor = _seed_draft_app(factory, mode, graph=TRIGGER_GRAPH)
@@ -624,7 +627,7 @@ def test_draft_dependency_check_reads_the_draft_and_releases_the_connection(
         return []
 
     monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", fetch_plugins)
-    monkeypatch.setattr(dify_config, "MARKETPLACE_ENABLED", False)
+    config_overrides(MARKETPLACE_ENABLED=False)
     gateway = _transfer_gateway(factory)
     context = RequestContext("r", None, actor, workspace)
     expected = {
@@ -680,12 +683,12 @@ NON_PLUGIN_TOOLS_GRAPH = json.dumps(
 
 
 def test_draft_dependency_check_ignores_api_workflow_and_mcp_tool_nodes(
-    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     app_id, workspace, actor = _seed_draft_app(factory, AppMode.WORKFLOW, graph=NON_PLUGIN_TOOLS_GRAPH)
     monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", lambda *_args: [])
-    monkeypatch.setattr(dify_config, "MARKETPLACE_ENABLED", False)
+    config_overrides(MARKETPLACE_ENABLED=False)
 
     result = _transfer_gateway(factory).check_draft_dependencies(RequestContext("r", None, actor, workspace), app_id)
 
@@ -720,7 +723,11 @@ def _plugin_tool_graph(provider_type: str) -> str:
 @pytest.mark.parametrize("provider_type", ["builtin", "plugin"])
 @pytest.mark.parametrize("added_after_seed", [False, True])
 def test_draft_dependency_check_reports_an_uninstalled_plugin_tool(
-    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, provider_type: str, added_after_seed: bool
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    provider_type: str,
+    added_after_seed: bool,
+    config_overrides: Callable[..., None],
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     graph = _plugin_tool_graph(provider_type)
@@ -728,7 +735,7 @@ def test_draft_dependency_check_reports_an_uninstalled_plugin_tool(
         factory, AppMode.WORKFLOW, graph=EMPTY_GRAPH if added_after_seed else graph
     )
     monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", lambda *_args: [])
-    monkeypatch.setattr(dify_config, "MARKETPLACE_ENABLED", False)
+    config_overrides(MARKETPLACE_ENABLED=False)
     gateway = _transfer_gateway(factory)
     context = RequestContext("r", None, actor, workspace)
     if added_after_seed:
@@ -741,7 +748,7 @@ def test_draft_dependency_check_reports_an_uninstalled_plugin_tool(
 
 
 def test_draft_dependency_check_ignores_api_tools_of_an_agent_chat_app(
-    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     app_id, workspace, actor = _seed_draft_app(factory, AppMode.AGENT_CHAT)
@@ -754,7 +761,7 @@ def test_draft_dependency_check_ignores_api_tools_of_an_agent_chat_app(
             update(AppModelConfig).where(AppModelConfig.app_id == app_id).values(agent_mode=json.dumps(agent_mode))
         )
     monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", lambda *_args: [])
-    monkeypatch.setattr(dify_config, "MARKETPLACE_ENABLED", False)
+    config_overrides(MARKETPLACE_ENABLED=False)
 
     result = _transfer_gateway(factory).check_draft_dependencies(RequestContext("r", None, actor, workspace), app_id)
 
@@ -763,12 +770,12 @@ def test_draft_dependency_check_ignores_api_tools_of_an_agent_chat_app(
 
 
 def test_draft_dependency_check_sees_a_draft_edited_after_import(
-    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     app_id, workspace, actor = _seed_draft_app(factory, AppMode.WORKFLOW)
     monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", lambda *_args: [])
-    monkeypatch.setattr(dify_config, "MARKETPLACE_ENABLED", False)
+    config_overrides(MARKETPLACE_ENABLED=False)
     gateway = _transfer_gateway(factory)
     context = RequestContext("r", None, actor, workspace)
 

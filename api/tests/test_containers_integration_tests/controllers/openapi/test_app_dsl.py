@@ -25,7 +25,7 @@ from models import Account, App
 from models.model import AppMode, AppModelConfig
 from services.app_dsl_service import CURRENT_DSL_VERSION
 from services.app_service import AppService, CreateAppParams
-from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportStatus
+from services.entities.dsl_entities import CheckDependenciesResult, DraftDependencyCheck, Import, ImportStatus
 from services.errors.app import WorkflowNotFoundError
 from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -55,6 +55,7 @@ def external_deps() -> Generator[dict[str, object]]:
     with (
         patch("services.app_dsl_service.WorkflowService") as mock_workflow_service,
         patch("services.app_dsl_service.DependenciesAnalysisService") as mock_dependencies_service,
+        patch("services.app.console_gateway.DependenciesAnalysisService") as mock_gateway_dependencies,
         patch("services.app_dsl_service.app_was_created") as mock_app_was_created,
         patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
         patch("services.app_service.SystemFeatureService") as mock_feature_service,
@@ -67,6 +68,7 @@ def external_deps() -> Generator[dict[str, object]]:
         mock_dependencies_service.generate_latest_dependencies.return_value = []  # type: ignore[assignment]
         mock_dependencies_service.get_leaked_dependencies.return_value = []  # type: ignore[assignment]
         mock_dependencies_service.generate_dependencies.return_value = []  # type: ignore[assignment]
+        mock_gateway_dependencies.find_missing_dependencies.return_value = DraftDependencyCheck()
         mock_app_was_created.send.return_value = None
 
         mock_model_instance = mock_model_manager.return_value
