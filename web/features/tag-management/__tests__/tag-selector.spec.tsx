@@ -119,7 +119,7 @@ describe('TagSelector', () => {
 
     document.addEventListener('click', onOuterClick)
     try {
-      render(<DatasetCardTags datasetId="dataset-1" embeddingAvailable tags={[]} />)
+      render(<DatasetCardTags datasetId="dataset-1" available tags={[]} />)
 
       await user.click(screen.getByRole('combobox', { name: i18n.noTag }))
 
@@ -142,7 +142,7 @@ describe('TagSelector', () => {
       render(
         <DatasetCardTags
           datasetId="dataset-1"
-          embeddingAvailable
+          available
           tags={[]}
           canBindOrUnbindTags
           onTagsChange={onTagsChange}

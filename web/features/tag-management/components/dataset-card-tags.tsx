@@ -4,7 +4,7 @@ import { TagSelector } from '@/features/tag-management/components/tag-selector'
 
 type DatasetCardTagsProps = {
   datasetId: string
-  embeddingAvailable: boolean
+  available: boolean
   tags: Tag[]
   onOpenTagManagement?: () => void
   onTagsChange?: () => void
@@ -13,7 +13,7 @@ type DatasetCardTagsProps = {
 
 export const DatasetCardTags = ({
   datasetId,
-  embeddingAvailable,
+  available,
   tags,
   onOpenTagManagement = () => {},
   onTagsChange,
@@ -26,7 +26,7 @@ export const DatasetCardTags = ({
     onOpenTagManagement={onOpenTagManagement}
     onTagsChange={onTagsChange}
     canBindOrUnbindTags={canBindOrUnbindTags}
-    className={cn('mx-3 w-auto', !embeddingAvailable && 'opacity-30')}
+    className={cn('mx-3 w-auto', !available && 'opacity-30')}
     onClick={(event) => event.stopPropagation()}
   />
 )

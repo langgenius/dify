@@ -57,6 +57,7 @@ class DatasetOperations(Protocol):
         self, context: RequestContext, query: DatasetListFilter, accessible_ids: list[str] | None, include_own: bool
     ) -> DatasetPage: ...
     def embedding_models(self, workspace_id: str) -> set[str]: ...
+    def reranking_models(self, workspace_id: str) -> set[str]: ...
     def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord: ...
     def create_dataset(self, context: RequestContext, values: Mapping[str, Any]) -> DatasetDetailRecord: ...
     def update_dataset(
@@ -104,19 +105,57 @@ class DatasetApplicationService:
             or f"{item['embedding_model']}:{item['embedding_model_provider']}" in models
         )
 
+    @staticmethod
+    def _requires_reranking_model(item: DatasetDetailRecord) -> bool:
+        retrieval = item["retrieval_model_dict"]
+        return (
+            item["provider"] != "external"
+            and item["indexing_technique"] == "high_quality"
+            and bool(retrieval.get("reranking_enable"))
+            and not (
+                retrieval.get("search_method") == "hybrid_search"
+                and retrieval.get("reranking_mode") == "weighted_score"
+            )
+        )
+
+    @classmethod
+    def _reranking_available(cls, item: DatasetDetailRecord, models: set[str]) -> bool:
+        if not cls._requires_reranking_model(item):
+            return True
+        model = item["retrieval_model_dict"].get("reranking_model")
+        if not isinstance(model, dict):
+            return False
+        provider = model.get("reranking_provider_name")
+        name = model.get("reranking_model_name")
+        if not isinstance(provider, str) or not provider or not isinstance(name, str) or not name:
+            return False
+        return f"{name}:{provider}" in models
+
+    def _model_availability(
+        self, context: RequestContext, items: Sequence[DatasetDetailRecord], *, listing: bool
+    ) -> None:
+        embedding_models = self._operations.embedding_models(context.active_workspace_id)
+        reranking_models = (
+            self._operations.reranking_models(context.active_workspace_id)
+            if any(self._requires_reranking_model(item) for item in items)
+            else set()
+        )
+        for item in items:
+            self._embedding_available(item, embedding_models, listing=listing)
+            item["reranking_available"] = self._reranking_available(item, reranking_models)
+
     def list_datasets(self, context: RequestContext, query: DatasetListFilter) -> DatasetPage:
         visibility = self._operations.visibility(context)
         ids, include_own = visibility.list_scope(rbac_enabled=self._rbac_enabled)
         result = self._operations.list_datasets(context, query, ids, include_own)
-        models = self._operations.embedding_models(context.active_workspace_id)
         for item in result["data"]:
             item["permission_keys"] = list(visibility.overrides.get(item["id"], visibility.default_permissions))
-            self._embedding_available(item, models, listing=True)
+        self._model_availability(context, result["data"], listing=True)
         return result
 
     def get_dataset(self, context: RequestContext, *, dataset_id: str) -> DatasetDetailRecord:
         result = self._operations.get_dataset(context, self._dataset(context, dataset_id))
-        self._embedding_available(result, self._operations.embedding_models(context.active_workspace_id), listing=False)
+        self._model_availability(context, [result], listing=False)
         return result
 
     def create_dataset(self, context: RequestContext, *, values: Mapping[str, Any]) -> DatasetDetailRecord:

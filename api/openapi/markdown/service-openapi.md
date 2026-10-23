@@ -2970,6 +2970,7 @@ Enum class for custom configuration status.
 | permission | string, <br>**Available values:** "all_team_members", "only_me", "partial_members" | *Enum:* `"all_team_members"`, `"only_me"`, `"partial_members"` | Yes |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
+| reranking_available | boolean | Whether the configured reranking model is available. True when retrieval does not require a reranking model; null when availability has not been evaluated. | No |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
 | runtime_mode | string, <br>**Available values:** "general", "rag_pipeline" |  | Yes |
 | summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) | Summary index configuration. | No |
@@ -3012,6 +3013,7 @@ Enum class for custom configuration status.
 | permission | string, <br>**Available values:** "all_team_members", "only_me", "partial_members" | *Enum:* `"all_team_members"`, `"only_me"`, `"partial_members"` | Yes |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
+| reranking_available | boolean | Whether the configured reranking model is available. True when retrieval does not require a reranking model; null when availability has not been evaluated. | No |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
 | runtime_mode | string, <br>**Available values:** "general", "rag_pipeline" |  | Yes |
 | summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) | Summary index configuration. | No |

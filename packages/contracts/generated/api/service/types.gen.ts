@@ -621,6 +621,7 @@ export type DatasetDetailResponse = {
   permission: 'all_team_members' | 'only_me' | 'partial_members'
   pipeline_id: string | null
   provider: string
+  reranking_available?: boolean | null
   retrieval_model_dict: DatasetRetrievalModelResponse
   runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
@@ -668,6 +669,7 @@ export type DatasetDetailWithPartialMembersResponse = {
   permission: 'all_team_members' | 'only_me' | 'partial_members'
   pipeline_id: string | null
   provider: string
+  reranking_available?: boolean | null
   retrieval_model_dict: DatasetRetrievalModelResponse
   runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse

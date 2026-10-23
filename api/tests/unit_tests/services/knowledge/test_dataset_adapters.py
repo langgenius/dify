@@ -11,6 +11,11 @@ from controllers.console.datasets.datasets import (
     DatasetQueryListResponse,
     RelatedAppListResponse,
 )
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from machinery.context import RequestContext
 from models import Account, App, Dataset, Document
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
@@ -45,6 +50,75 @@ from tests.unit_tests.rbac_fakes import RBACDomain
 
 CONTEXT = RequestContext("request", None, "actor", "tenant")
 REF = DatasetRef("tenant", "dataset")
+
+
+@pytest.mark.parametrize(
+    ("method", "model_type"),
+    [
+        (SQLAlchemyDatasetOperations.embedding_models, ModelType.TEXT_EMBEDDING),
+        (SQLAlchemyDatasetOperations.reranking_models, ModelType.RERANK),
+    ],
+)
+def test_model_availability_uses_active_workspace_models(
+    operations: SQLAlchemyDatasetOperations,
+    method: Callable[[SQLAlchemyDatasetOperations, str], set[str]],
+    model_type: ModelType,
+) -> None:
+    with patch("services.knowledge.datasets.adapters.create_plugin_provider_manager") as factory:
+        configurations = factory.return_value.get_configurations.return_value
+        configurations.get_models.return_value = [
+            ModelWithProviderEntity(
+                model="model",
+                label=I18nObject(en_US="Model"),
+                model_type=model_type,
+                fetch_from=FetchFrom.PREDEFINED_MODEL,
+                model_properties={},
+                status=ModelStatus.ACTIVE,
+                provider=SimpleModelProviderEntity(
+                    ProviderEntity(
+                        provider="langgenius/jina/jina",
+                        label=I18nObject(en_US="Jina"),
+                        supported_model_types=[model_type],
+                        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+                    )
+                ),
+            ),
+        ]
+
+        assert method(operations, CONTEXT.active_workspace_id) == {"model:langgenius/jina/jina"}
+
+        factory.assert_called_once_with(tenant_id=CONTEXT.active_workspace_id)
+        factory.return_value.get_configurations.assert_called_once_with(tenant_id=CONTEXT.active_workspace_id)
+        configurations.get_models.assert_called_once_with(model_type=model_type, only_active=True)
+
+
+@pytest.mark.parametrize(("provider", "expected"), [("jina", "langgenius/jina/jina"), ("bad/provider", "bad/provider")])
+def test_dataset_reads_normalize_reranking_provider_without_changing_storage(
+    operations: SQLAlchemyDatasetOperations,
+    sqlite_session_factory: sessionmaker[Session],
+    provider: str,
+    expected: str,
+) -> None:
+    retrieval = {
+        "search_method": "hybrid_search",
+        "reranking_enable": True,
+        "reranking_model": {"reranking_provider_name": provider, "reranking_model_name": "reranker"},
+    }
+    with sqlite_session_factory.begin() as session:
+        stored = session.get(Dataset, REF.dataset_id)
+        assert stored is not None
+        stored.indexing_technique = IndexTechniqueType.HIGH_QUALITY
+        stored.retrieval_model = retrieval
+
+    result = operations.get_dataset(CONTEXT, REF)
+    assert result["retrieval_model_dict"]["reranking_model"] == {
+        "reranking_provider_name": expected,
+        "reranking_model_name": "reranker",
+    }
+    with sqlite_session_factory() as session:
+        stored = session.get(Dataset, REF.dataset_id)
+        assert stored is not None
+        assert stored.retrieval_model == retrieval
 
 
 def dataset(**values: object) -> Dataset:

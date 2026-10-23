@@ -59,6 +59,20 @@ def load_actor(session: Session, context: RequestContext) -> Account:
 def _normalize_provider(item: DatasetDetailRecord) -> DatasetDetailRecord:
     if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
         item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
+    retrieval = item["retrieval_model_dict"]
+    reranking_model = retrieval.get("reranking_model")
+    if isinstance(reranking_model, dict):
+        provider = reranking_model.get("reranking_provider_name")
+        if isinstance(provider, str) and provider:
+            try:
+                normalized_provider = str(ModelProviderID(provider))
+            except ValueError:
+                # Leave invalid stored IDs unmatched so the list can report them as unavailable.
+                return item
+            item["retrieval_model_dict"] = {
+                **retrieval,
+                "reranking_model": {**reranking_model, "reranking_provider_name": normalized_provider},
+            }
     return item
 
 
@@ -110,10 +124,15 @@ class SQLAlchemyDatasetOperations:
         )
 
     def embedding_models(self, workspace_id: str) -> set[str]:
+        return self._active_models(workspace_id, ModelType.TEXT_EMBEDDING)
+
+    def reranking_models(self, workspace_id: str) -> set[str]:
+        return self._active_models(workspace_id, ModelType.RERANK)
+
+    @staticmethod
+    def _active_models(workspace_id: str, model_type: ModelType) -> set[str]:
         manager = create_plugin_provider_manager(tenant_id=workspace_id)
-        models = manager.get_configurations(tenant_id=workspace_id).get_models(
-            model_type=ModelType.TEXT_EMBEDDING, only_active=True
-        )
+        models = manager.get_configurations(tenant_id=workspace_id).get_models(model_type=model_type, only_active=True)
         return {f"{model.model}:{model.provider.provider}" for model in models}
 
     def list_datasets(
