@@ -1,10 +1,6 @@
 """Shared fixtures for /openapi/v1/* integration tests."""
 
 from __future__ import annotations
-from enums.account import TenantAccountRole
-from models.enums import AppStatus
-from models import AppMode
-from models import TenantStatus
 
 import hashlib
 import uuid
@@ -17,10 +13,12 @@ from flask import Flask
 from constants.oauth_bearer import TokenType
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from enums import DeploymentEdition
+from enums.account import TenantAccountRole
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models import Account, App, OAuthAccessToken, Tenant, TenantAccountJoin
+from models import Account, App, AppMode, OAuthAccessToken, Tenant, TenantAccountJoin, TenantStatus
 from models.account import AccountStatus
+from models.enums import AppStatus
 
 
 def _sha256(token: str) -> str:
@@ -58,7 +56,9 @@ def workspace_account(flask_app: Flask) -> Generator[tuple[Account, Tenant, Tena
 def app_in_workspace(flask_app: Flask, workspace_account) -> Generator[App]:
     _, tenant, _ = workspace_account
     with flask_app.app_context():
-        app = App(tenant_id=tenant.id, name="a", mode=AppMode.CHAT, status=AppStatus.NORMAL, enable_site=True, enable_api=True)
+        app = App(
+            tenant_id=tenant.id, name="a", mode=AppMode.CHAT, status=AppStatus.NORMAL, enable_site=True, enable_api=True
+        )
         db.session.add(app)
         db.session.commit()
         yield app

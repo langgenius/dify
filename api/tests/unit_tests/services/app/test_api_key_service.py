@@ -1,4 +1,3 @@
-from models.enums import ApiTokenType
 from dataclasses import dataclass, field
 
 import pytest
@@ -8,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from extensions.application_services.app import build_app_api_key_service
 from machinery.context import RequestContext
 from models.agent import Agent, AgentConfigRevision, AgentConfigRevisionOperation, AgentScope, AgentSource, AgentStatus
+from models.enums import ApiTokenType
 from models.model import ApiToken, App, AppMode
 from repositories.app.api_key_repository import AppApiKeyRepository
 from services.app.api_key_service import AppApiKeyNotReadyError, AppApiKeyService
@@ -224,7 +224,9 @@ def test_hidden_workflow_app_keys_remain_inaccessible(
             backing_app_id="app",
         )
     )
-    sqlite_session.add(ApiToken(id="hidden-key", tenant_id="tenant", app_id="app", type=ApiTokenType.APP, token="secret"))
+    sqlite_session.add(
+        ApiToken(id="hidden-key", tenant_id="tenant", app_id="app", type=ApiTokenType.APP, token="secret")
+    )
     sqlite_session.commit()
     context = RequestContext("request", None, "actor", "tenant")
     invoke = {
