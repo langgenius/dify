@@ -83,9 +83,10 @@ def control(
         if saved.get("settlement") in {"pending", "unknown"}:
             _settle_stop(service._repo, service._test_actions, session_id, actor, client_action_id)
             saved = _saved(service, session_id, client_action_id, intent)
+        view = _replay(service, session_id, saved)
         if kind == "resume" and saved.get("enqueue") in {"pending", "dispatching", "claimed"}:
             _enqueue_resume(service, session_id, actor, saved)
-        return _replay(service, session_id, saved)
+        return view
     _, observed = service._repo.get_session_at_version(session_id, base_version)
     expected_generation = generation(observed)
     old_owner = service._session_lock.current_owner(session_id)
@@ -195,7 +196,12 @@ def control(
             service._session_lock.release(session_id, candidate)
         _settle_stop(service._repo, service._test_actions, session_id, actor, client_action_id)
     else:
+        # Finalize the exact receipt before a worker can capture its CAS base.
+        # Response persistence must never advance the head of active cognition.
+        saved = _saved(service, session_id, client_action_id, intent)
+        view = _replay(service, session_id, saved)
         _enqueue_resume(service, session_id, actor, fc.task_control["receipt"])
+        return view
     saved = _saved(service, session_id, client_action_id, intent)
     return _replay(service, session_id, saved)
 
@@ -273,7 +279,7 @@ def _enqueue_resume(service, session_id, actor, receipt):
         context.paused
         or generation(context) != receipt["generation"]
         or latest.get("id") != receipt["id"]
-        or latest.get("enqueue") == "running"
+        or latest.get("enqueue") in {"running", "settled"}
         or service._session_lock.exists(session_id)
     ):
         return
@@ -285,7 +291,7 @@ def _enqueue_resume(service, session_id, actor, receipt):
             fc.paused
             or generation(fc) != receipt["generation"]
             or command.get("id") != receipt["id"]
-            or command.get("enqueue") == "running"
+            or command.get("enqueue") in {"running", "settled"}
         ):
             raise ConflictError("continuation already delivered or superseded")
         command["enqueue"] = "dispatching"

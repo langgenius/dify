@@ -148,7 +148,7 @@ class NativeHostCapacity:
         prepared = self.lifecycle.prepare_dispatch_claim(ref=ref, generation=generation, dispatch_id=dispatch_id)
         if prepared is None:
             return False
-        with self.locked(ref=ref, settlement=True) as (session, owned, scope):
+        with self.locked(ref=ref) as (session, owned, scope):
             if self._used:
                 return False
             current = session.scalar(
@@ -226,13 +226,15 @@ class NativeHostCapacity:
 
 @contextmanager
 def locked_native_capacity(lifecycle, *, ref: NativeTestContextRef, settlement: bool = False):
-    # Read just the persisted App identity before starting the App-first writer.
+    # Read the persisted App identity before the Session→App→Request writer.
     with lifecycle.loader.session_factory() as session:
         owned, _ = lifecycle.loader._load(session, ref=ref, lock=False, settlement=settlement)
         app_id, tenant_id = owned.app_id, owned.tenant_id
     with native_observation_transaction(
         lifecycle.loader.session_factory, session_id=lambda: owned.session_id
     ) as session:
+        if not settlement:
+            lifecycle.loader.lock_task_admission(session, ref=ref)
         app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).with_for_update())
         if app is None:
             raise BuilderExecutionPolicyError("native_owner_mismatch")
