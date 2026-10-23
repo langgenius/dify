@@ -24,7 +24,7 @@ from services.account_errors import (
 )
 from services.entities.account_entities import AccountSessionTokens
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
-from tests.unit_tests.account_domain import AccountDomain
+from tests.helpers.unit.account_domain import AccountDomain
 
 
 def test_creation_hashes_password_and_keeps_registration_ip(

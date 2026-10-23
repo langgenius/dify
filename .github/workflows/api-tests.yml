@@ -45,7 +45,9 @@ jobs:
             --write-plan unit-test-plan.json \
             --split-threshold 60 \
             --ignore api/tests/unit_tests/controllers \
+            --ignore api/tests/e2e_tests/contracts/controllers \
             api/tests/unit_tests \
+            api/tests/e2e_tests/contracts \
             api/providers/vdb/*/tests/unit_tests \
             api/providers/trace/*/tests/unit_tests
       - name: Upload shared plan
@@ -110,7 +112,9 @@ jobs:
             --shard-index "${{ matrix.shardIndex }}" \
             --shard-total "${{ matrix.shardTotal }}" \
             --ignore api/tests/unit_tests/controllers \
+            --ignore api/tests/e2e_tests/contracts/controllers \
             api/tests/unit_tests \
+            api/tests/e2e_tests/contracts \
             api/providers/vdb/*/tests/unit_tests \
             api/providers/trace/*/tests/unit_tests > "$RUNNER_TEMP/unit-test-files.txt"
           uv run --project api pytest \
@@ -193,7 +197,8 @@ jobs:
             -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --junitxml=test-results/controllers.xml \
-            api/tests/unit_tests/controllers
+            api/tests/unit_tests/controllers \
+            api/tests/e2e_tests/contracts/controllers
 
       - name: Upload controller test reports
         if: ${{ !cancelled() }}
@@ -265,9 +270,9 @@ jobs:
             -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --timeout "${PYTEST_TIMEOUT:-180}" \
-            api/tests/integration_tests/workflow \
-            api/tests/integration_tests/tools \
-            api/tests/test_containers_integration_tests
+            api/tests/e2e_tests/middleware/workflow \
+            api/tests/e2e_tests/middleware/tools \
+            api/tests/e2e_tests/containers
 
       - name: Generate coverage report
         run: uv run --project api coverage xml -o coverage.xml

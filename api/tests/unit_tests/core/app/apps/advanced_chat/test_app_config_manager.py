@@ -3,7 +3,7 @@ from unittest.mock import patch
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
-from tests.unit_tests.model_factories import make_app, make_workflow
+from tests.helpers.unit.model_factories import make_app, make_workflow
 
 
 def _app() -> App:

@@ -31,7 +31,7 @@ from tests.unit_tests.controllers.console.explore.test_installed_app_admission i
     _stop_global_redis,
     harness,
 )
-from tests.unit_tests.services.test_app_task_service import _StopRedis
+from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
 
 __all__ = ["_stop_global_redis", "harness"]
 

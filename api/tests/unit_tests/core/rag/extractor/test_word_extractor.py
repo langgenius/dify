@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 import core.rag.extractor.word_extractor as we
 from core.rag.extractor.word_extractor import WordExtractor
 from models.model import UploadFile
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 class _TextOxmlElement(Protocol):

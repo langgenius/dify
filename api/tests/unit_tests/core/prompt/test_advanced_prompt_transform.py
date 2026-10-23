@@ -15,8 +15,8 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.core.model_fixtures import make_model_config, make_token_buffer_memory
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.core.model_fixtures import make_model_config, make_token_buffer_memory
 
 
 def test__get_completion_model_prompt_messages():

@@ -52,7 +52,7 @@ def test_core_coverage_scope_includes_every_required_layer(path: str) -> None:
         "api/app_factory.py",
         "api/dev/check_knowledge_fs_coverage.py",
         "api/migrations/versions/revision_knowledge_fs.py",
-        "api/tests/unit_tests/services/test_knowledge_fs_runtime.py",
+        "api/tests/unit_tests/services/knowledge_fs/test_runtime.py",
     ],
 )
 def test_core_coverage_scope_excludes_glue_migrations_and_tests(path: str) -> None:

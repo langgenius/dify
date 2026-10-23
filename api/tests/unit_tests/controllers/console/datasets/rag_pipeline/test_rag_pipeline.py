@@ -27,9 +27,9 @@ from models.engine import db
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 from services.errors.base import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.controllers.rbac_introspection import rbac_checks
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
+from tests.helpers.unit.model_factories import make_account
 
 
 def _template_item() -> dict[str, object]:

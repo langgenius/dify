@@ -20,8 +20,8 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_datasets import (
 from models.account import Account, TenantAccountRole
 from services.entities.dsl_entities import ImportStatus
 from services.rbac import contracts as rbac_contracts
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_account
 
 
 def _account(*, editor: bool) -> Account:

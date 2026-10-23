@@ -27,7 +27,7 @@ from services.vector_space_admission_service import (
     get_vector_space_admission_error_fields,
     parse_vector_space_estimate_limits,
 )
-from tests.unit_tests.model_factories import make_dataset
+from tests.helpers.unit.model_factories import make_dataset
 
 _MEBIBYTE = 1024 * 1024
 _ESTIMATE_LIMITS = "sandbox:60,professional:6400,team:25600"

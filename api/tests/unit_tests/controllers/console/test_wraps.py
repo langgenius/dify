@@ -50,7 +50,7 @@ from models import Account, DifySetup
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import RateLimitLog
 from services.entities.feature_entities import LicenseStatus
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 @pytest.fixture(autouse=True)

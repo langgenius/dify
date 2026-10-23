@@ -46,7 +46,7 @@ from models.dataset import Dataset
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, IconType, Message
 from services.knowledge.external.service import ExternalDatasetService
-from tests.unit_tests.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"

@@ -3,7 +3,7 @@ from unittest.mock import patch
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from models.model import App, AppMode
 from models.workflow import Workflow
-from tests.unit_tests.model_factories import make_app, make_workflow
+from tests.helpers.unit.model_factories import make_app, make_workflow
 
 
 def _app() -> App:

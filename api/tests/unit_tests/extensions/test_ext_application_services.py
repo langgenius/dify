@@ -166,8 +166,8 @@ from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tasks.delete_conversation_task import delete_conversation_related_data
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.services.test_app_task_service import _StopRedis
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
 
 
 @pytest.fixture(autouse=True)

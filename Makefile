@@ -111,11 +111,12 @@ test:
 		echo "Running backend unit tests"; \
 		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
 			api/tests/unit_tests \
+			api/tests/e2e_tests/contracts \
 			api/providers/vdb/*/tests/unit_tests \
 			api/providers/trace/*/tests/unit_tests \
-			--ignore=api/tests/unit_tests/controllers; \
+			--ignore=api/tests/unit_tests/controllers --ignore=api/tests/e2e_tests/contracts/controllers; \
 		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto --cov-append \
-			api/tests/unit_tests/controllers; \
+			api/tests/unit_tests/controllers api/tests/e2e_tests/contracts/controllers; \
 	fi
 	@echo "✅ Unit tests complete"
 
@@ -129,26 +130,27 @@ test-all:
 		echo "Running backend unit tests"; \
 		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
 			api/tests/unit_tests \
+			api/tests/e2e_tests/contracts \
 			api/providers/vdb/*/tests/unit_tests \
 			api/providers/trace/*/tests/unit_tests \
-			--ignore=api/tests/unit_tests/controllers; \
+			--ignore=api/tests/unit_tests/controllers --ignore=api/tests/e2e_tests/contracts/controllers; \
 		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto --cov-append \
-			api/tests/unit_tests/controllers; \
+			api/tests/unit_tests/controllers api/tests/e2e_tests/contracts/controllers; \
 		echo "Running backend integration tests"; \
 		uv run --project api --dev pytest -p no:benchmark --start-middleware -n auto \
 			--timeout "$${PYTEST_TIMEOUT:-180}" \
 			--cov-append \
-			api/tests/integration_tests/workflow \
-			api/tests/integration_tests/tools \
-			api/tests/test_containers_integration_tests; \
+			api/tests/e2e_tests/middleware/workflow \
+			api/tests/e2e_tests/middleware/tools \
+			api/tests/e2e_tests/containers; \
 		echo "Running VDB smoke tests"; \
 		uv run --project api --dev pytest --start-vdb \
 			--timeout "$${PYTEST_TIMEOUT:-180}" \
 			--cov-append \
-			api/providers/vdb/vdb-chroma/tests/integration_tests \
-			api/providers/vdb/vdb-pgvector/tests/integration_tests \
-			api/providers/vdb/vdb-qdrant/tests/integration_tests \
-			api/providers/vdb/vdb-weaviate/tests/integration_tests; \
+			api/providers/vdb/vdb-chroma/tests/e2e_tests \
+			api/providers/vdb/vdb-pgvector/tests/e2e_tests \
+			api/providers/vdb/vdb-qdrant/tests/e2e_tests \
+			api/providers/vdb/vdb-weaviate/tests/e2e_tests; \
 	fi
 	@echo "✅ Tests complete"
 

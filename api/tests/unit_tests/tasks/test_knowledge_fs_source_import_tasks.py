@@ -19,7 +19,7 @@ from tasks.knowledge_fs_source_import_tasks import (
     KnowledgeFSSourceImportNotReadyError,
     finalize_source_import_once,
 )
-from tests.unit_tests.tasks.knowledge_fs_task_fakes import (
+from tests.helpers.unit.tasks.knowledge_fs_task_fakes import (
     FacadeRuntime,
     RecordingKnowledgeFSFacade,
     RecordingRetry,

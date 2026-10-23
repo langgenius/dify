@@ -10,7 +10,7 @@ from core.datasource.entities.datasource_entities import (
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.entities.common_entities import I18nObject
 from core.tools.errors import ToolProviderCredentialValidationError
-from tests.unit_tests.core.datasource.factories import provider_entity
+from tests.helpers.unit.core.datasource.factories import provider_entity
 
 
 class ConcreteDatasourcePluginProviderController(DatasourcePluginProviderController):

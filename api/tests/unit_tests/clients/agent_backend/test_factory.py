@@ -9,7 +9,7 @@ from clients.agent_backend.factory import create_agent_backend_client, create_ag
 from configs import dify_config
 from services.agent import home_snapshot_service, workspace_service
 from services.app import agent_sandbox_file_gateway
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 @pytest.mark.parametrize(

@@ -29,7 +29,7 @@ from services.webapp_access_query_service import (
     WebAppAccessReferenceRequiredError,
     WebAppAccessUnavailableError,
 )
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 PASSPORT_SECRET = "test-secret-that-is-at-least-32-bytes"
 OTHER_PASSPORT_SECRET = "other-secret-that-is-at-least-32-bytes"

@@ -12,7 +12,7 @@ from graphon.file import FileTransferMethod, FileType
 from models.enums import CreatorUserRole
 from models.model import MessageFile, UploadFile
 from models.tools import ToolFile
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def _upload_file(id: str, *, key: str, mime_type: str) -> UploadFile:

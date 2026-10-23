@@ -19,7 +19,7 @@ from tasks.knowledge_fs_upgrade_tasks import (
     recover_stalled_knowledge_fs_upgrades,
     run_knowledge_fs_upgrade,
 )
-from tests.unit_tests.tasks.task_options import task_options
+from tests.helpers.unit.tasks.task_options import task_options
 
 
 @dataclass

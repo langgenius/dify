@@ -18,7 +18,7 @@ from core.datasource.entities.datasource_entities import (
 from core.plugin.entities.request import RequestInvokeDatasource
 from models.account import Tenant
 from services.plugin.datasource_backwards_invocation import PluginDatasourceBackwardsInvocation
-from tests.unit_tests.knowledge_fs_core_fakes import Marker
+from tests.helpers.unit.knowledge_fs_core_fakes import Marker
 
 
 def _tenant() -> Tenant:

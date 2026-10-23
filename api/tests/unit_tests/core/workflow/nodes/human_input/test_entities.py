@@ -1,24 +1,54 @@
-"""
-Unit tests for human input node entities.
-"""
+from __future__ import annotations
 
-from collections.abc import Mapping
+import datetime as _human_input_form_filled_event_datetime
+import json
+from collections.abc import Generator, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, timedelta
+from datetime import datetime as _dify_owned_contracts_datetime
+from datetime import datetime as _entities_datetime
+from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-from pydantic import ValidationError
+from flask import Flask
+from pydantic import TypeAdapter, ValidationError
 from pytest_mock import MockerFixture
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
+from core.app.apps.advanced_chat.generate_task_pipeline import (
+    AdvancedChatAppGenerateTaskPipeline,
+    ConversationSnapshot,
+    MessageSnapshot,
+    WorkflowSnapshot,
+)
+from core.app.apps.base_app_generator import BaseAppGenerator
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
+from core.app.entities.app_invoke_entities import (
+    DIFY_RUN_CONTEXT_KEY,
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+)
+from core.app.entities.queue_entities import (
+    AppQueueEvent,
+    QueueHumanInputFormFilledEvent,
+    QueueNodeSucceededEvent,
+    QueueWorkflowStartedEvent,
+    WorkflowQueueMessage,
+)
 from core.repositories.human_input_repository import (
     FormCreateParams,
     HumanInputFormEntity,
     HumanInputFormRecipientEntity,
     HumanInputFormRepository,
+    HumanInputFormSubmissionRepository,
 )
 from core.workflow.human_input_adapter import (
     DeliveryMethodType,
@@ -32,12 +62,15 @@ from core.workflow.human_input_adapter import (
     _WebAppDeliveryConfig,
 )
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.nodes.human_input._exc import ExtensionsNotSetErrorValueError
+from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
 from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
+    FormDefinition,
     HumanInputNodeData,
     ParagraphInputConfig,
     SelectInputConfig,
@@ -52,17 +85,167 @@ from core.workflow.nodes.human_input.enums import (
     TimeoutUnit,
     ValueSourceType,
 )
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.session_binding import SessionBinding
 from core.workflow.system_variables import build_system_variables
+from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
+from graphon.engine import Engine
+from graphon.engine.command import InMemoryChannel
+from graphon.engine.filter import EngineEventFilterContext, filter_engine_events
+from graphon.engine_events import (
+    EngineEvent,
+    GraphEdgeSkippedEvent,
+    GraphEdgeTakenEvent,
+    NodeRunHumanInputFormFilledEvent,
+)
+from graphon.entities import WorkflowStartReason
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.graph import Graph
 from graphon.node_events import PauseRequestedEvent
 from graphon.node_events.node import StreamCompletedEvent
+from graphon.nodes.answer.answer_node import AnswerNode
+from graphon.nodes.answer.entities import AnswerNodeData
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
-from graphon.runtime import InitParams, RuntimeState, VariablePool
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import InitParams, ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
+from graphon.runtime.execution import ROOT_FRAME_ID
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from libs.datetime_utils import naive_utc_now
-from models.account import TenantAccountJoin, TenantAccountRole
-from tests.unit_tests.model_factories import make_account, make_tenant
+from libs.helper import compact_generate_response
+from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.enums import ConversationFromSource, MessageStatus
+from models.human_input import HumanInputForm
+from models.model import AppMode
+from tests.helpers.unit.model_factories import make_account, make_message, make_tenant
+
+
+def test_session_binding_identity_mapping() -> None:
+    binding = SessionBinding()
+
+    assert binding.issue_session_id_for_form(form_id="form-1") == "form-1"
+    assert binding.resolve_form_id_from_session_id(session_id="form-1") == "form-1"
+
+
+def test_human_input_node_contracts_accept_legacy_json_payload() -> None:
+    payload = {
+        "form_content": "Please confirm",
+        "inputs": [
+            {
+                "type": "paragraph",
+                "output_variable_name": "name",
+                "default": {
+                    "type": "constant",
+                    "selector": [],
+                    "value": "Alice",
+                },
+            },
+            {
+                "type": "select",
+                "output_variable_name": "decision",
+                "option_source": {
+                    "type": "constant",
+                    "selector": [],
+                    "value": ["approve", "reject"],
+                },
+            },
+        ],
+        "user_actions": [
+            {
+                "id": "approve",
+                "title": "Approve",
+                "button_style": "primary",
+            }
+        ],
+        "rendered_content": "Please confirm",
+        "expiration_time": "2024-01-01T00:00:00Z",
+        "default_values": {"name": "Alice"},
+        "node_title": "Human Input",
+        "display_in_ui": True,
+    }
+
+    restored = TypeAdapter(FormDefinition).validate_json(json.dumps(payload))
+
+    assert isinstance(restored.inputs[0], ParagraphInputConfig)
+    assert isinstance(restored.inputs[1], SelectInputConfig)
+    assert restored.inputs[0].default is not None
+    assert restored.inputs[0].default.type == ValueSourceType.CONSTANT
+    assert restored.inputs[0].default.value == "Alice"
+    assert restored.inputs[1].option_source.type == ValueSourceType.CONSTANT
+    assert restored.inputs[1].option_source.value == ["approve", "reject"]
+    assert restored.user_actions == [UserActionConfig(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY)]
+
+
+def test_human_input_required_pause_reason_keeps_legacy_payload_shape() -> None:
+    payload = {
+        "TYPE": "human_input_required",
+        "form_id": "form-1",
+        "form_content": "Please confirm",
+        "inputs": [
+            {
+                "type": "paragraph",
+                "output_variable_name": "name",
+                "default": {
+                    "type": "constant",
+                    "selector": [],
+                    "value": "Alice",
+                },
+            }
+        ],
+        "actions": [
+            {
+                "id": "approve",
+                "title": "Approve",
+                "button_style": "primary",
+            }
+        ],
+        "node_id": "node-1",
+        "node_title": "Human Input",
+        "resolved_default_values": {"name": "Alice"},
+    }
+
+    restored = TypeAdapter(HumanInputRequired).validate_json(json.dumps(payload))
+
+    assert restored.TYPE.value == "human_input_required"
+    assert restored.actions[0].button_style == ButtonStyle.PRIMARY
+    assert restored.model_dump(mode="json")["TYPE"] == "human_input_required"
+
+
+def test_form_definition_dump_keeps_public_json_shape() -> None:
+    definition = FormDefinition(
+        form_content="Please confirm",
+        inputs=[ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="name")],
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
+        rendered_content="rendered",
+        expiration_time=_dify_owned_contracts_datetime(2024, 1, 1, tzinfo=UTC),
+        default_values={"name": "Alice"},
+        node_title="Ask Name",
+        display_in_ui=True,
+    )
+
+    payload = definition.model_dump(mode="json")
+
+    assert payload["expiration_time"] == "2024-01-01T00:00:00Z"
+    assert payload["user_actions"][0]["id"] == "approve"
+    assert payload["inputs"][0]["type"] == "paragraph"
+
+
+def test_custom_file_input_requires_extensions() -> None:
+    with pytest.raises(ExtensionsNotSetErrorValueError):
+        FileInputConfig(
+            output_variable_name="attachment",
+            allowed_file_types=[FileType.CUSTOM],
+            allowed_file_extensions=[],
+        )
+
+
+"""
+Unit tests for human input node entities.
+"""
 
 
 @dataclass
@@ -74,8 +257,8 @@ class _InMemoryFormEntity(HumanInputFormEntity):
     data: Mapping[str, Any] | None = None
     is_submitted: bool = False
     status_value: HumanInputFormStatus = HumanInputFormStatus.WAITING
-    created: datetime = field(default_factory=naive_utc_now)
-    expiration: datetime = field(default_factory=lambda: naive_utc_now() + timedelta(days=1))
+    created: _entities_datetime = field(default_factory=naive_utc_now)
+    expiration: _entities_datetime = field(default_factory=lambda: naive_utc_now() + timedelta(days=1))
 
     @property
     def id(self) -> str:
@@ -98,7 +281,7 @@ class _InMemoryFormEntity(HumanInputFormEntity):
         return self.action_id
 
     @property
-    def created_at(self) -> datetime:
+    def created_at(self) -> _entities_datetime:
         return self.created
 
     @property
@@ -114,7 +297,7 @@ class _InMemoryFormEntity(HumanInputFormEntity):
         return self.status_value
 
     @property
-    def expiration_time(self) -> datetime:
+    def expiration_time(self) -> _entities_datetime:
         return self.expiration
 
 
@@ -156,7 +339,7 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
         entity.status_value = HumanInputFormStatus.SUBMITTED
 
 
-class _TestFileReferenceFactory(FileReferenceFactoryProtocol):
+class _EntitiesTestfilereferencefactory(FileReferenceFactoryProtocol):
     """Build graph-layer file objects without touching Dify persistence in unit tests."""
 
     def build_from_mapping(self, *, mapping: Mapping[str, Any]) -> File:
@@ -184,13 +367,13 @@ def _build_human_input_node(
     typed_node_data = (
         node_data if isinstance(node_data, HumanInputNodeData) else HumanInputNodeData.model_validate(node_data)
     )
-    runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
+    runtime._file_reference_factory = _EntitiesTestfilereferencefactory()  # type: ignore[attr-defined]
     callback = DifyHITLCallback(
         form_repository=runtime.build_form_repository(),
         node_data=typed_node_data,
         delivery_methods=runtime._resolve_delivery_methods(node_data=typed_node_data),
         display_in_ui=runtime._display_in_ui(node_data=typed_node_data),
-        file_reference_factory=_TestFileReferenceFactory(),
+        file_reference_factory=_EntitiesTestfilereferencefactory(),
     )
     return HumanInputNode(
         node_id=node_id,
@@ -959,3 +1142,643 @@ class TestHumanInputNodeRenderedContent:
         assert node_run_result.outputs["attachment"].value.filename == "resume.pdf"
         assert isinstance(node_run_result.outputs["attachments"], ArrayFileSegment)
         assert [file.filename for file in node_run_result.outputs["attachments"].value] == ["a.png", "b.png"]
+
+
+def _persist_form(
+    sessions: sessionmaker[Session],
+    *,
+    form_id: str,
+    app_id: str,
+    node_id: str,
+    expiration_time: _human_input_form_filled_event_datetime.datetime,
+    status: HumanInputFormStatus,
+) -> None:
+    definition = FormDefinition(form_content="content", rendered_content="content", expiration_time=expiration_time)
+    form = HumanInputForm(
+        tenant_id="tenant",
+        app_id=app_id,
+        workflow_run_id="run-1",
+        node_id=node_id,
+        form_definition=definition.model_dump_json(),
+        rendered_content="content",
+        expiration_time=expiration_time,
+        status=status,
+    )
+    form.id = form_id
+    with sessions.begin() as session:
+        session.add(form)
+
+
+class _FakeFormRepository:
+    def __init__(self, form):
+        self._form = form
+
+    def get_form(self, *_args, **_kwargs):
+        return self._form
+
+    def mark_timeout(self, _node_id: str, *, form_id: str):
+        assert form_id == self._form.id
+        self._form.status = HumanInputFormStatus.TIMEOUT
+        return self._form
+
+
+class _HumanInputFormFilledEventTestfilereferencefactory(FileReferenceFactoryProtocol):
+    def build_from_mapping(self, *, mapping: Mapping[str, Any]):
+        return File(
+            file_id=mapping.get("id"),
+            file_type=FileType(mapping["type"]),
+            transfer_method=FileTransferMethod(mapping["transfer_method"]),
+            remote_url=mapping.get("remote_url") or mapping.get("url"),
+            related_id=mapping.get("related_id") or mapping.get("upload_file_id"),
+            filename=mapping.get("filename"),
+            extension=mapping.get("extension"),
+            mime_type=mapping.get("mime_type"),
+            size=mapping.get("size", -1),
+        )
+
+
+def _create_human_input_node(
+    *,
+    config: dict,
+    init_params: InitParams,
+    runtime_state: RuntimeState,
+    repo: _FakeFormRepository,
+) -> HumanInputNode:
+    node_data = (
+        config["data"]
+        if isinstance(config["data"], HumanInputNodeData)
+        else HumanInputNodeData.model_validate(config["data"])
+    )
+    callback = DifyHITLCallback(
+        form_repository=repo,
+        node_data=node_data,
+        file_reference_factory=_HumanInputFormFilledEventTestfilereferencefactory(),
+    )
+    node = HumanInputNode(
+        node_id=config["id"],
+        data=node_data,
+        init_params=init_params,
+        runtime_state=runtime_state,
+        hitl_callback=callback,
+    )
+    node.bind_execution_id("00000000-0000-4000-8000-000000000001")
+    return node
+
+
+def _build_node(
+    form_content: str = (
+        "Please enter your name:\n\n{{#$output.name#}}\n"
+        "Decision: {{#$output.decision#}}\n"
+        "Attachment: {{#$output.attachment#}}\n"
+        "Attachments: {{#$output.attachments#}}"
+    ),
+    *,
+    with_inputs: bool = True,
+    node_id: str = "node-1",
+) -> HumanInputNode:
+    system_variables = build_system_variables(app_id="app", workflow_execution_id="run-1")
+    graph_runtime_state = RuntimeState(
+        workflow_id="workflow",
+        variable_pool=VariablePool.from_bootstrap(
+            system_variables=system_variables,
+            user_inputs={},
+            environment_variables=[],
+        ),
+        start_at=0.0,
+    )
+    graph_init_params = InitParams(
+        workflow_id="workflow",
+        graph_config={"nodes": [], "edges": []},
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "tenant",
+                "app_id": "app",
+                "user_id": "user",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
+        call_depth=0,
+    )
+
+    config = {
+        "id": node_id,
+        "type": BuiltinNodeTypes.HUMAN_INPUT,
+        "data": {
+            "title": "Human Input",
+            "form_content": form_content,
+            "inputs": [
+                ParagraphInputConfig(output_variable_name="name").model_dump(mode="json"),
+                SelectInputConfig(
+                    output_variable_name="decision",
+                    option_source=StringListSource(type="constant", value=["approve", "reject"]),
+                ).model_dump(mode="json"),
+                FileInputConfig(output_variable_name="attachment").model_dump(mode="json"),
+                FileListInputConfig(output_variable_name="attachments", number_limits=2).model_dump(mode="json"),
+            ],
+            "user_actions": [UserActionConfig(id="Accept", title="Approve").model_dump(mode="json")],
+        },
+    }
+
+    fake_form = SimpleNamespace(
+        id="form-1",
+        rendered_content=form_content,
+        submitted=True,
+        selected_action_id="Accept",
+        submitted_data={
+            "name": "Alice",
+            "decision": "approve",
+            "attachment": {
+                "type": "document",
+                "transfer_method": "remote_url",
+                "remote_url": "https://example.com/resume.pdf",
+                "filename": "resume.pdf",
+                "extension": ".pdf",
+                "mime_type": "application/pdf",
+            },
+            "attachments": [
+                {
+                    "type": "image",
+                    "transfer_method": "remote_url",
+                    "remote_url": "https://example.com/a.png",
+                    "filename": "a.png",
+                    "extension": ".png",
+                    "mime_type": "image/png",
+                }
+            ],
+        },
+        status=HumanInputFormStatus.SUBMITTED,
+        expiration_time=naive_utc_now() + _human_input_form_filled_event_datetime.timedelta(days=1),
+    )
+
+    if not with_inputs:
+        config["data"]["inputs"] = []
+        fake_form.submitted_data = {}
+
+    repo = _FakeFormRepository(fake_form)
+    return _create_human_input_node(
+        config=config,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
+        repo=repo,
+    )
+
+
+def _build_timeout_node(
+    expiration_time: _human_input_form_filled_event_datetime.datetime | None = None,
+    *,
+    status: HumanInputFormStatus = HumanInputFormStatus.TIMEOUT,
+    node_id: str = "node-1",
+) -> HumanInputNode:
+    system_variables = build_system_variables(app_id="app", workflow_execution_id="run-1")
+    graph_runtime_state = RuntimeState(
+        workflow_id="workflow",
+        variable_pool=VariablePool.from_bootstrap(
+            system_variables=system_variables,
+            user_inputs={},
+            environment_variables=[],
+        ),
+        start_at=0.0,
+    )
+    graph_init_params = InitParams(
+        workflow_id="workflow",
+        graph_config={"nodes": [], "edges": []},
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "tenant",
+                "app_id": "app",
+                "user_id": "user",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
+        call_depth=0,
+    )
+
+    config = {
+        "id": node_id,
+        "type": BuiltinNodeTypes.HUMAN_INPUT,
+        "data": {
+            "title": "Human Input",
+            "form_content": "Please enter your name:\n\n{{#$output.name#}}",
+            "inputs": [ParagraphInputConfig(output_variable_name="name").model_dump(mode="json")],
+            "user_actions": [UserActionConfig(id="Accept", title="Approve").model_dump(mode="json")],
+        },
+    }
+
+    fake_form = SimpleNamespace(
+        id="form-1",
+        rendered_content="content",
+        submitted=False,
+        selected_action_id=None,
+        submitted_data=None,
+        status=status,
+        created_at=naive_utc_now(),
+        expiration_time=expiration_time
+        or naive_utc_now() - _human_input_form_filled_event_datetime.timedelta(minutes=1),
+    )
+
+    repo = _FakeFormRepository(fake_form)
+    return _create_human_input_node(
+        config=config,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
+        repo=repo,
+    )
+
+
+def _publish_node_events(node: HumanInputNode) -> list[AppQueueEvent]:
+    return _publish_graph_events(
+        _filter_human_input_events(node.run(), node=node),
+        graph=Graph(root_node=node),
+        runtime_state=node.runtime_state,
+    )
+
+
+def _filter_human_input_events(events: Iterable[EngineEvent], *, node: HumanInputNode | None = None):
+    node = node or _build_node()
+    return filter_engine_events(
+        events,
+        context=EngineEventFilterContext(
+            graph=Graph(root_node=node),
+            runtime_state=ReadOnlyRuntimeStateWrapper(node.runtime_state),
+        ),
+        filters=[HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository())],
+    )
+
+
+@pytest.mark.parametrize("event_type", [GraphEdgeTakenEvent, GraphEdgeSkippedEvent])
+def test_human_input_filter_forwards_traversals_without_waiting_for_completion(event_type):
+    started, _ = list(_build_node().run())
+    edge = event_type(frame_id=ROOT_FRAME_ID, edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
+    edge_forwarded = False
+
+    def source() -> Generator[EngineEvent]:
+        yield started
+        yield edge
+        assert edge_forwarded, "The traversal must be forwarded before consuming more upstream events"
+
+    events = iter(_filter_human_input_events(source()))
+    assert next(events) == started
+    assert next(events) == edge
+    edge_forwarded = True
+    assert list(events) == []
+
+
+def test_form_events_keep_titles_for_interleaved_executions_of_one_node():
+    node = _build_node()
+    started, succeeded = list(node.run())
+    first_start = started.model_copy(update={"id": "first", "node_title": "First approval"})
+    second_start = started.model_copy(update={"id": "second", "node_title": "Second approval"})
+    first_result = succeeded.model_copy(
+        update={
+            "id": "first",
+            "container_id": "loop-1",
+            "node_run_result": succeeded.node_run_result.model_copy(
+                update={"metadata": {WorkflowNodeExecutionMetadataKey.LOOP_ID: "loop-1"}}
+            ),
+        }
+    )
+    second_result = succeeded.model_copy(
+        update={
+            "id": "second",
+            "container_id": "iteration-2",
+            "node_run_result": succeeded.node_run_result.model_copy(
+                update={"metadata": {WorkflowNodeExecutionMetadataKey.ITERATION_ID: "iteration-2"}}
+            ),
+        }
+    )
+
+    filtered = list(_filter_human_input_events([first_start, second_start, second_result, first_result], node=node))
+    form_events = [event for event in filtered if isinstance(event, NodeRunHumanInputFormFilledEvent)]
+    assert [(event.id, event.container_id, event.node_run_result.metadata) for event in form_events] == [
+        ("second", "iteration-2", second_result.node_run_result.metadata),
+        ("first", "loop-1", first_result.node_run_result.metadata),
+    ]
+    events = _publish_graph_events(filtered, graph=Graph(root_node=node), runtime_state=node.runtime_state)
+
+    filled = [event for event in events if isinstance(event, QueueHumanInputFormFilledEvent)]
+    assert [(event.form_id, event.node_title) for event in filled] == [
+        ("second", "Second approval"),
+        ("first", "First approval"),
+    ]
+    completed = [event for event in events if isinstance(event, QueueNodeSucceededEvent)]
+    assert [(event.node_execution_id, event.in_loop_id, event.in_iteration_id) for event in completed] == [
+        ("second", None, "iteration-2"),
+        ("first", "loop-1", None),
+    ]
+
+
+class _EventQueue(AppQueueManager):
+    """Record events and replay a finite stream without starting a watchdog."""
+
+    def __init__(self, invoke_from: InvokeFrom, runtime_state: RuntimeState) -> None:
+        self.invoke_from = invoke_from
+        self.graph_runtime_state = runtime_state
+        self.events: list[AppQueueEvent] = []
+
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+        assert pub_from in {PublishFrom.APPLICATION_MANAGER, PublishFrom.TASK_PIPELINE}
+        self.events.append(event)
+
+    def listen(self) -> Generator[WorkflowQueueMessage]:
+        for event in self.events:
+            yield WorkflowQueueMessage(task_id="task-1", app_mode=AppMode.ADVANCED_CHAT, event=event)
+
+
+def _publish_graph_events(
+    events: Iterable[EngineEvent], *, graph: Graph, runtime_state: RuntimeState
+) -> list[AppQueueEvent]:
+    queue_manager = _EventQueue(InvokeFrom.WEB_APP, runtime_state)
+    runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app")
+    workflow_entry = WorkflowEntry(
+        graph_config={},
+        graph=graph,
+        call_depth=0,
+        graph_runtime_state=runtime_state,
+    )
+    for event in events:
+        runner.handle_event(workflow_entry, event)
+    return queue_manager.events
+
+
+def _sse_payloads(
+    events: Sequence[AppQueueEvent],
+    invoke_from: InvokeFrom,
+    app: Flask,
+    sessions: sessionmaker[Session],
+    runtime_state: RuntimeState | None = None,
+) -> list[dict[str, Any]]:
+    generate_entity = AdvancedChatAppGenerateEntity(
+        task_id="task-1",
+        app_config=WorkflowUIBasedAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.ADVANCED_CHAT,
+            workflow_id="workflow",
+        ),
+        inputs={},
+        query="hello",
+        files=[],
+        user_id="user",
+        stream=True,
+        invoke_from=invoke_from,
+        workflow_run_id="run-1",
+    )
+    if runtime_state is None:
+        runtime_state = RuntimeState(
+            workflow_id="workflow",
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-1")
+            ),
+            start_at=0,
+        )
+    queue_manager = _EventQueue(invoke_from, runtime_state)
+    queue_manager.events.extend(events)
+    with sessions.begin() as session:
+        session.add(
+            make_message(
+                app_id="app",
+                inputs={},
+                query="hello",
+                message={},
+                answer="",
+                status=MessageStatus.PAUSED,
+                message_unit_price=Decimal(0),
+                answer_unit_price=Decimal(0),
+                total_price=Decimal(0),
+                currency="USD",
+                from_source=ConversationFromSource.API,
+            )
+        )
+        has_form = session.scalar(select(HumanInputForm.id).where(HumanInputForm.workflow_run_id == "run-1"))
+    if has_form is None:
+        for event in events:
+            if isinstance(event, QueueHumanInputFormFilledEvent):
+                _persist_form(
+                    sessions,
+                    form_id=event.form_id,
+                    app_id="app",
+                    node_id=event.node_id,
+                    expiration_time=naive_utc_now() + _human_input_form_filled_event_datetime.timedelta(days=1),
+                    status=HumanInputFormStatus.SUBMITTED,
+                )
+    pipeline = AdvancedChatAppGenerateTaskPipeline(
+        application_generate_entity=generate_entity,
+        workflow=WorkflowSnapshot(id="workflow", tenant_id="tenant", features_dict={}),
+        queue_manager=queue_manager,
+        conversation=ConversationSnapshot(id="conversation-1", mode=AppMode.ADVANCED_CHAT),
+        message=MessageSnapshot(
+            id="message-1", query="hello", created_at=naive_utc_now(), status=MessageStatus.PAUSED, answer=""
+        ),
+        user=Account(name="tester", email="tester@example.com"),
+        stream=True,
+        dialogue_count=1,
+        draft_var_saver_factory=MagicMock(),
+    )
+    with app.test_request_context():
+        if not any(isinstance(event, QueueWorkflowStartedEvent) for event in events):
+            list(
+                pipeline._handle_workflow_started_event(
+                    QueueWorkflowStartedEvent(reason=WorkflowStartReason.RESUMPTION)
+                )
+            )
+        response = compact_generate_response(
+            BaseAppGenerator.convert_to_event_stream(
+                AdvancedChatAppGenerateResponseConverter.convert(
+                    pipeline._to_stream_response(pipeline._process_stream_response()), invoke_from
+                )
+            )
+        )
+        assert response.mimetype == "text/event-stream"
+        return [
+            json.loads(line.removeprefix("data: ")) for line in response.get_data(as_text=True).splitlines() if line
+        ]
+
+
+@pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.WEB_APP], ids=["full", "simple"])
+def test_submitted_human_input_reaches_response_stream(
+    invoke_from: InvokeFrom, app: Flask, sqlite_session_factory: sessionmaker[Session]
+):
+    events = _publish_node_events(_build_node())
+
+    payloads = _sse_payloads(events, invoke_from, app, sqlite_session_factory)
+
+    # Dify's original HumanInputNode (9c339239850) emitted the form event
+    # before node completion; its runner and task pipeline preserved that order.
+    assert [payload["event"] for payload in payloads] == [
+        "node_started",
+        "human_input_form_filled",
+        "node_finished",
+    ]
+    payload = payloads[1]
+    assert payload["workflow_run_id"] == "run-1"
+    assert payload["data"]["form_id"] == "00000000-0000-4000-8000-000000000001"
+    assert payload["data"]["node_id"] == "node-1"
+    assert payload["data"]["node_title"] == "Human Input"
+    assert payload["data"]["action_id"] == "Accept"
+    assert payload["data"]["action_text"] == "Approve"
+    assert payload["data"]["rendered_content"] == (
+        "Please enter your name:\n\nAlice\nDecision: approve\nAttachment: [file]\nAttachments: [1 files]"
+    )
+    submitted_data = payload["data"]["submitted_data"]
+    assert submitted_data["name"] == "Alice"
+    assert submitted_data["decision"] == "approve"
+    assert submitted_data["attachment"]["filename"] == "resume.pdf"
+    assert submitted_data["attachment"]["type"] == "document"
+    assert submitted_data["attachment"]["transfer_method"] == "remote_url"
+    assert submitted_data["attachments"][0]["filename"] == "a.png"
+    assert submitted_data["attachments"][0]["type"] == "image"
+
+
+def test_button_only_human_input_reaches_response_stream(app: Flask, sqlite_session_factory: sessionmaker[Session]):
+    events = _publish_node_events(_build_node("Approve deployment?", with_inputs=False))
+
+    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app, sqlite_session_factory)
+
+    assert [payload["event"] for payload in payloads] == [
+        "node_started",
+        "human_input_form_filled",
+        "node_finished",
+    ]
+    assert payloads[1]["data"]["rendered_content"] == "Approve deployment?"
+    assert payloads[1]["data"]["submitted_data"] == {}
+    assert payloads[1]["data"]["action_id"] == "Accept"
+
+
+@pytest.mark.parametrize("status", [HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.WAITING])
+def test_timed_out_human_input_reaches_response_stream(
+    status: HumanInputFormStatus, sqlite_session_factory: sessionmaker[Session], app: Flask
+):
+    expiration_time = _human_input_form_filled_event_datetime.datetime(2025, 1, 1)
+    for form_id, expiration in (
+        ("previous-execution", _human_input_form_filled_event_datetime.datetime(2024, 1, 1)),
+        ("00000000-0000-4000-8000-000000000001", expiration_time),
+    ):
+        _persist_form(
+            sqlite_session_factory,
+            form_id=form_id,
+            app_id="app",
+            node_id="node-1",
+            expiration_time=expiration,
+            status=status,
+        )
+
+    events = _publish_node_events(_build_timeout_node(expiration_time, status=status))
+
+    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app, sqlite_session_factory)
+    assert [payload["event"] for payload in payloads] == [
+        "node_started",
+        "human_input_form_timeout",
+        "node_finished",
+    ]
+    assert payloads[1]["data"] == {
+        "form_id": "00000000-0000-4000-8000-000000000001",
+        "node_id": "node-1",
+        "node_title": "Human Input",
+        "expiration_time": 1735689600,
+    }
+
+
+@pytest.mark.parametrize("timed_out", [False, True])
+@pytest.mark.parametrize("terminal", ["end", "answer"])
+def test_human_input_completion_and_referenced_answer_reach_response_stream(
+    timed_out: bool, terminal: str, mocker: MockerFixture, app: Flask, sqlite_session_factory: sessionmaker[Session]
+):
+    expiration_time = _human_input_form_filled_event_datetime.datetime(2025, 1, 1)
+    node = (
+        _build_timeout_node(expiration_time, node_id="human")
+        if timed_out
+        else _build_node("Approve?", with_inputs=False, node_id="human")
+    )
+    runtime_state = node.runtime_state
+    runtime_state.variable_pool.add(["sys", "workflow_execution_id"], StringSegment(value="run-1"))
+    init_params = InitParams(workflow_id="workflow", graph_config={}, run_context={}, call_depth=0)
+    start = StartNode(
+        node_id="start",
+        data=StartNodeData(title="Start", variables=[]),
+        init_params=init_params,
+        runtime_state=runtime_state,
+    )
+    if terminal == "answer":
+        terminal_node = AnswerNode(
+            node_id="answer",
+            data=AnswerNodeData(title="Answer", answer="Action: {{#human.__action_id#}}"),
+            init_params=init_params,
+            runtime_state=runtime_state,
+        )
+    else:
+        terminal_node = EndNode(
+            node_id="end",
+            data=EndNodeData(title="End", outputs=[]),
+            init_params=init_params,
+            runtime_state=runtime_state,
+        )
+    graph = (
+        Graph.new()
+        .add_root(start)
+        .add_node(node, from_node_id="start")
+        .add_node(terminal_node, from_node_id=node.id, source_handle="__timeout" if timed_out else "Accept")
+        .build()
+    )
+    engine = Engine(
+        graph=graph,
+        runtime_state=runtime_state,
+        command_channel=InMemoryChannel(),
+        workers=1,
+    )
+    bind_execution_id = node.bind_execution_id
+
+    def bind_form(execution_id: str) -> None:
+        bind_execution_id(execution_id)
+        _persist_form(
+            sqlite_session_factory,
+            form_id=execution_id,
+            app_id="app",
+            node_id=node.id,
+            expiration_time=expiration_time,
+            status=HumanInputFormStatus.TIMEOUT if timed_out else HumanInputFormStatus.SUBMITTED,
+        )
+
+    mocker.patch.object(node, "bind_execution_id", side_effect=bind_form)
+
+    events = _publish_graph_events(iter_dify_graph_engine_events(engine), graph=graph, runtime_state=runtime_state)
+    payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app, sqlite_session_factory, runtime_state)
+
+    form_event = "human_input_form_timeout" if timed_out else "human_input_form_filled"
+    lifecycle_events = [payload for payload in payloads if payload["event"] != "message"]
+    assert [(payload["event"], payload.get("data", {}).get("node_id")) for payload in lifecycle_events] == [
+        ("workflow_started", None),
+        ("node_started", "start"),
+        ("node_finished", "start"),
+        ("node_started", node.id),
+        (form_event, node.id),
+        ("node_finished", node.id),
+        ("node_started", terminal),
+        ("node_finished", terminal),
+        ("message_end", None),
+        ("workflow_finished", None),
+    ]
+    answer = "".join(payload["answer"] for payload in payloads if payload["event"] == "message")
+    expected_answer = "Action: " + ("" if timed_out else "Accept")
+    assert answer == (expected_answer if terminal == "answer" else "")
+    assert payloads[-1]["data"]["status"] == "succeeded"
+
+
+@pytest.mark.parametrize("form_owner", [None, ("other-app", "node-1"), ("app", "other-node")])
+def test_timeout_rejects_missing_or_unrelated_form(
+    form_owner: tuple[str, str] | None, sqlite_session_factory: sessionmaker[Session]
+):
+    if form_owner is not None:
+        app_id, node_id = form_owner
+        _persist_form(
+            sqlite_session_factory,
+            form_id="00000000-0000-4000-8000-000000000001",
+            app_id=app_id,
+            node_id=node_id,
+            expiration_time=_human_input_form_filled_event_datetime.datetime(2025, 1, 1),
+            status=HumanInputFormStatus.TIMEOUT,
+        )
+
+    with pytest.raises(ValueError, match="Cannot resolve timed-out human input form"):
+        _publish_node_events(_build_timeout_node())

@@ -15,9 +15,9 @@ from models.base import TypeBase
 from models.model import App, AppMode
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.workflow_collaboration_service import SYNC_REQUEST_TIMEOUT_SECONDS, WorkflowCollaborationService
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_app
-from tests.unit_tests.services.workflow_collaboration_fixtures import RedisState, seed_session, seed_sessions
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.services.workflow_collaboration_fixtures import RedisState, seed_session, seed_sessions
 
 ServiceFixture = tuple[WorkflowCollaborationService, WorkflowCollaborationRepository, Mock]
 

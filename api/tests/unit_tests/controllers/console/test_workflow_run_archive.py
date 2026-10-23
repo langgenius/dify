@@ -39,8 +39,8 @@ from services.retention.workflow_run.archive_log_service import (
     WorkflowRunArchiveNotFoundError,
     WorkflowRunArchiveService,
 )
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_account
 
 _CONTEXT = RequestContext(
     request_id="request-1",

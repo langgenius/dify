@@ -34,8 +34,8 @@ from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapa
 from services.knowledge_fs.errors import KnowledgeFSWorkflowQueryImageReference
 from services.knowledge_fs.query_images import KnowledgeFSQueryImageMetadata
 from services.knowledge_fs.runtime import KnowledgeFSRuntime
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.services.knowledge_fs_services_b_fakes import RecordingCallable
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.services.knowledge_fs_services_b_fakes import RecordingCallable
 
 SPACE = "00000000-0000-4000-8000-000000000001"
 NODE = "00000000-0000-4000-8000-000000000002"

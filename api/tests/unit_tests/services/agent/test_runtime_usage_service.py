@@ -26,7 +26,7 @@ from models.agent import (
 from models.agent_sandbox_usage import AgentSandboxExecution, AgentSandboxUsageEvent
 from models.model import App
 from services.agent.runtime_usage_service import SandboxUsageError, SandboxUsageEvent, SandboxUsageService
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 PROJECT = "431de237-596f-4d59-8a85-20a9846bf243"
 START = "2026-09-20T00:00:00Z"

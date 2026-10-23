@@ -18,10 +18,14 @@ from graphon.engine_events import GraphRunSucceededEvent
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.file.runtime import peek_workflow_file_runtime, use_workflow_file_runtime
 from graphon.nodes.base.node import Node
-from tests.unit_tests.core.workflow.test_workflow_tool_container import (
-    _outer_graph,
-    _workflow_tool_node,
-    _workflow_tool_source,
+from tests.unit_tests.core.workflow.test_workflow_tool_container_handler import (
+    _workflow_tool_container_outer_graph as _outer_graph,
+)
+from tests.unit_tests.core.workflow.test_workflow_tool_container_handler import (
+    _workflow_tool_container_workflow_tool_node as _workflow_tool_node,
+)
+from tests.unit_tests.core.workflow.test_workflow_tool_container_handler import (
+    _workflow_tool_container_workflow_tool_source as _workflow_tool_source,
 )
 
 

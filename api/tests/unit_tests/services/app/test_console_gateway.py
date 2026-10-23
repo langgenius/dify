@@ -63,9 +63,9 @@ from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
 from services.workflow_service import WorkflowService
-from tests.unit_tests.audio_runtime_fixtures import record_calls
-from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
-from tests.unit_tests.rbac_fakes import RBACDomain
+from tests.helpers.unit.audio_runtime_fixtures import record_calls
+from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
+from tests.helpers.unit.rbac_fakes import RBACDomain
 
 
 @pytest.mark.parametrize(("mode", "include_inline"), [(AppMode.WORKFLOW, False), (AppMode.ADVANCED_CHAT, True)])

@@ -26,8 +26,7 @@ from models.oauth import OAuthAccessToken
 from services.entities.feature_entities import (
     LicenseStatus,
 )
-
-from ._world import (
+from tests.helpers.unit.controllers.openapi.auth._world import (
     ACCOUNT_ID,
     TOKEN_ID,
     make_account,

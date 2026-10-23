@@ -29,7 +29,7 @@ from services.tag_application_service import TagApplicationService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService
 from services.workflow.dsl_import import DslImportService
-from tests.unit_tests.controllers.error_contract import check_response, track_external_apis
+from tests.helpers.unit.controllers.error_contract import check_response, track_external_apis
 
 track_external_apis()
 

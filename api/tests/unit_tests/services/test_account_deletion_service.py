@@ -19,7 +19,7 @@ from services.account.adapters import (
 )
 from services.account_deletion_service import AccountDeletionService
 from services.account_errors import InvalidAccountDeletionVerificationError
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.helpers.unit.model_factories import make_account, make_tenant
 
 
 def _context() -> RequestContext:

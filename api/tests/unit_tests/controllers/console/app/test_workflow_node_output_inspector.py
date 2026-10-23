@@ -475,7 +475,7 @@ def test_serve_output_preview_translates_inspector_error(patch_service, app_mode
 # ``@login_required`` / ``@account_initialization_required`` /
 # ``@get_app_model``) needs a real Flask request context + DB-backed account.
 # The integration test in
-# ``tests/integration_tests/services/test_node_output_inspector_service.py``
+# ``tests/e2e_tests/middleware/services/test_node_output_inspector_service.py``
 # (and the E2E driver in /tmp/e2e_inspector_sse_published.py) exercise them
 # through the HTTP stack.
 # ──────────────────────────────────────────────────────────────────────────────

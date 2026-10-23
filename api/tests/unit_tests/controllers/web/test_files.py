@@ -21,7 +21,7 @@ from libs.exception import BaseHTTPException
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser, UploadFile
 from services.errors import file as file_errors
-from tests.unit_tests.model_factories import make_end_user, make_upload_file
+from tests.helpers.unit.model_factories import make_end_user, make_upload_file
 
 
 def _app_model() -> App:

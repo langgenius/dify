@@ -57,7 +57,7 @@ jobs:
       #            tiflash
 
       #      - name: Check VDB Ready (TiDB)
-      #        run: uv run --project api python api/providers/vdb/tidb-vector/tests/integration_tests/check_tiflash_ready.py
+      #        run: uv run --project api python api/providers/vdb/vdb-tidb-vector/tests/e2e_tests/check_tiflash_ready.py
 
       - name: Test Vector Stores
         run: |
@@ -65,4 +65,4 @@ jobs:
             --start-vdb \
             --vdb-services "weaviate,qdrant,couchbase-server,etcd,minio,milvus-standalone,pgvecto-rs,pgvector,chroma,elasticsearch,oceanbase" \
             --timeout "${PYTEST_TIMEOUT:-180}" \
-            api/providers/vdb/*/tests/integration_tests
+            api/providers/vdb/*/tests/e2e_tests

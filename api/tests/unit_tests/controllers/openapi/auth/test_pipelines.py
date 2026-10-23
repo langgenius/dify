@@ -37,8 +37,7 @@ from libs.oauth_bearer import AuthContext, try_get_auth_ctx
 from machinery.context import AppRequestContext, RequestContext
 from services.app_service import AppService
 from services.enterprise.enterprise_service import WebAppAccessMode
-
-from ._world import (
+from tests.helpers.unit.controllers.openapi.auth._world import (
     ACCOUNT_ID,
     APP_ID,
     TENANT_ID,

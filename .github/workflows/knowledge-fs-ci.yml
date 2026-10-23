@@ -41,7 +41,7 @@ jobs:
           filters: |
             knowledge-fs:
               - 'api/knowledge-fs-contract/**'
-              - 'api/tests/knowledge_fs_vector_integration/**'
+              - 'api/tests/e2e_tests/knowledge_fs_vector/**'
               - 'api/services/tidb_binding_service.py'
               - 'api/tests/unit_tests/services/test_tidb_binding_service.py'
               - 'api/providers/vdb/vdb-tidb-on-qdrant/**'
@@ -82,18 +82,20 @@ jobs:
               - 'api/services/knowledge_fs/**'
               - 'api/services/knowledge_fs_capability.py'
               - 'api/tests/unit_tests/dev/test_generate_knowledge_fs_contract.py'
-              - 'api/tests/unit_tests/controllers/console/workspace/test_rbac.py'
+              - 'api/tests/unit_tests/extensions/test_ext_celery.py'
+              - 'api/tests/unit_tests/migrations/versions/test_2026_10_21_1500-b9d3f7a5c102_add_upgrade_reconciliation_lease.py'
+              - 'api/tests/unit_tests/models/test_agent_config_entities.py'
+              - 'api/tests/unit_tests/controllers/console/workspace/rbac/test_roles.py'
               - 'api/tests/unit_tests/core/agent/test_base_agent_runner.py'
               - 'api/tests/unit_tests/core/app/apps/agent_app/test_runtime_request_builder.py'
               - 'api/tests/unit_tests/core/workflow/nodes/agent_v2/test_runtime_request_builder.py'
-              - 'api/tests/unit_tests/core/workflow/nodes/tool/test_tool_node_runtime.py'
               - 'api/tests/unit_tests/core/workflow/test_node_runtime.py'
               - 'api/tests/unit_tests/services/enterprise/test_rbac_service.py'
-              - 'api/tests/unit_tests/repositories/workspace/test_workspace_members.py'
+              - 'api/tests/unit_tests/repositories/workspace/test_workspace_repository.py'
               - 'api/tests/unit_tests/services/test_agent_tool_inner_service.py'
               - 'api/tests/unit_tests/services/test_vector_space_admission_service.py'
               - 'api/tests/unit_tests/services/test_knowledge_fs_capability.py'
-              - 'api/tests/unit_tests/services/test_knowledge_fs_product_operations.py'
+              - 'api/tests/unit_tests/services/knowledge_fs/test_product_operations.py'
               - 'api/pyproject.toml'
               - 'api/uv.lock'
               - 'dify-agent/src/dify_agent/layers/dify_core_tools/client.py'
@@ -251,19 +253,21 @@ jobs:
             if [[ "$path" == *knowledge_fs* ]]; then
               add_test_target "$path"
             fi
-          done < <(find api/tests/unit_tests -type f -name '*.py' -print0)
+          done < <(find api/tests/unit_tests api/tests/e2e_tests/contracts api/tests/helpers/unit -type f -name '*.py' -print0)
 
           test_touchpoints=(
+            api/tests/unit_tests/extensions/test_ext_celery.py
+            api/tests/unit_tests/migrations/versions/test_2026_10_21_1500-b9d3f7a5c102_add_upgrade_reconciliation_lease.py
+            api/tests/unit_tests/models/test_agent_config_entities.py
             api/tests/unit_tests/controllers/console/datasets/test_datasets.py
             api/tests/unit_tests/controllers/console/test_wraps.py
-            api/tests/unit_tests/controllers/console/workspace/test_rbac.py
+            api/tests/unit_tests/controllers/console/workspace/rbac/test_roles.py
             api/tests/unit_tests/core/agent/test_base_agent_runner.py
             api/tests/unit_tests/core/app/apps/agent_app/test_runtime_request_builder.py
             api/tests/unit_tests/core/workflow/nodes/agent_v2/test_runtime_request_builder.py
-            api/tests/unit_tests/core/workflow/nodes/tool/test_tool_node_runtime.py
             api/tests/unit_tests/core/workflow/test_node_runtime.py
             api/tests/unit_tests/services/enterprise/test_rbac_service.py
-            api/tests/unit_tests/repositories/workspace/test_workspace_members.py
+            api/tests/unit_tests/repositories/workspace/test_workspace_repository.py
             api/tests/unit_tests/services/test_agent_tool_inner_service.py
             api/tests/unit_tests/services/test_vector_space_admission_service.py
             api/tests/unit_tests/services/test_tidb_binding_service.py
@@ -520,4 +524,4 @@ jobs:
           WEAVIATE_GRPC_ENDPOINT: grpc://localhost:50051
         run: >-
           uv run --project api --no-sync pytest
-          api/tests/knowledge_fs_vector_integration --no-cov -q
+          api/tests/e2e_tests/knowledge_fs_vector --no-cov -q

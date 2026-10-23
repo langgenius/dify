@@ -42,7 +42,7 @@ from services.entities.file_grant_entities import FileGrantContext, FileGrantSco
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.file_grant_gateways import FILE_CONTENT_AUDIENCE, FileGrantFileGateway
 from services.file_grant_service import MAX_FILE_GRANT_REFS, FileGrantService
-from tests.unit_tests.file_grant_test_utils import issue_file_grant
+from tests.helpers.unit.file_grant_test_utils import issue_file_grant
 
 CONTROLLER_MODULE = "controllers.files.appdeploy_files"
 

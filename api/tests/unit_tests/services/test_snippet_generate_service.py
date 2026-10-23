@@ -20,7 +20,7 @@ from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel
 from services.snippet_generate_service import SnippetGenerateService
 from services.snippet_service import SnippetService
 from services.workflow_service import WorkflowService
-from tests.unit_tests.model_factories import make_account, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_workflow
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

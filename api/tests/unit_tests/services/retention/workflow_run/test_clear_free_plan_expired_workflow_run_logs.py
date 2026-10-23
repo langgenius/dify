@@ -1,8 +1,6 @@
-"""
-Unit tests for WorkflowRunCleanup service.
-"""
-
 import datetime
+from collections.abc import Callable
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,10 +8,18 @@ from sqlalchemy.orm import Session
 
 from enums import CloudPlan, DeploymentEdition
 from repositories.api_workflow_run_repository import WorkflowRunCleanupRef
+from services.billing_service import SubscriptionPlan
+from services.retention.workflow_run import clear_free_plan_expired_workflow_run_logs as cleanup_module
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 
+"""
+Unit tests for WorkflowRunCleanup service.
+"""
 
-def make_ref(tenant_id: str = "t1", run_id: str = "r1", created_at: datetime.datetime | None = None):
+
+def _workflow_run_clear_free_plan_expired_workflow_run_logs_make_ref(
+    tenant_id: str = "t1", run_id: str = "r1", created_at: datetime.datetime | None = None
+):
     return WorkflowRunCleanupRef(
         id=run_id,
         tenant_id=tenant_id,
@@ -21,431 +27,929 @@ def make_ref(tenant_id: str = "t1", run_id: str = "r1", created_at: datetime.dat
     )
 
 
-@pytest.fixture
-def mock_repo():
-    return MagicMock()
+class TestClearFreePlanExpiredWorkflowRunLogsCases:
+    @staticmethod
+    @pytest.fixture
+    def mock_repo():
+        return MagicMock()
 
+    @staticmethod
+    @pytest.fixture(autouse=True)
+    def _cleanup_config(config_overrides):
+        config_overrides(
+            SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD=0,
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        )
 
-@pytest.fixture(autouse=True)
-def _cleanup_config(config_overrides):
-    config_overrides(
-        SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD=0,
-        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
-    )
+    @staticmethod
+    @pytest.fixture
+    def cleanup(mock_repo):
+        return WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
 
+    # ---------------------------------------------------------------------------
+    # Constructor validation
+    # ---------------------------------------------------------------------------
 
-@pytest.fixture
-def cleanup(mock_repo):
-    return WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+    class TestWorkflowRunCleanupInit:
+        def test_only_start_from_raises(self, mock_repo):
+            with pytest.raises(ValueError, match="both set or both omitted"):
+                WorkflowRunCleanup(
+                    days=30,
+                    batch_size=10,
+                    start_from=datetime.datetime(2024, 1, 1),
+                    workflow_run_repo=mock_repo,
+                )
 
+        def test_only_end_before_raises(self, mock_repo):
+            with pytest.raises(ValueError, match="both set or both omitted"):
+                WorkflowRunCleanup(
+                    days=30,
+                    batch_size=10,
+                    end_before=datetime.datetime(2024, 1, 1),
+                    workflow_run_repo=mock_repo,
+                )
 
-# ---------------------------------------------------------------------------
-# Constructor validation
-# ---------------------------------------------------------------------------
+        def test_end_before_not_greater_than_start_raises(self, mock_repo):
+            with pytest.raises(ValueError, match="end_before must be greater than start_from"):
+                WorkflowRunCleanup(
+                    days=30,
+                    batch_size=10,
+                    start_from=datetime.datetime(2024, 6, 1),
+                    end_before=datetime.datetime(2024, 1, 1),
+                    workflow_run_repo=mock_repo,
+                )
 
+        def test_equal_start_end_raises(self, mock_repo):
+            dt = datetime.datetime(2024, 1, 1)
+            with pytest.raises(ValueError, match="end_before must be greater than start_from\\."):
+                WorkflowRunCleanup(
+                    days=30,
+                    batch_size=10,
+                    start_from=dt,
+                    end_before=dt,
+                    workflow_run_repo=mock_repo,
+                )
 
-class TestWorkflowRunCleanupInit:
-    def test_only_start_from_raises(self, mock_repo):
-        with pytest.raises(ValueError, match="both set or both omitted"):
-            WorkflowRunCleanup(
+        def test_zero_batch_size_raises(self, mock_repo):
+            with pytest.raises(ValueError, match="batch_size must be greater than 0"):
+                WorkflowRunCleanup(days=30, batch_size=0, workflow_run_repo=mock_repo)
+
+        def test_negative_batch_size_raises(self, mock_repo):
+            with pytest.raises(ValueError, match="batch_size must be greater than 0\\."):
+                WorkflowRunCleanup(days=30, batch_size=-1, workflow_run_repo=mock_repo)
+
+        def test_valid_window_init(self, mock_repo, config_overrides):
+            config_overrides(SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD=7)
+            start = datetime.datetime(2024, 1, 1)
+            end = datetime.datetime(2024, 6, 1)
+            c = WorkflowRunCleanup(
+                days=30,
+                batch_size=5,
+                start_from=start,
+                end_before=end,
+                workflow_run_repo=mock_repo,
+            )
+            assert c.window_start == start
+            assert c.window_end == end
+
+        def test_default_task_label_is_custom(self, mock_repo):
+            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+
+            assert c._metrics._base_attributes["task_label"] == "custom"
+
+    # ---------------------------------------------------------------------------
+    # _empty_related_counts / _format_related_counts
+    # ---------------------------------------------------------------------------
+
+    class TestStaticHelpers:
+        def test_empty_related_counts(self):
+            counts = WorkflowRunCleanup._empty_related_counts()
+            assert counts == {
+                "node_executions": 0,
+                "offloads": 0,
+                "app_logs": 0,
+                "trigger_logs": 0,
+                "pauses": 0,
+                "pause_reasons": 0,
+            }
+
+        def test_format_related_counts(self):
+            counts = {
+                "node_executions": 1,
+                "offloads": 2,
+                "app_logs": 3,
+                "trigger_logs": 4,
+                "pauses": 5,
+                "pause_reasons": 6,
+            }
+            result = WorkflowRunCleanup._format_related_counts(counts)
+            assert "node_executions 1" in result
+            assert "offloads 2" in result
+            assert "trigger_logs 4" in result
+
+    # ---------------------------------------------------------------------------
+    # _expiration_datetime
+    # ---------------------------------------------------------------------------
+
+    class TestExpirationDatetime:
+        def test_negative_returns_none(self, cleanup):
+            assert cleanup._expiration_datetime("t1", -1) is None
+
+        def test_valid_timestamp(self, cleanup):
+            ts = int(datetime.datetime(2025, 1, 1, tzinfo=datetime.UTC).timestamp())
+            result = cleanup._expiration_datetime("t1", ts)
+            assert result is not None
+            assert result.year == 2025
+
+        def test_overflow_returns_none(self, cleanup):
+            result = cleanup._expiration_datetime("t1", 2**62)
+            assert result is None
+
+    # ---------------------------------------------------------------------------
+    # _is_within_grace_period
+    # ---------------------------------------------------------------------------
+
+    class TestIsWithinGracePeriod:
+        def test_zero_grace_period_returns_false(self, cleanup):
+            cleanup.free_plan_grace_period_days = 0
+            assert cleanup._is_within_grace_period("t1", {"expiration_date": 9999999999}) is False
+
+        def test_within_grace_period(self, cleanup):
+            cleanup.free_plan_grace_period_days = 30
+            # expired just 1 day ago
+            expired = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=1)
+            ts = int(expired.timestamp())
+            assert cleanup._is_within_grace_period("t1", {"expiration_date": ts}) is True
+
+        def test_outside_grace_period(self, cleanup):
+            cleanup.free_plan_grace_period_days = 5
+            # expired 100 days ago
+            expired = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=100)
+            ts = int(expired.timestamp())
+            assert cleanup._is_within_grace_period("t1", {"expiration_date": ts}) is False
+
+        def test_missing_expiration_date_returns_false(self, cleanup):
+            cleanup.free_plan_grace_period_days = 30
+            assert cleanup._is_within_grace_period("t1", {"expiration_date": -1}) is False
+
+    # ---------------------------------------------------------------------------
+    # _get_cleanup_whitelist
+    # ---------------------------------------------------------------------------
+
+    class TestGetCleanupWhitelist:
+        def test_non_cloud_edition_returns_empty(self, cleanup):
+            cleanup._cleanup_whitelist = None
+            result = cleanup._get_cleanup_whitelist()
+            assert result == set()
+
+        def test_cloud_edition_fetches_whitelist(self, mock_repo, config_overrides):
+            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+            with patch(
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
+            ) as bs:
+                bs.get_expired_subscription_cleanup_whitelist.return_value = ["t1", "t2"]
+                result = c._get_cleanup_whitelist()
+            assert result == {"t1", "t2"}
+
+        def test_cached_whitelist_returned(self, cleanup):
+            cleanup._cleanup_whitelist = {"cached"}
+            result = cleanup._get_cleanup_whitelist()
+            assert result == {"cached"}
+
+        def test_billing_service_error_returns_empty(self, mock_repo, config_overrides):
+            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+            with patch(
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
+            ) as bs:
+                bs.get_expired_subscription_cleanup_whitelist.side_effect = Exception("error")
+                result = c._get_cleanup_whitelist()
+            assert result == set()
+
+    # ---------------------------------------------------------------------------
+    # _filter_free_tenants
+    # ---------------------------------------------------------------------------
+
+    class TestFilterFreeTenants:
+        def test_non_cloud_edition_treats_all_tenants_as_free(self, cleanup):
+            result = cleanup._filter_free_tenants(["t1", "t2"])
+            assert result == {"t1", "t2"}
+
+        def test_empty_tenants_returns_empty(self, cleanup, config_overrides):
+            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+            result = cleanup._filter_free_tenants([])
+            assert result == set()
+
+        def test_whitelisted_tenant_excluded(self, mock_repo, config_overrides):
+            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+            c._cleanup_whitelist = {"t1"}
+            with patch(
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
+            ) as bs:
+                bs.get_plan_bulk_with_cache.return_value = {
+                    "t1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                    "t2": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                }
+                result = c._filter_free_tenants(["t1", "t2"])
+            assert "t1" not in result
+            assert "t2" in result
+
+        def test_paid_tenant_excluded(self, mock_repo, config_overrides):
+            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+            c._cleanup_whitelist = set()
+            with patch(
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
+            ) as bs:
+                bs.get_plan_bulk_with_cache.return_value = {
+                    "t1": {"plan": "professional", "expiration_date": -1},
+                }
+                result = c._filter_free_tenants(["t1"])
+            assert result == set()
+
+        def test_missing_billing_info_treats_as_non_free(self, mock_repo, config_overrides):
+            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+            c._cleanup_whitelist = set()
+            with patch(
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
+            ) as bs:
+                bs.get_plan_bulk_with_cache.return_value = {}
+                result = c._filter_free_tenants(["t1"])
+            assert result == set()
+
+        def test_billing_bulk_error_treats_as_non_free(self, mock_repo, config_overrides):
+            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+            c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+            c._cleanup_whitelist = set()
+            with patch(
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
+            ) as bs:
+                bs.get_plan_bulk_with_cache.side_effect = Exception("fail")
+                result = c._filter_free_tenants(["t1"])
+            assert result == set()
+
+    # ---------------------------------------------------------------------------
+    # run() — delete mode
+    # ---------------------------------------------------------------------------
+
+    class TestRunDeleteMode:
+        def _make_cleanup(self, mock_repo):
+            return WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
+
+        def test_no_rows_stops_immediately(self, mock_repo):
+            mock_repo.get_cleanup_refs_batch_by_time_range.return_value = []
+            c = self._make_cleanup(mock_repo)
+            c.run()
+            mock_repo.delete_runs_with_related_by_ids.assert_not_called()
+
+        def test_all_paid_skips_delete(self, mock_repo):
+            ref = _workflow_run_clear_free_plan_expired_workflow_run_logs_make_ref("t1")
+            mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], []]
+            c = self._make_cleanup(mock_repo)
+            # Override the non-Cloud default to exercise the no-deletion path.
+            c._filter_free_tenants = MagicMock(return_value=set())
+            c.run()
+            mock_repo.delete_runs_with_related_by_ids.assert_not_called()
+
+        def test_runs_deleted_successfully(self, mock_repo):
+            ref = _workflow_run_clear_free_plan_expired_workflow_run_logs_make_ref("t1")
+            mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], [ref], []]
+            mock_repo.delete_runs_with_related_by_ids.return_value = {
+                "runs": 1,
+                "node_executions": 0,
+                "offloads": 0,
+                "app_logs": 0,
+                "trigger_logs": 0,
+                "pauses": 0,
+                "pause_reasons": 0,
+            }
+            c = self._make_cleanup(mock_repo)
+            with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.time.sleep"):
+                c.run()
+            mock_repo.delete_runs_with_related_by_ids.assert_called_once()
+
+        def test_delete_exception_reraises(self, mock_repo):
+            ref = _workflow_run_clear_free_plan_expired_workflow_run_logs_make_ref("t1")
+            mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], [ref]]
+            mock_repo.delete_runs_with_related_by_ids.side_effect = RuntimeError("db error")
+            c = self._make_cleanup(mock_repo)
+            with pytest.raises(RuntimeError):
+                c.run()
+
+        def test_summary_with_window_start(self, mock_repo):
+            mock_repo.get_cleanup_refs_batch_by_time_range.return_value = []
+            c = WorkflowRunCleanup(
                 days=30,
                 batch_size=10,
                 start_from=datetime.datetime(2024, 1, 1),
+                end_before=datetime.datetime(2024, 6, 1),
                 workflow_run_repo=mock_repo,
             )
+            c.run()
 
-    def test_only_end_before_raises(self, mock_repo):
-        with pytest.raises(ValueError, match="both set or both omitted"):
-            WorkflowRunCleanup(
+    # ---------------------------------------------------------------------------
+    # run() — dry run mode
+    # ---------------------------------------------------------------------------
+
+    class TestRunDryRunMode:
+        def _make_dry_cleanup(self, mock_repo):
+            return WorkflowRunCleanup(
                 days=30,
                 batch_size=10,
-                end_before=datetime.datetime(2024, 1, 1),
                 workflow_run_repo=mock_repo,
+                dry_run=True,
             )
 
-    def test_end_before_not_greater_than_start_raises(self, mock_repo):
-        with pytest.raises(ValueError, match="end_before must be greater than start_from"):
-            WorkflowRunCleanup(
+        def test_dry_run_no_delete_called(self, mock_repo):
+            ref = _workflow_run_clear_free_plan_expired_workflow_run_logs_make_ref("t1")
+            mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], [ref], []]
+            mock_repo.count_runs_with_related_by_ids.return_value = {
+                "runs": 1,
+                "node_executions": 2,
+                "offloads": 0,
+                "app_logs": 0,
+                "trigger_logs": 1,
+                "pauses": 0,
+                "pause_reasons": 0,
+            }
+            c = self._make_dry_cleanup(mock_repo)
+            c.run()
+            mock_repo.delete_runs_with_related_by_ids.assert_not_called()
+            mock_repo.count_runs_with_related_by_ids.assert_called_once()
+
+        def test_dry_run_summary_with_window_start(self, mock_repo):
+            mock_repo.get_cleanup_refs_batch_by_time_range.return_value = []
+            c = WorkflowRunCleanup(
                 days=30,
                 batch_size=10,
-                start_from=datetime.datetime(2024, 6, 1),
-                end_before=datetime.datetime(2024, 1, 1),
+                start_from=datetime.datetime(2024, 1, 1),
+                end_before=datetime.datetime(2024, 6, 1),
                 workflow_run_repo=mock_repo,
+                dry_run=True,
+            )
+            c.run()
+
+        def test_dry_run_all_paid_skips_count(self, mock_repo):
+            ref = _workflow_run_clear_free_plan_expired_workflow_run_logs_make_ref("t1")
+            mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], []]
+            c = self._make_dry_cleanup(mock_repo)
+            c._filter_free_tenants = MagicMock(return_value=set())
+            c.run()
+            mock_repo.count_runs_with_related_by_ids.assert_not_called()
+
+    # ---------------------------------------------------------------------------
+    # _delete_trigger_logs / _count_trigger_logs
+    # ---------------------------------------------------------------------------
+
+    class TestTriggerLogMethods:
+        @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+        def test_delete_trigger_logs(self, cleanup, sqlite_session: Session):
+            with patch(
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.SQLAlchemyWorkflowTriggerLogRepository"
+            ) as repo_class:
+                instance = repo_class.return_value
+                instance.delete_by_run_ids.return_value = 5
+                result = cleanup._delete_trigger_logs(sqlite_session, ["r1", "r2"])
+            assert result == 5
+
+        @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+        def test_count_trigger_logs(self, cleanup, sqlite_session: Session):
+            with patch(
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.SQLAlchemyWorkflowTriggerLogRepository"
+            ) as repo_class:
+                instance = repo_class.return_value
+                instance.count_by_run_ids.return_value = 3
+                result = cleanup._count_trigger_logs(sqlite_session, ["r1"])
+            assert result == 3
+
+    # ---------------------------------------------------------------------------
+    # _count_node_executions_by_run_ids / _delete_node_executions_by_run_ids
+    # ---------------------------------------------------------------------------
+
+    class TestNodeExecutionMethods:
+        @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+        def test_count_node_executions(self, cleanup, sqlite_session: Session):
+            with patch(
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.DifyAPIRepositoryFactory"
+            ) as factory:
+                repo = factory.create_api_workflow_node_execution_repository.return_value
+                repo.count_by_runs.return_value = (10, 2)
+                result = cleanup._count_node_executions_by_run_ids(sqlite_session, ["r1"])
+            assert result == (10, 2)
+
+        @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+        def test_delete_node_executions(self, cleanup, sqlite_session: Session):
+            with patch(
+                "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.DifyAPIRepositoryFactory"
+            ) as factory:
+                repo = factory.create_api_workflow_node_execution_repository.return_value
+                repo.delete_by_runs.return_value = (5, 1)
+                result = cleanup._delete_node_executions_by_run_ids(sqlite_session, ["r1"])
+            assert result == (5, 1)
+
+
+def _services_clear_free_plan_expired_workflow_run_logs_make_ref(
+    run_id: str, tenant_id: str, created_at: datetime.datetime
+) -> WorkflowRunCleanupRef:
+    return WorkflowRunCleanupRef(id=run_id, tenant_id=tenant_id, created_at=created_at)
+
+
+class FakeRepo:
+    def __init__(
+        self,
+        batches: list[list[WorkflowRunCleanupRef]],
+        delete_result: dict[str, int] | None = None,
+        count_result: dict[str, int] | None = None,
+    ) -> None:
+        self.batches = batches
+        self.candidate_call_idx = 0
+        self.last_candidate_batch: list[WorkflowRunCleanupRef] = []
+        self.cleanup_ref_calls: list[dict[str, object]] = []
+        self.deleted: list[list[str]] = []
+        self.counted: list[list[str]] = []
+        self.delete_result = delete_result or {
+            "runs": 0,
+            "node_executions": 0,
+            "offloads": 0,
+            "app_logs": 0,
+            "trigger_logs": 0,
+            "pauses": 0,
+            "pause_reasons": 0,
+        }
+        self.count_result = count_result or {
+            "runs": 0,
+            "node_executions": 0,
+            "offloads": 0,
+            "app_logs": 0,
+            "trigger_logs": 0,
+            "pauses": 0,
+            "pause_reasons": 0,
+        }
+
+    def get_cleanup_refs_batch_by_time_range(
+        self,
+        start_from: datetime.datetime | None,
+        end_before: datetime.datetime,
+        last_seen: tuple[datetime.datetime, str] | None,
+        batch_size: int,
+        run_types=None,
+        tenant_ids=None,
+        workflow_ids=None,
+        upper_bound: tuple[datetime.datetime, str] | None = None,
+    ) -> list[WorkflowRunCleanupRef]:
+        self.cleanup_ref_calls.append(
+            {
+                "start_from": start_from,
+                "end_before": end_before,
+                "last_seen": last_seen,
+                "batch_size": batch_size,
+                "run_types": run_types,
+                "tenant_ids": tenant_ids,
+                "workflow_ids": workflow_ids,
+                "upper_bound": upper_bound,
+            }
+        )
+        if tenant_ids is not None or upper_bound is not None:
+            refs = self.last_candidate_batch
+            if tenant_ids is not None:
+                tenant_id_set = set(tenant_ids)
+                refs = [ref for ref in refs if ref.tenant_id in tenant_id_set]
+            if upper_bound is not None:
+                refs = [ref for ref in refs if (ref.created_at, ref.id) <= upper_bound]
+            return refs[:batch_size]
+
+        if self.candidate_call_idx >= len(self.batches):
+            return []
+        batch = self.batches[self.candidate_call_idx]
+        self.candidate_call_idx += 1
+        self.last_candidate_batch = batch
+        return batch
+
+    def delete_runs_with_related_by_ids(
+        self, run_ids: list[str], delete_node_executions=None, delete_trigger_logs=None
+    ) -> dict[str, int]:
+        self.deleted.append(list(run_ids))
+        result = self.delete_result.copy()
+        result["runs"] = len(run_ids)
+        return result
+
+    def count_runs_with_related_by_ids(
+        self, run_ids: list[str], count_node_executions=None, count_trigger_logs=None
+    ) -> dict[str, int]:
+        self.counted.append(list(run_ids))
+        result = self.count_result.copy()
+        result["runs"] = len(run_ids)
+        return result
+
+
+def plan_info(plan: str, expiration: int) -> SubscriptionPlan:
+    return SubscriptionPlan(plan=plan, expiration_date=expiration)
+
+
+def create_cleanup(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: FakeRepo,
+    *,
+    whitelist: set[str] | None = None,
+    **kwargs: Any,
+) -> WorkflowRunCleanup:
+    monkeypatch.setattr(
+        cleanup_module.WorkflowRunCleanup,
+        "_get_cleanup_whitelist",
+        lambda self: whitelist or set(),
+    )
+    return WorkflowRunCleanup(workflow_run_repo=repo, **kwargs)
+
+
+class TestClearFreePlanExpiredWorkflowRunLogsCasesServices:
+    @staticmethod
+    @pytest.fixture(autouse=True)
+    def _cleanup_config(config_overrides: Callable[..., None]) -> None:
+        config_overrides(
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+            SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD=0,
+        )
+
+    @staticmethod
+    def test_filter_free_tenants_outside_cloud_edition(monkeypatch: pytest.MonkeyPatch) -> None:
+        cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
+
+        def fail_bulk(_: list[str]) -> dict[str, SubscriptionPlan]:
+            raise RuntimeError("should not call")
+
+        monkeypatch.setattr(cleanup_module.BillingService, "get_plan_bulk_with_cache", staticmethod(fail_bulk))
+
+        tenants = {"t1", "t2"}
+        free = cleanup._filter_free_tenants(tenants)
+
+        assert free == tenants
+
+    @staticmethod
+    def test_filter_free_tenants_bulk_mixed(
+        monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
+
+        monkeypatch.setattr(
+            cleanup_module.BillingService,
+            "get_plan_bulk_with_cache",
+            staticmethod(
+                lambda tenant_ids: {
+                    tenant_id: (plan_info("team", -1) if tenant_id == "t_paid" else plan_info("sandbox", -1))
+                    for tenant_id in tenant_ids
+                }
+            ),
+        )
+
+        free = cleanup._filter_free_tenants({"t_free", "t_paid", "t_missing"})
+
+        assert free == {"t_free", "t_missing"}
+
+    @staticmethod
+    def test_filter_free_tenants_respects_grace_period(
+        monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(
+            DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+            SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD=45,
+        )
+        cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
+
+        now = datetime.datetime.now(datetime.UTC)
+        within_grace_ts = int((now - datetime.timedelta(days=10)).timestamp())
+        outside_grace_ts = int((now - datetime.timedelta(days=90)).timestamp())
+
+        def fake_bulk(_: list[str]) -> dict[str, SubscriptionPlan]:
+            return {
+                "recently_downgraded": plan_info("sandbox", within_grace_ts),
+                "long_sandbox": plan_info("sandbox", outside_grace_ts),
+            }
+
+        monkeypatch.setattr(cleanup_module.BillingService, "get_plan_bulk_with_cache", staticmethod(fake_bulk))
+
+        free = cleanup._filter_free_tenants({"recently_downgraded", "long_sandbox"})
+
+        assert free == {"long_sandbox"}
+
+    @staticmethod
+    def test_filter_free_tenants_skips_cleanup_whitelist(
+        monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        cleanup = create_cleanup(
+            monkeypatch,
+            repo=FakeRepo([]),
+            days=30,
+            batch_size=10,
+            whitelist={"tenant_whitelist"},
+        )
+
+        monkeypatch.setattr(
+            cleanup_module.BillingService,
+            "get_plan_bulk_with_cache",
+            staticmethod(
+                lambda tenant_ids: {
+                    tenant_id: (plan_info("team", -1) if tenant_id == "t_paid" else plan_info("sandbox", -1))
+                    for tenant_id in tenant_ids
+                }
+            ),
+        )
+
+        tenants = {"tenant_whitelist", "tenant_regular"}
+        free = cleanup._filter_free_tenants(tenants)
+
+        assert free == {"tenant_regular"}
+
+    @staticmethod
+    def test_filter_free_tenants_bulk_failure(
+        monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
+
+        monkeypatch.setattr(
+            cleanup_module.BillingService,
+            "get_plan_bulk_with_cache",
+            staticmethod(lambda tenant_ids: (_ for _ in ()).throw(RuntimeError("boom"))),
+        )
+
+        free = cleanup._filter_free_tenants({"t1", "t2"})
+
+        assert free == set()
+
+    @staticmethod
+    def test_run_deletes_only_free_tenants(
+        monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        cutoff = datetime.datetime.now()
+        repo = FakeRepo(
+            batches=[
+                [
+                    _services_clear_free_plan_expired_workflow_run_logs_make_ref("run-free", "t_free", cutoff),
+                    _services_clear_free_plan_expired_workflow_run_logs_make_ref("run-paid", "t_paid", cutoff),
+                ]
+            ]
+        )
+        cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
+
+        monkeypatch.setattr(
+            cleanup_module.BillingService,
+            "get_plan_bulk_with_cache",
+            staticmethod(
+                lambda tenant_ids: {
+                    tenant_id: (plan_info("team", -1) if tenant_id == "t_paid" else plan_info("sandbox", -1))
+                    for tenant_id in tenant_ids
+                }
+            ),
+        )
+
+        cleanup.run()
+
+        assert repo.deleted == [["run-free"]]
+        assert repo.cleanup_ref_calls[1]["tenant_ids"] == ["t_free"]
+
+    @staticmethod
+    def test_run_filters_candidate_tenants_before_target_query(
+        monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        cutoff = datetime.datetime.now()
+        repo = FakeRepo(
+            batches=[
+                [
+                    _services_clear_free_plan_expired_workflow_run_logs_make_ref("run-free", "t_free", cutoff),
+                    _services_clear_free_plan_expired_workflow_run_logs_make_ref("run-paid", "t_paid", cutoff),
+                ]
+            ]
+        )
+        cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
+
+        billing_calls: list[list[str]] = []
+
+        def fake_bulk(tenant_ids: list[str]) -> dict[str, SubscriptionPlan]:
+            billing_calls.append(tenant_ids)
+            return {
+                "t_free": plan_info("sandbox", -1),
+                "t_paid": plan_info("team", -1),
+            }
+
+        monkeypatch.setattr(cleanup_module.BillingService, "get_plan_bulk_with_cache", staticmethod(fake_bulk))
+
+        cleanup.run()
+
+        assert billing_calls == [["t_free", "t_paid"]]
+        assert repo.cleanup_ref_calls[1]["tenant_ids"] == ["t_free"]
+        assert repo.deleted == [["run-free"]]
+
+    @staticmethod
+    def test_run_skips_when_no_free_tenants(
+        monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        cutoff = datetime.datetime.now()
+        repo = FakeRepo(
+            batches=[[_services_clear_free_plan_expired_workflow_run_logs_make_ref("run-paid", "t_paid", cutoff)]]
+        )
+        cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
+
+        monkeypatch.setattr(
+            cleanup_module.BillingService,
+            "get_plan_bulk_with_cache",
+            staticmethod(lambda tenant_ids: {tenant_id: plan_info("team", 1893456000) for tenant_id in tenant_ids}),
+        )
+
+        cleanup.run()
+
+        assert repo.deleted == []
+        assert len(repo.cleanup_ref_calls) == 2
+
+    @staticmethod
+    def test_run_paid_only_records_skipped_metrics(
+        monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        cutoff = datetime.datetime.now()
+        repo = FakeRepo(
+            batches=[[_services_clear_free_plan_expired_workflow_run_logs_make_ref("run-paid", "t_paid", cutoff)]]
+        )
+        cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
+
+        monkeypatch.setattr(
+            cleanup_module.BillingService,
+            "get_plan_bulk_with_cache",
+            staticmethod(lambda tenant_ids: {tenant_id: plan_info("team", 1893456000) for tenant_id in tenant_ids}),
+        )
+        batch_calls: list[dict[str, object]] = []
+        monkeypatch.setattr(cleanup._metrics, "record_batch", lambda **kwargs: batch_calls.append(kwargs))
+
+        cleanup.run()
+
+        assert repo.deleted == []
+        assert repo.counted == []
+        assert batch_calls[0]["batch_rows"] == 1
+        assert batch_calls[0]["targeted_runs"] == 0
+        assert batch_calls[0]["skipped_runs"] == 1
+        assert batch_calls[0]["deleted_runs"] == 0
+
+    @staticmethod
+    def test_run_target_query_is_bounded_by_candidate_high_water(monkeypatch: pytest.MonkeyPatch) -> None:
+        first_created_at = datetime.datetime(2024, 1, 1, 0, 0, 0)
+        second_created_at = datetime.datetime(2024, 1, 1, 0, 1, 0)
+        repo = FakeRepo(
+            batches=[
+                [
+                    _services_clear_free_plan_expired_workflow_run_logs_make_ref(
+                        "run-free-1", "t_free", first_created_at
+                    ),
+                    _services_clear_free_plan_expired_workflow_run_logs_make_ref(
+                        "run-free-2", "t_free", second_created_at
+                    ),
+                ]
+            ]
+        )
+        cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=2)
+
+        cleanup.run()
+
+        assert repo.cleanup_ref_calls[1]["last_seen"] is None
+        assert repo.cleanup_ref_calls[1]["upper_bound"] == (second_created_at, "run-free-2")
+        assert repo.cleanup_ref_calls[2]["last_seen"] == (second_created_at, "run-free-2")
+
+    @staticmethod
+    def test_run_exits_on_empty_batch(monkeypatch: pytest.MonkeyPatch) -> None:
+        cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
+
+        cleanup.run()
+
+    @staticmethod
+    def test_run_records_metrics_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
+        cutoff = datetime.datetime.now()
+        repo = FakeRepo(
+            batches=[[_services_clear_free_plan_expired_workflow_run_logs_make_ref("run-free", "t_free", cutoff)]],
+            delete_result={
+                "runs": 0,
+                "node_executions": 2,
+                "offloads": 1,
+                "app_logs": 3,
+                "trigger_logs": 4,
+                "pauses": 5,
+                "pause_reasons": 6,
+            },
+        )
+        cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
+
+        batch_calls: list[dict[str, object]] = []
+        completion_calls: list[dict[str, object]] = []
+        monkeypatch.setattr(cleanup._metrics, "record_batch", lambda **kwargs: batch_calls.append(kwargs))
+        monkeypatch.setattr(cleanup._metrics, "record_completion", lambda **kwargs: completion_calls.append(kwargs))
+
+        cleanup.run()
+
+        assert len(batch_calls) == 1
+        assert batch_calls[0]["batch_rows"] == 1
+        assert batch_calls[0]["targeted_runs"] == 1
+        assert batch_calls[0]["deleted_runs"] == 1
+        assert batch_calls[0]["related_action"] == "deleted"
+        assert len(completion_calls) == 1
+        assert completion_calls[0]["status"] == "success"
+
+    @staticmethod
+    def test_run_records_failed_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+        class FailingRepo(FakeRepo):
+            def delete_runs_with_related_by_ids(
+                self, run_ids: list[str], delete_node_executions=None, delete_trigger_logs=None
+            ) -> dict[str, int]:
+                raise RuntimeError("delete failed")
+
+        cutoff = datetime.datetime.now()
+        repo = FailingRepo(
+            batches=[[_services_clear_free_plan_expired_workflow_run_logs_make_ref("run-free", "t_free", cutoff)]]
+        )
+        cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
+
+        completion_calls: list[dict[str, object]] = []
+        monkeypatch.setattr(cleanup._metrics, "record_completion", lambda **kwargs: completion_calls.append(kwargs))
+
+        with pytest.raises(RuntimeError, match="delete failed"):
+            cleanup.run()
+
+        assert len(completion_calls) == 1
+        assert completion_calls[0]["status"] == "failed"
+
+    @staticmethod
+    def test_run_dry_run_skips_deletions(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+        cutoff = datetime.datetime.now()
+        repo = FakeRepo(
+            batches=[[_services_clear_free_plan_expired_workflow_run_logs_make_ref("run-free", "t_free", cutoff)]],
+            count_result={
+                "runs": 0,
+                "node_executions": 2,
+                "offloads": 1,
+                "app_logs": 3,
+                "trigger_logs": 4,
+                "pauses": 5,
+                "pause_reasons": 6,
+            },
+        )
+        cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10, dry_run=True)
+
+        cleanup.run()
+
+        assert repo.deleted == []
+        assert repo.counted == [["run-free"]]
+        captured = capsys.readouterr().out
+        assert "Dry run mode enabled" in captured
+        assert "would delete 1 runs" in captured
+        assert "related records" in captured
+        assert "node_executions 2" in captured
+        assert "offloads 1" in captured
+        assert "app_logs 3" in captured
+        assert "trigger_logs 4" in captured
+        assert "pauses 5" in captured
+        assert "pause_reasons 6" in captured
+
+    @staticmethod
+    def test_between_sets_window_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
+        start_from = datetime.datetime(2024, 5, 1, 0, 0, 0)
+        end_before = datetime.datetime(2024, 6, 1, 0, 0, 0)
+        cleanup = create_cleanup(
+            monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_from=start_from, end_before=end_before
+        )
+
+        assert cleanup.window_start == start_from
+        assert cleanup.window_end == end_before
+
+    @staticmethod
+    def test_between_requires_both_boundaries(monkeypatch: pytest.MonkeyPatch) -> None:
+        with pytest.raises(ValueError, match="start_from and end_before must be both set or both omitted\\."):
+            create_cleanup(
+                monkeypatch,
+                repo=FakeRepo([]),
+                days=30,
+                batch_size=10,
+                start_from=datetime.datetime.now(),
+                end_before=None,
+            )
+        with pytest.raises(ValueError, match="start_from and end_before must be both set or both omitted\\."):
+            create_cleanup(
+                monkeypatch,
+                repo=FakeRepo([]),
+                days=30,
+                batch_size=10,
+                start_from=None,
+                end_before=datetime.datetime.now(),
             )
 
-    def test_equal_start_end_raises(self, mock_repo):
-        dt = datetime.datetime(2024, 1, 1)
+    @staticmethod
+    def test_between_requires_end_after_start(monkeypatch: pytest.MonkeyPatch) -> None:
+        start_from = datetime.datetime(2024, 6, 1, 0, 0, 0)
+        end_before = datetime.datetime(2024, 5, 1, 0, 0, 0)
         with pytest.raises(ValueError, match="end_before must be greater than start_from\\."):
-            WorkflowRunCleanup(
-                days=30,
-                batch_size=10,
-                start_from=dt,
-                end_before=dt,
-                workflow_run_repo=mock_repo,
+            create_cleanup(
+                monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_from=start_from, end_before=end_before
             )
-
-    def test_zero_batch_size_raises(self, mock_repo):
-        with pytest.raises(ValueError, match="batch_size must be greater than 0"):
-            WorkflowRunCleanup(days=30, batch_size=0, workflow_run_repo=mock_repo)
-
-    def test_negative_batch_size_raises(self, mock_repo):
-        with pytest.raises(ValueError, match="batch_size must be greater than 0\\."):
-            WorkflowRunCleanup(days=30, batch_size=-1, workflow_run_repo=mock_repo)
-
-    def test_valid_window_init(self, mock_repo, config_overrides):
-        config_overrides(SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD=7)
-        start = datetime.datetime(2024, 1, 1)
-        end = datetime.datetime(2024, 6, 1)
-        c = WorkflowRunCleanup(
-            days=30,
-            batch_size=5,
-            start_from=start,
-            end_before=end,
-            workflow_run_repo=mock_repo,
-        )
-        assert c.window_start == start
-        assert c.window_end == end
-
-    def test_default_task_label_is_custom(self, mock_repo):
-        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-
-        assert c._metrics._base_attributes["task_label"] == "custom"
-
-
-# ---------------------------------------------------------------------------
-# _empty_related_counts / _format_related_counts
-# ---------------------------------------------------------------------------
-
-
-class TestStaticHelpers:
-    def test_empty_related_counts(self):
-        counts = WorkflowRunCleanup._empty_related_counts()
-        assert counts == {
-            "node_executions": 0,
-            "offloads": 0,
-            "app_logs": 0,
-            "trigger_logs": 0,
-            "pauses": 0,
-            "pause_reasons": 0,
-        }
-
-    def test_format_related_counts(self):
-        counts = {
-            "node_executions": 1,
-            "offloads": 2,
-            "app_logs": 3,
-            "trigger_logs": 4,
-            "pauses": 5,
-            "pause_reasons": 6,
-        }
-        result = WorkflowRunCleanup._format_related_counts(counts)
-        assert "node_executions 1" in result
-        assert "offloads 2" in result
-        assert "trigger_logs 4" in result
-
-
-# ---------------------------------------------------------------------------
-# _expiration_datetime
-# ---------------------------------------------------------------------------
-
-
-class TestExpirationDatetime:
-    def test_negative_returns_none(self, cleanup):
-        assert cleanup._expiration_datetime("t1", -1) is None
-
-    def test_valid_timestamp(self, cleanup):
-        ts = int(datetime.datetime(2025, 1, 1, tzinfo=datetime.UTC).timestamp())
-        result = cleanup._expiration_datetime("t1", ts)
-        assert result is not None
-        assert result.year == 2025
-
-    def test_overflow_returns_none(self, cleanup):
-        result = cleanup._expiration_datetime("t1", 2**62)
-        assert result is None
-
-
-# ---------------------------------------------------------------------------
-# _is_within_grace_period
-# ---------------------------------------------------------------------------
-
-
-class TestIsWithinGracePeriod:
-    def test_zero_grace_period_returns_false(self, cleanup):
-        cleanup.free_plan_grace_period_days = 0
-        assert cleanup._is_within_grace_period("t1", {"expiration_date": 9999999999}) is False
-
-    def test_within_grace_period(self, cleanup):
-        cleanup.free_plan_grace_period_days = 30
-        # expired just 1 day ago
-        expired = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=1)
-        ts = int(expired.timestamp())
-        assert cleanup._is_within_grace_period("t1", {"expiration_date": ts}) is True
-
-    def test_outside_grace_period(self, cleanup):
-        cleanup.free_plan_grace_period_days = 5
-        # expired 100 days ago
-        expired = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=100)
-        ts = int(expired.timestamp())
-        assert cleanup._is_within_grace_period("t1", {"expiration_date": ts}) is False
-
-    def test_missing_expiration_date_returns_false(self, cleanup):
-        cleanup.free_plan_grace_period_days = 30
-        assert cleanup._is_within_grace_period("t1", {"expiration_date": -1}) is False
-
-
-# ---------------------------------------------------------------------------
-# _get_cleanup_whitelist
-# ---------------------------------------------------------------------------
-
-
-class TestGetCleanupWhitelist:
-    def test_non_cloud_edition_returns_empty(self, cleanup):
-        cleanup._cleanup_whitelist = None
-        result = cleanup._get_cleanup_whitelist()
-        assert result == set()
-
-    def test_cloud_edition_fetches_whitelist(self, mock_repo, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService") as bs:
-            bs.get_expired_subscription_cleanup_whitelist.return_value = ["t1", "t2"]
-            result = c._get_cleanup_whitelist()
-        assert result == {"t1", "t2"}
-
-    def test_cached_whitelist_returned(self, cleanup):
-        cleanup._cleanup_whitelist = {"cached"}
-        result = cleanup._get_cleanup_whitelist()
-        assert result == {"cached"}
-
-    def test_billing_service_error_returns_empty(self, mock_repo, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService") as bs:
-            bs.get_expired_subscription_cleanup_whitelist.side_effect = Exception("error")
-            result = c._get_cleanup_whitelist()
-        assert result == set()
-
-
-# ---------------------------------------------------------------------------
-# _filter_free_tenants
-# ---------------------------------------------------------------------------
-
-
-class TestFilterFreeTenants:
-    def test_non_cloud_edition_treats_all_tenants_as_free(self, cleanup):
-        result = cleanup._filter_free_tenants(["t1", "t2"])
-        assert result == {"t1", "t2"}
-
-    def test_empty_tenants_returns_empty(self, cleanup, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        result = cleanup._filter_free_tenants([])
-        assert result == set()
-
-    def test_whitelisted_tenant_excluded(self, mock_repo, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-        c._cleanup_whitelist = {"t1"}
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService") as bs:
-            bs.get_plan_bulk_with_cache.return_value = {
-                "t1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
-                "t2": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
-            }
-            result = c._filter_free_tenants(["t1", "t2"])
-        assert "t1" not in result
-        assert "t2" in result
-
-    def test_paid_tenant_excluded(self, mock_repo, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-        c._cleanup_whitelist = set()
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService") as bs:
-            bs.get_plan_bulk_with_cache.return_value = {
-                "t1": {"plan": "professional", "expiration_date": -1},
-            }
-            result = c._filter_free_tenants(["t1"])
-        assert result == set()
-
-    def test_missing_billing_info_treats_as_non_free(self, mock_repo, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-        c._cleanup_whitelist = set()
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService") as bs:
-            bs.get_plan_bulk_with_cache.return_value = {}
-            result = c._filter_free_tenants(["t1"])
-        assert result == set()
-
-    def test_billing_bulk_error_treats_as_non_free(self, mock_repo, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        c = WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-        c._cleanup_whitelist = set()
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService") as bs:
-            bs.get_plan_bulk_with_cache.side_effect = Exception("fail")
-            result = c._filter_free_tenants(["t1"])
-        assert result == set()
-
-
-# ---------------------------------------------------------------------------
-# run() — delete mode
-# ---------------------------------------------------------------------------
-
-
-class TestRunDeleteMode:
-    def _make_cleanup(self, mock_repo):
-        return WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
-
-    def test_no_rows_stops_immediately(self, mock_repo):
-        mock_repo.get_cleanup_refs_batch_by_time_range.return_value = []
-        c = self._make_cleanup(mock_repo)
-        c.run()
-        mock_repo.delete_runs_with_related_by_ids.assert_not_called()
-
-    def test_all_paid_skips_delete(self, mock_repo):
-        ref = make_ref("t1")
-        mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], []]
-        c = self._make_cleanup(mock_repo)
-        # Override the non-Cloud default to exercise the no-deletion path.
-        c._filter_free_tenants = MagicMock(return_value=set())
-        c.run()
-        mock_repo.delete_runs_with_related_by_ids.assert_not_called()
-
-    def test_runs_deleted_successfully(self, mock_repo):
-        ref = make_ref("t1")
-        mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], [ref], []]
-        mock_repo.delete_runs_with_related_by_ids.return_value = {
-            "runs": 1,
-            "node_executions": 0,
-            "offloads": 0,
-            "app_logs": 0,
-            "trigger_logs": 0,
-            "pauses": 0,
-            "pause_reasons": 0,
-        }
-        c = self._make_cleanup(mock_repo)
-        with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.time.sleep"):
-            c.run()
-        mock_repo.delete_runs_with_related_by_ids.assert_called_once()
-
-    def test_delete_exception_reraises(self, mock_repo):
-        ref = make_ref("t1")
-        mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], [ref]]
-        mock_repo.delete_runs_with_related_by_ids.side_effect = RuntimeError("db error")
-        c = self._make_cleanup(mock_repo)
-        with pytest.raises(RuntimeError):
-            c.run()
-
-    def test_summary_with_window_start(self, mock_repo):
-        mock_repo.get_cleanup_refs_batch_by_time_range.return_value = []
-        c = WorkflowRunCleanup(
-            days=30,
-            batch_size=10,
-            start_from=datetime.datetime(2024, 1, 1),
-            end_before=datetime.datetime(2024, 6, 1),
-            workflow_run_repo=mock_repo,
-        )
-        c.run()
-
-
-# ---------------------------------------------------------------------------
-# run() — dry run mode
-# ---------------------------------------------------------------------------
-
-
-class TestRunDryRunMode:
-    def _make_dry_cleanup(self, mock_repo):
-        return WorkflowRunCleanup(
-            days=30,
-            batch_size=10,
-            workflow_run_repo=mock_repo,
-            dry_run=True,
-        )
-
-    def test_dry_run_no_delete_called(self, mock_repo):
-        ref = make_ref("t1")
-        mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], [ref], []]
-        mock_repo.count_runs_with_related_by_ids.return_value = {
-            "runs": 1,
-            "node_executions": 2,
-            "offloads": 0,
-            "app_logs": 0,
-            "trigger_logs": 1,
-            "pauses": 0,
-            "pause_reasons": 0,
-        }
-        c = self._make_dry_cleanup(mock_repo)
-        c.run()
-        mock_repo.delete_runs_with_related_by_ids.assert_not_called()
-        mock_repo.count_runs_with_related_by_ids.assert_called_once()
-
-    def test_dry_run_summary_with_window_start(self, mock_repo):
-        mock_repo.get_cleanup_refs_batch_by_time_range.return_value = []
-        c = WorkflowRunCleanup(
-            days=30,
-            batch_size=10,
-            start_from=datetime.datetime(2024, 1, 1),
-            end_before=datetime.datetime(2024, 6, 1),
-            workflow_run_repo=mock_repo,
-            dry_run=True,
-        )
-        c.run()
-
-    def test_dry_run_all_paid_skips_count(self, mock_repo):
-        ref = make_ref("t1")
-        mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], []]
-        c = self._make_dry_cleanup(mock_repo)
-        c._filter_free_tenants = MagicMock(return_value=set())
-        c.run()
-        mock_repo.count_runs_with_related_by_ids.assert_not_called()
-
-
-# ---------------------------------------------------------------------------
-# _delete_trigger_logs / _count_trigger_logs
-# ---------------------------------------------------------------------------
-
-
-class TestTriggerLogMethods:
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    def test_delete_trigger_logs(self, cleanup, sqlite_session: Session):
-        with patch(
-            "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.SQLAlchemyWorkflowTriggerLogRepository"
-        ) as repo_class:
-            instance = repo_class.return_value
-            instance.delete_by_run_ids.return_value = 5
-            result = cleanup._delete_trigger_logs(sqlite_session, ["r1", "r2"])
-        assert result == 5
-
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    def test_count_trigger_logs(self, cleanup, sqlite_session: Session):
-        with patch(
-            "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.SQLAlchemyWorkflowTriggerLogRepository"
-        ) as repo_class:
-            instance = repo_class.return_value
-            instance.count_by_run_ids.return_value = 3
-            result = cleanup._count_trigger_logs(sqlite_session, ["r1"])
-        assert result == 3
-
-
-# ---------------------------------------------------------------------------
-# _count_node_executions_by_run_ids / _delete_node_executions_by_run_ids
-# ---------------------------------------------------------------------------
-
-
-class TestNodeExecutionMethods:
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    def test_count_node_executions(self, cleanup, sqlite_session: Session):
-        with patch(
-            "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.DifyAPIRepositoryFactory"
-        ) as factory:
-            repo = factory.create_api_workflow_node_execution_repository.return_value
-            repo.count_by_runs.return_value = (10, 2)
-            result = cleanup._count_node_executions_by_run_ids(sqlite_session, ["r1"])
-        assert result == (10, 2)
-
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    def test_delete_node_executions(self, cleanup, sqlite_session: Session):
-        with patch(
-            "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.DifyAPIRepositoryFactory"
-        ) as factory:
-            repo = factory.create_api_workflow_node_execution_repository.return_value
-            repo.delete_by_runs.return_value = (5, 1)
-            result = cleanup._delete_node_executions_by_run_ids(sqlite_session, ["r1"])
-        assert result == (5, 1)

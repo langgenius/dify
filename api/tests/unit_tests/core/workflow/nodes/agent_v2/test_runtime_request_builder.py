@@ -51,8 +51,8 @@ from models.agent_config_entities import (
     WorkflowNodeJobConfig,
 )
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
 
 
 @pytest.fixture(autouse=True)

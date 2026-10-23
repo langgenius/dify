@@ -25,7 +25,7 @@ from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import App, AppMode, EndUser
-from tests.unit_tests.model_factories import make_app, make_end_user
+from tests.helpers.unit.model_factories import make_app, make_end_user
 
 
 def _app(mode: AppMode) -> App:

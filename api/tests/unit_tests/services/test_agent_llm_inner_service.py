@@ -22,7 +22,7 @@ from models.model import App, AppMode
 from models.provider import ProviderType
 from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError, PreparedAgentLLMInvocation
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
-from tests.unit_tests.core.model_fixtures import make_model_instance
+from tests.helpers.unit.core.model_fixtures import make_model_instance
 
 
 def _request() -> AgentLLMInvokeRequest:

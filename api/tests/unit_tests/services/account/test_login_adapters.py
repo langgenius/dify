@@ -41,7 +41,7 @@ from services.entities.account_login_entities import (
     RefreshAccountStatus,
 )
 from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
-from tests.unit_tests.account_domain import AccountDomain
+from tests.helpers.unit.account_domain import AccountDomain
 from tests.unit_tests.services.account.test_login_service import Dependencies
 
 

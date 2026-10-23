@@ -17,7 +17,7 @@ from services.web_app_runtime_query_service import (
     WebAppBootstrap,
     WebAppRuntimeUnavailableError,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _bootstrap() -> WebAppBootstrap:

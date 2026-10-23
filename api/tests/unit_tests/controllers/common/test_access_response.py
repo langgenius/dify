@@ -34,7 +34,7 @@ from libs.external_api import ExternalApi
 from models.engine import db
 from models.model import ApiToken, App, AppMCPServer
 from services.app.mcp_server_service import AppMCPServerStatus
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 type TokenClient = tuple[FlaskClient, MagicMock, MagicMock, MagicMock]
 

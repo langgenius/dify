@@ -41,7 +41,7 @@ def parse_services(value: str) -> list[str]:
 
 def ensure_backend_test_environment(repo_root: Path) -> None:
     """Set deterministic defaults needed before test conftests import application config."""
-    integration_tests_dir = repo_root / "api" / "tests" / "integration_tests"
+    integration_tests_dir = repo_root / "api" / "tests" / "e2e_tests" / "middleware"
     test_env_file = integration_tests_dir / ".env"
     test_env_example_file = integration_tests_dir / ".env.example"
     vdb_env_file = integration_tests_dir / "vdb.env"

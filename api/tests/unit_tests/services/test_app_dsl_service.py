@@ -30,8 +30,8 @@ from services.entities.site_dsl import SiteDsl
 from services.errors.app import DraftChangedError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 from services.workflow.graph_diff import draft_token
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_workflow
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
 
 _OVERWRITE_APP_ID = "11111111-1111-4111-8111-111111111111"
 _TENANT_ID = "22222222-2222-4222-8222-222222222222"

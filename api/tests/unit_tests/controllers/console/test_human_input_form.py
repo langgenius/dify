@@ -35,9 +35,9 @@ from models.model import App, AppMode
 from models.workflow import WorkflowRun
 from services.enterprise.rbac_service import RBACService
 from services.entities.app_entities import AppAgentBinding
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account, make_app
-from tests.unit_tests.rbac_fakes import RBACDomain
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_account, make_app
+from tests.helpers.unit.rbac_fakes import RBACDomain
 
 
 @pytest.fixture(autouse=True)

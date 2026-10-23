@@ -10,7 +10,7 @@ import zlib
 import pytest
 
 from services.agent.skill_package_service import NormalizedSkillPackage, SkillPackageError, SkillPackageService
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 _SKILL_MD = """---
 name: pdf-toolkit
