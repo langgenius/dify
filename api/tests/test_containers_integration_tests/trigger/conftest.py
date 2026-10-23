@@ -8,7 +8,6 @@ and mock objects used across trigger-related tests.
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Any
 
 import pytest
 from sqlalchemy import delete
@@ -103,60 +102,14 @@ def app_model(db_session_with_containers: Session, tenant_and_account: tuple[Ten
     db_session_with_containers.commit()
 
 
-class MockCeleryGroup:
-    """Mock for celery group() function that collects dispatched tasks.
-
-    Matches the Celery group API loosely, accepting arbitrary kwargs on apply_async
-    (e.g. producer) so production code can pass broker-related options without
-    breaking tests.
-    """
+class RecordingScheduleTask:
+    """Stands in for ``run_schedule_trigger`` and records each dispatched schedule id and producer."""
 
     def __init__(self) -> None:
-        self.collected: list[dict[str, Any]] = []
-        self._applied = False
-        self.last_apply_async_kwargs: dict[str, Any] | None = None
+        self.calls: list[tuple[str, object]] = []
 
-    def __call__(self, items: Any) -> MockCeleryGroup:
-        self.collected = list(items)
-        return self
-
-    def apply_async(self, **kwargs: Any) -> None:
-        # Accept arbitrary kwargs like producer to be compatible with Celery
-        self._applied = True
-        self.last_apply_async_kwargs = kwargs
-
-    @property
-    def applied(self) -> bool:
-        return self._applied
-
-
-class MockCelerySignature:
-    """Mock for celery task signature that returns task info dict."""
-
-    def s(self, schedule_id: str) -> dict[str, str]:
-        return {"schedule_id": schedule_id}
-
-
-@pytest.fixture
-def mock_celery_group() -> MockCeleryGroup:
-    """
-    Provide a mock celery group for testing task dispatch.
-
-    Returns:
-        MockCeleryGroup: Mock group that collects dispatched tasks
-    """
-    return MockCeleryGroup()
-
-
-@pytest.fixture
-def mock_celery_signature() -> MockCelerySignature:
-    """
-    Provide a mock celery signature for testing task dispatch.
-
-    Returns:
-        MockCelerySignature: Mock signature generator
-    """
-    return MockCelerySignature()
+    def apply_async(self, *, args: tuple[str], producer: object) -> None:
+        self.calls.append((args[0], producer))
 
 
 class MockPluginSubscription:
