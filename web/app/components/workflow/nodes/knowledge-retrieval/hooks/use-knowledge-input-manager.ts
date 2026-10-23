@@ -4,6 +4,7 @@ import type { ValueSelector } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef } from 'react'
 import { RETRIEVE_TYPE } from '@/types/app'
+import { normalizeValueSelector } from '../../_base/components/variable/utils'
 
 type Params = {
   inputs: KnowledgeRetrievalNodeType
@@ -12,6 +13,8 @@ type Params = {
 
 const normalizeInputs = (nextInputs: KnowledgeRetrievalNodeType) => {
   return produce(nextInputs, (draft) => {
+    draft.query_variable_selector = normalizeValueSelector(nextInputs.query_variable_selector)
+    draft.query_attachment_selector = normalizeValueSelector(nextInputs.query_attachment_selector)
     if (nextInputs.retrieval_mode === RETRIEVE_TYPE.multiWay) delete draft.single_retrieval_config
     else delete draft.multiple_retrieval_config
   })
@@ -36,7 +39,7 @@ const useKnowledgeInputManager = ({ inputs, doSetInputs }: Params) => {
   const handleQueryVarChange = useCallback(
     (newVar: ValueSelector | string) => {
       const nextInputs = produce(inputRef.current, (draft) => {
-        draft.query_variable_selector = newVar as ValueSelector
+        draft.query_variable_selector = normalizeValueSelector(newVar)
       })
       setInputs(nextInputs)
     },
@@ -46,7 +49,7 @@ const useKnowledgeInputManager = ({ inputs, doSetInputs }: Params) => {
   const handleQueryAttachmentChange = useCallback(
     (newVar: ValueSelector | string) => {
       const nextInputs = produce(inputRef.current, (draft) => {
-        draft.query_attachment_selector = newVar as ValueSelector
+        draft.query_attachment_selector = normalizeValueSelector(newVar)
       })
       setInputs(nextInputs)
     },

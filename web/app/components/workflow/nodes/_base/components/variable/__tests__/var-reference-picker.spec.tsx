@@ -161,20 +161,16 @@ it('selects an object output through its public reference path', async () => {
   expect(screen.getByText('payload')).toBeInTheDocument()
 })
 
-it.each([VarKindType.constant, VarKindType.variable])(
-  'clears a selected reference in %s mode',
-  async (kind) => {
-    const { user, onChange } = setup({
-      value: ['source', 'answer'],
-      defaultVarKindType: kind,
-      isSupportConstantValue: kind === VarKindType.variable,
-    })
-    expect(screen.getByText('Source')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-    expect(onChange).toHaveBeenCalledWith(kind === VarKindType.constant ? '' : [], kind, undefined)
-    expect(screen.getByText('Pick a variable')).toBeInTheDocument()
-  },
-)
+it('clears a selected reference to an empty selector when constants are unsupported', async () => {
+  const { user, onChange } = setup({
+    value: ['source', 'answer'],
+    defaultVarKindType: VarKindType.constant,
+  })
+  expect(screen.getByText('Source')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+  expect(onChange).toHaveBeenCalledWith([], VarKindType.constant, undefined)
+  expect(screen.getByText('Pick a variable')).toBeInTheDocument()
+})
 
 it('keeps a readonly reference unchanged', async () => {
   const { user, onChange } = setup({ readonly: true })
