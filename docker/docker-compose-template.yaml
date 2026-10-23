@@ -134,7 +134,7 @@ x-shared-worker-config: &shared-worker-config
 # KNOWLEDGE_FS_WORKER_IMAGE must bundle the KnowledgeFS engine at KNOWLEDGE_FS_BACKGROUND_ENGINE_PATH;
 # standard Dify API images do not, and the worker entrypoint exits without it.
 x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
-  image: ${KNOWLEDGE_FS_WORKER_IMAGE:-langgenius/dify-api:1.17.0}
+  image: ${KNOWLEDGE_FS_WORKER_IMAGE:-langgenius/dify-api:1.18.0}
   profiles:
     - knowledge-fs-celery
   restart: always
@@ -265,7 +265,7 @@ services:
   # API service
   api:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.17.1
+    image: langgenius/dify-api:1.18.0
     environment:
       MODE: api
       # The bundled Nginx supplies a verified client IP; keep direct API callers trusted.
@@ -315,7 +315,7 @@ services:
   # WebSocket service for workflow collaboration.
   api_websocket:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.17.1
+    image: langgenius/dify-api:1.18.0
     profiles:
       - collaboration
     environment:
@@ -347,7 +347,7 @@ services:
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.17.1
+    image: langgenius/dify-api:1.18.0
     environment:
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -394,7 +394,7 @@ services:
   # Keep this queue out of the generic worker so large file copies cannot starve existing jobs.
   worker_knowledge_fs_upgrade:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.17.1
+    image: langgenius/dify-api:1.18.0
     profiles:
       - knowledge-fs
     environment:
@@ -427,7 +427,7 @@ services:
   # Celery beat for scheduling periodic tasks.
   worker_beat:
     <<: *shared-worker-beat-config
-    image: langgenius/dify-api:1.17.1
+    image: langgenius/dify-api:1.18.0
     environment:
       MODE: beat
     depends_on:
@@ -460,7 +460,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.17.1
+    image: langgenius/dify-web:1.18.0
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
@@ -621,7 +621,7 @@ services:
   # on port 3128, which only allows agent_backend /agent-stub/ and the Dify API
   # /files/* endpoints (see ssrf_proxy/squid-agent.conf.template).
   local_sandbox:
-    image: langgenius/dify-agent-local-sandbox:1.17.1
+    image: langgenius/dify-agent-local-sandbox:1.18.0
     command: ["shellctl", "serve", "--listen", "0.0.0.0:5004", "--require-auth-token"]
     restart: always
     env_file:
@@ -819,7 +819,7 @@ services:
 
   # Dify Agent backend service.
   agent_backend:
-    image: langgenius/dify-agent-backend:1.17.1
+    image: langgenius/dify-agent-backend:1.18.0
     restart: always
     env_file:
       - path: ./envs/core-services/dify-agent.env

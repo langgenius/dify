@@ -3053,25 +3053,22 @@ describe('CreateKnowledgePage', () => {
   })
 
   it('previews a selected file locally without claiming it', async () => {
+    const user = userEvent.setup()
     navigationMock.startMode = 'upload'
     const file = new File(['# 让状态可分析'], 'handbook.md', { type: 'text/markdown' })
     const open = vi.spyOn(globalThis, 'open').mockReturnValue(null)
     await renderPage()
 
-    fireEvent.change(
+    await user.upload(
       screen.getByLabelText('knowledgeSpace.uploadFiles', {
         selector: 'input[type="file"]',
       }),
-      { target: { files: [file] } },
+      file,
     )
-    await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
 
     const preview = await screen.findByRole('dialog', { name: 'handbook.md' })
-    expect(within(preview).getByLabelText('handbook.md')).toHaveTextContent('# 让状态可分析')
+    expect(await within(preview).findByLabelText('handbook.md')).toHaveTextContent('# 让状态可分析')
     expect(open).not.toHaveBeenCalled()
     expect(serviceMock.upload).not.toHaveBeenCalled()
   })
