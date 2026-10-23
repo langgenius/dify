@@ -2,6 +2,7 @@
 
 from collections.abc import Iterator
 from datetime import datetime
+from decimal import Decimal
 
 import pytest
 from flask import Flask
@@ -22,7 +23,8 @@ from extensions.ext_redis import RedisClientWrapper
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, ConversationStatus
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, Conversation, Message
 from tests.unit_tests.core.model_fixtures import make_model_config
 
@@ -129,12 +131,12 @@ def agent_records(sqlite_session: Session) -> tuple[Conversation, Message]:
         model_id=None,
         mode=AppMode.AGENT_CHAT,
         name="Conversation",
-        inputs={},
+        _inputs={},
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
-        status="normal",
-        invoke_from=InvokeFrom.SERVICE_API,
+        status=ConversationStatus.NORMAL,
+        invoke_from=ModelInvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_end_user_id=None,
         from_account_id="user",
@@ -143,26 +145,26 @@ def agent_records(sqlite_session: Session) -> tuple[Conversation, Message]:
         id="msg",
         app_id=app.id,
         conversation_id=conversation.id,
-        inputs={},
+        _inputs={},
         query="q",
         message={},
         message_tokens=0,
-        message_unit_price=0,
-        message_price_unit=0,
+        message_unit_price=Decimal(0),
+        message_price_unit=Decimal(0),
         answer="",
         answer_tokens=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
+        answer_unit_price=Decimal(0),
+        answer_price_unit=Decimal(0),
         provider_response_latency=0,
-        total_price=0,
+        total_price=Decimal(0),
         currency="USD",
-        invoke_from=InvokeFrom.SERVICE_API,
+        invoke_from=ModelInvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_end_user_id=None,
         from_account_id="user",
         app_mode=AppMode.AGENT_CHAT,
-        created_at=datetime(2025, 1, 1),
     )
+    message.created_at = datetime(2025, 1, 1)
     sqlite_session.add_all([app, conversation, message])
     sqlite_session.commit()
     return conversation, message
