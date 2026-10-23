@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import Never
 from unittest import mock
 from uuid import uuid4
@@ -7,10 +8,38 @@ from flask import Blueprint, Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
 
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
 from core.logging.context import clear_request_context, get_identity_context
+from enums import DeploymentEdition
 from models import App, EndUser
 from models.model import AppModelConfig
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.web_identity_fakes import web_identities
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [True, False])
+def test_login_status_cookie_selection_uses_feature_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    enabled: bool,
+) -> None:
+    from controllers.web.wraps import extract_web_login_token
+
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=edition,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled,
+        CONSOLE_WEB_URL="http://localhost",
+        CONSOLE_API_URL="http://localhost",
+    )
+    with Flask(__name__).test_request_context(
+        "/login/status",
+        headers={
+            "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}=account-login; {COOKIE_NAME_WEBAPP_ACCESS_TOKEN}=web-login",
+        },
+    ):
+        assert extract_web_login_token() == ("account-login" if enabled else "web-login")
 
 
 @pytest.fixture(autouse=True)
@@ -94,6 +123,7 @@ def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -
     sqlite_session.commit()
 
     with (
+        mock.patch.object(wraps, "application_services", return_value=SimpleNamespace(web_identity=web_identities())),
         mock.patch.object(wraps, "extract_webapp_passport", return_value="jwt-token"),
         mock.patch.object(wraps, "PassportService") as mock_passport_service,
         mock.patch.object(
@@ -103,6 +133,7 @@ def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -
         ),
     ):
         mock_passport_service.return_value.verify.return_value = {
+            "sub": "Web API Passport",
             "app_code": "app-code",
             "app_id": app_model.id,
             "end_user_id": end_user.id,
@@ -181,10 +212,12 @@ def test_post_missing_app_is_canonical_but_other_not_found_keeps_its_owner(
     app.register_blueprint(bp)
     with (
         mock.patch.object(wraps, "extract_webapp_passport", return_value="fixture-passport"),
+        mock.patch.object(wraps, "application_services", return_value=SimpleNamespace(web_identity=web_identities())),
         mock.patch.object(wraps, "PassportService") as passport,
         mock.patch.object(wraps.SystemFeatureService, "is_webapp_auth_enabled", return_value=False),
     ):
         passport.return_value.verify.return_value = {
+            "sub": "Web API Passport",
             "app_code": None if missing == "code" else "fixture-code",
             "app_id": app_id,
             "end_user_id": end_user_id,

@@ -28,6 +28,7 @@ from controllers.console.wraps import (
 from controllers.web import web_ns
 from controllers.web.error import WebAppAccessServiceUnavailableError, WebAppNotFoundError
 from controllers.web.flask_admission import web_anonymous_admission
+from controllers.web.wraps import extract_web_login_token
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
@@ -39,6 +40,7 @@ from libs.token import (
     extract_webapp_passport,
 )
 from machinery.context import RequestContext
+from services.entities.account_login_entities import LoginMode
 from services.entities.auth_entities import LoginPayloadBase
 from services.web_authentication_service import (
     WebAccountBannedError,
@@ -71,6 +73,10 @@ class EmailCodeLoginVerifyPayload(BaseModel):
 
 
 class LoginStatusQuery(BaseModel):
+    mode: LoginMode = Field(
+        default=LoginMode.CONSOLE,
+        description="end_user reports actual Account authentication instead of Public App access",
+    )
     app_code: str | None = Field(default=None, description="Web app code")
     user_id: str | None = Field(default=None, description="End user session ID")
 
@@ -147,9 +153,12 @@ class LoginStatusApi(Resource):
     def get(self, query: LoginStatusQuery, _request_context: RequestContext):
         try:
             status = application_services().web_authentication.get_login_status(
+                mode=query.mode,
                 app_code=query.app_code,
                 user_id=query.user_id,
-                access_token=extract_webapp_access_token(request),
+                access_token=extract_webapp_access_token(request)
+                if query.mode == LoginMode.END_USER
+                else extract_web_login_token(),
                 app_session_token=extract_webapp_passport(query.app_code, request) if query.app_code else None,
             )
         except WebAppAccessAppNotFoundError as error:

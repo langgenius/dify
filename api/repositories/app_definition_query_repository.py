@@ -21,8 +21,10 @@ from services.app_definition_query_service import (
     AppParameterConfig,
     AppSiteConfiguration,
     AppToolIconSource,
+    WebAppParameterConfig,
 )
 from services.web_app_runtime_query_service import WebAppRuntimeRecord
+from services.workflow.tool_credentials import requires_end_user_connections
 
 
 def map_site_configuration(site: Site) -> AppSiteConfiguration:
@@ -140,6 +142,40 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                 return _get_public_agent_parameter_config(app, session=session)
 
             return load_app_parameter_config(app, session=session)
+
+    @override
+    def get_web_parameter_config(self, app_id: str, tenant_id: str) -> WebAppParameterConfig | None:
+        with self._session_factory() as session:
+            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
+            if app is None:
+                return None
+            if app.mode in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
+                workflow = session.scalar(
+                    select(Workflow).where(
+                        Workflow.id == app.workflow_id,
+                        Workflow.app_id == app.id,
+                        Workflow.tenant_id == tenant_id,
+                        Workflow.version != "draft",
+                    )
+                )
+                if workflow is None:
+                    return None
+                return WebAppParameterConfig(
+                    parameters=AppParameterConfig(
+                        features_dict=workflow.features_dict,
+                        user_input_form=cast(list[dict[str, Any]], workflow.user_input_form(to_old_structure=True)),
+                    ),
+                    workflow_id=workflow.id,
+                    requires_end_user_connections=requires_end_user_connections(workflow.graph_dict),
+                )
+            config = (
+                _get_public_agent_parameter_config(app, session=session)
+                if app.mode == AppMode.AGENT
+                else load_app_parameter_config(app, session=session)
+            )
+            if config is None:
+                return None
+            return WebAppParameterConfig(parameters=config, workflow_id=None, requires_end_user_connections=False)
 
     @override
     def get_tool_icon_sources(self, app_id: str) -> tuple[AppToolIconSource, ...] | None:

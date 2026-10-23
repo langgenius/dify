@@ -1,11 +1,12 @@
 import logging
 from pathlib import Path
-from typing import Any, override
+from typing import Any, Self, override
 
 from pydantic import model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
+from enums import DeploymentEdition
 from libs.file_utils import search_file_upwards
 
 from .deploy import DeploymentConfig
@@ -97,6 +98,20 @@ class DifyConfig(
         if self.DEPLOY_ENV.strip().upper() == "PRODUCTION":
             if self.KNOWLEDGE_FS_BASE_URL and not self._is_secure_or_loopback_origin(self.KNOWLEDGE_FS_BASE_URL):
                 raise ValueError("KNOWLEDGE_FS_BASE_URL must use HTTPS in production unless it targets loopback")
+        return self
+
+    @model_validator(mode="after")
+    def resolve_edition_defaults(self) -> Self:
+        if "END_USER_AUTH_ALLOW_ANONYMOUS" not in self.model_fields_set:
+            object.__setattr__(
+                self, "END_USER_AUTH_ALLOW_ANONYMOUS", self.DEPLOYMENT_EDITION == DeploymentEdition.COMMUNITY
+            )
+        if "WEBAPP_ACCOUNT_PASSPORT_ENABLED" not in self.model_fields_set:
+            # Keep the derived default out of fields_set so revalidation still
+            # distinguishes it from an explicit environment or remote setting.
+            object.__setattr__(
+                self, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", self.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            )
         return self
 
     @classmethod

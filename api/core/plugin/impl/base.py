@@ -8,9 +8,10 @@ from typing import Any, cast
 from urllib.parse import unquote
 
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from yarl import URL
 
+from clients.plugin.errors import PluginNotImplementedError
 from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 from core.plugin.endpoint.exc import EndpointSetupFailedError
@@ -254,18 +255,25 @@ class BasePluginClient:
 
         try:
             with _httpx_client.stream(**stream_kwargs) as response:
+                response.raise_for_status()
                 for raw_line in response.iter_lines():
                     if not raw_line:
                         continue
                     line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
                     line = line.strip()
+                    if line.startswith(":"):
+                        continue
                     if line.startswith("data:"):
                         line = line[5:].strip()
                     if line:
                         yield line
-        except httpx.RequestError as caught_error:
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code < 500:
+                raise PluginDaemonClientSideError(description=str(exc)) from exc
+            raise PluginDaemonInternalServerError(description=str(exc)) from exc
+        except httpx.RequestError as exc:
             logger.exception("Stream request to Plugin Daemon Service failed")
-            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed") from caught_error
+            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed") from exc
 
     def _stream_request_with_model[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
         self,
@@ -371,30 +379,25 @@ class BasePluginClient:
         for line in self._stream_request(method, path, params, headers, data, files):
             try:
                 rep = PluginDaemonBasicResponse[type_].model_validate_json(line)  # type: ignore
-            except (ValueError, TypeError) as caught_error:
-                # TODO modify this when line_data has code and message
-                try:
-                    line_data = json.loads(line)
-                except (ValueError, TypeError) as caught_error_inner:
-                    raise ValueError(line) from caught_error_inner
-                # If the dictionary contains the `error` key, use its value as the argument
-                # for `ValueError`.
-                # Otherwise, use the `line` to provide better contextual information about the error.
-                raise ValueError(line_data.get("error", line)) from caught_error
+            except ValidationError as exc:
+                raise PluginDaemonInternalServerError("Invalid response from plugin daemon") from exc
 
             if rep.code != 0:
                 if rep.code == -500:
                     try:
-                        error = PluginDaemonError.model_validate(json.loads(rep.message))
-                    except Exception as e:
+                        error = PluginDaemonError.model_validate_json(rep.message)
+                    except ValidationError as e:
                         raise PluginDaemonInnerError(code=rep.code, message=rep.message) from e
 
-                    logger.error("Error in stream response for plugin %s", rep.__dict__)
-                    self._handle_plugin_daemon_error(error.error_type, error.message)
-                raise ValueError(f"plugin daemon: {rep.message}, code: {rep.code}")
+                    # Plugin error text can contain credentials.
+                    logger.error("Error in plugin daemon stream response: code=%s", rep.code)
+                    try:
+                        self._handle_plugin_daemon_error(error.error_type, error.message)
+                    except (json.JSONDecodeError, ValidationError) as exc:
+                        raise PluginDaemonInternalServerError("Invalid error response from plugin daemon") from exc
+                raise PluginDaemonInnerError(code=rep.code, message=rep.message)
             if rep.data is None:
-                frame = inspect.currentframe()
-                raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
+                raise PluginDaemonInternalServerError("got empty data from plugin daemon")
             yield rep.data
 
     def _handle_plugin_daemon_error(self, error_type: str, message: str):
@@ -408,6 +411,8 @@ class BasePluginClient:
                 error_object = json.loads(message)
                 invoke_error_type = error_object.get("error_type")
                 match invoke_error_type:
+                    case NotImplementedError.__name__:
+                        raise PluginNotImplementedError(description=message)
                     case InvokeRateLimitError.__name__:
                         raise InvokeRateLimitError(description=error_object.get("message"))
                     case InvokeAuthorizationError.__name__:

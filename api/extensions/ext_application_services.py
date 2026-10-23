@@ -31,6 +31,12 @@ from extensions.application_services.data_sources import (
     build_data_source_services,
 )
 from extensions.application_services.datasets import build_dataset_dependencies
+from extensions.application_services.end_user_connections import (
+    build_end_user_connection_oauth,
+    build_end_user_connection_preflight,
+    build_end_user_connection_runtime,
+    build_end_user_connections,
+)
 from extensions.application_services.installed_app import InstalledAppServices, build_installed_app_services
 from extensions.application_services.knowledge import (
     KnowledgeServices,
@@ -66,6 +72,7 @@ from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.conversation_variable_query_repository import ConversationVariableQueryRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
+from repositories.end_user_connection_repository import EndUserConnectionRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
@@ -128,6 +135,12 @@ from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
+from services.end_user_connections.execution import ConnectionExecutionService
+from services.end_user_connections.management import ConnectionService
+from services.end_user_connections.oauth import OAuthConnectionService
+from services.end_user_connections.preflight import ConnectionPreflightService
+from services.end_user_connections.runtime import ConnectionRuntimeService
+from services.end_user_connections.selections import ConnectionSelectionService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
@@ -203,6 +216,9 @@ from services.web_authentication_adapters import (
     TokenManagerWebAuthenticationGateway,
 )
 from services.web_authentication_service import WebAuthenticationService
+from services.web_identity_service import WebIdentityService
+from services.web_login_handoff import WebLoginHandoffService
+from services.web_login_handoff_adapters import RedisWebLoginGrantStore
 from services.web_passport_gateways import (
     DeploymentWebPassportAuthGateway,
     PassportTokenGateway,
@@ -323,6 +339,14 @@ class ApplicationServices:
     workflow_comments: WorkflowCommentService
     inner_mail: InnerMailService
     web_passport: WebPassportService
+    web_identity: WebIdentityService
+    web_login_handoff: WebLoginHandoffService
+    connection_selections: ConnectionSelectionService
+    end_user_connection_execution: ConnectionExecutionService
+    end_user_connection_runtime: ConnectionRuntimeService
+    end_user_connections: ConnectionService
+    end_user_connection_oauth: OAuthConnectionService
+    end_user_connection_preflight: ConnectionPreflightService
     tags: TagApplicationService
     workflow_statistics: WorkflowStatisticQueryService
 
@@ -497,6 +521,20 @@ def build_application_services(
     file_service = FileService(session_factory=database_client)
     remote_file_service = RemoteFileService(files=file_service)
     passwords = DefaultAccountPasswordHasher()
+    web_identity = WebIdentityService(
+        accounts=accounts,
+        allow_console_login=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
+        allow_webapp_login=deployment_edition == DeploymentEdition.ENTERPRISE,
+    )
+    web_passport_repository = WebPassportRepository(
+        session_factory=database_client, generate_session_id=lambda: str(uuid4())
+    )
+    web_passport_tokens = PassportTokenGateway(passport=PassportService())
+    web_app_sessions = PassportWebAppSessionGateway(
+        sessions=webapp_access_repository,
+        app_access=webapp_access,
+        identities=web_identity,
+    )
     web_authentication_tokens = TokenManagerWebAuthenticationGateway(
         reset_password_rate_limiter=RateLimiter(
             prefix=FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
@@ -505,6 +543,7 @@ def build_application_services(
             redis_client=redis,
         ),
         access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
+        identities=web_identity,
     )
     invitation_tokens = RedisInvitationTokenStore(redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
@@ -534,6 +573,10 @@ def build_application_services(
         provisioning=workspace_provisioning,
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
+    )
+    end_user_connections = build_end_user_connections(database_client=database_client)
+    end_user_connection_preflight = build_end_user_connection_preflight(
+        database_client=database_client, connections=end_user_connections
     )
     return ApplicationServices(
         rbac=rbac,
@@ -602,10 +645,7 @@ def build_application_services(
                 login_security=RedisConsoleAuthSecurityGateway(redis=redis),
             ),
             app_access=webapp_access,
-            app_sessions=PassportWebAppSessionGateway(
-                sessions=webapp_access_repository,
-                app_access=webapp_access,
-            ),
+            app_sessions=web_app_sessions,
             audit=LoggingWebAuthenticationAuditGateway(logger=logging.getLogger("controllers.web.login")),
             private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
         ),
@@ -727,16 +767,37 @@ def build_application_services(
             console_web_url=dify_config.CONSOLE_WEB_URL,
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
+        web_identity=web_identity,
+        web_login_handoff=WebLoginHandoffService(
+            grants=RedisWebLoginGrantStore(redis=redis),
+            apps=web_passport_repository,
+            identities=web_identity,
+            tokens=web_passport_tokens,
+            enabled=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
+            app_web_url=dify_config.APP_WEB_URL,
+            console_web_url=dify_config.CONSOLE_WEB_URL,
+            now=lambda: datetime.now(UTC),
+        ),
+        connection_selections=ConnectionSelectionService(
+            store=EndUserConnectionRepository(session_factory=database_client)
+        ),
+        end_user_connection_execution=ConnectionExecutionService(preflight=end_user_connection_preflight),
+        end_user_connection_runtime=build_end_user_connection_runtime(
+            database_client=database_client, connections=end_user_connections
+        ),
+        end_user_connections=end_user_connections,
+        end_user_connection_preflight=end_user_connection_preflight,
+        end_user_connection_oauth=build_end_user_connection_oauth(database_client=database_client),
         web_passport=WebPassportService(
-            passports=WebPassportRepository(
-                session_factory=database_client,
-                generate_session_id=lambda: str(uuid4()),
-            ),
+            passports=web_passport_repository,
             auth=DeploymentWebPassportAuthGateway(
                 webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
                 get_app_access_mode=EnterpriseService.WebAppAuth.get_app_access_mode_by_id,
+                is_user_allowed=EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp,
             ),
-            tokens=PassportTokenGateway(passport=PassportService()),
+            tokens=web_passport_tokens,
+            identities=web_identity,
+            account_passports_enabled=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
         ),

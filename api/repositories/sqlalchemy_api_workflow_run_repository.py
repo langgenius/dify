@@ -1497,6 +1497,37 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         return workflow_run
 
     @override
+    def fail_workflow_pause(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_id: str,
+        pause_id: str,
+        error: str,
+    ) -> WorkflowRun | None:
+        with self._session_maker(expire_on_commit=False) as session, session.begin():
+            workflow_run = session.scalar(
+                select(WorkflowRun)
+                .options(selectinload(WorkflowRun.pause))
+                .where(
+                    WorkflowRun.tenant_id == tenant_id,
+                    WorkflowRun.app_id == app_id,
+                    WorkflowRun.id == workflow_run_id,
+                )
+                .with_for_update()
+            )
+            if workflow_run is None or workflow_run.status != WorkflowExecutionStatus.PAUSED:
+                return None
+            pause = workflow_run.pause
+            if pause is None or pause.id != pause_id or pause.resumed_at is not None:
+                return None
+            workflow_run.status = WorkflowExecutionStatus.FAILED
+            workflow_run.error = error
+            workflow_run.finished_at = naive_utc_now()
+            return workflow_run
+
+    @override
     def resume_workflow_pause(
         self,
         workflow_run_id: str,

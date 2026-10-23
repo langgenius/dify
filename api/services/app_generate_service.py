@@ -25,6 +25,7 @@ from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
+from services.end_user_connection_execution_adapters import prepare_web_connection_execution
 from services.errors.app import (
     QuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
@@ -245,8 +246,18 @@ class AppGenerateService:
                     request_id=request_id,
                 )
             case AppMode.ADVANCED_CHAT:
-                workflow_id = args.get("workflow_id")
+                workflow_id = None if invoke_from == InvokeFrom.WEB_APP else args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                workflow_run_id = str(uuid.uuid4())
+                connection_context = (
+                    prepare_web_connection_execution(
+                        app=app_model, user=user, workflow=workflow, args=args, workflow_run_id=workflow_run_id
+                    )
+                    if invoke_from == InvokeFrom.WEB_APP
+                    else None
+                )
+                if invoke_from == InvokeFrom.WEB_APP:
+                    args = {key: value for key, value in args.items() if key not in {"workflow_id", "connections"}}
 
                 if streaming:
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
@@ -254,12 +265,13 @@ class AppGenerateService:
                         payload = AppExecutionParams.new(
                             app_model=app_model,
                             workflow=workflow,
+                            connection_context=connection_context,
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
                             streaming=True,
                             call_depth=0,
-                            workflow_run_id=str(uuid.uuid4()),
+                            workflow_run_id=workflow_run_id,
                         )
                         payload_json = payload.model_dump_json()
 
@@ -290,10 +302,11 @@ class AppGenerateService:
                         advanced_generator.generate(
                             app_model=app_model,
                             workflow=workflow,
+                            connection_context=connection_context,
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
-                            workflow_run_id=str(uuid.uuid4()),
+                            workflow_run_id=workflow_run_id,
                             streaming=False,
                             pause_state_config=pause_config,
                             session=session,
@@ -302,21 +315,32 @@ class AppGenerateService:
                     request_id=request_id,
                 )
             case AppMode.WORKFLOW:
-                workflow_id = args.get("workflow_id")
+                workflow_id = None if invoke_from == InvokeFrom.WEB_APP else args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
                 cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
+                workflow_run_id = str(uuid.uuid4())
+                connection_context = (
+                    prepare_web_connection_execution(
+                        app=app_model, user=user, workflow=workflow, args=args, workflow_run_id=workflow_run_id
+                    )
+                    if invoke_from == InvokeFrom.WEB_APP
+                    else None
+                )
+                if invoke_from == InvokeFrom.WEB_APP:
+                    args = {key: value for key, value in args.items() if key not in {"workflow_id", "connections"}}
                 if streaming:
                     with rate_limit_context(rate_limit, request_id):
                         payload = AppExecutionParams.new(
                             app_model=app_model,
                             workflow=workflow,
+                            connection_context=connection_context,
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
                             streaming=True,
                             call_depth=0,
                             root_node_id=root_node_id,
-                            workflow_run_id=str(uuid.uuid4()),
+                            workflow_run_id=workflow_run_id,
                         )
                         payload_json = payload.model_dump_json()
 
@@ -344,11 +368,13 @@ class AppGenerateService:
                         WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                             app_model=app_model,
                             workflow=workflow,
+                            connection_context=connection_context,
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
                             streaming=False,
                             root_node_id=root_node_id,
+                            workflow_run_id=workflow_run_id,
                             call_depth=0,
                             pause_state_config=pause_config,
                         ),

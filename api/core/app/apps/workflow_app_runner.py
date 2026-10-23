@@ -6,6 +6,7 @@ from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from context.connection_execution import ConnectionExecutionContext
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.app.entities.app_invoke_entities import (
@@ -234,6 +235,7 @@ class WorkflowBasedAppRunner:
         root_node_id: str | None = None,
         app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
+        connection_context: ConnectionExecutionContext | None = None,
     ) -> Graph:
         """
         Init graph
@@ -242,6 +244,7 @@ class WorkflowBasedAppRunner:
 
         # Create explicit graph init context for Graph.init.
         run_context = build_dify_run_context(
+            connection_context=connection_context,
             tenant_id=tenant_id or "",
             app_id=self._app_id,
             user_id=user_id,

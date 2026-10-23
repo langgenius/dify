@@ -6,6 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import Unauthorized
 
+from configs import dify_config
 from constants import HEADER_NAME_APP_CODE
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import AccessModeResponse, BooleanResultResponse, Parameters
@@ -21,6 +22,7 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.passport import PassportService
@@ -57,10 +59,27 @@ class AppMetaResponse(BaseModel):
     )
 
 
+class WebAppParametersResponse(Parameters, ResponseModel):
+    account_login_url: str | None = Field(description="Account-origin sign-in page for the existing Web App login flow")
+    allow_anonymous_end_user_auth: bool = Field(
+        description="Whether Guest identities may manage and use personal Connections; does not control App entry."
+    )
+    account_login_enabled: bool = Field(description="Whether explicit Account login and Passport exchange are enabled.")
+    workflow_id: str | None = Field(
+        description=(
+            "Connection contract revision represented by the published workflow/chatflow ID; "
+            "null for other app modes. This is not an execution-version selector."
+        ),
+    )
+    requires_end_user_connections: bool = Field(
+        description="Whether this published version declares EndUser tool connections, independent of user readiness.",
+    )
+
+
 register_schema_models(web_ns, AppAccessModeQuery, AppPermissionQuery)
 register_response_schema_models(
     web_ns,
-    Parameters,
+    WebAppParametersResponse,
     AppMetaResponse,
     AccessModeResponse,
     BooleanResultResponse,
@@ -83,17 +102,27 @@ class AppParameterApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[Parameters.__name__])
+    @web_ns.response(200, "Success", web_ns.models[WebAppParametersResponse.__name__])
     def get(self, app_model: App, end_user: EndUser):
         """Retrieve app parameters."""
         try:
-            parameters = application_services().app_definitions.get_public_parameters(app_model.id)
+            parameters = application_services().app_definitions.get_web_parameters(app_model.id, app_model.tenant_id)
         except AppDefinitionNotPublishedError:
             raise AgentNotPublishedError() from None
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
 
-        return dump_response(Parameters, parameters)
+        return dump_response(
+            WebAppParametersResponse,
+            {
+                **parameters,
+                "allow_anonymous_end_user_auth": dify_config.END_USER_AUTH_ALLOW_ANONYMOUS,
+                "account_login_enabled": dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
+                "account_login_url": f"{dify_config.CONSOLE_WEB_URL.rstrip('/')}/signin"
+                if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+                else None,
+            },
+        )
 
 
 @web_ns.route("/meta")

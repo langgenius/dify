@@ -103,6 +103,7 @@ from services.errors.app import (
 )
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
+from services.workflow.tool_credentials import ToolCredentialConfig, check_tool_credentials
 from services.workflow.workflow_converter import WorkflowConverter
 from services.workflow_node_variables import get_human_input_form_variable_mapping
 from services.workflow_ref_service import WorkflowRef
@@ -823,6 +824,9 @@ class WorkflowService:
         try:
             # Extract and validate credentials based on node type
             if node_type == "tool":
+                config = ToolCredentialConfig.model_validate(node_data)
+                if config.credential_source != "workspace":
+                    return
                 credential_id = node_data.get("credential_id")
                 provider = node_data.get("provider_id")
                 if provider:
@@ -1910,6 +1914,11 @@ class WorkflowService:
 
             if node_type == BuiltinNodeTypes.HUMAN_INPUT:
                 self._validate_human_input_node_data(node_data)
+
+        if issues := check_tool_credentials(graph, complete=False):
+            issue = issues[0]
+            location = ".".join(str(part) for part in issue.path)
+            raise ValueError(f"Node {issue.node_id} ({location}): {issue.message}")
 
     def validate_features_structure(self, app_model: App, features: dict[str, Any]):
         match app_model.mode:

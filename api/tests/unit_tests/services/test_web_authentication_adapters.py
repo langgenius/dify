@@ -16,6 +16,7 @@ from services.web_authentication_adapters import (
     TokenManagerWebAuthenticationGateway,
 )
 from services.web_authentication_service import WebEmailDeliveryRateLimitError
+from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, web_identities
 
 
 def token_gateway(*, limited: bool = False) -> tuple[TokenManagerWebAuthenticationGateway, MagicMock]:
@@ -26,6 +27,7 @@ def token_gateway(*, limited: bool = False) -> tuple[TokenManagerWebAuthenticati
         TokenManagerWebAuthenticationGateway(
             reset_password_rate_limiter=limiter,
             access_token_expire_minutes=10,
+            identities=web_identities(),
         ),
         limiter,
     )
@@ -70,6 +72,11 @@ def test_verify_access_token_accepts_valid_passport() -> None:
     gateway, _ = token_gateway()
 
     with patch("services.web_authentication_adapters.PassportService") as passport_service:
+        passport_service.return_value.verify.return_value = {
+            "sub": "Console API Passport",
+            "user_id": ACCOUNT_ID,
+            "exp": 2_000_000_000,
+        }
         assert gateway.verify_access_token("signed-token") is True
 
     passport_service.return_value.verify.assert_called_once_with(token="signed-token")
@@ -247,7 +254,7 @@ def test_security_gateway_delegates_to_account_security_gateways() -> None:
 
 @dataclass
 class SessionQueryFake:
-    session: WebAppSessionRecord | None = WebAppSessionRecord(end_user_session_id="session-1")
+    session: WebAppSessionRecord | None = WebAppSessionRecord(end_user_session_id="session-1", account_id=None)
     calls: list[tuple[str, str, str]] = field(default_factory=list)
 
     def find_active_session(self, *, app_id: str, app_code: str, end_user_id: str) -> WebAppSessionRecord | None:
@@ -279,7 +286,7 @@ class AppAccessFake:
         raise AssertionError(f"unused in session adapter: {app_code}")
 
 
-_DEFAULT_SESSION = WebAppSessionRecord(end_user_session_id="session-1")
+_DEFAULT_SESSION = WebAppSessionRecord(end_user_session_id="session-1", account_id=None)
 
 
 def passport_session_gateway(
@@ -295,7 +302,11 @@ def passport_session_gateway(
         permission_required=permission_required,
         user_allowed=user_allowed,
     )
-    return PassportWebAppSessionGateway(sessions=sessions, app_access=access), sessions, access
+    return (
+        PassportWebAppSessionGateway(sessions=sessions, app_access=access, identities=web_identities()),
+        sessions,
+        access,
+    )
 
 
 def valid_session_claims(**overrides: object) -> dict[str, object]:
@@ -303,7 +314,7 @@ def valid_session_claims(**overrides: object) -> dict[str, object]:
         "app_code": "site-code",
         "app_id": "app-1",
         "end_user_id": "end-user-1",
-        "token_source": "api",
+        "sub": "Web API Passport",
     }
     claims.update(overrides)
     return claims
@@ -364,7 +375,9 @@ def test_session_verification_rejects_malformed_identity_claims(claims: dict[str
     ("session", "user_id"),
     [
         pytest.param(None, None, id="no-active-session"),
-        pytest.param(WebAppSessionRecord(end_user_session_id="session-1"), "other-session", id="user-mismatch"),
+        pytest.param(
+            WebAppSessionRecord(end_user_session_id="session-1", account_id=None), "other-session", id="user-mismatch"
+        ),
     ],
 )
 def test_session_verification_rejects_missing_or_mismatched_session(
@@ -559,3 +572,26 @@ def test_reset_password_failure_exits_the_reservation_with_the_original_error(fa
     exit_args = limiter.reserve.return_value.__exit__.call_args.args
     assert exit_args[0] is RuntimeError
     assert exit_args[1] is error
+
+
+@pytest.mark.parametrize("mapped_account", [None, ACCOUNT_ID])
+def test_app_session_verification_requires_only_its_own_passport(mapped_account: str | None) -> None:
+    gateway, _, _ = passport_session_gateway(
+        session=WebAppSessionRecord(end_user_session_id="opaque-session", account_id=mapped_account)
+    )
+    claims = valid_session_claims()
+    if mapped_account is not None:
+        claims.update(token_source="webapp_account", exp=2_000_000_000)
+    with patch("services.web_authentication_adapters.PassportService") as signer:
+        signer.return_value.verify.return_value = claims
+        assert gateway.verify(token="passport", app_code="site-code", user_id=None)
+        signer.return_value.verify.assert_called_once_with("passport")
+
+
+def test_status_rejects_legacy_passport_for_account_linked_user() -> None:
+    gateway, _, _ = passport_session_gateway(
+        session=WebAppSessionRecord(end_user_session_id="opaque-session", account_id=ACCOUNT_ID)
+    )
+    with patch("services.web_authentication_adapters.PassportService") as passport_service:
+        passport_service.return_value.verify.return_value = valid_session_claims()
+        assert not gateway.verify(token="passport", app_code="site-code", user_id=None)

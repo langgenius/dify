@@ -15,6 +15,7 @@ from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
+from services.workflow.tool_credentials import ToolNodeSpec
 
 # Only empty containers: values the editor reads without a guard and that mean "none yet".
 EDITOR_EMPTY: Final[Mapping[str, Mapping[str, object]]] = {
@@ -37,9 +38,10 @@ class HumanInputNodeSpec(HumanInputNodeData):
     delivery_methods: list[DeliveryChannelConfig] = Field(default_factory=list)
 
 
-# Graphon keeps these node data opaque; Dify parses them with its own model when the node runs.
+# Dify's editor schemas supplement Graphon's execution schemas with application-owned fields.
 _DIFY_NODE_DATA: Final[Mapping[str, type[BaseModel]]] = {
     BuiltinNodeTypes.HUMAN_INPUT: HumanInputNodeSpec,
+    BuiltinNodeTypes.TOOL: ToolNodeSpec,
 }
 
 

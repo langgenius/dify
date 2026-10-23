@@ -87,6 +87,10 @@ ignore_imports =
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
     core.tools.tool_manager -> services
     core.workflow.node_runtime -> services
+    # Personal credential resolution is wired through the application composition root.
+    core.workflow.node_runtime -> extensions.application_services.end_user_connections
+    # Initial selections share the new Conversation transaction through the composition root.
+    core.app.apps.message_based_app_generator -> extensions.application_services.end_user_connections
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.node_factory -> extensions.application_services.data_sources
     # The KnowledgeFS retrieval node is owned by services.knowledge_fs and only wired in here.
@@ -145,6 +149,20 @@ source_modules =
 forbidden_modules =
     libs.rsa
 allow_indirect_imports = True
+
+[importlinter:contract:end-user-connection-policy-boundary]
+name = EndUser Connection contracts and policies are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.end_user_connections
+forbidden_modules =
+    controllers
+    extensions
+    repositories
+    models
+    flask
+    sqlalchemy
+    werkzeug
 
 [importlinter:contract:machinery-framework-boundary]
 name = API machinery is framework neutral

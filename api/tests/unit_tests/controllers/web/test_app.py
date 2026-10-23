@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from importlib import import_module
 
 import jwt
@@ -20,10 +21,14 @@ from controllers.web.error import (
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from enums import WebAppAccessMode
 from extensions.ext_application_services import ApplicationServices
+from libs.exception import BaseHTTPException
 from libs.passport import PassportService
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
-from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
+from services.app_definition_query_service import (
+    AppDefinitionNotPublishedError,
+    AppDefinitionUnavailableError,
+)
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
     WebAppAccessReferenceRequiredError,
@@ -71,25 +76,34 @@ def real_application_services(
 # AppParameterApi
 # ---------------------------------------------------------------------------
 class TestAppParameterApi:
+    @pytest.mark.parametrize("allow_anonymous", [True, False])
     def test_get_returns_public_parameters(
         self,
         real_application_services: ApplicationServices,
         monkeypatch: pytest.MonkeyPatch,
         app: Flask,
+        config_overrides: Callable[..., None],
+        allow_anonymous: bool,
     ) -> None:
-        calls: list[str] = []
+        config_overrides(
+            END_USER_AUTH_ALLOW_ANONYMOUS=allow_anonymous,
+            WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
+            CONSOLE_WEB_URL="https://console.example.com/base",
+        )
+        calls: list[tuple[str, str]] = []
 
-        def get_public_parameters(app_id: str):
-            calls.append(app_id)
-            return get_parameters_from_feature_dict(
-                features_dict={"opening_statement": "Hello"},
-                user_input_form=[],
-            )
+        def get_web_parameters(app_id: str, tenant_id: str) -> dict[str, object]:
+            calls.append((app_id, tenant_id))
+            return {
+                **get_parameters_from_feature_dict(features_dict={"opening_statement": "Hello"}, user_input_form=[]),
+                "workflow_id": None,
+                "requires_end_user_connections": False,
+            }
 
         monkeypatch.setattr(
             real_application_services.app_definitions,
-            "get_public_parameters",
-            get_public_parameters,
+            "get_web_parameters",
+            get_web_parameters,
         )
         app_model = _make_app()
 
@@ -97,7 +111,12 @@ class TestAppParameterApi:
             result = AppParameterApi().get(app_model, _make_end_user())
 
         assert result["opening_statement"] == "Hello"
-        assert calls == ["app-1"]
+        assert calls == [("app-1", "tenant-1")]
+        assert result["workflow_id"] is None
+        assert result["requires_end_user_connections"] is False
+        assert result["allow_anonymous_end_user_auth"] is allow_anonymous
+        assert result["account_login_enabled"] is True
+        assert result["account_login_url"] == "https://console.example.com/base/signin"
 
     @pytest.mark.parametrize(
         ("service_error", "http_error"),
@@ -114,14 +133,14 @@ class TestAppParameterApi:
         http_error: type[Exception],
         app: Flask,
     ) -> None:
-        def get_public_parameters(app_id: str) -> None:
-            _ = app_id
+        def get_web_parameters(app_id: str, tenant_id: str) -> None:
+            _ = app_id, tenant_id
             raise service_error
 
         monkeypatch.setattr(
             real_application_services.app_definitions,
-            "get_public_parameters",
-            get_public_parameters,
+            "get_web_parameters",
+            get_web_parameters,
         )
 
         with app.test_request_context("/parameters"):
@@ -233,7 +252,7 @@ class TestAppAccessMode:
         real_application_services: ApplicationServices,
         monkeypatch: pytest.MonkeyPatch,
         service_error: Exception,
-        http_error: type[Exception],
+        http_error: type[BaseHTTPException],
         expected_data: dict[str, object],
         app: Flask,
     ) -> None:

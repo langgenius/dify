@@ -4,6 +4,10 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type RefreshTokenPayload = {
+  mode?: LoginMode
+}
+
 export type SimpleResultResponse = {
   result: string
 }
@@ -23,8 +27,10 @@ export type ErrorResponse = {
   status: number
 }
 
+export type LoginMode = 'console' | 'end_user'
+
 export type PostRefreshTokenData = {
-  body?: never
+  body?: RefreshTokenPayload
   path?: never
   query?: never
   url: '/refresh-token'

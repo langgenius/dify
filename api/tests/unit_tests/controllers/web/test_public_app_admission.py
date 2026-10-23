@@ -127,9 +127,16 @@ def _harness(
     mocker.patch.object(
         PassportService,
         "verify",
-        return_value={"app_id": app.id, "app_code": "fixture-code", "end_user_id": old_user.id},
+        return_value={
+            "sub": "Web API Passport",
+            "app_id": app.id,
+            "app_code": "fixture-code",
+            "end_user_id": old_user.id,
+        },
     )
-    app_sessions = PassportWebAppSessionGateway(sessions=access_repo, app_access=access)
+    app_sessions = PassportWebAppSessionGateway(
+        sessions=access_repo, app_access=access, identities=base_services.web_identity
+    )
     session_verify = mocker.spy(app_sessions, "verify")
     authentication = base_services.web_authentication
     monkeypatch.setattr(authentication, "_app_access", access)
@@ -145,6 +152,8 @@ def _harness(
             passports=passport_repo,
             auth=auth,
             tokens=tokens,
+            identities=base_services.web_identity,
+            account_passports_enabled=False,
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=60,
         ),

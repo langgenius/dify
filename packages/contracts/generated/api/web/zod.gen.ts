@@ -116,6 +116,7 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
  * ChatMessagePayload
  */
 export const zChatMessagePayload = z.object({
+  connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   conversation_id: z.string().nullish(),
   files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -123,6 +124,7 @@ export const zChatMessagePayload = z.object({
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('web_app'),
+  workflow_id: z.uuid().nullish(),
 })
 
 /**
@@ -135,6 +137,29 @@ export const zCompletionMessagePayload = z.object({
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('web_app'),
 })
+
+/**
+ * ConnectionConfigurationResponse
+ */
+export const zConnectionConfigurationResponse = z.object({
+  connections: z.record(z.string(), z.string().nullable()),
+  workflow_id: z.string().nullable(),
+})
+
+/**
+ * ConnectionCredentialStatus
+ *
+ * Last known credential lifecycle state, not readiness for a particular node.
+ *
+ * Keep the existing storage values. App-specific Client mismatches and unbinding
+ * must never be written back as a global credential state change.
+ */
+export const zConnectionCredentialStatus = z.enum(['connected', 'invalid', 'reconnect_required'])
+
+/**
+ * ConnectionCredentialType
+ */
+export const zConnectionCredentialType = z.enum(['api-key', 'oauth2'])
 
 /**
  * ConversationListQuery
@@ -167,6 +192,26 @@ export const zConversationRenamePayload = z.intersection(
 )
 
 /**
+ * CredentialCheckResult
+ */
+export const zCredentialCheckResult = z.object({
+  checked_at: z.int(),
+  reason_code: z
+    .enum([
+      'credential_expired',
+      'credential_invalid',
+      'credential_revoked',
+      'provider_network_error',
+      'provider_rate_limited',
+      'provider_timeout',
+      'provider_unavailable',
+    ])
+    .nullable(),
+  retryable: z.boolean(),
+  status: z.enum(['invalid', 'temporarily_unavailable', 'unsupported', 'valid']),
+})
+
+/**
  * DeploymentEdition
  *
  * Enum representing the deployment edition of the platform.
@@ -188,6 +233,74 @@ export const zEmailCodeLoginVerifyPayload = z.object({
   code: z.string(),
   email: z.string(),
   token: z.string().min(1),
+})
+
+/**
+ * EndUserConnectionCheckResponse
+ */
+export const zEndUserConnectionCheckResponse = z.object({
+  check: zCredentialCheckResult,
+  connection_id: z.string(),
+  credential_status: zConnectionCredentialStatus,
+})
+
+/**
+ * EndUserConnectionListQuery
+ */
+export const zEndUserConnectionListQuery = z.object({
+  cursor: z.string().min(1).max(1024).nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  provider: z.string().min(1).max(255).nullish(),
+})
+
+/**
+ * EndUserConnectionOAuthPayload
+ */
+export const zEndUserConnectionOAuthPayload = z.object({
+  name: z.string().min(1).max(100),
+  node_id: z.string().min(1).max(255),
+  workflow_id: z.uuid(),
+})
+
+/**
+ * EndUserConnectionOAuthResponse
+ */
+export const zEndUserConnectionOAuthResponse = z.object({
+  authorization_url: z.string(),
+})
+
+/**
+ * EndUserConnectionPreflightPayload
+ */
+export const zEndUserConnectionPreflightPayload = z.object({
+  connections: z.record(z.string(), z.uuid().nullable()),
+  conversation_id: z.uuid().nullish(),
+  workflow_id: z.uuid(),
+})
+
+/**
+ * EndUserConnectionResponse
+ */
+export const zEndUserConnectionResponse = z.object({
+  account_label: z.string().nullable(),
+  created_at: z.int(),
+  credential_status: zConnectionCredentialStatus,
+  credential_type: zConnectionCredentialType,
+  expires_at: z.int().nullable(),
+  id: z.string(),
+  last_active_at: z.int(),
+  name: z.string(),
+  provider: z.string(),
+  updated_at: z.int(),
+})
+
+/**
+ * EndUserConnectionListResponse
+ */
+export const zEndUserConnectionListResponse = z.object({
+  data: z.array(zEndUserConnectionResponse),
+  has_more: z.boolean(),
+  next_cursor: z.string().nullable(),
 })
 
 /**
@@ -303,6 +416,114 @@ export const zCompletionRequestError = zErrorResponse.and(
 )
 
 /**
+ * ConnectionConfigurationInvalidError
+ *
+ * The connection is not compatible with this tool configuration.
+ */
+export const zConnectionConfigurationInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_configuration_invalid'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionConflictError
+ *
+ * Connection changed during the operation.
+ */
+export const zConnectionConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_conflict'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * ConnectionCredentialsInvalidError
+ *
+ * Invalid credentials for this provider.
+ */
+export const zConnectionCredentialsInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_credentials_invalid'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionCredentialsUnavailableError
+ *
+ * Connection credentials are temporarily unavailable.
+ */
+export const zConnectionCredentialsUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_credentials_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
+ * ConnectionNotFoundError
+ *
+ * Connection not found.
+ */
+export const zConnectionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConnectionOauthFailedError
+ *
+ * OAuth authorization could not be completed. Start authorization again.
+ */
+export const zConnectionOauthFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_oauth_failed'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionReauthorizationRequiredError
+ *
+ * The OAuth client changed or is unavailable. Start authorization again.
+ */
+export const zConnectionReauthorizationRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_reauthorization_required'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * ConnectionRequiredError
+ *
+ * Select a connection for every required tool before running.
+ */
+export const zConnectionRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_required'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * CredentialCheckUnavailableError
+ *
+ * Credential validation is temporarily unavailable.
+ */
+export const zCredentialCheckUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('credential_check_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * EmailCodeError
  *
  * Email code is invalid or expired.
@@ -335,6 +556,18 @@ export const zEmailSendIpLimitError = zErrorResponse.and(
   z.object({
     code: z.literal('email_send_ip_limit'),
     status: z.literal(429),
+  }),
+)
+
+/**
+ * EndUserLoginRequiredError
+ *
+ * Sign in to use personal connections.
+ */
+export const zEndUserLoginRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('end_user_login_required'),
+    status: z.literal(401),
   }),
 )
 
@@ -588,6 +821,24 @@ export const zJsonValueType = z.unknown()
 export const zJsonValue = z.unknown()
 
 /**
+ * EndUserConnectionCreatePayload
+ */
+export const zEndUserConnectionCreatePayload = z.object({
+  credentials: z.record(z.string(), zJsonValue),
+  name: z.string().min(1).max(100),
+  node_id: z.string().min(1).max(255),
+  workflow_id: z.uuid(),
+})
+
+/**
+ * EndUserConnectionUpdatePayload
+ */
+export const zEndUserConnectionUpdatePayload = z.object({
+  credentials: z.record(z.string(), zJsonValue).optional(),
+  name: z.string().min(1).max(100).optional(),
+})
+
+/**
  * HumanInputFormSubmissionData
  */
 export const zHumanInputFormSubmissionData = z.object({
@@ -641,6 +892,11 @@ export const zLicenseStatusModel = z.object({
 })
 
 /**
+ * LoginMode
+ */
+export const zLoginMode = z.enum(['console', 'end_user'])
+
+/**
  * LoginPayload
  */
 export const zLoginPayload = z.object({
@@ -653,6 +909,7 @@ export const zLoginPayload = z.object({
  */
 export const zLoginStatusQuery = z.object({
   app_code: z.string().nullish(),
+  mode: zLoginMode.optional().default('console'),
   user_id: z.string().nullish(),
 })
 
@@ -752,6 +1009,42 @@ export const zNoFileUploadedError = zErrorResponse.and(
 )
 
 /**
+ * NodeConnectionStatus
+ *
+ * The current selection's effective status for one published Tool node.
+ */
+export const zNodeConnectionStatus = z.enum([
+  'connected',
+  'disconnected',
+  'invalid',
+  'reconnect_required',
+])
+
+/**
+ * ConnectionPreflightRequirement
+ */
+export const zConnectionPreflightRequirement = z.object({
+  allowed_credential_types: z.array(zConnectionCredentialType),
+  check: zCredentialCheckResult.nullable(),
+  connection_id: z.string().nullable(),
+  node_id: z.string(),
+  node_ids: z.array(z.string()),
+  provider: z.string(),
+  purpose: z.string(),
+  status: zNodeConnectionStatus.nullable(),
+  title: z.string(),
+})
+
+/**
+ * EndUserConnectionPreflightResponse
+ */
+export const zEndUserConnectionPreflightResponse = z.object({
+  ready: z.boolean().readonly(),
+  requirements: z.array(zConnectionPreflightRequirement),
+  workflow_id: z.string(),
+})
+
+/**
  * NotChatAppError
  *
  * Please check if your app mode matches the right API route.
@@ -795,9 +1088,26 @@ export const zPassportAccessTokenResponse = z.object({
 })
 
 /**
+ * PassportLoginPayload
+ */
+export const zPassportLoginPayload = z.object({
+  code_verifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/),
+  login_code: z.string().min(1).max(256),
+})
+
+/**
+ * PassportLoginResponse
+ */
+export const zPassportLoginResponse = z.object({
+  access_token: z.string(),
+  webapp_access_token: z.string(),
+})
+
+/**
  * PassportQuery
  */
 export const zPassportQuery = z.object({
+  mode: zLoginMode.optional().default('console'),
   user_id: z.string().nullish(),
 })
 
@@ -1150,348 +1460,6 @@ export const zSystemParameters = z.object({
 })
 
 /**
- * Parameters
- */
-export const zParameters = z.object({
-  annotation_reply: z.object({
-    enabled: z.boolean().optional(),
-  }),
-  file_upload: z.object({
-    allowed_file_extensions: z.array(z.string()).optional(),
-    allowed_file_types: z
-      .array(z.enum(['audio', 'custom', 'document', 'image', 'video']))
-      .optional(),
-    allowed_file_upload_methods: z.array(z.enum(['local_file', 'remote_url'])).optional(),
-    enabled: z.boolean().optional(),
-    image: z
-      .object({
-        detail: z.string().optional(),
-        enabled: z.boolean().optional(),
-        number_limits: z.int().optional(),
-        transfer_methods: z.array(z.string()).optional(),
-      })
-      .optional(),
-    number_limits: z.int().optional(),
-  }),
-  more_like_this: z.object({
-    enabled: z.boolean().optional(),
-  }),
-  opening_statement: z.string().nullish(),
-  retriever_resource: z.object({
-    enabled: z.boolean().optional(),
-  }),
-  sensitive_word_avoidance: z.object({
-    enabled: z.boolean().optional(),
-  }),
-  speech_to_text: z.object({
-    enabled: z.boolean().optional(),
-  }),
-  suggested_questions: z.array(z.string()),
-  suggested_questions_after_answer: z.object({
-    enabled: z.boolean().optional(),
-  }),
-  system_parameters: zSystemParameters,
-  text_to_speech: z.object({
-    autoPlay: z.string().optional(),
-    enabled: z.boolean().optional(),
-    language: z.string().optional(),
-    voice: z.string().optional(),
-  }),
-  user_input_form: z.array(
-    z.union([
-      z
-        .object({
-          'text-input': z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          select: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          paragraph: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          number: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          external_data_tool: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          file: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          'file-list': z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          checkbox: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-      z
-        .object({
-          json_object: z.object({
-            allowed_file_extensions: z.array(z.string()).nullish(),
-            allowed_file_types: z.array(z.string()).nullish(),
-            allowed_file_upload_methods: z.array(z.string()).nullish(),
-            config: z.record(z.string(), z.unknown()).optional(),
-            default: z.unknown().optional(),
-            description: z.string().optional(),
-            hide: z.boolean().optional(),
-            json_schema: z.record(z.string(), z.unknown()).nullish(),
-            label: z.string(),
-            max_length: z.int().nullish(),
-            options: z.array(z.string()).optional(),
-            required: z.boolean().optional(),
-            type: z
-              .enum([
-                'checkbox',
-                'external_data_tool',
-                'file',
-                'file-list',
-                'json_object',
-                'number',
-                'paragraph',
-                'select',
-                'text-input',
-              ])
-              .optional(),
-            variable: z.string(),
-          }),
-        })
-        .strict(),
-    ]),
-  ),
-})
-
-/**
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
@@ -1733,6 +1701,335 @@ export const zWebAppCustomConfigResponse = z.object({
 })
 
 /**
+ * WebAppParametersResponse
+ */
+export const zWebAppParametersResponse = z.object({
+  account_login_enabled: z.boolean(),
+  account_login_url: z.string().nullable(),
+  allow_anonymous_end_user_auth: z.boolean(),
+  annotation_reply: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  file_upload: z.object({
+    allowed_file_extensions: z.array(z.string()).optional(),
+    allowed_file_types: z
+      .array(z.enum(['audio', 'custom', 'document', 'image', 'video']))
+      .optional(),
+    allowed_file_upload_methods: z.array(z.enum(['local_file', 'remote_url'])).optional(),
+    enabled: z.boolean().optional(),
+    image: z
+      .object({
+        detail: z.string().optional(),
+        enabled: z.boolean().optional(),
+        number_limits: z.int().optional(),
+        transfer_methods: z.array(z.string()).optional(),
+      })
+      .optional(),
+    number_limits: z.int().optional(),
+  }),
+  more_like_this: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  opening_statement: z.string().nullish(),
+  requires_end_user_connections: z.boolean(),
+  retriever_resource: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  sensitive_word_avoidance: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  speech_to_text: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  suggested_questions: z.array(z.string()),
+  suggested_questions_after_answer: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  system_parameters: zSystemParameters,
+  text_to_speech: z.object({
+    autoPlay: z.string().optional(),
+    enabled: z.boolean().optional(),
+    language: z.string().optional(),
+    voice: z.string().optional(),
+  }),
+  user_input_form: z.array(
+    z.union([
+      z.object({
+        'text-input': z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.object({
+        select: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.object({
+        paragraph: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.object({
+        number: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.object({
+        external_data_tool: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.object({
+        file: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.object({
+        'file-list': z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.object({
+        checkbox: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+      z.object({
+        json_object: z.object({
+          allowed_file_extensions: z.array(z.string()).nullish(),
+          allowed_file_types: z.array(z.string()).nullish(),
+          allowed_file_upload_methods: z.array(z.string()).nullish(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          default: z.unknown().optional(),
+          description: z.string().optional(),
+          hide: z.boolean().optional(),
+          json_schema: z.record(z.string(), z.unknown()).nullish(),
+          label: z.string(),
+          max_length: z.int().nullish(),
+          options: z.array(z.string()).optional(),
+          required: z.boolean().optional(),
+          type: z
+            .enum([
+              'checkbox',
+              'external_data_tool',
+              'file',
+              'file-list',
+              'json_object',
+              'number',
+              'paragraph',
+              'select',
+              'text-input',
+            ])
+            .optional(),
+          variable: z.string(),
+        }),
+      }),
+    ]),
+  ),
+  workflow_id: z.string().nullable(),
+})
+
+/**
  * WebFormRateLimitExceededError
  *
  * Too many form requests. Please try again later.
@@ -1741,6 +2038,18 @@ export const zWebFormRateLimitExceededError = zErrorResponse.and(
   z.object({
     code: z.literal('web_form_rate_limit_exceeded'),
     status: z.literal(429),
+  }),
+)
+
+/**
+ * WebLoginUnavailableError
+ *
+ * Web App login is temporarily unavailable. Please retry.
+ */
+export const zWebLoginUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('web_login_unavailable'),
+    status: z.literal(503),
   }),
 )
 
@@ -1846,9 +2155,22 @@ export const zHumanInputFormDefinitionResponse = z.object({
 })
 
 /**
+ * WorkflowChangedError
+ *
+ * The workflow changed. Confirm the connection selection again.
+ */
+export const zWorkflowChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_changed'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
+  connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   files: z
     .array(
       z.union([
@@ -1884,6 +2206,15 @@ export const zWorkflowRunPayload = z.object({
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
+  workflow_id: z.uuid().nullish(),
+})
+
+/**
+ * EndUserConnectionPreflightResponse
+ */
+export const zEndUserConnectionPreflightResponseWritable = z.object({
+  requirements: z.array(zConnectionPreflightRequirement),
+  workflow_id: z.string(),
 })
 
 /**
@@ -1970,6 +2301,94 @@ export const zPostCompletionMessagesByTaskIdStopPath = z.object({
  * Success
  */
 export const zPostCompletionMessagesByTaskIdStopResponse = zSimpleResultResponse
+
+export const zGetConnectionsQuery = z.object({
+  cursor: z.string().min(1).max(1024).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  provider: z.string().min(1).max(255).optional(),
+})
+
+/**
+ * Personal connections
+ */
+export const zGetConnectionsResponse = zEndUserConnectionListResponse
+
+export const zPostConnectionsBody = zEndUserConnectionCreatePayload
+
+/**
+ * API-key connection created
+ */
+export const zPostConnectionsResponse = zEndUserConnectionResponse
+
+export const zGetConnectionsConfigurationQuery = z.object({
+  conversation_id: z.uuid().optional(),
+})
+
+/**
+ * Saved Connection configuration
+ */
+export const zGetConnectionsConfigurationResponse = zConnectionConfigurationResponse
+
+export const zPostConnectionsOauthAuthorizationUrlBody = zEndUserConnectionOAuthPayload
+
+/**
+ * OAuth authorization URL
+ */
+export const zPostConnectionsOauthAuthorizationUrlResponse = zEndUserConnectionOAuthResponse
+
+export const zPostConnectionsPreflightBody = zEndUserConnectionPreflightPayload
+
+/**
+ * Explicit connection requirements and readiness
+ */
+export const zPostConnectionsPreflightResponse = zEndUserConnectionPreflightResponse
+
+export const zDeleteConnectionsByConnectionIdPath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * Connection deleted
+ */
+export const zDeleteConnectionsByConnectionIdResponse = z.void()
+
+export const zGetConnectionsByConnectionIdPath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * Personal connection
+ */
+export const zGetConnectionsByConnectionIdResponse = zEndUserConnectionResponse
+
+export const zPatchConnectionsByConnectionIdBody = zEndUserConnectionUpdatePayload
+
+export const zPatchConnectionsByConnectionIdPath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * Connection updated
+ */
+export const zPatchConnectionsByConnectionIdResponse = zEndUserConnectionResponse
+
+export const zPostConnectionsByConnectionIdCheckPath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * Credential check result
+ */
+export const zPostConnectionsByConnectionIdCheckResponse = zEndUserConnectionCheckResponse
+
+export const zPostConnectionsByConnectionIdReauthorizePath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * OAuth reauthorization URL
+ */
+export const zPostConnectionsByConnectionIdReauthorizeResponse = zEndUserConnectionOAuthResponse
 
 export const zGetConversationsQuery = z.object({
   last_id: z.string().optional(),
@@ -2112,6 +2531,7 @@ export const zPostLoginResponse = zAccessTokenResultResponse
 
 export const zGetLoginStatusQuery = z.object({
   app_code: z.string().optional(),
+  mode: z.enum(['console', 'end_user']).optional().default('console'),
   user_id: z.string().optional(),
 })
 
@@ -2182,9 +2602,10 @@ export const zGetMetaResponse = zAppMetaResponse
 /**
  * Success
  */
-export const zGetParametersResponse = zParameters
+export const zGetParametersResponse = zWebAppParametersResponse
 
 export const zGetPassportQuery = z.object({
+  mode: z.enum(['console', 'end_user']).optional().default('console'),
   user_id: z.string().optional(),
 })
 
@@ -2192,6 +2613,17 @@ export const zGetPassportQuery = z.object({
  * Passport retrieved successfully
  */
 export const zGetPassportResponse = zPassportAccessTokenResponse
+
+export const zPostPassportBody = zPassportLoginPayload
+
+export const zPostPassportHeaders = z.object({
+  'X-App-Code': z.string(),
+})
+
+/**
+ * Web login completed
+ */
+export const zPostPassportResponse = zPassportLoginResponse
 
 export const zPostRemoteFilesUploadBody = zRemoteFileUploadPayload
 

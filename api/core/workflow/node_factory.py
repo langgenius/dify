@@ -398,7 +398,11 @@ class DifyNodeFactory(NodeFactory):
         )
         self.workflow_tools = workflow_tools if workflow_tools is not None else {}
         self._tool_runtime = DifyToolNodeRuntime(
-            self._dify_context, execution_driver=execution_driver, workflow_tools=self.workflow_tools
+            self._dify_context,
+            execution_driver=execution_driver,
+            workflow_tools=self.workflow_tools,
+            graph=init_params.graph_config,
+            workflow_id=init_params.workflow_id,
         )
         self._http_request_file_manager = file_manager
         self._document_extractor_unstructured_api_config = UnstructuredApiConfig(

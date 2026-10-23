@@ -21,6 +21,7 @@ from services.web_authentication_service import (
     WebAuthenticationTokenGateway,
     WebEmailDeliveryRateLimitError,
 )
+from services.web_identity_service import WebIdentityService
 from services.web_passport_gateways import resolve_web_app_auth_type
 from services.web_passport_service import WebAppAuthType
 from tasks.mail_email_code_login import send_email_code_login_mail_task
@@ -35,9 +36,11 @@ class TokenManagerWebAuthenticationGateway(WebAuthenticationTokenGateway):
         *,
         reset_password_rate_limiter: RateLimiter,
         access_token_expire_minutes: int,
+        identities: WebIdentityService,
     ) -> None:
         self._reset_password_rate_limiter = reset_password_rate_limiter
         self._access_token_expire_minutes = access_token_expire_minutes
+        self._identities = identities
 
     @override
     def issue_access_token(self, *, account_id: str, email: str) -> str:
@@ -58,10 +61,20 @@ class TokenManagerWebAuthenticationGateway(WebAuthenticationTokenGateway):
         if not token:
             return False
         try:
-            PassportService().verify(token=token)
+            self._identities.resolve_login(PassportService().verify(token=token))
         except Exception:
             return False
         return True
+
+    @override
+    def account_id(self, token: str | None) -> str | None:
+        if not token:
+            return None
+        try:
+            claims = self._identities.resolve_login(PassportService().verify(token))
+            return claims.account_id if claims.token_source in {None, "webapp_account_login"} else None
+        except Exception:
+            return None
 
     @override
     def send_email_login_code(self, *, account_id: str, email: str, language: str) -> str:
@@ -174,12 +187,14 @@ class PassportWebAppSessionGateway(WebAppSessionGateway):
         *,
         sessions: WebAppSessionQuery,
         app_access: WebAppAccessGateway,
+        identities: WebIdentityService,
     ) -> None:
         self._sessions = sessions
         self._app_access = app_access
+        self._identities = identities
 
     @override
-    def verify(self, *, token: str | None, app_code: str, user_id: str | None) -> bool:
+    def verify(self, *, token: str | None, app_code: str, user_id: str | None, account_id: str | None = None) -> bool:
         if not token:
             return False
         try:
@@ -197,11 +212,13 @@ class PassportWebAppSessionGateway(WebAppSessionGateway):
                 app_code=token_app_code,
                 end_user_id=end_user_id,
             )
-            if session is None:
+            if session is None or (account_id is not None and session.account_id != account_id):
                 return False
-            if user_id is not None and session.end_user_session_id != user_id:
+            self._identities.validate_passport(decoded, account_id=session.account_id)
+            if session.account_id is None and user_id is not None and session.end_user_session_id != user_id:
                 return False
-
+            if session.account_id is not None:
+                decoded = {**decoded, "user_id": session.account_id}
             return self._verify_webapp_auth_claims(decoded, app_id)
         except Exception:
             return False
@@ -211,7 +228,7 @@ class PassportWebAppSessionGateway(WebAppSessionGateway):
         expected_auth_type = resolve_web_app_auth_type(access_mode)
         source = decoded.get("token_source")
         if expected_auth_type != WebAppAuthType.PUBLIC:
-            if source != "webapp":
+            if source not in {"webapp", "webapp_account"}:
                 return False
             user_id = decoded.get("user_id")
             if not isinstance(user_id, str):

@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict
 
+from services.entities.account_login_entities import LoginMode
+
 
 @dataclass(frozen=True, slots=True)
 class WebAppRecord:
@@ -29,6 +31,7 @@ class WebPassportRequest:
     app_code: str
     user_session_id: str | None
     access_token: str | None
+    mode: LoginMode = LoginMode.CONSOLE
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +40,7 @@ class WebPassportResult:
 
 
 class WebAppLoginClaims(BaseModel):
+    sub: str | None = None
     token_source: str | None = None
     user_id: str | None = None
     end_user_id: str | None = None
@@ -45,3 +49,7 @@ class WebAppLoginClaims(BaseModel):
     exp: int | None = None
 
     model_config = ConfigDict(extra="ignore")
+
+    @property
+    def account_id(self) -> str | None:
+        return self.user_id if self.token_source is None or self.auth_type == "internal" else None

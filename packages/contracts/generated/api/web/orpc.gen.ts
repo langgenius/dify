@@ -11,9 +11,19 @@ import {
   zAudioTooLargeError,
   zAuthenticationFailedError,
   zCompletionRequestError,
+  zConnectionConfigurationInvalidError,
+  zConnectionConflictError,
+  zConnectionCredentialsInvalidError,
+  zConnectionCredentialsUnavailableError,
+  zConnectionNotFoundError,
+  zConnectionOauthFailedError,
+  zConnectionReauthorizationRequiredError,
+  zConnectionRequiredError,
+  zCredentialCheckUnavailableError,
   zEmailCodeError,
   zEmailPasswordResetLimitError,
   zEmailSendIpLimitError,
+  zEndUserLoginRequiredError,
   zFileExtensionBlockedError,
   zFileTooLargeError,
   zFilenameNotExistsError,
@@ -50,12 +60,22 @@ import {
   zUnsupportedFileTypeError,
   zUploadTokenRequiredError,
   zWebFormRateLimitExceededError,
+  zWebLoginUnavailableError,
+  zWorkflowChangedError,
 } from './zod.gen.ts'
 import {
+  zDeleteConnectionsByConnectionIdPath,
+  zDeleteConnectionsByConnectionIdResponse,
   zDeleteConversationsByCIdPath,
   zDeleteConversationsByCIdResponse,
   zDeleteSavedMessagesByMessageIdPath,
   zDeleteSavedMessagesByMessageIdResponse,
+  zGetConnectionsByConnectionIdPath,
+  zGetConnectionsByConnectionIdResponse,
+  zGetConnectionsConfigurationQuery,
+  zGetConnectionsConfigurationResponse,
+  zGetConnectionsQuery,
+  zGetConnectionsResponse,
   zGetConversationsQuery,
   zGetConversationsResponse,
   zGetFormHumanInputByFormTokenPath,
@@ -85,6 +105,9 @@ import {
   zGetWebappPermissionResponse,
   zGetWorkflowByTaskIdEventsPath,
   zGetWorkflowByTaskIdEventsResponse,
+  zPatchConnectionsByConnectionIdBody,
+  zPatchConnectionsByConnectionIdPath,
+  zPatchConnectionsByConnectionIdResponse,
   zPatchConversationsByCIdPinPath,
   zPatchConversationsByCIdPinResponse,
   zPatchConversationsByCIdUnpinPath,
@@ -98,6 +121,16 @@ import {
   zPostCompletionMessagesByTaskIdStopPath,
   zPostCompletionMessagesByTaskIdStopResponse,
   zPostCompletionMessagesResponse,
+  zPostConnectionsBody,
+  zPostConnectionsByConnectionIdCheckPath,
+  zPostConnectionsByConnectionIdCheckResponse,
+  zPostConnectionsByConnectionIdReauthorizePath,
+  zPostConnectionsByConnectionIdReauthorizeResponse,
+  zPostConnectionsOauthAuthorizationUrlBody,
+  zPostConnectionsOauthAuthorizationUrlResponse,
+  zPostConnectionsPreflightBody,
+  zPostConnectionsPreflightResponse,
+  zPostConnectionsResponse,
   zPostConversationsByCIdNameBody,
   zPostConversationsByCIdNamePath,
   zPostConversationsByCIdNameQuery,
@@ -126,6 +159,9 @@ import {
   zPostMessagesByMessageIdFeedbacksPath,
   zPostMessagesByMessageIdFeedbacksQuery,
   zPostMessagesByMessageIdFeedbacksResponse,
+  zPostPassportBody,
+  zPostPassportHeaders,
+  zPostPassportResponse,
   zPostRemoteFilesUploadBody,
   zPostRemoteFilesUploadResponse,
   zPostSavedMessagesBody,
@@ -217,11 +253,27 @@ export const post3 = oc
     agent_not_published: { status: 400, data: zAgentNotPublishedError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+    connection_credentials_unavailable: {
+      status: 503,
+      data: zConnectionCredentialsUnavailableError,
+    },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    connection_required: { status: 400, data: zConnectionRequiredError },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     rate_limit_error: { status: 429, data: zRateLimitError },
+    workflow_changed: { status: 409, data: zWorkflowChangedError },
   })
 
 export const chatMessages = {
@@ -282,9 +334,273 @@ export const completionMessages = {
 }
 
 /**
+ * Read saved App or Conversation choices without validating or refreshing credentials.
+ */
+export const get = oc
+  .route({
+    description:
+      'Read saved App or Conversation choices without validating or refreshing credentials.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getConnectionsConfiguration',
+    path: '/connections/configuration',
+    tags: ['web'],
+  })
+  .input(z.object({ query: zGetConnectionsConfigurationQuery.optional() }).optional())
+  .output(zGetConnectionsConfigurationResponse)
+  .errors({
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+  })
+
+export const configuration = {
+  get,
+}
+
+export const post6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postConnectionsOauthAuthorizationUrl',
+    path: '/connections/oauth/authorization-url',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostConnectionsOauthAuthorizationUrlBody }))
+  .output(zPostConnectionsOauthAuthorizationUrlResponse)
+  .errors({
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_credentials_unavailable: {
+      status: 503,
+      data: zConnectionCredentialsUnavailableError,
+    },
+    connection_oauth_failed: { status: 400, data: zConnectionOauthFailedError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+    workflow_changed: { status: 409, data: zWorkflowChangedError },
+  })
+
+export const authorizationUrl = {
+  post: post6,
+}
+
+export const oauth = {
+  authorizationUrl,
+}
+
+export const post7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postConnectionsPreflight',
+    path: '/connections/preflight',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostConnectionsPreflightBody }))
+  .output(zPostConnectionsPreflightResponse)
+  .errors({
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_unavailable: {
+      status: 503,
+      data: zConnectionCredentialsUnavailableError,
+    },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+    workflow_changed: { status: 409, data: zWorkflowChangedError },
+  })
+
+export const preflight = {
+  post: post7,
+}
+
+export const post8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postConnectionsByConnectionIdCheck',
+    path: '/connections/{connection_id}/check',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostConnectionsByConnectionIdCheckPath }))
+  .output(zPostConnectionsByConnectionIdCheckResponse)
+  .errors({
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_unavailable: {
+      status: 503,
+      data: zConnectionCredentialsUnavailableError,
+    },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+  })
+
+export const check = {
+  post: post8,
+}
+
+export const post9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postConnectionsByConnectionIdReauthorize',
+    path: '/connections/{connection_id}/reauthorize',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostConnectionsByConnectionIdReauthorizePath }))
+  .output(zPostConnectionsByConnectionIdReauthorizeResponse)
+  .errors({
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_credentials_unavailable: {
+      status: 503,
+      data: zConnectionCredentialsUnavailableError,
+    },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_oauth_failed: { status: 400, data: zConnectionOauthFailedError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+  })
+
+export const reauthorize = {
+  post: post9,
+}
+
+export const delete_ = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteConnectionsByConnectionId',
+    path: '/connections/{connection_id}',
+    successStatus: 204,
+    tags: ['web'],
+  })
+  .input(z.object({ params: zDeleteConnectionsByConnectionIdPath }))
+  .output(zDeleteConnectionsByConnectionIdResponse)
+  .errors({
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+  })
+
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getConnectionsByConnectionId',
+    path: '/connections/{connection_id}',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zGetConnectionsByConnectionIdPath }))
+  .output(zGetConnectionsByConnectionIdResponse)
+  .errors({
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+  })
+
+export const patch = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchConnectionsByConnectionId',
+    path: '/connections/{connection_id}',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPatchConnectionsByConnectionIdBody,
+      params: zPatchConnectionsByConnectionIdPath,
+    }),
+  )
+  .output(zPatchConnectionsByConnectionIdResponse)
+  .errors({
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+    connection_credentials_unavailable: {
+      status: 503,
+      data: zConnectionCredentialsUnavailableError,
+    },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+  })
+
+export const byConnectionId = {
+  delete: delete_,
+  get: get2,
+  patch,
+  check,
+  reauthorize,
+}
+
+export const get3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getConnections',
+    path: '/connections',
+    tags: ['web'],
+  })
+  .input(z.object({ query: zGetConnectionsQuery.optional() }).optional())
+  .output(zGetConnectionsResponse)
+  .errors({
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+  })
+
+export const post10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postConnections',
+    path: '/connections',
+    successStatus: 201,
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostConnectionsBody }))
+  .output(zPostConnectionsResponse)
+  .errors({
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+    connection_credentials_unavailable: {
+      status: 503,
+      data: zConnectionCredentialsUnavailableError,
+    },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+    workflow_changed: { status: 409, data: zWorkflowChangedError },
+  })
+
+export const connections = {
+  get: get3,
+  post: post10,
+  configuration,
+  oauth,
+  preflight,
+  byConnectionId,
+}
+
+/**
  * Rename a specific conversation with a custom name or auto-generate one.
  */
-export const post6 = oc
+export const post11 = oc
   .route({
     description: 'Rename a specific conversation with a custom name or auto-generate one.',
     inputStructure: 'detailed',
@@ -304,13 +620,13 @@ export const post6 = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const name = {
-  post: post6,
+  post: post11,
 }
 
 /**
  * Pin a specific conversation to keep it at the top of the list.
  */
-export const patch = oc
+export const patch2 = oc
   .route({
     description: 'Pin a specific conversation to keep it at the top of the list.',
     inputStructure: 'detailed',
@@ -324,13 +640,13 @@ export const patch = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const pin = {
-  patch,
+  patch: patch2,
 }
 
 /**
  * Unpin a specific conversation to remove it from the top of the list.
  */
-export const patch2 = oc
+export const patch3 = oc
   .route({
     description: 'Unpin a specific conversation to remove it from the top of the list.',
     inputStructure: 'detailed',
@@ -344,13 +660,13 @@ export const patch2 = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const unpin = {
-  patch: patch2,
+  patch: patch3,
 }
 
 /**
  * Delete a specific conversation.
  */
-export const delete_ = oc
+export const delete2 = oc
   .route({
     description: 'Delete a specific conversation.',
     inputStructure: 'detailed',
@@ -365,7 +681,7 @@ export const delete_ = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const byCId = {
-  delete: delete_,
+  delete: delete2,
   name,
   pin,
   unpin,
@@ -374,7 +690,7 @@ export const byCId = {
 /**
  * Retrieve paginated list of conversations for a chat application.
  */
-export const get = oc
+export const get4 = oc
   .route({
     description: 'Retrieve paginated list of conversations for a chat application.',
     inputStructure: 'detailed',
@@ -388,14 +704,14 @@ export const get = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const conversations = {
-  get,
+  get: get4,
   byCId,
 }
 
 /**
  * Verify email code and complete login
  */
-export const post7 = oc
+export const post12 = oc
   .route({
     description: 'Verify email code and complete login',
     inputStructure: 'detailed',
@@ -414,13 +730,13 @@ export const post7 = oc
   })
 
 export const validity = {
-  post: post7,
+  post: post12,
 }
 
 /**
  * Send email verification code for login
  */
-export const post8 = oc
+export const post13 = oc
   .route({
     description: 'Send email verification code for login',
     inputStructure: 'detailed',
@@ -434,7 +750,7 @@ export const post8 = oc
   .errors({ authentication_failed: { status: 401, data: zAuthenticationFailedError } })
 
 export const emailCodeLogin = {
-  post: post8,
+  post: post13,
   validity,
 }
 
@@ -465,7 +781,7 @@ export const emailCodeLogin = {
  * UnsupportedFileTypeError: File type not supported
  * BlockedFileExtensionError: File extension is blocked
  */
-export const post9 = oc
+export const post14 = oc
   .route({
     description:
       'Upload a file for use in web applications\nAccepts file uploads for use within web applications, supporting\nmultiple file types with automatic validation and storage.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user uploading the file\n\nForm Parameters:\n    file: The file to upload (required)\n    source: Optional source type (datasets or None)\n\nReturns:\n    dict: File information including ID, URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    NoFileUploadedError: No file provided in request\n    TooManyFilesError: Multiple files provided (only one allowed)\n    FilenameNotExistsError: File has no filename\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported\n    BlockedFileExtensionError: File extension is blocked',
@@ -488,7 +804,7 @@ export const post9 = oc
   })
 
 export const upload = {
-  post: post9,
+  post: post14,
 }
 
 export const files = {
@@ -498,7 +814,7 @@ export const files = {
 /**
  * Reset user password with verification token
  */
-export const post10 = oc
+export const post15 = oc
   .route({
     description: 'Reset user password with verification token',
     inputStructure: 'detailed',
@@ -516,13 +832,13 @@ export const post10 = oc
   })
 
 export const resets = {
-  post: post10,
+  post: post15,
 }
 
 /**
  * Verify password reset token validity
  */
-export const post11 = oc
+export const post16 = oc
   .route({
     description: 'Verify password reset token validity',
     inputStructure: 'detailed',
@@ -541,13 +857,13 @@ export const post11 = oc
   })
 
 export const validity2 = {
-  post: post11,
+  post: post16,
 }
 
 /**
  * Send password reset email
  */
-export const post12 = oc
+export const post17 = oc
   .route({
     description: 'Send password reset email',
     inputStructure: 'detailed',
@@ -565,7 +881,7 @@ export const post12 = oc
   })
 
 export const forgotPassword = {
-  post: post12,
+  post: post17,
   resets,
   validity: validity2,
 }
@@ -576,7 +892,7 @@ export const forgotPassword = {
  * Issue an upload token for an active human input form
  * POST /api/form/human_input/<form_token>/upload-token
  */
-export const post13 = oc
+export const post18 = oc
   .route({
     description:
       'Issue an upload token for an active human input form\nPOST /api/form/human_input/<form_token>/upload-token',
@@ -596,7 +912,7 @@ export const post13 = oc
   })
 
 export const uploadToken = {
-  post: post13,
+  post: post18,
 }
 
 /**
@@ -605,7 +921,7 @@ export const uploadToken = {
  * Get a human input form definition by token
  * GET /api/form/human_input/<form_token>
  */
-export const get2 = oc
+export const get5 = oc
   .route({
     description:
       'Get a human input form definition by token\nGET /api/form/human_input/<form_token>',
@@ -638,7 +954,7 @@ export const get2 = oc
  * "action": "Approve"
  * }
  */
-export const post14 = oc
+export const post19 = oc
   .route({
     description:
       'Submit a human input form by token\nPOST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
@@ -664,8 +980,8 @@ export const post14 = oc
   })
 
 export const byFormToken = {
-  get: get2,
-  post: post14,
+  get: get5,
+  post: post19,
   uploadToken,
 }
 
@@ -680,7 +996,7 @@ export const form = {
 /**
  * Upload one local file or remote URL file for a HITL human input form
  */
-export const post15 = oc
+export const post20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -712,7 +1028,7 @@ export const post15 = oc
   })
 
 export const files2 = {
-  post: post15,
+  post: post20,
 }
 
 export const humanInputForms = {
@@ -722,7 +1038,7 @@ export const humanInputForms = {
 /**
  * Check login status
  */
-export const get3 = oc
+export const get6 = oc
   .route({
     description: 'Check login status',
     inputStructure: 'detailed',
@@ -735,7 +1051,7 @@ export const get3 = oc
   .output(zGetLoginStatusResponse)
 
 export const status = {
-  get: get3,
+  get: get6,
 }
 
 /**
@@ -743,7 +1059,7 @@ export const status = {
  *
  * Authenticate user for web application access
  */
-export const post16 = oc
+export const post21 = oc
   .route({
     description: 'Authenticate user for web application access',
     inputStructure: 'detailed',
@@ -761,14 +1077,14 @@ export const post16 = oc
   })
 
 export const login = {
-  post: post16,
+  post: post21,
   status,
 }
 
 /**
  * Logout user from web application
  */
-export const post17 = oc
+export const post22 = oc
   .route({
     description: 'Logout user from web application',
     inputStructure: 'detailed',
@@ -780,13 +1096,13 @@ export const post17 = oc
   .output(zPostLogoutResponse)
 
 export const logout = {
-  post: post17,
+  post: post22,
 }
 
 /**
  * Submit feedback (like/dislike) for a specific message.
  */
-export const post18 = oc
+export const post23 = oc
   .route({
     description: 'Submit feedback (like/dislike) for a specific message.',
     inputStructure: 'detailed',
@@ -805,13 +1121,13 @@ export const post18 = oc
   .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks = {
-  post: post18,
+  post: post23,
 }
 
 /**
  * Generate a new completion similar to an existing message (completion apps only).
  */
-export const get4 = oc
+export const get7 = oc
   .route({
     description: 'Generate a new completion similar to an existing message (completion apps only).',
     inputStructure: 'detailed',
@@ -837,13 +1153,13 @@ export const get4 = oc
   })
 
 export const moreLikeThis = {
-  get: get4,
+  get: get7,
 }
 
 /**
  * Get suggested follow-up questions after a message (chat apps only).
  */
-export const get5 = oc
+export const get8 = oc
   .route({
     description: 'Get suggested follow-up questions after a message (chat apps only).',
     inputStructure: 'detailed',
@@ -867,7 +1183,7 @@ export const get5 = oc
   })
 
 export const suggestedQuestions = {
-  get: get5,
+  get: get8,
 }
 
 export const byMessageId = {
@@ -879,7 +1195,7 @@ export const byMessageId = {
 /**
  * Retrieve paginated list of messages from a conversation in a chat application.
  */
-export const get6 = oc
+export const get9 = oc
   .route({
     description: 'Retrieve paginated list of messages from a conversation in a chat application.',
     inputStructure: 'detailed',
@@ -893,7 +1209,7 @@ export const get6 = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const messages = {
-  get: get6,
+  get: get9,
   byMessageId,
 }
 
@@ -902,7 +1218,7 @@ export const messages = {
  *
  * Retrieve the metadata for a specific app.
  */
-export const get7 = oc
+export const get10 = oc
   .route({
     description: 'Retrieve the metadata for a specific app.',
     inputStructure: 'detailed',
@@ -916,7 +1232,7 @@ export const get7 = oc
   .errors({ app_unavailable: { status: 400, data: zAppUnavailableError } })
 
 export const meta = {
-  get: get7,
+  get: get10,
 }
 
 /**
@@ -924,7 +1240,7 @@ export const meta = {
  *
  * Retrieve the parameters for a specific app.
  */
-export const get8 = oc
+export const get11 = oc
   .route({
     description: 'Retrieve the parameters for a specific app.',
     inputStructure: 'detailed',
@@ -941,13 +1257,13 @@ export const get8 = oc
   })
 
 export const parameters = {
-  get: get8,
+  get: get11,
 }
 
 /**
  * Get authentication passport for web application access
  */
-export const get9 = oc
+export const get12 = oc
   .route({
     description: 'Get authentication passport for web application access',
     inputStructure: 'detailed',
@@ -958,9 +1274,31 @@ export const get9 = oc
   })
   .input(z.object({ query: zGetPassportQuery.optional() }).optional())
   .output(zGetPassportResponse)
+  .errors({ end_user_login_required: { status: 401, data: zEndUserLoginRequiredError } })
+
+/**
+ * Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and a Web-only login proof for subsequent visits.
+ */
+export const post24 = oc
+  .route({
+    description:
+      'Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and a Web-only login proof for subsequent visits.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postPassport',
+    path: '/passport',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostPassportBody, headers: zPostPassportHeaders }))
+  .output(zPostPassportResponse)
+  .errors({
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+    web_login_unavailable: { status: 503, data: zWebLoginUnavailableError },
+  })
 
 export const passport = {
-  get: get9,
+  get: get12,
+  post: post24,
 }
 
 /**
@@ -991,7 +1329,7 @@ export const passport = {
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
  */
-export const post19 = oc
+export const post25 = oc
   .route({
     description:
       'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileInvalidUrlError: Remote file URL is invalid\n    RemoteFileUrlBlockedError: Remote file URL is blocked\n    RemoteFileNotFoundError: Remote file does not exist\n    RemoteFileAccessDeniedError: Remote file requires authorization\n    RemoteFileUnavailableError: Remote file is unavailable\n    RemoteFileInvalidResponseError: Remote file response is invalid\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
@@ -1018,7 +1356,7 @@ export const post19 = oc
   })
 
 export const upload2 = {
-  post: post19,
+  post: post25,
 }
 
 /**
@@ -1039,7 +1377,7 @@ export const upload2 = {
  * Raises:
  * HTTPException: If the remote file cannot be accessed
  */
-export const get10 = oc
+export const get13 = oc
   .route({
     description:
       'Get information about a remote file\nRetrieves basic information about a file located at a remote URL,\nincluding content type and content length.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n    url: URL-encoded path to the remote file\n\nReturns:\n    dict: Remote file information including type and length\n\nRaises:\n    HTTPException: If the remote file cannot be accessed',
@@ -1062,7 +1400,7 @@ export const get10 = oc
   })
 
 export const byUrl = {
-  get: get10,
+  get: get13,
 }
 
 export const remoteFiles = {
@@ -1073,7 +1411,7 @@ export const remoteFiles = {
 /**
  * Remove a message from saved messages.
  */
-export const delete2 = oc
+export const delete3 = oc
   .route({
     description: 'Remove a message from saved messages.',
     inputStructure: 'detailed',
@@ -1088,13 +1426,13 @@ export const delete2 = oc
   .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const byMessageId2 = {
-  delete: delete2,
+  delete: delete3,
 }
 
 /**
  * Retrieve paginated list of saved messages for a completion application.
  */
-export const get11 = oc
+export const get14 = oc
   .route({
     description: 'Retrieve paginated list of saved messages for a completion application.',
     inputStructure: 'detailed',
@@ -1110,7 +1448,7 @@ export const get11 = oc
 /**
  * Save a specific message for later reference.
  */
-export const post20 = oc
+export const post26 = oc
   .route({
     description: 'Save a specific message for later reference.',
     inputStructure: 'detailed',
@@ -1124,8 +1462,8 @@ export const post20 = oc
   .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const savedMessages = {
-  get: get11,
-  post: post20,
+  get: get14,
+  post: post26,
   byMessageId: byMessageId2,
 }
 
@@ -1134,7 +1472,7 @@ export const savedMessages = {
  *
  * Retrieve app site information and configuration.
  */
-export const get12 = oc
+export const get15 = oc
   .route({
     description: 'Retrieve app site information and configuration.',
     inputStructure: 'detailed',
@@ -1147,7 +1485,7 @@ export const get12 = oc
   .output(zGetSiteResponse)
 
 export const site = {
-  get: get12,
+  get: get15,
 }
 
 /**
@@ -1159,7 +1497,7 @@ export const site = {
  *
  * Authentication configuration must be available before the authentication flow can be selected.
  */
-export const get13 = oc
+export const get16 = oc
   .route({
     description:
       'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nAuthentication configuration must be available before the authentication flow can be selected.',
@@ -1173,7 +1511,7 @@ export const get13 = oc
   .output(zGetSystemFeaturesResponse)
 
 export const systemFeatures = {
-  get: get13,
+  get: get16,
 }
 
 /**
@@ -1181,7 +1519,7 @@ export const systemFeatures = {
  *
  * Convert text to audio using text-to-speech service.
  */
-export const post21 = oc
+export const post27 = oc
   .route({
     description: 'Convert text to audio using text-to-speech service.',
     inputStructure: 'detailed',
@@ -1202,13 +1540,13 @@ export const post21 = oc
   })
 
 export const textToAudio = {
-  post: post21,
+  post: post27,
 }
 
 /**
  * Retrieve the access mode for a web application (public or restricted).
  */
-export const get14 = oc
+export const get17 = oc
   .route({
     description: 'Retrieve the access mode for a web application (public or restricted).',
     inputStructure: 'detailed',
@@ -1222,13 +1560,13 @@ export const get14 = oc
   .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const accessMode = {
-  get: get14,
+  get: get17,
 }
 
 /**
  * Check if user has permission to access a web application.
  */
-export const get15 = oc
+export const get18 = oc
   .route({
     description: 'Check if user has permission to access a web application.',
     inputStructure: 'detailed',
@@ -1241,7 +1579,7 @@ export const get15 = oc
   .output(zGetWebappPermissionResponse)
 
 export const permission = {
-  get: get15,
+  get: get18,
 }
 
 export const webapp = {
@@ -1256,7 +1594,7 @@ export const webapp = {
  *
  * Returns Server-Sent Events stream.
  */
-export const get16 = oc
+export const get19 = oc
   .route({
     description: 'GET /api/workflow/<task_id>/events\n\nReturns Server-Sent Events stream.',
     inputStructure: 'detailed',
@@ -1271,7 +1609,7 @@ export const get16 = oc
   .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const events = {
-  get: get16,
+  get: get19,
 }
 
 export const byTaskId3 = {
@@ -1287,7 +1625,7 @@ export const workflow = {
  *
  * Execute a workflow with provided inputs and files.
  */
-export const post22 = oc
+export const post28 = oc
   .route({
     description: 'Execute a workflow with provided inputs and files.',
     inputStructure: 'detailed',
@@ -1301,6 +1639,21 @@ export const post22 = oc
   .output(zPostWorkflowsRunResponse)
   .errors({
     completion_request_error: { status: 400, data: zCompletionRequestError },
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
+    connection_credentials_unavailable: {
+      status: 503,
+      data: zConnectionCredentialsUnavailableError,
+    },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    connection_required: { status: 400, data: zConnectionRequiredError },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_workflow_app: { status: 400, data: zNotWorkflowAppError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
@@ -1310,10 +1663,11 @@ export const post22 = oc
       status: 403,
       data: zTriggerWorkflowServiceModeUnavailableError,
     },
+    workflow_changed: { status: 409, data: zWorkflowChangedError },
   })
 
 export const run = {
-  post: post22,
+  post: post28,
 }
 
 /**
@@ -1321,7 +1675,7 @@ export const run = {
  *
  * Stop a running workflow task.
  */
-export const post23 = oc
+export const post29 = oc
   .route({
     description: 'Stop a running workflow task.',
     inputStructure: 'detailed',
@@ -1336,7 +1690,7 @@ export const post23 = oc
   .errors({ not_workflow_app: { status: 400, data: zNotWorkflowAppError } })
 
 export const stop3 = {
-  post: post23,
+  post: post29,
 }
 
 export const byTaskId4 = {
@@ -1356,6 +1710,7 @@ export const contract = {
   audioToText,
   chatMessages,
   completionMessages,
+  connections,
   conversations,
   emailCodeLogin,
   files,

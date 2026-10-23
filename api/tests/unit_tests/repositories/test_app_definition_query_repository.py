@@ -614,3 +614,144 @@ def test_get_tool_icon_sources_returns_empty_for_missing_published_config(
     repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
 
     assert repository.get_tool_icon_sources(_APP_ID) == ()
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+@pytest.mark.parametrize("source", ["workspace", "end_user", "reuse_workspace", "reuse_end_user", "legacy", "note"])
+def test_web_parameters_derive_connection_requirements_from_selected_published_graph(
+    sqlite_session_factory: sessionmaker[Session], mode: AppMode, source: str
+) -> None:
+    root_source = "end_user" if source in {"end_user", "reuse_end_user"} else "workspace"
+    tool = {"id": "tool-1", "data": {"type": "tool", "credential_source": root_source}}
+    if source == "legacy":
+        tool["data"].pop("credential_source")
+    if source == "note":
+        tool["type"] = "custom-note"
+        tool["data"]["credential_source"] = "end_user"
+    variables: list[dict[str, object]] = []
+    nodes = [{"id": "start", "data": {"type": "start", "variables": variables}}, tool]
+    if source.startswith("reuse_"):
+        nodes.append(
+            {"id": "tool-2", "data": {"type": "tool", "credential_source": "reuse_node", "reuse_node_id": "tool-1"}}
+        )
+    with sqlite_session_factory.begin() as session:
+        app = _persist_app(session, mode=mode)
+        published = Workflow(
+            id=_WORKFLOW_ID,
+            tenant_id=_TENANT_ID,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW if mode == AppMode.WORKFLOW else WorkflowType.CHAT,
+            version="published",
+            graph=json.dumps({"nodes": nodes}),
+            features='{"opening_statement":"Published"}',
+            created_by=_ACCOUNT_ID,
+        )
+        draft = Workflow(
+            tenant_id=_TENANT_ID,
+            app_id=app.id,
+            type=published.type,
+            version="draft",
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {
+                            "id": "draft-tool",
+                            "data": {
+                                "type": "tool",
+                                "credential_source": "workspace" if root_source == "end_user" else "end_user",
+                            },
+                        }
+                    ]
+                }
+            ),
+            features='{"opening_statement":"Draft"}',
+            created_by=_ACCOUNT_ID,
+        )
+        session.add_all([published, draft])
+        app.workflow_id = published.id
+    repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
+    result = repository.get_web_parameter_config(_APP_ID, _TENANT_ID)
+    assert result is not None
+    assert result.workflow_id == _WORKFLOW_ID
+    assert result.parameters.features_dict["opening_statement"] == "Published"
+    assert result.requires_end_user_connections == (root_source == "end_user")
+    assert repository.get_web_parameter_config(_APP_ID, _OTHER_TENANT_ID) is None
+
+
+@pytest.mark.parametrize("reference", ["draft", "foreign_app", "foreign_tenant", "missing"])
+def test_web_parameters_do_not_treat_unavailable_workflow_as_connection_free(
+    sqlite_session_factory: sessionmaker[Session], reference: str
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        app = _persist_app(session, mode=AppMode.WORKFLOW)
+        app.workflow_id = _WORKFLOW_ID
+        if reference != "missing":
+            session.add(
+                Workflow(
+                    id=_WORKFLOW_ID,
+                    app_id=_PROVIDER_ID if reference == "foreign_app" else _APP_ID,
+                    tenant_id=_OTHER_TENANT_ID if reference == "foreign_tenant" else _TENANT_ID,
+                    type=WorkflowType.WORKFLOW,
+                    version="draft" if reference == "draft" else "published",
+                    graph='{"nodes":[]}',
+                    features="{}",
+                    created_by=_ACCOUNT_ID,
+                )
+            )
+    repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
+    assert repository.get_web_parameter_config(_APP_ID, _TENANT_ID) is None
+
+
+def test_web_model_app_parameters_have_no_workflow_requirements(sqlite_session_factory: sessionmaker[Session]) -> None:
+    with sqlite_session_factory.begin() as session:
+        app = _persist_app(session)
+        config = AppModelConfig(app_id=app.id, opening_statement="Hello", user_input_form="[]")
+        session.add(config)
+        app.app_model_config_id = config.id
+    result = AppDefinitionQueryRepository(session_factory=sqlite_session_factory).get_web_parameter_config(
+        _APP_ID, _TENANT_ID
+    )
+    assert result is not None
+    assert result.workflow_id is None
+    assert result.requires_end_user_connections is False
+    assert result.parameters.features_dict["opening_statement"] == "Hello"
+
+
+def test_publish_during_parameter_mapping_does_not_mix_versions(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        app = _persist_app(session, mode=AppMode.WORKFLOW)
+        for workflow_id, source, title in ((_WORKFLOW_ID, "workspace", "First"), (_PROVIDER_ID, "end_user", "Second")):
+            session.add(
+                Workflow(
+                    id=workflow_id,
+                    tenant_id=_TENANT_ID,
+                    app_id=app.id,
+                    type=WorkflowType.WORKFLOW,
+                    version=title,
+                    graph=json.dumps(
+                        {"nodes": [{"id": "tool", "data": {"type": "tool", "credential_source": source}}]}
+                    ),
+                    features=json.dumps({"opening_statement": title}),
+                    created_by=_ACCOUNT_ID,
+                )
+            )
+        app.workflow_id = _WORKFLOW_ID
+    original = Workflow.user_input_form
+
+    def form(workflow: Workflow, to_old_structure: bool = False) -> object:
+        with sqlite_session_factory.begin() as session:
+            app = session.get(App, _APP_ID)
+            assert app is not None
+            app.workflow_id = _PROVIDER_ID
+        return original(workflow, to_old_structure=to_old_structure)
+
+    monkeypatch.setattr(Workflow, "user_input_form", form)
+    result = AppDefinitionQueryRepository(session_factory=sqlite_session_factory).get_web_parameter_config(
+        _APP_ID, _TENANT_ID
+    )
+    assert result is not None
+    assert result.workflow_id == _WORKFLOW_ID
+    assert result.parameters.features_dict["opening_statement"] == "First"
+    assert result.requires_end_user_connections is False

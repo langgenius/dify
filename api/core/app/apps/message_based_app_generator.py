@@ -29,6 +29,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.file_reference import resolve_file_record_id
+from extensions.application_services.end_user_connections import initialize_conversation_connections
 from extensions.ext_database import db
 from extensions.ext_redis import get_pubsub_broadcast_channel
 from libs.broadcast_channel.channel import SupportsPreparedSubscription, Topic
@@ -238,6 +239,16 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
             if message_files:
                 session.add_all(message_files)
+
+            if (
+                created_new_conversation
+                and isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
+                and application_generate_entity.invoke_from == InvokeFrom.WEB_APP
+                and application_generate_entity.connection_context is not None
+            ):
+                initialize_conversation_connections(
+                    session, application_generate_entity.connection_context, conversation
+                )
 
             session.commit()
 

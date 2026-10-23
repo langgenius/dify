@@ -9,6 +9,7 @@ from typing import override
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
+from context.connection_execution import ConnectionExecutionContext
 from core.repositories.factory import WorkflowExecutionRepository
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
@@ -21,6 +22,7 @@ from models import (
 )
 from models.enums import WorkflowRunTriggeredFrom
 from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
+from repositories.entities.workflow_execution import serialize_connection_context
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +86,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         # Key: execution_id, Value: WorkflowRun (DB model)
         self._execution_cache: dict[str, WorkflowRun] = {}
 
-    def _to_domain_model(self, db_model: WorkflowRun) -> WorkflowExecution:
+    def _to_domain_model(self, db_model: WorkflowRun) -> TimedWorkflowExecution:
         """
         Convert a database model to a domain model.
 
@@ -118,6 +120,11 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             started_at=db_model.created_at,
             finished_at=db_model.finished_at,
             accumulated_elapsed_time=db_model.elapsed_time,
+            connection_context=(
+                ConnectionExecutionContext.model_validate_json(db_model.connection_context)
+                if db_model.connection_context is not None
+                else None
+            ),
         )
 
     def _to_db_model(self, domain_model: WorkflowExecution) -> WorkflowRun:
@@ -144,6 +151,14 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         if self._app_id is not None:
             db_model.app_id = self._app_id
         db_model.workflow_id = domain_model.workflow_id
+        if isinstance(domain_model, TimedWorkflowExecution) and domain_model.connection_context is not None:
+            db_model.connection_context = serialize_connection_context(
+                domain_model.connection_context,
+                tenant_id=self._tenant_id,
+                app_id=self._app_id,
+                workflow_id=domain_model.workflow_id,
+                end_user_id=self._creator_user_id if self._creator_user_role == CreatorUserRole.END_USER else None,
+            )
         db_model.triggered_from = self._triggered_from
 
         # No sequence number generation needed anymore
@@ -202,7 +217,9 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         with self._session_factory() as session:
             existing_model = session.get(WorkflowRun, db_model.id, with_for_update=True)
             if existing_model:
-                if existing_model.tenant_id != self._tenant_id:
+                if existing_model.tenant_id != self._tenant_id or (
+                    self._app_id is not None and existing_model.app_id != self._app_id
+                ):
                     raise ValueError("Unauthorized access to workflow run")
                 # A delayed persistence task must not resurrect a durably stopped run.
                 if (
@@ -210,6 +227,20 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
                     and existing_model.status == WorkflowExecutionStatus.STOPPED
                 ):
                     return
+                if db_model.connection_context is not None:
+                    if (
+                        existing_model.workflow_id != db_model.workflow_id
+                        or existing_model.created_by_role != db_model.created_by_role
+                        or existing_model.created_by != db_model.created_by
+                    ):
+                        raise ValueError("Connection context does not match the workflow execution identity.")
+                    # Runs predating the column can initialize it from their validated
+                    # execution snapshot. The row lock serializes that first write.
+                    if (
+                        existing_model.connection_context is not None
+                        and existing_model.connection_context != db_model.connection_context
+                    ):
+                        raise ValueError("Workflow execution connection choices are immutable.")
                 # Preserve the original start time for pause/resume flows.
                 db_model.created_at = existing_model.created_at
 

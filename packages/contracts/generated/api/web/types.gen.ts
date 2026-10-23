@@ -113,6 +113,9 @@ export type BrandingModel = {
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
 export type ChatMessagePayload = {
+  connections?: {
+    [key: string]: string | null
+  } | null
   conversation_id?: string | null
   files?: Array<{
     [key: string]: unknown
@@ -124,6 +127,7 @@ export type ChatMessagePayload = {
   query: string
   response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
+  workflow_id?: string | null
 }
 
 export type CompletionMessagePayload = {
@@ -140,6 +144,69 @@ export type CompletionMessagePayload = {
 
 export type CompletionRequestError = ErrorResponse & {
   code: 'completion_request_error'
+  status: 400
+}
+
+export type ConnectionConfigurationInvalidError = ErrorResponse & {
+  code: 'connection_configuration_invalid'
+  status: 400
+}
+
+export type ConnectionConfigurationResponse = {
+  connections: {
+    [key: string]: string | null
+  }
+  workflow_id: string | null
+}
+
+export type ConnectionConflictError = ErrorResponse & {
+  code: 'connection_conflict'
+  status: 409
+}
+
+export type ConnectionCredentialStatus = 'connected' | 'invalid' | 'reconnect_required'
+
+export type ConnectionCredentialType = 'api-key' | 'oauth2'
+
+export type ConnectionCredentialsInvalidError = ErrorResponse & {
+  code: 'connection_credentials_invalid'
+  status: 400
+}
+
+export type ConnectionCredentialsUnavailableError = ErrorResponse & {
+  code: 'connection_credentials_unavailable'
+  status: 503
+}
+
+export type ConnectionNotFoundError = ErrorResponse & {
+  code: 'connection_not_found'
+  status: 404
+}
+
+export type ConnectionOauthFailedError = ErrorResponse & {
+  code: 'connection_oauth_failed'
+  status: 400
+}
+
+export type ConnectionPreflightRequirement = {
+  allowed_credential_types: Array<ConnectionCredentialType>
+  check: CredentialCheckResult | null
+  connection_id: string | null
+  node_id: string
+  node_ids: Array<string>
+  provider: string
+  purpose: string
+  status: NodeConnectionStatus | null
+  title: string
+}
+
+export type ConnectionReauthorizationRequiredError = ErrorResponse & {
+  code: 'connection_reauthorization_required'
+  status: 409
+}
+
+export type ConnectionRequiredError = ErrorResponse & {
+  code: 'connection_required'
   status: 400
 }
 
@@ -170,6 +237,26 @@ export type ConversationRenamePayload = (
   name?: string | null
 }
 
+export type CredentialCheckResult = {
+  checked_at: number
+  reason_code:
+    | 'credential_expired'
+    | 'credential_invalid'
+    | 'credential_revoked'
+    | 'provider_network_error'
+    | 'provider_rate_limited'
+    | 'provider_timeout'
+    | 'provider_unavailable'
+    | null
+  retryable: boolean
+  status: 'invalid' | 'temporarily_unavailable' | 'unsupported' | 'valid'
+}
+
+export type CredentialCheckUnavailableError = ErrorResponse & {
+  code: 'credential_check_unavailable'
+  status: 503
+}
+
 export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
 
 export type EmailCodeError = ErrorResponse & {
@@ -196,6 +283,82 @@ export type EmailPasswordResetLimitError = ErrorResponse & {
 export type EmailSendIpLimitError = ErrorResponse & {
   code: 'email_send_ip_limit'
   status: 429
+}
+
+export type EndUserConnectionCheckResponse = {
+  check: CredentialCheckResult
+  connection_id: string
+  credential_status: ConnectionCredentialStatus
+}
+
+export type EndUserConnectionCreatePayload = {
+  credentials: {
+    [key: string]: JsonValue
+  }
+  name: string
+  node_id: string
+  workflow_id: string
+}
+
+export type EndUserConnectionListQuery = {
+  cursor?: string | null
+  limit?: number
+  provider?: string | null
+}
+
+export type EndUserConnectionListResponse = {
+  data: Array<EndUserConnectionResponse>
+  has_more: boolean
+  next_cursor: string | null
+}
+
+export type EndUserConnectionOAuthPayload = {
+  name: string
+  node_id: string
+  workflow_id: string
+}
+
+export type EndUserConnectionOAuthResponse = {
+  authorization_url: string
+}
+
+export type EndUserConnectionPreflightPayload = {
+  connections: {
+    [key: string]: string | null
+  }
+  conversation_id?: string | null
+  workflow_id: string
+}
+
+export type EndUserConnectionPreflightResponse = {
+  readonly ready: boolean
+  requirements: Array<ConnectionPreflightRequirement>
+  workflow_id: string
+}
+
+export type EndUserConnectionResponse = {
+  account_label: string | null
+  created_at: number
+  credential_status: ConnectionCredentialStatus
+  credential_type: ConnectionCredentialType
+  expires_at: number | null
+  id: string
+  last_active_at: number
+  name: string
+  provider: string
+  updated_at: number
+}
+
+export type EndUserConnectionUpdatePayload = {
+  credentials?: {
+    [key: string]: JsonValue
+  }
+  name?: string
+}
+
+export type EndUserLoginRequiredError = ErrorResponse & {
+  code: 'end_user_login_required'
+  status: 401
 }
 
 export type ErrorResponse = {
@@ -436,6 +599,8 @@ export type LicenseStatusModel = {
   status: LicenseStatus
 }
 
+export type LoginMode = 'console' | 'end_user'
+
 export type LoginPayload = {
   email: string
   password: string
@@ -443,6 +608,7 @@ export type LoginPayload = {
 
 export type LoginStatusQuery = {
   app_code?: string | null
+  mode?: LoginMode
   user_id?: string | null
 }
 
@@ -498,6 +664,8 @@ export type NoFileUploadedError = ErrorResponse & {
   status: 400
 }
 
+export type NodeConnectionStatus = 'connected' | 'disconnected' | 'invalid' | 'reconnect_required'
+
 export type NotChatAppError = ErrorResponse & {
   code: 'not_chat_app'
   status: 400
@@ -519,335 +687,22 @@ export type ParagraphInputConfig = {
   type?: 'paragraph'
 }
 
-export type Parameters = {
-  annotation_reply: {
-    enabled?: boolean
-  }
-  file_upload: {
-    allowed_file_extensions?: Array<string>
-    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
-    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
-    enabled?: boolean
-    image?: {
-      detail?: string
-      enabled?: boolean
-      number_limits?: number
-      transfer_methods?: Array<string>
-    }
-    number_limits?: number
-  }
-  more_like_this: {
-    enabled?: boolean
-  }
-  opening_statement?: string | null
-  retriever_resource: {
-    enabled?: boolean
-  }
-  sensitive_word_avoidance: {
-    enabled?: boolean
-  }
-  speech_to_text: {
-    enabled?: boolean
-  }
-  suggested_questions: Array<string>
-  suggested_questions_after_answer: {
-    enabled?: boolean
-  }
-  system_parameters: SystemParameters
-  text_to_speech: {
-    autoPlay?: string
-    enabled?: boolean
-    language?: string
-    voice?: string
-  }
-  user_input_form: Array<
-    | {
-        'text-input': {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        select: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        paragraph: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        number: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        external_data_tool: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        file: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        'file-list': {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        checkbox: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-    | {
-        json_object: {
-          allowed_file_extensions?: Array<string> | null
-          allowed_file_types?: Array<string> | null
-          allowed_file_upload_methods?: Array<string> | null
-          config?: {
-            [key: string]: unknown
-          }
-          default?: unknown
-          description?: string
-          hide?: boolean
-          json_schema?: {
-            [key: string]: unknown
-          } | null
-          label: string
-          max_length?: number | null
-          options?: Array<string>
-          required?: boolean
-          type?:
-            | 'checkbox'
-            | 'external_data_tool'
-            | 'file'
-            | 'file-list'
-            | 'json_object'
-            | 'number'
-            | 'paragraph'
-            | 'select'
-            | 'text-input'
-          variable: string
-        }
-      }
-  >
-}
-
 export type PassportAccessTokenResponse = {
   access_token: string
 }
 
+export type PassportLoginPayload = {
+  code_verifier: string
+  login_code: string
+}
+
+export type PassportLoginResponse = {
+  access_token: string
+  webapp_access_token: string
+}
+
 export type PassportQuery = {
+  mode?: LoginMode
   user_id?: string | null
 }
 
@@ -1157,6 +1012,335 @@ export type WebAppCustomConfigResponse = {
   replace_webapp_logo?: string | null
 }
 
+export type WebAppParametersResponse = {
+  account_login_enabled: boolean
+  account_login_url: string | null
+  allow_anonymous_end_user_auth: boolean
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
+  opening_statement?: string | null
+  requires_end_user_connections: boolean
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
+  suggested_questions: Array<string>
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
+  system_parameters: SystemParameters
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<
+    | {
+        'text-input': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        select: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        paragraph: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        number: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        external_data_tool: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        file: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        'file-list': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        checkbox: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        json_object: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+  >
+  workflow_id: string | null
+}
+
 export type WebAppSiteResponse = {
   app_id: string
   can_replace_logo: boolean
@@ -1172,6 +1356,11 @@ export type WebAppSiteResponse = {
 export type WebFormRateLimitExceededError = ErrorResponse & {
   code: 'web_form_rate_limit_exceeded'
   status: 429
+}
+
+export type WebLoginUnavailableError = ErrorResponse & {
+  code: 'web_login_unavailable'
+  status: 503
 }
 
 export type WebMessageInfiniteScrollPagination = {
@@ -1235,7 +1424,15 @@ export type WebSiteResponse = {
   use_icon_as_answer_icon?: boolean | null
 }
 
+export type WorkflowChangedError = ErrorResponse & {
+  code: 'workflow_changed'
+  status: 409
+}
+
 export type WorkflowRunPayload = {
+  connections?: {
+    [key: string]: string | null
+  } | null
   files?: Array<
     | {
         remote_url?: string
@@ -1269,6 +1466,12 @@ export type WorkflowRunPayload = {
   inputs: {
     [key: string]: unknown
   }
+  workflow_id?: string | null
+}
+
+export type EndUserConnectionPreflightResponseWritable = {
+  requirements: Array<ConnectionPreflightRequirement>
+  workflow_id: string
 }
 
 export type GeneratedAppResponseWritable = ShallowJsonValue
@@ -1353,15 +1556,24 @@ export type PostChatMessagesErrors = {
     | AgentNotPublishedError
     | AppUnavailableError
     | CompletionRequestError
+    | ConnectionConfigurationInvalidError
+    | ConnectionCredentialsInvalidError
+    | ConnectionRequiredError
     | ModelCurrentlyNotSupportError
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: ErrorResponse
-  404: ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | WorkflowChangedError
+    | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1458,6 +1670,269 @@ export type PostCompletionMessagesByTaskIdStopResponses = {
 
 export type PostCompletionMessagesByTaskIdStopResponse =
   PostCompletionMessagesByTaskIdStopResponses[keyof PostCompletionMessagesByTaskIdStopResponses]
+
+export type GetConnectionsData = {
+  body?: never
+  path?: never
+  query?: {
+    cursor?: string
+    limit?: number
+    provider?: string
+  }
+  url: '/connections'
+}
+
+export type GetConnectionsErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsError = GetConnectionsErrors[keyof GetConnectionsErrors]
+
+export type GetConnectionsResponses = {
+  200: EndUserConnectionListResponse
+}
+
+export type GetConnectionsResponse = GetConnectionsResponses[keyof GetConnectionsResponses]
+
+export type PostConnectionsData = {
+  body: EndUserConnectionCreatePayload
+  path?: never
+  query?: never
+  url: '/connections'
+}
+
+export type PostConnectionsErrors = {
+  400: ConnectionConfigurationInvalidError | ConnectionCredentialsInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  409: WorkflowChangedError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsError = PostConnectionsErrors[keyof PostConnectionsErrors]
+
+export type PostConnectionsResponses = {
+  201: EndUserConnectionResponse
+}
+
+export type PostConnectionsResponse = PostConnectionsResponses[keyof PostConnectionsResponses]
+
+export type GetConnectionsConfigurationData = {
+  body?: never
+  path?: never
+  query?: {
+    conversation_id?: string
+  }
+  url: '/connections/configuration'
+}
+
+export type GetConnectionsConfigurationErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsConfigurationError =
+  GetConnectionsConfigurationErrors[keyof GetConnectionsConfigurationErrors]
+
+export type GetConnectionsConfigurationResponses = {
+  200: ConnectionConfigurationResponse
+}
+
+export type GetConnectionsConfigurationResponse =
+  GetConnectionsConfigurationResponses[keyof GetConnectionsConfigurationResponses]
+
+export type PostConnectionsOauthAuthorizationUrlData = {
+  body: EndUserConnectionOAuthPayload
+  path?: never
+  query?: never
+  url: '/connections/oauth/authorization-url'
+}
+
+export type PostConnectionsOauthAuthorizationUrlErrors = {
+  400: ConnectionConfigurationInvalidError | ConnectionOauthFailedError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  409: ConnectionReauthorizationRequiredError | WorkflowChangedError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsOauthAuthorizationUrlError =
+  PostConnectionsOauthAuthorizationUrlErrors[keyof PostConnectionsOauthAuthorizationUrlErrors]
+
+export type PostConnectionsOauthAuthorizationUrlResponses = {
+  200: EndUserConnectionOAuthResponse
+}
+
+export type PostConnectionsOauthAuthorizationUrlResponse =
+  PostConnectionsOauthAuthorizationUrlResponses[keyof PostConnectionsOauthAuthorizationUrlResponses]
+
+export type PostConnectionsPreflightData = {
+  body: EndUserConnectionPreflightPayload
+  path?: never
+  query?: never
+  url: '/connections/preflight'
+}
+
+export type PostConnectionsPreflightErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | WorkflowChangedError
+    | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsPreflightError =
+  PostConnectionsPreflightErrors[keyof PostConnectionsPreflightErrors]
+
+export type PostConnectionsPreflightResponses = {
+  200: EndUserConnectionPreflightResponse
+}
+
+export type PostConnectionsPreflightResponse =
+  PostConnectionsPreflightResponses[keyof PostConnectionsPreflightResponses]
+
+export type DeleteConnectionsByConnectionIdData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}'
+}
+
+export type DeleteConnectionsByConnectionIdErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionConflictError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteConnectionsByConnectionIdError =
+  DeleteConnectionsByConnectionIdErrors[keyof DeleteConnectionsByConnectionIdErrors]
+
+export type DeleteConnectionsByConnectionIdResponses = {
+  204: void
+}
+
+export type DeleteConnectionsByConnectionIdResponse =
+  DeleteConnectionsByConnectionIdResponses[keyof DeleteConnectionsByConnectionIdResponses]
+
+export type GetConnectionsByConnectionIdData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}'
+}
+
+export type GetConnectionsByConnectionIdErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsByConnectionIdError =
+  GetConnectionsByConnectionIdErrors[keyof GetConnectionsByConnectionIdErrors]
+
+export type GetConnectionsByConnectionIdResponses = {
+  200: EndUserConnectionResponse
+}
+
+export type GetConnectionsByConnectionIdResponse =
+  GetConnectionsByConnectionIdResponses[keyof GetConnectionsByConnectionIdResponses]
+
+export type PatchConnectionsByConnectionIdData = {
+  body: EndUserConnectionUpdatePayload
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}'
+}
+
+export type PatchConnectionsByConnectionIdErrors = {
+  400: ConnectionConfigurationInvalidError | ConnectionCredentialsInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionConflictError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchConnectionsByConnectionIdError =
+  PatchConnectionsByConnectionIdErrors[keyof PatchConnectionsByConnectionIdErrors]
+
+export type PatchConnectionsByConnectionIdResponses = {
+  200: EndUserConnectionResponse
+}
+
+export type PatchConnectionsByConnectionIdResponse =
+  PatchConnectionsByConnectionIdResponses[keyof PatchConnectionsByConnectionIdResponses]
+
+export type PostConnectionsByConnectionIdCheckData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}/check'
+}
+
+export type PostConnectionsByConnectionIdCheckErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionConflictError | ConnectionReauthorizationRequiredError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsByConnectionIdCheckError =
+  PostConnectionsByConnectionIdCheckErrors[keyof PostConnectionsByConnectionIdCheckErrors]
+
+export type PostConnectionsByConnectionIdCheckResponses = {
+  200: EndUserConnectionCheckResponse
+}
+
+export type PostConnectionsByConnectionIdCheckResponse =
+  PostConnectionsByConnectionIdCheckResponses[keyof PostConnectionsByConnectionIdCheckResponses]
+
+export type PostConnectionsByConnectionIdReauthorizeData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}/reauthorize'
+}
+
+export type PostConnectionsByConnectionIdReauthorizeErrors = {
+  400: ConnectionConfigurationInvalidError | ConnectionOauthFailedError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionReauthorizationRequiredError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsByConnectionIdReauthorizeError =
+  PostConnectionsByConnectionIdReauthorizeErrors[keyof PostConnectionsByConnectionIdReauthorizeErrors]
+
+export type PostConnectionsByConnectionIdReauthorizeResponses = {
+  200: EndUserConnectionOAuthResponse
+}
+
+export type PostConnectionsByConnectionIdReauthorizeResponse =
+  PostConnectionsByConnectionIdReauthorizeResponses[keyof PostConnectionsByConnectionIdReauthorizeResponses]
 
 export type GetConversationsData = {
   body?: never
@@ -1889,6 +2364,7 @@ export type GetLoginStatusData = {
   path?: never
   query?: {
     app_code?: string
+    mode?: 'console' | 'end_user'
     user_id?: string
   }
   url: '/login/status'
@@ -2096,7 +2572,7 @@ export type GetParametersErrors = {
 export type GetParametersError = GetParametersErrors[keyof GetParametersErrors]
 
 export type GetParametersResponses = {
-  200: Parameters
+  200: WebAppParametersResponse
 }
 
 export type GetParametersResponse = GetParametersResponses[keyof GetParametersResponses]
@@ -2105,13 +2581,14 @@ export type GetPassportData = {
   body?: never
   path?: never
   query?: {
+    mode?: 'console' | 'end_user'
     user_id?: string
   }
   url: '/passport'
 }
 
 export type GetPassportErrors = {
-  401: ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2123,6 +2600,30 @@ export type GetPassportResponses = {
 }
 
 export type GetPassportResponse = GetPassportResponses[keyof GetPassportResponses]
+
+export type PostPassportData = {
+  body: PassportLoginPayload
+  headers: {
+    'X-App-Code': string
+  }
+  path?: never
+  query?: never
+  url: '/passport'
+}
+
+export type PostPassportErrors = {
+  401: EndUserLoginRequiredError | ErrorResponse
+  503: WebLoginUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostPassportError = PostPassportErrors[keyof PostPassportErrors]
+
+export type PostPassportResponses = {
+  200: PassportLoginResponse
+}
+
+export type PostPassportResponse = PostPassportResponses[keyof PostPassportResponses]
 
 export type PostRemoteFilesUploadData = {
   body: RemoteFileUploadPayload
@@ -2426,16 +2927,25 @@ export type PostWorkflowsRunData = {
 export type PostWorkflowsRunErrors = {
   400:
     | CompletionRequestError
+    | ConnectionConfigurationInvalidError
+    | ConnectionCredentialsInvalidError
+    | ConnectionRequiredError
     | ModelCurrentlyNotSupportError
     | NotWorkflowAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
   403: TriggerWorkflowServiceModeUnavailableError | ErrorResponse
-  404: ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | WorkflowChangedError
+    | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

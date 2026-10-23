@@ -364,6 +364,7 @@ class ToolManager:
                         user_id=user_id,
                         credentials=dict(decrypted_credentials),
                         credential_type=builtin_provider.credential_type,
+                        credential_id=builtin_provider.id,
                         runtime_parameters={},
                         invoke_from=invoke_from,
                         tool_invoke_from=tool_invoke_from,
@@ -498,12 +499,14 @@ class ToolManager:
         variable_pool: "VariablePool | None" = None,
         execution_driver: "WorkflowRunDriver | None" = None,
         workflow_tool_definition: WorkflowTool | None = None,
+        *,
+        tool_runtime: Tool | None = None,
     ) -> Tool:
         """
         get the workflow tool runtime
         """
 
-        if workflow_tool_definition is None:
+        if tool_runtime is None and workflow_tool_definition is None:
             tool_runtime = cls.get_tool_runtime(
                 provider_type=workflow_tool.provider_type,
                 provider_id=workflow_tool.provider_id,
@@ -515,7 +518,8 @@ class ToolManager:
                 credential_id=workflow_tool.credential_id,
                 execution_driver=execution_driver,
             )
-        else:
+        elif tool_runtime is None:
+            assert workflow_tool_definition is not None
             tool_runtime = workflow_tool_definition.fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,

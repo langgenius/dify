@@ -31,7 +31,11 @@ def _scripts() -> ScriptDirectory:
 
 
 def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
-    assert _scripts().get_heads() == [_KNOWLEDGE_FS_CHAIN[-1]]
+    scripts = _scripts()
+    assert scripts.get_heads() == ["e7c2a9f4b603"]
+    merged = scripts.get_revision("e7c2a9f4b603")
+    assert merged is not None
+    assert set(merged.down_revision) == {"c8e3a6d91f02", _KNOWLEDGE_FS_CHAIN[-1], "d64a3c92f810"}
 
 
 def test_upgrade_from_main_head_applies_knowledge_fs_chain_linearly() -> None:
@@ -39,7 +43,7 @@ def test_upgrade_from_main_head_applies_knowledge_fs_chain_linearly() -> None:
     applied_on_main = {revision.revision for revision in scripts.iterate_revisions(_MAIN_HEAD, "base")}
     pending = [
         revision.revision
-        for revision in reversed(list(scripts.iterate_revisions("heads", "base")))
+        for revision in reversed(list(scripts.iterate_revisions(_KNOWLEDGE_FS_CHAIN[-1], "base")))
         if revision.revision not in applied_on_main
     ]
 

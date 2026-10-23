@@ -57,6 +57,7 @@ from .dataset import (
     TidbAuthBinding,
     Whitelist,
 )
+from .end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from .enums import (
     AppTriggerStatus,
     AppTriggerType,
@@ -244,6 +245,7 @@ __all__ = [
     "App",
     "AppAnnotationHitHistory",
     "AppAnnotationSetting",
+    "AppConnection",
     "AppDatasetJoin",
     "AppKnowledgeFSSpaceJoin",
     "AppMCPServer",
@@ -283,6 +285,7 @@ __all__ = [
     "DocumentSegment",
     "Embedding",
     "EndUser",
+    "EndUserConnection",
     "ExecutionExtraContent",
     "ExporleBanner",
     "ExternalKnowledgeApis",
@@ -359,6 +362,7 @@ __all__ = [
     "ResourceAccessTokenRelation",
     "ResourceAccessTokenResourceType",
     "SavedMessage",
+    "SessionConnection",
     "Site",
     "Skill",
     "SkillDraftFile",
