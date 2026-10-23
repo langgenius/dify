@@ -13,6 +13,7 @@ from services.app_definition_query_service import (
     AppParameterConfig,
     AppToolIconSource,
 )
+from services.workflow.tool_credentials import get_tool_connection_requirements
 
 _BUILTIN_ICON_URL_PREFIX = "https://console.example/console/api/workspaces/current/tool-provider/builtin/"
 
@@ -21,6 +22,7 @@ def _service() -> tuple[AppDefinitionQueryService, MagicMock]:
     definitions: MagicMock = create_autospec(AppDefinitionQuery, instance=True, spec_set=True)
     return (
         AppDefinitionQueryService(
+            get_connection_requirements=get_tool_connection_requirements,
             definitions=definitions,
             builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
         ),

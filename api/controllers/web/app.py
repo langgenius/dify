@@ -29,13 +29,13 @@ from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, EndUser
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
+from services.entities.tool_connection_entities import ToolConnectionRequirement
 from services.web_passport_service import WebAppAuthType
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
     WebAppAccessReferenceRequiredError,
     WebAppAccessUnavailableError,
 )
-from services.workflow.tool_credentials import ToolConnectionRequirement
 
 logger = logging.getLogger(__name__)
 

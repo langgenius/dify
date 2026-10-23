@@ -226,6 +226,7 @@ from services.web_passport_gateways import (
 from services.web_passport_service import WebPassportService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
+from services.workflow.tool_credentials import get_tool_connection_requirements
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
@@ -430,6 +431,7 @@ def build_application_services(
     installation_state = InstallationStateRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     app_definitions = AppDefinitionQueryService(
+        get_connection_requirements=get_tool_connection_requirements,
         definitions=app_definition_repository,
         builtin_icon_url_prefix=(
             dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"

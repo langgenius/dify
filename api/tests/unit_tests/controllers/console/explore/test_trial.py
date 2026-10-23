@@ -153,6 +153,7 @@ from services.recommended_app_query_service import (
 from services.remote_file_service import RemoteFileService
 from services.trial_app_access_service import TrialAppAccessService, TrialAppRef
 from services.trial_app_generation_service import GenerationResponse, TrialAppGenerationService
+from services.workflow.tool_credentials import get_tool_connection_requirements
 
 
 class TestTrialCases:
@@ -2419,7 +2420,9 @@ class TestTrialPreviewCases:
                 apps=AppPreviewQueryRepository(session_factory=factory), is_previewable=recommendations.is_previewable
             ),
             app_definitions=AppDefinitionQueryService(
-                definitions=AppDefinitionQueryRepository(session_factory=factory), builtin_icon_url_prefix="/tools/"
+                get_connection_requirements=get_tool_connection_requirements,
+                definitions=AppDefinitionQueryRepository(session_factory=factory),
+                builtin_icon_url_prefix="/tools/",
             ),
             recommended_app_queries=recommendations,
         )

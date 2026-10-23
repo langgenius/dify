@@ -1,12 +1,12 @@
 """Application service for reading an app's externally visible definition."""
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, NamedTuple, Protocol
 
 from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
-from services.workflow.tool_credentials import ToolConnectionRequirement, get_tool_connection_requirements
+from services.entities.tool_connection_entities import ToolConnectionRequirement
 
 
 class AppParameterConfig(NamedTuple):
@@ -97,9 +97,11 @@ class AppDefinitionQueryService:
         *,
         definitions: AppDefinitionQuery,
         builtin_icon_url_prefix: str,
+        get_connection_requirements: Callable[[Mapping[str, Any]], tuple[ToolConnectionRequirement, ...]],
     ) -> None:
         self._definitions = definitions
         self._builtin_icon_url_prefix = builtin_icon_url_prefix
+        self._get_connection_requirements = get_connection_requirements
 
     def get_mode(self, app_id: str) -> str:
         mode = self._definitions.get_mode(app_id)
@@ -133,7 +135,7 @@ class AppDefinitionQueryService:
         if config is None:
             raise AppDefinitionUnavailableError()
         try:
-            requirements = get_tool_connection_requirements(config.graph) if config.graph is not None else ()
+            requirements = self._get_connection_requirements(config.graph) if config.graph is not None else ()
         except (KeyError, TypeError, ValueError):
             raise AppDefinitionUnavailableError() from None
         return {

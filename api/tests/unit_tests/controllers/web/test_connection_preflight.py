@@ -18,6 +18,7 @@ from repositories.app_definition_query_repository import AppDefinitionQueryRepos
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
 from services.end_user_connections.preflight import ConnectionPreflightService
+from services.workflow.tool_credentials import get_tool_connection_requirements
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
 
@@ -48,6 +49,7 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
         connection_preflight, "application_services", lambda: SimpleNamespace(end_user_connection_preflight=service)
     )
     definitions = AppDefinitionQueryService(
+        get_connection_requirements=get_tool_connection_requirements,
         definitions=AppDefinitionQueryRepository(session_factory=harness.base.sessions),
         builtin_icon_url_prefix="",
     )

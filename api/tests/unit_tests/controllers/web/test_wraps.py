@@ -40,6 +40,7 @@ from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_authentication_adapters import PassportWebAppSessionGateway
 from services.web_passport_gateways import PassportTokenGateway
 from services.web_passport_service import WebPassportService
+from services.workflow.tool_credentials import get_tool_connection_requirements
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.web_identity_fakes import web_identities
 
@@ -168,7 +169,11 @@ def _harness(
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=60,
         ),
-        app_definitions=AppDefinitionQueryService(definitions=definitions, builtin_icon_url_prefix=""),
+        app_definitions=AppDefinitionQueryService(
+            get_connection_requirements=get_tool_connection_requirements,
+            definitions=definitions,
+            builtin_icon_url_prefix="",
+        ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=definitions,
             file_service=FileService(session_factory=factory),

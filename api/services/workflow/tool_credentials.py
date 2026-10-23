@@ -10,6 +10,7 @@ from constants.end_user_connections import ConnectionCredentialType, OAuthClient
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from models.provider_ids import ToolProviderID
+from services.entities.tool_connection_entities import ToolConnectionRequirement
 
 
 class EndUserAuthConfig(BaseModel):
@@ -56,19 +57,6 @@ class ToolCredentialConfig(BaseModel):
 
 class ToolNodeSpec(ToolNodeData, ToolCredentialConfig):
     """The editor-facing schema includes Dify policy without changing Graphon's node model."""
-
-
-class ToolConnectionRequirement(BaseModel):
-    """Published authorization requirements, independent of personal connection readiness."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    node_id: str = Field(description="Independent authorization node ID to use as the selection key.")
-    node_ids: tuple[str, ...] = Field(description="The authorization node and all nodes explicitly reusing it.")
-    title: str
-    purpose: str
-    provider: str
-    allowed_credential_types: tuple[ConnectionCredentialType, ...]
 
 
 def get_tool_connection_requirements(graph: Mapping[str, Any]) -> tuple[ToolConnectionRequirement, ...]:
