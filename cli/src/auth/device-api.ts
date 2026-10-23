@@ -9,7 +9,6 @@ export const DEFAULT_CLIENT_ID = 'difyctl'
 export type CodeRequest = {
   client_id?: string
   device_label: string
-  installation_id?: string
 }
 
 export type CodeResponse = {
@@ -171,7 +170,6 @@ export function deviceApi(server: string, opts: DeviceApiOptions): DeviceApi {
       const { url, res } = await post(DEVICE_CODE_PATH, {
         client_id: req.client_id ?? DEFAULT_CLIENT_ID,
         device_label: req.device_label,
-        installation_id: req.installation_id,
       })
       if (res.status === HttpStatus.NotFound) throw unsupportedDeviceFlow('POST', url)
       if (!res.ok) throw await nonOkError('POST', url, res)

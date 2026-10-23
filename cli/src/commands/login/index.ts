@@ -2,11 +2,10 @@ import type { PollSuccess } from '@/auth/device-api'
 import type { Pending, PendingLoginStore } from '@/auth/pending-login'
 import type { CommandContext } from '@/plugins/base'
 import type { Login as SavedLogin } from '@/plugins/session'
-import { hostname } from 'node:os'
 import { z } from 'zod'
 import { deviceApi } from '@/auth/device-api'
 import { awaitAuthorization, pollAuthorization, realClock } from '@/auth/device-flow'
-import { installationId } from '@/auth/installation'
+import { deviceLabel } from '@/auth/installation'
 import { assertNotEnvLogin, revokeAndClearSession } from '@/auth/logout'
 import { pendingLoginStore } from '@/auth/pending-login'
 import { BaseError } from '@/errors/base'
@@ -107,10 +106,7 @@ export default class Login extends Command<typeof INPUT> {
     const server = resolveHost({ raw: input.server, insecure: input.insecure })
     const streams = await ctx.get(io)
     const api = deviceApi(server, { insecure: input.insecure })
-    const code = await api.requestCode({
-      device_label: hostname(),
-      installation_id: await installationId(ctx),
-    })
+    const code = await api.requestCode({ device_label: await deviceLabel(ctx) })
     // Checked before it is printed: a URI difyctl would refuse to open is one the
     // operator should not be invited to paste either.
     validateVerificationURI(code.verification_uri, input.insecure)

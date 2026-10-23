@@ -1,8 +1,10 @@
 import type { TestWorld } from '@test/fixtures/kernel'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { hostname } from 'node:os'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
+import { installationId } from '@/auth/installation'
 import { PENDING_FILE_NAME } from '@/auth/pending-login'
 import { Context } from '@/kernel/context'
 import { commands } from '@/plugins/commands'
@@ -287,6 +289,11 @@ it('a relogin on the same install revokes the previous session', async () => {
   const w = await loginWorld(seed.mock.url, seed)
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(w.mock.sessionRevokeCount).toBe(1)
+  const id = await installationId(w.ctx)
+  expect(w.mock.lastDeviceCodeBody).toEqual({
+    client_id: 'difyctl',
+    device_label: `${hostname()} (${id.slice(0, 8)})`,
+  })
   expect(w.io.errBuf()).toMatch(/logged out tester@dify\.ai from/)
   expect(await (await w.ctx.get(token)).get()).toBe('dfoa_test')
 })
