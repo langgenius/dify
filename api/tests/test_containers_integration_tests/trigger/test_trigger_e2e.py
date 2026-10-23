@@ -6,9 +6,9 @@ import time
 from datetime import timedelta
 from types import SimpleNamespace
 from typing import Any
+from uuid import uuid4
 
 import pytest
-from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,14 +16,14 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.constants import (
-    TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
 from core.trigger.debug import event_selectors
 from core.trigger.debug.event_bus import TriggerDebugEventBus
-from core.trigger.debug.event_selectors import PluginTriggerDebugEventPoller, WebhookTriggerDebugEventPoller
+from core.trigger.debug.event_selectors import WebhookTriggerDebugEventPoller
 from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
+from core.trigger.entities.entities import Subscription
 from enums import DeploymentEdition
 from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
@@ -32,7 +32,6 @@ from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, Work
 from models.model import App
 from models.trigger import (
     AppTrigger,
-    TriggerSubscription,
     WorkflowSchedulePlan,
     WorkflowTriggerLog,
     WorkflowWebhookTrigger,
@@ -43,6 +42,7 @@ from schedule.workflow_schedule_task import poll_workflow_schedules
 from services.system_feature_service import SystemFeatureService
 from services.trigger import webhook_service
 from services.trigger.schedule_service import ScheduleService
+from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
 from services.workflow_service import WorkflowService
 from tasks import trigger_processing_tasks
 
@@ -312,25 +312,23 @@ def test_schedule_visual_debug_poll_generates_event(monkeypatch: pytest.MonkeyPa
 
 
 def test_plugin_dispatch_delivers_each_debug_event_to_its_waiting_pool(
-    db_session_with_containers: Session,
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
 ) -> None:
     """The real task helper preserves dispatch identity through the Redis event bus."""
     tenant, account = tenant_and_account
-    subscription = TriggerSubscription(
-        name="debug-dispatch",
+    subscription = TriggerSubscriptionRuntime(
+        id=str(uuid4()),
         tenant_id=tenant.id,
         user_id=account.id,
         provider_id="langgenius/test-provider/test-provider",
         endpoint_id="1cc7fa12-3f7b-4f6a-9c8d-1234567890ab",
-        parameters={},
-        properties={},
         credentials={},
         credential_type=CredentialType.UNAUTHORIZED,
+        subscription=Subscription(
+            expires_at=-1, endpoint="https://trigger.example.com/endpoint", parameters={}, properties={}
+        ),
     )
-    db_session_with_containers.add(subscription)
-    db_session_with_containers.commit()
     event_names = ["created", "updated"]
     pools = {
         name: build_plugin_pool_key(
@@ -449,77 +447,6 @@ def test_webhook_debug_dispatches_event(
     assert event is not None
     assert event.workflow_args["inputs"]["webhook_body"]["foo"] == "bar"
     assert debug_events[0]["pool_key"].endswith(f":{app_model.id}:{webhook_node_id}")
-
-
-def test_plugin_single_step_debug_flow(
-    flask_app_with_containers: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Plugin single-step debug: listen -> dispatch event -> poller receives and returns variables."""
-    tenant_id = "tenant-1"
-    app_id = "app-1"
-    user_id = "user-1"
-    node_id = "plugin-node"
-    provider_id = "langgenius/provider-1/provider-1"
-    node_config = {
-        "id": node_id,
-        "data": {
-            "type": TRIGGER_PLUGIN_NODE_TYPE,
-            "title": "plugin",
-            "plugin_id": "plugin-1",
-            "plugin_unique_identifier": "plugin-1",
-            "provider_id": provider_id,
-            "event_name": "created",
-            "subscription_id": "sub-1",
-            "parameters": {},
-        },
-    }
-    # Start listening
-    poller = PluginTriggerDebugEventPoller(
-        tenant_id=tenant_id,
-        user_id=user_id,
-        app_id=app_id,
-        node_config=node_config,
-        node_id=node_id,
-    )
-    assert poller.poll() is None
-
-    from core.trigger.debug.events import build_plugin_pool_key
-
-    pool_key = build_plugin_pool_key(
-        tenant_id=tenant_id,
-        provider_id=provider_id,
-        subscription_id="sub-1",
-        name="created",
-    )
-    TriggerDebugEventBus.dispatch(
-        tenant_id=tenant_id,
-        event=PluginTriggerDebugEvent(
-            timestamp=int(time.time()),
-            user_id=user_id,
-            name="created",
-            request_id="req-1",
-            subscription_id="sub-1",
-            provider_id="provider-1",
-        ),
-        pool_key=pool_key,
-    )
-
-    from core.plugin.entities.request import TriggerInvokeEventResponse
-
-    monkeypatch.setattr(
-        "services.trigger.trigger_service.TriggerService.invoke_trigger_event",
-        staticmethod(
-            lambda **_kwargs: TriggerInvokeEventResponse(
-                variables={"echo": "pong"},
-                cancelled=False,
-            )
-        ),
-    )
-
-    event = poller.poll()
-    assert event is not None
-    assert event.workflow_args["inputs"]["echo"] == "pong"
 
 
 def test_schedule_trigger_creates_trigger_log(

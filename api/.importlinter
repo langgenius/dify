@@ -1201,6 +1201,15 @@ forbidden_modules =
     werkzeug
 allow_indirect_imports = True
 
+[importlinter:contract:services-composition-root-boundary]
+name = Services do not locate their dependencies through the application container
+type = forbidden
+source_modules =
+    services
+forbidden_modules =
+    extensions.ext_application_services
+allow_indirect_imports = True
+
 [importlinter:contract:trigger-subscription-builder-persistence-boundary]
 name = Trigger builder and endpoint orchestration use injected persistence
 type = forbidden
@@ -1212,5 +1221,4 @@ forbidden_modules =
     extensions
     repositories
     sqlalchemy
-    services.trigger.trigger_provider_service
 allow_indirect_imports = True

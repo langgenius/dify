@@ -555,7 +555,6 @@ project-excludes = [
   "services/test_snippet_generate_service.py",
   "services/test_snippet_service.py",
   "services/test_summary_index_service.py",
-  "services/test_trigger_provider_service.py",
   "services/test_variable_truncator.py",
   "services/test_webhook_service.py",
   "services/test_webhook_service_additional.py",

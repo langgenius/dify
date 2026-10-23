@@ -178,7 +178,9 @@ def build_workspace_services(
             plugins=DaemonPluginParameterGateway(),
         ),
         trigger_providers=trigger_providers,
-        trigger_subscriptions=TriggerSubscriptionQueryService(credentials=credentials, schemas=trigger_providers),
+        trigger_subscriptions=TriggerSubscriptionQueryService(
+            credentials=credentials, schemas=trigger_providers, subscriptions=subscriptions
+        ),
         trigger_subscription_management=trigger_subscription_management,
         trigger_subscription_renewal=TriggerSubscriptionRenewalService(
             subscriptions=subscriptions,

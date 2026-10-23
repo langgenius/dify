@@ -103,6 +103,7 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
         trigger_subscriptions=TriggerSubscriptionQueryService(
             credentials=CredentialQueryRepository(session_factory=sqlite_session_factory),
             schemas=PluginTriggerProviderQuery(),
+            subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
         ),
         trigger_builders=builders,
         trigger_endpoints=TriggerEndpointService(

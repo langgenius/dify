@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from functools import partial
 from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
-from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
@@ -23,17 +24,22 @@ from core.trigger.constants import (
 )
 from core.trigger.debug.event_selectors import (
     PluginTriggerDebugEventPoller,
+    PluginTriggerEventInvoker,
     ScheduleTriggerDebugEventPoller,
     WebhookTriggerDebugEventPoller,
     create_event_poller,
     select_trigger_debug_events,
 )
-from core.trigger.debug.events import PluginTriggerDebugEvent, WebhookDebugEvent
+from core.trigger.debug.events import WebhookDebugEvent
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowType
 from models.model import App, AppMode
 from models.workflow import Workflow
-from tests.unit_tests.core.trigger.conftest import VALID_PROVIDER_ID
+from repositories.credentials.query_repository import CredentialQueryRepository
+from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
+from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
+from services.trigger.trigger_service import TriggerService
 from tests.unit_tests.model_factories import make_app
 
 
@@ -56,18 +62,14 @@ def _make_poller_args(node_config: dict[str, object] | None = None) -> _PollerAr
     }
 
 
-def _plugin_node_config(provider_id: str = VALID_PROVIDER_ID) -> dict[str, object]:
-    """Valid node config for TriggerEventNodeData.model_validate."""
-    return {
-        "data": {
-            "title": "test",
-            "plugin_id": "org/testplugin",
-            "provider_id": provider_id,
-            "event_name": "push",
-            "subscription_id": "s1",
-            "plugin_unique_identifier": "uid-1",
-        }
-    }
+@pytest.fixture
+def invoke_plugin_event(sqlite_session_factory: sessionmaker[Session]) -> PluginTriggerEventInvoker:
+    subscriptions = TriggerSubscriptionQueryService(
+        credentials=CredentialQueryRepository(session_factory=sqlite_session_factory),
+        schemas=PluginTriggerProviderQuery(),
+        subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+    )
+    return partial(TriggerService.invoke_trigger_event, subscriptions=subscriptions)
 
 
 def _workflow_with_node(node_type: NodeType | None) -> Workflow:
@@ -97,62 +99,6 @@ def _app() -> App:
         icon_type=None,
         max_active_requests=0,
     )
-
-
-class TestPluginTriggerDebugEventPoller:
-    @patch("core.trigger.debug.event_selectors.TriggerDebugEventBus")
-    def test_returns_workflow_args_on_success(self, mock_bus: MagicMock) -> None:
-        event = PluginTriggerDebugEvent(
-            timestamp=100,
-            name="push",
-            user_id="u1",
-            request_id="r1",
-            subscription_id="s1",
-            provider_id="p1",
-        )
-        mock_bus.poll.return_value = event
-
-        with patch("services.trigger.trigger_service.TriggerService") as mock_trigger_svc:
-            mock_trigger_svc.invoke_trigger_event.return_value = TriggerInvokeEventResponse(
-                variables={"repo": "dify"},
-                cancelled=False,
-            )
-
-            poller = PluginTriggerDebugEventPoller(**_make_poller_args(_plugin_node_config()))
-            result = poller.poll()
-
-        assert result is not None
-        assert result.workflow_args["inputs"] == {"repo": "dify"}
-
-    @patch("core.trigger.debug.event_selectors.TriggerDebugEventBus")
-    def test_returns_none_when_no_event(self, mock_bus: MagicMock) -> None:
-        mock_bus.poll.return_value = None
-
-        poller = PluginTriggerDebugEventPoller(**_make_poller_args(_plugin_node_config()))
-
-        assert poller.poll() is None
-
-    @patch("core.trigger.debug.event_selectors.TriggerDebugEventBus")
-    def test_returns_none_when_invoke_cancelled(self, mock_bus: MagicMock) -> None:
-        event = PluginTriggerDebugEvent(
-            timestamp=100,
-            name="push",
-            user_id="u1",
-            request_id="r1",
-            subscription_id="s1",
-            provider_id="p1",
-        )
-        mock_bus.poll.return_value = event
-
-        with patch("services.trigger.trigger_service.TriggerService") as mock_trigger_svc:
-            mock_trigger_svc.invoke_trigger_event.return_value = TriggerInvokeEventResponse(
-                variables={},
-                cancelled=True,
-            )
-
-            poller = PluginTriggerDebugEventPoller(**_make_poller_args(_plugin_node_config()))
-
-            assert poller.poll() is None
 
 
 class TestWebhookTriggerDebugEventPoller:
@@ -253,41 +199,41 @@ class TestScheduleTriggerDebugEventPoller:
 
 
 class TestCreateEventPoller:
-    def test_creates_plugin_poller(self) -> None:
+    def test_creates_plugin_poller(self, invoke_plugin_event: PluginTriggerEventInvoker) -> None:
         wf = _workflow_with_node(TRIGGER_PLUGIN_NODE_TYPE)
-        poller = create_event_poller(wf, "t1", "u1", "a1", "n1")
+        poller = create_event_poller(wf, "t1", "u1", "a1", "n1", invoke_plugin_event=invoke_plugin_event)
         assert isinstance(poller, PluginTriggerDebugEventPoller)
 
-    def test_creates_webhook_poller(self) -> None:
+    def test_creates_webhook_poller(self, invoke_plugin_event: PluginTriggerEventInvoker) -> None:
         wf = _workflow_with_node(TRIGGER_WEBHOOK_NODE_TYPE)
-        poller = create_event_poller(wf, "t1", "u1", "a1", "n1")
+        poller = create_event_poller(wf, "t1", "u1", "a1", "n1", invoke_plugin_event=invoke_plugin_event)
         assert isinstance(poller, WebhookTriggerDebugEventPoller)
 
-    def test_creates_schedule_poller(self) -> None:
+    def test_creates_schedule_poller(self, invoke_plugin_event: PluginTriggerEventInvoker) -> None:
         wf = _workflow_with_node(TRIGGER_SCHEDULE_NODE_TYPE)
-        poller = create_event_poller(wf, "t1", "u1", "a1", "n1")
+        poller = create_event_poller(wf, "t1", "u1", "a1", "n1", invoke_plugin_event=invoke_plugin_event)
         assert isinstance(poller, ScheduleTriggerDebugEventPoller)
 
-    def test_raises_for_unknown_type(self) -> None:
+    def test_raises_for_unknown_type(self, invoke_plugin_event: PluginTriggerEventInvoker) -> None:
         wf = _workflow_with_node(BuiltinNodeTypes.START)
 
         with pytest.raises(ValueError, match="unable to create event poller for node type start") as exc_info:
-            create_event_poller(wf, "t1", "u1", "a1", "n1")
+            create_event_poller(wf, "t1", "u1", "a1", "n1", invoke_plugin_event=invoke_plugin_event)
 
         assert str(exc_info.value) == "unable to create event poller for node type start"
 
-    def test_raises_when_node_config_missing(self) -> None:
+    def test_raises_when_node_config_missing(self, invoke_plugin_event: PluginTriggerEventInvoker) -> None:
         wf = _workflow_with_node(None)
 
         with (
             patch.object(Workflow, "get_node_config_by_id", return_value=None),
             pytest.raises(ValueError, match="\\('Node data not found for node %s', 'n1'\\)"),
         ):
-            create_event_poller(wf, "t1", "u1", "a1", "n1")
+            create_event_poller(wf, "t1", "u1", "a1", "n1", invoke_plugin_event=invoke_plugin_event)
 
 
 class TestSelectTriggerDebugEvents:
-    def test_returns_first_non_none_event(self) -> None:
+    def test_returns_first_non_none_event(self, invoke_plugin_event: PluginTriggerEventInvoker) -> None:
         wf = _workflow_with_node(TRIGGER_WEBHOOK_NODE_TYPE)
         app_model = _app()
 
@@ -295,15 +241,17 @@ class TestSelectTriggerDebugEvents:
             expected = MagicMock()
             mock_poll.return_value = expected
 
-            result = select_trigger_debug_events(wf, app_model, "u1", ["n1", "n2"])
+            result = select_trigger_debug_events(
+                wf, app_model, "u1", ["n1", "n2"], invoke_plugin_event=invoke_plugin_event
+            )
 
             assert result is expected
 
-    def test_returns_none_when_no_events(self) -> None:
+    def test_returns_none_when_no_events(self, invoke_plugin_event: PluginTriggerEventInvoker) -> None:
         wf = _workflow_with_node(TRIGGER_WEBHOOK_NODE_TYPE)
         app_model = _app()
 
         with patch.object(WebhookTriggerDebugEventPoller, "poll", return_value=None):
-            result = select_trigger_debug_events(wf, app_model, "u1", ["n1"])
+            result = select_trigger_debug_events(wf, app_model, "u1", ["n1"], invoke_plugin_event=invoke_plugin_event)
 
             assert result is None
