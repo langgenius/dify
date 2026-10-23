@@ -2181,8 +2181,12 @@ def test_delayed_cancel_is_settled_by_worker_without_get_or_another_cancel(
 
     owner = declining
     owner.child_status = "cancelling"
-    values = {"actor": owner.case.actor, "session_id": owner.session.id, "request_id": owner.request_id}
-    first = owner.commands.cancel(**values, idempotency_key="delayed-cancel")
+    first = owner.commands.cancel(
+        actor=owner.case.actor,
+        session_id=owner.session.id,
+        request_id=owner.request_id,
+        idempotency_key="delayed-cancel",
+    )
     assert first.native_status == "paused"
     cancel_calls = list(owner.cancel_calls)
     service = ProfiledNativeTestCommands(
@@ -2197,7 +2201,10 @@ def test_delayed_cancel_is_settled_by_worker_without_get_or_another_cancel(
     task.reconcile_native_tests()
     assert owner.repo.get_run(owner.verify_id).status == "running"
     owner.child_status = "cancelled"
-    assert service.peek(**values).native_status == "paused"
+    assert (
+        service.peek(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id).native_status
+        == "paused"
+    )
     assert owner.repo.get_run(owner.verify_id).status == "running"
     task.reconcile_native_tests()
     with owner.factory() as sql:
