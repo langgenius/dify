@@ -244,7 +244,7 @@ function Toaster({
         <BaseToast.Viewport
           className={
             // oxlint-disable-next-line better-tailwindcss/enforce-logical-properties -- the toast stack is anchored to the physical right: its swipe direction and exit transform are physical
-            'pointer-events-none fixed top-4 right-4 z-60 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8'
+            'pointer-events-none fixed top-4 right-4 z-50 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8'
           }
           style={offset}
         >

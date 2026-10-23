@@ -35,6 +35,7 @@ const DEFAULT_ICON_CLASS_MAP: Record<BlockEnum, string | null> = {
   [BlockEnum.HttpRequest]: 'i-custom-vender-workflow-http',
   [BlockEnum.Answer]: 'i-custom-vender-workflow-answer',
   [BlockEnum.KnowledgeRetrieval]: 'i-custom-vender-workflow-knowledge-retrieval',
+  [BlockEnum.KnowledgeRetrievalV2]: 'i-custom-vender-workflow-knowledge-retrieval',
   [BlockEnum.QuestionClassifier]: 'i-custom-vender-workflow-question-classifier',
   [BlockEnum.TemplateTransform]: 'i-custom-vender-workflow-templating-transform',
   [BlockEnum.VariableAssigner]: 'i-custom-vender-workflow-variable-x',
@@ -89,6 +90,7 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.HttpRequest]: 'bg-util-colors-violet-violet-500',
   [BlockEnum.Answer]: 'bg-util-colors-warning-warning-500',
   [BlockEnum.KnowledgeRetrieval]: 'bg-util-colors-green-green-500',
+  [BlockEnum.KnowledgeRetrievalV2]: 'bg-util-colors-violet-violet-500',
   [BlockEnum.QuestionClassifier]: 'bg-util-colors-green-green-500',
   [BlockEnum.TemplateTransform]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.VariableAssigner]: 'bg-util-colors-blue-blue-500',
@@ -187,8 +189,11 @@ const BlockIcon: FC<BlockIconProps> = ({
             <AppIcon
               className="size-full! shrink-0"
               size="tiny"
-              icon={resolvedToolIcon?.content}
-              background={resolvedToolIcon?.background}
+              icon={{
+                icon_type: 'emoji',
+                icon: resolvedToolIcon?.content,
+                icon_background: resolvedToolIcon?.background,
+              }}
             />
           )}
         </>

@@ -17,6 +17,7 @@ import {
   AutocompletePopup,
   AutocompletePortal,
   AutocompletePositioner,
+  AutocompleteRow,
   AutocompleteSeparator,
   AutocompleteStatus,
   AutocompleteTrigger,
@@ -389,6 +390,126 @@ function BasicTagAutocomplete({ size = 'medium' }: { size?: 'small' | 'medium' |
         </AutocompletePositioner>
       </AutocompletePortal>
     </Autocomplete>
+  )
+}
+
+type IconOption = {
+  value: string
+  label: string
+  icon: string
+}
+
+const iconOptions: IconOption[] = [
+  { value: 'home', label: 'Home', icon: 'i-ri-home-line' },
+  { value: 'search', label: 'Search', icon: 'i-ri-search-line' },
+  { value: 'settings', label: 'Settings', icon: 'i-ri-settings-3-line' },
+  { value: 'user', label: 'User', icon: 'i-ri-user-line' },
+  { value: 'folder', label: 'Folder', icon: 'i-ri-folder-line' },
+  { value: 'document', label: 'Document', icon: 'i-ri-file-text-line' },
+  { value: 'image', label: 'Image', icon: 'i-ri-image-line' },
+  { value: 'calendar', label: 'Calendar', icon: 'i-ri-calendar-line' },
+  { value: 'clock', label: 'Clock', icon: 'i-ri-time-line' },
+  { value: 'mail', label: 'Mail', icon: 'i-ri-mail-line' },
+  { value: 'chat', label: 'Chat', icon: 'i-ri-chat-3-line' },
+  { value: 'notification', label: 'Notification', icon: 'i-ri-notification-3-line' },
+  { value: 'star', label: 'Star', icon: 'i-ri-star-line' },
+  { value: 'heart', label: 'Heart', icon: 'i-ri-heart-line' },
+  { value: 'bookmark', label: 'Bookmark', icon: 'i-ri-bookmark-line' },
+  { value: 'lock', label: 'Lock', icon: 'i-ri-lock-line' },
+  { value: 'key', label: 'Key', icon: 'i-ri-key-2-line' },
+  { value: 'link', label: 'Link', icon: 'i-ri-link' },
+  { value: 'attachment', label: 'Attachment', icon: 'i-ri-attachment-2' },
+  { value: 'download', label: 'Download', icon: 'i-ri-download-line' },
+  { value: 'upload', label: 'Upload', icon: 'i-ri-upload-line' },
+  { value: 'share', label: 'Share', icon: 'i-ri-share-line' },
+  { value: 'edit', label: 'Edit', icon: 'i-ri-edit-line' },
+  { value: 'delete', label: 'Delete', icon: 'i-ri-delete-bin-line' },
+  { value: 'code', label: 'Code', icon: 'i-ri-code-line' },
+  { value: 'terminal', label: 'Terminal', icon: 'i-ri-terminal-box-line' },
+  { value: 'database', label: 'Database', icon: 'i-ri-database-2-line' },
+  { value: 'cloud', label: 'Cloud', icon: 'i-ri-cloud-line' },
+  { value: 'globe', label: 'Globe', icon: 'i-ri-global-line' },
+  { value: 'location', label: 'Location', icon: 'i-ri-map-pin-line' },
+  { value: 'lightning', label: 'Lightning', icon: 'i-ri-flashlight-line' },
+  { value: 'robot', label: 'Robot', icon: 'i-ri-robot-2-line' },
+]
+
+const iconGridColumns = 8
+
+const getIconLabel = (item: IconOption) => item.label
+
+function IconGridList({
+  selected,
+  onSelect,
+}: {
+  selected: string
+  onSelect: (value: string) => void
+}) {
+  const items = useAutocompleteFilteredItems<IconOption>()
+  const rows = Array.from({ length: Math.ceil(items.length / iconGridColumns) }, (_, rowIndex) =>
+    items.slice(rowIndex * iconGridColumns, (rowIndex + 1) * iconGridColumns),
+  )
+
+  return (
+    <AutocompleteList aria-label="Icons" className="flex max-h-none flex-col gap-1 p-0">
+      {rows.map((row) => (
+        <AutocompleteRow key={row[0]?.value} className="grid grid-cols-8 gap-1">
+          {row.map((item) => (
+            <AutocompleteItem
+              key={item.value}
+              value={item}
+              aria-label={item.label}
+              onClick={() => onSelect(item.value)}
+              className={cn(
+                'size-8 min-h-0 justify-center p-0',
+                selected === item.value &&
+                  'ring-[1.5px] ring-components-option-card-option-selected-border ring-inset',
+              )}
+            >
+              <span className={cn(item.icon, 'size-4 text-text-secondary')} aria-hidden="true" />
+            </AutocompleteItem>
+          ))}
+        </AutocompleteRow>
+      ))}
+    </AutocompleteList>
+  )
+}
+
+function IconGridDemo() {
+  const [search, setSearch] = React.useState('')
+  const [selected, setSelected] = React.useState('home')
+
+  return (
+    <div className="w-80 rounded-xl border border-divider-subtle bg-components-panel-bg p-3 shadow-xs">
+      <Autocomplete
+        open
+        inline
+        grid
+        autoHighlight
+        items={iconOptions}
+        itemToStringValue={getIconLabel}
+        value={search}
+        onValueChange={(next, details) => {
+          // Pressing an icon picks it; the query stays so the grid does not collapse to one match.
+          if (details.reason !== 'item-press') setSearch(next)
+        }}
+      >
+        <AutocompleteInputGroup className="mb-3">
+          <span
+            className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+            aria-hidden="true"
+          />
+          <AutocompleteInput
+            placeholder="Search icons…"
+            aria-label="Search icons"
+            aria-expanded="true"
+          />
+          <AutocompleteClear />
+        </AutocompleteInputGroup>
+        <IconGridList selected={selected} onSelect={setSelected} />
+        <AutocompleteEmpty className="p-0 text-text-tertiary">No icon matches.</AutocompleteEmpty>
+      </Autocomplete>
+    </div>
   )
 }
 
@@ -792,6 +913,10 @@ export const GroupedSuggestions: Story = {
       </Autocomplete>
     </div>
   ),
+}
+
+export const IconGrid: Story = {
+  render: () => <IconGridDemo />,
 }
 
 export const FuzzyMatching: Story = {

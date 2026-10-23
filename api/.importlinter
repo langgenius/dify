@@ -34,11 +34,13 @@ ignore_imports =
     core.app.apps.advanced_chat.app_generator -> services.conversation_service
     core.app.apps.advanced_chat.app_generator -> services.errors.conversation
     core.app.apps.advanced_chat.app_generator -> services.workflow_draft_variable_service
-    core.app.apps.advanced_chat.app_runner -> services.conversation_variable_updater
     core.app.apps.agent_app.app_generator -> services.agent.composer_service
     core.app.apps.agent_app.app_generator -> services.agent.workspace_service
     core.app.apps.agent_app.app_generator -> services.conversation_service
+    # KnowledgeFS agent glue lives in services; agent runners only project its config and citations.
+    core.app.apps.agent_app.app_runner -> services.agent.knowledge_citations
     core.app.apps.agent_app.runtime_request_builder -> services.agent.prompt_mentions
+    core.app.apps.agent_app.runtime_request_builder -> services.agent.knowledge_runtime_config
     core.app.apps.agent_app.session_store -> services.agent.workspace_service
     core.app.apps.agent_chat.app_generator -> services.conversation_service
     core.app.apps.base_app_generator -> services.workflow_draft_variable_service
@@ -57,12 +59,14 @@ ignore_imports =
     core.app.apps.workflow.app_generator -> controllers.console.app.workflow
     core.app.apps.workflow.app_generator -> services.snippet_generate_service
     core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
+    # Legacy debug callers delegate input hydration to the application owner during core migration.
+    core.app.apps.workflow_app_runner -> services.workflow_node_variables
+    core.workflow.workflow_entry -> services.workflow_node_variables
     core.app.apps.workflow_app_runner -> tasks.mail_human_input_delivery_task
     core.app.features.annotation_reply.annotation_reply -> services.annotation_service
     core.app.features.annotation_reply.annotation_reply -> services.knowledge.dataset_service
     core.app.llm.quota -> services.credit_pool_service
     core.app.task_pipeline.message_cycle_manager -> services.annotation_service
-    core.app.workflow.layers.persistence -> services.workflow.inspector_events
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.system_feature_service
     core.mcp.auth_client -> services
@@ -85,12 +89,17 @@ ignore_imports =
     core.workflow.node_runtime -> services
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.node_factory -> extensions.application_services.data_sources
+    # The KnowledgeFS retrieval node is owned by services.knowledge_fs and only wired in here.
+    core.workflow.node_factory -> services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter
+    core.workflow.node_factory -> services.knowledge_fs.knowledge_retrieval_v2.entities
     core.workflow.nodes.agent.message_transformer -> services
+    core.workflow.nodes.agent_v2.agent_node -> services.agent.knowledge_citations
     core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions
     core.workflow.nodes.agent_v2.agent_node -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.dify_tools_builder -> services
     core.workflow.nodes.agent_v2.runtime_feature_manifest -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.runtime_request_builder -> services.agent.prompt_mentions
+    core.workflow.nodes.agent_v2.runtime_request_builder -> services.agent.knowledge_runtime_config
     core.workflow.nodes.agent_v2.runtime_request_builder -> services.skill_management_service
     core.workflow.nodes.agent_v2.session_store -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.validators -> services.agent.knowledge_datasets
@@ -170,6 +179,21 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:network-access-group-service-boundary]
+name = Network access group application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.network_access_group_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
 [importlinter:contract:dataset-application-boundary]
 name = Dataset application services and contracts are framework and persistence neutral
 type = forbidden
@@ -234,6 +258,7 @@ ignore_imports =
     repositories.knowledge.dataset_api_key_repository -> services.knowledge.api_key_service
     repositories.knowledge.dataset_repository -> services.knowledge.segments.application
     repositories.knowledge.dataset_repository -> services.knowledge.dataset_access
+    repositories.knowledge.dataset_repository -> services.knowledge.entities.datasets
     repositories.knowledge.dataset_repository -> services.knowledge.indexing.estimate
     repositories.knowledge.dataset_repository -> services.knowledge.resource_scope
     repositories.knowledge.document_repository -> services.knowledge.document_sync
@@ -1130,6 +1155,35 @@ forbidden_modules =
     repositories
 # models.model / models.workflow lazily import repositories.factory (legacy debt),
 # so only direct imports are checked here.
+allow_indirect_imports = True
+
+[importlinter:contract:app-trigger-store-boundary]
+name = App trigger management contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.trigger.app_trigger_store
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:console-app-trigger-controller-boundary]
+name = Console app trigger controller reaches persistence only through the composition root
+type = forbidden
+source_modules =
+    controllers.console.app.workflow_trigger
+forbidden_modules =
+    extensions.ext_database
+    models.model
+    models.trigger
+    repositories
+    sqlalchemy
+# The composition root wires repositories, so only direct imports are checked here.
 allow_indirect_imports = True
 
 [importlinter:contract:app-audio-boundary]

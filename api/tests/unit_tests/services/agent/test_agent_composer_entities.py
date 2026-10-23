@@ -14,7 +14,7 @@ from services.entities.agent_entities import (
 )
 
 
-def test_default_agent_soul_enables_file_upload_feature():
+def test_default_agent_soul_enables_file_upload_feature() -> None:
     agent_soul = AgentSoulConfig()
 
     file_upload = agent_soul.model_dump(mode="json")["app_features"]["file_upload"]
@@ -31,8 +31,14 @@ def test_default_agent_soul_enables_file_upload_feature():
     assert bool(agent_soul.app_features) is False
 
 
-def test_workflow_variant_rejects_agent_app_only_fields():
-    with pytest.raises(ValueError):
+def test_workflow_variant_rejects_agent_app_only_fields() -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "1 validation error for ComposerSavePayload\\\n  Value error, Workflow "
+            "Variant must not include app variables"
+        ),
+    ):
         ComposerSavePayload.model_validate(
             {
                 "variant": ComposerVariant.WORKFLOW,
@@ -44,8 +50,14 @@ def test_workflow_variant_rejects_agent_app_only_fields():
         )
 
 
-def test_agent_app_variant_rejects_workflow_node_job():
-    with pytest.raises(ValueError):
+def test_agent_app_variant_rejects_workflow_node_job() -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "1 validation error for ComposerSavePayload\\\n  Value error, Agent "
+            "App Variant must not include workflow node job config"
+        ),
+    ):
         ComposerSavePayload.model_validate(
             {
                 "variant": ComposerVariant.AGENT_APP,
@@ -55,7 +67,7 @@ def test_agent_app_variant_rejects_workflow_node_job():
         )
 
 
-def test_locked_workflow_soul_rejects_soul_changes():
+def test_locked_workflow_soul_rejects_soul_changes() -> None:
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW,
@@ -69,7 +81,7 @@ def test_locked_workflow_soul_rejects_soul_changes():
         ComposerConfigValidator.validate_save_payload(payload)
 
 
-def test_locked_workflow_node_job_only_allows_inline_soul_payload():
+def test_locked_workflow_node_job_only_allows_inline_soul_payload() -> None:
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW,
@@ -82,7 +94,7 @@ def test_locked_workflow_node_job_only_allows_inline_soul_payload():
     ComposerConfigValidator.validate_save_payload(payload)
 
 
-def test_draft_save_payload_skips_publish_only_agent_soul_validation():
+def test_draft_save_payload_skips_publish_only_agent_soul_validation() -> None:
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.AGENT_APP,
@@ -100,7 +112,7 @@ def test_draft_save_payload_skips_publish_only_agent_soul_validation():
         ComposerConfigValidator.validate_publish_payload(payload)
 
 
-def test_agent_app_soul_allows_app_features_and_variables():
+def test_agent_app_soul_allows_app_features_and_variables() -> None:
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.AGENT_APP,
@@ -123,7 +135,7 @@ def test_agent_app_soul_allows_app_features_and_variables():
     assert payload.agent_soul.app_variables[0].name == "company_name"
 
 
-def test_agent_app_soul_accepts_legacy_follow_up_model_config():
+def test_agent_app_soul_accepts_legacy_follow_up_model_config() -> None:
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.AGENT_APP,
@@ -155,7 +167,7 @@ def test_agent_app_soul_accepts_legacy_follow_up_model_config():
     assert follow_up.model.completion_params == {"temperature": 0.7, "max_tokens": 128}
 
 
-def test_composer_save_payload_accepts_new_roster_metadata():
+def test_composer_save_payload_accepts_new_roster_metadata() -> None:
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW,
@@ -177,7 +189,7 @@ def test_composer_save_payload_accepts_new_roster_metadata():
     assert payload.icon_background == "#E0F2FE"
 
 
-def test_knowledge_query_mode_uses_stable_backend_enums():
+def test_knowledge_query_mode_uses_stable_backend_enums() -> None:
     config = AgentSoulConfig.model_validate(
         {
             "knowledge": {
@@ -195,6 +207,38 @@ def test_knowledge_query_mode_uses_stable_backend_enums():
     )
 
     assert config.knowledge.sets[0].query.mode == AgentKnowledgeQueryMode.GENERATED_QUERY
+
+
+@pytest.mark.parametrize("with_space", [False, True])
+def test_publish_accepts_classic_knowledge_with_or_without_agent_knowledge(with_space: bool) -> None:
+    knowledge: dict[str, object] = {
+        "sets": [
+            {
+                "id": "classic",
+                "name": "Classic Docs",
+                "datasets": [{"id": "dataset-1"}],
+                "query": {"mode": "generated_query"},
+                "retrieval": {"mode": "multiple", "top_k": 4},
+            }
+        ]
+    }
+    if with_space:
+        knowledge["spaces"] = [
+            {
+                "id": "new",
+                "name": "New Docs",
+                "control_space_id": "00000000-0000-4000-8000-000000000001",
+            }
+        ]
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.AGENT_APP,
+            "save_strategy": ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
+            "agent_soul": {"knowledge": knowledge},
+        }
+    )
+
+    ComposerConfigValidator.validate_publish_payload(payload)
 
 
 @pytest.mark.parametrize(
@@ -258,7 +302,7 @@ def test_knowledge_query_mode_uses_stable_backend_enums():
         ),
     ],
 )
-def test_knowledge_sets_contract_rejects_invalid_configs(knowledge_payload, match: str):
+def test_knowledge_sets_contract_rejects_invalid_configs(knowledge_payload: object, match: str) -> None:
     with pytest.raises(ValidationError, match=match):
         AgentSoulConfig.model_validate({"knowledge": knowledge_payload})
 
@@ -326,7 +370,7 @@ def test_knowledge_sets_contract_rejects_invalid_configs(knowledge_payload, matc
         ),
     ],
 )
-def test_knowledge_runtime_requirements_block_publish_but_not_draft_save(knowledge_payload, match: str):
+def test_knowledge_runtime_requirements_block_publish_but_not_draft_save(knowledge_payload: object, match: str) -> None:
     draft_payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.AGENT_APP,
@@ -347,7 +391,7 @@ def test_knowledge_runtime_requirements_block_publish_but_not_draft_save(knowled
         ComposerConfigValidator.validate_publish_payload(publish_payload)
 
 
-def test_manual_metadata_filtering_condition_accepts_composer_ui_identifiers():
+def test_manual_metadata_filtering_condition_accepts_composer_ui_identifiers() -> None:
     """The composer's condition editor always sends ``id`` (list row key) and
     ``metadata_id`` (selected metadata field reference) alongside every
     condition. Rejecting them as unknown fields broke every save of a manual
@@ -387,12 +431,15 @@ def test_manual_metadata_filtering_condition_accepts_composer_ui_identifiers():
         }
     )
 
-    condition = payload.agent_soul.knowledge.sets[0].metadata_filtering.conditions.conditions[0]
+    assert payload.agent_soul is not None
+    conditions = payload.agent_soul.knowledge.sets[0].metadata_filtering.conditions
+    assert conditions is not None
+    condition = conditions.conditions[0]
     assert condition.id == "b149eceb-191a-40a2-9f11-61cf21ebd147"
     assert condition.metadata_id == "ad6cf326-eadf-46e8-a2d5-9cb892d2cc84"
 
 
-def test_agent_soul_model_config_is_first_class_without_credentials():
+def test_agent_soul_model_config_is_first_class_without_credentials() -> None:
     config = AgentSoulConfig(
         model=AgentSoulModelConfig(
             plugin_id="langgenius/openai",
@@ -408,7 +455,7 @@ def test_agent_soul_model_config_is_first_class_without_credentials():
     assert dumped["model"]["credential_ref"] == {"type": "provider", "id": "credential-1", "provider": None}
 
 
-def test_declared_outputs_support_file_check_and_failure_strategy():
+def test_declared_outputs_support_file_check_and_failure_strategy() -> None:
     """Stage 4 §4.3 + §4.4: file output may carry a single ``check`` plus a
     full LLM-node-parity ``failure_strategy``."""
     node_job = WorkflowNodeJobConfig.model_validate(
@@ -444,14 +491,14 @@ def test_declared_outputs_support_file_check_and_failure_strategy():
     assert output.failure_strategy.on_failure.value == "fail_branch"
 
 
-def test_plaintext_secrets_are_rejected():
+def test_plaintext_secrets_are_rejected() -> None:
     config = AgentSoulConfig.model_validate({"env": {"variables": [{"name": "OPENAI_API_KEY", "api_key": "secret"}]}})
 
     with pytest.raises(PlaintextSecretNotAllowedError):
         ComposerConfigValidator.validate_agent_soul(config)
 
 
-def test_workflow_agent_soul_config_strips_agent_app_only_fields():
+def test_workflow_agent_soul_config_strips_agent_app_only_fields() -> None:
     config = AgentComposerService._workflow_agent_soul_config(
         {
             "prompt": {"system_prompt": "answer carefully"},

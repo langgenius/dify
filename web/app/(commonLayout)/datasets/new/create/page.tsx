@@ -1,8 +1,8 @@
 import { getRouteMetadata } from '@/app/route-metadata'
-import { CreateKnowledgePage } from '@/features/new-rag/create-knowledge-page'
+import { CreateKnowledgePage } from '@/features/new-rag/create/page'
 
 export function generateMetadata() {
-  return getRouteMetadata('dataset', ($) => $['newKnowledge.createTitle'])
+  return getRouteMetadata('knowledgeCreate', ($) => $.createTitle)
 }
 
 export default function Page() {

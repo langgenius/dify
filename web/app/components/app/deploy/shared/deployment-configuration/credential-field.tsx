@@ -7,6 +7,7 @@ import {
   SelectGroupLabel,
   SelectItem,
   SelectItemText,
+  SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
@@ -14,15 +15,18 @@ import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
+import { credentialFieldId } from './utils/field-id'
 import { credentialProviderName } from './utils/workflow-deployment-input'
 import { WorkflowDependencyPreview } from './workflow-source-popover'
 
 export function CredentialField({
+  error,
   slot,
   paths = [],
   value,
   onChange,
 }: {
+  error?: string
   slot: CredentialSlot
   paths?: WorkflowPath[]
   value?: string
@@ -33,6 +37,8 @@ export function CredentialField({
   const { getIconUrl } = useGetIcon()
   const { theme } = useTheme()
   const selectedOption = slot.candidates.find((candidate) => candidate.credential_id === value)
+  const inputId = credentialFieldId(slot)
+  const errorId = `${inputId}-error`
   const name = credentialProviderName(slot.provider_id)
   const iconFileName =
     theme === Theme.dark ? slot.icon_dark || slot.icon : slot.icon || slot.icon_dark
@@ -45,36 +51,43 @@ export function CredentialField({
         : ''
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex min-w-0 items-center justify-between gap-2 py-0.5">
-        <div className="flex min-w-0 flex-1 items-center gap-1">
-          <span className="size-5 shrink-0 overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
-            {iconSrc ? (
-              <img alt="" src={iconSrc} className="size-full object-contain" />
-            ) : (
-              <span
-                aria-hidden
-                className="i-ri-plug-2-line flex size-full items-center justify-center text-text-tertiary"
-              />
+    <Select
+      value={value ?? null}
+      onValueChange={(nextValue) => {
+        if (nextValue) onChange(nextValue)
+      }}
+    >
+      <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex min-w-0 items-center justify-between gap-2 py-0.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            <span className="size-5 shrink-0 overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
+              {iconSrc ? (
+                <img alt="" src={iconSrc} className="size-full object-contain" />
+              ) : (
+                <span
+                  aria-hidden
+                  className="i-ri-plug-2-line flex size-full items-center justify-center text-text-tertiary"
+                />
+              )}
+            </span>
+            <SelectLabel className="min-w-0 system-sm-medium wrap-anywhere text-text-primary">
+              {name}
+            </SelectLabel>
+            {category && (
+              <span className="shrink-0 system-xs-regular text-text-tertiary">{category}</span>
             )}
-          </span>
-          <span className="truncate system-sm-medium text-text-primary">{name}</span>
-          {category && (
-            <span className="shrink-0 system-xs-regular text-text-tertiary">{category}</span>
-          )}
+          </div>
+          <WorkflowDependencyPreview subjectName={name} paths={paths} />
         </div>
-        <WorkflowDependencyPreview subjectName={name} paths={paths} />
-      </div>
-      <Select
-        value={value ?? null}
-        onValueChange={(nextValue) => {
-          if (nextValue) onChange(nextValue)
-        }}
-      >
-        <SelectTrigger aria-label={name} className="ps-2">
+        <SelectTrigger
+          id={inputId}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
+          className="ps-2"
+        >
           <span className="flex min-w-0 items-center gap-1.5">
             <StatusDot />
-            <span className="truncate">
+            <span className="truncate text-text-secondary">
               {selectedOption?.display_name ??
                 (slot.candidates.length === 0
                   ? t(($) => $['deployDrawer.noCredentialCandidates'])
@@ -117,7 +130,12 @@ export function CredentialField({
             </SelectGroup>
           )}
         </SelectContent>
-      </Select>
-    </div>
+        {error && (
+          <p id={errorId} role="alert" className="system-xs-regular text-text-destructive">
+            {error}
+          </p>
+        )}
+      </div>
+    </Select>
   )
 }

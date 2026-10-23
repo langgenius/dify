@@ -29,10 +29,18 @@ from controllers.common.errors import (
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi._errors import (
     CatalogStale,
+    DslInvalid,
     ErrorBody,
     ErrorDetail,
     FilenameNotExists,
     HumanInputFormNotFound,
+    KnowledgeFsAccessDeniedError,
+    KnowledgeFsConflictError,
+    KnowledgeFsInvalidRequestError,
+    KnowledgeFsRequestRejectedError,
+    KnowledgeFsRequestTooLargeError,
+    KnowledgeFsResourceNotFoundError,
+    KnowledgeFsUnavailableError,
     MemberLicenseExceeded,
     MemberLimitExceeded,
     OpenApiError,
@@ -40,6 +48,7 @@ from controllers.openapi._errors import (
     OpenApiErrorFormatter,
     RecipientSurfaceMismatch,
 )
+from controllers.openapi._models import Hint
 from controllers.service_api.app.error import (
     AgentNotPublishedError,
     AppUnavailableError,
@@ -307,6 +316,13 @@ ERROR_MATRIX = [
     (MemberLicenseExceeded(), 403, "member_license_exceeded"),
     (HumanInputFormNotFound(), 404, "form_not_found"),
     (RecipientSurfaceMismatch(), 403, "recipient_surface_mismatch"),
+    (KnowledgeFsInvalidRequestError(), 400, "knowledge_fs_invalid_request"),
+    (KnowledgeFsAccessDeniedError(), 403, "knowledge_fs_access_denied"),
+    (KnowledgeFsResourceNotFoundError(), 404, "knowledge_fs_resource_not_found"),
+    (KnowledgeFsConflictError(), 409, "knowledge_fs_conflict"),
+    (KnowledgeFsRequestTooLargeError(), 413, "knowledge_fs_request_too_large"),
+    (KnowledgeFsRequestRejectedError(), 422, "knowledge_fs_request_rejected"),
+    (KnowledgeFsUnavailableError(), 503, "knowledge_fs_unavailable"),
     (CatalogStale(), 412, "catalog_stale"),
 ]
 
@@ -338,3 +354,21 @@ class TestErrorCodeEnumRegistration:
         schema = model.__schema__
         assert schema["type"] == "string"
         assert set(schema["enum"]) == {member.value for member in OpenApiErrorCode}
+
+
+def test_error_body_carries_hints() -> None:
+    hint = Hint(summary="Check the DSL", op="check.console_app.dsl", input={})
+    error = DslInvalid(hints=[hint])
+    assert error.hints == [hint]
+    body = ErrorBody(code="dsl_invalid", message="m", status=422, hints=[hint])
+    assert body.model_dump(exclude_none=True)["hints"][0]["op"] == "check.console_app.dsl"
+
+
+def test_formatter_emits_hints_only_from_openapi_errors() -> None:
+    hint = Hint(summary="Check the DSL", op="check.console_app.dsl", input={"yaml_content": None})
+    wire = OpenApiErrorFormatter().finalize(DslInvalid(hints=[hint]), {}, 422)
+    assert (wire["code"], wire["hints"]) == ("dsl_invalid", [hint.model_dump(mode="json", exclude_none=True)])
+
+    foreign = BadRequest()
+    foreign.hints = [hint]  # type: ignore[attr-defined]
+    assert "hints" not in OpenApiErrorFormatter().finalize(foreign, {}, 400)

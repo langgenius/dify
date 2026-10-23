@@ -1,10 +1,8 @@
 'use client'
 
+import type { PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC, MouseEventHandler } from 'react'
-import type {
-  PreProcessingRule,
-  SummaryIndexSetting as SummaryIndexSettingType,
-} from '@/models/datasets'
+import type { SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'

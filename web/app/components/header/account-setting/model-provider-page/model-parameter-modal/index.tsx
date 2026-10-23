@@ -17,20 +17,21 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
-import { useModelParameterRules } from '@/service/use-common'
 import { ModelStatusEnum } from '../declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
 import { ModelSelector, SplitModelSelector } from '../model-selector'
+import { modelParameterRulesQueryOptions } from '../utils'
 import { ModelSettingsTrigger } from './model-settings-trigger'
 import ParameterItem from './parameter-item'
 import PresetsParameter from './presets-parameter'
 import { getSupportedPresetConfig } from './presets-parameter-utils'
 
-export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & {
+export type ModelParameterModalProps = Pick<PopoverContentProps, 'side' | 'align'> & {
   trigger?: ReactElement<ComponentPropsWithRef<'button'>>
   triggerContainerClassName?: string
   popupClassName?: string
@@ -68,7 +69,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   triggerContainerClassName,
   popupClassName,
   modelSelectorPopupClassName,
-  placement,
+  side,
+  align,
   isAdvancedMode,
   modelId,
   provider,
@@ -95,10 +97,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
   const canFetchParameterRules =
     !!currentProvider && currentModel?.status === ModelStatusEnum.active
-  const { data: parameterRulesData, isLoading } = useModelParameterRules(
-    provider,
-    modelId,
-    canFetchParameterRules,
+  const { data: parameterRulesData, isLoading } = useQuery(
+    modelParameterRulesQueryOptions({ provider, model: modelId, enabled: canFetchParameterRules }),
   )
   const isRulesLoading = canFetchParameterRules && !!provider && !!modelId && isLoading
   const selectableModelList = modelList ?? activeTextGenerationModelList
@@ -196,7 +196,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         </div>
       )}
       <PopoverContent
-        placement={placement ?? (isInWorkflow ? 'left' : trigger ? 'bottom-end' : 'left-start')}
+        side={side ?? (isInWorkflow ? 'left' : trigger ? 'bottom' : 'left')}
+        align={align ?? (isInWorkflow ? 'center' : trigger ? 'end' : 'start')}
         sideOffset={4}
         className={cn(popupClassName, 'w-100 rounded-2xl')}
       >

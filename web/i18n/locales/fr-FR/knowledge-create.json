@@ -1,0 +1,23 @@
+{
+  "addAndProcess": "Lancer le traitement",
+  "crawlPreview": "Aperçu de l’exploration",
+  "createAndProcess": "Créer et traiter les documents",
+  "createFailed": "Nous n'avons pas pu créer cette base de connaissances Agent. Vérifiez votre accès et réessayez.",
+  "createTitle": "Créer une base de connaissances Agent",
+  "description": "Descriptif",
+  "descriptionHelp": "Une description claire aide les applications à déterminer quand rechercher dans cette base de connaissances Agent.",
+  "descriptionPlaceholder": "Ex. : politique de remboursement, FAQ sur la livraison et procédures de transfert à une équipe spécialisée — pour répondre aux questions du support client",
+  "illustrationHeadline": "Connectez votre contenu une fois : chaque application répond avec les connaissances les plus récentes.",
+  "namePlaceholder": "par ex. Manuel de support client",
+  "nameRequired": "Entrez un nom de base de connaissances Agent.",
+  "retryRemainingFiles": "Réessayer les fichiers restants",
+  "selectedFiles": "Fichiers sélectionnés ({{valid}} sur {{total}} valides)",
+  "startWith": "Commencez par",
+  "startWithHelp": "Vous pouvez ajouter plus de sources ou de documents à tout moment.",
+  "uploadCharactersUnavailable": "Caractères : —",
+  "uploadCompleted": "Ajouté",
+  "uploadDocuments": "Télécharger des documents",
+  "uploadDropZoneTitle": "Glissez-déposez des fichiers ou parcourez",
+  "uploadFilesDescription": "Ajoutez des fichiers depuis votre ordinateur. Les documents sont traités après la création de la base de connaissances.",
+  "uploadingFiles": "Téléversement…"
+}

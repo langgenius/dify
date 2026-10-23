@@ -39,6 +39,7 @@ from services.app.console_service import (
     CreatorsPlatformDisabledError,
     InvalidAppExportError,
 )
+from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
@@ -47,7 +48,6 @@ from services.entities.app_entities import (
     AppPage,
     AppRecord,
     AppReference,
-    AppTraceSettings,
     CopyAppParams,
     CreateAppParams,
     ImportedAppPackage,
@@ -226,18 +226,26 @@ class Transfers:
 @dataclass
 class Creators:
     enabled: bool = True
+    failure: Literal["upload", "authorize"] | None = None
+    uploads: list[BinaryIO] = field(default_factory=list)
     calls: list[tuple[object, ...]] = field(default_factory=list)
 
     def require_enabled(self) -> None:
         if not self.enabled:
             raise CreatorsPlatformDisabledError
 
-    def upload(self, dsl: str) -> str:
-        self.calls.append(("upload", dsl))
+    def upload(self, source: BinaryIO, *, filename: str) -> str:
+        self.uploads.append(source)
+        self.calls.append(("upload", filename, source.read()))
+        if self.failure == "upload":
+            raise RuntimeError("Upload failed")
         return "claim"
 
     def authorize(self, account_id: str) -> str | None:
+        assert all(source.closed for source in self.uploads)
         self.calls.append(("authorize", account_id))
+        if self.failure == "authorize":
+            raise RuntimeError("Authorization failed")
         return "code"
 
     def redirect_url(self, claim_code: str, oauth_code: str | None) -> str:
@@ -246,12 +254,10 @@ class Creators:
 
 
 class Tracing:
-    def validate_provider(self, tracing_provider: str) -> None:
-        if tracing_provider != "langfuse":
+    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
+        del context, app_id
+        if settings.tracing_provider not in (None, "langfuse"):
             raise ValueError("Invalid tracing provider")
-
-    def require_provider_available(self, tracing_provider: str) -> None:
-        self.validate_provider(tracing_provider)
 
 
 Ports = tuple[ConsoleAppService, Apps, Access, Transfers, Creators]
@@ -390,11 +396,42 @@ def test_export_rejects_invalid_or_unpaid_version_before_exporting(ports: Ports)
         service.export(CONTEXT, "app", AppExportOptions())
 
 
-def test_publish_orders_upload_authorization_and_redirect_without_secrets(ports: Ports) -> None:
-    service, _, _, transfers, creators = ports
+@pytest.mark.parametrize("mode", ["chat", "workflow", "agent"])
+def test_publish_orders_package_upload_authorization_and_redirect_without_secrets(ports: Ports, mode: str) -> None:
+    service, apps, _, transfers, creators = ports
+    apps.source = replace(apps.source, mode=mode, bound_agent_id="agent" if mode == "agent" else None)
     assert service.publish(CONTEXT, "app") == "https://creators.example.com"
-    assert transfers.calls == [("dsl", CONTEXT, "app", AppExportOptions(include_secret=False))]
-    assert creators.calls == [("upload", "app: example"), ("authorize", "actor"), ("redirect", "claim", "code")]
+    if mode == "agent":
+        assert transfers.calls == [("agent", "workspace", "agent", None)]
+        filename, payload = "agent.ifpkg", b"agent"
+    else:
+        assert transfers.calls == [("package", CONTEXT, "app", AppExportOptions(format="ifpkg", include_secret=False))]
+        filename, payload = "example.ifpkg", b"package"
+    assert creators.calls == [("upload", filename, payload), ("authorize", "actor"), ("redirect", "claim", "code")]
+    assert len(creators.uploads) == 1
+    assert creators.uploads[0].closed
+    assert apps.calls == [("get_reference", CONTEXT, "app")]
+
+
+@pytest.mark.parametrize("failure", ["upload", "authorize"])
+def test_publish_closes_package_and_stops_after_failure(ports: Ports, failure: Literal["upload", "authorize"]) -> None:
+    service, _, _, _, creators = ports
+    creators.failure = failure
+    with pytest.raises(RuntimeError, match="failed"):
+        service.publish(CONTEXT, "app")
+    assert creators.uploads[0].closed
+    expected: list[tuple[object, ...]] = [("upload", "example.ifpkg", b"package")]
+    if failure == "authorize":
+        expected.append(("authorize", "actor"))
+    assert creators.calls == expected
+
+
+def test_publish_rejects_unbound_agent_before_upload(ports: Ports) -> None:
+    service, apps, _, transfers, creators = ports
+    apps.source = replace(apps.source, mode="agent")
+    with pytest.raises(ConsoleAppNotFoundError, match="Agent not found"):
+        service.publish(CONTEXT, "app")
+    assert transfers.calls == creators.calls == []
 
 
 def test_disabled_creators_has_no_export_or_external_effects(ports: Ports) -> None:
@@ -425,7 +462,7 @@ def test_trace_update_checks_ownership_and_provider_without_parsing_old_settings
         assert apps.calls == [("get_reference", CONTEXT, "app")]
     else:
         service.set_trace(CONTEXT, "app", settings)
-        assert apps.calls == [("get_reference", CONTEXT, "app"), ("set_trace", CONTEXT, "app", settings)]
+        assert apps.calls == [("get_reference", CONTEXT, "app")]
 
 
 class Lifecycle:
@@ -437,6 +474,10 @@ class Lifecycle:
         assert context is CONTEXT
         assert settings.app == {"mode": params.mode}
         return RECORD
+
+    def create_draft(self, context: RequestContext, app_id: str) -> None:
+        del context, app_id
+        pytest.fail("Unexpected draft creation")
 
     def prepare_creation(self, context: RequestContext, params: CreateAppParams) -> AppCreationSettings:
         assert context is CONTEXT

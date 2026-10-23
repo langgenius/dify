@@ -1,5 +1,6 @@
 'use client'
 
+import type { ComponentPropsWithRef } from 'react'
 import type { ToolSettingTarget } from '../types'
 import type {
   AgentProviderTool,
@@ -87,8 +88,9 @@ function UnauthorizedCredentialStatus({
     [credentials, onCredentialChange, tool.credentialType],
   )
   const renderTrigger = useCallback(
-    (open?: boolean) => (
+    (open: boolean, triggerProps: ComponentPropsWithRef<'button'>) => (
       <Button
+        {...triggerProps}
         variant="secondary"
         size="small"
         className={cn('shrink-0', open && 'bg-components-button-secondary-bg-hover')}
@@ -110,7 +112,7 @@ function UnauthorizedCredentialStatus({
       isOpen={isOpen}
       onOpenChange={setIsOpen}
       sideOffset={4}
-      placement="bottom-end"
+      align="end"
       triggerPopupSameWidth={false}
       popupClassName="w-[360px]"
       disableSetDefault
@@ -334,7 +336,7 @@ export const AgentProviderToolItem = memo(
                 </span>
                 <span aria-hidden className="i-ri-more-fill size-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-44">
+              <DropdownMenuContent className="w-44">
                 <DropdownMenuItem
                   variant="destructive"
                   className="gap-2"

@@ -167,7 +167,7 @@ class TestCleanNotionDocumentTask:
         This test verifies that the task properly handles the case where
         the specified dataset does not exist in the database.
         """
-        fake = Faker()
+
         non_existent_dataset_id = str(uuid.uuid4())
         document_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 
@@ -341,7 +341,6 @@ class TestCleanNotionDocumentTask:
 
         # Create document
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -475,7 +474,7 @@ class TestCleanNotionDocumentTask:
         # Clean up only first 3 documents
         documents_to_clean = [doc.id for doc in documents[:3]]
         segments_to_clean = [seg for seg in all_segments if seg.document_id in documents_to_clean]
-        index_node_ids_to_clean = [seg.index_node_id for seg in segments_to_clean]
+        [seg.index_node_id for seg in segments_to_clean]
 
         clean_notion_document_task(documents_to_clean, dataset.id)
 
@@ -527,7 +526,6 @@ class TestCleanNotionDocumentTask:
 
         # Create document
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -629,7 +627,6 @@ class TestCleanNotionDocumentTask:
 
         # Create document
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -833,7 +830,7 @@ class TestCleanNotionDocumentTask:
         all_segments = []
         all_index_node_ids = []
 
-        for i, (dataset, account) in enumerate(zip(datasets, accounts)):
+        for i, (dataset, account) in enumerate(zip(datasets, accounts, strict=False)):
             document = Document(
                 id=str(uuid.uuid4()),
                 tenant_id=account.current_tenant.id,
@@ -885,7 +882,7 @@ class TestCleanNotionDocumentTask:
         target_dataset = datasets[0]
         target_document = all_documents[0]
         target_segments = [seg for seg in all_segments if seg.dataset_id == target_dataset.id]
-        target_index_node_ids = [seg.index_node_id for seg in target_segments]
+        [seg.index_node_id for seg in target_segments]
 
         clean_notion_document_task([target_document.id], target_dataset.id)
 
@@ -1045,7 +1042,6 @@ class TestCleanNotionDocumentTask:
 
         # Create document with rich metadata
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,

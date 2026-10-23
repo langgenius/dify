@@ -8,9 +8,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from dify_trace_weave.config import WeaveConfig
+from dify_trace_weave.configuration import WeaveConfigurationError
 from dify_trace_weave.entities.weave_trace_entity import WeaveTraceModel
 from dify_trace_weave.weave_trace import WeaveDataTrace
-from weave.trace_server.trace_server_interface import TraceStatus
+from weave.trace_server.trace_server_interface import CallStartRes, TraceStatus
 
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
@@ -190,139 +191,65 @@ def _make_node(**overrides):
 
 
 @pytest.fixture
-def mock_wandb():
-    with patch("dify_trace_weave.weave_trace.wandb") as mock:
-        mock.login.return_value = True
-        yield mock
+def mock_server():
+    with patch("dify_trace_weave.weave_trace.TraceServer") as factory:
+        server = factory.return_value
+        server.call_start.side_effect = lambda req: CallStartRes(id=req.start.id, trace_id=req.start.trace_id)
+        yield factory
 
 
 @pytest.fixture
-def mock_weave():
-    with patch("dify_trace_weave.weave_trace.weave") as mock:
-        client = MagicMock()
-        client.entity = "my-entity"
-        client.project = "my-project"
-        mock.init.return_value = client
-        yield mock, client
+def trace_instance(mock_server):
+    return WeaveDataTrace(_make_weave_config())
 
 
 @pytest.fixture
-def trace_instance(mock_wandb, mock_weave):
-    """Create a WeaveDataTrace instance with mocked wandb/weave."""
-    _, weave_client = mock_weave
-    config = _make_weave_config()
-    instance = WeaveDataTrace(config)
-    return instance
-
-
-@pytest.fixture
-def trace_instance_with_host(mock_wandb, mock_weave):
-    """Create a WeaveDataTrace instance with host configured."""
-    _, weave_client = mock_weave
-    config = _make_weave_config(host="https://my.wandb.host")
-    instance = WeaveDataTrace(config)
-    return instance
-
-
-# ── TestInit ─────────────────────────────────────────────────────────────────
+def trace_instance_with_host(mock_server):
+    return WeaveDataTrace(_make_weave_config(host="https://my.wandb.host"))
 
 
 class TestInit:
-    def test_init_without_host(self, mock_wandb, mock_weave):
-        """Test __init__ calls wandb.login without host."""
-        mock_w, weave_client = mock_weave
-        config = _make_weave_config(host=None)
-        instance = WeaveDataTrace(config)
-
-        mock_wandb.login.assert_called_once_with(key="wv-api-key", verify=True, relogin=True)
-        mock_w.init.assert_called_once_with(project_name="my-entity/my-project")
+    def test_init_has_explicit_endpoint_and_auth_without_batching(self, mock_server):
+        instance = WeaveDataTrace(_make_weave_config(endpoint="https://trace.test/prefix"))
+        mock_server.assert_called_once_with("https://trace.test/prefix", should_batch=False, auth=("api", "wv-api-key"))
         assert instance.weave_api_key == "wv-api-key"
-        assert instance.project_name == "my-project"
-        assert instance.entity == "my-entity"
+        assert instance.project_id == "my-entity/my-project"
         assert instance.calls == {}
+        mock_server.return_value.call_start.assert_not_called()
 
-    def test_init_with_host(self, mock_wandb, mock_weave):
-        """Test __init__ calls wandb.login with host."""
-        config = _make_weave_config(host="https://my.wandb.host")
-        instance = WeaveDataTrace(config)
+    @pytest.mark.parametrize("host", [None, "https://my.wandb.host", "https://wandb.internal/api"])
+    def test_init_preserves_host(self, mock_server, host):
+        instance = WeaveDataTrace(_make_weave_config(host=host))
+        assert instance.host == host
 
-        mock_wandb.login.assert_called_once_with(
-            key="wv-api-key", verify=True, relogin=True, host="https://my.wandb.host"
-        )
-        assert instance.host == "https://my.wandb.host"
+    def test_init_without_entity_does_not_resolve_over_network(self, mock_server):
+        with patch("dify_trace_weave.weave_trace.resolve_project") as resolve:
+            instance = WeaveDataTrace(_make_weave_config(entity=None))
+            resolve.assert_not_called()
+            assert instance.get_project_url() == "https://wandb.ai"
+            resolve.assert_not_called()
 
-    def test_init_with_host_path(self, mock_wandb, mock_weave):
-        """A self-hosted host keeps its path prefix all the way to wandb.login."""
-        config = _make_weave_config(host="https://wandb.internal/api")
-        instance = WeaveDataTrace(config)
+    def test_qualified_project_does_not_require_default_entity(self, mock_server):
+        instance = WeaveDataTrace(_make_weave_config(entity=None, project="team/project"))
+        assert instance.project_id == "team/project"
+        assert instance.get_project_url() == "https://wandb.ai/team/project"
 
-        mock_wandb.login.assert_called_once_with(
-            key="wv-api-key", verify=True, relogin=True, host="https://wandb.internal/api"
-        )
-        assert instance.host == "https://wandb.internal/api"
-
-    def test_init_without_entity(self, mock_wandb, mock_weave):
-        """Test __init__ initializes weave without entity prefix when entity is None."""
-        mock_w, weave_client = mock_weave
-        config = _make_weave_config(entity=None)
-        instance = WeaveDataTrace(config)
-
-        mock_w.init.assert_called_once_with(project_name="my-project")
-
-    def test_init_login_failure_raises(self, mock_wandb, mock_weave):
-        """Test __init__ raises ValueError when wandb.login returns False."""
-        mock_wandb.login.return_value = False
-        config = _make_weave_config()
-
-        with pytest.raises(ValueError, match="Weave login failed"):
-            WeaveDataTrace(config)
-
-    def test_init_files_url_from_env(self, mock_wandb, mock_weave, monkeypatch: pytest.MonkeyPatch):
-        """Test FILES_URL is read from environment."""
+    def test_init_files_url_from_env(self, mock_server, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("FILES_URL", "http://files.example.com")
-        config = _make_weave_config()
-        instance = WeaveDataTrace(config)
-        assert instance.file_base_url == "http://files.example.com"
+        assert WeaveDataTrace(_make_weave_config()).file_base_url == "http://files.example.com"
 
-    def test_init_files_url_default(self, mock_wandb, mock_weave, monkeypatch: pytest.MonkeyPatch):
-        """Test FILES_URL defaults to http://127.0.0.1:5001."""
+    def test_init_files_url_default(self, mock_server, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.delenv("FILES_URL", raising=False)
-        config = _make_weave_config()
-        instance = WeaveDataTrace(config)
-        assert instance.file_base_url == "http://127.0.0.1:5001"
-
-    def test_project_id_set_correctly(self, trace_instance):
-        """Test that project_id is set from weave_client entity/project."""
-        assert trace_instance.project_id == "my-entity/my-project"
-
-
-# ── TestGetProjectUrl ─────────────────────────────────────────────────────────
+        assert WeaveDataTrace(_make_weave_config()).file_base_url == "http://127.0.0.1:5001"
 
 
 class TestGetProjectUrl:
     def test_get_project_url_with_entity(self, trace_instance):
-        """Returns wandb URL with entity/project."""
-        url = trace_instance.get_project_url()
-        assert url == "https://wandb.ai/my-entity/my-project"
+        assert trace_instance.get_project_url() == "https://wandb.ai/my-entity/my-project"
 
-    def test_get_project_url_without_entity(self, mock_wandb, mock_weave):
-        """Returns wandb URL with project only when entity is None."""
-        config = _make_weave_config(entity=None)
-        instance = WeaveDataTrace(config)
-        url = instance.get_project_url()
-        assert url == "https://wandb.ai/my-project"
-
-    def test_get_project_url_exception_raises(self, trace_instance, monkeypatch: pytest.MonkeyPatch):
-        """Raises ValueError when exception occurs in get_project_url."""
-        monkeypatch.setattr(trace_instance, "entity", None)
-        monkeypatch.setattr(trace_instance, "project_name", None)
-        # Force an error by making string formatting fail
-        # Simulate exception via property
-        original_entity = trace_instance.entity
-        trace_instance.entity = None
-        trace_instance.project_name = None
-        url = trace_instance.get_project_url()
-        assert "https://wandb.ai/" in url
+    def test_get_project_url_preserves_private_prefix(self, mock_server):
+        instance = WeaveDataTrace(_make_weave_config(host="https://wandb.internal/prefix"))
+        assert instance.get_project_url() == "https://wandb.internal/prefix/my-entity/my-project"
 
 
 # ── TestTraceDispatcher ─────────────────────────────────────────────────────
@@ -409,7 +336,7 @@ class TestStartCall:
         assert "run-1" in trace_instance.calls
         assert trace_instance.calls["run-1"]["trace_id"] == "t-1"
         assert trace_instance.calls["run-1"]["parent_id"] is None
-        trace_instance.weave_client.server.call_start.assert_called_once()
+        trace_instance.server.call_start.assert_called_once()
 
     def test_start_call_with_parent(self, trace_instance):
         """Test start_call records parent_run_id."""
@@ -432,7 +359,7 @@ class TestStartCall:
             attributes={"trace_id": "t-2", "start_time": _dt()},
         )
         trace_instance.start_call(run)
-        call_args = trace_instance.weave_client.server.call_start.call_args
+        call_args = trace_instance.server.call_start.call_args
         req = call_args[0][0]
         assert req.start.inputs == {}
 
@@ -445,7 +372,7 @@ class TestStartCall:
             attributes={"trace_id": "t-3", "start_time": _dt()},
         )
         trace_instance.start_call(run)
-        call_args = trace_instance.weave_client.server.call_start.call_args
+        call_args = trace_instance.server.call_start.call_args
         req = call_args[0][0]
         # String inputs gets converted by validator to a dict
         assert isinstance(req.start.inputs, dict)
@@ -473,7 +400,7 @@ class TestStartCall:
         # Manually override after construction
         run.attributes = "some-attr-string"
         trace_instance.start_call(run)
-        call_args = trace_instance.weave_client.server.call_start.call_args
+        call_args = trace_instance.server.call_start.call_args
         req = call_args[0][0]
         assert isinstance(req.start.attributes, dict)
         assert req.start.attributes == {"attributes": "some-attr-string"}
@@ -510,8 +437,8 @@ class TestFinishCall:
             exception=None,
         )
         trace_instance.finish_call(run)
-        trace_instance.weave_client.server.call_end.assert_called_once()
-        call_args = trace_instance.weave_client.server.call_end.call_args
+        trace_instance.server.call_end.assert_called_once()
+        call_args = trace_instance.server.call_end.call_args
         req = call_args[0][0]
         assert req.end.summary["status_counts"][TraceStatus.SUCCESS] == 1
         assert req.end.summary["status_counts"][TraceStatus.ERROR] == 0
@@ -529,7 +456,7 @@ class TestFinishCall:
             exception="Something broke",
         )
         trace_instance.finish_call(run)
-        call_args = trace_instance.weave_client.server.call_end.call_args
+        call_args = trace_instance.server.call_end.call_args
         req = call_args[0][0]
         assert req.end.summary["status_counts"][TraceStatus.ERROR] == 1
         assert req.end.summary["status_counts"][TraceStatus.SUCCESS] == 0
@@ -558,7 +485,7 @@ class TestFinishCall:
             },
         )
         trace_instance.finish_call(run)
-        call_args = trace_instance.weave_client.server.call_end.call_args
+        call_args = trace_instance.server.call_end.call_args
         req = call_args[0][0]
         assert req.end.summary["weave"]["latency_ms"] == 0
 
@@ -572,7 +499,7 @@ class TestFinishCall:
             attributes=None,
         )
         trace_instance.finish_call(run)
-        trace_instance.weave_client.server.call_end.assert_called_once()
+        trace_instance.server.call_end.assert_called_once()
 
     def test_finish_call_non_dict_attributes(self, trace_instance):
         """Test finish_call handles non-dict attributes."""
@@ -585,7 +512,7 @@ class TestFinishCall:
         )
         run.attributes = "some string attr"
         trace_instance.finish_call(run)
-        trace_instance.weave_client.server.call_end.assert_called_once()
+        trace_instance.server.call_end.assert_called_once()
 
 
 # ── TestWorkflowTrace ─────────────────────────────────────────────────────────
@@ -1166,40 +1093,17 @@ class TestGenerateNameTrace:
 
 
 class TestApiCheck:
-    def test_api_check_success_without_host(self, trace_instance, mock_wandb):
-        """api_check returns True on successful login without host."""
-        trace_instance.host = None
-        mock_wandb.login.return_value = True
+    def test_api_check_uses_read_only_verification(self, trace_instance):
+        with patch("dify_trace_weave.weave_trace.verify_configuration") as verify:
+            assert trace_instance.api_check() is True
+            verify.assert_called_once_with(trace_instance._config)
+        trace_instance.server.call_start.assert_not_called()
+        trace_instance.server.call_end.assert_not_called()
 
-        result = trace_instance.api_check()
-
-        assert result is True
-        mock_wandb.login.assert_called_with(key=trace_instance.weave_api_key, verify=True, relogin=True)
-
-    def test_api_check_success_with_host(self, trace_instance, mock_wandb):
-        """api_check returns True on successful login with host."""
-        trace_instance.host = "https://my.wandb.host"
-        mock_wandb.login.return_value = True
-
-        result = trace_instance.api_check()
-
-        assert result is True
-        mock_wandb.login.assert_called_with(
-            key=trace_instance.weave_api_key, verify=True, relogin=True, host="https://my.wandb.host"
-        )
-
-    def test_api_check_login_failure_raises(self, trace_instance, mock_wandb):
-        """api_check raises ValueError when login returns False."""
-        trace_instance.host = None
-        mock_wandb.login.return_value = False
-
-        with pytest.raises(ValueError, match="Weave API check failed"):
-            trace_instance.api_check()
-
-    def test_api_check_exception_raises_value_error(self, trace_instance, mock_wandb):
-        """api_check raises ValueError when wandb.login raises exception."""
-        trace_instance.host = None
-        mock_wandb.login.side_effect = Exception("network error")
-
-        with pytest.raises(ValueError, match="Weave API check failed: network error"):
-            trace_instance.api_check()
+    def test_api_check_propagates_safe_failure(self, trace_instance):
+        with patch(
+            "dify_trace_weave.weave_trace.verify_configuration",
+            side_effect=WeaveConfigurationError("authentication_failed"),
+        ):
+            with pytest.raises(WeaveConfigurationError, match="Weave authentication failed"):
+                trace_instance.api_check()

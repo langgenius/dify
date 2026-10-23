@@ -88,7 +88,10 @@ it.each([
   await expect.element(screen.getByRole('grid', { name: 'January 2025' })).toBeInTheDocument()
   await screen.getByRole('button', { name: day, exact: true }).click()
   await screen.getByRole('button', { name: 'OK' }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith(new Date(`${date}T13:30:00Z`))
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    new Date(`${date}T13:30:00Z`),
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })
 
 it.each([
@@ -275,7 +278,10 @@ it.each([
         .toBeInTheDocument()
       expect(changed).not.toHaveBeenCalled()
       await screen.getByRole('button', { name: 'OK' }).click()
-      expect(changed).toHaveBeenCalledExactlyOnceWith(new Date('2026-09-28T14:23:00Z'))
+      expect(changed).toHaveBeenCalledExactlyOnceWith(
+        new Date('2026-09-28T14:23:00Z'),
+        expect.objectContaining({ reason: 'item-press' }),
+      )
       await expect
         .element(screen.getByRole('button', { name: `Meeting Sep 28, 2026, ${displayTime}` }))
         .toHaveFocus()

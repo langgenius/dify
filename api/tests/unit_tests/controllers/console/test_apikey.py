@@ -1,7 +1,7 @@
 """API key admission, delegation, error and response contracts."""
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import cast
 from unittest.mock import Mock
@@ -98,8 +98,12 @@ class RecordingDatasetKeys:
     def list_workspace_keys(self, context: RequestContext) -> tuple[ApiKeyRecord, ...]:
         return (self.recorder._record("list", context, "dataset", "workspace"),)
 
-    def create_workspace_key(self, context: RequestContext, _dataset_ids: tuple[str, ...]) -> ApiKeyRecord:
-        return self.recorder._record("create", context, "dataset", "workspace")
+    def create_workspace_key(
+        self, context: RequestContext, _dataset_ids: tuple[str, ...], *, knowledge_space_ids: tuple[str, ...] = ()
+    ) -> ApiKeyRecord:
+        return replace(
+            self.recorder._record("create", context, "dataset", "workspace"), knowledge_space_ids=knowledge_space_ids
+        )
 
     def delete_workspace_key(self, context: RequestContext, key_id: str) -> None:
         self.recorder._record("delete", context, "dataset", "workspace", key_id)
@@ -205,7 +209,7 @@ def test_errors_keep_http_contract(keys_app: KeysApp, error: Exception, status: 
     assert response.json is not None
     assert response.json["message"].startswith(message)
     if isinstance(error, ApiKeyLimitExceededError):
-        assert response.json["custom"] == "max_keys_exceeded"
+        assert response.json["code"] == "max_keys_exceeded"
 
 
 @pytest.mark.parametrize(
@@ -322,5 +326,5 @@ def test_both_http_routes_enforce_the_same_key_limit(persisted_keys_app: KeysApp
         response = client.post(path)
         assert response.status_code == 400
         assert response.json is not None
-        assert response.json["custom"] == "max_keys_exceeded"
+        assert response.json["code"] == "max_keys_exceeded"
     assert len(sqlite_session.scalars(select(ApiToken)).all()) == 10

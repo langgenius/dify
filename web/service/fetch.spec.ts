@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PUBLIC_API_PREFIX } from '@/config'
 import {
@@ -5,8 +6,12 @@ import {
   markAppDeletionStarted,
   markAppDeletionSucceeded,
 } from './app-deletion'
-// oxlint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports -- This spec directly tests legacy auth replay.
+import { request } from './base'
+// oxlint-disable-next-line no-restricted-imports -- This spec directly tests low-level public API routing.
 import { base } from './fetch'
+
+const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -15,12 +20,22 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
+vi.mock('./refresh-token', () => ({
+  refreshAccessTokenOrReLogin: refreshAccessTokenOrReLoginMock,
+}))
+
 const { toast } = await import('@/app/notifications')
 
 describe('base', () => {
+  const originalUrl = window.location.href
   beforeEach(() => {
     vi.clearAllMocks()
     window.history.replaceState({}, '', '/')
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    window.history.replaceState({}, '', originalUrl)
+    markAppDeletionFailed('deleted-app')
   })
 
   describe('Public API routing', () => {
@@ -106,8 +121,68 @@ describe('base', () => {
     })
   })
 
+  it('should replay a caller-owned JSON request after refreshing an expired token', async () => {
+    const body = { documentIds: ['document-1'] }
+    const callerRequest = new Request(
+      'http://localhost/console/api/knowledge-fs/spaces/space-1/documents/reindex',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    )
+    const cloneSpy = vi.spyOn(callerRequest, 'clone')
+    const sentRequests: Array<{ body: unknown; method: string }> = []
+    refreshAccessTokenOrReLoginMock.mockResolvedValue(undefined)
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (resource) => {
+      const outgoingRequest =
+        resource instanceof Request ? resource : new Request(resource.toString())
+      sentRequests.push({
+        body: JSON.parse(await outgoingRequest.text()) as unknown,
+        method: outgoingRequest.method,
+      })
+      if (sentRequests.length === 1) {
+        return new Response(
+          JSON.stringify({
+            code: 'unauthorized',
+            message: 'Expired access token',
+            status: 401,
+          }),
+          {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        )
+      }
+      return new Response(JSON.stringify({ result: 'queued' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    // oxlint-disable-next-line typescript/no-deprecated -- This spec directly tests legacy auth replay.
+    const response = await request<Response>(
+      callerRequest.url,
+      {},
+      {
+        fetchCompat: true,
+        request: callerRequest,
+      },
+    )
+
+    await expect(response.json()).resolves.toEqual({ result: 'queued' })
+    expect(refreshAccessTokenOrReLoginMock).toHaveBeenCalledOnce()
+    // happy-dom permits reconstructing an already-used Request, unlike browsers.
+    // Verify the transport preserves its caller-owned input before ky consumes each attempt.
+    expect(cloneSpy).toHaveBeenCalledTimes(2)
+    expect(sentRequests).toEqual([
+      { body, method: 'POST' },
+      { body, method: 'POST' },
+    ])
+  })
+
   describe('Error responses', () => {
-    it('should keep the response body readable when a 401 response is rejected', async () => {
+    it('should preserve structured error details when a 401 response is rejected', async () => {
       // Arrange
       const unauthorizedResponse = new Response(
         JSON.stringify({
@@ -134,8 +209,8 @@ describe('base', () => {
       }
 
       // Assert
-      expect(caughtError).toBeInstanceOf(Response)
-      await expect((caughtError as Response).json()).resolves.toEqual({
+      expect(caughtError).toBeInstanceOf(ORPCError)
+      expect(caughtError).toMatchObject({
         code: 'unauthorized',
         message: 'Unauthorized',
         status: 401,
@@ -159,7 +234,7 @@ describe('base', () => {
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
 
-      await expect(base('/imports')).rejects.toBeInstanceOf(Response)
+      await expect(base('/imports')).rejects.toBeInstanceOf(ORPCError)
 
       expect(toast.error).toHaveBeenCalledWith('Invalid DSL kind')
     })
@@ -180,7 +255,7 @@ describe('base', () => {
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
 
-      await expect(base('/imports')).rejects.toBeInstanceOf(Response)
+      await expect(base('/imports')).rejects.toBeInstanceOf(ORPCError)
 
       expect(toast.error).not.toHaveBeenCalled()
     })
@@ -205,7 +280,7 @@ describe('base', () => {
       try {
         await expect(
           base(`/apps/${appId}/workflows/draft/system-variables`),
-        ).rejects.toBeInstanceOf(Response)
+        ).rejects.toBeInstanceOf(ORPCError)
         expect(toast.error).not.toHaveBeenCalled()
       } finally {
         markAppDeletionFailed(appId)
@@ -232,7 +307,7 @@ describe('base', () => {
 
       await expect(
         base(`/apps/${appId}/workflows/draft/conversation-variables`),
-      ).rejects.toBeInstanceOf(Response)
+      ).rejects.toBeInstanceOf(ORPCError)
       expect(toast.error).not.toHaveBeenCalled()
     })
 
@@ -255,7 +330,7 @@ describe('base', () => {
       )
 
       await expect(base(`/apps/${appId}/workflows/draft/variables`)).rejects.toBeInstanceOf(
-        Response,
+        ORPCError,
       )
       expect(toast.error).toHaveBeenCalledWith('Visible error')
     })
@@ -294,7 +369,7 @@ describe('base', () => {
       )
 
       try {
-        await expect(base(path)).rejects.toBeInstanceOf(Response)
+        await expect(base(path)).rejects.toBeInstanceOf(ORPCError)
         expect(toast.error).toHaveBeenCalledWith('Visible error')
       } finally {
         markAppDeletionFailed(appId)

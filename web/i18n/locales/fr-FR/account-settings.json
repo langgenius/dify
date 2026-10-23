@@ -55,13 +55,14 @@
   "account.sendVerificationButton": "Envoyer le code de vérification",
   "account.setPassword": "Définir un mot de passe",
   "account.showAppLength": "Afficher {{length}} applications",
+  "account.timezoneNoResults": "Aucun fuseau horaire correspondant trouvé",
+  "account.timezoneSearchPlaceholder": "Rechercher des villes ou des fuseaux horaires…",
   "account.verificationLabel": "Code de vérification",
   "account.verificationPlaceholder": "Collez le code à 6 chiffres",
   "account.workspaceName": "Nom de l'espace de travail",
   "account.workspaceNamePlaceholder": "Entrez le nom de l'espace de travail",
   "resourceAccessToken.accessibleResources": "Ressources accessibles",
   "resourceAccessToken.actions": "Actions",
-  "resourceAccessToken.app": "Application",
   "resourceAccessToken.appCount": "{{count}} Application",
   "resourceAccessToken.appsCount": "{{count}} Applications",
   "resourceAccessToken.appsSection": "Applications",
@@ -78,7 +79,6 @@
   "resourceAccessToken.editTitle": "Modifier le jeton d’accès",
   "resourceAccessToken.empty": "Aucun jeton d’accès pour le moment",
   "resourceAccessToken.emptyDescription": "Créez un jeton d’accès pour permettre aux tâches automatisées et aux systèmes externes de découvrir les ressources sélectionnées et d’y accéder avec Difyctl.",
-  "resourceAccessToken.knowledge": "Base de connaissances",
   "resourceAccessToken.knowledgeBasesSection": "Bases de connaissances",
   "resourceAccessToken.knowledgeCount": "{{count}} Base de connaissances",
   "resourceAccessToken.knowledgesCount": "{{count}} Bases de connaissances",
@@ -98,6 +98,5 @@
   "resourceAccessToken.tabApps": "Applications",
   "resourceAccessToken.tabKnowledgeBases": "Bases de connaissances",
   "resourceAccessToken.token": "Jeton",
-  "resourceAccessToken.total": "{{total}} au total",
-  "resourceAccessToken.trackingId": "ID de suivi"
+  "resourceAccessToken.total": "{{total}} au total"
 }

@@ -1,6 +1,7 @@
 'use client'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
-import type { ParentMode, SimpleDocumentDetail } from '@/models/datasets'
+import type { ParentMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -15,50 +16,58 @@ import {
   ComboboxValue,
 } from '@langgenius/dify-ui/combobox'
 import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getUploadFileExtension } from '@/app/components/datasets/documents/document-source'
 import { ChunkingMode } from '@/models/datasets'
-import { useDocumentList } from '@/service/knowledge/use-document'
+import { consoleQuery } from '@/service/console'
 import FileIcon from '../document-file-icon'
 import DocumentList from './document-list'
 
-type Props = Readonly<{
-  datasetId: string
-  value?: SimpleDocumentDetail | null
-  parentMode?: ParentMode
-  onChange: (value: SimpleDocumentDetail) => void
-}>
-
-function getDocumentLabel(document: SimpleDocumentDetail) {
-  return document.name
+// The list query and the document detail query both describe the picked document.
+export type PickerDocument = Pick<
+  DocumentWithSegmentsResponse,
+  'id' | 'doc_form' | 'data_source_info'
+> & {
+  name?: string | null
+  data_source_detail_dict?: DocumentWithSegmentsResponse['data_source_detail_dict'] | null
 }
 
-function getDocumentValue(document: SimpleDocumentDetail) {
+type Props = Readonly<{
+  datasetId: string
+  value?: PickerDocument | null
+  parentMode?: ParentMode
+  onChange: (value: PickerDocument) => void
+}>
+
+function getDocumentLabel(document: PickerDocument) {
+  return document.name ?? ''
+}
+
+function getDocumentValue(document: PickerDocument) {
   return document.id
 }
 
-function isSameDocument(item: SimpleDocumentDetail, value: SimpleDocumentDetail) {
+function isSameDocument(item: PickerDocument, value: PickerDocument) {
   return item.id === value.id
 }
 
-function getDocumentExtension(document?: SimpleDocumentDetail | null) {
+function getDocumentExtension(document?: PickerDocument | null) {
   if (!document) return ''
 
   const detailExtension = document.data_source_detail_dict?.upload_file?.extension
   if (detailExtension) return detailExtension
 
-  const dataSourceInfo = document.data_source_info
-  if (dataSourceInfo && 'upload_file' in dataSourceInfo) return dataSourceInfo.upload_file.extension
-
-  return ''
+  return getUploadFileExtension(document.data_source_info) ?? ''
 }
 
 function DocumentPickerTriggerValue({
   document,
   parentMode,
 }: {
-  document?: SimpleDocumentDetail | null
+  document?: PickerDocument | null
   parentMode?: ParentMode
 }) {
   const { t } = useTranslation(['dataset'])
@@ -74,7 +83,11 @@ function DocumentPickerTriggerValue({
 
   return (
     <span className="flex min-w-0 items-center gap-1.5">
-      <FileIcon name={document?.name} extension={getDocumentExtension(document)} size="xl" />
+      <FileIcon
+        name={document?.name ?? undefined}
+        extension={getDocumentExtension(document)}
+        size="xl"
+      />
       <span className="flex min-w-0 flex-col items-start">
         <span className="flex max-w-full min-w-0 items-center gap-1">
           <span className="max-w-70 min-w-0 truncate system-md-semibold text-text-primary">
@@ -112,14 +125,15 @@ export function DocumentPicker({ datasetId, value, parentMode, onChange }: Props
   const [searchValue, setSearchValue] = useState('')
   const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
 
-  const { data } = useDocumentList({
-    datasetId,
-    query: {
-      keyword: debouncedSearchValue,
-      page: 1,
-      limit: 20,
-    },
-  })
+  const { data } = useQuery(
+    consoleQuery.datasets.byDatasetId.documents.get.queryOptions({
+      input: {
+        params: { dataset_id: datasetId },
+        query: { keyword: debouncedSearchValue, page: 1, limit: 20 },
+      },
+      placeholderData: keepPreviousData,
+    }),
+  )
   const documentsList = data?.data ?? []
 
   const handleInputValueChange = (inputValue: string, details: ComboboxChangeEventDetails) => {
@@ -130,7 +144,7 @@ export function DocumentPicker({ datasetId, value, parentMode, onChange }: Props
     if (!nextOpen) setSearchValue('')
   }
 
-  const handleDocumentChange = (document: SimpleDocumentDetail | null) => {
+  const handleDocumentChange = (document: PickerDocument | null) => {
     if (!document) return
 
     onChange(document)
@@ -138,7 +152,7 @@ export function DocumentPicker({ datasetId, value, parentMode, onChange }: Props
   }
 
   return (
-    <Combobox<SimpleDocumentDetail>
+    <Combobox<PickerDocument>
       items={documentsList}
       value={value ?? null}
       inputValue={searchValue}
@@ -154,12 +168,12 @@ export function DocumentPicker({ datasetId, value, parentMode, onChange }: Props
         aria-label={value?.name || t(($) => $['operation.search'], { ns: 'common' })}
         className="ml-1 flex min-w-0 items-center gap-0.5 rounded-lg px-2 py-1 text-start transition-colors hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover motion-reduce:transition-none"
       >
-        <ComboboxValue<SimpleDocumentDetail>>
+        <ComboboxValue<PickerDocument>>
           {(document) => <DocumentPickerTriggerValue document={document} parentMode={parentMode} />}
         </ComboboxValue>
       </ComboboxTrigger>
       <ComboboxPortal>
-        <ComboboxPositioner placement="bottom-start" sideOffset={0}>
+        <ComboboxPositioner sideOffset={0}>
           <ComboboxPopup
             aria-label={t(($) => $['operation.search'], { ns: 'common' })}
             className="w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"

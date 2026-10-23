@@ -8,6 +8,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -133,7 +134,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
             </IconButton>
           }
         />
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-45 p-1">
+        <DropdownMenuContent className="w-45 p-1">
           {canCreateAndModifySnippet && (
             <>
               <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>
@@ -180,16 +181,12 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       )}
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="w-100">
-          <div className="space-y-2 p-6">
-            <AlertDialogTitle className="title-md-semi-bold text-text-primary">
-              {t(($) => $.deleteConfirmTitle)}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-              {t(($) => $.deleteConfirmContent)}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogFooter className="pt-0">
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t(($) => $.deleteConfirmTitle)}</AlertDialogTitle>
+            <AlertDialogDescription>{t(($) => $.deleteConfirmContent)}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>

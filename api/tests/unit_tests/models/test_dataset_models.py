@@ -1,5 +1,3 @@
-from repositories.knowledge.keyword_table_repository import load_keyword_table
-
 """
 Comprehensive unit tests for Dataset models.
 
@@ -25,6 +23,7 @@ from core.rag.entities import ParentMode
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.storage.storage_type import StorageType
 from models.account import Account
+from models.base import Base, TypeBase
 from models.dataset import (
     AppDatasetJoin,
     ChildChunk,
@@ -77,6 +76,7 @@ from repositories.knowledge.dataset_read_repository import (
     get_segment_dataset,
     get_segment_document,
 )
+from repositories.knowledge.keyword_table_repository import load_keyword_table
 from repositories.knowledge.segment_read_adapter import get_segment_attachments
 from services.knowledge.dataset_read_service import get_dataset_queries
 from tests.unit_tests.config_override import apply_config_overrides
@@ -110,8 +110,7 @@ def _make_document(
     word_count: int | None = None,
     indexing_status: IndexingStatus = IndexingStatus.WAITING,
 ) -> Document:
-    return Document(
-        id=document_id,
+    document = Document(
         tenant_id=tenant_id,
         dataset_id=dataset_id,
         position=position,
@@ -124,6 +123,8 @@ def _make_document(
         word_count=word_count,
         indexing_status=indexing_status,
     )
+    document.id = document_id
+    return document
 
 
 def _make_app(*, app_id: str, tenant_id: str = "tenant-1") -> App:
@@ -161,6 +162,16 @@ def _make_segments(document: Document, hit_counts: list[int]) -> list[DocumentSe
 
 class TestDatasetModelValidation:
     """Test suite for Dataset model validation and basic operations."""
+
+    def test_dataset_uses_typebase_registry_and_generates_ids(self):
+        generated_dataset = Dataset()
+        another_dataset = Dataset()
+        explicit_id = str(uuid4())
+
+        assert Dataset.__mapper__.registry is TypeBase.registry
+        assert Dataset.__mapper__.registry is not Base.registry
+        assert generated_dataset.id != another_dataset.id
+        assert Dataset(id=explicit_id).id == explicit_id
 
     def test_dataset_creation_with_required_fields(self):
         """Test creating a dataset with all required fields."""
@@ -1585,8 +1596,8 @@ class TestModelIntegration:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
             word_count=100,
-            id=document_id,
         )
+        document.id = document_id
 
         # Create segment
         segment = DocumentSegment(

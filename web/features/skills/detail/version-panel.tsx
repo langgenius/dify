@@ -9,15 +9,20 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import {
@@ -28,7 +33,6 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -139,7 +143,7 @@ function VersionFilter({
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={4}
         alignOffset={55}
         className="border-none bg-transparent shadow-none"
@@ -318,7 +322,7 @@ function VersionRow({
             >
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-46">
+            <DropdownMenuContent className="w-46">
               <DropdownMenuItem onClick={() => setRestoreOpen(true)}>
                 {t(($) => $['skillManagement.detail.restoreVersion'])}
               </DropdownMenuItem>
@@ -344,27 +348,15 @@ function VersionRow({
         </div>
       </li>
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="w-full max-w-120 overflow-hidden! border-none p-0 text-left align-middle">
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={tCommon(($) => $['operation.close'])}
-                size="lg"
-                className="absolute inset-e-6 top-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          <div className="px-6 pt-6 pr-14 pb-4">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {versionInfoLabel}
-            </DialogTitle>
+        <DialogContent className="w-120">
+          <DialogHeader>
+            <DialogTitle>{versionInfoLabel}</DialogTitle>
             <DialogDescription className="sr-only">
               {t(($) => $['skillManagement.detail.renameVersionPrompt'])}
             </DialogDescription>
-          </div>
-          <div className="flex flex-col gap-y-4 px-6 py-3">
+            <DialogHeaderCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+          </DialogHeader>
+          <DialogBody className="flex flex-col gap-y-4">
             <Field name="versionTitle">
               <FieldLabel className="system-sm-semibold">
                 {t(($) => $['skillManagement.detail.versionTitle'])}
@@ -385,17 +377,15 @@ function VersionRow({
                 onValueChange={setPublishNote}
               />
             </Field>
-          </div>
-          <div className="flex justify-end p-6 pt-5">
-            <div className="flex items-center gap-x-3">
-              <DialogClose render={<Button disabled={renameMutation.isPending} />}>
-                {tCommon(($) => $['operation.cancel'])}
-              </DialogClose>
-              <Button variant="primary" loading={renameMutation.isPending} onClick={handleRename}>
-                {t(($) => $['skillManagement.detail.publish'])}
-              </Button>
-            </div>
-          </div>
+          </DialogBody>
+          <DialogFooter>
+            <DialogClose render={<Button disabled={renameMutation.isPending} />}>
+              {tCommon(($) => $['operation.cancel'])}
+            </DialogClose>
+            <Button variant="primary" loading={renameMutation.isPending} onClick={handleRename}>
+              {t(($) => $['skillManagement.detail.publish'])}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       <AlertDialog
@@ -426,22 +416,18 @@ function VersionRow({
           setDeleteOpen(open)
         }}
       >
-        <AlertDialogContent className="p-6">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['skillManagement.detail.deleteVersionConfirm'])}
-          </AlertDialogTitle>
-          <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
-            {versionTitle}
-          </AlertDialogDescription>
-          <AlertDialogFooter className="p-0 pt-6">
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['skillManagement.detail.deleteVersionConfirm'])}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{versionTitle}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleteMutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              tone="destructive"
-              loading={deleteMutation.isPending}
-              onClick={handleDelete}
-            >
+            <AlertDialogConfirmButton loading={deleteMutation.isPending} onClick={handleDelete}>
               {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>

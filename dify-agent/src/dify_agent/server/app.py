@@ -24,13 +24,18 @@ import httpx
 from fastapi import APIRouter, FastAPI
 from redis.asyncio import Redis
 
+from dify_agent.agent_stub.server.knowledge import AgentStubKnowledgeHandler
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.runtime.context import Services
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.auth import create_bearer_token_dependency
-from dify_agent.server.observability import configure_agent_observability, configure_server_observability
+from dify_agent.server.observability import (
+    configure_agent_observability,
+    configure_application_observability,
+    configure_server_observability,
+)
 from dify_agent.server.routes.e2b_usage import create_e2b_usage_router
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.routes.execution_bindings import create_execution_bindings_router
@@ -40,12 +45,31 @@ from dify_agent.server.execution_bindings import ExecutionBindingService
 from dify_agent.server.binding_files import BindingFileService
 from dify_agent.server.home_snapshots import HomeSnapshotService
 from dify_agent.server.settings import ServerSettings
+from dify_agent.storage.redis_knowledge_sessions import RedisKnowledgeSessionStore
 from dify_agent.storage.redis_run_store import RedisRunStore
 
 
 def create_app(settings: ServerSettings | None = None) -> FastAPI:
     """Build the FastAPI app with one shared Redis store and local scheduler."""
     resolved_settings = settings or ServerSettings()
+    state: dict[str, object] = {}
+
+    def get_knowledge_store() -> RedisKnowledgeSessionStore:
+        return cast(RedisKnowledgeSessionStore, state["knowledge_store"])
+
+    def get_knowledge_http_client() -> httpx.AsyncClient:
+        return cast(httpx.AsyncClient, state["knowledge_http"])
+
+    knowledge_request_handler = (
+        AgentStubKnowledgeHandler(
+            get_store=get_knowledge_store,
+            get_http_client=get_knowledge_http_client,
+            inner_api_url=resolved_settings.inner_api_url,
+            inner_api_key=resolved_settings.inner_api_key or "",
+        )
+        if resolved_settings.inner_api_key
+        else None
+    )
     agent_stub_token_codec = resolved_settings.create_agent_stub_token_codec()
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     if agent_stub_token_codec is not None:
@@ -88,15 +112,19 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         if runtime_backend_profile is not None
         else None
     )
-    state: dict[str, object] = {}
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         agent_observability = configure_agent_observability(resolved_settings)
+        application_observability = configure_application_observability(resolved_settings)
         _app.state.agent_observability = agent_observability
+        _app.state.application_observability = application_observability
         redis = Redis.from_url(resolved_settings.redis_url)
         plugin_daemon_http_client = create_plugin_daemon_http_client(resolved_settings)
         dify_api_inner_http_client = create_dify_api_inner_http_client(resolved_settings)
+        knowledge_store = RedisKnowledgeSessionStore(redis, prefix=resolved_settings.redis_prefix)
+        state["knowledge_store"] = knowledge_store
+        state["knowledge_http"] = dify_api_inner_http_client
         store = RedisRunStore(
             redis,
             prefix=resolved_settings.redis_prefix,
@@ -116,6 +144,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
                 shell_redact_patterns=resolved_settings.get_shell_redact_patterns(),
                 agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
                 agent_stub_token_factory=agent_stub_token_factory,
+                knowledge_session_store=knowledge_store,
             ),
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             run_timeout_seconds=resolved_settings.run_timeout_seconds,
@@ -123,6 +152,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             stream_text_delta_flush_interval_seconds=(resolved_settings.stream_text_delta_flush_interval_ms / 1000),
             stream_text_delta_max_chars=resolved_settings.stream_text_delta_max_chars,
             agent_observability=agent_observability,
+            application_observability=application_observability,
         )
         state["store"] = store
         state["scheduler"] = scheduler
@@ -136,6 +166,8 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             # Closed last so runs draining above still reach the exporter.
             if agent_observability is not None:
                 await agent_observability.aclose()
+            if application_observability is not None:
+                await application_observability.aclose()
 
     app = FastAPI(title="Dify Agent Run Server", version="0.1.0", lifespan=lifespan)
     app.state.platform_observability = configure_server_observability(app, settings=resolved_settings)
@@ -160,6 +192,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             token_codec=agent_stub_token_codec,
             file_request_handler=agent_stub_file_request_handler,
             config_request_handler=agent_stub_config_request_handler,
+            knowledge_request_handler=knowledge_request_handler,
         )
     )
     return app

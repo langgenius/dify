@@ -1,10 +1,12 @@
+import datetime
+from dataclasses import dataclass
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, create_autospec, patch
 from uuid import UUID
 
 import pytest
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound
 
 import services
 from controllers.common.errors import InvalidArgumentError, NotFoundError
@@ -14,11 +16,16 @@ from controllers.console.datasets import datasets as controller
 from controllers.console.datasets.datasets import (
     DatasetApi,
     DatasetApiBaseUrlApi,
+    DatasetApiKeyApi,
     DatasetAutoDisableLogApi,
+    DatasetCreatePayload,
     DatasetEnableApiApi,
     DatasetErrorDocs,
     DatasetIndexingEstimateApi,
     DatasetIndexingStatusApi,
+    DatasetKnowledgeFSUpgradeApi,
+    DatasetKnowledgeFSUpgradeJobApi,
+    DatasetKnowledgeFSUpgradeJobsApi,
     DatasetListApi,
     DatasetPermissionUserListApi,
     DatasetQueryApi,
@@ -32,14 +39,22 @@ from controllers.console.datasets.datasets import (
 )
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
-    DatasetInUseError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
 )
 from machinery.context import RequestContext
+from models.knowledge_fs import KnowledgeFSUpgradeJob, KnowledgeFSUpgradeJobStatus, KnowledgeFSUpgradeStage
 from services.data_source.entities.notion_import import NotionPageType
+from services.dataset_knowledge_fs_upgrade_service import (
+    KnowledgeFSUpgradeConflictError,
+    KnowledgeFSUpgradeNotFoundError,
+)
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetApplicationService, DatasetListFilter
+from services.knowledge.datasets.upgrades import (
+    KnowledgeFSUpgradeUnavailableError,
+    KnowledgeUpgradeApplicationService,
+)
 from services.knowledge.entities.indexing_estimate import (
     NotionEstimateSource,
     UploadFileEstimateSource,
@@ -52,6 +67,7 @@ from services.knowledge.indexing.estimate import (
     IndexingEstimateProviderUnavailableError,
     UnsupportedEstimateSourceError,
 )
+from services.knowledge_fs.product_dto import KnowledgeFSUpgradeDiscoveryResponse
 from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 CONTEXT = RequestContext("request-1", None, "account-1", "tenant-1")
@@ -101,11 +117,21 @@ def test_scoped_reads_pass_context_and_map_access_errors(app, datasets, resource
 
 def test_list_parses_repeated_filters_and_serializes_page(app, datasets):
     datasets.list_datasets.return_value = {"data": [], "page": 2, "limit": 3, "total": 4, "has_more": False}
-    with app.test_request_context("/?page=2&limit=3&ids=a&ids=b&tag_ids=x&tag_ids=y&include_all=true&keyword=term"):
+    with app.test_request_context(
+        "/?page=2&limit=3&ids=a&ids=b&tag_ids=x&tag_ids=y&creator_ids=c&include_all=true&keyword=term"
+    ):
         result, status = unwrap(DatasetListApi.get)(DatasetListApi(), CONTEXT)
     datasets.list_datasets.assert_called_once_with(
         CONTEXT,
-        DatasetListFilter(page=2, limit=3, ids=["a", "b"], tag_ids=["x", "y"], include_all=True, keyword="term"),
+        DatasetListFilter(
+            page=2,
+            limit=3,
+            ids=["a", "b"],
+            tag_ids=["x", "y"],
+            creator_ids=["c"],
+            include_all=True,
+            keyword="term",
+        ),
     )
     assert status == 200
     assert result == datasets.list_datasets.return_value
@@ -118,17 +144,10 @@ def test_patch_does_not_turn_omitted_fields_into_updates(datasets):
     datasets.update_dataset.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID), values={"name": "Changed"})
 
 
-@pytest.mark.parametrize(
-    ("error", "http_error"),
-    [
-        (services.errors.dataset.DatasetNameDuplicateError(), DatasetNameDuplicateError),
-        (services.errors.dataset.DatasetInUseError(), DatasetInUseError),
-    ],
-)
-def test_domain_errors_are_mapped_at_transport(datasets, error, http_error):
-    datasets.delete_dataset.side_effect = error
-    with pytest.raises(http_error):
-        unwrap(DatasetApi.delete)(DatasetApi(), CONTEXT, DATASET_ID)
+def test_duplicate_name_is_mapped_at_transport_on_create(datasets):
+    datasets.create_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
+    with pytest.raises(DatasetNameDuplicateError):
+        unwrap(DatasetListApi.post)(DatasetListApi(), DatasetCreatePayload(name="Duplicate"), CONTEXT)
 
 
 def test_delete_success_returns_empty_204(datasets):
@@ -214,7 +233,12 @@ def test_website_estimate_parses_boolean_values(value: str | bool, expected: boo
 
 @pytest.mark.parametrize("values", [{"only_main_content": "invalid"}, {"urls": [42]}])
 def test_website_estimate_rejects_invalid_field_types(values: dict[str, object]) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:1 validation error for WebsiteInfo\\\nonly_main_content|1 validation error for WebsiteInfo\\\nurls\\.0)"
+        ),
+    ):
         _new_estimate_sources(
             {
                 "data_source_type": "website_crawl",
@@ -255,7 +279,15 @@ def test_new_estimate_sources_deduplicates_upload_ids_without_reordering() -> No
     ],
 )
 def test_new_estimate_sources_rejects_malformed_transport_shapes(info_list: dict[str, object]) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:1 validation error for FileInfo\\\nfile_ids|1 validation error for "
+            "list\\[NotionEstimateWorkspacePayload\\]\\\n0\\.pages\\.0\\.type|2 "
+            "validation errors for list\\[NotionEstimateWorkspacePayload\\]\\\n0\\."
+            "credential_id|Data source type not support)"
+        ),
+    ):
         _new_estimate_sources(info_list)
 
 
@@ -324,3 +356,146 @@ def test_new_source_estimate_authorizes_before_execution(dataset_id, scene, loca
     assert check.scene is scene
     assert isinstance(check.locator, locator_type)
     estimates.estimate_new_sources.assert_not_called()
+
+
+def _upgrade_job(job_id: str = "upgrade-job-1") -> KnowledgeFSUpgradeJob:
+    job = KnowledgeFSUpgradeJob(
+        tenant_id="tenant-1",
+        old_dataset_id=str(DATASET_ID),
+        requested_by_account_id="account-1",
+        owner_account_id="account-1",
+        idempotency_key="upgrade-request-1",
+        snapshot_at=datetime.datetime(2026, 8, 17, tzinfo=datetime.UTC),
+        config_snapshot={},
+        permission_snapshot={},
+        app_binding_snapshot=[],
+        tag_ids_snapshot=[],
+        status=KnowledgeFSUpgradeJobStatus.QUEUED,
+        stage=KnowledgeFSUpgradeStage.VALIDATING,
+        total_documents=1,
+    )
+    job.id = job_id
+    return job
+
+
+@dataclass(frozen=True)
+class _UpgradeKnowledgeServices:
+    upgrades: KnowledgeUpgradeApplicationService
+
+
+@dataclass(frozen=True)
+class _UpgradeApplicationServices:
+    knowledge: _UpgradeKnowledgeServices
+
+
+@pytest.fixture
+def upgrades(monkeypatch):
+    service = create_autospec(KnowledgeUpgradeApplicationService, instance=True, spec_set=True)
+    services = _UpgradeApplicationServices(knowledge=_UpgradeKnowledgeServices(upgrades=service))
+    monkeypatch.setattr(controller, "application_services", lambda: services)
+    return service
+
+
+def test_upgrade_writes_require_dataset_edit_permission() -> None:
+    for method in (DatasetKnowledgeFSUpgradeApi.post, DatasetKnowledgeFSUpgradeJobApi.post):
+        [check] = rbac_checks(method)
+        assert check.scene is RBACPermission.DATASET_EDIT
+        assert isinstance(check.locator, DatasetId)
+    [check] = rbac_checks(DatasetKnowledgeFSUpgradeJobsApi.get)
+    assert check.scene is RBACPermission.DATASET_READONLY
+    assert isinstance(check.locator, Workspace)
+
+
+def test_upgrade_jobs_serializes_recoverable_jobs(app, upgrades):
+    upgrades.list_recoverable_jobs.return_value = [_upgrade_job(job_id="job-1")]
+    with app.test_request_context("/datasets/knowledge-fs-upgrade-jobs"):
+        response = unwrap(DatasetKnowledgeFSUpgradeJobsApi.get)(DatasetKnowledgeFSUpgradeJobsApi(), CONTEXT)
+    upgrades.list_recoverable_jobs.assert_called_once_with(CONTEXT)
+    assert [job["id"] for job in response["data"]] == ["job-1"]
+
+
+def test_upgrade_start_forwards_idempotency_key(app, upgrades):
+    upgrades.start.return_value = _upgrade_job()
+    with app.test_request_context(
+        f"/datasets/{DATASET_ID}/knowledge-fs-upgrades", headers={"Idempotency-Key": "upgrade-request-1"}
+    ):
+        response, status = unwrap(DatasetKnowledgeFSUpgradeApi.post)(
+            DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID
+        )
+    assert status == 202
+    assert response["id"] == "upgrade-job-1"
+    upgrades.start.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID), idempotency_key="upgrade-request-1")
+
+
+def test_upgrade_start_requires_idempotency_key(app, upgrades):
+    with (
+        app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades"),
+        pytest.raises(BadRequest, match="Idempotency-Key"),
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeApi.post)(DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID)
+    upgrades.start.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("error", "http_error"),
+    [
+        (KnowledgeFSUpgradeUnavailableError(), NotFound),
+        (DatasetNotFoundError(), NotFound),
+        (DatasetAccessDeniedError(), Forbidden),
+        (KnowledgeFSUpgradeConflictError("already running"), Conflict),
+    ],
+)
+def test_upgrade_start_maps_domain_errors(app, upgrades, error, http_error):
+    upgrades.start.side_effect = error
+    with (
+        app.test_request_context(
+            f"/datasets/{DATASET_ID}/knowledge-fs-upgrades", headers={"Idempotency-Key": "upgrade-request-1"}
+        ),
+        pytest.raises(http_error),
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeApi.post)(DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID)
+
+
+def test_upgrade_discovery_serializes_service_result(app, upgrades):
+    upgrades.discovery.return_value = KnowledgeFSUpgradeDiscoveryResponse(
+        job=None, can_upgrade=True, can_retry=False, block_reason=None
+    )
+    with app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades"):
+        response = unwrap(DatasetKnowledgeFSUpgradeApi.get)(DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID)
+    upgrades.discovery.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID))
+    assert response["can_upgrade"] is True
+
+
+def test_upgrade_job_status_maps_missing_job_to_not_found(app, upgrades):
+    upgrades.get_job.side_effect = KnowledgeFSUpgradeNotFoundError("Upgrade job was not found")
+    with (
+        app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades/job-1"),
+        pytest.raises(NotFound, match="Upgrade job was not found"),
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeJobApi.get)(DatasetKnowledgeFSUpgradeJobApi(), CONTEXT, DATASET_ID, "job-1")
+
+
+def test_upgrade_retry_returns_queued(app, upgrades):
+    upgrades.retry.return_value = _upgrade_job(job_id="job-1")
+    with app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades/job-1"):
+        response, status = unwrap(DatasetKnowledgeFSUpgradeJobApi.post)(
+            DatasetKnowledgeFSUpgradeJobApi(), CONTEXT, DATASET_ID, "job-1"
+        )
+    assert status == 202
+    assert response == {"id": "job-1", "status": "queued"}
+
+
+def test_upgrade_retry_maps_disabled_feature_to_not_found(app, upgrades):
+    upgrades.retry.side_effect = KnowledgeFSUpgradeUnavailableError()
+    with (
+        app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades/job-1"),
+        pytest.raises(NotFound),
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeJobApi.post)(DatasetKnowledgeFSUpgradeJobApi(), CONTEXT, DATASET_ID, "job-1")
+
+
+def test_api_key_create_rejects_non_string_dataset_ids_with_the_standard_error(app):
+    # A raised BadRequest gets the standard error body; ``Namespace.abort(message=...)`` replaced it.
+    with app.test_request_context("/", method="POST", json={"dataset_ids": [123]}), pytest.raises(BadRequest) as error:
+        unwrap(DatasetApiKeyApi.post)(DatasetApiKeyApi(), CONTEXT)
+    assert error.value.description == "dataset_ids must be a list of strings."

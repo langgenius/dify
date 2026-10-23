@@ -3,10 +3,11 @@ import type { FC } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMembers } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
 
 type Props = Readonly<{
@@ -21,7 +22,7 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
   const [searchValue, setSearchValue] = useState('')
   const searchLabel = t(($) => $['operation.search'], { ns: 'common' })
 
-  const { data } = useMembers()
+  const { data } = useQuery(consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }))
 
   const currentValue = useMemo(() => {
     if (!data?.accounts || !value) return null
@@ -77,7 +78,6 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
         />
       </PopoverTrigger>
       <PopoverContent
-        placement="bottom"
         sideOffset={4}
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >

@@ -56,7 +56,7 @@ def prepare_invalid_yaml_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     return str(file_path)
 
 
-def test_load_yaml_non_existing_file():
+def test_load_yaml_non_existing_file() -> None:
     with pytest.raises(FileNotFoundError):
         _load_yaml_file(file_path=NON_EXISTING_YAML_FILE)
 
@@ -64,7 +64,7 @@ def test_load_yaml_non_existing_file():
         _load_yaml_file(file_path="")
 
 
-def test_load_valid_yaml_file(prepare_example_yaml_file):
+def test_load_valid_yaml_file(prepare_example_yaml_file: str) -> None:
     yaml_data = _load_yaml_file(file_path=prepare_example_yaml_file)
     assert len(yaml_data) > 0
     assert yaml_data["age"] == 30
@@ -75,7 +75,7 @@ def test_load_valid_yaml_file(prepare_example_yaml_file):
     assert yaml_data.get("non_existed_key") is None
 
 
-def test_load_invalid_yaml_file(prepare_invalid_yaml_file):
+def test_load_invalid_yaml_file(prepare_invalid_yaml_file: str) -> None:
     # yaml syntax error
     with pytest.raises(YAMLError):
         _load_yaml_file(file_path=prepare_invalid_yaml_file)

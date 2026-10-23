@@ -1,4 +1,4 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import { produce } from 'immer'
@@ -54,7 +54,7 @@ const useKnowledgeInputManager = ({ inputs, doSetInputs }: Params) => {
   )
 
   return {
-    inputRef: inputRef as MutableRefObject<KnowledgeRetrievalNodeType>,
+    inputRef: inputRef as RefObject<KnowledgeRetrievalNodeType>,
     setInputs,
     handleQueryVarChange,
     handleQueryAttachmentChange,

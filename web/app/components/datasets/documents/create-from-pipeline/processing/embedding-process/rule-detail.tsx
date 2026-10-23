@@ -1,4 +1,4 @@
-import type { ProcessRuleResponse } from '@/models/datasets'
+import type { ProcessRuleResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'

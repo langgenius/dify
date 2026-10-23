@@ -1,5 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
@@ -226,7 +227,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
       if (child.tagName !== SUPPORTED_TAGS.INPUT && child.tagName !== SUPPORTED_TAGS.TEXTAREA)
         continue
       const name = child.properties.name
-      if (!isSafeName(name)) continue
+      if (!isSafeName(name) || child.properties.disabled) continue
       let value: FormValue = formValues[name]
       if (value instanceof Date) value = value.toISOString()
       if (value === undefined) continue
@@ -237,7 +238,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
   }, [elementChildren, formValues])
 
   const onSubmit = useCallback(
-    (e: React.FormEvent<HTMLFormElement>) => {
+    async (e: React.SubmitEvent<HTMLFormElement>) => {
       e.preventDefault()
       e.stopPropagation()
       if (isSubmitting) return
@@ -246,12 +247,12 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
         const format = str(typedNode.properties.dataFormat) || DATA_FORMAT.TEXT
         const result = getFormOutput()
         if (format === DATA_FORMAT.JSON) {
-          onSend?.(JSON.stringify(result))
+          await onSend?.(JSON.stringify(result))
         } else {
           const textResult = Object.entries(result)
             .map(([key, value]) => `${key}: ${value}`)
             .join('\n')
-          onSend?.(textResult)
+          await onSend?.(textResult)
         }
       } catch {
         setIsSubmitting(false)
@@ -276,7 +277,12 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             <label
               key={key}
               htmlFor={`${formId}-${getLabelTarget(child)}`}
-              className="my-2 system-md-semibold text-text-secondary"
+              className={cn(
+                'my-2 system-md-semibold text-text-secondary',
+                target &&
+                  str(target.properties.type) === SUPPORTED_TYPES.CHECKBOX &&
+                  'cursor-pointer',
+              )}
             >
               {getTextContent(child)}
             </label>
@@ -378,6 +384,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
               <div className="mt-2 flex h-6 items-center space-x-2" key={key}>
                 <Checkbox
                   id={controlId}
+                  disabled={Boolean(child.properties.disabled)}
                   checked={!!formValues[name]}
                   aria-label={checkboxAriaLabel}
                   onCheckedChange={(checked) => updateValue(name, checked)}
@@ -405,7 +412,8 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             return (
               <Select
                 key={key}
-                defaultValue={formValues[name] as string | undefined}
+                disabled={Boolean(child.properties.disabled)}
+                value={(formValues[name] as string | undefined) ?? null}
                 onValueChange={(val) => {
                   if (val != null) updateValue(name, val)
                 }}
@@ -430,6 +438,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
               <input
                 key={key}
                 type="hidden"
+                disabled={Boolean(child.properties.disabled)}
                 name={name}
                 value={str(formValues[name] ?? child.properties.value)}
               />
@@ -441,6 +450,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             return (
               <NumberField
                 key={key}
+                disabled={Boolean(child.properties.disabled)}
                 name={name}
                 step="any"
                 value={value == null || value === '' ? null : Number(value)}
@@ -460,6 +470,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           return (
             <Input
               key={key}
+              disabled={Boolean(child.properties.disabled)}
               id={controlId}
               aria-label={hasExternalLabel ? undefined : name}
               type={type}
@@ -482,6 +493,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           )
           return (
             <Textarea
+              disabled={Boolean(child.properties.disabled)}
               id={controlId}
               aria-label={hasExternalLabel ? undefined : name}
               key={key}

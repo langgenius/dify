@@ -71,7 +71,7 @@ def _reset_schema_cache(api):
     api.__dict__.pop("__schema__", None)
 
 
-def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path: Path):
+def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -81,12 +81,27 @@ def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path: P
         "web-openapi.json",
         "service-openapi.json",
         "openapi-openapi.json",
+        "inner-openapi.json",
     ]
 
     for path in written_paths:
         payload = json.loads(path.read_text(encoding="utf-8"))
         assert payload["openapi"] == "3.1.0"
         assert "paths" in payload
+
+    inner_path = next(path for path in written_paths if path.name == "inner-openapi.json")
+    inner_payload = json.loads(inner_path.read_text(encoding="utf-8"))
+    assert inner_payload["security"] == [{"InnerApiKey": []}]
+    assert inner_payload["components"]["securitySchemes"] == {
+        "InnerApiKey": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-Inner-Api-Key",
+            "description": "INNER_API_KEY for enterprise callers; INNER_API_KEY_FOR_PLUGIN for plugin/agent callers.",
+        }
+    }
+    assert "Bearer" not in inner_payload["components"]["securitySchemes"]
+    assert "/enterprise/apps/{app_id}/dsl" in inner_payload["paths"]
 
 
 def test_generate_specs_match_live_openapi_payloads(tmp_path: Path):
@@ -127,11 +142,12 @@ import sys
 from pathlib import Path
 
 from controllers.console import api as console_api
+from controllers.inner_api import api as inner_api
 from controllers.openapi import api as openapi_api
 from controllers.service_api import api as service_api
 from controllers.web import api as web_api
 
-apis = (console_api, web_api, service_api, openapi_api)
+apis = (console_api, web_api, service_api, openapi_api, inner_api)
 assert all(api._add_specs is False for api in apis)
 
 from dev.generate_swagger_specs import generate_specs
@@ -142,6 +158,7 @@ assert [path.name for path in written_paths] == [
     "web-openapi.json",
     "service-openapi.json",
     "openapi-openapi.json",
+    "inner-openapi.json",
 ]
 """
     env = os.environ.copy()
@@ -311,6 +328,67 @@ def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path: P
         assert all("requestBody" not in operation for operation in _get_operations(payload))
 
 
+def test_generate_specs_include_command_oriented_knowledge_fs_contract(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+    openapi_path = next(path for path in written_paths if path.name == "openapi-openapi.json")
+    payload = json.loads(openapi_path.read_text(encoding="utf-8"))
+    paths = payload["paths"]
+    prefix = "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs"
+
+    assert {
+        f"{prefix}:cat": "get",
+        f"{prefix}:diff": "post",
+        f"{prefix}:find": "get",
+        f"{prefix}:grep": "get",
+        f"{prefix}:ls": "get",
+        f"{prefix}:stat": "get",
+        f"{prefix}:tree": "get",
+    } == {
+        path: next(method for method in item if method != "parameters")
+        for path, item in paths.items()
+        if path.startswith(prefix)
+    }
+    assert not any("/knowledge-fs/spaces/" in path or "/entries" in path for path in paths)
+
+    list_operation = paths[f"{prefix}:ls"]["get"]
+    query_names = {parameter["name"] for parameter in list_operation["parameters"] if parameter["in"] == "query"}
+    assert query_names == {"consistency_class", "page_size", "page_token", "path"}
+    path_names = {parameter["name"] for parameter in list_operation["parameters"] if parameter["in"] == "path"}
+    assert path_names == {"knowledge_space_id", "workspace_id"}
+    assert "requestBody" not in list_operation
+    assert list_operation["operationId"] == "ls_knowledge_fs"
+    assert list_operation["summary"] == "List an Agent Knowledge Base directory (ls)"
+    assert "stable Agent Knowledge Base traversal order" in list_operation["description"]
+    assert "total is intentionally omitted" in list_operation["description"]
+    assert "WORKSPACE_READ" in list_operation["description"]
+    assert _response_schema(list_operation)["$ref"] == "#/components/schemas/KnowledgeFSEntryListResponse"
+    for status in ("400", "401", "403", "404", "409", "413", "422", "503"):
+        assert _response_schema(list_operation, status)["$ref"] == "#/components/schemas/ErrorBody"
+
+    list_schema = payload["components"]["schemas"]["KnowledgeFSEntryListResponse"]
+    assert {"data", "has_more", "next_page_token", "path", "truncated"} <= set(list_schema["properties"])
+    entry_schema = payload["components"]["schemas"]["KnowledgeFSEntryResponse"]
+    assert {item.get("type") for item in entry_schema["properties"]["resource_type"]["anyOf"]} == {
+        "null",
+        "string",
+    }
+    metadata_schema = payload["components"]["schemas"]["KnowledgeFSEntryMetadataResponse"]
+    assert metadata_schema["properties"]["resource_type"]["type"] == "string"
+    assert "enum" not in metadata_schema["properties"]["resource_type"]
+
+    diff_operation = paths[f"{prefix}:diff"]["post"]
+    assert diff_operation["operationId"] == "diff_knowledge_fs"
+    assert "consume model quota" in diff_operation["description"]
+    assert "Automatic retries are not safe" in diff_operation["description"]
+    assert _request_schema(diff_operation)["$ref"] == "#/components/schemas/KnowledgeFSEntryComparePayload"
+    assert _response_schema(diff_operation)["$ref"] == ("#/components/schemas/KnowledgeFSEntryComparisonResponse")
+
+    tree_operation = paths[f"{prefix}:tree"]["get"]
+    assert tree_operation["operationId"] == "tree_knowledge_fs"
+
+
 def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
@@ -338,7 +416,8 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     assert pipeline_operation["operationId"] == "run_pipeline"
 
     chat_error_content = chat_operation["responses"]["401"]["content"]
-    assert chat_error_content == {"application/json": {}}
+    # No business error on chat-messages answers 401, so it keeps the open error body.
+    assert chat_error_content == {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
     chat_success_content = chat_operation["responses"]["200"]["content"]
     assert chat_success_content["application/json"]["schema"] == {"$ref": "#/components/schemas/ChatBlockingResponse"}
     assert chat_success_content["text/event-stream"]["schema"] == {"type": "string"}
@@ -475,7 +554,10 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
         (method, path)
         for path, path_item in payload["paths"].items()
         for method, operation in path_item.items()
-        if isinstance(operation, dict) and "503" in operation.get("responses", {})
+        if isinstance(operation, dict)
+        and "503" in operation.get("responses", {})
+        # KnowledgeFS operations document their own 503 when KnowledgeFS is unavailable.
+        and not path.startswith("/knowledge-fs/")
     }
     assert vector_space_operations == {
         ("post", "/datasets/{dataset_id}/document/create-by-file"),
@@ -653,7 +735,7 @@ def test_generate_specs_is_idempotent(tmp_path: Path):
     second_paths = module.generate_specs(tmp_path / "second")
 
     assert [path.name for path in first_paths] == [path.name for path in second_paths]
-    for first_path, second_path in zip(first_paths, second_paths):
+    for first_path, second_path in zip(first_paths, second_paths, strict=False):
         assert first_path.read_text(encoding="utf-8") == second_path.read_text(encoding="utf-8")
 
 

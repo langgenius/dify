@@ -6,12 +6,20 @@ class PermittedAppsUnavailableError(Exception):
     pass
 
 
+class AppQuotaCheckError(Exception):
+    """The app quota could not be determined because its lookup failed."""
+
+
 class MoreLikeThisDisabledError(Exception):
     pass
 
 
 class WorkflowHashNotEqualError(Exception):
     pass
+
+
+class DraftChangedError(Exception):
+    """The draft no longer matches the export an overwrite is based on."""
 
 
 class IsDraftWorkflowError(Exception):

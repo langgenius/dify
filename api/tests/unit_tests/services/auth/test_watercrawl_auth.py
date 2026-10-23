@@ -65,7 +65,7 @@ class TestWatercrawlAuth:
         with pytest.raises(InvalidDataSourceApiKeyAuthCredentialsError, match="No API key provided"):
             WatercrawlAuth(_credentials(api_key=""))
 
-    @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
+    @patch("services.data_source.auth.watercrawl.watercrawl.ssrf_proxy.get", autospec=True)
     def test_should_validate_valid_credentials_successfully(
         self, mock_get: MagicMock, auth_instance: WatercrawlAuth
     ) -> None:
@@ -79,6 +79,7 @@ class TestWatercrawlAuth:
             "https://app.watercrawl.dev/api/v1/core/crawl-requests/",
             headers={"Content-Type": "application/json", "X-API-KEY": "test_api_key_123"},
             timeout=httpx.Timeout(10.0),
+            max_retries=0,
         )
 
     @pytest.mark.parametrize(
@@ -88,7 +89,7 @@ class TestWatercrawlAuth:
             (409, "Conflict error"),
         ],
     )
-    @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
+    @patch("services.data_source.auth.watercrawl.watercrawl.ssrf_proxy.get", autospec=True)
     def test_should_handle_http_errors(
         self, mock_get: MagicMock, status_code: int, error_message: str, auth_instance: WatercrawlAuth
     ) -> None:
@@ -100,7 +101,7 @@ class TestWatercrawlAuth:
         assert str(exc_info.value) == f"Failed to authorize. Status code: {status_code}. Error: {error_message}"
 
     @pytest.mark.parametrize("status_code", [429, 500, 502, 503])
-    @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
+    @patch("services.data_source.auth.watercrawl.watercrawl.ssrf_proxy.get", autospec=True)
     def test_should_map_upstream_failure_to_provider_unavailable(
         self,
         mock_get: MagicMock,
@@ -115,7 +116,7 @@ class TestWatercrawlAuth:
         assert exc_info.value.provider == "watercrawl"
         assert exc_info.value.status_code == status_code
 
-    @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
+    @patch("services.data_source.auth.watercrawl.watercrawl.ssrf_proxy.get", autospec=True)
     def test_should_handle_http_error_with_non_json_text_response(
         self, mock_get: MagicMock, auth_instance: WatercrawlAuth
     ) -> None:
@@ -127,6 +128,22 @@ class TestWatercrawlAuth:
         assert str(exc_info.value) == "Failed to authorize. Status code: 402. Error: Payment required"
 
     @pytest.mark.parametrize(
+        ("status_code", "body"),
+        [(402, '"Payment required"'), (402, "[]"), (401, "null"), (403, '"Forbidden"')],
+        ids=["string-402", "array-402", "null-401", "string-403"],
+    )
+    @patch("services.data_source.auth.watercrawl.watercrawl.ssrf_proxy.get", autospec=True)
+    def test_should_handle_json_error_body_that_is_not_an_object(
+        self, mock_get: MagicMock, status_code: int, body: str, auth_instance: WatercrawlAuth
+    ) -> None:
+        """A JSON string, array or null body is reported like a non-JSON body."""
+        mock_get.return_value = httpx.Response(status_code, text=body)
+
+        with pytest.raises(DataSourceApiKeyAuthCredentialValidationError) as exc_info:
+            auth_instance.validate_credentials()
+        assert str(exc_info.value) == f"Failed to authorize. Status code: {status_code}. Error: {body}"
+
+    @pytest.mark.parametrize(
         ("status_code", "response_text", "expected_error_contains"),
         [
             (403, '{"error": "Forbidden"}', "Failed to authorize. Status code: 403. Error: Forbidden"),
@@ -134,7 +151,7 @@ class TestWatercrawlAuth:
             (401, "Not JSON", "Failed to authorize. Status code: 401. Error: Not JSON"),
         ],
     )
-    @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
+    @patch("services.data_source.auth.watercrawl.watercrawl.ssrf_proxy.get", autospec=True)
     def test_should_handle_unexpected_errors(
         self,
         mock_get: MagicMock,
@@ -159,7 +176,7 @@ class TestWatercrawlAuth:
             (httpx.ConnectTimeout, "Connection timeout"),
         ],
     )
-    @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
+    @patch("services.data_source.auth.watercrawl.watercrawl.ssrf_proxy.get", autospec=True)
     def test_should_handle_network_errors(
         self,
         mock_get: MagicMock,
@@ -187,7 +204,7 @@ class TestWatercrawlAuth:
             WatercrawlAuth(_credentials(auth_type="bearer", api_key="super_secret_key_12345"))
         assert "super_secret_key_12345" not in str(exc_info.value)
 
-    @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
+    @patch("services.data_source.auth.watercrawl.watercrawl.ssrf_proxy.get", autospec=True)
     def test_should_use_custom_base_url_in_validation(self, mock_get: MagicMock) -> None:
         """Test that custom base URL is used in validation"""
         mock_get.return_value = httpx.Response(200)
@@ -207,7 +224,7 @@ class TestWatercrawlAuth:
             ("https://app.watercrawl.dev//", "https://app.watercrawl.dev/api/v1/core/crawl-requests/"),
         ],
     )
-    @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
+    @patch("services.data_source.auth.watercrawl.watercrawl.ssrf_proxy.get", autospec=True)
     def test_should_use_urljoin_for_url_construction(
         self, mock_get: MagicMock, base_url: str, expected_url: str
     ) -> None:
@@ -221,7 +238,7 @@ class TestWatercrawlAuth:
         # Verify the correct URL was called
         assert mock_get.call_args[0][0] == expected_url
 
-    @patch("services.data_source.auth.watercrawl.watercrawl.httpx.get", autospec=True)
+    @patch("services.data_source.auth.watercrawl.watercrawl.ssrf_proxy.get", autospec=True)
     def test_should_handle_timeout_with_retry_suggestion(
         self, mock_get: MagicMock, auth_instance: WatercrawlAuth
     ) -> None:

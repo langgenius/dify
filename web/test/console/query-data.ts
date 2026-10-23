@@ -2,7 +2,9 @@ import type {
   EducationStatusResponse,
   GetAccountProfileResponse,
 } from '@dify/contracts/api/console/account/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
+import type { KnowledgeFsFeaturesResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type {
   GetSystemFeaturesLicenseResponse,
   GetSystemFeaturesResponse,
@@ -28,6 +30,7 @@ import {
   ensureCurrentWorkspaceQuery,
   seedCurrentWorkspaceQuery,
 } from '@/test/console/current-workspace'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import {
   createSystemFeaturesFixture,
@@ -57,8 +60,8 @@ type CurrentWorkspaceQueryProvider = {
   }
 }
 
-const fallbackTrialModelsQueryKey = ['console', 'trialModels', 'get'] as const
-const fallbackAppDslVersionQueryKey = ['console', 'appDslVersion', 'get'] as const
+const fallbackTrialModelsQueryKey = consoleQueryKey('trialModels.get')
+const fallbackAppDslVersionQueryKey = consoleQueryKey('appDslVersion.get')
 
 const getTrialModelsQueryKey = () => {
   const trialModelsQuery = (consoleQuery as { trialModels?: TrialModelsQueryProvider }).trialModels
@@ -71,6 +74,20 @@ const getAppDslVersionQueryKey = () => {
     .appDslVersion
 
   return appDslVersionQuery?.get?.queryKey() ?? fallbackAppDslVersionQueryKey
+}
+
+const fallbackKnowledgeFsFeaturesQueryKey = [
+  ['console', 'knowledgeFs', 'features', 'get'],
+  { type: 'query' },
+] as const
+
+// Suites that rebuild `consoleQuery.knowledgeFs` with object spreads drop the generated proxy paths.
+const getKnowledgeFsFeaturesQueryKey = () => {
+  const knowledgeFsQuery = (
+    consoleQuery as { knowledgeFs?: { features?: { get?: QueryKeyProvider } } }
+  ).knowledgeFs
+
+  return knowledgeFsQuery?.features?.get?.queryKey() ?? fallbackKnowledgeFsFeaturesQueryKey
 }
 
 const getCurrentWorkspaceQueryKey = () => {
@@ -135,6 +152,20 @@ export const seedFeatures = (
   return data
 }
 
+export const seedKnowledgeFsFeatures = (
+  queryClient: QueryClient,
+  overrides: Partial<KnowledgeFsFeaturesResponse> = {},
+): KnowledgeFsFeaturesResponse => {
+  const data: KnowledgeFsFeaturesResponse = {
+    enabled: false,
+    upload_enabled: false,
+    agent_enabled: false,
+    ...overrides,
+  }
+  queryClient.setQueryData(getKnowledgeFsFeaturesQueryKey(), data)
+  return data
+}
+
 const ensureSystemFeatures = (queryClient: QueryClient) => {
   const queryKey = consoleQuery.systemFeatures.get.queryKey()
   const existingSystemFeatures = queryClient.getQueryData<GetSystemFeaturesResponse>(queryKey)
@@ -165,6 +196,14 @@ export const seedAppDslVersion = (queryClient: QueryClient, appDslVersion = '0.6
   queryClient.setQueryData(getAppDslVersionQueryKey(), { app_dsl_version: appDslVersion })
 }
 
+export const seedAppDetail = (queryClient: QueryClient, appDetail: AppDetailWithSite) => {
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appDetail.id } } }),
+    appDetail,
+  )
+  return appDetail
+}
+
 export type ConsoleQueryTestOptions = {
   /**
    * Partial overrides for the systemFeatures payload. When omitted, the cache
@@ -173,6 +212,12 @@ export type ConsoleQueryTestOptions = {
    * keep the systemFeatures query in the pending state.
    */
   systemFeatures?: DeepPartial<GetSystemFeaturesResponse> | null
+  /**
+   * Partial overrides for the signed-in KnowledgeFS availability query. When
+   * omitted, every KnowledgeFS surface is seeded as unavailable. Pass `null`
+   * to leave the query unseeded.
+   */
+  knowledgeFsFeatures?: Partial<KnowledgeFsFeaturesResponse> | null
   accountProfile?: Partial<GetAccountProfileResponse> | null
   accountProfileMeta?: Partial<UserProfileWithMeta['meta']>
   features?: DeepPartial<GetFeaturesResponse>
@@ -204,6 +249,12 @@ export const createConsoleQueryWrapper = (
     else ensureAccountProfileQuery(queryClient, { timezone: 'UTC' }, options.accountProfileMeta)
   }
   if (options.features) seedFeatures(queryClient, options.features)
+  if (options.knowledgeFsFeatures !== null) {
+    const queryKey = getKnowledgeFsFeaturesQueryKey()
+    if (options.knowledgeFsFeatures)
+      seedKnowledgeFsFeatures(queryClient, options.knowledgeFsFeatures)
+    else if (queryClient.getQueryData(queryKey) === undefined) seedKnowledgeFsFeatures(queryClient)
+  }
   if (options.educationStatus) seedEducationStatus(queryClient, options.educationStatus)
   if (options.currentWorkspace !== null) {
     const queryKey = getCurrentWorkspaceQueryKey()
@@ -242,6 +293,7 @@ export const renderWithConsoleQuery = (
 } => {
   const {
     systemFeatures: sf,
+    knowledgeFsFeatures,
     accountProfile,
     accountProfileMeta,
     features,
@@ -255,6 +307,7 @@ export const renderWithConsoleQuery = (
   } = options
   const { wrapper, queryClient, systemFeatures } = createConsoleQueryWrapper({
     systemFeatures: sf,
+    knowledgeFsFeatures,
     accountProfile,
     accountProfileMeta,
     features,
@@ -278,6 +331,7 @@ export const renderHookWithConsoleQuery = <Result, Props = void>(
 } => {
   const {
     systemFeatures: sf,
+    knowledgeFsFeatures,
     accountProfile,
     accountProfileMeta,
     features,
@@ -291,6 +345,7 @@ export const renderHookWithConsoleQuery = <Result, Props = void>(
   } = options
   const { wrapper, queryClient, systemFeatures } = createConsoleQueryWrapper({
     systemFeatures: sf,
+    knowledgeFsFeatures,
     accountProfile,
     accountProfileMeta,
     features,

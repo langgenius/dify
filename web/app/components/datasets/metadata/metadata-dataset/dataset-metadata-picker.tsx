@@ -15,9 +15,10 @@ import {
   ComboboxSeparator,
 } from '@langgenius/dify-ui/combobox'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
+import { consoleQuery } from '@/service/console'
 import { getIconClassName } from '../utils/get-icon'
 import { CreateContent } from './create-content'
 
@@ -32,7 +33,7 @@ type PickerView = (typeof PickerView)[keyof typeof PickerView]
 
 export type DatasetMetadataPickerProps = Pick<
   PopoverContentProps,
-  'placement' | 'sideOffset' | 'alignOffset'
+  'side' | 'align' | 'sideOffset' | 'alignOffset'
 > & {
   datasetId: string
   onSelectMetadata: (metadata: MetadataItem) => void
@@ -50,7 +51,8 @@ function metadataFilter(metadata: MetadataItem, query: string) {
 
 export function DatasetMetadataPicker({
   datasetId,
-  placement = 'left-start',
+  side = 'left',
+  align = 'start',
   sideOffset = -38,
   alignOffset = 4,
   onSelectMetadata,
@@ -58,7 +60,11 @@ export function DatasetMetadataPicker({
   onOpenMetadataManagement,
 }: DatasetMetadataPickerProps) {
   const { t } = useTranslation(['dataset'])
-  const { data: datasetMetaData } = useDatasetMetaData(datasetId)
+  const { data: datasetMetaData } = useQuery(
+    consoleQuery.datasets.byDatasetId.metadata.get.queryOptions({
+      input: { params: { dataset_id: datasetId } },
+    }),
+  )
   const metadataItems = datasetMetaData?.doc_metadata ?? []
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<PickerView>(PickerView.select)
@@ -117,7 +123,8 @@ export function DatasetMetadataPicker({
         }
       />
       <PopoverContent
-        placement={placement}
+        side={side}
+        align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
         className="w-[320px] bg-components-panel-bg-blur backdrop-blur-[5px]"

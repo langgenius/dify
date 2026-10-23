@@ -1,3 +1,6 @@
+# KnowledgeFS is released independently. Its release controller atomically mounts the tested
+# engine bundles and native dependencies at /app/knowledge-fs in the dedicated Celery workers.
+# Ordinary Dify API images do not rebuild or download a second copy of the private engine.
 # base image
 FROM python:3.13-slim-bookworm AS base
 
@@ -53,7 +56,7 @@ WORKDIR /app/api
 
 # Create non-root user
 ARG dify_uid=1001
-ARG NODE_PACKAGE_VERSION=24.20.0-1nodesource1
+ARG NODE_PACKAGE_VERSION=24.22.1-1nodesource1
 ARG NODESOURCE_KEY_FPR=6F71F525282841EEDAF851B42F59B5F99B1BE0B4
 RUN groupadd -r -g ${dify_uid} dify && \
     useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
@@ -89,6 +92,8 @@ RUN NODE_MAJOR="${NODE_PACKAGE_VERSION%%.*}" \
         media-types \
         # install libmagic to support the use of python-magic guess MIMETYPE
         libmagic1 \
+        # Bounded PDF metadata/rasterization invoked by the local KnowledgeFS worker engine.
+        poppler-utils \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 

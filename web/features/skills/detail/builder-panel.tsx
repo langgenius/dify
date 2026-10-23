@@ -112,7 +112,7 @@ function BuilderModelSelector({
           modelList={modelList}
           modelSelectorPopupClassName="h-[480px]! max-h-[480px]! w-80! max-w-80!"
           showModelMeta={false}
-          placement="bottom-start"
+          align="start"
           trigger={
             <button
               type="button"
@@ -336,6 +336,7 @@ export function SkillBuilderPanel({
   const thinkingElapsedSecondsRef = useRef(0)
   const isSendingRef = useRef(false)
   const isComposingRef = useRef(false)
+  const compositionEndTimerRef = useRef<number | undefined>(undefined)
   const detailRef = useRef(detail)
   const selectedFileRef = useRef(selectedFile)
   const assistAbortControllerRef = useRef<AbortController | null>(null)
@@ -439,6 +440,7 @@ export function SkillBuilderPanel({
 
   useEffect(() => {
     return () => {
+      window.clearTimeout(compositionEndTimerRef.current)
       assistAbortControllerRef.current?.abort()
       attachmentUploadGenerationRef.current += 1
     }
@@ -487,12 +489,14 @@ export function SkillBuilderPanel({
   }
 
   const handleCompositionStart = () => {
+    window.clearTimeout(compositionEndTimerRef.current)
     isComposingRef.current = true
   }
 
   const handleCompositionEnd = () => {
     // Safari can fire compositionend before the Enter keydown that confirms the composition.
-    window.setTimeout(() => {
+    window.clearTimeout(compositionEndTimerRef.current)
+    compositionEndTimerRef.current = window.setTimeout(() => {
       isComposingRef.current = false
     }, 50)
   }

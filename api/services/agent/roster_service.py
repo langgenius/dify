@@ -12,6 +12,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
+    AGENT_APP_VERSION_OPERATIONS,
     APP_BACKED_AGENT_SOURCES,
     WORKFLOW_ONLY_AGENT_SOURCES,
     Agent,
@@ -42,6 +43,7 @@ from services.agent.errors import (
     AgentNotFoundError,
     AgentVersionNotFoundError,
 )
+from services.agent.knowledge_spaces import validate_agent_knowledge_spaces
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
 from services.app.agent_app_contracts import AgentReferencingWorkflow
 from services.app_service import AppService, CreateAppParams
@@ -328,6 +330,9 @@ class AgentRosterService:
         source: AgentSource,
     ) -> Agent:
         ComposerConfigValidator.validate_agent_soul(payload.agent_soul)
+        validate_agent_knowledge_spaces(
+            session=self._session, tenant_id=tenant_id, account_id=account_id, agent_soul=payload.agent_soul
+        )
 
         agent = Agent(
             tenant_id=tenant_id,
@@ -1308,12 +1313,7 @@ class AgentRosterService:
         if agent.source == AgentSource.AGENT_APP or (
             agent.source == AgentSource.IMPORTED and agent.scope == AgentScope.ROSTER and agent.app_id
         ):
-            operations = {
-                AgentConfigRevisionOperation.PUBLISH_DRAFT,
-                AgentConfigRevisionOperation.SAVE_NEW_VERSION,
-                AgentConfigRevisionOperation.SAVE_TO_ROSTER,
-                AgentConfigRevisionOperation.RESTORE_VERSION,
-            }
+            operations = set(AGENT_APP_VERSION_OPERATIONS)
             if agent.source == AgentSource.IMPORTED:
                 operations.add(AgentConfigRevisionOperation.IMPORT_PACKAGE)
             return operations
@@ -1476,6 +1476,7 @@ class AgentRosterService:
             )
             .limit(1)
         )
+        config_snapshot = AgentSoulConfig.model_validate(version.config_snapshot_dict)
         if draft is None:
             draft = AgentConfigDraft(
                 tenant_id=tenant_id,
@@ -1485,11 +1486,13 @@ class AgentRosterService:
                 draft_owner_key="",
                 created_by=account_id,
                 home_snapshot_id=version.home_snapshot_id,
+                config_snapshot=config_snapshot,
             )
             self._session.add(draft)
+        else:
+            draft.config_snapshot = config_snapshot
         draft.base_snapshot_id = version.id
         draft.home_snapshot_id = version.home_snapshot_id
-        draft.config_snapshot = AgentSoulConfig.model_validate(version.config_snapshot_dict)
         draft.updated_by = account_id
         agent.active_config_is_published = version.id == agent.active_config_snapshot_id
         agent.updated_by = account_id

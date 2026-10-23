@@ -1,4 +1,5 @@
 'use client'
+import type { Annotation } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { AnnotationItemBasic } from '../type'
 import { AlertDialog } from '@langgenius/dify-ui/alert-dialog'
@@ -19,8 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { jsonToCSV } from 'react-papaparse'
 import { useLocale } from '#i18n'
 import { LanguagesSupported } from '@/i18n/language'
-import { fetchExportAnnotationList } from '@/service/annotation'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import AddAnnotationModal from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'
@@ -37,27 +37,27 @@ type Props = Readonly<{
 }>
 
 type OperationsMenuProps = {
-  list: AnnotationItemBasic[]
+  list: Annotation[]
   onBulkImport: () => void
   onClearAll: () => void
   onExportJsonl: () => void
 }
 
-const buildAnnotationJsonlRecords = (list: AnnotationItemBasic[]) =>
-  list.map((item: AnnotationItemBasic) => {
-    return `{"messages": [{"role": "system", "content": ""}, {"role": "user", "content": ${JSON.stringify(item.question)}}, {"role": "assistant", "content": ${JSON.stringify(item.answer)}}]}`
+const buildAnnotationJsonlRecords = (list: Annotation[]) =>
+  list.map((item) => {
+    return `{"messages": [{"role": "system", "content": ""}, {"role": "user", "content": ${JSON.stringify(item.question ?? '')}}, {"role": "assistant", "content": ${JSON.stringify(item.answer ?? '')}}]}`
   })
 
-const downloadAnnotationJsonl = (list: AnnotationItemBasic[], locale: string) => {
+const downloadAnnotationJsonl = (list: Annotation[], locale: string) => {
   const content = buildAnnotationJsonlRecords(list).join('\n')
   const file = new Blob([content], { type: 'application/jsonl' })
   downloadBlob({ data: file, fileName: `annotations-${locale}.jsonl` })
 }
 
-const downloadAnnotationCsv = (list: AnnotationItemBasic[], locale: string) => {
+const downloadAnnotationCsv = (list: Annotation[], locale: string) => {
   const content = jsonToCSV([
     locale !== LanguagesSupported[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
-    ...list.map((item) => [item.question, item.answer]),
+    ...list.map((item) => [item.question ?? '', item.answer ?? '']),
   ])
   const file = new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8;' })
   downloadBlob({ data: file, fileName: `annotations-${locale}.csv` })
@@ -95,7 +95,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
           />
           {t(($) => $['table.header.bulkExport'], { ns: 'appAnnotation' })}
         </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent placement="left-start" sideOffset={4} className="min-w-25">
+        <DropdownMenuSubContent side="left" className="min-w-25">
           <DropdownMenuItem
             disabled={annotationUnavailable}
             onClick={() => {
@@ -131,11 +131,13 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
 const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) => {
   const { t } = useTranslation(['appAnnotation', 'common'])
   const locale = useLocale()
-  const [list, setList] = useState<AnnotationItemBasic[]>([])
+  const [list, setList] = useState<Annotation[]>([])
 
   const fetchList = React.useCallback(async () => {
-    const { data }: any = await fetchExportAnnotationList(appId)
-    setList(data as AnnotationItemBasic[])
+    const { data } = await consoleClient.apps.byAppId.annotations.export.get({
+      params: { app_id: appId },
+    })
+    setList(data)
   }, [appId])
 
   useEffect(() => {
@@ -179,7 +181,7 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-38.75">
+        <DropdownMenuContent className="w-38.75">
           <OperationsMenu
             list={list}
             onBulkImport={handleShowBulkImportModal}

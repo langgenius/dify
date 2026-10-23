@@ -3,6 +3,46 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AgentNotFoundError
+ *
+ * Agent not found.
+ */
+export const zAgentNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentNameConflictError
+ *
+ * Agent name already exists.
+ */
+export const zAgentNameConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_name_conflict_error'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * AgentApiAccessResponse
  */
 export const zAgentApiAccessResponse = z.object({
@@ -31,12 +71,25 @@ export const zAgentApiStatusPayload = z.object({
 })
 
 /**
+ * AgentNotPublishedError
+ *
+ * Publish the Agent before enabling Web App or API access.
+ */
+export const zAgentNotPublishedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_published'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * ApiKeyItem
  */
 export const zApiKeyItem = z.object({
   created_at: z.int().nullish(),
   dataset_ids: z.array(z.string()).optional().default([]),
   id: z.string(),
+  knowledge_space_ids: z.array(z.string()).optional().default([]),
   last_used_at: z.int().nullish(),
   token: z.string(),
   type: z.string(),
@@ -50,11 +103,155 @@ export const zApiKeyList = z.object({
 })
 
 /**
+ * MaxKeysExceededError
+ *
+ * The API key limit has been reached.
+ */
+export const zMaxKeysExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('max_keys_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AudioTranscriptResponse
  */
 export const zAudioTranscriptResponse = z.object({
   text: z.string(),
 })
+
+/**
+ * AppUnavailableError
+ *
+ * App unavailable, please check your app configurations.
+ */
+export const zAppUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_unavailable'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * CompletionRequestError
+ *
+ * Completion request failed.
+ */
+export const zCompletionRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('completion_request_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
+ */
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
+  z.object({
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NoAudioUploadedError
+ *
+ * Please upload your audio.
+ */
+export const zNoAudioUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_audio_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+ */
+export const zProviderNotInitializeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotSupportSpeechToTextError
+ *
+ * Provider not support speech to text.
+ */
+export const zProviderNotSupportSpeechToTextError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_speech_to_text'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted Model Provider has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * SpeechToTextDisabledError
+ *
+ * Speech to text is disabled.
+ */
+export const zSpeechToTextDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('speech_to_text_disabled'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AudioTooLargeError
+ *
+ * Audio size exceeded. {message}
+ */
+export const zAudioTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('audio_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * UnsupportedAudioTypeError
+ *
+ * Audio type not allowed.
+ */
+export const zUnsupportedAudioTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_audio_type'),
+    status: z.literal(415),
+  }),
+)
 
 /**
  * SimpleResultResponse
@@ -64,11 +261,47 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
+ * RateLimitError
+ *
+ * Rate Limit Error
+ */
+export const zRateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('rate_limit_error'),
+    status: z.literal(429),
+  }),
+)
+
+/**
  * AgentSimpleResultResponse
  */
 export const zAgentSimpleResultResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * AgentBuildSandboxNotFoundError
+ *
+ * The retained Build Sandbox is no longer available.
+ */
+export const zAgentBuildSandboxNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_build_sandbox_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentSoulLockedError
+ *
+ * Agent Soul is locked for this workflow node.
+ */
+export const zAgentSoulLockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_soul_locked_error'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * AgentBuildDraftApplyResponse
@@ -77,6 +310,54 @@ export const zAgentBuildDraftApplyResponse = z.object({
   draft: z.record(z.string(), z.unknown()),
   result: z.string(),
 })
+
+/**
+ * InvalidComposerConfigError
+ *
+ * Invalid agent composer config.
+ */
+export const zInvalidComposerConfigError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_composer_config_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * PlaintextSecretNotAllowedError
+ *
+ * Plaintext secret values are not allowed in Agent config.
+ */
+export const zPlaintextSecretNotAllowedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('plaintext_secret_not_allowed_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentHomeSnapshotTooLargeError
+ *
+ * The Agent Home Snapshot exceeds the configured size limit.
+ */
+export const zAgentHomeSnapshotTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_home_snapshot_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * AgentHomeSnapshotCreateFailedError
+ *
+ * Failed to capture the Agent Home Snapshot.
+ */
+export const zAgentHomeSnapshotCreateFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_home_snapshot_create_failed'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * AgentBuildDraftCheckoutPayload
@@ -91,6 +372,18 @@ export const zAgentBuildDraftCheckoutPayload = z.object({
 export const zSuggestedQuestionsResponse = z.object({
   data: z.array(z.string()),
 })
+
+/**
+ * AppSuggestedQuestionsAfterAnswerDisabledError
+ *
+ * Function Suggested questions after answer disabled.
+ */
+export const zAppSuggestedQuestionsAfterAnswerDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_suggested_questions_after_answer_disabled'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * AgentConfigFileUploadPayload
@@ -146,9 +439,9 @@ export const zAgentDebugConversationRefreshResponse = z.object({
 })
 
 /**
- * MessageFeedbackPayload
+ * AppMessageFeedbackPayload
  */
-export const zMessageFeedbackPayload = z.object({
+export const zAppMessageFeedbackPayload = z.object({
   content: z.string().nullish(),
   message_id: z.string(),
   rating: z.enum(['dislike', 'like']).nullish(),
@@ -162,11 +455,59 @@ export const zAgentPublishPayload = z.object({
 })
 
 /**
+ * AgentModelNotConfiguredError
+ *
+ * Agent App requires the Agent Soul model to be configured.
+ */
+export const zAgentModelNotConfiguredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_model_not_configured'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * SandboxInfoResponse
  */
 export const zSandboxInfoResponse = z.object({
   workspace_cwd: z.string(),
 })
+
+/**
+ * NoActiveBindingError
+ *
+ * No active sandbox binding.
+ */
+export const zNoActiveBindingError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_active_binding'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentBackendUnreachableError
+ *
+ * Agent backend is unreachable.
+ */
+export const zAgentBackendUnreachableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_backend_unreachable'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * InspectorUnavailableError
+ *
+ * Sandbox inspector is unavailable.
+ */
+export const zInspectorUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('inspector_unavailable'),
+    status: z.literal(503),
+  }),
+)
 
 /**
  * AgentSandboxDownloadPayload
@@ -183,6 +524,18 @@ export const zAgentSandboxDownloadPayload = z.object({
 export const zSandboxDownloadResponse = z.object({
   url: z.string(),
 })
+
+/**
+ * BindingFileDownloadUnavailableError
+ *
+ * Sandbox file download is unavailable.
+ */
+export const zBindingFileDownloadUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('binding_file_download_unavailable'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * SandboxReadResponse
@@ -204,6 +557,265 @@ export const zTextToSpeechPayload = z.object({
   text: z.string(),
   voice: z.string().nullish(),
 })
+
+/**
+ * ProviderNotSupportTextToSpeechError
+ *
+ * Provider does not support text to speech.
+ */
+export const zProviderNotSupportTextToSpeechError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_text_to_speech'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AppTraceResponse
+ */
+export const zAppTraceResponse = z.object({
+  capture_agent: z.boolean().optional().default(true),
+  capture_content: z.boolean().optional().default(false),
+  enabled: z.boolean().optional().default(false),
+  tracing_provider: z.string().nullish(),
+})
+
+/**
+ * AppTracePayload
+ */
+export const zAppTracePayload = z.object({
+  capture_agent: z.boolean().optional().default(true),
+  capture_content: z.boolean().optional().default(false),
+  enabled: z.boolean(),
+  tracing_provider: z.string().nullish(),
+})
+
+/**
+ * InvalidTracingConfigError
+ *
+ * The tracing configuration is invalid.
+ */
+export const zInvalidTracingConfigError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_tracing_config'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TracingProviderUnavailableError
+ *
+ * The tracing provider is not available in this deployment.
+ */
+export const zTracingProviderUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_provider_unavailable'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * UnsupportedTracingProviderError
+ *
+ * The tracing provider is not supported.
+ */
+export const zUnsupportedTracingProviderError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_tracing_provider'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TraceConfigNotFoundError
+ *
+ * Tracing configuration not found.
+ */
+export const zTraceConfigNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trace_config_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * TracingConfigConflictError
+ *
+ * Tracing configuration changed. Refresh and try again.
+ */
+export const zTracingConfigConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_config_conflict'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * TracingConfigProcessingFailedError
+ *
+ * The tracing configuration could not be processed.
+ */
+export const zTracingConfigProcessingFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_config_processing_failed'),
+    status: z.literal(500),
+  }),
+)
+
+/**
+ * TraceProviderCapabilitiesResponse
+ */
+export const zTraceProviderCapabilitiesResponse = z.object({
+  agent_spans: z.boolean(),
+  api_collection_enabled: z.boolean(),
+  export_ack: z.literal('accepted'),
+  native_cost: z.boolean(),
+  native_usage: z.boolean(),
+  provider: z.string(),
+  session: z.boolean(),
+  span_url: z.boolean(),
+  trace_url: z.boolean(),
+})
+
+/**
+ * AppNotFoundError
+ *
+ * App not found.
+ */
+export const zAppNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * TraceAppConfigResponse
+ */
+export const zTraceAppConfigResponse = z.object({
+  app_id: z.string().nullish(),
+  created_at: z.string().nullish(),
+  error: z.string().nullish(),
+  has_not_configured: z.boolean().nullish(),
+  id: z.string().nullish(),
+  is_active: z.boolean().nullish(),
+  result: z.string().nullish(),
+  tracing_config: z.record(z.string(), z.string().nullable()).nullish(),
+  tracing_provider: z.string().nullish(),
+  updated_at: z.string().nullish(),
+})
+
+/**
+ * TraceConfigPayload
+ */
+export const zTraceConfigPayload = z.object({
+  activate: z.boolean().optional().default(false),
+  tracing_config: z.record(z.string(), z.string().nullable()),
+  tracing_provider: z.string(),
+})
+
+/**
+ * TracingConfigVerificationFailedError
+ *
+ * The tracing configuration could not be verified.
+ */
+export const zTracingConfigVerificationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_config_verification_failed'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TraceConfigAlreadyExistsError
+ *
+ * A tracing configuration already exists for this provider.
+ */
+export const zTraceConfigAlreadyExistsError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trace_config_already_exists'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * TracingNodeNotFoundError
+ *
+ * The Agent node invocation does not belong to this trace.
+ */
+export const zTracingNodeNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_node_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * TracingSourceNotFoundError
+ *
+ * The tracing source does not exist in this application.
+ */
+export const zTracingSourceNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_source_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * TraceRunRetryPayload
+ */
+export const zTraceRunRetryPayload = z.object({
+  acknowledge_possible_duplicates: z.boolean().optional().default(false),
+})
+
+/**
+ * TracingRunNotFoundError
+ *
+ * No collected trace is available to retry.
+ */
+export const zTracingRunNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_run_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * TracingAlreadyAcceptedError
+ *
+ * An accepted trace cannot be exported again.
+ */
+export const zTracingAlreadyAcceptedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_already_accepted'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * TracingDuplicateAcknowledgementRequiredError
+ *
+ * Acknowledge possible duplicates before retrying an uncertain export.
+ */
+export const zTracingDuplicateAcknowledgementRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_duplicate_acknowledgement_required'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * TracingRetryNotAllowedError
+ *
+ * This trace is not in a retryable state.
+ */
+export const zTracingRetryNotAllowedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_retry_not_allowed'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * AgentConfigSnapshotRestoreResponse
@@ -634,16 +1246,7 @@ export const zAgentLogListResponse = z.object({
   total: z.int(),
 })
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
+export const zAnyJsonValue = z.unknown()
 
 /**
  * AgentThought
@@ -660,7 +1263,7 @@ export const zAgentThought = z.object({
   thought: z.string().nullish(),
   tool: z.string().nullish(),
   tool_input: z.string().nullish(),
-  tool_labels: zJsonValue,
+  tool_labels: zAnyJsonValue,
 })
 
 /**
@@ -750,6 +1353,56 @@ export const zTextToSpeechVoiceResponse = z.object({
  * Available voices
  */
 export const zTextToSpeechVoiceListResponse = z.array(zTextToSpeechVoiceResponse)
+
+/**
+ * TraceProviderSupportResponse
+ *
+ * Adapter support declarations, not successful-delivery or platform-verification results.
+ */
+export const zTraceProviderSupportResponse = z.object({
+  agent_spans: z.boolean(),
+  export_ack: z.literal('accepted'),
+  native_cost: z.boolean(),
+  native_usage: z.boolean(),
+  provider: z.string(),
+  session: z.boolean(),
+  span_url: z.boolean(),
+  trace_url: z.boolean(),
+})
+
+export const zTraceSourceKind = z.enum(['message', 'node', 'workflow'])
+
+/**
+ * TraceRunStatusResponse
+ */
+export const zTraceRunStatusResponse = z.object({
+  accepted_at: z.iso.datetime().nullish(),
+  attempts: z.int().nullish(),
+  capabilities: zTraceProviderSupportResponse.nullish(),
+  capture_agent: z.boolean().nullish(),
+  capture_content: z.boolean().nullish(),
+  config_revision: z.string().nullish(),
+  error_code: z.string().nullish(),
+  project_url: z.string().nullish(),
+  provider: z.string().nullish(),
+  queryable: z.boolean().nullish(),
+  source_id: z.string(),
+  source_kind: zTraceSourceKind,
+  span_count: z.int().nullish(),
+  span_url: z.string().nullish(),
+  status: z.enum([
+    'accepted',
+    'collecting',
+    'exporting',
+    'failed',
+    'not_collected',
+    'ready',
+    'retrying',
+    'uncertain',
+  ]),
+  trace_id: z.string().nullish(),
+  trace_url: z.string().nullish(),
+})
 
 /**
  * AgentAppPublishedReferenceResponse
@@ -1213,6 +1866,56 @@ export const zFeedback = z.object({
 export const zExecutionContentType = z.enum(['human_input'])
 
 /**
+ * KnowledgeFsCitation
+ *
+ * Immutable evidence identity; no signed URLs, tokens or storage keys.
+ */
+export const zKnowledgeFsCitation = z.object({
+  artifact_hash: z.string().min(1).max(255),
+  control_space_id: z.string().length(36),
+  document_asset_id: z.string().min(1).max(512),
+  document_title: z.string().max(2000).nullish(),
+  document_version: z.int().gte(1).nullish(),
+  end_offset: z.int().gte(0).nullish(),
+  id: z.string().regex(/^kfs_[a-f0-9]{32}$/),
+  node_id: z.string().min(1).max(512),
+  page_number: z.int().gte(0).nullish(),
+  parse_artifact_id: z.string().max(512).nullish(),
+  section_path: z.array(z.string()).max(64).optional(),
+  space_name: z.string().min(1).max(120),
+  start_offset: z.int().gte(0).nullish(),
+})
+
+/**
+ * RetrievalSourceMetadata
+ */
+export const zRetrievalSourceMetadata = z.object({
+  content: z.string().nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_id: z.string().nullish(),
+  dataset_name: z.string().nullish(),
+  doc_metadata: z.record(z.string(), z.unknown()).nullish(),
+  document_asset_id: z.string().nullish(),
+  document_id: z.string().nullish(),
+  document_name: z.string().nullish(),
+  document_revision: z.int().nullish(),
+  document_version: z.int().nullish(),
+  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  hit_count: z.int().nullish(),
+  index_node_hash: z.string().nullish(),
+  knowledge_fs_citation: zKnowledgeFsCitation.nullish(),
+  page: z.int().nullish(),
+  position: z.int().nullish(),
+  retriever_from: z.string().nullish(),
+  score: z.number().nullish(),
+  segment_id: z.string().nullish(),
+  segment_position: z.int().nullish(),
+  summary: z.string().nullish(),
+  title: z.string().nullish(),
+  word_count: z.int().nullish(),
+})
+
+/**
  * AgentAverageResponseTimeStatisticResponse
  */
 export const zAgentAverageResponseTimeStatisticResponse = z.object({
@@ -1416,13 +2119,13 @@ export const zAppRerankingModelResponse = z.object({
   reranking_provider_name: z.string().optional(),
 })
 
-export const zJsonValue2 = z.unknown()
+export const zJsonValue = z.unknown()
 
 /**
  * AppEnabledExternalDataToolResponse
  */
 export const zAppEnabledExternalDataToolResponse = z.object({
-  config: z.record(z.string(), zJsonValue2),
+  config: z.record(z.string(), zJsonValue),
   enabled: z.literal(true),
   icon: z.string().optional(),
   icon_background: z.string().optional(),
@@ -1435,7 +2138,7 @@ export const zAppEnabledExternalDataToolResponse = z.object({
  * AppDisabledExternalDataToolResponse
  */
 export const zAppDisabledExternalDataToolResponse = z.object({
-  config: z.record(z.string(), zJsonValue2).optional(),
+  config: z.record(z.string(), zJsonValue).optional(),
   enabled: z.literal(false),
   icon: z.string().optional(),
   icon_background: z.string().optional(),
@@ -1448,8 +2151,8 @@ export const zAppDisabledExternalDataToolResponse = z.object({
  * AppSensitiveWordAvoidanceResponse
  */
 export const zAppSensitiveWordAvoidanceResponse = z.object({
-  config: z.record(z.string(), zJsonValue2).optional(),
-  configs: z.array(zJsonValue2).optional(),
+  config: z.record(z.string(), zJsonValue).optional(),
+  configs: z.array(zJsonValue).optional(),
   enabled: z.boolean(),
   type: z.string().optional(),
 })
@@ -1463,35 +2166,35 @@ export const zHumanInputFormSubmissionData = z.object({
   node_id: z.string(),
   node_title: z.string(),
   rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+  submitted_data: z.record(z.string(), zJsonValue).nullish(),
 })
 
 /**
  * AppLegacyGoogleSearchToolResponse
  */
 export const zAppLegacyGoogleSearchToolResponse = z.object({
-  google_search: z.record(z.string(), zJsonValue2),
+  google_search: z.record(z.string(), zJsonValue),
 })
 
 /**
  * AppLegacyWebReaderToolResponse
  */
 export const zAppLegacyWebReaderToolResponse = z.object({
-  web_reader: z.record(z.string(), zJsonValue2),
+  web_reader: z.record(z.string(), zJsonValue),
 })
 
 /**
  * AppLegacyWikipediaToolResponse
  */
 export const zAppLegacyWikipediaToolResponse = z.object({
-  wikipedia: z.record(z.string(), zJsonValue2),
+  wikipedia: z.record(z.string(), zJsonValue),
 })
 
 /**
  * AppLegacyCurrentDatetimeToolResponse
  */
 export const zAppLegacyCurrentDatetimeToolResponse = z.object({
-  current_datetime: z.record(z.string(), zJsonValue2),
+  current_datetime: z.record(z.string(), zJsonValue),
 })
 
 /**
@@ -1542,7 +2245,7 @@ export const zLlmMode = z.enum(['chat', 'completion'])
  * AppModelSelectionResponse
  */
 export const zAppModelSelectionResponse = z.object({
-  completion_params: z.record(z.string(), zJsonValue2).optional(),
+  completion_params: z.record(z.string(), zJsonValue).optional(),
   mode: z.union([zLlmMode, z.literal('')]).optional(),
   name: z.string().optional(),
   provider: z.string().optional(),
@@ -1628,14 +2331,14 @@ export const zAppUserInputFormConfigResponse = z.object({
   allowed_file_extensions: z.array(z.string()).optional(),
   allowed_file_types: z.array(zFileType).optional(),
   allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
-  config: z.record(z.string(), zJsonValue2).optional(),
-  default: zJsonValue2.optional(),
+  config: z.record(z.string(), zJsonValue).optional(),
+  default: zJsonValue.optional(),
   description: z.string().optional(),
   enabled: z.boolean().optional(),
   hide: z.boolean().optional(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
-  json_schema: z.union([z.string(), z.record(z.string(), zJsonValue2)]).nullish(),
+  json_schema: z.union([z.string(), z.record(z.string(), zJsonValue)]).nullish(),
   label: z.string(),
   max_length: z.int().nullish(),
   options: z.array(z.string()).optional(),
@@ -1758,6 +2461,23 @@ export const zAgentHumanToolConfig = z.object({
 export const zAgentSoulHumanConfig = z.object({
   contacts: z.array(zAgentHumanContactConfig).optional(),
   tools: z.array(zAgentHumanToolConfig).optional(),
+})
+
+/**
+ * AgentKnowledgeSpaceConfig
+ *
+ * One read-only Agent Knowledge Base binding, addressed by stable ID or CLI alias.
+ *
+ * The control-space ID is Dify-owned, never the execution-plane space ID.
+ * ``is_missing`` preserves unresolved DSL references for editing; it never
+ * authorizes execution. Names/descriptions are author guidance, not authority.
+ */
+export const zAgentKnowledgeSpaceConfig = z.object({
+  control_space_id: z.string().length(36),
+  description: z.string().max(2000).nullish(),
+  id: z.string().min(1).max(255),
+  is_missing: z.boolean().optional().default(false),
+  name: z.string().min(1).max(120),
 })
 
 /**
@@ -2012,9 +2732,11 @@ export const zAgentComposerKnowledgeDatasetCandidateResponse = z.object({
  * AgentComposerKnowledgeSetCandidateResponse
  */
 export const zAgentComposerKnowledgeSetCandidateResponse = z.object({
+  control_space_id: z.string().nullish(),
   datasets: z.array(zAgentComposerKnowledgeDatasetCandidateResponse).optional(),
   description: z.string().nullish(),
   id: z.string(),
+  missing: z.boolean().optional().default(false),
   missing_dataset_ids: z.array(z.string()).optional(),
   name: z.string(),
 })
@@ -2114,7 +2836,7 @@ export const zAppProviderAgentToolResponse = z.object({
   provider_type: zToolProviderType,
   tool_label: z.string().optional(),
   tool_name: z.string(),
-  tool_parameters: z.record(z.string(), zJsonValue2),
+  tool_parameters: z.record(z.string(), zJsonValue),
 })
 
 /**
@@ -2419,7 +3141,7 @@ export const zAgentSoulModelSettings = z.object({
   frequency_penalty: z.number().nullish(),
   max_tokens: z.int().nullish(),
   presence_penalty: z.number().nullish(),
-  response_format: zAgentModelResponseFormatConfig.nullish(),
+  response_format: z.union([z.string(), zAgentModelResponseFormatConfig]).nullish(),
   stop: z.array(z.string()).nullish(),
   temperature: z.number().nullish(),
   top_p: z.number().nullish(),
@@ -2807,16 +3529,15 @@ export const zAgentKnowledgeSetConfig = z.object({
 /**
  * AgentSoulKnowledgeConfig
  *
- * Top-level Agent v2 knowledge config.
+ * Agent Knowledge Base and Classic Knowledge Base bindings for an Agent.
  *
- * Agent v2 models knowledge as explicit sets instead of one flat
- * ``datasets`` / ``query_mode`` / ``query_config`` block. An empty ``sets``
- * list means no knowledge layer should be emitted at runtime, while set-name
- * uniqueness stays case-insensitive because runtime selection addresses sets
- * by name.
+ * ``spaces`` use the KnowledgeFS layer and ``sets`` use the Classic Knowledge
+ * Base layer. Both may be configured together; empty knowledge adds no runtime
+ * capability.
  */
 export const zAgentSoulKnowledgeConfig = z.object({
   sets: z.array(zAgentKnowledgeSetConfig).optional(),
+  spaces: z.array(zAgentKnowledgeSpaceConfig).max(10).optional(),
 })
 
 /**
@@ -2954,10 +3675,10 @@ export const zSelectInputConfig = z.object({
 })
 
 export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
-  zSelectInputConfig.extend({ type: z.literal('select') }),
-  zFileInputConfig.extend({ type: z.literal('file') }),
-  zFileListInputConfig.extend({ type: z.literal('file-list') }),
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
 ])
 
 /**
@@ -3005,14 +3726,15 @@ export const zMessageDetailResponse = z.object({
   from_end_user_id: z.string().nullish(),
   from_source: z.string(),
   id: z.string(),
-  inputs: z.record(z.string(), zJsonValue),
-  message: zJsonValue,
+  inputs: z.record(z.string(), zAnyJsonValue),
+  message: zAnyJsonValue,
   message_files: z.array(zMessageFile),
   message_tokens: z.int(),
-  metadata: zJsonValue,
+  metadata: zAnyJsonValue,
   parent_message_id: z.string().nullish(),
   provider_response_latency: z.number(),
   query: z.string(),
+  retriever_resources: z.array(zRetrievalSourceMetadata).optional(),
   status: z.string(),
   workflow_run_id: z.string().nullish(),
 })
@@ -3669,7 +4391,7 @@ export const zPostAgentByAgentIdFeaturesPath = z.object({
  */
 export const zPostAgentByAgentIdFeaturesResponse = zSimpleResultResponse
 
-export const zPostAgentByAgentIdFeedbacksBody = zMessageFeedbackPayload
+export const zPostAgentByAgentIdFeedbacksBody = zAppMessageFeedbackPayload
 
 export const zPostAgentByAgentIdFeedbacksPath = z.object({
   agent_id: z.uuid(),
@@ -3861,6 +4583,117 @@ export const zGetAgentByAgentIdTextToAudioVoicesQuery = z.object({
  * TTS voices retrieved successfully
  */
 export const zGetAgentByAgentIdTextToAudioVoicesResponse = zTextToSpeechVoiceListResponse
+
+export const zGetAgentByAgentIdTracePath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent tracing settings
+ */
+export const zGetAgentByAgentIdTraceResponse = zAppTraceResponse
+
+export const zPostAgentByAgentIdTraceBody = zAppTracePayload
+
+export const zPostAgentByAgentIdTracePath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Updated Agent tracing settings
+ */
+export const zPostAgentByAgentIdTraceResponse = zAppTraceResponse
+
+export const zGetAgentByAgentIdTraceCapabilitiesPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdTraceCapabilitiesQuery = z.object({
+  tracing_provider: z.string(),
+})
+
+/**
+ * Provider support declarations
+ */
+export const zGetAgentByAgentIdTraceCapabilitiesResponse = zTraceProviderCapabilitiesResponse
+
+export const zDeleteAgentByAgentIdTraceConfigPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zDeleteAgentByAgentIdTraceConfigQuery = z.object({
+  tracing_provider: z.string(),
+})
+
+/**
+ * Agent provider configuration deleted
+ */
+export const zDeleteAgentByAgentIdTraceConfigResponse = z.void()
+
+export const zGetAgentByAgentIdTraceConfigPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdTraceConfigQuery = z.object({
+  tracing_provider: z.string(),
+})
+
+/**
+ * Masked Agent provider configuration
+ */
+export const zGetAgentByAgentIdTraceConfigResponse = zTraceAppConfigResponse
+
+export const zPatchAgentByAgentIdTraceConfigBody = zTraceConfigPayload
+
+export const zPatchAgentByAgentIdTraceConfigPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent provider updated
+ */
+export const zPatchAgentByAgentIdTraceConfigResponse = zTraceAppConfigResponse
+
+export const zPostAgentByAgentIdTraceConfigBody = zTraceConfigPayload
+
+export const zPostAgentByAgentIdTraceConfigPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent provider configured
+ */
+export const zPostAgentByAgentIdTraceConfigResponse = zTraceAppConfigResponse
+
+export const zGetAgentByAgentIdTraceRunsByMessageIdPath = z.object({
+  agent_id: z.uuid(),
+  message_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdTraceRunsByMessageIdQuery = z.object({
+  node_execution_id: z.uuid().optional(),
+})
+
+/**
+ * Frozen trace destination and export state
+ */
+export const zGetAgentByAgentIdTraceRunsByMessageIdResponse = zTraceRunStatusResponse
+
+export const zPostAgentByAgentIdTraceRunsByMessageIdRetryBody = zTraceRunRetryPayload
+
+export const zPostAgentByAgentIdTraceRunsByMessageIdRetryPath = z.object({
+  agent_id: z.uuid(),
+  message_id: z.uuid(),
+})
+
+export const zPostAgentByAgentIdTraceRunsByMessageIdRetryQuery = z.object({
+  node_execution_id: z.uuid().optional(),
+})
+
+/**
+ * Retry state for the same frozen destination
+ */
+export const zPostAgentByAgentIdTraceRunsByMessageIdRetryResponse = zTraceRunStatusResponse
 
 export const zGetAgentByAgentIdVersionsPath = z.object({
   agent_id: z.uuid(),

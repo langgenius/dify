@@ -37,11 +37,7 @@ import {
   removeAgentSkillAtom,
   upsertAgentSkillAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/skills'
-import {
-  getSkillErrorCode,
-  getSkillErrorDetailString,
-  normalizeSkillError,
-} from '@/features/skills/error'
+import { getSkillErrorCode, getSkillErrorDetailString } from '@/features/skills/error'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
@@ -418,7 +414,7 @@ function WorkspaceAgentSkillItem({
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-48">
+        <DropdownMenuContent className="w-48">
           <DropdownMenuItem className="gap-2" onClick={handleOpenInLibrary}>
             <span
               aria-hidden
@@ -525,9 +521,8 @@ export function AgentSkills() {
           },
         },
         {
-          onError: async (error) => {
-            const normalizedError = await normalizeSkillError(error)
-            const errorCode = getSkillErrorCode(normalizedError)
+          onError: (error) => {
+            const errorCode = getSkillErrorCode(error)
             if (errorCode === 'too_many_agent_skills') {
               toast.error(
                 t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached']),
@@ -537,7 +532,7 @@ export function AgentSkills() {
             if (errorCode === 'skill_name_conflict') {
               toast.error(
                 tSkill(($) => $['skillManagement.errors.nameConflict'], {
-                  name: getSkillErrorDetailString(normalizedError, 'name') ?? '',
+                  name: getSkillErrorDetailString(error, 'name') ?? '',
                 }),
               )
               return
@@ -731,7 +726,7 @@ export function AgentSkills() {
                 }
               />
               <PopoverContent
-                placement="bottom-end"
+                align="end"
                 sideOffset={4}
                 className={
                   addMenuView === 'menu'

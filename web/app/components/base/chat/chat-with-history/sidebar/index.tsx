@@ -7,6 +7,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -96,13 +97,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
     >
       <div className={cn('flex shrink-0 items-center gap-3 p-3 pr-2')}>
         <div className="shrink-0">
-          <AppIcon
-            size="large"
-            iconType={appData?.site.icon_type}
-            icon={appData?.site.icon}
-            background={appData?.site.icon_background}
-            imageUrl={appData?.site.icon_url}
-          />
+          <AppIcon size="large" icon={appData?.site} />
         </div>
         <div className={cn('grow truncate system-md-semibold text-text-secondary')}>
           {appData?.site.title}
@@ -167,7 +162,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
         )}
       </div>
       <div className="flex shrink-0 items-center justify-between p-3">
-        <MenuDropdown hideLogout={isInstalledApp} placement="top-start" data={appData?.site} />
+        <MenuDropdown hideLogout={isInstalledApp} side="top" align="start" data={appData?.site} />
         {/* powered by */}
         <div className="shrink-0">
           {!appData?.custom_config?.remove_webapp_brand && (
@@ -195,14 +190,12 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
         </div>
         <AlertDialog open={!!showConfirm} onOpenChange={(open) => !open && handleCancelConfirm()}>
           <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {t(($) => $['chat.deleteConversation.title'], { ns: 'share' })}
               </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {deleteConversationContent}
-              </AlertDialogDescription>
-            </div>
+              <AlertDialogDescription>{deleteConversationContent}</AlertDialogDescription>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}

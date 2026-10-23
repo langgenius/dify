@@ -1,9 +1,23 @@
 """Tests for Celery SSL configuration."""
 
 import ssl
+from collections.abc import Iterator
+from importlib import import_module
 from unittest.mock import MagicMock, patch
 
+import pytest
+from celery.contrib.testing.app import TestApp, setup_default_app
+
 from enums import DeploymentEdition
+from services.knowledge_fs.lifecycle_readiness import KnowledgeFSLifecycleWorkerReadiness
+
+
+@pytest.fixture(autouse=True)
+def restore_celery_app_state() -> Iterator[None]:
+    # init_app replaces Celery's process-wide current/default app. Restore both
+    # so later shared tasks do not enter this module's Flask app context.
+    with setup_default_app(TestApp()):
+        yield
 
 
 class TestCelerySSLConfiguration:
@@ -182,7 +196,13 @@ class TestCelerySSLConfiguration:
         mock_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK = False
         mock_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL = 30
 
-        with patch("extensions.ext_celery.dify_config", mock_config):
+        with (
+            patch("extensions.ext_celery.dify_config", mock_config),
+            patch(
+                "services.knowledge_fs.lifecycle_readiness.get_configured_knowledge_fs_lifecycle_worker_readiness",
+                return_value=KnowledgeFSLifecycleWorkerReadiness(ready=False, blockers=()),
+            ),
+        ):
             from dify_app import DifyApp
             from extensions.ext_celery import init_app
 
@@ -237,7 +257,13 @@ class TestCelerySSLConfiguration:
         mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
         mock_config.ENTERPRISE_TELEMETRY_ENABLED = False
 
-        with patch("extensions.ext_celery.dify_config", mock_config):
+        with (
+            patch("extensions.ext_celery.dify_config", mock_config),
+            patch(
+                "services.knowledge_fs.lifecycle_readiness.get_configured_knowledge_fs_lifecycle_worker_readiness",
+                return_value=KnowledgeFSLifecycleWorkerReadiness(ready=False, blockers=()),
+            ),
+        ):
             from dify_app import DifyApp
             from extensions.ext_celery import init_app
 
@@ -248,6 +274,15 @@ class TestCelerySSLConfiguration:
         assert celery_app.conf["result_backend_transport_options"]["global_keyprefix"] == "enterprise-a:"
         assert "tasks.collect_agent_resources_task" in celery_app.conf["imports"]
         assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
+        assert "tasks.workflow_run_archive_deletion_tasks" in celery_app.conf["imports"]
+        import_module("tasks.workflow_run_archive_deletion_tasks")
+        task_name = "tasks.workflow_run_archive_deletion_tasks.delete_workflow_run_archive_task"
+        archive_deletion = celery_app.tasks[task_name]
+        assert archive_deletion.queue == "workflow_archive"
+        assert archive_deletion.acks_late is True
+        assert archive_deletion.reject_on_worker_lost is True
+        assert archive_deletion.autoretry_for == (Exception,)
+        assert archive_deletion.retry_kwargs["max_retries"] == 5
         assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (
             "tasks.delete_conversation_task.sweep_deleted_conversations"
         )

@@ -1,5 +1,4 @@
 'use client'
-import type { ModelConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -19,8 +18,14 @@ const PARAM_MAP = {
   frequency_penalty: 'Frequency Penalty',
 }
 
+type LogModelConfig = {
+  name: string
+  provider: string
+  completion_params?: Record<string, unknown>
+}
+
 type Props = Readonly<{
-  model: Pick<ModelConfig, 'completion_params' | 'name' | 'provider'>
+  model: LogModelConfig
 }>
 
 const ModelInfo: FC<Props> = ({ model }) => {
@@ -65,7 +70,7 @@ const ModelInfo: FC<Props> = ({ model }) => {
             }
           />
           <PopoverContent
-            placement="bottom-end"
+            align="end"
             sideOffset={4}
             className="border-none bg-transparent shadow-none"
           >

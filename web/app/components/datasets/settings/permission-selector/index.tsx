@@ -1,4 +1,4 @@
-import type { Member } from '@/models/common'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -10,32 +10,42 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { DatasetPermission } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { getAvatarInitial } from '@/utils/avatar'
 import MemberItem from './member-item'
 import PermissionItem from './permission-item'
 
 type PermissionSelectorProps = {
+  ariaDescribedBy?: string
+  ariaLabelledBy?: string
   'aria-labelledby'?: string
   disabled?: boolean
-  permission?: DatasetPermission
+  disableWhenRbacEnabled?: boolean
+  invalid?: boolean
+  permissionChangeDisabled?: boolean
+  permission?: PermissionLevel
   value: string[]
-  memberList: Member[]
-  onChange: (permission?: DatasetPermission) => void
+  memberList: Pick<AccountWithRoleResponse, 'id' | 'name' | 'email' | 'avatar_url'>[]
+  onChange: (permission?: PermissionLevel) => void
   onMemberSelect: (value: string[]) => void
 }
 
 const PermissionSelector = ({
+  ariaDescribedBy,
+  ariaLabelledBy,
   'aria-labelledby': labelledBy,
   disabled,
+  disableWhenRbacEnabled = true,
+  invalid,
+  permissionChangeDisabled = false,
   permission,
   value,
   memberList,
   onChange,
   onMemberSelect,
 }: PermissionSelectorProps) => {
-  const triggerId = useId()
   const { t } = useTranslation(['common', 'datasetSettings'])
+  const selectedValueId = useId()
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
@@ -47,7 +57,10 @@ const PermissionSelector = ({
   const [keywords, setKeywords] = useState('')
   const debouncedKeywords = useDebouncedValue(keywords, 500)
   const searchKeywords = keywords ? debouncedKeywords : ''
-  const selectMember = (member: Member) => {
+  const isDisabledByRbac = disableWhenRbacEnabled && isRbacEnabled
+  const isDisabled = disabled || isDisabledByRbac
+  const selectMember = (member: PermissionSelectorProps['memberList'][number]) => {
+    if (isDisabled) return
     if (value.includes(member.id)) onMemberSelect(value.filter((id) => id !== member.id))
     else onMemberSelect([...value, member.id])
   }
@@ -69,25 +82,29 @@ const PermissionSelector = ({
     [memberList, searchKeywords, userProfile.id],
   )
 
-  const isOnlyMe = permission === DatasetPermission.onlyMe
-  const isAllTeamMembers = permission === DatasetPermission.allTeamMembers
-  const isPartialMembers = permission === DatasetPermission.partialMembers
+  const isOnlyMe = permission === PermissionLevel.onlyMe
+  const isAllTeamMembers = permission === PermissionLevel.allTeamMembers
+  const isPartialMembers = permission === PermissionLevel.partialMembers
   const showMe =
     userProfile.name.includes(searchKeywords) || userProfile.email.includes(searchKeywords)
   const selectedMemberNames = selectedMembers.map((member) => member.name).join(', ')
-  const isDisabledByRbac = isRbacEnabled
-  const isDisabled = disabled || isDisabledByRbac
   const permissionLabel = t(($) => $['form.permissions'], { ns: 'datasetSettings' })
 
   return (
     <Popover>
       <PopoverTrigger
-        id={triggerId}
-        aria-labelledby={labelledBy ? `${labelledBy} ${triggerId}` : undefined}
+        aria-describedby={ariaDescribedBy}
+        aria-labelledby={
+          ariaLabelledBy || labelledBy
+            ? `${ariaLabelledBy || labelledBy} ${selectedValueId}`
+            : undefined
+        }
+        aria-invalid={invalid}
         disabled={isDisabled}
         className={cn(
           'group/permission-trigger flex w-full cursor-pointer touch-manipulation items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-left hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
           'data-disabled:cursor-not-allowed! data-disabled:bg-components-input-bg-disabled! data-disabled:hover:bg-components-input-bg-disabled!',
+          invalid && 'ring-1 ring-text-destructive',
         )}
       >
         {isDisabledByRbac && (
@@ -95,7 +112,10 @@ const PermissionSelector = ({
             <div className="flex size-6 shrink-0 items-center justify-center">
               <span aria-hidden="true" className="i-ri-lock-2-line size-4 text-text-tertiary" />
             </div>
-            <div className="grow p-1 system-sm-regular text-components-input-text-placeholder">
+            <div
+              id={selectedValueId}
+              className="grow p-1 system-sm-regular text-components-input-text-placeholder"
+            >
               {t(($) => $['form.permissionsAccessConfig'], { ns: 'datasetSettings' })}
             </div>
           </>
@@ -108,7 +128,10 @@ const PermissionSelector = ({
                 <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
               </Avatar>
             </div>
-            <div className="grow p-1 system-sm-regular text-components-input-text-filled">
+            <div
+              id={selectedValueId}
+              className="grow p-1 system-sm-regular text-components-input-text-filled"
+            >
               {t(($) => $['form.permissionsOnlyMe'], { ns: 'datasetSettings' })}
             </div>
           </>
@@ -118,7 +141,10 @@ const PermissionSelector = ({
             <div className="flex size-6 shrink-0 items-center justify-center">
               <span aria-hidden="true" className="i-ri-group-2-line size-4 text-text-secondary" />
             </div>
-            <div className="grow p-1 system-sm-regular text-components-input-text-filled">
+            <div
+              id={selectedValueId}
+              className="grow p-1 system-sm-regular text-components-input-text-filled"
+            >
               {t(($) => $['form.permissionsAllMember'], { ns: 'datasetSettings' })}
             </div>
           </>
@@ -146,6 +172,7 @@ const PermissionSelector = ({
               )}
             </div>
             <div
+              id={selectedValueId}
               title={selectedMemberNames}
               className="min-w-0 grow truncate p-1 system-sm-regular text-components-input-text-filled"
             >
@@ -163,24 +190,26 @@ const PermissionSelector = ({
         />
       </PopoverTrigger>
       <PopoverContent
-        placement="bottom-start"
+        align="start"
         sideOffset={4}
         className="max-w-(--available-width) border-none bg-transparent shadow-none"
       >
         <PopoverTitle className="sr-only">{permissionLabel}</PopoverTitle>
         <div className="relative w-120 max-w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
-          <RadioGroup<DatasetPermission>
+          <RadioGroup<PermissionLevel>
+            disabled={isDisabled || permissionChangeDisabled}
             value={permission}
             onValueChange={(nextPermission) => {
+              if (isDisabled || permissionChangeDisabled) return
               onChange(nextPermission)
-              if (nextPermission === DatasetPermission.partialMembers)
+              if (nextPermission === PermissionLevel.partialMembers)
                 onMemberSelect([userProfile.id])
             }}
             aria-label={permissionLabel}
             className="flex-col items-stretch gap-0 p-1"
           >
             <PermissionItem
-              value={DatasetPermission.onlyMe}
+              value={PermissionLevel.onlyMe}
               closeOnSelect
               leftIcon={
                 <Avatar className="shrink-0" size="sm" aria-hidden="true">
@@ -192,7 +221,7 @@ const PermissionSelector = ({
               isSelected={isOnlyMe}
             />
             <PermissionItem
-              value={DatasetPermission.allTeamMembers}
+              value={PermissionLevel.allTeamMembers}
               closeOnSelect
               leftIcon={
                 <div className="flex size-6 shrink-0 items-center justify-center">
@@ -206,7 +235,7 @@ const PermissionSelector = ({
               isSelected={isAllTeamMembers}
             />
             <PermissionItem
-              value={DatasetPermission.partialMembers}
+              value={PermissionLevel.partialMembers}
               leftIcon={
                 <div className="flex size-6 shrink-0 items-center justify-center">
                   <span
@@ -223,6 +252,7 @@ const PermissionSelector = ({
             <div className="max-h-90 overflow-y-auto border-t border-divider-regular pr-1 pb-1 pl-1">
               <div className="sticky top-0 left-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
                 <SearchInput
+                  disabled={isDisabled}
                   name="member-search"
                   value={keywords}
                   placeholder={t(($) => $['operation.search'], { ns: 'common' }) || ''}
@@ -247,6 +277,7 @@ const PermissionSelector = ({
                 {filteredMemberList.map((member) => (
                   <MemberItem
                     key={member.id}
+                    disabled={isDisabled}
                     leftIcon={
                       <Avatar className="shrink-0" size="sm" aria-hidden="true">
                         <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>

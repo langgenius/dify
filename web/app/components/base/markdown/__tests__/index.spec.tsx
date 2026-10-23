@@ -1,5 +1,3 @@
-import type { StreamdownProps } from 'streamdown'
-import type { SimplePluginInfo } from '../streamdown-wrapper'
 import { render, screen } from '@testing-library/react'
 import { Markdown } from '../index'
 
@@ -19,15 +17,7 @@ vi.mock('next/dynamic', () => ({
   },
 }))
 
-type CapturedProps = {
-  latexContent: string
-  pluginInfo?: SimplePluginInfo
-  customComponents?: StreamdownProps['components']
-  customDisallowedElements?: string[]
-  rehypePlugins?: StreamdownProps['rehypePlugins']
-  isAnimating?: StreamdownProps['isAnimating']
-  mode?: StreamdownProps['mode']
-}
+type CapturedProps = { latexContent: string; renderSoftBreaks?: boolean }
 
 const getLastWrapperProps = (): CapturedProps => {
   const calls = mockReactMarkdownWrapper.mock.calls
@@ -38,11 +28,6 @@ const getLastWrapperProps = (): CapturedProps => {
 describe('Markdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('should render wrapper content', () => {
-    render(<Markdown content="Hello World" />)
-    expect(screen.getByTestId('react-markdown-wrapper'))!.toHaveTextContent('Hello World')
   })
 
   it.each(['', ' \n ', '---', ' *** ', '___', '- - -'])(
@@ -91,55 +76,8 @@ describe('Markdown', () => {
     expect(props.latexContent).toContain('$E = mc^2$')
   })
 
-  it('should pass pluginInfo through', () => {
-    const pluginInfo = {
-      pluginUniqueIdentifier: 'plugin-unique',
-      pluginId: 'plugin-id',
-    }
-    render(<Markdown content="content" pluginInfo={pluginInfo} />)
-    const props = getLastWrapperProps()
-    expect(props.pluginInfo).toEqual(pluginInfo)
-  })
-
-  it('should pass default empty customComponents when omitted', () => {
-    render(<Markdown content="content" />)
-    const props = getLastWrapperProps()
-    expect(props.customComponents).toEqual({})
-  })
-
-  it('should pass customComponents through', () => {
-    const customComponents = {
-      h1: ({ children }: { children?: React.ReactNode }) => <h1>{children}</h1>,
-    }
-    render(<Markdown content="# title" customComponents={customComponents} />)
-    const props = getLastWrapperProps()
-    expect(props.customComponents).toBe(customComponents)
-  })
-
-  it('should pass customDisallowedElements through', () => {
-    const customDisallowedElements = ['strong', 'em']
-    render(<Markdown content="**bold**" customDisallowedElements={customDisallowedElements} />)
-    const props = getLastWrapperProps()
-    expect(props.customDisallowedElements).toBe(customDisallowedElements)
-  })
-
-  it('should pass rehypePlugins through', () => {
-    const plugin = () => (tree: unknown) => tree
-    const rehypePlugins = [plugin]
-    render(<Markdown content="content" rehypePlugins={rehypePlugins} />)
-    const props = getLastWrapperProps()
-    expect(props.rehypePlugins).toBe(rehypePlugins)
-  })
-
-  it('should pass isAnimating through', () => {
-    render(<Markdown content="content" isAnimating={true} />)
-    const props = getLastWrapperProps()
-    expect(props.isAnimating).toBe(true)
-  })
-
-  it('should pass mode through', () => {
-    render(<Markdown content="content" mode="streaming" />)
-    const props = getLastWrapperProps()
-    expect(props.mode).toBe('streaming')
+  it('should pass renderSoftBreaks through', () => {
+    render(<Markdown content={'first line\nsecond line'} renderSoftBreaks={false} />)
+    expect(getLastWrapperProps().renderSoftBreaks).toBe(false)
   })
 })

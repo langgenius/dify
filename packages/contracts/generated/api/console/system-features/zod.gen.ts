@@ -3,6 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * BrandingModel
  */
 export const zBrandingModel = z.object({
@@ -112,6 +128,7 @@ export const zWebAppAuthModel = z.object({
  * Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
  */
 export const zSystemFeatureModel = z.object({
+  agent_tracing_api_collection_enabled: z.boolean(),
   branding: zBrandingModel.default({
     application_title: '',
     enabled: false,
@@ -133,7 +150,6 @@ export const zSystemFeatureModel = z.object({
   enable_step_by_step_tour: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
-  knowledge_fs_enabled: z.boolean().default(false),
   license: zLicenseStatusModel.default({ status: 'none' }),
   plugin_installation_permission: zPluginInstallationPermissionModel.default({
     plugin_installation_scope: 'all',

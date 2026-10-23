@@ -5,13 +5,13 @@ directly. The tools layer now consumes API-prepared declarations from config, so
 this module only keeps the invoke-time boundary:
 
 - POST ``/plugin/{tenant_id}/dispatch/tool/invoke``
-- request headers ``X-Api-Key``, ``X-Plugin-ID``, and ``Content-Type``
+- request headers ``X-Api-Key``, ``X-Plugin-ID``, ``X-Plugin-Unique-Identifier``, and ``Content-Type``
 - top-level ``user_id`` forwarding when shared execution context includes one
 - stream decoding and blob-chunk merging for agent observations
 
 The shared execution-context layer still owns tenant/user daemon context, while
-each tool's own ``plugin_id`` determines the transport identity placed in
-``X-Plugin-ID``.
+each tool's own ``plugin_id`` and ``plugin_unique_identifier`` bind the transport
+to the package whose declaration and credentials were prepared by the API.
 """
 
 from __future__ import annotations
@@ -150,8 +150,8 @@ class DifyPluginDaemonToolClient:
 
     Callers provide business-level provider/tool/credential data per invocation,
     while this client supplies daemon transport identity from shared runtime
-    context: tenant path segment, daemon API key, plugin-specific ``X-Plugin-ID``
-    header, and optional top-level ``user_id``.
+    context: tenant path segment, daemon API key, plugin ID and complete package
+    identifier headers, and optional top-level ``user_id``.
     """
 
     plugin_daemon_url: str
@@ -160,8 +160,14 @@ class DifyPluginDaemonToolClient:
     plugin_id: str
     user_id: str | None
     http_client: httpx.AsyncClient = field(repr=False)
+    plugin_unique_identifier: str | None = None
 
     def __post_init__(self) -> None:
+        if (
+            self.plugin_unique_identifier is not None
+            and self.plugin_unique_identifier.partition(":")[0] != self.plugin_id
+        ):
+            raise ValueError("Plugin unique identifier does not match plugin_id")
         self.plugin_daemon_url = self.plugin_daemon_url.rstrip("/")
 
     async def invoke(
@@ -253,11 +259,14 @@ class DifyPluginDaemonToolClient:
 
     def _headers(self) -> dict[str, str]:
         """Build required plugin-daemon transport headers for tool invocation."""
-        return {
+        headers = {
             "X-Api-Key": self.plugin_daemon_api_key,
             "X-Plugin-ID": self.plugin_id,
             "Content-Type": "application/json",
         }
+        if self.plugin_unique_identifier is not None:
+            headers["X-Plugin-Unique-Identifier"] = self.plugin_unique_identifier
+        return headers
 
 
 def merge_blob_chunks(

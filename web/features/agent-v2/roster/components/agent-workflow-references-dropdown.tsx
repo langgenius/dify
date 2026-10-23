@@ -1,7 +1,6 @@
 'use client'
 
 import type { AgentAppPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
-import { zAgentIconType } from '@dify/contracts/api/console/agent/zod.gen'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,16 +15,6 @@ import Link from '@/next/link'
 
 const getWorkflowReferenceHref = (reference: AgentAppPublishedReferenceResponse) =>
   `/app/${reference.app_id}/workflow`
-
-const getWorkflowReferenceIcon = (reference: AgentAppPublishedReferenceResponse) => {
-  const parsedIconType = zAgentIconType.safeParse(reference.app_icon_type).data
-
-  return {
-    iconType: parsedIconType === 'link' ? 'image' : parsedIconType,
-    imageUrl:
-      parsedIconType === 'image' || parsedIconType === 'link' ? reference.app_icon : undefined,
-  }
-}
 
 export function AgentWorkflowReferencesDropdown({
   agentName,
@@ -50,14 +39,12 @@ export function AgentWorkflowReferencesDropdown({
         </span>
         <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" sideOffset={4} className="w-66 p-1">
+      <DropdownMenuContent align="start" className="w-66 p-1">
         <DropdownMenuGroup>
           <DropdownMenuGroupLabel className="flex w-full min-w-0 truncate pt-2 pr-3 pb-1.5 pl-2 system-xs-medium normal-case">
             {t(($) => $['roster.references.label'], { ns: 'agentRoster', name: agentName })}
           </DropdownMenuGroupLabel>
           {publishedReferences.map((reference) => {
-            const { iconType, imageUrl } = getWorkflowReferenceIcon(reference)
-
             return (
               <DropdownMenuLinkItem
                 key={reference.app_id}
@@ -73,10 +60,12 @@ export function AgentWorkflowReferencesDropdown({
                 <span aria-hidden className="shrink-0">
                   <AppIcon
                     size="tiny"
-                    iconType={iconType}
-                    icon={reference.app_icon ?? undefined}
-                    background={reference.app_icon_background}
-                    imageUrl={imageUrl}
+                    icon={{
+                      icon_type: reference.app_icon_type,
+                      icon: reference.app_icon,
+                      icon_url: reference.app_icon,
+                      icon_background: reference.app_icon_background,
+                    }}
                   />
                 </span>
                 <span className="min-w-0 flex-1 truncate">{reference.app_name}</span>

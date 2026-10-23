@@ -47,7 +47,7 @@ function AddAccessSubjectMenuContent({
     data: membersData,
     isPending: isLoading,
     error,
-  } = useQuery(consoleQuery.workspaces.current.members.get.queryOptions())
+  } = useQuery(consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }))
   const existingAccountIdSet = new Set(existingAccountIds)
   const members = membersData?.accounts ?? []
 
@@ -154,7 +154,6 @@ function AddAccessSubjectMenu({
           <span>{t(($) => $['operation.add'], { ns: 'common' })}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          placement="bottom-end"
           sideOffset={8}
           aria-label={t(($) => $['accessRule.addMembersTitle'], { ns: 'permission' })}
           className="w-86 max-w-[calc(100vw-32px)]"

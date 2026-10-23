@@ -11,6 +11,7 @@ from controllers.console.datasets.datasets import (
     DatasetQueryListResponse,
     RelatedAppListResponse,
 )
+from enums import DeploymentEdition
 from machinery.context import RequestContext
 from models import Account, App, Dataset, Document
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
@@ -21,7 +22,14 @@ from models.dataset import (
     DatasetQuery,
     DocumentSegment,
 )
-from models.enums import CreatorUserRole, DatasetQuerySource, IndexingStatus, SegmentStatus
+from models.enums import (
+    CreatorUserRole,
+    DatasetQuerySource,
+    DataSourceType,
+    DocumentCreatedFrom,
+    IndexingStatus,
+    SegmentStatus,
+)
 from repositories.app.console_repository import ConsoleAppRepository
 from services.enterprise import rbac_service
 from services.knowledge.dataset_access import DatasetNotFoundError
@@ -41,36 +49,36 @@ REF = DatasetRef("tenant", "dataset")
 
 
 def dataset(**values: object) -> Dataset:
-    return Dataset(
-        **{
-            "id": "dataset",
-            "tenant_id": "tenant",
-            "name": "Dataset",
-            "created_by": "actor",
-            "maintainer": "actor",
-            "indexing_technique": "economy",
-            "permission": "all_team_members",
-            **values,
-        }
+    row = Dataset(
+        id="dataset",
+        tenant_id="tenant",
+        name="Dataset",
+        created_by="actor",
+        maintainer="actor",
+        indexing_technique="economy",
+        permission="all_team_members",
     )
+    for key, value in values.items():
+        setattr(row, key, value)
+    return row
 
 
 def document(**values: object) -> Document:
-    return Document(
-        **{
-            "id": "document",
-            "tenant_id": "tenant",
-            "dataset_id": "dataset",
-            "position": 1,
-            "data_source_type": "local_file",
-            "batch": "batch",
-            "name": "Document",
-            "created_from": "web",
-            "created_by": "actor",
-            "indexing_status": IndexingStatus.ERROR,
-            **values,
-        }
+    row = Document(
+        tenant_id="tenant",
+        dataset_id="dataset",
+        position=1,
+        data_source_type=DataSourceType("local_file"),
+        batch="batch",
+        name="Document",
+        created_from=DocumentCreatedFrom("web"),
+        created_by="actor",
     )
+    row.id = "document"
+    row.indexing_status = IndexingStatus.ERROR
+    for key, value in values.items():
+        setattr(row, key, value)
+    return row
 
 
 @pytest.fixture
@@ -126,6 +134,35 @@ def test_listing_materializes_page_and_owner_scoped_partial_members(
     assert response["has_more"] is False
     assert response["data"][0]["partial_member_list"] == ["member"]
     assert response["data"][0]["retrieval_model_dict"]["top_k"] == 2
+
+
+@pytest.mark.parametrize(
+    ("edition", "community_dev_enabled", "can_upgrade"),
+    [
+        (DeploymentEdition.CLOUD, False, True),
+        (DeploymentEdition.COMMUNITY, False, False),
+        (DeploymentEdition.COMMUNITY, True, True),
+    ],
+)
+def test_listing_upgrade_discovery_uses_server_availability(
+    operations: SQLAlchemyDatasetOperations,
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    community_dev_enabled: bool,
+    can_upgrade: bool,
+) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=edition,
+        KNOWLEDGE_FS_ENABLED=True,
+        KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=community_dev_enabled,
+    )
+
+    result = operations.list_datasets(CONTEXT, DatasetListFilter(ids=["dataset"]), None, False)
+    discovery = result["data"][0]["knowledge_fs_upgrade"]
+
+    assert discovery["can_upgrade"] is can_upgrade
+    assert discovery["block_reason"] == (None if can_upgrade else "feature_disabled")
 
 
 @pytest.mark.parametrize("foreign_tag", [False, True])

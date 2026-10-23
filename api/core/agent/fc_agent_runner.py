@@ -3,7 +3,7 @@ import logging
 import re
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Any, Union
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -173,7 +173,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 "created_by": CreditUsageCreatedBy.APP,
             }
 
-            chunks: Union[Generator[LLMResultChunk], LLMResult] = model_instance.invoke_llm(
+            chunks: Generator[LLMResultChunk] | LLMResult = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
                 tools=prompt_messages_tools,
@@ -427,17 +427,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         """
         Check if there is any tool call in llm result chunk
         """
-        if llm_result_chunk.delta.message.tool_calls:
-            return True
-        return False
+        return bool(llm_result_chunk.delta.message.tool_calls)
 
     def check_blocking_tool_calls(self, llm_result: LLMResult) -> bool:
         """
         Check if there is any blocking tool call in llm result
         """
-        if llm_result.message.tool_calls:
-            return True
-        return False
+        return bool(llm_result.message.tool_calls)
 
     def extract_tool_calls(self, llm_result_chunk: LLMResultChunk) -> list[tuple[str, str, dict[str, Any]]]:
         """

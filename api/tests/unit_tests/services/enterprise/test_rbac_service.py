@@ -9,11 +9,14 @@ Local membership tests live at the application service boundary.
 from __future__ import annotations
 
 from collections.abc import Callable
+from unittest.mock import MagicMock
 
 import pytest
+from pydantic import JsonValue
 
 from services.enterprise import rbac_service as svc
 from services.enterprise.base import EnterpriseRequest
+from services.knowledge_fs import membership_changes
 from services.rbac import contracts as rbac_contracts
 from tests.unit_tests.rbac_fakes import RBACTransport, RecordedRequest
 
@@ -880,4 +883,322 @@ class TestListOption:
         assert rbac_contracts.ListOption(page_number=1).to_params({"resource_type": "app", "skip": None}) == {
             "page_number": 1,
             "resource_type": "app",
+        }
+
+
+class _RecordingSession:
+    def __init__(self, events: list[str]) -> None:
+        self.events = events
+
+    def __enter__(self) -> _RecordingSession:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.events.append("close")
+
+    def commit(self) -> None:
+        self.events.append("commit")
+
+    def rollback(self) -> None:
+        self.events.append("rollback")
+
+
+class TestKnowledgeFSRoleMutations:
+    @pytest.fixture
+    def events(self, monkeypatch: pytest.MonkeyPatch, transport: RBACTransport) -> list[str]:
+        events: list[str] = []
+        forward_to_transport = transport.send
+
+        def record_remote(
+            method: str,
+            endpoint: str,
+            *,
+            tenant_id: str,
+            account_id: str | None,
+            json: dict[str, object] | None,
+            params: dict[str, object] | None,
+            timeout: float,
+        ) -> JsonValue:
+            events.append("remote")
+            return forward_to_transport(
+                method,
+                endpoint,
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json=json,
+                params=params,
+                timeout=timeout,
+            )
+
+        monkeypatch.setattr(EnterpriseRequest, "send_inner_rbac_request", record_remote)
+        monkeypatch.setattr(svc.session_factory, "create_session", lambda: _RecordingSession(events))
+        return events
+
+    def test_replace_member_roles_invalidates_target_after_remote_success(
+        self, monkeypatch: pytest.MonkeyPatch, transport: RBACTransport, events: list[str]
+    ) -> None:
+        transport.response = {"account_id": "acct-2", "roles": []}
+        calls: list[dict[str, object]] = []
+
+        def invalidate(**kwargs: object) -> None:
+            calls.append(kwargs)
+            events.append("invalidate")
+
+        monkeypatch.setattr(membership_changes, "apply_workspace_membership_change", invalidate)
+
+        out = svc.RBACService.KnowledgeFSMemberRoles.replace("tenant-1", "acct-actor", "acct-2", ["role-1"])
+
+        assert out.account_id == "acct-2"
+        assert events == ["remote", "invalidate", "commit", "close"]
+        assert calls[0]["tenant_id"] == "tenant-1"
+        assert calls[0]["actor_account_id"] == "acct-actor"
+        assert calls[0]["account_ids"] == ("acct-2",)
+        assert calls[0]["change"] == membership_changes.KnowledgeFSWorkspaceMembershipChange.ROLE_CHANGED
+
+    @pytest.mark.parametrize("operation", ["update", "delete"])
+    def test_role_writes_invalidate_workspace_after_remote_success(
+        self, monkeypatch: pytest.MonkeyPatch, transport: RBACTransport, events: list[str], operation: str
+    ) -> None:
+        transport.response = {"id": "role-1", "type": "workspace", "name": "Editors"}
+        tenants: list[object] = []
+
+        def invalidate(**kwargs: object) -> None:
+            tenants.append(kwargs["tenant_id"])
+            events.append("invalidate")
+
+        monkeypatch.setattr(membership_changes, "apply_workspace_rbac_role_change", invalidate)
+
+        if operation == "update":
+            payload = rbac_contracts.RoleMutation(name="Editors", permission_keys=["knowledge_space_read"])
+            role = svc.RBACService.KnowledgeFSRoles.update("tenant-1", "acct-actor", "role-1", payload)
+            assert role.id == "role-1"
+        else:
+            svc.RBACService.KnowledgeFSRoles.delete("tenant-1", "acct-actor", "role-1")
+
+        assert events == ["remote", "invalidate", "commit", "close"]
+        assert tenants == ["tenant-1"]
+
+    def test_remote_failure_does_not_change_local_authorization(
+        self, monkeypatch: pytest.MonkeyPatch, transport: RBACTransport, events: list[str]
+    ) -> None:
+        transport.failure = RuntimeError("enterprise unavailable")
+        monkeypatch.setattr(
+            membership_changes, "apply_workspace_membership_change", lambda **_kwargs: events.append("invalidate")
+        )
+
+        with pytest.raises(RuntimeError, match="enterprise unavailable"):
+            svc.RBACService.KnowledgeFSMemberRoles.replace("tenant-1", "acct-actor", "acct-2", ["role-1"])
+
+        assert events == ["remote"]
+
+    def test_local_invalidation_failure_rolls_back_and_propagates(
+        self, monkeypatch: pytest.MonkeyPatch, transport: RBACTransport, events: list[str]
+    ) -> None:
+        transport.response = {"id": "role-1", "type": "workspace", "name": "Editors"}
+
+        def fail(**_kwargs: object) -> None:
+            raise RuntimeError("local invalidation failed")
+
+        monkeypatch.setattr(membership_changes, "apply_workspace_rbac_role_change", fail)
+
+        with pytest.raises(RuntimeError, match="local invalidation failed"):
+            svc.RBACService.KnowledgeFSRoles.update(
+                "tenant-1", "acct-actor", "role-1", rbac_contracts.RoleMutation(name="Editors", permission_keys=[])
+            )
+
+        assert events == ["remote", "rollback", "close"]
+
+
+class TestKnowledgeFSPermissions:
+    def test_batch_get_returns_empty_without_remote_call(self, transport: RBACTransport) -> None:
+        assert svc.RBACService.KnowledgeFSPermissions.batch_get("tenant-1", "acct-1", [], session=None) == {}  # type: ignore[arg-type]
+        assert transport.requests == []
+
+    def test_batch_get_uses_full_legacy_permissions_when_rbac_disabled(
+        self, transport: RBACTransport, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(RBAC_ENABLED=False)
+        out = svc.RBACService.KnowledgeFSPermissions.batch_get(
+            "tenant-1",
+            "acct-1",
+            ["control-1", "control-2"],
+            session=None,  # type: ignore[arg-type]
+        )
+
+        assert transport.requests == []
+        # KnowledgeFS reuses the legacy dataset permission points.
+        expected = [
+            "dataset_readonly",
+            "dataset_create_and_management",
+            "dataset_edit",
+            "dataset_delete",
+            "dataset_access_config",
+            "dataset_retrieval_recall",
+        ]
+        assert out == {"control-1": expected, "control-2": expected}
+
+    def test_batch_get_uses_control_space_contract(
+        self, transport: RBACTransport, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        transport.response = {
+            "data": [
+                {"control_space_id": "control-1", "permission_keys": ["dataset_readonly"]},
+                {"control_space_id": "control-2", "permission_keys": ["dataset_retrieval_recall"]},
+            ]
+        }
+
+        out = svc.RBACService.KnowledgeFSPermissions.batch_get(
+            "tenant-1",
+            "acct-1",
+            ["control-1", "control-2"],
+            session=None,  # type: ignore[arg-type]
+        )
+
+        call = _call_args(transport)
+        assert call.method == "POST"
+        assert call.endpoint == "/rbac/knowledge-fs/permission-keys/batch"
+        assert call.json == {"control_space_ids": ["control-1", "control-2"]}
+        assert out == {"control-1": ["dataset_readonly"], "control-2": ["dataset_retrieval_recall"]}
+
+
+@pytest.fixture
+def mock_send(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    send = MagicMock()
+    monkeypatch.setattr(EnterpriseRequest, "send_inner_rbac_request", send)
+    return send
+
+
+class TestCreatorDatasetAccess:
+    @staticmethod
+    def binding(**overrides: str) -> dict[str, str]:
+        return {
+            "id": "binding-1",
+            "tenant_id": "tenant-1",
+            "access_policy_id": "creator-policy",
+            "resource_type": "dataset",
+            "resource_id": "dataset-1",
+            "account_id": "creator-1",
+            **overrides,
+        }
+
+    def test_dataset_creator_is_appended_with_returned_policy(
+        self, mock_send: MagicMock, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        mock_send.side_effect = [{"data": [self.binding()]}, dict[str, str]()]
+
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", "dataset", "dataset-1")
+
+        assert mock_send.call_count == 2
+        sync, append = mock_send.call_args_list
+        assert sync.args == ("PUT", "/rbac/access-policies/creator-member-bindings")
+        assert append.args == ("POST", "/rbac/datasets/whitelist/members/batch")
+        assert append.kwargs["tenant_id"] == "tenant-1"
+        assert append.kwargs["account_id"] == "creator-1"
+        assert append.kwargs["json"] == {
+            "data": [{"dataset_id": "dataset-1", "account_ids": ["creator-1"], "policy_id": "creator-policy"}]
+        }
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {"tenant_id": "other"},
+            {"resource_id": "other"},
+            {"account_id": "other"},
+            {"resource_type": "app"},
+            {"access_policy_id": ""},
+        ],
+    )
+    def test_mismatched_binding_does_not_grant_access(
+        self,
+        mock_send: MagicMock,
+        config_overrides: Callable[..., None],
+        overrides: dict[str, str],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        mock_send.return_value = {"data": [self.binding(**overrides)]}
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", "dataset", "dataset-1")
+        mock_send.assert_called_once()
+        assert "Failed to sync creator access" in caplog.text
+
+    def test_empty_response_does_not_guess_a_policy(
+        self, mock_send: MagicMock, config_overrides: Callable[..., None], caplog: pytest.LogCaptureFixture
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        mock_send.return_value = {"data": list[dict[str, str]]()}
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", "dataset", "dataset-1")
+        mock_send.assert_called_once()
+        assert "Failed to sync creator access" in caplog.text
+
+    @pytest.mark.parametrize("resource_type", ["agent"])
+    def test_other_resource_types_keep_existing_behavior(
+        self, mock_send: MagicMock, config_overrides: Callable[..., None], resource_type: str
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        mock_send.return_value = {"data": list[dict[str, str]]()}
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", resource_type, "resource-1")
+        mock_send.assert_called_once()
+
+    def test_disabled_rbac_makes_no_request(self, mock_send: MagicMock, config_overrides: Callable[..., None]) -> None:
+        config_overrides(RBAC_ENABLED=False)
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", "dataset", "dataset-1")
+        mock_send.assert_not_called()
+
+    @pytest.mark.parametrize("failure_stage", ["sync", "append"])
+    def test_remote_failures_are_logged(
+        self,
+        mock_send: MagicMock,
+        config_overrides: Callable[..., None],
+        caplog: pytest.LogCaptureFixture,
+        failure_stage: str,
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        error = RuntimeError("RBAC unavailable")
+        mock_send.side_effect = [error] if failure_stage == "sync" else [{"data": [self.binding()]}, error]
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", "dataset", "dataset-1")
+        assert mock_send.call_count == (1 if failure_stage == "sync" else 2)
+        assert "Failed to sync creator access" in caplog.text
+
+    def test_only_matching_policies_are_appended_once(
+        self, mock_send: MagicMock, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        mock_send.side_effect = [
+            {
+                "data": [
+                    self.binding(),
+                    self.binding(),
+                    self.binding(access_policy_id="another-creator-policy"),
+                    self.binding(account_id="another-account", access_policy_id="unrelated-policy"),
+                ]
+            },
+            dict[str, str](),
+        ]
+        svc.try_sync_creator_access_policy_member_bindings(
+            "tenant-1", "creator-1", svc.RBACResourceType.DATASET, "dataset-1"
+        )
+        assert mock_send.call_count == 2
+        assert mock_send.call_args.kwargs["json"] == {
+            "data": [
+                {"dataset_id": "dataset-1", "account_ids": ["creator-1"], "policy_id": policy}
+                for policy in ["another-creator-policy", "creator-policy"]
+            ]
+        }
+
+
+class TestCreatorAppAccess:
+    binding = staticmethod(TestCreatorDatasetAccess.binding)
+
+    def test_app_creator_is_appended_with_returned_policy(
+        self, mock_send: MagicMock, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        mock_send.side_effect = [{"data": [self.binding(resource_type="app", resource_id="app-1")]}, dict[str, str]()]
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", "app", "app-1")
+        assert mock_send.call_count == 2
+        assert mock_send.call_args.args == ("POST", "/rbac/apps/whitelist/members/batch")
+        assert mock_send.call_args.kwargs["json"] == {
+            "data": [{"app_id": "app-1", "account_ids": ["creator-1"], "policy_id": "creator-policy"}]
         }

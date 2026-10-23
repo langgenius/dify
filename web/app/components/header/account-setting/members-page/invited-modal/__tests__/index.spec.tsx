@@ -1,7 +1,8 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import InvitedModal from '../index'
 
@@ -26,7 +27,7 @@ describe('InvitedModal', () => {
     deploymentEdition = 'COMMUNITY'
   })
 
-  it('should show success and failed invitation sections', async () => {
+  it('should show invitation results', async () => {
     render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
 
     expect(await screen.findByText(/members\.invitationSent$/i)).toBeInTheDocument()
@@ -35,6 +36,86 @@ describe('InvitedModal', () => {
     expect(screen.getByText(/members\.alreadyInTeam$/i)).toBeInTheDocument()
     expect(screen.getByText('member@example.com')).toBeInTheDocument()
     expect(screen.getByText('failed@example.com')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'failed@example.com' })).toBeInTheDocument()
+  })
+
+  it('opens and reopens a failure reason with the keyboard without closing the results dialog', async () => {
+    const user = userEvent.setup()
+    render(
+      <InvitedModal
+        invitationResults={[
+          { email: 'failed@example.com', status: 'failed', message: 'Quota exceeded' },
+        ]}
+        onCancel={mockOnCancel}
+      />,
+    )
+
+    const closeButton = screen.getByRole('button', { name: /operation\.close/ })
+    await waitFor(() => expect(closeButton).toHaveFocus())
+    expect(screen.queryByRole('dialog', { name: 'failed@example.com' })).not.toBeInTheDocument()
+
+    await user.tab()
+    const failureTrigger = screen.getByRole('button', { name: 'failed@example.com' })
+    expect(failureTrigger).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('dialog', { name: 'failed@example.com' })).toHaveTextContent(
+      'Quota exceeded',
+    )
+
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'failed@example.com' })).not.toBeInTheDocument(),
+    )
+    expect(mockOnCancel).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: /members\.invitationSent$/ })).toBeVisible()
+    expect(failureTrigger).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('dialog', { name: 'failed@example.com' })).toHaveTextContent(
+      'Quota exceeded',
+    )
+  })
+
+  it('opens a failure reason by clicking without hovering first', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
+
+    await user.click(screen.getByRole('button', { name: 'failed@example.com' }))
+
+    expect(await screen.findByRole('dialog', { name: 'failed@example.com' })).toHaveTextContent(
+      'Error msg',
+    )
+    expect(mockOnCancel).not.toHaveBeenCalled()
+  })
+
+  it('shows each failure reason when its email is hovered', async () => {
+    const user = userEvent.setup()
+    render(
+      <InvitedModal
+        invitationResults={[
+          { email: 'first@example.com', status: 'failed', message: 'Quota exceeded' },
+          { email: 'second@example.com', status: 'failed', message: 'Email delivery failed' },
+        ]}
+        onCancel={mockOnCancel}
+      />,
+    )
+
+    const firstTrigger = screen.getByRole('button', { name: 'first@example.com' })
+    await user.hover(firstTrigger)
+    expect(await screen.findByRole('dialog', { name: 'first@example.com' })).toHaveTextContent(
+      'Quota exceeded',
+    )
+
+    await user.unhover(firstTrigger)
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'first@example.com' })).not.toBeInTheDocument(),
+    )
+
+    const secondTrigger = screen.getByRole('button', { name: 'second@example.com' })
+    await user.hover(secondTrigger)
+    expect(await screen.findByRole('dialog', { name: 'second@example.com' })).toHaveTextContent(
+      'Email delivery failed',
+    )
   })
 
   it('should hide invitation link section when there are no successes', () => {
@@ -59,29 +140,26 @@ describe('InvitedModal', () => {
     expect(screen.queryByText(/members\.failedInvitationEmails/i)).not.toBeInTheDocument()
   })
 
-  it('should show already-member message without invitation copy when every email is already a member', () => {
-    const alreadyMembers: MemberInviteResponse['invitation_results'] = [
-      {
-        email: 'member@example.com',
-        status: 'already_member',
-        message: 'Account already in workspace.',
-      },
-    ]
+  it.each(['COMMUNITY', 'CLOUD'] as const)(
+    'shows no-new-invitations copy when every email is already a member in %s',
+    (edition) => {
+      deploymentEdition = edition
+      const alreadyMembers: MemberInviteResponse['invitation_results'] = [
+        {
+          email: 'member@example.com',
+          status: 'already_member',
+          message: 'Account already in workspace.',
+        },
+      ]
 
-    render(<InvitedModal invitationResults={alreadyMembers} onCancel={mockOnCancel} />)
+      render(<InvitedModal invitationResults={alreadyMembers} onCancel={mockOnCancel} />)
 
-    expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
-    expect(screen.getByText(/members\.alreadyInTeamTip/i)).toBeInTheDocument()
-    expect(screen.getByText('member@example.com')).toBeInTheDocument()
-    expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
-  })
-
-  it('should hide both sections when results are empty', () => {
-    render(<InvitedModal invitationResults={[]} onCancel={mockOnCancel} />)
-
-    expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/members\.failedInvitationEmails/i)).not.toBeInTheDocument()
-  })
+      expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
+      expect(screen.getByText(/members\.alreadyInTeamTip/i)).toBeInTheDocument()
+      expect(screen.getByText('member@example.com')).toBeInTheDocument()
+      expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
+    },
+  )
 })
 
 describe('InvitedModal (Cloud edition)', () => {
@@ -101,21 +179,5 @@ describe('InvitedModal (Cloud edition)', () => {
 
     expect(await screen.findByText(/members\.invitationSentTip/i)).toBeInTheDocument()
     expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
-  })
-
-  it('should show already-member details', () => {
-    const results: MemberInviteResponse['invitation_results'] = [
-      {
-        email: 'member@example.com',
-        status: 'already_member',
-        message: 'Account already in workspace.',
-      },
-    ]
-
-    render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
-
-    expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
-    expect(screen.getByText(/members\.alreadyInTeam$/i)).toBeInTheDocument()
-    expect(screen.getByText('member@example.com')).toBeInTheDocument()
   })
 })

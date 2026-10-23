@@ -9,6 +9,7 @@ from zipfile import ZipFile
 
 import pytest
 import yaml
+from blinker import Namespace
 from sqlalchemy import Engine, event, select
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session, sessionmaker
@@ -39,7 +40,8 @@ from services.agent.package_resource_exporter import AgentPackageResourceExporte
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
 from services.agent.roster_service import AgentRosterService
-from services.app.console_gateway import AppTransferGateway, EnterpriseConsoleAppAccess
+from services.app import console_gateway
+from services.app.console_gateway import AppLifecycleGateway, AppTransferGateway, EnterpriseConsoleAppAccess
 from services.app.console_service import ConsoleAppNotFoundError, InvalidAppAccessModesError
 from services.app.export_service import AppExportService
 from services.app_dsl_service import AppDslService
@@ -49,11 +51,19 @@ from services.entities.app_entities import (
     AppExportOptions,
     CopyAppParams,
 )
-from services.entities.dsl_entities import AppDslExportData, AppImportPackage, AppImportParams, Import, ImportStatus
+from services.entities.dsl_entities import (
+    AppDslExportData,
+    AppImportPackage,
+    AppImportParams,
+    DraftGuardedImportParams,
+    Import,
+    ImportStatus,
+)
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
 from services.workflow_service import WorkflowService
+from tests.unit_tests.audio_runtime_fixtures import record_calls
 from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 from tests.unit_tests.rbac_fakes import RBACDomain
 
@@ -710,3 +720,163 @@ def test_console_package_import_forwards_archive_and_closes_it(
     assert result.status == status
     assert len(archives) == 1
     assert archives[0].archive.closed
+
+
+@pytest.mark.parametrize(
+    ("params", "draft_hash"),
+    [
+        (DraftGuardedImportParams(mode="yaml-content", yaml_content="kind: app\n", draft_hash="exported"), "exported"),
+        (DraftGuardedImportParams(mode="yaml-content", yaml_content="kind: app\n"), None),
+        (AppImportParams(mode="yaml-content", yaml_content="kind: app\n"), None),
+    ],
+    ids=["guarded", "guarded-without-hash", "console"],
+)
+def test_dsl_import_forwards_only_a_guarded_draft_hash(
+    app_services: AppServices,
+    copy_source: tuple[RequestContext, str],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    params: AppImportParams,
+    draft_hash: str | None,
+) -> None:
+    config_overrides(RBAC_ENABLED=False, DEPLOYMENT_EDITION="COMMUNITY")
+    context, _ = copy_source
+    forwarded: list[str | None] = []
+
+    def import_app(_dsl: AppDslService, *, draft_hash: str | None, **_kwargs: object) -> Import:
+        forwarded.append(draft_hash)
+        return Import(id="import-1", status=ImportStatus.FAILED)
+
+    monkeypatch.setattr(AppDslService, "import_app", import_app)
+
+    app_services.console.import_app(context, params)
+
+    assert forwarded == [draft_hash]
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
+    sqlite_session_factory: sessionmaker[Session],
+    copy_source: tuple[RequestContext, str],
+    monkeypatch: pytest.MonkeyPatch,
+    mode: AppMode,
+) -> None:
+    context, app_id = copy_source
+    with sqlite_session_factory.begin() as session:
+        app = session.get(App, app_id)
+        assert app is not None
+        app.mode = mode
+    syncs: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        WorkflowService, "sync_draft_workflow", record_calls(WorkflowService.sync_draft_workflow, syncs)
+    )
+    # The app event handlers reach the Flask-bound database; this test only checks the saved draft.
+    monkeypatch.setattr("services.workflow_service.app_draft_workflow_was_synced", Namespace().signal("synced"))
+
+    AppLifecycleGateway(session_factory=sqlite_session_factory).create_draft(context, app_id)
+
+    assert [sync["graph"] for sync in syncs] == [console_gateway._STARTER_DRAFT_GRAPHS[mode]]
+    assert syncs[0]["graph"] is not console_gateway._STARTER_DRAFT_GRAPHS[mode]
+    with sqlite_session_factory() as session:
+        draft = session.scalar(
+            select(Workflow).where(Workflow.app_id == app_id, Workflow.version == Workflow.VERSION_DRAFT)
+        )
+        assert draft is not None
+        assert draft.graph_dict == console_gateway._STARTER_DRAFT_GRAPHS[mode]
+
+
+def test_chatflow_starter_draft_is_start_llm_answer_as_the_editor_saves_it() -> None:
+    graph = console_gateway._STARTER_DRAFT_GRAPHS[AppMode.ADVANCED_CHAT]
+
+    assert [(n["id"], n["data"]["type"], n["data"]["title"], n["position"]) for n in graph["nodes"]] == [
+        ("start", "start", "Start", {"x": 80, "y": 282}),
+        ("llm", "llm", "LLM", {"x": 380, "y": 282}),
+        ("answer", "answer", "Answer", {"x": 680, "y": 282}),
+    ]
+    assert all(
+        (n["type"], n["targetPosition"], n["sourcePosition"]) == ("custom", "left", "right") for n in graph["nodes"]
+    )
+    assert [(e["id"], e["source"], e["sourceHandle"], e["target"], e["targetHandle"]) for e in graph["edges"]] == [
+        ("start-llm", "start", "source", "llm", "target"),
+        ("llm-answer", "llm", "source", "answer", "target"),
+    ]
+    assert graph["nodes"][2]["data"]["answer"] == "{{#llm.text#}}"
+    assert json.loads(json.dumps(graph))["nodes"][1]["data"]["model"]["mode"] == "chat"
+
+
+def test_workflow_starter_draft_is_empty() -> None:
+    assert console_gateway._STARTER_DRAFT_GRAPHS[AppMode.WORKFLOW] == {"nodes": [], "edges": []}
+
+
+@pytest.mark.parametrize("commit_fails", [False, True])
+@pytest.mark.parametrize("entry", ["import", "confirm", "copy"])
+@pytest.mark.parametrize("status", list(ImportStatus))
+@pytest.mark.parametrize("created", [False, True])
+def test_import_creator_access_runs_after_successful_commit(
+    sqlite_session_factory: sessionmaker[Session],
+    copy_source: tuple[RequestContext, str],
+    copy_connections: set[object],
+    monkeypatch: pytest.MonkeyPatch,
+    entry: str,
+    status: ImportStatus,
+    created: bool,
+    commit_fails: bool,
+) -> None:
+    context, app_id = copy_source
+    result = Import(id="import", status=status, app_id=app_id, app_mode=AppMode.WORKFLOW, app_created=created)
+    events: list[str] = []
+
+    class Dsl:
+        def __init__(self, session: Session) -> None:
+            if commit_fails:
+
+                def fail_commit(_: Session) -> None:
+                    raise RuntimeError("commit failed")
+
+                event.listen(session, "before_commit", fail_commit)
+            event.listen(session, "after_commit", lambda _: events.append("commit"))
+            event.listen(session, "after_rollback", lambda _: events.append("rollback"))
+
+        def import_app(self, **_kwargs: object) -> Import:
+            return result
+
+        def confirm_import(self, **_kwargs: object) -> Import:
+            return result
+
+    def sync(tenant_id: str, account_id: str, resource_type: str, resource_id: str) -> None:
+        assert not copy_connections
+        assert events == ["commit"]
+        assert (tenant_id, account_id, resource_type, resource_id) == (
+            context.active_workspace_id,
+            context.account_id,
+            "app",
+            app_id,
+        )
+        events.append("sync")
+
+    monkeypatch.setattr("services.enterprise.rbac_service.try_sync_creator_access_policy_member_bindings", sync)
+    gateway = AppTransferGateway(
+        session_factory=sqlite_session_factory,
+        dsl_factory=cast(Callable[[Session], AppDslService], Dsl),
+        packages=AppPackageService(),
+        agent_packages=RosterAgentPackageExporter(),
+        agent_importer=RosterAgentPackageImporter(),
+        recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
+    )
+    if commit_fails and status != ImportStatus.FAILED and not (entry == "copy" and status == ImportStatus.PENDING):
+        if entry == "confirm":
+            with pytest.raises(RuntimeError, match="commit failed"):
+                gateway.confirm_import(context, "import")
+        else:
+            with pytest.raises(RuntimeError, match="commit failed"):
+                gateway.import_dsl(context, AppImportParams(mode="yaml-content"), as_copy=entry == "copy")
+        assert "sync" not in events
+        return
+    if entry == "confirm":
+        returned, was_created = gateway.confirm_import(context, "import")
+        assert was_created is created
+    else:
+        returned = gateway.import_dsl(context, AppImportParams(mode="yaml-content"), as_copy=entry == "copy")
+    assert returned is result
+    expected = created and status in (ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS)
+    assert (events.count("sync") == 1) is expected

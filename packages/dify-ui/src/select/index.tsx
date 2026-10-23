@@ -3,7 +3,6 @@
 import type { ComponentRenderFn, HTMLProps } from '@base-ui/react/types'
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
-import type { Placement } from '../internal/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -16,7 +15,6 @@ import {
   floatingSeparatorClassName,
   positionerClassName,
 } from '../internal/overlay'
-import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 type SelectActions = BaseSelect.Root.Actions
@@ -109,7 +107,7 @@ function SelectTrigger({ className, children, size, ...props }: SelectTriggerPro
       {...props}
     >
       <span className="min-w-0 grow truncate">{children}</span>
-      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-data-readonly/select-trigger:hidden group-[:hover:not([data-disabled])]/select-trigger:text-text-secondary data-popup-open:text-text-secondary">
+      <BaseSelect.Icon className="shrink-0 text-text-quaternary group-data-readonly/select-trigger:hidden group-[:hover:not([data-disabled])]/select-trigger:text-text-secondary data-popup-open:text-text-secondary">
         <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
       </BaseSelect.Icon>
     </BaseSelect.Trigger>
@@ -156,26 +154,19 @@ function SelectSeparator({ className, ...props }: SelectSeparatorProps) {
 const SelectPortal = BaseSelect.Portal
 type SelectPortalProps = BaseSelect.Portal.Props
 
-type SelectPositionerProps = Omit<BaseSelect.Positioner.Props, 'side' | 'align'> & {
-  placement?: Placement
-}
+type SelectPositionerProps = BaseSelect.Positioner.Props
 
 function SelectPositioner({
-  placement = 'bottom-start',
+  align = 'start',
   sideOffset = 4,
-  alignOffset = 0,
   alignItemWithTrigger = false,
   className,
   ...props
 }: SelectPositionerProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <BaseSelect.Positioner
-      side={side}
       align={align}
       sideOffset={sideOffset}
-      alignOffset={alignOffset}
       alignItemWithTrigger={alignItemWithTrigger}
       className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
@@ -206,7 +197,10 @@ function SelectList({ className, ...props }: SelectListProps) {
   return (
     <BaseSelect.List
       className={(state) =>
-        cn('max-h-80 overflow-auto p-1 outline-hidden', resolveClassName(className, state))
+        cn(
+          'max-h-80 scroll-py-1 overflow-auto p-1 outline-hidden',
+          resolveClassName(className, state),
+        )
       }
       {...props}
     />
@@ -214,21 +208,22 @@ function SelectList({ className, ...props }: SelectListProps) {
 }
 
 type SelectContentProps = Omit<SelectPopupProps, 'children'> &
-  Pick<SelectPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+  Pick<SelectPositionerProps, 'alignOffset' | 'side' | 'align' | 'sideOffset'> & {
     children: React.ReactNode
   }
 
 function SelectContent({
   children,
-  placement = 'bottom-start',
-  sideOffset = 4,
-  alignOffset = 0,
+  side,
+  align,
+  sideOffset,
+  alignOffset,
   className,
   ...props
 }: SelectContentProps) {
   return (
     <SelectPortal>
-      <SelectPositioner placement={placement} sideOffset={sideOffset} alignOffset={alignOffset}>
+      <SelectPositioner side={side} align={align} sideOffset={sideOffset} alignOffset={alignOffset}>
         <SelectPopup className={className} {...props}>
           <SelectList>{children}</SelectList>
         </SelectPopup>
@@ -246,7 +241,7 @@ function SelectItem<Value = unknown>({ className, ...props }: SelectItemProps<Va
     <BaseSelect.Item
       className={(state) =>
         cn(
-          'flex h-8 cursor-pointer items-center rounded-lg px-2 system-sm-medium text-text-secondary outline-hidden',
+          'flex h-8 items-center rounded-lg px-2 system-sm-medium text-text-secondary outline-hidden select-none',
           'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-highlighted:bg-state-base-hover',
           resolveClassName(className, state),
         )

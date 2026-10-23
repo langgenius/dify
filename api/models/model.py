@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import uuid
@@ -33,6 +34,7 @@ from .account import Account, Tenant
 from .base import Base, TypeBase, gen_uuidv4_string
 from .engine import db
 from .enums import (
+    ApiTokenBindingResourceType,
     ApiTokenType,
     AppStatus,
     BannerStatus,
@@ -307,6 +309,7 @@ class MessageDict(TypedDict):
     id: str
     app_id: str
     conversation_id: str
+    model_provider: NotRequired[str | None]
     model_id: str | None
     inputs: dict[str, Any]
     query: str
@@ -1368,11 +1371,9 @@ class Conversation(Base):
             if not workflow_run:
                 continue
 
-            try:
+            # Handle invalid status values gracefully
+            with contextlib.suppress(ValueError, KeyError):
                 status_counts[WorkflowExecutionStatus(workflow_run.status)] += 1
-            except (ValueError, KeyError):
-                # Handle invalid status values gracefully
-                pass
 
         return {
             "success": status_counts[WorkflowExecutionStatus.SUCCEEDED],
@@ -1754,7 +1755,7 @@ class Message(Base):
             list[MessageFileInfo],
             [
                 {"belongs_to": message_file.belongs_to, "upload_file_id": message_file.upload_file_id, **file.to_dict()}
-                for (file, message_file) in zip(files, message_files)
+                for (file, message_file) in zip(files, message_files, strict=False)
             ],
         )
 
@@ -1787,6 +1788,7 @@ class Message(Base):
             "id": self.id,
             "app_id": self.app_id,
             "conversation_id": self.conversation_id,
+            "model_provider": self.model_provider,
             "model_id": self.model_id,
             "inputs": self.inputs_with_session(session=session),
             "query": self.query,
@@ -1811,6 +1813,7 @@ class Message(Base):
             id=data["id"],
             app_id=data["app_id"],
             conversation_id=data["conversation_id"],
+            model_provider=data.get("model_provider"),
             model_id=data["model_id"],
             inputs=data["inputs"],
             total_price=data["total_price"],
@@ -2272,28 +2275,52 @@ class ApiToken(Base):
 class DatasetApiTokenBinding(Base):
     """Binds a dataset service-API key to a single knowledge base.
 
-    A dataset ``ApiToken`` may have zero or more of these rows:
-    - no rows  → the key can access every dataset in its tenant (default / back-compat).
-    - N rows   → the key is restricted to exactly those N datasets.
+    A knowledge base is either a legacy ``Dataset`` row or a KnowledgeFS control space
+    (``knowledge_fs_control_spaces``); the two live in different tables, so every row
+    carries a ``resource_type`` that says which id column is populated:
+    - ``dataset``            → ``dataset_id`` is set, ``control_space_id`` is NULL.
+    - ``knowledge_fs_space`` → ``control_space_id`` is set, ``dataset_id`` is NULL.
 
-    Both foreign keys cascade on delete, so removing a key or a dataset automatically
-    drops the corresponding bindings (no dangling scope).
+    A dataset ``ApiToken`` may have zero or more of these rows:
+    - no rows  → the key can access every knowledge base in its tenant (default / back-compat).
+    - N rows   → the key is restricted to exactly those N knowledge bases. Each service-API
+                 surface only honours bindings of its own kind, so a key bound solely to
+                 KnowledgeFS spaces cannot reach legacy datasets and vice versa.
+
+    All foreign keys cascade on delete, so removing a key, a dataset, or a control space
+    automatically drops the corresponding bindings (no dangling scope).
     """
 
     __tablename__ = "dataset_api_token_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_api_token_binding_pkey"),
         sa.UniqueConstraint("api_token_id", "dataset_id", name="dataset_api_token_binding_unique"),
+        sa.UniqueConstraint("api_token_id", "control_space_id", name="dataset_api_token_binding_space_unique"),
+        sa.CheckConstraint(
+            "(resource_type = 'dataset' AND dataset_id IS NOT NULL AND control_space_id IS NULL)"
+            " OR (resource_type = 'knowledge_fs_space' AND control_space_id IS NOT NULL AND dataset_id IS NULL)",
+            name="dataset_api_token_binding_resource_ck",
+        ),
         sa.Index("dataset_api_token_binding_token_idx", "api_token_id"),
         sa.Index("dataset_api_token_binding_dataset_idx", "dataset_id"),
+        sa.Index("dataset_api_token_binding_space_idx", "control_space_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     api_token_id: Mapped[str] = mapped_column(
         StringUUID, sa.ForeignKey("api_tokens.id", ondelete="CASCADE"), nullable=False
     )
-    dataset_id: Mapped[str] = mapped_column(
-        StringUUID, sa.ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False
+    resource_type: Mapped[ApiTokenBindingResourceType] = mapped_column(
+        EnumText(ApiTokenBindingResourceType, length=32),
+        nullable=False,
+        default=ApiTokenBindingResourceType.DATASET,
+        server_default=ApiTokenBindingResourceType.DATASET.value,
+    )
+    dataset_id: Mapped[str | None] = mapped_column(
+        StringUUID, sa.ForeignKey("datasets.id", ondelete="CASCADE"), nullable=True
+    )
+    control_space_id: Mapped[str | None] = mapped_column(
+        StringUUID, sa.ForeignKey("knowledge_fs_control_spaces.id", ondelete="CASCADE"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -2322,7 +2349,7 @@ class UploadFile(TypeBase):
     # The `created_by` field stores the ID of the entity that created this upload file.
     #
     # If `created_by_role` is `ACCOUNT`, it corresponds to `Account.id`.
-    # Otherwise, it corresponds to `EndUser.id`.
+    # `END_USER` corresponds to `EndUser.id`; `DATASET_API_KEY` corresponds to `ApiToken.id`.
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -2331,13 +2358,13 @@ class UploadFile(TypeBase):
     # When using this model in new code, ensure the following:
     #
     # 1. Set `used` to `true` when the file is utilized.
-    # 2. Assign `used_by` to the corresponding `Account.id` or `EndUser.id` based on the `created_by_role`.
+    # 2. Assign `used_by` to the corresponding creator entity ID based on `created_by_role`.
     # 3. Avoid relying on these fields for logic, as their values may not always be accurate.
     #
     # `used` may indicate whether the file has been utilized by another service.
     used: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
 
-    # The `created_by_role` field indicates whether the file was created by an `Account` or an `EndUser`.
+    # The `created_by_role` identifies an account, end user, or Dataset API key as the file owner.
     # Its value is derived from the `CreatorUserRole` enumeration.
     created_by_role: Mapped[CreatorUserRole] = mapped_column(
         EnumText(CreatorUserRole, length=255),

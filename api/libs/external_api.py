@@ -1,10 +1,16 @@
+import pkgutil
 import re
-from collections.abc import Mapping
-from typing import Any, Protocol, override
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass
+from functools import cache
+from typing import Any, ClassVar, Protocol, TypedDict, override
 
 from flask import Blueprint, Flask, current_app, got_request_exception, request
 from flask.typing import ResponseReturnValue
 from flask_restx import Api
+from pydantic import BaseModel
+from pydantic.json_schema import SkipJsonSchema
+from werkzeug.datastructures import Headers
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
 
@@ -12,12 +18,436 @@ from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
 from core.plugin.impl.exc import PluginRuntimeError
 from extensions.ext_logging import get_request_id
+from libs.exception import BaseHTTPException, RelayedHTTPError
 from libs.flask_restx_compat import install_swagger_compatibility
 from libs.token import build_force_logout_cookie_headers
 
 
 def http_status_message(code):
     return HTTP_STATUS_CODES.get(code, "")
+
+
+class ErrorResponse(BaseModel):
+    """Documented non-2xx body emitted by ``register_external_error_handlers``.
+
+    ``params`` and ``details`` appear only on the errors that set them. The schema
+    stays open because ``HTTPException.data`` may carry extra keys.
+    """
+
+    code: str
+    message: str
+    status: int
+    params: str | SkipJsonSchema[None] = None
+    details: dict[str, Any] | SkipJsonSchema[None] = None
+
+
+_ERROR_SCHEMA_REF_TEMPLATE = "#/components/schemas/{model}"
+ERROR_CODES_VENDOR_KEY = "dify-error-codes"
+_ERROR_CODES_EXTENSION = f"x-{ERROR_CODES_VENDOR_KEY}"
+# Marks an operation that relays downstream errors: any code may answer it with the error body.
+RELAYS_ERRORS_EXTENSION = "x-dify-relays-errors"
+# ``BaseHTTPException`` ships this placeholder; a documented business error must replace it.
+_UNDECLARED_ERROR_CODE = BaseHTTPException.error_code
+
+
+class ErrorSpec(TypedDict):
+    """How one documented exception reaches the wire, before a surface picks its ``code``."""
+
+    status: int
+    # The class's own ``error_code``, if it declares one.
+    error_code: str | None
+    # The ``code`` the surface's handlers emit when no body formatter rewrites it.
+    default_code: str
+
+
+# What the non-HTTP handlers in register_external_error_handlers emit, as (status, code).
+_SHARED_HANDLED_ERRORS: Mapping[type[Exception], tuple[int, str]] = {
+    ValueError: (400, "invalid_param"),
+    AppInvokeQuotaExceededError: (429, "too_many_requests"),
+    PluginRuntimeError: (502, "plugin_runtime_error"),
+}
+
+
+def _class_attribute(cls: type, name: str) -> object:
+    """``name`` as the class or its nearest base defines it, without instance or ``__getattr__`` lookups."""
+    for klass in cls.__mro__:
+        if name in klass.__dict__:
+            return klass.__dict__[name]
+    return None
+
+
+def _snake_case(name: str) -> str:
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+
+@cache
+def _framework_error_codes() -> Mapping[int, frozenset[str]]:
+    """The codes Werkzeug's own HTTP exceptions produce, by status.
+
+    The HTTP handler names the code after the raised class, so subclasses such as
+    ``BadRequestKeyError`` (a missing form or file field) answer with their own code.
+    Werkzeug defines all of them at import, so the walk happens once.
+    """
+    by_status: dict[int, set[str]] = {}
+    pending: list[type[HTTPException]] = [HTTPException]
+    while pending:
+        exception = pending.pop()
+        pending.extend(exception.__subclasses__())
+        if exception.__module__.startswith("werkzeug.") and isinstance(exception.code, int) and exception.code >= 400:
+            by_status.setdefault(exception.code, set()).add(_snake_case(exception.__name__))
+    return {status: frozenset(codes) for status, codes in by_status.items()}
+
+
+def _error_spec(
+    exception: type[Exception],
+    handled: Mapping[type[Exception], tuple[int, str]],
+    dispatch_order: Iterable[type[BaseException]],
+) -> ErrorSpec:
+    declared = _class_attribute(exception, "error_code")
+    error_code = str(declared) if isinstance(declared, str) else None
+    # Flask-RESTX dispatches to the first registered handler whose type matches, in
+    # registration order (not the most specific one), so resolve the same way.
+    for handler_type in dispatch_order:
+        if not issubclass(exception, handler_type):
+            continue
+        if handler_type in handled:
+            status, default_code = handled[handler_type]
+            return {"status": status, "error_code": error_code, "default_code": default_code}
+        if handler_type is HTTPException and issubclass(exception, HTTPException):
+            if exception.code is None:
+                raise ValueError(f"{exception.__name__} declares no HTTP status")
+            if issubclass(exception, BaseHTTPException):
+                default_code = exception.error_code
+            else:
+                default_code = _snake_case(exception.__name__)
+            return {"status": exception.code, "error_code": error_code, "default_code": default_code}
+        break
+    raise ValueError(f"{exception.__name__} has no dedicated error handler; its status and code are not stable")
+
+
+def keeps_placeholder_error_code(exception: type[Exception]) -> bool:
+    """Whether ``exception`` would answer with ``BaseHTTPException``'s placeholder ``code``.
+
+    Such an error cannot be documented: declare an ``error_code`` on it. Relayed errors
+    take their code at runtime and are exempt.
+    """
+    return (
+        issubclass(exception, BaseHTTPException)
+        and not issubclass(exception, RelayedHTTPError)
+        and _class_attribute(exception, "error_code") == _UNDECLARED_ERROR_CODE
+    )
+
+
+def is_business_error(exception: type[Exception]) -> bool:
+    """Whether ``exception`` names an operation-specific outcome worth listing.
+
+    Werkzeug exceptions and anything dispatched through a dedicated (non-HTTP) handler
+    are generic instead: clients handle them centrally, and every operation's open
+    ``default`` error response covers them.
+    """
+    return issubclass(exception, HTTPException) and not exception.__module__.startswith("werkzeug.")
+
+
+_HTTP_METHOD_DOC_KEYS = ("get", "put", "post", "delete", "patch", "head", "options", "trace")
+
+
+def _with_documented_errors(doc: Mapping[str, Any], names: Iterable[str]) -> dict[str, Any]:
+    vendor = dict(doc.get("vendor", {}))
+    # A dict, not a list: Flask-RESTX deep-merges dicts across decorators and class/method
+    # docs but replaces lists, so every contributor's errors survive the merge.
+    vendor[ERROR_CODES_VENDOR_KEY] = {**vendor.get(ERROR_CODES_VENDOR_KEY, {}), **dict.fromkeys(names, True)}
+    return {**doc, "vendor": vendor}
+
+
+def _documented_names(exceptions: Iterable[type[Exception]]) -> list[str]:
+    exceptions = list(exceptions)
+    generic = [exception.__name__ for exception in exceptions if not is_business_error(exception)]
+    if generic:
+        raise ValueError(f"generic errors are implied, do not list them: {', '.join(generic)}")
+    undeclared = [exception.__name__ for exception in exceptions if keeps_placeholder_error_code(exception)]
+    if undeclared:
+        raise ValueError(f"business errors must declare an error_code: {', '.join(undeclared)}")
+    return [f"{exception.__module__}:{exception.__qualname__}" for exception in exceptions]
+
+
+def document_errors[T](target: T, *exceptions: type[Exception]) -> T:
+    """Record the business errors a view or Resource class can raise, for ``error_responses`` docs.
+
+    A view decorator calls this on the wrapper it returns, so every operation it guards
+    documents the errors it raises. On a Resource class (for ``method_decorators``) the
+    errors apply to each of its operations. Only business errors are accepted; generic
+    ones are implied (see ``is_business_error``). Builds new doc dicts because
+    ``functools.wraps`` shares the wrapped view's ``__apidoc__``.
+    """
+
+    names = _documented_names(exceptions)
+    existing = _class_attribute(target, "__apidoc__") if isinstance(target, type) else vars(target).get("__apidoc__")
+    if existing is False:
+        # ``@ns.hide`` hides the view or resource from the document; there is nothing to document.
+        return target
+    doc: Mapping[str, Any] = existing if isinstance(existing, Mapping) else {}
+    if isinstance(target, type):
+        # Class-level docs only reach operations through their per-method entries. A method
+        # hidden with ``@ns.doc(<method>=False)`` stays hidden.
+        doc = {
+            **doc,
+            **{
+                method: entry
+                if entry is False
+                else _with_documented_errors(entry if isinstance(entry, Mapping) else {}, names)
+                for method in _HTTP_METHOD_DOC_KEYS
+                for entry in (doc.get(method),)
+            },
+        }
+    else:
+        doc = _with_documented_errors(doc, names)
+    target.__apidoc__ = doc  # type: ignore[attr-defined]
+    return target
+
+
+class ViewDecorator(Protocol):
+    """A decorator that returns the view it is given, keeping the view's type."""
+
+    def __call__[F: Callable[..., object]](self, view: F, /) -> F: ...
+
+
+def error_responses(*exceptions: type[Exception]) -> ViewDecorator:
+    """Document the business errors an operation's handler raises.
+
+    List what the handler and its callees raise; decorators document their own errors
+    with ``document_errors``. Generic errors are never listed: every operation documents
+    an open ``default`` error for them. Each surface resolves status and ``code`` from its
+    own handlers when it builds the document, and documents each code once as a shared
+    ``{Code}Error`` component, so a business error must declare an ``error_code``.
+
+    Nothing infers this list from the code: list what the operation's own call chain can
+    answer with, not everything a shared translator knows how to map. The controller unit
+    tests check every served error response against the document.
+    """
+
+    _documented_names(exceptions)
+
+    def decorator[F: Callable[..., object]](view: F, /) -> F:
+        return document_errors(view, *exceptions)
+
+    return decorator
+
+
+def _pascal_case(value: str) -> str:
+    return "".join(word[:1].upper() + word[1:] for word in re.split(r"[^0-9A-Za-z]+", value) if word)
+
+
+def error_component_name(code: str) -> str:
+    """The component that documents ``code``: ``draft_workflow_not_sync`` becomes ``DraftWorkflowNotSyncError``."""
+    name = _pascal_case(code)
+    return name if name.endswith("Error") else f"{name}Error"
+
+
+def _details_model(exception: type[Exception]) -> type[BaseModel] | None:
+    """The Pydantic model an exception declares for its ``details``, if any."""
+    model = _class_attribute(exception, "details_model")
+    return model if isinstance(model, type) and issubclass(model, BaseModel) else None
+
+
+@dataclass(frozen=True)
+class _ErrorComponent:
+    code: str
+    status: int
+    exception: type[Exception]
+    details_model: type[BaseModel] | None
+    where: str
+
+    def schema(self, name: str, error_body_ref: Mapping[str, object]) -> dict[str, object]:
+        properties: dict[str, object] = {
+            "code": {"const": self.code, "type": "string"},
+            "status": {"const": self.status, "type": "integer"},
+        }
+        if self.details_model is not None:
+            properties["details"] = {"$ref": _ERROR_SCHEMA_REF_TEMPLATE.format(model=self.details_model.__name__)}
+        schema: dict[str, object] = {
+            "allOf": [
+                dict(error_body_ref),
+                {"properties": properties, "required": ["code", "status"], "type": "object"},
+            ],
+            "title": name,
+        }
+        description = _class_attribute(self.exception, "description")
+        if isinstance(description, str) and description:
+            schema["description"] = description
+        return schema
+
+
+def _explicit_json_schema(response: Mapping[str, Any]) -> object | None:
+    """The JSON body schema a response already declares, if any; other media types are not errors."""
+    content = response.get("content")
+    media = content.get("application/json") if isinstance(content, dict) else None
+    return media.get("schema") if isinstance(media, dict) else None
+
+
+def _comparable_schema(schema: object) -> object:
+    """``schema`` with order-insensitive parts (``required``) normalized, for equality checks."""
+    if isinstance(schema, dict):
+        return {
+            key: sorted(value) if key == "required" and isinstance(value, list) else _comparable_schema(value)
+            for key, value in schema.items()
+        }
+    if isinstance(schema, list):
+        return [_comparable_schema(item) for item in schema]
+    return schema
+
+
+def _add_model_schemas(schemas: dict[str, object], model: type[BaseModel]) -> None:
+    """Add ``model`` and its nested definitions; a name already documenting a different schema is an error."""
+    schema = model.model_json_schema(ref_template=_ERROR_SCHEMA_REF_TEMPLATE, mode="serialization")
+    definitions = schema.pop("$defs", {})
+    for name, definition in {**definitions, model.__name__: schema}.items():
+        existing = schemas.setdefault(name, definition)
+        if _comparable_schema(existing) != _comparable_schema(definition):
+            raise ValueError(
+                f"schema {name} (from {model.__name__}) collides with a different component of the same name"
+            )
+
+
+def attach_error_response_schema(
+    document: dict[str, object],
+    model: type[BaseModel],
+    resolve_error: Callable[[type[Exception]], tuple[int, str]],
+    is_generic: Callable[[type[Exception]], bool] = lambda exception: False,
+) -> dict[str, object]:
+    """Give every 4xx/5xx response the surface's error body and document business errors by code.
+
+    Every operation gets a ``default`` error response with the open error body: generic
+    errors (authentication, validation, rate limits, unexpected failures) can answer any
+    operation and clients handle them centrally, so no operation lists them. ``is_generic``
+    names the surface's own generic errors (see ``ExternalApi.document_generic_errors``);
+    an operation that documents one gets nothing for it beyond the ``default`` error.
+
+    Each business error an operation documents with ``error_responses`` is one shared
+    ``{Code}Error`` component: the error body with ``code`` and ``status`` fixed, plus the
+    class's ``details_model`` when it declares one. The response of its status lists it in
+    an ``anyOf`` that always ends with the open error body, since a generic error can answer
+    that status too and ``default`` only covers statuses the operation leaves undeclared; a
+    status that also declares its own body schema keeps that schema in front of them. A code
+    maps to exactly one status in a document, and two classes may share a code only when
+    they agree on it. A documented
+    ``RelayedHTTPError`` adds no component, since its status and code are only known at
+    runtime; it marks the operation with ``x-dify-relays-errors`` instead.
+    """
+
+    paths = document.get("paths")
+    if not isinstance(paths, dict):
+        return document
+
+    ref: dict[str, object] = {"$ref": _ERROR_SCHEMA_REF_TEMPLATE.format(model=model.__name__)}
+    error_components: dict[str, _ErrorComponent] = {}
+    used = False
+    for path, path_item in paths.items():
+        if not isinstance(path_item, dict):
+            continue
+        for method, operation in path_item.items():
+            if not isinstance(operation, dict):
+                continue
+            exception_names: Mapping[str, object] = operation.pop(_ERROR_CODES_EXTENSION, {})
+            responses = operation.setdefault("responses", {})
+            if not isinstance(responses, dict):
+                continue
+            where = f"{method.upper()} {path}"
+
+            components_by_status: dict[str, set[str]] = {}
+            for exception_name in exception_names:
+                exception = pkgutil.resolve_name(exception_name)
+                if is_generic(exception):
+                    # Covered by the operation's open ``default`` error.
+                    continue
+                if issubclass(exception, RelayedHTTPError):
+                    # Its status and code come from a downstream service at runtime; the open
+                    # ``default`` error already documents it. The marker lets checks that compare
+                    # served bodies with the document admit any code here.
+                    operation[RELAYS_ERRORS_EXTENSION] = True
+                    continue
+                status, code = resolve_error(exception)
+                name = error_component_name(code)
+                component = _ErrorComponent(code, status, exception, _details_model(exception), where)
+                known = error_components.setdefault(name, component)
+                if known.code != code:
+                    raise ValueError(
+                        f"error codes {known.code!r} ({known.where}) and {code!r} ({where}) both document as {name}"
+                    )
+                if known.status != status:
+                    raise ValueError(
+                        f"error code {code!r} answers {status} on {where} but {known.status} on {known.where}; "
+                        "a code maps to one status"
+                    )
+                if known.details_model is not component.details_model:
+                    raise ValueError(
+                        f"error code {code!r} declares different details models on {known.where} and {where}"
+                    )
+                components_by_status.setdefault(str(status), set()).add(name)
+
+            for status, names in components_by_status.items():
+                response = responses.setdefault(status, {"description": http_status_message(int(status))})
+                if not isinstance(response, dict):
+                    continue
+                options: list[object] = [
+                    {"$ref": _ERROR_SCHEMA_REF_TEMPLATE.format(model=name)} for name in sorted(names)
+                ]
+                explicit = _explicit_json_schema(response)
+                if explicit is not None:
+                    # The declared body and the documented errors can all answer this status.
+                    options.insert(0, explicit)
+                # Generic errors (validation, auth) answer this status as well, and ``default``
+                # does not apply to a status the operation declares, so the open body stays.
+                options.append(dict(ref))
+                content = response.get("content")
+                if not isinstance(content, dict):
+                    content = response["content"] = {}
+                media = content.get("application/json")
+                # Other media types the status declares (a binary or text body) stay as they are.
+                json_media = media if isinstance(media, dict) else {}
+                content["application/json"] = {**json_media, "schema": {"anyOf": options}}
+                used = True
+
+            responses.setdefault("default", {"description": "Error"})
+            for status, response in responses.items():
+                if status in components_by_status or not (status == "default" or str(status).startswith(("4", "5"))):
+                    continue
+                if not isinstance(response, dict):
+                    continue
+                content = response.get("content")
+                if not isinstance(content, dict) or not content:
+                    response["content"] = {"application/json": {"schema": dict(ref)}}
+                    used = True
+                    continue
+                media = content.get("application/json")
+                if not isinstance(media, dict):
+                    continue
+                declared = media.get("schema")
+                if declared is None:
+                    media["schema"] = dict(ref)
+                    used = True
+                elif declared != ref:
+                    # A declared body never replaces the error body: the surface's handlers can
+                    # still answer this status with it (validation, auth, unexpected errors).
+                    media["schema"] = {"anyOf": [declared, dict(ref)]}
+                    used = True
+
+    if not used:
+        return document
+
+    components = document.setdefault("components", {})
+    if not isinstance(components, dict):
+        return document
+    schemas = components.setdefault("schemas", {})
+    if not isinstance(schemas, dict):
+        return document
+    _add_model_schemas(schemas, model)
+    for name, component in error_components.items():
+        if component.details_model is not None:
+            _add_model_schemas(schemas, component.details_model)
+        if name in schemas:
+            raise ValueError(f"error component {name} (code {component.code!r}) collides with an existing component")
+        schemas[name] = component.schema(name, ref)
+    return document
 
 
 class ErrorBodyFormatter(Protocol):
@@ -45,18 +475,20 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
 
         # Build a safe, dict-like payload
         default_data = {
-            "code": re.sub(r"(?<!^)(?=[A-Z])", "_", type(e).__name__).lower(),
+            "code": _snake_case(type(e).__name__),
             "message": getattr(e, "description", http_status_message(status_code)),
             "status": status_code,
         }
         if default_data["message"] == "Failed to decode JSON object: Expecting value: line 1 column 1 (char 0)":
             default_data["message"] = "Invalid JSON payload received or JSON payload is empty."
 
-        # Use headers on the exception if present; otherwise none.
-        headers = {}
+        # Preserve protocol headers while rendering our own JSON body.
+        headers = Headers(e.get_headers())
+        headers.remove("Content-Type")
+        headers.remove("Content-Length")
         exc_headers = getattr(e, "headers", None)
         if exc_headers:
-            headers.update(exc_headers)
+            headers.update(Headers(exc_headers))
 
         # Payload per status
         if status_code == 406 and api.default_mediatype is None:
@@ -82,12 +514,12 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
             data.setdefault("code", "unknown")
             # If you need WWW-Authenticate for 401, add it to headers
             if status_code == 401:
-                headers["WWW-Authenticate"] = 'Bearer realm="api"'
+                headers.setdefault("WWW-Authenticate", 'Bearer realm="api"')
                 # Check if this is a forced logout error - clear cookies
                 error_code = getattr(e, "error_code", None)
                 if error_code == "unauthorized_and_force_logout":
                     # Add Set-Cookie headers to clear auth cookies
-                    headers["Set-Cookie"] = build_force_logout_cookie_headers()
+                    headers.setlist("Set-Cookie", build_force_logout_cookie_headers())
             return _finalize(e, data, status_code), status_code, headers
 
     def handle_value_error(e: ValueError):
@@ -143,6 +575,7 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
 
 
 class ExternalApi(Api):
+    error_response_model: ClassVar[type[BaseModel]] = ErrorResponse
     _authorizations = {
         "Bearer": {
             "bearerFormat": "API_KEY",
@@ -161,6 +594,9 @@ class ExternalApi(Api):
         **kwargs,
     ):
         self._error_body_formatter = error_body_formatter
+        self._handled_errors: dict[type[Exception], tuple[int, str]] = dict(_SHARED_HANDLED_ERRORS)
+        self._generic_errors: list[type[Exception]] = []
+        self._implicit_codes: dict[int, frozenset[str]] = {}
         self._register_default_root = register_default_root
         install_swagger_compatibility()
         kwargs.setdefault("authorizations", self._authorizations)
@@ -175,14 +611,88 @@ class ExternalApi(Api):
                 raise RuntimeError("flask-restx no longer exposes _should_use_fr_error_handler; update ExternalApi")
 
         # manual separate call on construction and init_app to ensure configs in kwargs effective
-        super().__init__(app=None, *args, **kwargs)
+        super().__init__(*args, app=None, **kwargs)
         self.init_app(app, **kwargs)
         register_external_error_handlers(self, body_formatter=error_body_formatter)
 
     def finish_document(self, document: dict[str, object]) -> dict[str, object]:
         """A surface overrides this to rewrite its finished OpenAPI document (see
-        ``DocumentFinisher`` in ``flask_restx_compat``); the default says nothing extra."""
-        return document
+        ``DocumentFinisher`` in ``flask_restx_compat``); overrides must call ``super()``.
+        The default documents ``error_response_model`` on error responses."""
+        return attach_error_response_schema(
+            document, self.error_response_model, self.resolve_error, self.is_generic_error
+        )
+
+    def document_error_handler(self, exception: type[Exception], *, status: int, code: str) -> None:
+        """Record what a surface-specific handler for ``exception`` emits, for ``error_responses``."""
+        self._handled_errors[exception] = (status, code)
+        self._implicit_codes.clear()
+
+    def document_generic_errors(self, *exceptions: type[Exception]) -> None:
+        """Declare business-shaped errors this surface's clients handle centrally.
+
+        A generic error is one any operation may answer with and no caller branches on
+        per operation: a missing setup step, an uninitialized account, a revoked
+        license, a malformed argument. It is covered by every operation's open
+        ``default`` error and admitted by ``implicit_error_codes``; an operation that
+        documents it gets no per-operation entry for it. Register them once, where the
+        surface is built, so the decision is visible in one place.
+        """
+        for exception in exceptions:
+            if not is_business_error(exception):
+                raise ValueError(f"{exception.__name__} is generic already; only business-shaped errors are declared")
+            if keeps_placeholder_error_code(exception):
+                raise ValueError(f"{exception.__name__} must declare an error_code to be documented as generic")
+            self.resolve_error(exception)
+            if exception not in self._generic_errors:
+                self._generic_errors.append(exception)
+        self._implicit_codes.clear()
+
+    def is_generic_error(self, exception: type[Exception]) -> bool:
+        """Whether this surface documents ``exception`` as generic (see ``document_generic_errors``)."""
+        return any(issubclass(exception, generic) for generic in self._generic_errors)
+
+    def resolve_error(self, exception: type[Exception]) -> tuple[int, str]:
+        """The (status, ``code``) this surface emits for ``exception``.
+
+        Raises ``ValueError`` when no handler gives it a stable status and code.
+        """
+        spec = _error_spec(exception, self._handled_errors, self._error_dispatch_order())
+        return spec["status"], self.error_code_for(spec)
+
+    def _error_dispatch_order(self) -> list[type[BaseException]]:
+        """Handler types in the order Flask-RESTX tries them: the API's own, then new namespace ones."""
+        order: list[type[BaseException]] = list(self.error_handlers)
+        for namespace in self.namespaces:
+            order.extend(exception for exception in namespace.error_handlers if exception not in order)
+        return order
+
+    def error_code_for(self, spec: ErrorSpec) -> str:
+        """The ``code`` this surface emits for a documented exception."""
+        return spec["default_code"]
+
+    def implicit_error_codes(self, status: int) -> set[str]:
+        """Generic codes any operation may emit at ``status`` without listing them.
+
+        The document covers them with each operation's open ``default`` error; checks that
+        compare served error bodies with the document admit them beside the documented
+        business codes. The result is cached per status until the surface declares another
+        handler or generic error, since checks ask for it on every error response.
+        """
+        cached = self._implicit_codes.get(status)
+        if cached is not None:
+            return set(cached)
+        codes = set(_framework_error_codes().get(status, ()))
+        codes.update(code for handled_status, code in self._handled_errors.values() if handled_status == status)
+        for exception in self._generic_errors:
+            generic_status, code = self.resolve_error(exception)
+            if generic_status == status:
+                codes.add(code)
+        if status == 500:
+            # Unhandled exceptions reach the catch-all handler.
+            codes.add("unknown")
+        self._implicit_codes[status] = frozenset(codes)
+        return codes
 
     @override
     def _register_doc(self, app_or_blueprint: Blueprint | Flask) -> None:

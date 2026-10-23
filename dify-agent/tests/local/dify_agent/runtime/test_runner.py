@@ -204,6 +204,46 @@ async def test_failure_saves_user_history_and_classified_event(monkeypatch):
         assert saved.messages[-1].state == "interrupted"
 
 
+class FailingAppendSink(InMemoryRunEventSink):
+    """Double that fails non-terminal appends so run_started cannot be stored.
+
+    Terminal finalization keeps the real in-memory path, so the test observes
+    whether the runner still finalizes the run as failed.
+    """
+
+    def __init__(self, message):
+        super().__init__()
+        self.message = message
+
+    async def append_event(self, event):
+        raise RuntimeError(self.message)
+
+
+@pytest.mark.anyio
+async def test_run_started_store_failure_finalizes_run_as_failed(monkeypatch):
+    async def stream(messages, info):
+        pytest.fail("the model must not run when run_started cannot be stored")
+        yield "unreachable"
+
+    async with httpx.AsyncClient() as client:
+        model = FunctionModel(stream_function=stream)
+        monkeypatch.setattr(llm_layer.Capability, "build_model", lambda self, deps: model)
+        sink = FailingAppendSink("store unavailable")
+        runner = AgentRunRunner(
+            sink=sink,
+            request=request(),
+            run_id="test",
+            services=Services(client, client),
+            run_timeout_seconds=10,
+        )
+        with pytest.raises(RuntimeError, match="store unavailable"):
+            await runner.run()
+        assert sink.statuses["test"] == "failed"
+        terminal = sink.events["test"][-1]
+        assert isinstance(terminal, RunFailedEvent)
+        assert terminal.data.error == "store unavailable"
+
+
 @pytest.mark.anyio
 @pytest.mark.parametrize("invalid_first", [False, True])
 async def test_native_structured_output_uses_output_module(monkeypatch, invalid_first):
@@ -499,3 +539,36 @@ async def test_empty_current_user_content_fails_before_model_io(monkeypatch, use
         with pytest.raises(ValueError, match="run.user_prompts must not be empty"):
             await runner.run()
         assert isinstance(sink.events["test"][-1], RunFailedEvent)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("failed", [False, True])
+async def test_quality_report_follows_final_run_event(monkeypatch, failed):
+    from dataclasses import dataclass
+    from unittest.mock import AsyncMock
+
+    from dify_agent.runtime.runner import RunSuccessOutcome
+
+    @dataclass(frozen=True)
+    class QualityReportModule:
+        publish_investigation: AsyncMock
+
+    module = QualityReportModule(publish_investigation=AsyncMock())
+    async with httpx.AsyncClient() as client:
+        services = Services(client, client)
+        runner = AgentRunRunner(sink=InMemoryRunEventSink(), request=request(), run_id="quality-run", services=services)
+
+        async def execute():
+            runner._knowledge_modules = [module]
+            if failed:
+                raise RuntimeError("model failed")
+            return RunSuccessOutcome(output="answer", session_snapshot=SessionSnapshot(layers={}), usage=None)
+
+        monkeypatch.setattr(runner, "_run_agent", execute)
+        if failed:
+            with pytest.raises(RuntimeError):
+                await runner.run()
+            module.publish_investigation.assert_awaited_once_with(services, status="interrupted")
+        else:
+            await runner.run()
+            module.publish_investigation.assert_awaited_once_with(services, status="completed", answer="answer")

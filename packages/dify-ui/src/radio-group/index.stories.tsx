@@ -146,7 +146,7 @@ function OptionCardsDemo() {
               value={option.value}
               nativeButton
               render={<button type="button" />}
-              className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-start outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
+              className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>

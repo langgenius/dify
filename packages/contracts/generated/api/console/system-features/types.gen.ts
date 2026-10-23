@@ -5,6 +5,7 @@ export type ClientOptions = {
 }
 
 export type SystemFeatureModel = {
+  agent_tracing_api_collection_enabled: boolean
   branding: BrandingModel
   deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
@@ -20,13 +21,22 @@ export type SystemFeatureModel = {
   enable_step_by_step_tour: boolean
   is_allow_register: boolean
   is_email_setup: boolean
-  knowledge_fs_enabled: boolean
   license: LicenseStatusModel
   plugin_installation_permission: PluginInstallationPermissionModel
   rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: SsoProtocol | null
   webapp_auth: WebAppAuthModel
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
 }
 
 export type LicenseModel = {
@@ -92,6 +102,12 @@ export type GetSystemFeaturesData = {
   url: '/system-features'
 }
 
+export type GetSystemFeaturesErrors = {
+  default: ErrorResponse
+}
+
+export type GetSystemFeaturesError = GetSystemFeaturesErrors[keyof GetSystemFeaturesErrors]
+
 export type GetSystemFeaturesResponses = {
   200: SystemFeatureModel
 }
@@ -104,6 +120,13 @@ export type GetSystemFeaturesLicenseData = {
   query?: never
   url: '/system-features/license'
 }
+
+export type GetSystemFeaturesLicenseErrors = {
+  default: ErrorResponse
+}
+
+export type GetSystemFeaturesLicenseError =
+  GetSystemFeaturesLicenseErrors[keyof GetSystemFeaturesLicenseErrors]
 
 export type GetSystemFeaturesLicenseResponses = {
   200: LicenseModel

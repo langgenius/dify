@@ -11,7 +11,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isSearchResultEmpty } from '@/app/components/base/search-input/search-state'
@@ -32,9 +32,13 @@ import { BuiltinMarketplacePanel } from '@/app/components/tools/marketplace/buil
 import MCPList from '@/app/components/tools/mcp'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import { ToolProviderGrid } from '@/app/components/tools/tool-provider-grid'
+import {
+  selectToolCollections,
+  selectToolsWithProvider,
+} from '@/app/components/tools/utils/query-select'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { useAllCustomTools, useAllToolProviders, useAllWorkflowTools } from '@/service/use-tools'
 import { useToolProviderCategory } from './hooks/use-tool-provider-category'
 import ToolProviderCreateAction from './tool-provider-create-action'
 import { ToolProviderToolbar } from './tool-provider-toolbar'
@@ -85,12 +89,25 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const handleCreatedMCPProviderHandled = useCallback(() => {
     setCreatedMCPProviderId(undefined)
   }, [])
-  const allToolProvidersQuery = useAllToolProviders(
-    activeTab === 'builtin' || activeTab === 'mcp',
-    activeTab === 'mcp' ? 'mcp' : undefined,
+  const allToolProvidersQuery = useQuery(
+    consoleQuery.workspaces.current.toolProviders.get.queryOptions({
+      input: { query: activeTab === 'mcp' ? { type: 'mcp' } : {} },
+      enabled: activeTab === 'builtin' || activeTab === 'mcp',
+      select: selectToolCollections,
+    }),
   )
-  const customToolsQuery = useAllCustomTools(activeTab === 'api')
-  const workflowToolsQuery = useAllWorkflowTools(activeTab === 'workflow')
+  const customToolsQuery = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({
+      enabled: activeTab === 'api',
+      select: selectToolsWithProvider,
+    }),
+  )
+  const workflowToolsQuery = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      enabled: activeTab === 'workflow',
+      select: selectToolsWithProvider,
+    }),
+  )
   const { refetch: refetchMcpTools } = allToolProvidersQuery
   const activeToolsQuery =
     activeTab === 'api'

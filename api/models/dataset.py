@@ -1,7 +1,7 @@
 import json
 import pickle
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from json import JSONDecodeError
 from typing import Any, ClassVar, TypedDict, cast, override
 from uuid import uuid4
@@ -12,11 +12,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
 from core.rag.entities import PreProcessingRuleKey
-from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from libs.datetime_utils import ensure_naive_utc
 from libs.uuid_utils import uuidv7
-from models.base import Base, TypeBase
+from models.base import TypeBase
 from models.enums import (
     CollectionBindingType,
     CreatorUserRole,
@@ -27,6 +28,7 @@ from models.enums import (
     DocumentCreatedFrom,
     DocumentDocType,
     IndexingStatus,
+    PermissionEnum,
     ProcessRuleMode,
     SegmentStatus,
     SegmentType,
@@ -141,13 +143,11 @@ class DocumentDict(TypedDict):
     hit_count: int | None
 
 
-from models.enums import PermissionEnum
-
 # Backward-compatible alias — new code should import PermissionEnum from models.enums
 DatasetPermissionEnum = PermissionEnum
 
 
-class Dataset(Base):
+class Dataset(TypeBase, kw_only=True):
     __tablename__ = "datasets"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_pkey"),
@@ -160,40 +160,63 @@ class Dataset(Base):
     PROVIDER_LIST = ["vendor", "external", None]
     DOC_FORM_LIST = [member.value for member in IndexStructureType]
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id: Mapped[str] = mapped_column(StringUUID)
-    name: Mapped[str] = mapped_column(String(255))
-    description = mapped_column(LongText, nullable=True)
-    provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'"))
-    permission: Mapped[DatasetPermissionEnum] = mapped_column(
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=cast(str, None))
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default=cast(str, None))
+    description: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    provider: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'vendor'"), default=cast(str, None)
+    )
+    permission: Mapped[Any] = mapped_column(
         EnumText(DatasetPermissionEnum, length=255),
         default=DatasetPermissionEnum.ONLY_ME,
     )
-    data_source_type = mapped_column(EnumText(DataSourceType, length=255))
-    indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(EnumText(IndexTechniqueType, length=255))
-    index_struct = mapped_column(LongText, nullable=True)
-    created_by = mapped_column(StringUUID, nullable=False)
-    maintainer: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    data_source_type: Mapped[Any] = mapped_column(EnumText(DataSourceType, length=255), nullable=True, default=None)
+    indexing_technique: Mapped[Any] = mapped_column(
+        EnumText(IndexTechniqueType, length=255), nullable=True, default=None
     )
-    embedding_model = mapped_column(sa.String(255), nullable=True)
-    embedding_model_provider = mapped_column(sa.String(255), nullable=True)
-    keyword_number = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"))
-    collection_binding_id = mapped_column(StringUUID, nullable=True)
-    retrieval_model = mapped_column(AdjustedJSON, nullable=True)
-    summary_index_setting = mapped_column(AdjustedJSON, nullable=True)
-    built_in_field_enabled = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
-    icon_info = mapped_column(AdjustedJSON, nullable=True)
-    runtime_mode = mapped_column(
-        EnumText(DatasetRuntimeMode, length=255), nullable=True, server_default=sa.text("'general'")
+    index_struct: Mapped[Any] = mapped_column(LongText, nullable=True, default=None)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False, default=cast(str, None))
+    maintainer: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
-    pipeline_id = mapped_column(StringUUID, nullable=True)
-    chunk_structure = mapped_column(sa.String(255), nullable=True)
-    enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
-    is_multimodal = mapped_column(sa.Boolean, default=False, nullable=False)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
+    )
+    embedding_model: Mapped[Any] = mapped_column(sa.String(255), nullable=True, default=None)
+    embedding_model_provider: Mapped[Any] = mapped_column(sa.String(255), nullable=True, default=None)
+    keyword_number: Mapped[Any] = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"), default=None)
+    collection_binding_id: Mapped[Any] = mapped_column(StringUUID, nullable=True, default=None)
+    retrieval_model: Mapped[Any] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    summary_index_setting: Mapped[Any] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    built_in_field_enabled: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.false(), default=cast(bool, None)
+    )
+    icon_info: Mapped[Any] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    runtime_mode: Mapped[Any] = mapped_column(
+        EnumText(DatasetRuntimeMode, length=255), nullable=True, server_default=sa.text("'general'"), default=None
+    )
+    pipeline_id: Mapped[Any] = mapped_column(StringUUID, nullable=True, default=None)
+    chunk_structure: Mapped[Any] = mapped_column(sa.String(255), nullable=True, default=None)
+    enable_api: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.true(), default=cast(bool, None)
+    )
+    is_multimodal: Mapped[bool] = mapped_column(
+        sa.Boolean,
+        insert_default=False,
+        default=False,
+        nullable=False,
+    )
 
     @property
     def index_struct_dict(self):
@@ -255,40 +278,14 @@ class Dataset(Base):
             for dataset_metadata in dataset_metadatas
         ]
         if self.built_in_field_enabled:
-            doc_metadata.append(
-                {
-                    "id": "built-in",
-                    "name": BuiltInField.document_name,
-                    "type": "string",
-                }
-            )
-            doc_metadata.append(
-                {
-                    "id": "built-in",
-                    "name": BuiltInField.uploader,
-                    "type": "string",
-                }
-            )
-            doc_metadata.append(
-                {
-                    "id": "built-in",
-                    "name": BuiltInField.upload_date,
-                    "type": "time",
-                }
-            )
-            doc_metadata.append(
-                {
-                    "id": "built-in",
-                    "name": BuiltInField.last_update_date,
-                    "type": "time",
-                }
-            )
-            doc_metadata.append(
-                {
-                    "id": "built-in",
-                    "name": BuiltInField.source,
-                    "type": "string",
-                }
+            doc_metadata.extend(
+                (
+                    {"id": "built-in", "name": BuiltInField.document_name, "type": "string"},
+                    {"id": "built-in", "name": BuiltInField.uploader, "type": "string"},
+                    {"id": "built-in", "name": BuiltInField.upload_date, "type": "time"},
+                    {"id": "built-in", "name": BuiltInField.last_update_date, "type": "time"},
+                    {"id": "built-in", "name": BuiltInField.source, "type": "string"},
+                )
             )
         return doc_metadata
 
@@ -341,7 +338,36 @@ class DatasetProcessRule(TypeBase):
             return None
 
 
-class Document(Base):
+def _utc_epoch_seconds(value: datetime) -> float:
+    return ensure_naive_utc(value).replace(tzinfo=UTC).timestamp()
+
+
+def build_built_in_field_values(
+    *,
+    document_name: str,
+    uploader: str | None,
+    upload_date: datetime,
+    last_update_date: datetime,
+    data_source_type: str,
+) -> dict[str, str | float | None]:
+    """Return built-in metadata in the single format stored in ``Document.doc_metadata``.
+
+    Retrieval filters compare time fields numerically and ``source`` by exact string, so every
+    writer must store UTC epoch seconds and the ``MetadataDataSource`` label shown to users.
+    Epoch seconds keep their fractional part so strict and equality comparisons at an
+    integer-second boundary behave as they did for stored ``datetime.timestamp()`` values.
+    Naive datetimes are treated as UTC.
+    """
+    return {
+        BuiltInField.document_name: document_name,
+        BuiltInField.uploader: uploader,
+        BuiltInField.upload_date: _utc_epoch_seconds(upload_date),
+        BuiltInField.last_update_date: _utc_epoch_seconds(last_update_date),
+        BuiltInField.source: MetadataDataSource[data_source_type],
+    }
+
+
+class Document(TypeBase):
     __tablename__ = "documents"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="document_pkey"),
@@ -352,69 +378,81 @@ class Document(Base):
     )
 
     # initial fields
-    id = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    dataset_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default_factory=lambda: str(uuid4()), kw_only=True)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    data_source_type: Mapped[str] = mapped_column(EnumText(DataSourceType, length=255), nullable=False)
-    data_source_info = mapped_column(LongText, nullable=True)
-    dataset_process_rule_id = mapped_column(StringUUID, nullable=True)
+    data_source_type: Mapped[DataSourceType] = mapped_column(EnumText(DataSourceType, length=255), nullable=False)
     batch: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_from: Mapped[str] = mapped_column(EnumText(DocumentCreatedFrom, length=255), nullable=False)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_api_request_id = mapped_column(StringUUID, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_from: Mapped[DocumentCreatedFrom] = mapped_column(EnumText(DocumentCreatedFrom, length=255), nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    data_source_info: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    dataset_process_rule_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_api_request_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     # start processing
-    processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # parsing
-    file_id = mapped_column(LongText, nullable=True)
-    word_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)  # TODO: make this not nullable
-    parsing_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    file_id: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    word_count: Mapped[int | None] = mapped_column(
+        sa.Integer, nullable=True, default=None
+    )  # TODO: make this not nullable
+    parsing_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # cleaning
-    cleaning_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    cleaning_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # split
-    splitting_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    splitting_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # indexing
-    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    indexing_latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    indexing_latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True, default=None)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # pause
-    is_paused: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.false())
-    paused_by = mapped_column(StringUUID, nullable=True)
-    paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    is_paused: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.false(), default=False)
+    paused_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # error
-    error: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # basic fields
-    indexing_status: Mapped[str] = mapped_column(
-        EnumText(IndexingStatus, length=255), nullable=False, server_default=sa.text("'waiting'")
+    indexing_status: Mapped[IndexingStatus] = mapped_column(
+        EnumText(IndexingStatus, length=255),
+        nullable=False,
+        server_default=sa.text("'waiting'"),
+        default=IndexingStatus.WAITING,
     )
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
-    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    disabled_by = mapped_column(StringUUID, nullable=True)
-    archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
-    archived_reason = mapped_column(String(255), nullable=True)
-    archived_by = mapped_column(StringUUID, nullable=True)
-    archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true(), default=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
+    archived_reason: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    archived_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
-    doc_type = mapped_column(EnumText(DocumentDocType, length=40), nullable=True)
-    doc_metadata = mapped_column(AdjustedJSON, nullable=True)
+    doc_type: Mapped[DocumentDocType | None] = mapped_column(
+        EnumText(DocumentDocType, length=40), nullable=True, default=None
+    )
+    doc_metadata: Mapped[dict[str, Any] | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
     doc_form: Mapped[IndexStructureType] = mapped_column(
-        EnumText(IndexStructureType, length=255), nullable=False, server_default=sa.text("'text_model'")
+        EnumText(IndexStructureType, length=255),
+        nullable=False,
+        server_default=sa.text("'text_model'"),
+        default=IndexStructureType.PARAGRAPH_INDEX,
     )
-    doc_language = mapped_column(String(255), nullable=True)
-    need_summary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
+    doc_language: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    need_summary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
 
     DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
 
@@ -507,51 +545,6 @@ class Document(Base):
             "hit_count": hit_count,
         }
         return result
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]):
-        return cls(
-            id=data.get("id"),
-            tenant_id=data.get("tenant_id"),
-            dataset_id=data.get("dataset_id"),
-            position=data.get("position"),
-            data_source_type=data.get("data_source_type"),
-            data_source_info=data.get("data_source_info"),
-            dataset_process_rule_id=data.get("dataset_process_rule_id"),
-            batch=data.get("batch"),
-            name=data.get("name"),
-            created_from=data.get("created_from"),
-            created_by=data.get("created_by"),
-            created_api_request_id=data.get("created_api_request_id"),
-            created_at=data.get("created_at"),
-            processing_started_at=data.get("processing_started_at"),
-            file_id=data.get("file_id"),
-            word_count=data.get("word_count"),
-            parsing_completed_at=data.get("parsing_completed_at"),
-            cleaning_completed_at=data.get("cleaning_completed_at"),
-            splitting_completed_at=data.get("splitting_completed_at"),
-            tokens=data.get("tokens"),
-            indexing_latency=data.get("indexing_latency"),
-            completed_at=data.get("completed_at"),
-            is_paused=data.get("is_paused"),
-            paused_by=data.get("paused_by"),
-            paused_at=data.get("paused_at"),
-            error=data.get("error"),
-            stopped_at=data.get("stopped_at"),
-            indexing_status=data.get("indexing_status"),
-            enabled=data.get("enabled"),
-            disabled_at=data.get("disabled_at"),
-            disabled_by=data.get("disabled_by"),
-            archived=data.get("archived"),
-            archived_reason=data.get("archived_reason"),
-            archived_by=data.get("archived_by"),
-            archived_at=data.get("archived_at"),
-            updated_at=data.get("updated_at"),
-            doc_type=data.get("doc_type"),
-            doc_metadata=data.get("doc_metadata"),
-            doc_form=data.get("doc_form"),
-            doc_language=data.get("doc_language"),
-        )
 
 
 class DocumentSegment(TypeBase):

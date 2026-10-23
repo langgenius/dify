@@ -2,24 +2,26 @@
 
 import type { WorkflowProps } from '@/app/components/workflow'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
-import type { SnippetCanvasData, SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetCanvasData, SnippetDetailPayload } from '@/models/snippet'
 import type { SnippetDraftSyncPayload } from '@/types/snippet'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
-import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks/use-available-nodes-meta-data'
+import { snippetIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
+import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useSnippetDraftStore } from '../draft-store'
-import { useConfigsMap } from '../hooks/use-configs-map'
+import { useFileSettings } from '../hooks/use-file-settings'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
-import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useSnippetRefreshDraft } from '../hooks/use-snippet-refresh-draft'
 import { useSnippetRun } from '../hooks/use-snippet-run'
@@ -36,7 +38,6 @@ type SnippetMainProps = {
   draftPayload: SnippetDetailPayload
   hasInitialDraftChanges: boolean
   hasPublishedWorkflow: boolean
-  snippetId: string
   draftNodes: WorkflowProps['nodes']
   draftEdges: WorkflowProps['edges']
   draftViewport?: WorkflowProps['viewport']
@@ -44,7 +45,7 @@ type SnippetMainProps = {
 
 type SnippetMainContentProps = {
   snippetId: string
-  fields: SnippetInputField[]
+  fields: InputVar[]
   canSave: boolean
   canEdit: boolean
   onBeforePublish: () => Promise<Omit<SnippetDraftSyncPayload, 'hash'> | void>
@@ -55,6 +56,7 @@ const unsupportedSnippetBlockTypes = new Set<BlockEnum>([
   BlockEnum.HumanInput,
   BlockEnum.End,
   BlockEnum.KnowledgeRetrieval,
+  BlockEnum.KnowledgeRetrievalV2,
 ])
 
 type LocalDraftState = {
@@ -113,19 +115,9 @@ const SnippetMainContent = ({
   )
 }
 
-const SnippetMain = ({
-  draftPayload,
-  snippetId,
-  draftNodes,
-  draftEdges,
-  draftViewport,
-}: SnippetMainProps) => {
+const SnippetMain = ({ draftPayload, draftNodes, draftEdges, draftViewport }: SnippetMainProps) => {
+  const { snippetId } = useAtomValue(snippetIdentityAtom)
   const [localDraftState, setLocalDraftState] = useState<LocalDraftState>()
-  const [localDraftSnippetId, setLocalDraftSnippetId] = useState(snippetId)
-  if (localDraftSnippetId !== snippetId) {
-    setLocalDraftState(undefined)
-    setLocalDraftSnippetId(snippetId)
-  }
   const currentCanvasNodeCount = useStore(
     (state) => state.nodes.filter((node) => !node.data?._isTempNode).length,
   )
@@ -147,11 +139,9 @@ const SnippetMain = ({
     handleRestoreFromPublishedWorkflow,
     handleRun,
     handleStopRun,
-  } = useSnippetRun(snippetId)
-  const configsMap = useConfigsMap(snippetId)
-  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    ...configsMap,
-  })
+  } = useSnippetRun()
+  const fileSettings = useFileSettings()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const {
     hasNodeInspectVars,
     hasSetInspectVar,
@@ -167,8 +157,8 @@ const SnippetMain = ({
     invalidateSysVarValues,
     resetConversationVar,
     invalidateConversationVarValues,
-  } = useInspectVarsCrud(snippetId)
-  const workflowAvailableNodesMetaData = useAvailableNodesMetaData()
+  } = useInspectVarsCrud()
+  const workflowAvailableNodesMetaData = useWorkflowNodeCatalog()
   const availableNodesMetaData = useMemo(() => {
     const nodes = workflowAvailableNodesMetaData.nodes.filter(
       (node) => !unsupportedSnippetBlockTypes.has(node.metaData.type),
@@ -180,6 +170,7 @@ const SnippetMain = ({
       [BlockEnum.HumanInput]: _humanInput,
       [BlockEnum.End]: _end,
       [BlockEnum.KnowledgeRetrieval]: _knowledgeRetrieval,
+      [BlockEnum.KnowledgeRetrievalV2]: _knowledgeRetrievalV2,
       ...nodesMap
     } = workflowAvailableNodesMetaData.nodesMap
 
@@ -258,7 +249,7 @@ const SnippetMain = ({
   }, [canEditSnippet, syncWorkflowDraftWhenPageClose])
 
   const handleFieldsChange = useCallback(
-    (nextFields: SnippetInputField[]) => {
+    (nextFields: InputVar[]) => {
       handleSnippetFieldsChange(nextFields)
     },
     [handleSnippetFieldsChange],
@@ -278,7 +269,7 @@ const SnippetMain = ({
       const graph = syncedDraftPayload?.graph
       if (!graph || typeof graph !== 'object') return
 
-      const graphRecord = graph as Record<string, unknown>
+      const graphRecord = graph
       const draftGraph: SnippetCanvasData = {
         nodes: Array.isArray(graphRecord.nodes)
           ? (graphRecord.nodes as SnippetCanvasData['nodes'])
@@ -292,7 +283,7 @@ const SnippetMain = ({
             : { x: 0, y: 0, zoom: 1 },
       }
       const inputFields = Array.isArray(syncedDraftPayload.input_fields)
-        ? (syncedDraftPayload.input_fields as SnippetInputField[])
+        ? (syncedDraftPayload.input_fields as InputVar[])
         : fields
 
       setLocalDraftState({
@@ -346,13 +337,13 @@ const SnippetMain = ({
         canImportExportDSL: canEditSnippet,
         canReleaseAndVersion: canEditSnippet,
       },
-      configsMap,
+      fileSettings,
     }
   }, [
     appendNodeInspectVars,
     availableNodesMetaData,
     canEditSnippet,
-    configsMap,
+    fileSettings,
     deleteAllInspectorVars,
     deleteInspectVar,
     deleteNodeInspectorVars,

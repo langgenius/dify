@@ -47,7 +47,7 @@ const AppOperations = ({ appName, operationGroups }: AppOperationsProps) => {
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-40">
+      <DropdownMenuContent className="min-w-40">
         {visibleGroups.map((group, groupIndex) => (
           <Fragment key={group.map((operation) => operation.id).join('-')}>
             {groupIndex > 0 && <DropdownMenuSeparator />}

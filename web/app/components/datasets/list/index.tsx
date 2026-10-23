@@ -1,8 +1,8 @@
 'use client'
 
-import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/components/knowledge-view-switcher'
+import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/list/knowledge-view-switcher'
+import { useQuery } from '@tanstack/react-query'
 // Libraries
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -21,25 +21,24 @@ import {
 } from '@/app/components/step-by-step-tour/target-registry'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
-import { NewKnowledgeList } from '@/features/new-rag/new-knowledge-list'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
+import { NewKnowledgeList } from '@/features/new-rag/list/new-knowledge-list'
+import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
-import {
-  useDatasetApiBaseUrl,
-  useDatasetList,
-  useInvalidDatasetList,
-} from '@/service/knowledge/use-dataset'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 // Components
 import FilterEmptyState from '../../base/filter-empty-state'
+import { creatorIdsParser } from '../creator-filter-query'
 import ExternalAPIPanel from '../external-api/external-api-panel'
 import Datasets from './datasets'
 import DatasetFirstEmptyState from './first-empty-state'
 import DatasetListHeader from './header'
+import { useDatasetList, useInvalidDatasetList } from './use-dataset-list'
 
-const knowledgeViewParser = parseAsStringLiteral(['legacy', 'new']).withDefault('legacy')
+const knowledgeViewParser = parseAsStringLiteral(['classic', 'agent']).withDefault('classic')
 
 function LegacyList({
   knowledgeViewSwitcherProps,
@@ -59,6 +58,7 @@ function LegacyList({
   const debouncedKeywords = useDebouncedValue(keywords, 500)
   const searchKeywords = keywords ? debouncedKeywords : ''
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
+  const [creatorIDs, setCreatorIDs] = useQueryState('creator_ids', creatorIdsParser)
   const debouncedTagIDs = useDebouncedValue(tagFilterValue, 500)
   const tagIDs = tagFilterValue.length > 0 ? debouncedTagIDs : []
 
@@ -68,19 +68,19 @@ function LegacyList({
     workspacePermissionKeys,
     'dataset.external.connect',
   )
-  const { data: apiBaseInfo } = useDatasetApiBaseUrl()
+  const { data: apiBaseInfo } = useQuery(consoleQuery.datasets.apiBaseInfo.get.queryOptions())
   const datasetListQuery = useDatasetList({
-    initialPage: 1,
-    tag_ids: tagIDs,
-    limit: 30,
-    include_all: includeAll,
+    creatorIds: creatorIDs,
+    includeAll,
     keyword: searchKeywords,
+    tagIds: tagIDs,
   })
   const pages = datasetListQuery.data?.pages ?? []
   const hasResolvedFirstPage = pages.length > 0
   const hasAnyDataset = (pages[0]?.total ?? 0) > 0
   const hasActiveFilters =
     tagIDs.length > 0 ||
+    creatorIDs.length > 0 ||
     keywords.trim().length > 0 ||
     searchKeywords.trim().length > 0 ||
     includeAll
@@ -139,6 +139,7 @@ function LegacyList({
         apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
         canConnectExternalDataset={canConnectExternalDataset}
         canCreateDataset={canCreateDataset}
+        creatorFilterValue={creatorIDs}
         includeAll={includeAll}
         isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
         keywords={keywords}
@@ -147,6 +148,7 @@ function LegacyList({
         onCreateFromPipeline={() => push('/datasets/create-from-pipeline')}
         onConnectDataset={() => push('/datasets/connect')}
         onExternalApiClick={() => setShowExternalApiPanel(true)}
+        onCreatorsChange={(value) => void setCreatorIDs(value)}
         onIncludeAllChange={toggleIncludeAll}
         onKeywordsChange={setKeywords}
         onOpenTagManagement={() => setShowTagManagementModal(true)}
@@ -208,27 +210,29 @@ function LegacyList({
 
 function KnowledgeFsList() {
   const [view, setView] = useQueryState('view', knowledgeViewParser)
-  const onViewChange = (nextView: 'legacy' | 'new') => {
+  const onViewChange = (nextView: 'classic' | 'agent') => {
     void setView(nextView)
   }
 
-  if (view === 'new') return <NewKnowledgeList view={view} onViewChange={onViewChange} />
-
   return (
-    <LegacyList
-      knowledgeViewSwitcherProps={{
-        value: view,
-        onChange: onViewChange,
-      }}
-    />
+    <KnowledgeUpgradeProvider onUpgradeStarted={() => void setView('agent')}>
+      {view === 'agent' ? (
+        <NewKnowledgeList view={view} onViewChange={onViewChange} />
+      ) : (
+        <LegacyList
+          knowledgeViewSwitcherProps={{
+            value: view,
+            onChange: onViewChange,
+          }}
+        />
+      )}
+    </KnowledgeUpgradeProvider>
   )
 }
 
 function List() {
-  const { data: knowledgeFsEnabled } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: ({ knowledge_fs_enabled }) => knowledge_fs_enabled,
-  })
+  // The legacy list stays usable while KnowledgeFS availability is loading or unavailable.
+  const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)
 
   if (!knowledgeFsEnabled) return <LegacyList />
 

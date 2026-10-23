@@ -1,5 +1,5 @@
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { Ref } from 'react'
-import type { DataSourceCredential } from './types'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,8 +13,8 @@ import { useTranslation } from 'react-i18next'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 
 type OperatorProps = {
-  credentialItem: DataSourceCredential
-  onAction: (action: string, credentialItem: DataSourceCredential) => void
+  credentialItem: DatasourceCredentialResponse
+  onAction: (action: string, credentialItem: DatasourceCredentialResponse) => void
   onRename?: () => void
   triggerRef?: Ref<HTMLButtonElement>
   canUseCredential?: boolean
@@ -59,7 +59,7 @@ const Operator = ({
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-50">
+      <DropdownMenuContent className="min-w-50">
         <DropdownMenuItem
           disabled={!canUseCredential}
           className="h-auto gap-2 py-2"

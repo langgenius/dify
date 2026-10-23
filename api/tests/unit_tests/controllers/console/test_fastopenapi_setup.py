@@ -89,7 +89,8 @@ def test_console_setup_fastopenapi_post_success(
     response = app.test_client().post(
         "/console/api/setup",
         json=payload,
-        headers={"CF-Connecting-IP": "203.0.113.7"},
+        headers={"CF-Connecting-IP": "198.51.100.7"},
+        environ_overrides={"REMOTE_ADDR": "203.0.113.7"},
     )
 
     assert response.status_code == 201

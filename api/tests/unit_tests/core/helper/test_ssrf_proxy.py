@@ -146,11 +146,34 @@ def test_retry_exceed_max_retries(mock_get_client, client_factory, monkeypatch: 
     mock_client, send_calls = client_factory(mock_response)
     mock_get_client.return_value = mock_client
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(Exception, match="Reached maximum retries \\(2\\) for URL http://example\\.com") as e:
         make_request("GET", "http://example.com", max_retries=SSRF_DEFAULT_MAX_RETRIES - 1)
     assert str(e.value) == f"Reached maximum retries ({SSRF_DEFAULT_MAX_RETRIES - 1}) for URL http://example.com"
     assert len(send_calls) == SSRF_DEFAULT_MAX_RETRIES
     assert sleep_calls == [BACKOFF_FACTOR * 2**attempt for attempt in range(SSRF_DEFAULT_MAX_RETRIES - 1)]
+
+
+def test_retry_exhaustion_preserves_the_last_request_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    request_errors: list[httpx.ConnectError] = []
+
+    def fail_request(request: httpx.Request) -> httpx.Response:
+        error = httpx.ConnectError("host lookup failed", request=request)
+        request_errors.append(error)
+        raise error
+
+    sleep_calls: list[float] = []
+    monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", sleep_calls.append)
+    transport = httpx.MockTransport(fail_request)
+    with (
+        httpx.Client(transport=transport) as client,
+        patch("core.helper.ssrf_proxy._get_ssrf_client", return_value=client),
+        pytest.raises(max_retries_exceeded_error) as exc_info,
+    ):
+        make_request("GET", "http://missing.example.test", max_retries=1)
+
+    assert len(request_errors) == 2
+    assert exc_info.value.__cause__ is request_errors[-1]
+    assert sleep_calls == [BACKOFF_FACTOR]
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)

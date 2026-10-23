@@ -30,6 +30,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs.external_api import ExternalApi
 from models import Account, AccountTrialAppRecord, App, AppMode, Tenant, TrialApp
 from models.account import AccountStatus
+from models.enums import CreatorUserRole
 from repositories.trial_app_repository import TrialAppRepository
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -108,14 +109,31 @@ class _Runtime:
 @dataclass
 class _Tasks:
     calls: list[str] = field(default_factory=list)
-    chat_calls: list[tuple[str, str, str]] = field(default_factory=list)
+    chat_calls: list[tuple[str, str]] = field(default_factory=list)
 
-    def stop_task(self, *, task_id: str, invoke_from: InvokeFrom, user_id: str, app_mode: AppMode) -> None:
+    def stop_task(self, *, task_id: str, invoke_from: InvokeFrom, user_id: str) -> None:
         assert invoke_from == InvokeFrom.EXPLORE
-        self.chat_calls.append((task_id, user_id, app_mode))
+        self.chat_calls.append((task_id, user_id))
 
-    def stop_workflow_task_no_user_check(self, *, task_id: str) -> None:
-        self.calls.append(task_id)
+    def stop_workflow_task(
+        self,
+        *,
+        task_id: str,
+        tenant_id: str,
+        app_id: str,
+        app_mode: AppMode,
+        owner: tuple[CreatorUserRole, str] | None,
+    ) -> None:
+        assert tenant_id
+        assert app_id
+        if app_mode == AppMode.ADVANCED_CHAT:
+            assert owner is not None
+            assert owner[0] == CreatorUserRole.ACCOUNT
+            self.chat_calls.append((task_id, owner[1]))
+        else:
+            assert owner is None
+            assert app_mode == AppMode.WORKFLOW
+            self.calls.append(task_id)
 
 
 @dataclass(frozen=True)
@@ -436,7 +454,7 @@ def test_last_trial_can_be_stopped_without_allowing_another_generation(harness: 
 
     stopped = harness.post("chat-messages/task-last/stop")
     assert stopped.status_code == 200
-    assert harness.services.app_tasks.chat_calls == [("task-last", harness.account.id, mode)]
+    assert harness.services.app_tasks.chat_calls == [("task-last", harness.account.id)]
     assert harness.usage() == 3
     unavailable = harness.app.test_client().post(harness.url("chat-messages/task-last/stop", app_id=str(uuid4())))
     _assert_error(unavailable, 403, "trial_app_not_allowed")
@@ -505,7 +523,13 @@ def test_runtime_errors_keep_specific_codes_and_do_not_record_usage(
     ("error", "status", "code"),
     [
         (ConversationNotExistsError(), 404, "not_found"),
-        (ConversationCompletedError(), 400, "conversation_completed"),
+        # Nothing raises ConversationCompletedError today, so the contract does not list its code.
+        pytest.param(
+            ConversationCompletedError(),
+            400,
+            "conversation_completed",
+            marks=pytest.mark.allow_error_contract_violations,
+        ),
         (AppModelConfigBrokenError(), 400, "app_unavailable"),
     ],
 )

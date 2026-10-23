@@ -7,6 +7,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -17,14 +18,12 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import {
-  useCopyWorkspaceRole,
-  useDeleteWorkspaceRole,
-} from '@/service/access-control/use-workspace-roles'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { CopyMembersConfirmDialog } from './copy-members-confirm-dialog'
 
@@ -51,7 +50,9 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
     onEdit?.(role)
   }, [canManageRoles, onEdit, role])
 
-  const { mutate: copyRole, isPending: isCopyingRole } = useCopyWorkspaceRole()
+  const { mutate: copyRole, isPending: isCopyingRole } = useMutation(
+    consoleQuery.workspaces.current.rbac.roles.byRoleId.copy.post.mutationOptions(),
+  )
 
   const openCopyMembersConfirm = useCallback(() => {
     if (!canManageRoles) return
@@ -64,10 +65,7 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
       if (!canManageRoles) return
 
       copyRole(
-        {
-          roleId: role.id,
-          copy_member: copyMember,
-        },
+        { params: { role_id: role.id }, body: { copy_member: copyMember } },
         {
           onSuccess: () => {
             setShowCopyMembersConfirm(false)
@@ -78,7 +76,9 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
     [canManageRoles, copyRole, role.id],
   )
 
-  const { mutateAsync: deleteRole, isPending: isDeletingRole } = useDeleteWorkspaceRole()
+  const { mutateAsync: deleteRole, isPending: isDeletingRole } = useMutation(
+    consoleQuery.workspaces.current.rbac.roles.byRoleId.delete.mutationOptions(),
+  )
 
   const openDeleteConfirm = useCallback(() => {
     if (!canManageRoles) return
@@ -89,11 +89,14 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
   const handleDelete = useCallback(() => {
     if (!canManageRoles) return
 
-    deleteRole(role.id, {
-      onSuccess: () => {
-        setShowDeleteConfirm(false)
+    deleteRole(
+      { params: { role_id: role.id } },
+      {
+        onSuccess: () => {
+          setShowDeleteConfirm(false)
+        },
       },
-    })
+    )
   }, [canManageRoles, deleteRole, role.id])
 
   const hasViewAction = roleCategory === 'global_system_default'
@@ -114,7 +117,7 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
             </IconButton>
           }
         />
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-40">
+        <DropdownMenuContent className="min-w-40">
           {hasViewAction && (
             <DropdownMenuItem
               className="system-sm-semibold text-text-secondary"
@@ -159,14 +162,14 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
         onOpenChange={(open) => !open && setShowDeleteConfirm(false)}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['role.deleteTitle'], { ns: 'permission', name: role.name })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['role.deleteDescription'], { ns: 'permission' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

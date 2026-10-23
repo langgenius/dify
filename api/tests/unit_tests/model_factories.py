@@ -10,6 +10,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.storage.storage_type import StorageType
 from graphon.variables import VariableBase
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
@@ -311,28 +312,42 @@ def make_dataset(
     unset, matching a bare ``Dataset(...)``. ``dataset_id=None`` keeps the
     generated identifier.
     """
-    values: dict[str, object] = {"tenant_id": tenant_id, "name": name, "created_by": created_by}
-    optional: dict[str, object | None] = {
-        "id": dataset_id,
-        "description": description,
-        "provider": provider,
-        "permission": permission,
-        "data_source_type": data_source_type,
-        "indexing_technique": indexing_technique,
-        "index_struct": index_struct,
-        "maintainer": maintainer,
-        "created_at": created_at,
-        "embedding_model": embedding_model,
-        "embedding_model_provider": embedding_model_provider,
-        "keyword_number": keyword_number,
-        "built_in_field_enabled": built_in_field_enabled,
-        "icon_info": icon_info,
-        "pipeline_id": pipeline_id,
-        "chunk_structure": chunk_structure,
-        "enable_api": enable_api,
-    }
-    values.update({key: value for key, value in optional.items() if value is not None})
-    return Dataset(**values)
+    result = Dataset(tenant_id=tenant_id, name=name, created_by=created_by)
+    if dataset_id is not None:
+        result.id = dataset_id
+    if description is not None:
+        result.description = description
+    if provider is not None:
+        result.provider = provider
+    if permission is not None:
+        result.permission = permission
+    if data_source_type is not None:
+        result.data_source_type = data_source_type
+    if indexing_technique is not None:
+        result.indexing_technique = indexing_technique
+    if index_struct is not None:
+        result.index_struct = index_struct
+    if maintainer is not None:
+        result.maintainer = maintainer
+    if created_at is not None:
+        result.created_at = created_at
+    if embedding_model is not None:
+        result.embedding_model = embedding_model
+    if embedding_model_provider is not None:
+        result.embedding_model_provider = embedding_model_provider
+    if keyword_number is not None:
+        result.keyword_number = keyword_number
+    if built_in_field_enabled is not None:
+        result.built_in_field_enabled = built_in_field_enabled
+    if icon_info is not None:
+        result.icon_info = icon_info
+    if pipeline_id is not None:
+        result.pipeline_id = pipeline_id
+    if chunk_structure is not None:
+        result.chunk_structure = chunk_structure
+    if enable_api is not None:
+        result.enable_api = enable_api
+    return result
 
 
 def make_conversation(
@@ -451,27 +466,32 @@ def make_document(
     created_at: datetime | None = None,
     updated_at: datetime | None = None,
 ) -> Document:
-    """Build a transient ``Document``; unset keywords leave their column unset."""
-    values: dict[str, object] = {
-        "tenant_id": tenant_id,
-        "dataset_id": dataset_id,
-        "position": position,
-        "data_source_type": data_source_type,
-        "batch": batch,
-        "name": name,
-        "created_from": created_from,
-        "created_by": created_by,
-    }
-    optional: dict[str, object | None] = {
-        "id": document_id,
-        "data_source_info": data_source_info,
-        "doc_form": doc_form,
-        "doc_metadata": doc_metadata,
-        "created_at": created_at,
-        "updated_at": updated_at,
-    }
-    values.update({key: value for key, value in optional.items() if value is not None})
-    return Document(**values)
+    """Build a transient Document with constructor defaults.
+
+    None leaves the document ID and optional form at their model defaults.
+    None timestamps leave database-generated fields unset.
+    """
+    document = Document(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        position=position,
+        data_source_type=data_source_type,
+        batch=batch,
+        name=name,
+        created_from=DocumentCreatedFrom(created_from),
+        created_by=created_by,
+        data_source_info=data_source_info,
+        doc_metadata=doc_metadata,
+    )
+    if document_id is not None:
+        document.id = document_id
+    if doc_form is not None:
+        document.doc_form = IndexStructureType(doc_form)
+    if created_at is not None:
+        document.created_at = created_at
+    if updated_at is not None:
+        document.updated_at = updated_at
+    return document
 
 
 __all__ = [

@@ -1,7 +1,8 @@
 import type { AfterResponseHook, BeforeRequestHook, Hooks } from 'ky'
 import type { IOtherOptions } from './base'
+import type { RequestGuard } from './request-guard'
 import Cookies from 'js-cookie'
-import ky, { HTTPError } from 'ky'
+import ky from 'ky'
 import {
   API_PREFIX,
   APP_VERSION,
@@ -14,7 +15,9 @@ import {
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
+import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
+import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -31,8 +34,8 @@ export const ContentType = {
 }
 
 export type FetchOptionType = Omit<RequestInit, 'body'> & {
-  params?: Record<string, any>
-  body?: BodyInit | Record<string, any> | null
+  params?: Record<string, string | number | boolean | undefined>
+  body?: BodyInit | Record<string, unknown> | null
 }
 
 const afterResponse204: AfterResponseHook = async ({ response }) => {
@@ -44,50 +47,31 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
   }
 }
 
-export type ResponseError = {
-  code: string
-  message: string
-  error?: string
-  reason?: string
-  status: number
-}
-
-const createResponseFromHTTPError = (error: HTTPError): Response => {
-  const headers = new Headers(error.response.headers)
-  headers.delete('content-length')
-
-  let body: BodyInit | null = null
-  if (typeof error.data === 'string') body = error.data
-  else if (error.data !== undefined) body = JSON.stringify(error.data)
-
-  if (body !== null && !headers.has('content-type')) headers.set('content-type', ContentType.json)
-
-  return new Response(body, {
-    status: error.response.status,
-    statusText: error.response.statusText,
-    headers,
-  })
-}
-
-const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
+const afterResponseErrorCode = (
+  otherOptions: IOtherOptions,
+  requestGuard: RequestGuard | undefined,
+): AfterResponseHook => {
   return async ({ request, response }) => {
-    if (!/^[23]\d{2}$/.test(String(response.status))) {
-      let errorData: ResponseError | null = null
-      try {
-        const data: unknown = await response.clone().json()
-        errorData = data as ResponseError
-      } catch {}
+    if (isHttpErrorStatus(response.status)) {
+      const error = await httpErrorFromResponse(response)
+      const errorData = error.data
+      const handled = requestGuard?.handleError(response.status, errorData, error)
+      if (handled || requestGuard?.isActive() === false) throw error
       const shouldNotifyError =
+        response.status >= 400 &&
         response.status !== 401 &&
         errorData &&
         !otherOptions.silent &&
         !shouldSuppressAppDeletionErrorToast(request.url, response.status)
 
-      const errorMessage = errorData?.message || errorData?.error
+      const errorMessage = [errorData?.message, errorData?.error].find(
+        (value): value is string => typeof value === 'string' && !!value.trim(),
+      )
       if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`
+      throw error
     } else {
       clearRequestErrorToasts(request)
     }
@@ -112,6 +96,7 @@ const baseHooks: Hooks = {
 
 const baseClient = ky.create({
   hooks: baseHooks,
+  throwHttpErrors: isHttpErrorStatus,
   timeout: TIME_OUT,
 })
 
@@ -125,6 +110,7 @@ export const getBaseOptions = (): RequestInit => ({
   redirect: 'follow',
 })
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 async function base<T>(
   url: string,
   options: FetchOptionType = {},
@@ -158,6 +144,8 @@ async function base<T>(
     fetchCompat = false,
     request,
   } = otherOptions
+  const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
+  requestGuard?.beforeRequest()
 
   const headers = new Headers(headersFromProps || {})
 
@@ -189,36 +177,33 @@ async function base<T>(
         ...(baseHooks.beforeRequest || []),
         isPublicAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
-      afterResponse: [...(baseHooks.afterResponse || []), afterResponseErrorCode(otherOptions)],
+      afterResponse: [
+        ...(baseHooks.afterResponse || []),
+        afterResponseErrorCode(otherOptions, requestGuard),
+      ],
     },
   })
 
-  let res: Response
-  try {
-    res = await client(request || fetchPathname, {
-      ...init,
-      headers,
-      credentials: isMarketplaceAPI ? 'omit' : options.credentials || 'include',
-      retry: {
-        methods: [],
-      },
-      ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
-      searchParams: !fetchCompat ? params : undefined,
-      fetch(resource: RequestInfo | URL, options?: RequestInit) {
-        if (resource instanceof Request && options) {
-          const mergedHeaders = new Headers(options.headers || {})
-          resource.headers.forEach((value, key) => {
-            mergedHeaders.append(key, value)
-          })
-          options.headers = mergedHeaders
-        }
-        return globalThis.fetch(resource, options)
-      },
-    })
-  } catch (error) {
-    if (error instanceof HTTPError) throw createResponseFromHTTPError(error)
-    throw error
-  }
+  const res = await client(request ? request.clone() : fetchPathname, {
+    ...init,
+    headers,
+    credentials: isMarketplaceAPI ? 'omit' : options.credentials || 'include',
+    retry: {
+      methods: [],
+    },
+    ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
+    searchParams: !fetchCompat ? params : undefined,
+    fetch(resource: RequestInfo | URL, options?: RequestInit) {
+      if (resource instanceof Request && options) {
+        const mergedHeaders = new Headers(options.headers || {})
+        resource.headers.forEach((value, key) => {
+          mergedHeaders.append(key, value)
+        })
+        options.headers = mergedHeaders
+      }
+      return globalThis.fetch(resource, options)
+    },
+  })
 
   if (needAllResponseContent || fetchCompat) return res as T
   const contentType = res.headers.get('content-type')
@@ -237,6 +222,7 @@ async function base<T>(
  * Includes credentials, Authorization (if available), and CSRF header
  * so the request is authenticated, matching the headers sent by the
  * standard `base()` fetch wrapper.
+ * @deprecated New keepalive transports require a scoped lint exception.
  */
 export function postWithKeepalive(url: string, body: Record<string, unknown>): void {
   const headers = new Headers({

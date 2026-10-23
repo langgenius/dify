@@ -3,13 +3,16 @@
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -115,15 +118,21 @@ function SkillDetailDeleteDialog({
       }}
     >
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="truncate title-2xl-semi-bold text-text-primary">
-            {t(($) => $['skillManagement.deleteDialog.title'], { name: detail.display_name })}
-          </AlertDialogTitle>
-          <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-            {description}
-          </AlertDialogDescription>
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleDelete()
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['skillManagement.deleteDialog.title'], { name: detail.display_name })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{description}</AlertDialogDescription>
+          </AlertDialogHeader>
           {referenceCount > 0 && (
-            <div className="mt-4">
+            <AlertDialogBody className="flex flex-col gap-2">
               {referencesQuery.isPending ? (
                 <SkillReferencesListSkeleton compact />
               ) : (
@@ -135,57 +144,58 @@ function SkillDetailDeleteDialog({
                   visibleLimit={5}
                 />
               )}
-            </div>
+              <Field name="confirm-skill-name">
+                <FieldLabel>
+                  <Trans
+                    i18nKey={($) => $['skillManagement.deleteDialog.confirmInputLabel']}
+                    ns="skill"
+                    values={{ skillName: detail.display_name }}
+                    components={{
+                      skillName: (
+                        <span className="system-sm-semibold text-text-primary" translate="no" />
+                      ),
+                    }}
+                  />
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupInput
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder={t(
+                      ($) => $['skillManagement.deleteDialog.confirmInputPlaceholder'],
+                    )}
+                    value={confirmDeleteInput}
+                    onValueChange={setConfirmDeleteInput}
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <Button
+                      variant="tertiary"
+                      size="small"
+                      onClick={() => setConfirmDeleteInput(detail.display_name)}
+                    >
+                      {tCommon(($) => $['operation.fill'])}
+                    </Button>
+                  </InputGroupAddon>
+                </InputGroup>
+              </Field>
+            </AlertDialogBody>
           )}
-          {referenceCount > 0 && (
-            <Field name="confirm-skill-name" className="mt-2">
-              <FieldLabel className="system-sm-regular">
-                <Trans
-                  i18nKey={($) => $['skillManagement.deleteDialog.confirmInputLabel']}
-                  ns="skill"
-                  values={{ skillName: detail.display_name }}
-                  components={{
-                    skillName: (
-                      <span className="system-sm-semibold text-text-primary" translate="no" />
-                    ),
-                  }}
-                />
-              </FieldLabel>
-              <InputGroup>
-                <InputGroupInput
-                  type="text"
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder={t(($) => $['skillManagement.deleteDialog.confirmInputPlaceholder'])}
-                  value={confirmDeleteInput}
-                  onValueChange={setConfirmDeleteInput}
-                />
-                <InputGroupAddon align="inline-end">
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteInput(detail.display_name)}
-                    className="rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
-                  >
-                    {tCommon(($) => $['operation.fill'])}
-                  </button>
-                </InputGroupAddon>
-              </InputGroup>
-            </Field>
-          )}
-        </div>
-        <AlertDialogFooter>
-          <AlertDialogCancelButton disabled={deleteMutation.isPending}>
-            {tCommon(($) => $['operation.cancel'])}
-          </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            tone="destructive"
-            loading={deleteMutation.isPending}
-            disabled={isDeleteUnavailable}
-            onClick={handleDelete}
-          >
-            {tCommon(($) => (referenceCount > 0 ? $['operation.confirm'] : $['operation.delete']))}
-          </AlertDialogConfirmButton>
-        </AlertDialogFooter>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton disabled={deleteMutation.isPending}>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              loading={deleteMutation.isPending}
+              disabled={isDeleteUnavailable}
+              type="submit"
+            >
+              {tCommon(($) =>
+                referenceCount > 0 ? $['operation.confirm'] : $['operation.delete'],
+              )}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </form>
       </AlertDialogContent>
     </AlertDialog>
   )
@@ -252,7 +262,7 @@ export function SkillDetailSidebarActions({
         >
           <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+        <DropdownMenuContent className="w-40">
           {canEdit && (
             <DropdownMenuItem className="gap-2" onClick={onRename}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />

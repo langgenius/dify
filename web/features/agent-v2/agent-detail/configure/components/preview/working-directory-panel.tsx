@@ -2,7 +2,6 @@
 
 import type {
   SandboxFileEntryResponse,
-  SandboxListResponse,
   SandboxReadResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSkillDetailDownloadAction } from '../orchestrate/skills/detail-dialog'
@@ -11,17 +10,19 @@ import type {
   AgentWorkingDirectoryRootPath,
 } from './working-directory-breadcrumb'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
-import { Dialog } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { isDefinedError } from '@orpc/client'
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
 import { downloadUrl } from '@/utils/download'
-import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
+import { AgentSkillDetailBody } from '../orchestrate/skills/detail-dialog'
 import {
   AGENT_SAVED_FILES_ROOT_PATH,
   AGENT_TEMPORARY_FILES_ROOT_PATH,
@@ -48,10 +49,6 @@ export type AgentWorkingDirectorySource =
       nodeExecutionId: string
       workflowRunId: string
     }
-
-type SandboxErrorPayload = {
-  code?: string
-}
 
 const getSandboxRootPath = (path: string): AgentWorkingDirectoryRootPath =>
   path === AGENT_SAVED_FILES_ROOT_PATH || path.startsWith(`${AGENT_SAVED_FILES_ROOT_PATH}/`)
@@ -226,24 +223,27 @@ function countReadableFiles(files: AgentFileNode[]): number {
   }, 0)
 }
 
-async function isNoActiveBindingError(error: unknown) {
-  if (!(error instanceof Response) || error.status !== 404) return false
-
-  try {
-    const payload = (await error.clone().json()) as SandboxErrorPayload
-    return payload.code === 'no_active_binding'
-  } catch {
-    return false
-  }
-}
-
-const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
-
 export function AgentWorkingDirectoryPanel({
   source,
   onOpenChange,
   open,
 }: AgentWorkingDirectoryPanelProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        backdropProps={{ forceRender: true, className: 'fixed' }}
+        className="h-[min(720px,calc(100dvh-2rem))] w-[min(960px,calc(100vw-2rem))] overflow-hidden"
+      >
+        <AgentWorkingDirectoryContent source={source} open={open} />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function AgentWorkingDirectoryContent({
+  source,
+  open,
+}: Pick<AgentWorkingDirectoryPanelProps, 'source' | 'open'>) {
   const temporaryFilesLabelId = useId()
   const persistentFilesLabelId = useId()
 
@@ -309,59 +309,32 @@ export function AgentWorkingDirectoryPanel({
     setPendingOpenFolderPaths([])
   }
   const fileListQueryOptions = getFileListQueryOptions(directoryPath)
-  const fileListQuery = useQuery({
-    ...fileListQueryOptions,
-    queryFn: async (context): Promise<SandboxListResponse> => {
-      try {
-        return await fileListQueryOptions.queryFn(context)
-      } catch (error) {
-        if (await isNoActiveBindingError(error)) {
-          return {
-            entries: [],
-            path: '.',
-          }
-        }
-
-        throw error
-      }
-    },
-    retry: false,
-  })
+  const fileListQuery = useQuery({ ...fileListQueryOptions, retry: false })
+  // The sandbox operations document `no_active_binding` (404): the directory is empty, not failed.
+  const hasNoActiveBinding =
+    isDefinedError(fileListQuery.error) && fileListQuery.error.code === 'no_active_binding'
   const expandedFolderQueries = useQueries({
-    queries: loadedFolderPaths.map((path) => {
-      const queryOptions = getFileListQueryOptions(path)
-
-      return {
-        ...queryOptions,
-        queryFn: async (context): Promise<SandboxListResponse> => {
-          try {
-            return await queryOptions.queryFn(context)
-          } catch (error) {
-            if (await isNoActiveBindingError(error)) {
-              return {
-                entries: [],
-                path,
-              }
-            }
-
-            throw error
-          }
-        },
-        retry: false,
-      }
-    }),
+    queries: loadedFolderPaths.map((path) => ({ ...getFileListQueryOptions(path), retry: false })),
   })
-  const workingDirectoryFiles = expandedFolderQueries.reduce(
-    (files, query, index) => {
+  const expandedFolders = expandedFolderQueries.map((query) => {
+    const noActiveBinding = isDefinedError(query.error) && query.error.code === 'no_active_binding'
+
+    return {
+      entries: noActiveBinding ? [] : query.data?.entries,
+      isLoaded: query.isSuccess || noActiveBinding,
+    }
+  })
+  const workingDirectoryFiles = expandedFolders.reduce(
+    (files, folder, index) => {
       return mergeSandboxFileTree(
         files,
-        buildSandboxFileTree(query.data?.entries, loadedFolderPaths[index], {
+        buildSandboxFileTree(folder.entries, loadedFolderPaths[index], {
           nestRootPath: directoryPath,
           nestUnderBasePath: true,
         }),
       )
     },
-    buildSandboxFileTree(fileListQuery.data?.entries, directoryPath),
+    buildSandboxFileTree(hasNoActiveBinding ? [] : fileListQuery.data?.entries, directoryPath),
   )
   const selectedWorkingDirectoryFile =
     findReadableFile(workingDirectoryFiles, selectedFileId) ??
@@ -418,7 +391,7 @@ export function AgentWorkingDirectoryPanel({
       try {
         return await fileReadQueryOptions.queryFn(context)
       } catch (error) {
-        if (isNotFoundResponse(error)) {
+        if (isNotFoundError(error)) {
           return {
             binary: false,
             path: selectedWorkingDirectoryFile?.id ?? '',
@@ -550,148 +523,143 @@ export function AgentWorkingDirectoryPanel({
   )
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <AgentSkillDetailDialog
-        skillName={t(($) => $['agentDetail.configure.workingDirectory.title'])}
-        detail={{
-          description: t(($) => $['agentDetail.configure.workingDirectory.description']),
-          fileCount: countReadableFiles(workingDirectoryFiles),
-          fileListHeader: (
-            <div className="flex shrink-0 flex-col">
-              <h3
-                id="agent-skill-detail-files-heading"
-                className="px-4 pt-3.5 pb-2 system-xl-semibold text-text-primary"
-              >
-                {t(($) => $['agentDetail.configure.workingDirectory.fileSystem'])}
-              </h3>
-              <Tabs
-                value={selectedRootPath}
-                onValueChange={(path) =>
-                  handleDirectoryPathChange(path as AgentWorkingDirectoryPath)
-                }
-              >
-                <TabsList className="relative h-9 gap-4 border-b-[0.5px] border-divider-regular px-4">
-                  <div className="flex h-full items-center gap-0.5">
-                    <TabsTab
-                      value={AGENT_SAVED_FILES_ROOT_PATH}
-                      className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
-                    >
-                      <span id={persistentFilesLabelId}>
-                        {t(($) => $['agentDetail.configure.workingDirectory.persistentFiles'])}
-                      </span>
-                    </TabsTab>
-                    <Infotip>
-                      <InfotipTrigger
-                        aria-labelledby={persistentFilesLabelId}
-                        iconVariant="information"
-                      />
-                      <InfotipContent aria-labelledby={persistentFilesLabelId} className="w-64">
-                        {persistentFilesTooltip}
-                      </InfotipContent>
-                    </Infotip>
-                  </div>
-                  <div className="flex h-full items-center gap-0.5">
-                    <TabsTab
-                      value={AGENT_TEMPORARY_FILES_ROOT_PATH}
-                      className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
-                    >
-                      <span id={temporaryFilesLabelId}>
-                        {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
-                      </span>
-                    </TabsTab>
-                    <Infotip>
-                      <InfotipTrigger
-                        aria-labelledby={temporaryFilesLabelId}
-                        iconVariant="information"
-                      />
-                      <InfotipContent aria-labelledby={temporaryFilesLabelId} className="w-64">
-                        {temporaryFilesTooltip}
-                      </InfotipContent>
-                    </Infotip>
-                  </div>
-                  <TabsIndicator
-                    className="pointer-events-none absolute bottom-0 left-0 h-0 border-b-2 border-components-tab-active transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
-                    style={{
-                      translate: 'var(--active-tab-left)',
-                      width: 'var(--active-tab-width)',
-                    }}
-                  />
-                </TabsList>
-                <TabsPanel value={AGENT_SAVED_FILES_ROOT_PATH} tabIndex={-1}>
-                  <AgentWorkingDirectoryBreadcrumb
-                    path={directoryPath}
-                    onPathChange={handleDirectoryPathChange}
-                  />
-                </TabsPanel>
-                <TabsPanel value={AGENT_TEMPORARY_FILES_ROOT_PATH} tabIndex={-1}>
-                  <AgentWorkingDirectoryBreadcrumb
-                    path={directoryPath}
-                    onPathChange={handleDirectoryPathChange}
-                  />
-                </TabsPanel>
-              </Tabs>
-            </div>
-          ),
-          fileListPanelClassName: 'w-[360px]',
-          fileListTreeClassName: 'px-0',
-          fileListTreeListClassName: 'px-1',
-          fileListTitle: t(($) => $['agentDetail.configure.workingDirectory.title']),
-          files: workingDirectoryFiles,
-          filePreview: {
-            binary: fileReadQuery.data?.binary,
-            content: fileReadQuery.data?.text ?? undefined,
-            downloadActionLoadingTarget,
-            downloadUrl: imagePreviewQuery.data?.url,
-            fileName: isFileListLoading ? '' : selectedWorkingDirectoryFile?.name,
-            isDownloadError: imagePreviewQuery.isError,
-            isDownloadLoading: !!isImagePreviewFile && imagePreviewQuery.isPending,
-            isError: fileListQuery.isError || fileReadQuery.isError,
-            isImage: isImagePreviewFile,
-            isLoading: isFileListLoading || isFileReadLoading,
-          },
-          onDownloadFile: selectedWorkingDirectoryFile ? handleDownloadFile : undefined,
-          folderOpenState: ({ file }) => {
-            const queryIndex = loadedFolderPathIndexes.get(file.id)
-            const folderLoaded =
-              queryIndex !== undefined && expandedFolderQueries[queryIndex]?.isSuccess
+    <AgentSkillDetailBody
+      skillName={t(($) => $['agentDetail.configure.workingDirectory.title'])}
+      detail={{
+        description: t(($) => $['agentDetail.configure.workingDirectory.description']),
+        fileCount: countReadableFiles(workingDirectoryFiles),
+        fileListHeader: (
+          <div className="flex shrink-0 flex-col">
+            <h3
+              id="agent-skill-detail-files-heading"
+              className="px-4 pt-3.5 pb-2 system-xl-semibold text-text-primary"
+            >
+              {t(($) => $['agentDetail.configure.workingDirectory.fileSystem'])}
+            </h3>
+            <Tabs
+              value={selectedRootPath}
+              onValueChange={(path) => handleDirectoryPathChange(path as AgentWorkingDirectoryPath)}
+            >
+              <TabsList className="relative h-9 gap-4 border-b-[0.5px] border-divider-regular px-4">
+                <div className="flex h-full items-center gap-0.5">
+                  <TabsTab
+                    value={AGENT_SAVED_FILES_ROOT_PATH}
+                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
+                  >
+                    <span id={persistentFilesLabelId}>
+                      {t(($) => $['agentDetail.configure.workingDirectory.persistentFiles'])}
+                    </span>
+                  </TabsTab>
+                  <Infotip>
+                    <InfotipTrigger
+                      aria-labelledby={persistentFilesLabelId}
+                      iconVariant="information"
+                    />
+                    <InfotipContent aria-labelledby={persistentFilesLabelId} className="w-64">
+                      {persistentFilesTooltip}
+                    </InfotipContent>
+                  </Infotip>
+                </div>
+                <div className="flex h-full items-center gap-0.5">
+                  <TabsTab
+                    value={AGENT_TEMPORARY_FILES_ROOT_PATH}
+                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
+                  >
+                    <span id={temporaryFilesLabelId}>
+                      {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
+                    </span>
+                  </TabsTab>
+                  <Infotip>
+                    <InfotipTrigger
+                      aria-labelledby={temporaryFilesLabelId}
+                      iconVariant="information"
+                    />
+                    <InfotipContent aria-labelledby={temporaryFilesLabelId} className="w-64">
+                      {temporaryFilesTooltip}
+                    </InfotipContent>
+                  </Infotip>
+                </div>
+                <TabsIndicator
+                  className="pointer-events-none absolute bottom-0 left-0 h-0 border-b-2 border-components-tab-active transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
+                  style={{
+                    translate: 'var(--active-tab-left)',
+                    width: 'var(--active-tab-width)',
+                  }}
+                />
+              </TabsList>
+              <TabsPanel value={AGENT_SAVED_FILES_ROOT_PATH} tabIndex={-1}>
+                <AgentWorkingDirectoryBreadcrumb
+                  path={directoryPath}
+                  onPathChange={handleDirectoryPathChange}
+                />
+              </TabsPanel>
+              <TabsPanel value={AGENT_TEMPORARY_FILES_ROOT_PATH} tabIndex={-1}>
+                <AgentWorkingDirectoryBreadcrumb
+                  path={directoryPath}
+                  onPathChange={handleDirectoryPathChange}
+                />
+              </TabsPanel>
+            </Tabs>
+          </div>
+        ),
+        fileListPanelClassName: 'w-[360px]',
+        fileListTreeClassName: 'px-0',
+        fileListTreeListClassName: 'px-1',
+        fileListTitle: t(($) => $['agentDetail.configure.workingDirectory.title']),
+        files: workingDirectoryFiles,
+        filePreview: {
+          binary: fileReadQuery.data?.binary,
+          content: fileReadQuery.data?.text ?? undefined,
+          downloadActionLoadingTarget,
+          downloadUrl: imagePreviewQuery.data?.url,
+          fileName: isFileListLoading ? '' : selectedWorkingDirectoryFile?.name,
+          isDownloadError: imagePreviewQuery.isError,
+          isDownloadLoading: !!isImagePreviewFile && imagePreviewQuery.isPending,
+          isError: (fileListQuery.isError && !hasNoActiveBinding) || fileReadQuery.isError,
+          isImage: isImagePreviewFile,
+          isLoading: isFileListLoading || isFileReadLoading,
+        },
+        onDownloadFile: selectedWorkingDirectoryFile ? handleDownloadFile : undefined,
+        folderOpenState: ({ file }) => {
+          const queryIndex = loadedFolderPathIndexes.get(file.id)
+          const folderLoaded = queryIndex !== undefined && expandedFolders[queryIndex]?.isLoaded
 
-            return (
-              openFolderPaths.includes(file.id) ||
-              (pendingOpenFolderPaths.includes(file.id) && !!folderLoaded)
+          return (
+            openFolderPaths.includes(file.id) ||
+            (pendingOpenFolderPaths.includes(file.id) && !!folderLoaded)
+          )
+        },
+        onFolderOpenChange: ({ file, open }) => {
+          if (loadingFolderPaths.has(file.id)) return
+
+          if (open && !loadedFolderPaths.includes(file.id)) {
+            setLoadedFolderPaths((paths) => [...paths, file.id])
+            setPendingOpenFolderPaths((paths) =>
+              paths.includes(file.id) ? paths : [...paths, file.id],
             )
-          },
-          onFolderOpenChange: ({ file, open }) => {
-            if (loadingFolderPaths.has(file.id)) return
+            return
+          }
 
-            if (open && !loadedFolderPaths.includes(file.id)) {
-              setLoadedFolderPaths((paths) => [...paths, file.id])
-              setPendingOpenFolderPaths((paths) =>
-                paths.includes(file.id) ? paths : [...paths, file.id],
-              )
-              return
-            }
-
-            setPendingOpenFolderPaths((paths) => paths.filter((path) => path !== file.id))
-            setOpenFolderPaths((paths) =>
-              open
-                ? paths.includes(file.id)
-                  ? paths
-                  : [...paths, file.id]
-                : paths.filter((path) => path !== file.id),
-            )
-          },
-          onFolderEnter: ({ file }) => handleDirectoryPathChange(file.id),
-          onSelectFile: (selectedFile) => setSelectedFileId(selectedFile.id),
-          renderFolderSuffix: ({ file }) =>
-            loadingFolderPaths.has(file.id) ? (
-              <span className="ms-auto i-ri-loader-4-line size-4 shrink-0 animate-spin text-text-tertiary">
-                <span className="sr-only">{tCommon(($) => $.loading)}</span>
-              </span>
-            ) : null,
-          selectedFileId: selectedWorkingDirectoryFile?.id,
-          sections: [],
-        }}
-      />
-    </Dialog>
+          setPendingOpenFolderPaths((paths) => paths.filter((path) => path !== file.id))
+          setOpenFolderPaths((paths) =>
+            open
+              ? paths.includes(file.id)
+                ? paths
+                : [...paths, file.id]
+              : paths.filter((path) => path !== file.id),
+          )
+        },
+        onFolderEnter: ({ file }) => handleDirectoryPathChange(file.id),
+        onSelectFile: (selectedFile) => setSelectedFileId(selectedFile.id),
+        renderFolderSuffix: ({ file }) =>
+          loadingFolderPaths.has(file.id) ? (
+            <span className="ms-auto i-ri-loader-4-line size-4 shrink-0 animate-spin text-text-tertiary">
+              <span className="sr-only">{tCommon(($) => $.loading)}</span>
+            </span>
+          ) : null,
+        selectedFileId: selectedWorkingDirectoryFile?.id,
+        sections: [],
+      }}
+    />
   )
 }

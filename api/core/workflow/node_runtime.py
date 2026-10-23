@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override
 
+from flask import current_app
 from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -74,6 +75,7 @@ from graphon.nodes.tool_runtime_entities import (
     ToolRuntimeMessage,
     ToolRuntimeParameter,
 )
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -88,6 +90,7 @@ from .human_input_adapter import (
     parse_human_input_delivery_methods,
 )
 from .system_variables import SystemVariableKey, get_system_text
+from .workflow_tool_container_types import WorkflowToolContainerPayload
 
 
 class PollingLLMRuntimeProtocol(Protocol):
@@ -117,8 +120,10 @@ class PollingLLMRuntimeProtocol(Protocol):
 
 
 if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
     from core.tools.__base.tool import Tool
     from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
+    from core.tools.workflow_as_tool.tool import WorkflowTool
     from graphon.nodes.llm.file_saver import LLMFileSaver
     from graphon.nodes.tool.entities import ToolNodeData
 
@@ -528,10 +533,14 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         self,
         run_context: Mapping[str, Any] | DifyRunContext,
         session_maker: sessionmaker[Session] | None = None,
+        execution_driver: WorkflowRunDriver | None = None,
+        workflow_tools: Mapping[str, WorkflowTool] | None = None,
     ) -> None:
         self._run_context = resolve_dify_run_context(run_context)
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
         self._session_maker = session_maker
+        self._execution_driver = execution_driver
+        self._workflow_tools = workflow_tools if workflow_tools is not None else {}
 
     @property
     def file_reference_factory(self) -> FileReferenceFactoryProtocol:
@@ -559,7 +568,14 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 self._run_context.user_id,
                 self._run_context.invoke_from,
                 variable_pool,
+                execution_driver=self._execution_driver,
+                workflow_tool_definition=(
+                    self._workflow_tools.get(node_data.provider_id)
+                    if self._is_workflow_tool_provider(node_data)
+                    else None
+                ),
             )
+            tool_runtime.runtime.dify_run_context = self._run_context
         except ToolNodeError:
             raise
         except Exception as exc:
@@ -667,6 +683,39 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         if isinstance(latest, dict):
             return LLMUsage.model_validate(latest)
         return LLMUsage.empty_usage()
+
+    def build_workflow_tool_container_payload(
+        self,
+        *,
+        tool_runtime: ToolRuntimeHandle,
+        tool_parameters: Mapping[str, Any],
+        inputs_for_log: Mapping[str, Any],
+        workflow_call_depth: int,
+    ) -> WorkflowToolContainerPayload:
+        """Prepare a serializable request for Engine-owned Workflow Tool execution."""
+        from core.tools.workflow_as_tool.tool import WorkflowTool
+
+        tool = self._binding_from_handle(tool_runtime).tool
+        if not isinstance(tool, WorkflowTool):
+            raise ToolRuntimeResolutionError("resolved tool is not a Workflow Tool")
+
+        inputs, system_files = tool.prepare_container_inputs(tool_parameters)
+        json_inputs = WorkflowRuntimeTypeConverter().to_json_encodable(
+            {
+                "inputs": inputs,
+                "system_files": system_files,
+                "inputs_for_log": dict(inputs_for_log),
+            }
+        )
+        return WorkflowToolContainerPayload(
+            source_app_id=tool.workflow_app_id,
+            source_workflow_id=tool.workflow_id,
+            source_workflow_version=tool.version,
+            inputs=json_inputs["inputs"],
+            system_files=json_inputs["system_files"],
+            inputs_for_log=json_inputs["inputs_for_log"],
+            call_depth=workflow_call_depth + 1,
+        )
 
     def resolve_provider_icons(
         self,
@@ -910,11 +959,11 @@ class DifyHumanInputNodeRuntime:
     def restore_submitted_data(
         self,
         *,
-        node_data: HumanInputNodeData,
+        inputs: Sequence[FormInputConfig],
         submitted_data: Mapping[str, Any],
     ) -> Mapping[str, Any]:
         restored_data: dict[str, Any] = dict(submitted_data)
-        for input_config in node_data.inputs:
+        for input_config in inputs:
             output_variable_name = input_config.output_variable_name
             if output_variable_name not in submitted_data:
                 continue
@@ -1010,3 +1059,9 @@ def build_dify_llm_file_saver(
         file_reference_factory=DifyFileReferenceFactory(run_context),
         http_client=http_client,
     )
+
+
+def build_knowledge_fs_node_dependencies() -> dict[str, object]:
+    """Resolve the retrieval capabilities registered by the application composition root."""
+    factory = cast(Callable[[], dict[str, object]], current_app.extensions["knowledge_fs_node_dependencies"])
+    return factory()

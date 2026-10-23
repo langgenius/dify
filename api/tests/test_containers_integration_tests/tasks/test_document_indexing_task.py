@@ -409,7 +409,6 @@ class TestDocumentIndexingTasks:
 
         # Document with different indexing status
         doc1 = Document(
-            id=fake.uuid4(),
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=2,
@@ -426,7 +425,6 @@ class TestDocumentIndexingTasks:
 
         # Document with disabled status
         doc2 = Document(
-            id=fake.uuid4(),
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=3,
@@ -881,9 +879,8 @@ class TestDocumentIndexingTasks:
         tenant1_id = dataset1.tenant_id
         tenant2_id = dataset2.tenant_id
         dataset1_id = dataset1.id
-        dataset2_id = dataset2.id
         document_ids1 = [doc.id for doc in documents1]
-        document_ids2 = [doc.id for doc in documents2]
+        [doc.id for doc in documents2]
 
         # Mock the task function
         from unittest.mock import MagicMock
