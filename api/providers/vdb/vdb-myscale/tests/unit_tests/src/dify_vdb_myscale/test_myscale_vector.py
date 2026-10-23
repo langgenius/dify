@@ -177,6 +177,16 @@ def test_add_texts_inserts_rows_and_returns_ids(myscale_module, monkeypatch: pyt
     assert "te xt 1" in sql
 
 
+def test_add_texts_writes_empty_metadata_as_json_text(myscale_module, monkeypatch: pytest.MonkeyPatch):
+    vector = myscale_module.MyScaleVector("collection_1", _config(myscale_module))
+    monkeypatch.setattr(myscale_module.uuid, "uuid4", lambda: "generated-uuid")
+
+    vector.add_texts([Document(page_content="text", metadata={})], [[0.1]])
+
+    sql = vector._client.command.call_args.args[0]
+    assert "('generated-uuid', 'text', [0.1], '{}')" in sql
+
+
 def test_text_exists_and_metadata_operations(myscale_module):
     vector = myscale_module.MyScaleVector("collection_1", _config(myscale_module))
     vector._client.query.return_value = SimpleNamespace(row_count=1, result_rows=[("id-1",), ("id-2",)])

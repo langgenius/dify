@@ -37,7 +37,7 @@ class CouchbaseConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict[str, Any]):
+    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
         if not values.get("connection_string"):
             raise ValueError("config COUCHBASE_CONNECTION_STRING is required")
         if not values.get("user"):
@@ -52,7 +52,7 @@ class CouchbaseConfig(BaseModel):
 
 
 class CouchbaseVector(BaseVector):
-    def __init__(self, collection_name: str, config: CouchbaseConfig):
+    def __init__(self, collection_name: str, config: CouchbaseConfig) -> None:
         super().__init__(collection_name)
         self._client_config = config
 
@@ -70,12 +70,12 @@ class CouchbaseVector(BaseVector):
         self._cluster.wait_until_ready(timedelta(seconds=5))
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         index_id = str(uuid.uuid4()).replace("-", "")
         self._create_collection(uuid=index_id, vector_length=len(embeddings[0]))
         self.add_texts(texts, embeddings)
 
-    def _create_collection(self, vector_length: int, uuid: str):
+    def _create_collection(self, vector_length: int, uuid: str) -> None:
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
@@ -188,7 +188,7 @@ class CouchbaseVector(BaseVector):
 
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
-    def _collection_exists(self, name: str):
+    def _collection_exists(self, name: str) -> bool:
         scope_collection_map: dict[str, Any] = {}
 
         # Get a list of all scopes in the bucket
@@ -207,7 +207,7 @@ class CouchbaseVector(BaseVector):
         return VectorType.COUCHBASE
 
     @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
@@ -240,7 +240,7 @@ class CouchbaseVector(BaseVector):
         return False  # Return False if no rows are returned
 
     @override
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         query = f"""
             DELETE FROM `{self._bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
             WHERE META().id IN $doc_ids;
@@ -250,7 +250,7 @@ class CouchbaseVector(BaseVector):
         except Exception:
             logger.exception("Failed to delete documents, ids: %s", ids)
 
-    def delete_by_document_id(self, document_id: str):
+    def delete_by_document_id(self, document_id: str) -> None:
         query = f"""
                 DELETE FROM
                 `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
@@ -268,7 +268,7 @@ class CouchbaseVector(BaseVector):
     #     return [row['id'] for row in result.rows()]
 
     @override
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         query = f"""
             DELETE FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
             WHERE metadata.{key} = $value;
@@ -335,7 +335,7 @@ class CouchbaseVector(BaseVector):
         return docs
 
     @override
-    def delete(self):
+    def delete(self) -> None:
         manager = self._bucket.collections()
         scopes = manager.get_all_scopes()
 

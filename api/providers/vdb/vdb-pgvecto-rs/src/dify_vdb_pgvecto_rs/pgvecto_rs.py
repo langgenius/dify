@@ -33,7 +33,7 @@ class PgvectoRSConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict[str, Any]):
+    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
         if not values["host"]:
             raise ValueError("config PGVECTO_RS_HOST is required")
         if not values["port"]:
@@ -48,7 +48,7 @@ class PgvectoRSConfig(BaseModel):
 
 
 class PGVectoRS(BaseVector):
-    def __init__(self, collection_name: str, config: PgvectoRSConfig, dim: int):
+    def __init__(self, collection_name: str, config: PgvectoRSConfig, dim: int) -> None:
         super().__init__(collection_name)
         self._client_config = config
         self._url = (
@@ -78,11 +78,11 @@ class PGVectoRS(BaseVector):
         return VectorType.PGVECTO_RS
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         self.create_collection(len(embeddings[0]))
         self.add_texts(texts, embeddings)
 
-    def create_collection(self, dimension: int):
+    def create_collection(self, dimension: int) -> None:
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
@@ -115,7 +115,7 @@ class PGVectoRS(BaseVector):
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         pks: list[str] = []
         with sessionmaker(bind=self._client).begin() as session:
             for document, embedding in zip(documents, embeddings, strict=False):
@@ -133,7 +133,7 @@ class PGVectoRS(BaseVector):
         return pks
 
     @override
-    def get_ids_by_metadata_field(self, key: str, value: str):
+    def get_ids_by_metadata_field(self, key: str, value: str) -> list[str] | None:
         result = None
         with Session(self._client) as session:
             select_statement = sql_text(f"SELECT id FROM {self._collection_name} WHERE meta->>:key = :value")
@@ -144,7 +144,7 @@ class PGVectoRS(BaseVector):
             return None
 
     @override
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
             with sessionmaker(bind=self._client).begin() as session:
@@ -152,7 +152,7 @@ class PGVectoRS(BaseVector):
                 session.execute(select_statement, {"ids": ids})
 
     @override
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         with Session(self._client) as session:
             select_statement = sql_text(
                 f"SELECT id FROM {self._collection_name} WHERE meta->>'doc_id' = ANY (:doc_ids); "
@@ -166,7 +166,7 @@ class PGVectoRS(BaseVector):
                     session.execute(select_statement, {"ids": ids})
 
     @override
-    def delete(self):
+    def delete(self) -> None:
         with sessionmaker(bind=self._client).begin() as session:
             session.execute(sql_text(f"DROP TABLE IF EXISTS {self._collection_name}"))
 

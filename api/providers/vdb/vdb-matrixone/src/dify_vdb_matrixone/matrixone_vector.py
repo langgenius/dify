@@ -44,7 +44,7 @@ class MatrixoneConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict[str, Any]):
+    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
         if not values["host"]:
             raise ValueError("config host is required")
         if not values["port"]:
@@ -63,7 +63,7 @@ class MatrixoneVector(BaseVector):
     Matrixone vector storage implementation.
     """
 
-    def __init__(self, collection_name: str, config: MatrixoneConfig):
+    def __init__(self, collection_name: str, config: MatrixoneConfig) -> None:
         super().__init__(collection_name)
         self.config = config
         self.collection_name = collection_name.lower()
@@ -71,12 +71,12 @@ class MatrixoneVector(BaseVector):
 
     @property
     @override
-    def collection_name(self):
+    def collection_name(self) -> str:
         return self._collection_name
 
     @collection_name.setter
     @override
-    def collection_name(self, value):
+    def collection_name(self, value: str) -> None:
         self._collection_name = value
 
     @override
@@ -84,7 +84,7 @@ class MatrixoneVector(BaseVector):
         return VectorType.MATRIXONE
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         if self.client is None:
             self.client = self._get_client(len(embeddings[0]), True)
         return self.add_texts(texts, embeddings)
@@ -114,7 +114,7 @@ class MatrixoneVector(BaseVector):
             return client
 
     @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         if self.client is None:
             self.client = self._get_client(len(embeddings[0]), True)
         assert self.client is not None
@@ -139,7 +139,7 @@ class MatrixoneVector(BaseVector):
 
     @ensure_client
     @override
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         assert self.client is not None
         if not ids:
             return
@@ -147,14 +147,14 @@ class MatrixoneVector(BaseVector):
 
     @ensure_client
     @override
-    def get_ids_by_metadata_field(self, key: str, value: str):
+    def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
         assert self.client is not None
         results = self.client.query_by_metadata(filter={key: value})
         return [result.id for result in results]
 
     @ensure_client
     @override
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         assert self.client is not None
         self.client.delete(filter={key: value})
 
@@ -222,7 +222,7 @@ class MatrixoneVector(BaseVector):
 
     @ensure_client
     @override
-    def delete(self):
+    def delete(self) -> None:
         assert self.client is not None
         self.client.delete()
 

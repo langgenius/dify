@@ -51,7 +51,7 @@ class ChromaConfig(BaseModel):
 
 
 class ChromaVector(BaseVector):
-    def __init__(self, collection_name: str, config: ChromaConfig):
+    def __init__(self, collection_name: str, config: ChromaConfig) -> None:
         super().__init__(collection_name)
         self._client_config = config
         self._client = chromadb.HttpClient(**self._client_config.to_chroma_params())
@@ -61,14 +61,14 @@ class ChromaVector(BaseVector):
         return VectorType.CHROMA
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         if texts:
             # create collection
             self.create_collection(self._collection_name)
 
             self.add_texts(texts, embeddings, **kwargs)
 
-    def create_collection(self, collection_name: str):
+    def create_collection(self, collection_name: str) -> None:
         lock_name = f"vector_indexing_lock_{collection_name}"
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
@@ -78,7 +78,7 @@ class ChromaVector(BaseVector):
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
@@ -89,17 +89,17 @@ class ChromaVector(BaseVector):
         return uuids
 
     @override
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         collection = self._client.get_or_create_collection(self._collection_name)
         # FIXME: fix the type error later
         collection.delete(where={key: {"$eq": value}})  # type: ignore
 
     @override
-    def delete(self):
+    def delete(self) -> None:
         self._client.delete_collection(self._collection_name)
 
     @override
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         if not ids:
             return
         collection = self._client.get_or_create_collection(self._collection_name)

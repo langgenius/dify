@@ -37,7 +37,7 @@ class SortOrder(StrEnum):
 
 
 class MyScaleVector(BaseVector):
-    def __init__(self, collection_name: str, config: MyScaleConfig, metric: str = "Cosine"):
+    def __init__(self, collection_name: str, config: MyScaleConfig, metric: str = "Cosine") -> None:
         super().__init__(collection_name)
         self._config = config
         self._metric = metric
@@ -55,12 +55,12 @@ class MyScaleVector(BaseVector):
         return VectorType.MYSCALE
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         dimension = len(embeddings[0])
         self._create_collection(dimension)
         return self.add_texts(documents=texts, embeddings=embeddings, **kwargs)
 
-    def _create_collection(self, dimension: int):
+    def _create_collection(self, dimension: int) -> None:
         logger.info("create MyScale collection %s with dimension %s", self._collection_name, dimension)
         self._client.command(f"CREATE DATABASE IF NOT EXISTS {self._config.database}")
         fts_params = f"('{self._config.fts_params}')" if self._config.fts_params else ""
@@ -78,7 +78,7 @@ class MyScaleVector(BaseVector):
         self._client.command(sql)
 
     @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         ids = []
         columns = ["id", "text", "vector", "metadata"]
         values = []
@@ -89,7 +89,7 @@ class MyScaleVector(BaseVector):
                     doc_id,
                     self.escape_str(doc.page_content),
                     embeddings[i],
-                    json.dumps(doc.metadata) if doc.metadata else {},
+                    json.dumps(doc.metadata or {}),
                 )
                 values.append(str(row))
                 ids.append(doc_id)
@@ -113,7 +113,7 @@ class MyScaleVector(BaseVector):
         return results.row_count > 0
 
     @override
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         if not ids:
             return
         self._client.command(
@@ -122,7 +122,7 @@ class MyScaleVector(BaseVector):
         )
 
     @override
-    def get_ids_by_metadata_field(self, key: str, value: str):
+    def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
         self._validate_metadata_key(key)
         rows = self._client.query(
             f"SELECT DISTINCT id FROM {self._config.database}.{self._collection_name} "
@@ -132,7 +132,7 @@ class MyScaleVector(BaseVector):
         return [row[0] for row in rows]
 
     @override
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         self._validate_metadata_key(key)
         self._client.command(
             f"DELETE FROM {self._config.database}.{self._collection_name} WHERE metadata.{key}={{value:String}}",
@@ -191,7 +191,7 @@ class MyScaleVector(BaseVector):
             raise ValueError("metadata key must be a valid identifier")
 
     @override
-    def delete(self):
+    def delete(self) -> None:
         self._client.command(f"DROP TABLE IF EXISTS {self._config.database}.{self._collection_name}")
 
 

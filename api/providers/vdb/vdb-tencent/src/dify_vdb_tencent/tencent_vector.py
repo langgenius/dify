@@ -1,7 +1,7 @@
 import json
 import logging
 import math
-from typing import Any, TypedDict, cast, override
+from typing import TYPE_CHECKING, Any, TypedDict, cast, override
 
 from pydantic import BaseModel, model_validator
 from sqlalchemy.orm import Session
@@ -20,6 +20,9 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+if TYPE_CHECKING:
+    from tcvectordb.rpc.model.database import RPCDatabase
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +73,7 @@ class TencentVector(BaseVector):
     field_text: str = "text"
     field_metadata: str = "metadata"
 
-    def __init__(self, collection_name: str, config: TencentConfig):
+    def __init__(self, collection_name: str, config: TencentConfig) -> None:
         super().__init__(collection_name)
         self._client_config = config
         self._client = RPCVectorDBClient(**self._client_config.to_tencent_params())
@@ -79,7 +82,7 @@ class TencentVector(BaseVector):
         self._init_database()
         self._load_collection()
 
-    def _load_collection(self):
+    def _load_collection(self) -> None:
         """
         Check if the collection supports hybrid search.
         """
@@ -101,7 +104,7 @@ class TencentVector(BaseVector):
                 if not has_hybrid_search:
                     self._enable_hybrid_search = False
 
-    def _init_database(self):
+    def _init_database(self) -> "RPCDatabase":
         return self._client.create_database_if_not_exists(database_name=self._client_config.database)
 
     @override
@@ -122,7 +125,7 @@ class TencentVector(BaseVector):
             )
         )
 
-    def _create_collection(self, dimension: int):
+    def _create_collection(self, dimension: int) -> None:
         self._dimension = dimension
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
@@ -194,12 +197,12 @@ class TencentVector(BaseVector):
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         self._create_collection(len(embeddings[0]))
         self.add_texts(texts, embeddings)
 
     @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
         total_count = len(embeddings)
@@ -242,7 +245,7 @@ class TencentVector(BaseVector):
         return bool(docs and len(docs) > 0)
 
     @override
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         if not ids:
             return
 
@@ -260,7 +263,7 @@ class TencentVector(BaseVector):
             )
 
     @override
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         self._client.delete(
             database_name=self._client_config.database,
             collection_name=self.collection_name,
@@ -340,7 +343,7 @@ class TencentVector(BaseVector):
         return docs
 
     @override
-    def delete(self):
+    def delete(self) -> None:
         if self._has_collection():
             self._client.drop_collection(
                 database_name=self._client_config.database, collection_name=self.collection_name

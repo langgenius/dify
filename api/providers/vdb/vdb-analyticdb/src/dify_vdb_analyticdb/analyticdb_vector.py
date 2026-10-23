@@ -23,7 +23,7 @@ class AnalyticdbVector(BaseVector):
         collection_name: str,
         api_config: AnalyticdbVectorOpenAPIConfig | None,
         sql_config: AnalyticdbVectorBySqlConfig | None,
-    ):
+    ) -> None:
         super().__init__(collection_name)
         if api_config is not None:
             self.analyticdb_vector: AnalyticdbVectorOpenAPI | AnalyticdbVectorBySql = AnalyticdbVectorOpenAPI(
@@ -39,13 +39,13 @@ class AnalyticdbVector(BaseVector):
         return VectorType.ANALYTICDB
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         dimension = len(embeddings[0])
         self.analyticdb_vector.create_collection_if_not_exists(dimension)
         self.analyticdb_vector.add_texts(texts, embeddings)
 
     @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         self.analyticdb_vector.add_texts(documents, embeddings)
         return []
 
@@ -54,11 +54,11 @@ class AnalyticdbVector(BaseVector):
         return self.analyticdb_vector.text_exists(id)
 
     @override
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         self.analyticdb_vector.delete_by_ids(ids)
 
     @override
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         self.analyticdb_vector.delete_by_metadata_field(key, value)
 
     @override
@@ -70,7 +70,7 @@ class AnalyticdbVector(BaseVector):
         return self.analyticdb_vector.search_by_full_text(query, **kwargs)
 
     @override
-    def delete(self):
+    def delete(self) -> None:
         self.analyticdb_vector.delete()
 
 
