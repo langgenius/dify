@@ -762,7 +762,12 @@ class ConfirmedAgentCommands:
         return self.get(actor=actor, session_id=session_id, request_id=request_id)
 
     def finish_resume(self, *, ref, generation, dispatch_id):
-        context = self.api.store.load_context(ref=ref)
+        try:
+            context = self.api.store.load_context(ref=ref)
+        except BuilderExecutionPolicyError as error:
+            if error.reason_code != "native_expired":
+                raise
+            context = self.api.store.load_terminal_context(ref=ref)
         with self.loader.session_factory() as session:
             run = session.scalar(
                 select(WorkflowRun).where(
