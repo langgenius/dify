@@ -1,5 +1,4 @@
 import type { DayPickerProps } from '@daypicker/react'
-import { useIsoLayoutEffect } from '@base-ui/utils/useIsoLayoutEffect'
 import * as React from 'react'
 import { Button } from '../../button'
 import { CalendarGrid, toCalendarDate } from './calendar-grid'
@@ -54,7 +53,7 @@ function CalendarPanel({
   const panelRef = React.useRef<HTMLDivElement>(null)
   const headerRef = React.useRef<HTMLButtonElement>(null)
   const restoreHeaderFocusRef = React.useRef(false)
-  useIsoLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     if (choosingMonth) return
     if (restoreHeaderFocusRef.current) {
       restoreHeaderFocusRef.current = false

@@ -25,13 +25,6 @@ require an explicit React import.
 Use namespace imports for `react-dom`, `react-dom/client`, and `react-dom/server` as well.
 Write grouping fragments as `<React.Fragment>` and remove unnecessary fragment wrappers.
 
-For effects that must run before paint, use `useIsoLayoutEffect` from
-`@base-ui/utils/useIsoLayoutEffect`. It uses React's layout effect in the browser and is a no-op
-without a document. Client components can still be server-rendered; this does not make layout
-information available during SSR or fix hydration mismatches. Keep `React.useEffect` for work
-that does not require pre-paint synchronization, and do not add a package wrapper or public export
-for this internal utility.
-
 ## Component writing style
 
 Define named components with function declarations or function expressions. Arrow functions

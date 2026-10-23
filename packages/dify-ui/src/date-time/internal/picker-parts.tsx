@@ -30,7 +30,6 @@ import { useRenderElement } from '@base-ui/react/internals/useRenderElement'
 import { useValueChanged } from '@base-ui/react/internals/useValueChanged'
 import { ownerDocument, ownerWindow } from '@base-ui/utils/owner'
 import { activeElement, contains, getTarget } from '@base-ui/utils/shadowDom'
-import { useIsoLayoutEffect } from '@base-ui/utils/useIsoLayoutEffect'
 import { useStableCallback } from '@base-ui/utils/useStableCallback'
 import { useTimeout } from '@base-ui/utils/useTimeout'
 import { visuallyHidden, visuallyHiddenInput } from '@base-ui/utils/visuallyHidden'
@@ -96,7 +95,7 @@ function usePickerFocusRef<ElementType extends HTMLElement>(
   disabled = false,
 ) {
   const { focus, releaseFocus } = usePickerContext()
-  useIsoLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     if (disabled && elementRef.current) releaseFocus(elementRef.current)
   }, [disabled, elementRef, releaseFocus])
   return React.useCallback(
@@ -156,7 +155,7 @@ function PickerRoot({
   useRegisterFieldControl(triggerRef, triggerId, value, formValue, eligible, props.name)
 
   // Registration follows the proxy input's native form owner, including disabled fieldsets.
-  useIsoLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     const input = inputRef.current
     if (!input) return
     function updateEligibility() {
@@ -187,7 +186,7 @@ function PickerRoot({
   const customValidationMessage = props.invalid
     ? (props.validationMessage ?? 'Choose a valid value.').replace(/\r\n?/g, '\n')
     : ''
-  useIsoLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     inputRef.current?.setCustomValidity(customValidationMessage)
   }, [customValidationMessage])
   useValueChanged(customValidationMessage, () => {
@@ -202,7 +201,7 @@ function PickerRoot({
       if (input && !input.willValidate) input.setCustomValidity(customValidationMessage)
     } else field.validation.change(undefined, true)
   })
-  useIsoLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     setFilled(Boolean(serializedValue))
   }, [setFilled, serializedValue])
   useValueChanged(serializedValue, () => {
@@ -236,7 +235,7 @@ function PickerRoot({
     field.setTouched(true)
     if (field.validationMode === 'onBlur') field.validation.commit(value)
   })
-  useIsoLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     if (disabled || !eligible) releaseFocus()
     return releaseFocus
   }, [disabled, eligible, releaseFocus])
@@ -263,7 +262,7 @@ function PickerRoot({
     }))
     actionsRef.current?.close()
   })
-  useIsoLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     if (resetVersion === handledResetVersionRef.current) return
     handledResetVersionRef.current = resetVersion
     resetFieldFeedback()

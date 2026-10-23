@@ -1,6 +1,5 @@
 'use client'
 
-import { useIsoLayoutEffect } from '@base-ui/utils/useIsoLayoutEffect'
 import { useStableCallback } from '@base-ui/utils/useStableCallback'
 import { useTimeout } from '@base-ui/utils/useTimeout'
 import * as React from 'react'
@@ -116,13 +115,13 @@ function OptionColumn({
   }, [cancelGesture, quietTimer])
 
   // Entry and Now are explicit positioning commands, never scroll-driven selections.
-  useIsoLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     cancelGesture()
     const selected = ref.current?.querySelector<HTMLElement>('[aria-selected="true"]')
     if (selected) scrollToOption(selected)
   }, [scrollRequest, cancelGesture, scrollToOption])
 
-  useIsoLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     if (!focusOnMount) return
     ref.current
       ?.querySelector<HTMLElement>('[aria-selected="true"]')

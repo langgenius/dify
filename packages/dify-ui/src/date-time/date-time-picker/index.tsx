@@ -16,7 +16,6 @@ import type {
 } from '../internal/use-picker-value'
 import type { ZonedWallTime } from './zoned-value'
 import { createChangeEventDetails } from '@base-ui/react/internals/createBaseUIEventDetails'
-import { useIsoLayoutEffect } from '@base-ui/utils/useIsoLayoutEffect'
 import { enUS } from '@daypicker/react/locale/en-US'
 import * as React from 'react'
 import { Button } from '../../button'
@@ -215,7 +214,7 @@ function Session() {
   }
   const errorId = React.useId()
   const previousViewRef = React.useRef(view)
-  useIsoLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     // PickerContent owns initial focus; this effect handles only internal view changes.
     if (previousViewRef.current === view) return
     previousViewRef.current = view
