@@ -305,7 +305,7 @@ def test_revising_goal_recovers_from_missing_resource_form(
     )
     calls: list[str] = []
 
-    def impact(goal: str, _graph: object, *, reply_language: str | None = None) -> dict:
+    def impact(goal: str, _graph: object, *, reply_language: str | None = None) -> dict[str, object]:
         assert reply_language == "zh-Hans"
         calls.append(goal)
         return ground_edit_impact(
