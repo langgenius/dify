@@ -531,6 +531,20 @@ class Runner:
                 fc.last_snapshot_hash = revision
                 self._commit(s, s.current_state, fc, items, settled=True)
                 return s
+            if s.current_state == PcState.EDIT_CAPABILITY_CHECK and fc.goal_text:
+                from core.dify_builder.models import Action
+
+                # The opening goal is durable ordinary user input. Re-enter
+                # cognition with the synchronized DSL, never an old approval.
+                turn = Turn(
+                    actor=turn.actor,
+                    action=Action(
+                        kind="send_edit_goal",
+                        payload={"text": fc.goal_text},
+                        base_version=s.version,
+                        command_id=self._env.command_id,
+                    ),
+                )
             if s.current_state == PcState.EDIT_IMPACT_ANALYSIS:
                 from core.dify_builder.models import Action
 

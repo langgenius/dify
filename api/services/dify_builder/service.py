@@ -2044,9 +2044,21 @@ class DifyBuilderService:
         if token is None:
             raise BusyError(f"session {session_id} is busy")
         try:
-            _, current = self._repo.get_session(session_id)
+            session, current = self._repo.get_session(session_id)
             if current.paused or generation(current) != action.execution_generation:
                 raise ConflictError("task dispatch stopped or superseded")
+            if action.kind == "send_edit_goal" and session.current_state == PcState.EDIT_CAPABILITY_CHECK:
+                text = action.payload.get("text")
+                if isinstance(text, str) and text and text != current.goal_text:
+                    from services.dify_builder.business_acceptance import clear_task_acceptance
+
+                    # After acquiring the lease, preserve ordinary input before
+                    # enqueue. Stop may fence delivery without losing this goal.
+                    clear_task_acceptance(current)
+                    current.goal_text = text
+                    action.base_version = self._repo.compare_and_advance(
+                        session_id, action.base_version, session.current_state, current, []
+                    )
             self._enqueue_fn(session_id, action, actor, token)
         except Exception:
             self._session_lock.release(session_id, token)
