@@ -146,7 +146,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
       execution.setHours(displayHour, Number.parseInt(minute!), 0, 0)
       times.push(execution)
     }
-   } else if (data.frequency === 'weekly') {
+  } else if (data.frequency === 'weekly') {
     const dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
     const selectedDays = new Set(
       (data.visual_config?.weekdays || ['sun'])
@@ -175,7 +175,6 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
       dayOffset++
     }
-
   } else if (data.frequency === 'monthly') {
     const getSelectedDays = (): (number | 'last')[] => {
       if (data.visual_config?.monthly_days && data.visual_config.monthly_days.length > 0)
