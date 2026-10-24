@@ -1876,6 +1876,8 @@ jobs:
               'test_legacy_flag_only_pause_resumes_through_dsl_owner': 1,
               'test_direct_native_admission_rejects_stopped_task_without_worker_context': 1,
               'test_resume_response_receipt_cannot_invalidate_running_worker_cas': 1,
+              'test_resume_opening_edit_goal_continues_cognition_without_resubmission': 2,
+              'test_busy_edit_goal_is_not_persisted_without_dispatch_admission': 1,
           }
           task_control_transport_expected = {
               'test_task_control_routes_delegate_fixed_operation_and_return_session_json': 2,
