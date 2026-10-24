@@ -186,7 +186,7 @@ def handle_capability_check(
                 frozen=False,
             ),
         )
-    execution = progress.finish()
+    execution = progress.finish() if form_items else None
     target_text = ", ".join(fc.edit_target_node_ids)
     from services.dify_builder.resource_grounding import edit_resource_guidance
 
@@ -213,6 +213,7 @@ def handle_capability_check(
             replace(turn, action=Action(kind="submit_edit_rules")),
             replace(s, current_state=PcState.EDIT_IMPACT_ANALYSIS),
             fc,
+            progress=progress,
         )
         return replace(result, items=[*turn_items, *result.items])
     return StepResult(
@@ -222,12 +223,17 @@ def handle_capability_check(
     )
 
 
-def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+def handle_impact_analysis(
+    env: Env, turn: Turn, s: Session, fc: DifyBuilderContext, *, progress: ProgressReporter | None = None
+) -> StepResult:
     """(waiting) On ``submit_edit_rules`` merge the form payload, propose the
     change plan, self-mint the backend pre-edit checkpoint, and transition to
     edit.plan_approval. A stored engine refusal is cleared when the submitted
     rules change, because it no longer describes the next proposed edit.
-    Failed planning keeps this gate, its submitted rules, and the prior plan."""
+    Failed planning keeps this gate, its submitted rules, and the prior plan.
+    Automatic entry continues the caller's open reporter so the single command
+    keeps one operation identity and monotonically increasing progress revisions.
+    """
     kind = action_kind(turn)
     if kind != "submit_edit_rules":
         return StepResult(next=PcState.EDIT_IMPACT_ANALYSIS, context=fc)
@@ -246,18 +252,22 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 submitted_rules=turn.action.payload,
             )
 
-    progress = ProgressReporter.for_session(
-        emit=env.emit_progress,
-        operation_id=env.operation_id,
-        session=s,
-        reply_language=fc.reply_language,
-        stage_id=str(s.current_state),
-        steps=[
-            ("edit-review-rules", copy_text(BuilderCopyId.PROGRESS_REVIEW_CONFIRMED_EDIT_RULES)),
-            ("edit-draft-plan", copy_text(BuilderCopyId.PROGRESS_DRAFT_THE_CHANGE_PLAN)),
-            ("edit-create-checkpoint", copy_text(BuilderCopyId.PROGRESS_CREATE_A_PRE_EDIT_CHECKPOINT)),
-        ],
-    )
+    steps = [
+        ("edit-review-rules", copy_text(BuilderCopyId.PROGRESS_REVIEW_CONFIRMED_EDIT_RULES)),
+        ("edit-draft-plan", copy_text(BuilderCopyId.PROGRESS_DRAFT_THE_CHANGE_PLAN)),
+        ("edit-create-checkpoint", copy_text(BuilderCopyId.PROGRESS_CREATE_A_PRE_EDIT_CHECKPOINT)),
+    ]
+    if progress is None:
+        progress = ProgressReporter.for_session(
+            emit=env.emit_progress,
+            operation_id=env.operation_id,
+            session=s,
+            reply_language=fc.reply_language,
+            stage_id=str(s.current_state),
+            steps=steps,
+        )
+    else:
+        progress.add_steps(steps)
     progress.activate("edit-review-rules")
 
     if turn.action is not None and isinstance(turn.action.payload, dict):

@@ -3,11 +3,13 @@
 from collections.abc import Callable, Sequence
 from dataclasses import replace
 from datetime import datetime
+from itertools import pairwise
 from typing import NoReturn, Unpack, override
 
 import pytest
 import pytest_mock
 
+from core.dify_builder.contract import ProgressEventData
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -118,7 +120,7 @@ def test_capability_check_send_edit_goal_advances_to_impact_analysis() -> None:
 
 
 @pytest.mark.parametrize("planning_fails", [False, True])
-def test_sufficient_goal_reaches_plan_gate_or_actionable_retry_without_edit_confirmation(
+def test_sufficient_goal_reaches_plan_gate_or_actionable_retry_with_monotonic_progress(
     monkeypatch: pytest.MonkeyPatch, planning_fails: bool
 ) -> None:
     from copy import deepcopy
@@ -129,6 +131,8 @@ def test_sufficient_goal_reaches_plan_gate_or_actionable_retry_without_edit_conf
     dify = FakeEditDifyPort()
     before = deepcopy(dify.graph)
     env, repo = _new_env(dify=dify)
+    progress: list[ProgressEventData] = []
+    env.emit_progress = progress.append
     monkeypatch.setattr(
         env.agent,
         "analyze_impact",
@@ -159,10 +163,36 @@ def test_sufficient_goal_reaches_plan_gate_or_actionable_retry_without_edit_conf
         ),
     )
 
+    assert progress
+    assert len({event.operation_id for event in progress}) == 1
+    assert {event.at_version for event in progress} == {out.version}
+    assert all(previous.revision < current.revision for previous, current in pairwise(progress))
+    assert all(event.status == "running" for event in progress[:-1])
+    assert progress[-1].status == ("error" if planning_fails else "completed")
+    assert any(
+        event.activity is not None and event.activity.id == "edit-draft-plan" and event.activity.state == "active"
+        for event in progress
+    )
+    if not planning_fails:
+        assert any(
+            event.activity is not None
+            and event.activity.id == "edit-create-checkpoint"
+            and event.activity.state == "active"
+            for event in progress
+        )
     assert planned_rules == [{"change": goal}]
     _, fc = repo.get_session(s.id)
     assert fc.edit_rules == {"change": goal}
     items = repo.list_conversation(s.id)
+    final_turn = next(item for item in reversed(items) if item.kind == "assistant_turn")
+    assert [activity["id"] for activity in final_turn.payload["execution"]["activities"]] == [
+        "edit-inspect-workflow",
+        "edit-analyze-impact",
+        "edit-prepare-impact",
+        "edit-review-rules",
+        "edit-draft-plan",
+        *([] if planning_fails else ["edit-create-checkpoint"]),
+    ]
     assert dify.graph == before
     assert dify.applied == []
     assert not dify.published
