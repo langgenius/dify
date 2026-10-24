@@ -1879,6 +1879,7 @@ jobs:
               'test_resume_opening_edit_goal_continues_cognition_without_resubmission': 2,
               'test_busy_edit_goal_is_not_persisted_without_dispatch_admission': 1,
           }
+          a4_expected['tests.unit_tests.services.dify_builder.test_stream_frames']['test_observation_uses_original_command_only_for_task_stop'] = 4
           task_control_transport_expected = {
               'test_task_control_routes_delegate_fixed_operation_and_return_session_json': 2,
               'test_task_control_invalid_payload_never_calls_service': 20,
