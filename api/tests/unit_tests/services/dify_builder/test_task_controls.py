@@ -619,3 +619,77 @@ def test_resume_response_receipt_cannot_invalidate_running_worker_cas(tmp_path, 
     assert service.resume_task(session.id, _actor(), base_version=stopped.version, client_action_id="resume") == resumed
     assert len(workers) == 1
     engine.dispose()
+
+
+@pytest.mark.parametrize("revised_goal", [False, True])
+def test_resume_opening_edit_goal_continues_cognition_without_resubmission(
+    service, repo, enqueued, monkeypatch, revised_goal
+):
+    from datetime import datetime
+
+    from core.dify_builder.models import Action, Turn
+    from services.dify_builder.application.handlers_edit import handle_capability_check
+    from services.dify_builder.application.runner import Env, Runner
+    from services.dify_builder.task_control_service import claim_continuation
+    from tests.unit_tests.core.dify_builder.fakes import FakeEditDifyPort, StubAgent
+
+    service._read_task_dsl_fn = lambda *_: ({"graph": {}}, "current")
+    original_goal = "Preserve Start and End while updating the calculation"
+    session_id, opening = service._prepare_edit_session(APP_ID, _actor(), original_goal)
+    expected_goal = "Use Unicode-aware calculation and preserve bindings" if revised_goal else original_goal
+    if revised_goal:
+        service.submit_action(
+            session_id,
+            _actor(),
+            Action(
+                kind="send_edit_goal",
+                payload={"text": expected_goal},
+                base_version=1,
+            ),
+        )
+    else:
+        service.dispatch(session_id, opening, _actor())
+    stopped = service.stop_task(session_id, _actor(), base_version=1, client_action_id="stop-opening")
+    assert repo.get_session(session_id)[1].goal_text == expected_goal
+    service.resume_task(session_id, _actor(), base_version=stopped.version, client_action_id="resume-opening")
+    continuation = enqueued[-1][1]
+    claim_continuation(repo, session_id, _actor(), continuation)
+    observed = []
+    agent = StubAgent()
+
+    def analyze(goal, graph, **_kwargs):
+        observed.append((goal, graph))
+        return {"fields": [], "values": {}, "target_node_ids": []}
+
+    monkeypatch.setattr(agent, "analyze_impact", analyze)
+    port = FakeEditDifyPort()
+    env = Env(dify=port, agent=agent, repo=repo, now=lambda: datetime.min, command_id=continuation.command_id)
+    Runner(env, {PcState.EDIT_CAPABILITY_CHECK: handle_capability_check}).advance(
+        session_id,
+        Turn(actor=_actor(), action=continuation),
+    )
+    head, context = repo.get_session(session_id)
+    assert head.current_state == PcState.EDIT_IMPACT_ANALYSIS
+    assert context.goal_text == expected_goal
+    assert observed == [(expected_goal, port.graph)]
+
+
+def test_busy_edit_goal_is_not_persisted_without_dispatch_admission(service, repo, lock):
+    from core.dify_builder.errors import BusyError
+    from core.dify_builder.models import Action
+
+    session_id, _ = service._prepare_edit_session(APP_ID, _actor(), "accepted original goal")
+    lock.acquire(session_id)
+    with pytest.raises(BusyError):
+        service.submit_action(
+            session_id,
+            _actor(),
+            Action(
+                kind="send_edit_goal",
+                payload={"text": "rejected busy goal"},
+                base_version=1,
+            ),
+        )
+    head, context = repo.get_session(session_id)
+    assert head.version == 1
+    assert context.goal_text == "accepted original goal"
