@@ -1462,7 +1462,10 @@ export const get30 = oc
     }),
   )
   .output(zGetAgentByAgentIdTraceCapabilitiesResponse)
-  .errors({ unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError } })
+  .errors({
+    tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
 
 export const traceCapabilities = {
   get: get30,

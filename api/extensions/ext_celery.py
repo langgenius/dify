@@ -206,6 +206,8 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.knowledge_fs_upgrade_tasks",  # legacy Dataset upgrades use a dedicated queue and worker
         "tasks.knowledge_fs_background_tasks",  # local-engine tasks on dedicated prefork queues
         "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
+        "tasks.trace_delivery_task",  # trace delivery and provider export retries
+        "tasks.ops_trace_task",  # drains trace tasks enqueued before the pipeline upgrade
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -250,6 +252,11 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["knowledge_fs_upgrade_file_cleanup"] = {
             "task": "tasks.knowledge_fs_upgrade_tasks.cleanup_deferred_knowledge_fs_upgrade_files",
             "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
+        }
+    if dify_config.ENABLE_TRACE_PAYLOAD_SWEEP_TASK:
+        beat_schedule["sweep_trace_payloads"] = {
+            "task": "tasks.trace_delivery_task.sweep_trace_payloads",
+            "schedule": crontab(minute="30", hour="3"),
         }
     if dify_config.OPS_AGENT_TRACE_ENABLED:
         imports.append("tasks.application_trace_task")

@@ -1,11 +1,13 @@
 import json
-from collections.abc import Iterator
-from dataclasses import dataclass
+from collections.abc import Iterator, Mapping
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import SuggestedQuestionsGenerated, TraceCorrelation, TraceEvent
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, scoped_session
 
@@ -217,6 +219,37 @@ def database_boundaries(
         yield
     finally:
         sessions.remove()
+
+
+@dataclass
+class _TraceRecorder:
+    events: list[TraceEvent] = field(default_factory=list)
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+@pytest.fixture
+def trace_events(monkeypatch: pytest.MonkeyPatch) -> list[TraceEvent]:
+    """Record what suggested-question generation emits when the app's events have a consumer."""
+    recorder = _TraceRecorder()
+
+    def trace_scope(
+        *, tenant_id: str, app_id: str | None, user_id: str | None, extras: Mapping[str, object]
+    ) -> TraceScope:
+        assert extras == {}
+        return TraceScope(
+            emitter=recorder,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            user_id=user_id,
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
+        )
+
+    monkeypatch.setattr(service_module, "create_trace_scope_for_app", trace_scope)
+    return recorder.events
 
 
 @pytest.fixture
@@ -737,7 +770,6 @@ class TestMessageServiceSuggestedQuestions:
         llm_generator = MagicMock()
         llm_generator.generate_suggested_questions_after_answer.return_value = ["Q1?"]
         monkeypatch.setattr(service_module, "LLMGenerator", llm_generator)
-        monkeypatch.setattr(service_module, "TraceQueueManager", MagicMock())
         return model_manager, memory, llm_generator
 
     def test_user_none(self, factory: MessageServiceTestDataFactory, sqlite_session: Session) -> None:
@@ -755,6 +787,7 @@ class TestMessageServiceSuggestedQuestions:
         monkeypatch: pytest.MonkeyPatch,
         factory: MessageServiceTestDataFactory,
         sqlite_session: Session,
+        trace_events: list[TraceEvent],
     ) -> None:
         conversation = factory.create_conversation()
         _, _, llm_generator = self._chat_boundaries(monkeypatch, conversation)
@@ -776,6 +809,11 @@ class TestMessageServiceSuggestedQuestions:
 
         assert result == ["Q1?"]
         llm_generator.generate_suggested_questions_after_answer.assert_called_once()
+        (event,) = trace_events
+        assert (event.tenant_id, event.app_id, event.user_id) == ("tenant-123", "app-123", None)
+        assert isinstance(event.payload, SuggestedQuestionsGenerated)
+        assert (event.payload.message_id, event.payload.questions) == ("msg-123", ["Q1?"])
+        assert event.payload.started_at <= event.payload.ended_at
 
     @pytest.mark.parametrize("draft_type", [AgentConfigDraftType.DRAFT, AgentConfigDraftType.DEBUG_BUILD])
     def test_agent_debug_uses_matching_draft(

@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import Any, Literal, NotRequired, Protocol, TypedDict, cast
 
 import json_repair
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import ConversationNamed
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -26,9 +28,6 @@ from core.llm_generator.prompts import (
 )
 from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance, ModelManager
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.ops.utils import measure_time
 from core.plugin.impl.base import use_plugin_daemon_request_timeout
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.telemetry import PromptGenerationEvent, TelemetryContext
@@ -40,6 +39,7 @@ from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterType
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.datetime_utils import Timing, measure_time
 from models import App, Message, WorkflowNodeExecutionModel
 from models.workflow import Workflow
 
@@ -195,7 +195,7 @@ class LLMGenerator:
         generated_output: str,
         model_provider: str,
         model_name: str,
-        timer: dict,
+        timer: Timing,
         result: LLMResult | None = None,
         error: str | None = None,
     ) -> None:
@@ -219,11 +219,12 @@ class LLMGenerator:
                         "prompt_tokens": usage.prompt_tokens if usage else 0,
                         "completion_tokens": usage.completion_tokens if usage else 0,
                         "total_tokens": usage.total_tokens if usage else 0,
-                        "latency": (timer["end"] - timer["start"]).total_seconds() if timer.get("end") else 0.0,
+                        "latency": (timer.ended_at - timer.started_at).total_seconds(),
                         "total_price": float(usage.total_price) if usage and usage.total_price else None,
                         "currency": usage.currency if usage else None,
-                        "timer": timer,
                         "error": error,
+                        "started_at": timer.started_at,
+                        "ended_at": timer.ended_at,
                     },
                 )
             )
@@ -239,6 +240,8 @@ class LLMGenerator:
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        *,
+        trace_scope: TraceScope | None,
     ):
         prompt = CONVERSATION_TITLE_PROMPT
 
@@ -280,19 +283,17 @@ class LLMGenerator:
         if len(name) > 75:
             name = name[:75] + "..."
 
-        # get tracing instance
-        trace_manager = TraceQueueManager(app_id=app_id)
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.GENERATE_NAME_TRACE,
-                conversation_id=conversation_id,
-                message_id=message_id,
-                generate_conversation_name=name,
-                inputs=prompt,
-                timer=timer,
-                tenant_id=tenant_id,
+        if trace_scope is not None:
+            trace_scope.emit(
+                ConversationNamed(
+                    conversation_id=conversation_id,
+                    message_id=message_id,
+                    inputs=prompt,
+                    name=name,
+                    started_at=timer.started_at,
+                    ended_at=timer.ended_at,
+                )
             )
-        )
 
         return name
 

@@ -267,6 +267,7 @@
   "tracing.config": "Налаштувати",
   "tracing.configProvider.clientId": "Ідентифікатор клієнта OAuth",
   "tracing.configProvider.clientSecret": "Секретний ключ клієнта OAuth",
+  "tracing.configProvider.configuredSecretPlaceholder": "Налаштовано. Залиште порожнім, щоб не змінювати збережене значення.",
   "tracing.configProvider.databricksHost": "URL робочого простору Databricks",
   "tracing.configProvider.experimentId": "Ідентифікатор експерименту",
   "tracing.configProvider.password": "Пароль",

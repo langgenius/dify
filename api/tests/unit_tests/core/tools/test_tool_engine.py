@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Any
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import ToolInvoked, TraceCorrelation, TraceEvent
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
@@ -38,6 +41,26 @@ from models.model import AppMode, Message, MessageFile
 @dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     engine: Engine
+
+
+class _Recorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope(recorder: _Recorder) -> TraceScope:
+    return TraceScope(
+        emitter=recorder,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="u1",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
 
 
 def _message() -> Message:
@@ -331,11 +354,59 @@ def test_agent_invoke_success(sqlite_session: Session):
                         message=message,
                         invoke_from=InvokeFrom.DEBUGGER,
                         agent_tool_callback=callback,
+                        trace_scope=None,
                     )
 
     assert result_text == "ok"
     assert message_files == []
     assert result_meta.error is None
+
+
+def test_agent_invoke_emits_tool_invoked_from_meta(
+    sqlite_engine: Engine, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tool = _build_tool(with_llm_parameter=True)
+    message = _message()
+    meta = ToolInvokeMeta(
+        time_cost=1.25,
+        error="partial failure",
+        tool_config={"tool_name": "tool-a", "tool_provider": "provider-a", "tool_parameters": {"rt": 1}},
+    )
+    recorder = _Recorder()
+    monkeypatch.setattr(
+        ToolEngine, "_invoke", staticmethod(lambda *_args: iter([tool.create_text_message("ok"), meta]))
+    )
+    monkeypatch.setattr("core.tools.tool_engine.db", _DatabaseBinding(sqlite_engine))
+
+    ToolEngine.agent_invoke(
+        session=sqlite_session,
+        tool=tool,
+        tool_parameters="hello",
+        user_id="u1",
+        tenant_id="tenant-1",
+        message=message,
+        invoke_from=InvokeFrom.DEBUGGER,
+        agent_tool_callback=DifyAgentCallbackHandler(),
+        trace_scope=_trace_scope(recorder),
+    )
+
+    [event] = recorder.events
+    payload = event.payload
+    assert isinstance(payload, ToolInvoked)
+    assert payload == ToolInvoked(
+        message_id=message.id,
+        tool_name="tool-a",
+        tool_inputs={"query": "hello"},
+        tool_outputs="ok",
+        tool_config={"tool_name": "tool-a", "tool_provider": "provider-a", "tool_parameters": {"rt": 1}},
+        error="partial failure",
+        time_cost=1.25,
+        started_at=payload.started_at,
+        ended_at=payload.ended_at,
+    )
+    assert payload.started_at.utcoffset() == timedelta(0)
+    assert payload.ended_at.utcoffset() == timedelta(0)
+    assert payload.ended_at >= payload.started_at
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
@@ -354,6 +425,7 @@ def test_agent_invoke_param_validation_error(sqlite_session: Session):
             message=message,
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
+            trace_scope=None,
         )
 
     assert "tool parameters validation error" in error_text
@@ -378,6 +450,7 @@ def test_agent_invoke_engine_meta_error(sqlite_session: Session):
             message=message,
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
+            trace_scope=None,
         )
 
     assert "meta failure" in error_text
@@ -423,6 +496,7 @@ def test_agent_invoke_tool_invoke_error(sqlite_session: Session):
             message=message,
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
+            trace_scope=None,
         )
 
     assert "tool invoke error" in error_text

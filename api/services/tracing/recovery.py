@@ -8,22 +8,24 @@ Message is complete. Recovery never invents answers, usage, or success states.
 import json
 import logging
 import math
-from datetime import datetime, timedelta
-from typing import Protocol, cast
+from datetime import UTC, datetime, timedelta
+from typing import Protocol
+from uuid import uuid4
 
+from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent, TracePayload, WorkflowRunCompleted
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from configs import dify_config
-from core.ops.entities.trace_entity import BaseTraceInfo, MessageTraceInfo, TraceTaskName, WorkflowTraceInfo
-from core.ops.ops_trace_manager import TraceTask
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.application_trace import ApplicationTraceInvocation, ApplicationTraceRun
 from models.enums import MessageStatus
-from models.model import App, AppMode, Conversation, Message, MessageDict
+from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowRun
 from repositories.application_trace_repository import ApplicationTraceRepository, TraceCollectionError
+from services.tracing.assembly import SourceNotFoundError, SourceNotReadyError, TraceAssembler
+from services.tracing.records import BaseTraceInfo, MessageTraceInfo, WorkflowTraceInfo
 
 logger = logging.getLogger(__name__)
 _SETTLE_SECONDS = 5
@@ -37,6 +39,9 @@ _WORKFLOW_TERMINAL = {
 
 class RecoveryTarget(Protocol):
     repository: ApplicationTraceRepository
+
+    @property
+    def assembler(self) -> TraceAssembler: ...
 
     def capture_terminal(self, info: BaseTraceInfo) -> bool: ...
 
@@ -72,7 +77,24 @@ def _complete_message_metadata(message: Message) -> bool:
     return isinstance(latency, (int, float)) and math.isfinite(latency) and latency >= 0
 
 
-def _message_task(repository: ApplicationTraceRepository, run: ApplicationTraceRun, now: datetime) -> TraceTask | None:
+def _event(run: ApplicationTraceRun, payload: TracePayload, user_id: str | None) -> TraceEvent:
+    return TraceEvent(
+        event_id=uuid4().hex,
+        tenant_id=run.tenant_id,
+        app_id=run.app_id,
+        user_id=user_id,
+        occurred_at=datetime.now(UTC),
+        correlation=TraceCorrelation(
+            external_trace_id=None,
+            session_id=run.session_id,
+            parent_workflow_run_id=None,
+            parent_node_execution_id=None,
+        ),
+        payload=payload,
+    )
+
+
+def _message_task(repository: ApplicationTraceRepository, run: ApplicationTraceRun, now: datetime) -> TraceEvent | None:
     with repository.sessions() as session:
         source = session.execute(
             select(Message, App.mode)
@@ -123,15 +145,12 @@ def _message_task(repository: ApplicationTraceRepository, run: ApplicationTraceR
             if finalized and max(finalized) + timedelta(seconds=dify_config.OPS_AGENT_TRACE_COLLECTION_TIMEOUT) < now:
                 raise TraceCollectionError("business_terminal_not_persisted")
             return None
-        return TraceTask(
-            TraceTaskName.MESSAGE_TRACE,
-            message_id=message.id,
-            conversation_id=message.conversation_id,
-            trace_session_id=run.session_id,
-        )
+        return _event(run, MessageCompleted(message_id=message.id, conversation_id=message.conversation_id), None)
 
 
-def _workflow_task(repository: ApplicationTraceRepository, run: ApplicationTraceRun, now: datetime) -> TraceTask | None:
+def _workflow_task(
+    repository: ApplicationTraceRepository, run: ApplicationTraceRun, now: datetime
+) -> TraceEvent | None:
     workflow = repository._source(tenant_id=run.tenant_id, app_id=run.app_id, kind="workflow", source_id=run.source_id)
     # An asynchronous workflow repository may not have saved the reserved run yet.
     if (
@@ -151,12 +170,10 @@ def _workflow_task(repository: ApplicationTraceRepository, run: ApplicationTrace
             )
             .limit(1)
         )
-        return TraceTask(
-            TraceTaskName.WORKFLOW_TRACE,
-            workflow_run_id=workflow.id,
-            conversation_id=conversation_id,
-            trace_session_id=run.session_id,
-            user_id=workflow.created_by,
+        return _event(
+            run,
+            WorkflowRunCompleted(workflow_run_id=workflow.id, conversation_id=conversation_id, total_tokens=None),
+            workflow.created_by,
         )
 
 
@@ -170,16 +187,17 @@ def recover_terminal(target: RecoveryTarget, run: ApplicationTraceRun) -> bool:
         return False
     error_code: str | None = None
     try:
-        task = (_message_task if run.source_kind == "message" else _workflow_task)(
+        event = (_message_task if run.source_kind == "message" else _workflow_task)(
             target.repository, run, naive_utc_now()
         )
-        if task is None:
+        if event is None:
             return False
-        info = task.execute()
-        if isinstance(info, MessageTraceInfo) and isinstance(info.message_data, dict):
-            info = info.model_copy(update={"message_data": Message.from_dict(cast(MessageDict, info.message_data))})
-        if isinstance(info, WorkflowTraceInfo) and isinstance(info.workflow_data, dict):
-            info = info.model_copy(update={"workflow_data": WorkflowRun.from_dict(info.workflow_data)})
+        try:
+            info = target.assembler.assemble(event)
+        except SourceNotReadyError:
+            return False
+        except SourceNotFoundError:
+            raise TraceCollectionError("business_terminal_recovery_incomplete") from None
         if not isinstance(info, (MessageTraceInfo, WorkflowTraceInfo)):
             raise TraceCollectionError("business_terminal_recovery_incomplete")
         if not target.capture_terminal(info):

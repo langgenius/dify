@@ -267,6 +267,7 @@
   "tracing.config": "Konfigurasi",
   "tracing.configProvider.clientId": "ID Klien OAuth",
   "tracing.configProvider.clientSecret": "Rahasia Klien OAuth",
+  "tracing.configProvider.configuredSecretPlaceholder": "Dikonfigurasi. Kosongkan untuk mempertahankan nilai yang tersimpan.",
   "tracing.configProvider.databricksHost": "URL Workspace Databricks",
   "tracing.configProvider.experimentId": "ID Eksperimen",
   "tracing.configProvider.password": "Kata sandi",

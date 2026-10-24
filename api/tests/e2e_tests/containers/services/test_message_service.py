@@ -1,6 +1,10 @@
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from unittest.mock import ANY, patch
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import SuggestedQuestionsGenerated, TraceCorrelation, TraceEvent
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -17,19 +21,50 @@ from services.message_service import MessageService
 from tests.e2e_tests.containers.helpers import generate_valid_password
 
 
+@dataclass
+class _TraceRecorder:
+    events: list[TraceEvent] = field(default_factory=list)
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+    def suggested_questions(self) -> list[list[str]]:
+        questions: list[list[str]] = []
+        for event in self.events:
+            assert isinstance(event.payload, SuggestedQuestionsGenerated)
+            questions.append(event.payload.questions)
+        return questions
+
+
 class TestMessageService:
     """Integration tests for MessageService using testcontainers."""
 
     @pytest.fixture
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
+        recorder = _TraceRecorder()
+
+        def trace_scope(
+            *, tenant_id: str, app_id: str | None, user_id: str | None, extras: Mapping[str, object]
+        ) -> TraceScope:
+            assert extras == {}
+            return TraceScope(
+                emitter=recorder,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                user_id=user_id,
+                correlation=TraceCorrelation(
+                    external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+                ),
+            )
+
         with (
             patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service,
             patch("services.message_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.message_service.WorkflowService") as mock_workflow_service,
             patch("services.message_service.AdvancedChatAppConfigManager") as mock_app_config_manager,
             patch("services.message_service.LLMGenerator") as mock_llm_generator,
-            patch("services.message_service.TraceQueueManager") as mock_trace_manager_class,
+            patch("services.message_service.create_trace_scope_for_app", trace_scope),
             patch("services.message_service.TokenBufferMemory") as mock_token_buffer_memory,
         ):
             # Setup default mock returns
@@ -52,9 +87,6 @@ class TestMessageService:
             # Mock LLMGenerator
             mock_llm_generator.generate_suggested_questions_after_answer.return_value = ["Question 1", "Question 2"]
 
-            # Mock TraceQueueManager
-            mock_trace_manager_instance = mock_trace_manager_class.return_value
-
             # Mock TokenBufferMemory
             mock_memory_instance = mock_token_buffer_memory.return_value
             mock_memory_instance.get_history_prompt_text.return_value = "Mocked history prompt"
@@ -65,8 +97,7 @@ class TestMessageService:
                 "workflow_service": mock_workflow_service,
                 "app_config_manager": mock_app_config_manager,
                 "llm_generator": mock_llm_generator,
-                "trace_manager_class": mock_trace_manager_class,
-                "trace_manager_instance": mock_trace_manager_instance,
+                "trace_recorder": recorder,
                 "token_buffer_memory": mock_token_buffer_memory,
                 # "current_user": mock_current_user,
             }
@@ -754,8 +785,7 @@ class TestMessageService:
             "llm_generator"
         ].generate_suggested_questions_after_answer.assert_called_once()
 
-        # Verify TraceQueueManager was called
-        mock_external_service_dependencies["trace_manager_instance"].add_trace_task.assert_called_once()
+        assert mock_external_service_dependencies["trace_recorder"].suggested_questions() == [mock_questions]
 
     def test_get_suggested_questions_after_answer_no_user(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -880,5 +910,4 @@ class TestMessageService:
             app_model=app, session=ANY
         )
 
-        # Verify TraceQueueManager was called
-        mock_external_service_dependencies["trace_manager_instance"].add_trace_task.assert_called_once()
+        assert mock_external_service_dependencies["trace_recorder"].suggested_questions() == [mock_questions]

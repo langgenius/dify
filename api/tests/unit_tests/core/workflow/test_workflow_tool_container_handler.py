@@ -1752,6 +1752,7 @@ class TestWorkflowToolEventDeliveryCases:
                 app_id="outer-app",
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             ),
+            trace_scope=None,
         )
         index = WorkflowRunIndex(())
         index.seed_source(source.app_id, source.workflow_id, ())

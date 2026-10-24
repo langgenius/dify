@@ -15,6 +15,7 @@ from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
 from sqlalchemy import asc, desc, event
 from sqlalchemy.orm import Session
 
@@ -420,7 +421,10 @@ def test_legacy_auto_generate_name_preserves_metadata_and_persists_success_or_or
     sqlite_session.commit()
     calls: list[tuple[str, str, str, str, dict[str, object]]] = []
 
-    def generate(tenant_id: str, query: str, conversation_id: str, app_id: str) -> str:
+    def generate(
+        tenant_id: str, query: str, conversation_id: str, app_id: str, *, trace_scope: TraceScope | None
+    ) -> str:
+        assert trace_scope is None
         calls.append((tenant_id, query, conversation_id, app_id, dict(get_credit_usage_metadata() or {})))
         if naming_fails:
             raise RuntimeError("Provider unavailable")

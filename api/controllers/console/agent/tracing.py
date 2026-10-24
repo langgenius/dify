@@ -49,6 +49,7 @@ from services.app_tracing_config_service import (
     AppTracingConfigProviderUnavailableError,
     AppTracingConfigVerificationFailedError,
 )
+from services.tracing.provider_configs import capabilities_payload
 
 _EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
 
@@ -206,13 +207,13 @@ class AgentTraceConfigApi(Resource):
 
 
 def _provider_capabilities():
-    from services.tracing.provider_dispatch import provider_capabilities
-
     query = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))
     try:
-        capabilities = provider_capabilities(query.tracing_provider)
-    except ValueError as error:
+        capabilities = capabilities_payload(query.tracing_provider)
+    except AppTracingConfigInvalidProviderError as error:
         raise UnsupportedTracingProviderError() from error
+    except AppTracingConfigProviderUnavailableError as error:
+        raise TracingProviderUnavailableError() from error
     return dump_response(
         TraceProviderCapabilitiesResponse,
         {**capabilities, "api_collection_enabled": dify_config.OPS_AGENT_TRACE_ENABLED},
@@ -221,7 +222,7 @@ def _provider_capabilities():
 
 @console_ns.route("/agent/<uuid:agent_id>/trace-capabilities")
 class AgentTraceCapabilitiesApi(Resource):
-    @error_responses(UnsupportedTracingProviderError)
+    @error_responses(TracingProviderUnavailableError, UnsupportedTracingProviderError)
     @console_ns.doc("get_agent_trace_capabilities", params=query_params_from_model(TraceProviderQuery))
     @console_ns.response(
         200, "Provider support declarations", console_ns.models[TraceProviderCapabilitiesResponse.__name__]
@@ -234,7 +235,7 @@ class AgentTraceCapabilitiesApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/trace-capabilities")
 class AppTraceCapabilitiesApi(Resource):
-    @error_responses(UnsupportedTracingProviderError)
+    @error_responses(TracingProviderUnavailableError, UnsupportedTracingProviderError)
     @console_ns.doc("get_app_trace_capabilities", params=query_params_from_model(TraceProviderQuery))
     @console_ns.response(
         200, "Provider support declarations", console_ns.models[TraceProviderCapabilitiesResponse.__name__]

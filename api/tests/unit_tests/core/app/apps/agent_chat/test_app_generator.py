@@ -5,6 +5,8 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -19,7 +21,6 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.file_access import get_current_file_access_scope
-from core.ops.ops_trace_manager import TraceQueueManager
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
@@ -45,6 +46,26 @@ class CallRecorder[T]:
         return self.result
 
 
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_TraceRecorder(),
+        tenant_id="tenant",
+        app_id="app1",
+        user_id="user",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id="session-1", parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
 def _app() -> App:
     return App(
         id="app1",
@@ -68,13 +89,10 @@ def generator(
     agent_runtime_app: Flask,
     agent_queue_manager: MessageBasedAppQueueManager,
     agent_records: tuple[Conversation, Message],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> AgentChatAppGenerator:
     assert agent_runtime_app.name
     assert agent_queue_manager is not None
     assert agent_records[0].id == "conv"
-    # Keep trace configuration lookup and initialization real, but do not schedule background timers.
-    monkeypatch.setattr(TraceQueueManager, "start_timer", lambda _manager: None)
     return AgentChatAppGenerator(execution_driver=WorkflowRunAgg.run)
 
 
@@ -226,6 +244,9 @@ class TestAgentChatAppGeneratorGenerate:
             "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateResponseConverter.convert",
             CallRecorder({"result": "ok"}),
         )
+        trace_scope = _trace_scope()
+        create_trace_scope = CallRecorder(trace_scope)
+        monkeypatch.setattr("core.app.apps.agent_chat.app_generator.create_trace_scope", create_trace_scope)
 
         args = {
             "query": "hello",
@@ -259,10 +280,20 @@ class TestAgentChatAppGeneratorGenerate:
         assert len(runner_calls) == 1
         entity = runner_calls[0]["application_generate_entity"]
         assert isinstance(entity, AgentChatAppGenerateEntity)
-        assert entity.extras["trace_session_id"] == "session-1"
-        assert type(entity.trace_manager) is TraceQueueManager
-        assert entity.trace_manager.trace_instance is None
-        assert entity.trace_manager.app_id == "app1"
+        assert entity.extras == {"auto_generate_conversation_name": True, "trace_session_id": "session-1"}
+        assert entity.trace_scope is trace_scope
+        assert create_trace_scope.calls == [
+            RecordedCall(
+                args=(),
+                kwargs={
+                    "tenant_id": "tenant",
+                    "app_id": "app1",
+                    "app_tracing": None,
+                    "user_id": "user",
+                    "extras": entity.extras,
+                },
+            )
+        ]
         assert type(runner_calls[0]["queue_manager"]) is MessageBasedAppQueueManager
         conversation = runner_calls[0]["conversation"]
         message = runner_calls[0]["message"]

@@ -1,4 +1,4 @@
-"""Fail-open business hooks and durable terminal handoff for application tracing.
+"""Fail-open execution hooks that start Agent trace collection.
 
 The deployment gate is checked before constructing any database-backed service.
 Execution context carries opaque correlation and policy only, never provider keys.
@@ -18,7 +18,6 @@ from configs import dify_config
 if TYPE_CHECKING:
     from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
     from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-    from core.ops.entities.trace_entity import BaseTraceInfo
     from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
     from services.tracing.service import ApplicationTracingService
 
@@ -158,40 +157,6 @@ def freeze_workflow_run(
         _log_failure("workflow_start", error)
 
 
-def queue_enabled_at_start(app_id: object) -> bool:
-    """Read the existing application switch without constructing a vendor SDK."""
-    if not dify_config.OPS_AGENT_TRACE_ENABLED or app_id is None:
-        return False
-    from extensions.ext_database import db
-    from models.model import App
-
-    try:
-        app = db.session.get(App, str(app_id))
-        policy = json.loads(app.tracing) if app is not None and app.tracing else {}
-        return isinstance(policy, dict) and policy.get("enabled") is True
-    except Exception as error:
-        _log_failure("queue_policy", error)
-        return False
-
-
-def capture_terminal(info: BaseTraceInfo) -> bool:
-    """Transfer ownership before legacy dispatch; transient DB failures retry.
-
-    Unlike request construction, a worker must not fall back to a second export
-    path when the durable collector is temporarily inaccessible.
-    """
-    if not dify_config.OPS_AGENT_TRACE_ENABLED:
-        return False
-    from sqlalchemy.exc import SQLAlchemyError
-
-    from core.ops.exceptions import RetryableTraceDispatchError
-
-    try:
-        return _service().capture_terminal(info)
-    except SQLAlchemyError:
-        raise RetryableTraceDispatchError("Application tracing persistence temporarily unavailable") from None
-
-
 class RuntimeApplicationTracingHooks:
     """Stateless app-scoped adapter; database services are created only on invocation."""
 
@@ -200,6 +165,4 @@ class RuntimeApplicationTracingHooks:
     prepare_agent_app = staticmethod(prepare_agent_app)
     prepare_workflow_agent = staticmethod(prepare_workflow_agent)
     freeze_workflow_run = staticmethod(freeze_workflow_run)
-    queue_enabled_at_start = staticmethod(queue_enabled_at_start)
-    capture_terminal = staticmethod(capture_terminal)
     capture_agent_app_terminal = staticmethod(capture_agent_app_terminal)

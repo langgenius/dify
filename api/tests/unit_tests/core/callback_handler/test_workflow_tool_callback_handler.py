@@ -206,25 +206,3 @@ class TestDifyWorkflowCallbackHandler:
 
         # Ensure first two prints happened before failure
         assert mock_print_text.call_count >= 2
-
-    def test_on_tool_execution_none_message_id_and_trace_manager(
-        self, handler: DifyWorkflowCallbackHandler, mock_print_text, enable_debug
-    ):
-        # Arrange
-        tool_name = "optional_params_tool"
-        message = DummyToolInvokeMessage('{"data": "ok"}')
-
-        # Act
-        results = list(
-            handler.on_tool_execution(
-                tool_name=tool_name,
-                tool_inputs={},
-                tool_outputs=[message],
-                message_id=None,
-                timer=None,
-                trace_manager=None,
-            )
-        )
-
-        assert results == [message]
-        assert mock_print_text.call_count == 4

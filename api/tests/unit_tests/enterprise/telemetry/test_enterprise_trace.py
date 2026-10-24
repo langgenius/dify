@@ -10,7 +10,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.ops.entities.trace_entity import (
+from enterprise.telemetry.enterprise_trace import EnterpriseOtelTrace
+from enterprise.telemetry.entities import (
+    EnterpriseTelemetryCounter,
+    EnterpriseTelemetryEvent,
+    EnterpriseTelemetryHistogram,
+    EnterpriseTelemetrySpan,
+)
+from models.workflow import WorkflowRun
+from services.tracing.records import (
     DatasetRetrievalTraceInfo,
     DraftNodeExecutionTrace,
     GenerateNameTraceInfo,
@@ -22,13 +30,7 @@ from core.ops.entities.trace_entity import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
-from enterprise.telemetry.enterprise_trace import EnterpriseOtelTrace
-from enterprise.telemetry.entities import (
-    EnterpriseTelemetryCounter,
-    EnterpriseTelemetryEvent,
-    EnterpriseTelemetryHistogram,
-    EnterpriseTelemetrySpan,
-)
+from tests.helpers.unit.model_factories import make_message
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -61,6 +63,13 @@ _T1 = datetime(2024, 1, 10, 12, 0, 5, tzinfo=UTC)
 
 def make_workflow_info(**overrides) -> WorkflowTraceInfo:
     defaults: dict[str, Any] = {
+        "workflow_data": WorkflowRun(id="run-001", created_at=_T0, finished_at=_T1),
+        "node_executions": [],
+        "conversation_id": None,
+        "message_started_at": None,
+        "workflow_app_log_id": None,
+        "error": None,
+        "invoked_by": None,
         "workflow_id": "wf-001",
         "tenant_id": "tenant-abc",
         "workflow_run_id": "run-001",
@@ -141,6 +150,12 @@ def make_draft_node_info(**overrides) -> DraftNodeExecutionTrace:
 def make_message_info(**overrides) -> MessageTraceInfo:
     defaults: dict[str, Any] = {
         "message_id": "msg-001",
+        "message_data": make_message(message_id="msg-001", app_id="app-001"),
+        "error": None,
+        "file_list": [],
+        "gen_ai_server_time_to_first_token": None,
+        "llm_streaming_time_to_generate": None,
+        "is_streaming_request": False,
         "conversation_model": "gpt-4",
         "message_tokens": 40,
         "answer_tokens": 60,
@@ -172,6 +187,8 @@ def make_tool_info(**overrides) -> ToolTraceInfo:
         "tool_config": {"max_results": 5},
         "tool_parameters": {"verbose": True},
         "time_cost": 1.5,
+        "error": None,
+        "file_url": None,
         "metadata": {"app_id": "app-001", "tenant_id": "tenant-abc"},
     }
     defaults.update(overrides)
@@ -198,6 +215,12 @@ def make_suggested_question_info(**overrides) -> SuggestedQuestionTraceInfo:
         "suggested_question": ["Question A?", "Question B?"],
         "level": "info",
         "status": "succeeded",
+        "status_message": None,
+        "error": None,
+        "from_account_id": None,
+        "agent_based": False,
+        "from_source": "api",
+        "workflow_run_id": None,
         "model_provider": "openai",
         "model_id": "gpt-3.5-turbo",
         "start_time": _T0,
@@ -223,6 +246,7 @@ def make_dataset_retrieval_info(**overrides) -> DatasetRetrievalTraceInfo:
             }
         ],
         "inputs": "search query",
+        "error": None,
         "metadata": {
             "app_id": "app-001",
             "tenant_id": "tenant-abc",
@@ -266,6 +290,9 @@ def make_prompt_generation_info(**overrides) -> PromptGenerationTraceInfo:
         "model_provider": "openai",
         "model_name": "gpt-4",
         "latency": 3.2,
+        "total_price": None,
+        "currency": None,
+        "error": None,
         "metadata": {"app_id": "app-001", "tenant_id": "tenant-abc"},
     }
     defaults.update(overrides)
