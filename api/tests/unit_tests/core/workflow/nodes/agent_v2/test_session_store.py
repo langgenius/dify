@@ -565,6 +565,40 @@ def test_load_existing_scope_waits_for_caller_row_to_become_visible(
     assert sleep_count == 2
 
 
+def test_load_execution_refreshes_snapshot_between_visibility_retries(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    sleep_calls = 0
+    rollbacks: list[Session] = []
+
+    def make_caller_visible(_seconds: float) -> None:
+        nonlocal sleep_calls
+        sleep_calls += 1
+        if sleep_calls == 1:
+            with sqlite_session_factory() as observer:
+                observer.add(_execution_row())
+                observer.commit()
+
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.time.sleep", make_caller_visible)
+
+    with sqlite_session_factory() as session:
+        event.listen(session, "after_rollback", lambda rolled_back_session: rollbacks.append(rolled_back_session))
+        loaded = WorkflowAgentWorkspaceStore._load_execution_by_identity(
+            session=session,
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            node_execution_id="execution-1",
+        )
+
+    assert loaded.id == "execution-1"
+    assert len(rollbacks) == 1
+    assert sleep_calls == 1
+
+
 def test_save_snapshot_targets_binding(sqlite_session: Session) -> None:
     binding = _binding_row()
     sqlite_session.add_all([_workspace_row(), binding])
