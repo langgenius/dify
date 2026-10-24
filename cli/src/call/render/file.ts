@@ -45,13 +45,12 @@ function filenameFromContentDisposition(value: string | null): string | undefine
     try {
       const decoded = decodeURIComponent(extended.trim())
       // An extended filename is a name, never a directory supplied by the server.
+      const name = baseName(decoded)
       if (
-        decoded !== '' &&
-        decoded !== '.' &&
-        decoded !== '..' &&
-        !/[\\/\u0000-\u001F\u007F]/.test(decoded)
+        name !== undefined &&
+        !/[\\/\u0000-\u001F\u007F\u202A-\u202E\u2066-\u2069]/.test(decoded)
       )
-        return decoded
+        return name
     } catch {
       // Invalid percent escapes or UTF-8 fall back to the ordinary filename.
     }
