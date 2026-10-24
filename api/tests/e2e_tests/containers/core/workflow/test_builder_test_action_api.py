@@ -16,13 +16,15 @@ from controllers.console.dify_builder_fields import (
 )
 from core.dify_builder.models import Actor, DifyBuilderContext
 from core.dify_builder.state import PcState
-from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderSessionCommit
+from models.dify_builder import DifyBuilderExecutionRequest
 from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
 from services.dify_builder.repository import SqlDifyBuilderRepository
-from services.dify_builder.serde import context_to_dict
 from services.dify_builder.service import DifyBuilderService
 from services.dify_builder.test_actions import BuilderTestActions
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import RuntimeDeliveryCase
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    RuntimeDeliveryCase,
+    advance_builder_context,
+)
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api import (
     ConsoleCase,
 )
@@ -71,19 +73,9 @@ def action_console(pending_console: ConsoleCase, monkeypatch: pytest.MonkeyPatch
         assert request is not None
         sid, input_id = request.session_id, request.test_input_id
     repo = SqlDifyBuilderRepository(c.factory)
-    with c.factory.begin() as sql:
-        owner = sql.get(DifyBuilderSession, sid)
-        assert owner is not None
-        owner.current_state = str(PcState.BUILD_AWAIT_REPAIR)
-        sql.add(
-            DifyBuilderSessionCommit(
-                session_id=sid,
-                version=owner.version,
-                state=str(PcState.BUILD_AWAIT_REPAIR),
-                actor="",
-                context=context_to_dict(DifyBuilderContext(test_input_ref=input_id)),
-            )
-        )
+    advance_builder_context(
+        c.factory, sid, state=PcState.BUILD_AWAIT_REPAIR, context=DifyBuilderContext(test_input_ref=input_id)
+    )
 
     def native_commands(*, actor: Actor) -> ProfiledNativeTestCommands:
         return ProfiledNativeTestCommands(
