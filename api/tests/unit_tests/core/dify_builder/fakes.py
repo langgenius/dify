@@ -115,6 +115,7 @@ class InMemoryRepository(Repository):
         self._lock = threading.Lock()
         self._sessions: dict[str, Session] = {}
         self._contexts: dict[str, DifyBuilderContext] = {}
+        self._history: dict[tuple[str, int], tuple[Session, DifyBuilderContext]] = {}
         self._commits: dict[str, list[int]] = {}
         self._checkpoints: dict[str, Checkpoint] = {}
         self._snapshots: dict[str, Snapshot] = {}
@@ -147,6 +148,7 @@ class InMemoryRepository(Repository):
 
             self._sessions[session.id] = copy.deepcopy(session)
             self._contexts[session.id] = copy.deepcopy(initial_fc)
+            self._history[(session.id, 1)] = (copy.deepcopy(session), copy.deepcopy(initial_fc))
             self._commits[session.id] = [1]
             self._items[session.id] = copy.deepcopy(items)
             self._used_seqs[session.id] = seqs
@@ -158,6 +160,14 @@ class InMemoryRepository(Repository):
             if session is None:
                 raise NotFoundError(f"session {id} not found")
             return copy.deepcopy(session), copy.deepcopy(self._contexts[id])
+
+    @override
+    def get_session_at_version(self, session_id: str, version: int) -> tuple[Session, DifyBuilderContext]:
+        with self._lock:
+            snapshot = self._history.get((session_id, version))
+            if snapshot is None:
+                raise NotFoundError(f"session version {session_id}:{version} not found")
+            return copy.deepcopy(snapshot)
 
     @override
     def compare_and_advance(
@@ -188,6 +198,7 @@ class InMemoryRepository(Repository):
             session.version = new_version
             session.current_state = next
             self._contexts[session_id] = copy.deepcopy(fc)
+            self._history[(session_id, new_version)] = (copy.deepcopy(session), copy.deepcopy(fc))
             self._items.setdefault(session_id, []).extend(copy.deepcopy(items))
             existing_seqs.update(batch_seqs)
             self._commits.setdefault(session_id, []).append(new_version)

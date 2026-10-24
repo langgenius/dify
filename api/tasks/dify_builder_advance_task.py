@@ -409,10 +409,14 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 raise ConflictError(f"stale app revision for app {loaded_session.app_id}")
         from services.dify_builder.task_controls import ExecutionFence, execution_scope
 
+        def check_fence() -> None:
+            assert fence is not None
+            require_active(repo, session_id, fence.generation)
+
         fence = ExecutionFence(
             session_id,
             expected_generation,
-            lambda: require_active(repo, session_id, fence.generation),
+            check_fence,
             _fc.task_control.get("dsl", {}),
         )
         with execution_scope(fence):
