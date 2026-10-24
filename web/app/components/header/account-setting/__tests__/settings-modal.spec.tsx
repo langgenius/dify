@@ -142,6 +142,7 @@ it('opens preferences from the URL control, switches real pages, and closes with
   const { onUrlUpdate } = renderSettings(null)
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Open preferences' }))
+  await act(async () => vi.dynamicImportSettled())
   const dialog = await findSettings()
   expect(within(dialog).getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
   expect(within(dialog).getByRole('button', { current: 'page' })).toHaveAccessibleName(
@@ -204,6 +205,25 @@ it('opens preferences from the URL control, switches real pages, and closes with
   expect(update?.searchParams.has('settings')).toBe(false)
   expect(update?.searchParams.get('keep')).toBe('value')
   expect(update?.options).toMatchObject({ history: 'replace', shallow: true })
+})
+
+it('opens workspace usage limits from the settings navigation', async () => {
+  const user = userEvent.setup()
+  const { onUrlUpdate } = renderSettings(TAB.MEMBERS, {
+    currentWorkspace: { max_active_requests: 5 },
+  })
+  const dialog = await findSettings()
+
+  await user.click(within(dialog).getByRole('button', { name: 'navigation.settings.usageLimits' }))
+
+  expect(
+    await within(dialog).findByRole('spinbutton', {
+      name: 'common.usageLimits.maxActiveRequests.label',
+    }),
+  ).toHaveValue(5)
+  await waitFor(() =>
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(TAB.USAGE_LIMITS),
+  )
 })
 
 it.each([

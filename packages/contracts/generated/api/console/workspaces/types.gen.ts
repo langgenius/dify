@@ -809,6 +809,15 @@ export type WorkspaceAccessMatrix = {
   pagination?: Pagination | null
 }
 
+export type WorkspaceSettingsPayload = {
+  max_active_requests: number
+}
+
+export type WorkspaceTenantResultResponse = {
+  result: string
+  tenant: TenantInfoResponse
+}
+
 export type SkillListResponse = {
   data?: Array<SkillResponse>
   has_more?: boolean
@@ -1011,6 +1020,7 @@ export type SkillVersionUpdatePayload = {
 export type CurrentWorkspaceSummaryResponse = {
   credits: number | null
   id: string
+  max_active_requests: number
   name: string
   plan: CloudPlan | null
   role: TenantAccountRole
@@ -1400,11 +1410,6 @@ export type WorkspaceCustomConfigResponse = {
 export type WorkspaceCustomConfigPayload = {
   remove_webapp_brand?: boolean | null
   replace_webapp_logo?: string | null
-}
-
-export type WorkspaceTenantResultResponse = {
-  result: string
-  tenant: TenantInfoResponse
 }
 
 export type WorkspaceLogoUploadResponse = {
@@ -1986,6 +1991,23 @@ export type AccessPolicyRole = {
   role_tag?: string
 }
 
+export type TenantInfoResponse = {
+  created_at?: number | null
+  custom_config?: WorkspaceCustomConfigResponse | null
+  id: string
+  in_trial?: boolean | null
+  max_active_requests?: number | null
+  name?: string | null
+  next_credit_reset_date?: number | null
+  plan?: CloudPlan | null
+  role?: string | null
+  status?: string | null
+  trial_credits?: number | null
+  trial_credits_exhausted_at?: number | null
+  trial_credits_used?: number | null
+  trial_end_reason?: string | null
+}
+
 export type SkillFileResponse = {
   content?: string | null
   hash?: string | null
@@ -2240,22 +2262,6 @@ export type TriggerProviderSubscriptionApiEntity = {
   }
   provider: string
   workflows_in_use: number
-}
-
-export type TenantInfoResponse = {
-  created_at?: number | null
-  custom_config?: WorkspaceCustomConfigResponse | null
-  id: string
-  in_trial?: boolean | null
-  name?: string | null
-  next_credit_reset_date?: number | null
-  plan?: CloudPlan | null
-  role?: string | null
-  status?: string | null
-  trial_credits?: number | null
-  trial_credits_exhausted_at?: number | null
-  trial_credits_used?: number | null
-  trial_end_reason?: string | null
 }
 
 export type AgentStrategyProviderIdentity = {
@@ -6935,6 +6941,27 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses = {
 
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse =
   GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses]
+
+export type PostWorkspacesCurrentSettingsData = {
+  body: WorkspaceSettingsPayload
+  path?: never
+  query?: never
+  url: '/workspaces/current/settings'
+}
+
+export type PostWorkspacesCurrentSettingsErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentSettingsError =
+  PostWorkspacesCurrentSettingsErrors[keyof PostWorkspacesCurrentSettingsErrors]
+
+export type PostWorkspacesCurrentSettingsResponses = {
+  200: WorkspaceTenantResultResponse
+}
+
+export type PostWorkspacesCurrentSettingsResponse =
+  PostWorkspacesCurrentSettingsResponses[keyof PostWorkspacesCurrentSettingsResponses]
 
 export type GetWorkspacesCurrentSkillsData = {
   body?: never
