@@ -77,7 +77,7 @@ def test_public_roster_description_is_an_honest_capability_fallback(summary: Non
     assert "PRIVATE" not in repr(asdict(candidate))
 
 
-@pytest.mark.parametrize("phase", ["discovery", "generation"])
+@pytest.mark.parametrize("phase", ["discovery", "discovery_alias", "generation"])
 def test_agent_contract_reaches_planning_without_private_soul_values(
     sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch, phase: str
 ) -> None:
@@ -106,13 +106,14 @@ def test_agent_contract_reaches_planning_without_private_soul_values(
     monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
     payloads = []
-    if phase == "discovery":
+    if phase.startswith("discovery"):
+        selected_id = f"agent:{case.agent.id}" if phase == "discovery_alias" else candidate.resource_id
 
         def recommend(_model: object, **kwargs: object) -> dict[str, object]:
             payloads.append(kwargs["user"])
             return {
-                "resource_ids": [candidate.resource_id],
-                "selection_reasons": {candidate.resource_id: "Its public review capability matches report review."},
+                "resource_ids": [selected_id],
+                "selection_reasons": {selected_id: "Its public review capability matches report review."},
             }
 
         monkeypatch.setattr(build.llm, "invoke_json", recommend)
@@ -120,6 +121,7 @@ def test_agent_contract_reaches_planning_without_private_soul_values(
             object(), case.actor.tenant_id, ["Review the report"], account_id=case.actor.account_id
         )
         assert len(options) == 1
+        assert options[0].id == candidate.resource_id
         assert "public roster description" in options[0].meta
         assert f"Published version {case.snapshot.version}" in options[0].meta
         assert "Reference eligible for this member" in options[0].meta
@@ -379,6 +381,116 @@ def test_agent_reason_cannot_select_an_unchosen_candidate(monkeypatch: pytest.Mo
     )
     assert len(calls) == 1
     assert "Review a contract" in str(calls[0]["user"])
+
+
+# The short identity was observed in Dev reasoning; the snapshot/digest below
+# are a controlled canonical catalog fixture, not a historical final JSON trace.
+_DISCOVERY_AGENT_ALIAS = "agent:01a14c90-9556-7625-bba7-aa36ac56b8a8"
+_DISCOVERY_AGENT_ID = _DISCOVERY_AGENT_ALIAS + ":01234567-89ab-cdef-0123-456789abcdef:" + "a" * 64
+
+
+@pytest.mark.parametrize("full_id_position", ["absent", "first", "last"])
+def test_agent_discovery_returns_current_canonical_identity_and_selected_reason(
+    monkeypatch: pytest.MonkeyPatch, full_id_position: str
+) -> None:
+    from services.dify_builder.agent import build, resources
+
+    ref = resources.ResourceRef(
+        id=_DISCOVERY_AGENT_ID,
+        label="Contract reviewer",
+        meta="Published version 3; actor-scoped reference eligible; runtime authorization unverified.",
+        readiness="missing_config",
+    )
+    inv = resources.TenantResources(models=[], datasets=[], tools=[], agents=[ref])
+    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_args, **_kwargs: inv)
+    selected = [_DISCOVERY_AGENT_ALIAS, _DISCOVERY_AGENT_ALIAS]
+    if full_id_position == "first":
+        selected.insert(0, _DISCOVERY_AGENT_ID)
+    elif full_id_position == "last":
+        selected += [_DISCOVERY_AGENT_ID, _DISCOVERY_AGENT_ALIAS]
+    calls: list[dict[str, object]] = []
+
+    def recommend(_model: object, **kwargs: object) -> dict[str, object]:
+        calls.append(kwargs)
+        return {
+            "resource_ids": selected,
+            "selection_reasons": {
+                _DISCOVERY_AGENT_ALIAS: "  Its declared contract risk review fits the contract analysis.  ",
+                _DISCOVERY_AGENT_ID: "Its canonical selection fits the requested risk review.",
+            },
+        }
+
+    monkeypatch.setattr(build.llm, "invoke_json", recommend)
+
+    options = build.discover_resources(object(), "tenant", ["Review contract risk"], account_id="actor")
+
+    assert len(options) == 1
+    assert options[0].id == _DISCOVERY_AGENT_ID
+    assert options[0].kind == "agent"
+    assert options[0].label == ref.label
+    assert options[0].readiness == "missing_config"
+    reason = (
+        "Its canonical selection fits the requested risk review."
+        if full_id_position != "absent"
+        else "Its declared contract risk review fits the contract analysis."
+    )
+    assert options[0].meta == ref.meta + " Selection rationale (model): " + reason
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    "selected",
+    [
+        "agent:01a14c90-9556-7625-bba7-aa36ac56b8a9",  # Unknown UUID.
+        "agent:Contract reviewer",  # Names are not identities.
+        "agent:01a14c9095567625bba7aa36ac56b8a8",  # No normalized UUID fallback.
+        " " + _DISCOVERY_AGENT_ALIAS,
+        _DISCOVERY_AGENT_ALIAS + ":",
+        _DISCOVERY_AGENT_ALIAS + ":stale-snapshot:" + "a" * 64,
+        _DISCOVERY_AGENT_ALIAS + ":01234567-89ab-cdef-0123-456789abcdef:" + "b" * 64,
+        _DISCOVERY_AGENT_ID + ":extra",
+    ],
+)
+def test_agent_discovery_never_repairs_unknown_malformed_or_stale_full_ids(
+    monkeypatch: pytest.MonkeyPatch, selected: str
+) -> None:
+    from services.dify_builder.agent import build, resources
+
+    inv = resources.TenantResources(
+        models=[], datasets=[], tools=[], agents=[resources.ResourceRef(id=_DISCOVERY_AGENT_ID, label="Reviewer")]
+    )
+    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_args, **_kwargs: inv)
+    monkeypatch.setattr(
+        build.llm,
+        "invoke_json",
+        lambda *_args, **_kwargs: {"resource_ids": [selected], "selection_reasons": {selected: "Review risk"}},
+    )
+
+    assert build.discover_resources(object(), "tenant", ["Review contract risk"], account_id="actor") == []
+
+
+def test_agent_discovery_refuses_ambiguous_short_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    from services.dify_builder.agent import build, resources
+
+    inv = resources.TenantResources(
+        models=[],
+        datasets=[],
+        tools=[],
+        agents=[
+            resources.ResourceRef(id=_DISCOVERY_AGENT_ID, label="First"),
+            resources.ResourceRef(
+                id=_DISCOVERY_AGENT_ALIAS + ":11234567-89ab-cdef-0123-456789abcdef:" + "b" * 64, label="Second"
+            ),
+        ],
+    )
+    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_args, **_kwargs: inv)
+    monkeypatch.setattr(
+        build.llm,
+        "invoke_json",
+        lambda *_args, **_kwargs: {"resource_ids": [_DISCOVERY_AGENT_ALIAS]},
+    )
+
+    assert build.discover_resources(object(), "tenant", ["Review contract risk"], account_id="actor") == []
 
 
 def test_changed_agent_selection_cannot_silently_rebind(monkeypatch: pytest.MonkeyPatch) -> None:
