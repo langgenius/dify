@@ -26,6 +26,7 @@ import { form } from './form/orpc.gen.ts'
 import { init } from './init/orpc.gen.ts'
 import { installedApps } from './installed-apps/orpc.gen.ts'
 import { instructionGenerate } from './instruction-generate/orpc.gen.ts'
+import { knowledgeFs } from './knowledge-fs/orpc.gen.ts'
 import { login } from './login/orpc.gen.ts'
 import { logout } from './logout/orpc.gen.ts'
 import { notification } from './notification/orpc.gen.ts'
@@ -82,6 +83,7 @@ const communityContract = {
   init,
   installedApps,
   instructionGenerate,
+  knowledgeFs,
   login,
   logout,
   notification,

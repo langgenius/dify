@@ -62,7 +62,8 @@ function WorkflowPathLink({ path }: { path: WorkflowPath }) {
 function WorkflowSourceContent({ paths, title }: { paths: WorkflowPath[]; title: string }) {
   return (
     <PopoverContent
-      placement="top-end"
+      side="top"
+      align="end"
       sideOffset={4}
       className="w-max max-w-[min(30rem,calc(100vw-32px))] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]"
     >

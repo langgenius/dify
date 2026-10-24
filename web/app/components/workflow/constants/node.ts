@@ -8,6 +8,7 @@ import humanInputDefault from '@/app/components/workflow/nodes/human-input/defau
 import ifElseDefault from '@/app/components/workflow/nodes/if-else/default'
 import iterationStartDefault from '@/app/components/workflow/nodes/iteration-start/default'
 import iterationDefault from '@/app/components/workflow/nodes/iteration/default'
+import knowledgeRetrievalV2Default from '@/app/components/workflow/nodes/knowledge-retrieval-v2/default'
 import knowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
 import listOperatorDefault from '@/app/components/workflow/nodes/list-operator/default'
 import llmDefault from '@/app/components/workflow/nodes/llm/default'
@@ -23,6 +24,7 @@ import variableAggregatorDefault from '@/app/components/workflow/nodes/variable-
 export const WORKFLOW_COMMON_NODES = [
   llmDefault,
   knowledgeRetrievalDefault,
+  knowledgeRetrievalV2Default,
   agentDefault,
   agentV2Default,
   questionClassifierDefault,

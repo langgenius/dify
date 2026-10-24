@@ -80,10 +80,10 @@ const TreeNode: FC<TreeNodeProps> = ({
     <div>
       <div
         className={cn(
-          'group flex w-full items-center gap-1 rounded-lg py-1.5 pr-2 hover:bg-state-base-hover',
+          'group flex w-full items-center gap-1 rounded-lg py-1.5 pe-2 hover:bg-state-base-hover',
           isSelected ? 'text-text-accent' : 'text-text-secondary',
         )}
-        style={{ paddingLeft: `${8 + level * 16}px` }}
+        style={{ paddingInlineStart: `${8 + level * 16}px` }}
       >
         {hasChildren ? (
           <button
@@ -106,7 +106,7 @@ const TreeNode: FC<TreeNodeProps> = ({
           type="button"
           role="option"
           aria-selected={isSelected}
-          className="flex min-w-0 grow items-center gap-2 text-left"
+          className="flex min-w-0 grow items-center gap-2 text-start"
           onClick={() => onSelect(option.value)}
         >
           {option.icon && <img src={option.icon} alt="" className="h-4 w-4 shrink-0" />}
@@ -209,7 +209,7 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
           <button
             type="button"
             className={cn(
-              'group/dynamic-tree relative flex h-8 w-full grow items-center rounded-lg border-0 bg-components-input-bg-normal pr-10 pl-3 text-left',
+              'group/dynamic-tree relative flex h-8 w-full grow items-center rounded-lg border-0 bg-components-input-bg-normal ps-3 pe-10 text-start',
               'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:outline-hidden',
               'disabled:cursor-not-allowed disabled:bg-components-input-bg-disabled disabled:hover:bg-components-input-bg-disabled',
               'system-sm-regular',
@@ -219,7 +219,7 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
             )}
           >
             <span className="block min-w-0 grow truncate">{triggerLabel}</span>
-            <span className="absolute inset-y-0 right-0 flex items-center pr-2">
+            <span className="absolute inset-y-0 inset-e-0 flex items-center pe-2">
               {isLoading ? (
                 <RiLoader4Line
                   aria-hidden

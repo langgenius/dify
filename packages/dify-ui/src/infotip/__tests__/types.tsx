@@ -23,7 +23,8 @@ export function infotipTypeContracts(
           <InfotipContent
             ref={popupRef}
             aria-label="Details"
-            placement="bottom-start"
+            side="bottom"
+            align="start"
             sideOffset={({ side }) => (side === 'top' ? 4 : 8)}
             className={(state) => (state.open ? 'w-60' : undefined)}
             style={(state) => ({ opacity: state.open ? 1 : 0 })}

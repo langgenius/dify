@@ -7,7 +7,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import {
   createCatalogModelFixture,
   createModelCatalogFixture,
@@ -107,7 +107,7 @@ function setup(quota = { size: 0, limit: 10 }) {
   renderWithConsoleQuery(
     <NuqsTestingAdapter>
       <Annotation appDetail={createAppDetailFixture({ id: 'app-id', mode: 'chat' })} />
-      <AppToastHost />
+      <AppToaster />
     </NuqsTestingAdapter>,
     {
       queryClient,

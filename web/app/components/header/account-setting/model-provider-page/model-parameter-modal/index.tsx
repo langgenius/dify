@@ -31,7 +31,7 @@ import ParameterItem from './parameter-item'
 import PresetsParameter from './presets-parameter'
 import { getSupportedPresetConfig } from './presets-parameter-utils'
 
-export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & {
+export type ModelParameterModalProps = Pick<PopoverContentProps, 'side' | 'align'> & {
   trigger?: ReactElement<ComponentPropsWithRef<'button'>>
   triggerContainerClassName?: string
   popupClassName?: string
@@ -69,7 +69,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   triggerContainerClassName,
   popupClassName,
   modelSelectorPopupClassName,
-  placement,
+  side,
+  align,
   isAdvancedMode,
   modelId,
   provider,
@@ -195,19 +196,20 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         </div>
       )}
       <PopoverContent
-        placement={placement ?? (isInWorkflow ? 'left' : trigger ? 'bottom-end' : 'left-start')}
+        side={side ?? (isInWorkflow ? 'left' : trigger ? 'bottom' : 'left')}
+        align={align ?? (isInWorkflow ? 'center' : trigger ? 'end' : 'start')}
         sideOffset={4}
         className={cn(popupClassName, 'w-100 rounded-2xl')}
       >
         <div className="relative px-3 pt-3.5 pb-1">
-          <PopoverTitle className="pr-8 pl-1 system-xl-semibold text-text-primary">
+          <PopoverTitle className="ps-1 pe-8 system-xl-semibold text-text-primary">
             {t(($) => $['modelProvider.modelSettings'], { ns: 'modelProvider' })}
           </PopoverTitle>
           <PopoverClose
             render={
               <IconButton
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                className="absolute top-2.5 right-2.5"
+                className="absolute inset-e-2.5 top-2.5"
                 size="lg"
                 variant="default"
               >
@@ -288,7 +290,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               : t(($) => $.debugAsMultipleModel, { ns: 'appDebug' })}
             <span
               aria-hidden
-              className="i-custom-vender-line-arrows-arrow-narrow-left size-3 rotate-180"
+              className="i-custom-vender-line-arrows-arrow-narrow-left size-3 rotate-180 rtl:rotate-0"
             />
           </button>
         )}

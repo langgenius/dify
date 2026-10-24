@@ -240,7 +240,7 @@ function ProviderCardActions(props: Props) {
                   className="relative h-5 overflow-visible rounded-[5px] border border-divider-deep px-1.25 system-xs-medium text-text-tertiary"
                 >
                   {hasNewVersion && (
-                    <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
+                    <span className="absolute -inset-e-0.5 -top-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
                   )}
                   <span>{version}</span>
                   {!loadingVersions && (
@@ -254,7 +254,7 @@ function ProviderCardActions(props: Props) {
           ))}
         <DropdownMenuContent
           className="max-h-[min(16rem,var(--available-height))]"
-          placement="bottom-start"
+          align="start"
           aria-labelledby={versionMenuLabelId}
         >
           <DropdownMenuGroup>
@@ -338,7 +338,7 @@ function ProviderCardActions(props: Props) {
         onCheckVersion={handleUpdate}
         onRemove={() => setShowDeleteConfirm(true)}
         detailUrl={detailUrl}
-        placement="bottom-start"
+        align="start"
         destructiveRemove
         showCheckVersion={canUpdatePlugin}
         showRemove={canDeletePlugin}

@@ -213,7 +213,11 @@ def format_document_metadata(
 def document_response_values(document: Document, batch: DocumentReadBatch) -> dict[str, Any]:
     """Build response-only values from a loaded snapshot without database access."""
     file_id = document.data_source_info_dict.get("upload_file_id")
-    process_rule = batch.process_rules.get(document.dataset_process_rule_id)
+    process_rule = (
+        batch.process_rules.get(document.dataset_process_rule_id)
+        if document.dataset_process_rule_id is not None
+        else None
+    )
     if process_rule is not None and process_rule.dataset_id != document.dataset_id:
         process_rule = None
     return {

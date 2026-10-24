@@ -27,9 +27,9 @@ import { getPreviewPanelMaxWidth } from './panel-width'
 const WorkflowPreview = () => {
   const { t } = useTranslation(['common', 'runLog', 'workflow'])
   const panelId = useId()
+  const appId = useAtomValue(editorAppIdAtom)
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
-  const appId = useAtomValue(editorAppIdAtom)
   const isListening = useStore((s) => s.isListening)
   const showInputsPanel = useStore((s) => s.showInputsPanel)
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
@@ -271,6 +271,11 @@ const WorkflowPreview = () => {
               created_by={(workflowRunningData?.result?.created_by as any)?.name}
               steps={workflowRunningData?.result?.total_steps}
               exceptionCounts={workflowRunningData?.result?.exceptions_count}
+              externalTrace={
+                appId && workflowRunningData?.result?.id
+                  ? { appId, kind: 'workflow', workflowRunId: workflowRunningData.result.id }
+                  : undefined
+              }
               onOpenTracingTab={handleOpenTracingTab}
             />
           )}
@@ -282,6 +287,11 @@ const WorkflowPreview = () => {
           {currentTab === 'TRACING' && (
             <TracingPanel
               key={workflowRunningData?.result.id}
+              externalTraceRun={
+                appId && workflowRunningData?.result?.id
+                  ? { appId, workflowRunId: workflowRunningData.result.id }
+                  : undefined
+              }
               className="bg-background-section-burn"
               list={workflowRunningData?.tracing || []}
               workflowRun={
