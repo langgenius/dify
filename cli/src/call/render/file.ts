@@ -48,7 +48,7 @@ function filenameFromContentDisposition(value: string | null): string | undefine
       const name = baseName(decoded)
       if (
         name !== undefined &&
-        !/[\\/\u0000-\u001F\u007F\u202A-\u202E\u2066-\u2069]/.test(decoded)
+        !/[\u0000-\u001F\u007F\u202A-\u202E\u2066-\u2069]/.test(name)
       )
         return name
     } catch {
