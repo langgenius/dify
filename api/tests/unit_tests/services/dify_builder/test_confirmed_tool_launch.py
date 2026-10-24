@@ -124,13 +124,14 @@ class SpyLease:
         self.log: list[tuple[str, str]] = []
         self._on_acquire = on_acquire
 
-    def acquire(self, session_id: str) -> str | None:
+    def acquire(self, session_id: str, *, generation: int | None = None) -> str | None:
         if self._on_acquire is not None:
             self._on_acquire()
         if session_id in self.holder:
             self.log.append(("busy", session_id))
             return None
-        token = str(uuid4())
+        value = str(uuid4())
+        token = f"g{generation}:{value}" if generation is not None else value
         self.holder[session_id] = token
         self.log.append(("acquire", token))
         return token
@@ -139,6 +140,9 @@ class SpyLease:
         self.log.append(("release", token))
         if self.holder.get(session_id) == token:
             del self.holder[session_id]
+
+    def current_owner(self, session_id: str) -> str | None:
+        return self.holder.get(session_id)
 
     def exists(self, session_id: str) -> bool:
         return session_id in self.holder
