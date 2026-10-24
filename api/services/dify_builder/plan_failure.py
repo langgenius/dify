@@ -8,9 +8,10 @@ from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.state import PcState
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import BuilderText, copy_text
-from services.dify_builder.application.handlers_fix import append_assistant, append_card, build_form_fields
+from services.dify_builder.application.handlers_fix import append_assistant, append_card
 from services.dify_builder.application.runner import Env, StepResult
 from services.dify_builder.execution_messages import cognition_failure_message
+from services.dify_builder.resource_grounding import edit_rule_form_fields
 
 
 def edit_planning_failed(
@@ -27,6 +28,7 @@ def edit_planning_failed(
     execution = progress.finish(status="error")
     form_items = []
     if session.current_state == PcState.EDIT_IMPACT_ANALYSIS:
+        rendered_fields = edit_rule_form_fields(context)
         specs = {str(spec["key"]): spec for spec in context.form_fields if isinstance(spec, dict) and spec.get("key")}
         form_fields = [
             replace(
@@ -38,7 +40,7 @@ def edit_planning_failed(
                     and definition.name in specs[form_field.key]
                 },
             )
-            for form_field in build_form_fields(context.form_fields)
+            for form_field in rendered_fields
         ]
         form_items = append_card(
             context,

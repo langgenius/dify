@@ -117,6 +117,93 @@ def test_capability_check_send_edit_goal_advances_to_impact_analysis() -> None:
     assert any(e["event"] == "highlight_edit_target" for e in events)
 
 
+@pytest.mark.parametrize("planning_fails", [False, True])
+def test_sufficient_goal_reaches_plan_gate_or_actionable_retry_without_edit_confirmation(
+    monkeypatch: pytest.MonkeyPatch, planning_fails: bool
+) -> None:
+    from copy import deepcopy
+
+    from services.dify_builder.application.handlers_edit import edit_registry
+
+    goal = "Rename the existing LLM title to 'Support answer'."
+    dify = FakeEditDifyPort()
+    before = deepcopy(dify.graph)
+    env, repo = _new_env(dify=dify)
+    monkeypatch.setattr(
+        env.agent,
+        "analyze_impact",
+        lambda *_args, **_kwargs: {
+            "fields": [],
+            "values": {},
+            "target_node_ids": ["llm"],
+        },
+    )
+    planned_rules = []
+
+    def plan(rules: Graph, _graph: Graph, **_kwargs: object) -> WorkflowPlan | None:
+        planned_rules.append(dict(rules))
+        return None if planning_fails else WorkflowPlan("Rename", "Existing input", "Existing output", ["Rename LLM"])
+
+    monkeypatch.setattr(env.agent, "propose_edit_plan", plan)
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK)
+    runner = Runner(env, edit_registry())
+    out = runner.advance(
+        s.id,
+        Turn(
+            actor=_actor(),
+            action=Action(
+                kind="send_edit_goal",
+                payload={"text": goal},
+                base_version=1,
+            ),
+        ),
+    )
+
+    assert planned_rules == [{"change": goal}]
+    _, fc = repo.get_session(s.id)
+    assert fc.edit_rules == {"change": goal}
+    items = repo.list_conversation(s.id)
+    assert dify.graph == before
+    assert dify.applied == []
+    assert not dify.published
+    assert not fc.verify_run_id
+    if planning_fails:
+        assert out.current_state == PcState.EDIT_IMPACT_ANALYSIS
+        assert not fc.checkpoint_id
+        form = next(item for item in reversed(items) if item.kind == "form")
+        assert form.payload["values"]["change"] == goal
+        assert any(field["key"] == "change" for field in form.payload["fields"])
+        assert not any(item.kind == "plan" for item in items)
+        monkeypatch.setattr(
+            env.agent,
+            "propose_edit_plan",
+            lambda *_args, **_kwargs: WorkflowPlan(
+                "Rename",
+                "Existing input",
+                "Existing output",
+                ["Rename LLM"],
+            ),
+        )
+        recovered = runner.advance(
+            s.id,
+            Turn(
+                actor=_actor(),
+                action=Action(
+                    kind="submit_edit_rules",
+                    base_version=out.version,
+                ),
+            ),
+        )
+        assert recovered.current_state == PcState.EDIT_PLAN_APPROVAL
+    else:
+        assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+        assert fc.checkpoint_id
+        cp, _ = repo.get_checkpoint(fc.checkpoint_id)
+        assert cp.session_id == s.id
+        assert any(item.kind == "plan" for item in items)
+        assert not any(item.kind == "form" for item in items)
+
+
 def test_edit_capability_check_renders_agent_fields() -> None:
     # PlaceholderAgent.analyze_impact returns dynamic fields/values/targets;
     # the form card and fc.form_fields/edit_rules/edit_target_node_ids must
@@ -141,7 +228,7 @@ def test_edit_capability_check_renders_agent_fields() -> None:
     )
     assert result.context is not None
     assert result.context.form_fields[0]["key"] == "tone"
-    assert result.context.edit_rules == {"tone": "formal"}
+    assert result.context.edit_rules == {"change": "formal", "tone": "formal"}
     assert result.context.edit_target_node_ids == ["llm"]
     assert not any(item.kind == "change_set" for item in result.items)
     assistant = next(item for item in result.items if item.kind == "assistant_turn")
