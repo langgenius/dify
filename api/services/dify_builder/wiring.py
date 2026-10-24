@@ -726,7 +726,9 @@ def stream_advance_frames(
                                 "command_finished",
                                 {
                                     **_public_session_view(latest, include_last_command_id=False),
-                                    "command_id": command_id or latest["last_command_id"],
+                                    "command_id": command_id
+                                    if latest.get("_task_paused") and command_id
+                                    else latest.get("last_command_id", ""),
                                 },
                             )
                             return
@@ -751,7 +753,9 @@ def stream_advance_frames(
                                     "command_finished",
                                     {
                                         **_public_session_view(latest, include_last_command_id=False),
-                                        "command_id": command_id or latest.get("last_command_id", ""),
+                                        "command_id": command_id
+                                        if latest.get("_task_paused") and command_id
+                                        else latest.get("last_command_id", ""),
                                     },
                                 )
                                 return
