@@ -5,7 +5,6 @@ from operator import itemgetter
 from unittest.mock import patch
 
 import pytest
-import pytest_mock
 
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Graph, MutationIntent, Session
@@ -176,7 +175,7 @@ def _save_canvas_layout(workflow: Workflow) -> None:
     [(PcState.FIX_AWAIT_APPROVAL, "approve_repair"), (PcState.FIX_AWAIT_VERIFY, "run_verify")],
 )
 def test_actions_accept_canvas_save_after_builder_writes_graph(
-    mocker: pytest_mock.MockerFixture, builder_workflow: Workflow, state: PcState, kind: str
+    builder_workflow: Workflow, state: PcState, kind: str
 ) -> None:
     session = Session(
         id="session-1",
@@ -188,24 +187,18 @@ def test_actions_accept_canvas_save_after_builder_writes_graph(
         version=1,
     )
     repo = InMemoryRepository()
-    mocker.patch.object(
-        repo,
-        "get_session",
-        return_value=(
-            session,
-            DifyBuilderContext(
-                last_snapshot_hash=execution_revision(builder_workflow),
-                staged_repair=[
-                    MutationIntent(
-                        op="set_node_config",
-                        args={"node_id": "code", "path": "code", "value": "def main(): return {'result': 'repaired'}"},
-                    )
-                ]
-                if kind == "approve_repair"
-                else [],
-            ),
-        ),
+    context = DifyBuilderContext(
+        last_snapshot_hash=execution_revision(builder_workflow),
+        staged_repair=[
+            MutationIntent(
+                op="set_node_config",
+                args={"node_id": "code", "path": "code", "value": "def main(): return {'result': 'repaired'}"},
+            )
+        ]
+        if kind == "approve_repair"
+        else [],
     )
+    repo.create_session(session, context, [])
     lock = FakeSessionLock()
     enqueued = []
 
@@ -249,9 +242,7 @@ def test_actions_accept_canvas_save_after_builder_writes_graph(
     assert len(enqueued) == 1
 
 
-def test_chatflow_requirements_accept_canvas_node_reordering(
-    mocker: pytest_mock.MockerFixture,
-) -> None:
+def test_chatflow_requirements_accept_canvas_node_reordering() -> None:
     workflow = Workflow(
         tenant_id="tenant-1",
         graph=json.dumps(_CHATFLOW_STARTER_GRAPH),
@@ -269,14 +260,9 @@ def test_chatflow_requirements_accept_canvas_node_reordering(
         version=2,
     )
     repo = InMemoryRepository()
-    mocker.patch.object(
-        repo,
-        "get_session",
-        return_value=(
-            session,
-            DifyBuilderContext(last_snapshot_hash=execution_revision(workflow)),
-        ),
-    )
+    context = DifyBuilderContext(last_snapshot_hash=execution_revision(workflow))
+    repo.create_session(session, context, [])
+    session.version = repo.compare_and_advance(session.id, session.version, session.current_state, context, [])
     lock = FakeSessionLock()
     enqueued = []
 

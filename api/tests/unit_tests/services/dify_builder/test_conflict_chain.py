@@ -528,9 +528,24 @@ def test_canvas_presentation_survives_the_service_worker_port_and_native_admissi
     monkeypatch.setattr(worker, "WorkflowServiceDifyPort", lambda: port)
     monkeypatch.setattr(worker, "build_dify_builder_agent", lambda **_: StubAgent())
     monkeypatch.setattr(worker.progress_bus, "publish", lambda _sid, event: events.append(event))
-    monkeypatch.setattr(worker.session_lock, "exists", lambda _sid: False)
-    monkeypatch.setattr(worker.session_lock, "acquire", lambda _sid: "queued-token")
-    monkeypatch.setattr(worker.session_lock, "release", lambda _sid, token: released.append(token))
+    owners: dict[str, str] = {}
+
+    def acquire(session_id: str, *, generation: int | None = None) -> str | None:
+        if session_id in owners:
+            return None
+        token = f"g{generation}:queued-token" if generation else "queued-token"
+        owners[session_id] = token
+        return token
+
+    def release(session_id: str, token: str) -> None:
+        released.append(token)
+        if owners.get(session_id) == token:
+            del owners[session_id]
+
+    monkeypatch.setattr(worker.session_lock, "exists", lambda session_id: session_id in owners)
+    monkeypatch.setattr(worker.session_lock, "current_owner", owners.get)
+    monkeypatch.setattr(worker.session_lock, "acquire", acquire)
+    monkeypatch.setattr(worker.session_lock, "release", release)
     monkeypatch.setattr(native, "db", PortDatabase(factory.kw["bind"]))
     monkeypatch.setattr(native.TraceQueueManager, "start_timer", lambda _self: None)
     monkeypatch.setattr("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", lambda _app: None)
