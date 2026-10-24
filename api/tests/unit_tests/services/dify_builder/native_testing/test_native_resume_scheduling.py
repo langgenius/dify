@@ -8,9 +8,10 @@ boundaries. Removing the restored task must fail the physical-call assertion.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from copy import deepcopy
 from datetime import UTC, datetime
-from threading import Thread, current_thread
+from threading import Barrier, Thread, current_thread
 from time import monotonic
 from typing import cast, override
 
@@ -42,7 +43,7 @@ from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointP
 from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
 from services.dify_builder.native_testing.context_runtime import NativeGraphRuntimeState, native_observation_scope
-from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+from services.dify_builder.native_testing.host_execution import HostBoundScalarCalls, NativeHostLaunch
 from services.dify_builder.native_testing.host_lifetime import NativeHostLifetime, NativeHostLifetimeRegistry
 from services.dify_builder.native_testing.http_binding import (
     NativeHttpBindingProducer,
@@ -379,6 +380,26 @@ def test_actual_http_pause_restore_dispatches_same_waiting_intent_once(
         ),
     )
     monkeypatch.setattr(NativeHttpBindingProducer, "_install", lambda *_, **__: None)
+    if kind == "iteration":
+        initial_waits = Barrier(2)
+        original_call = HostBoundScalarCalls.call
+
+        def enter_both_initial_waits(
+            calls: HostBoundScalarCalls,
+            *,
+            ref: NativeTestContextRef,
+            intent: EffectIntent,
+            dispatch: Callable[[DispatchPermit], JsonValue],
+        ) -> JsonValue:
+            if state.context.generation == 0:
+                # Both real HTTP occurrences have prepared inputs/cursor/key.
+                # A first pause may otherwise preempt the sibling before it
+                # reaches this boundary. Wait before the non-reentrant host
+                # admission lock; authorization.before_call holds that lock.
+                initial_waits.wait(timeout=5)
+            return original_call(calls, ref=ref, intent=intent, dispatch=dispatch)
+
+        monkeypatch.setattr(HostBoundScalarCalls, "call", enter_both_initial_waits)
     first = make_host(state, authorization, monkeypatch)
     initial = run_host(first)
     assert isinstance(initial[-1], GraphRunPausedEvent)
