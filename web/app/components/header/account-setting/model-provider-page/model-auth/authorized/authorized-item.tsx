@@ -69,7 +69,7 @@ export const AuthorizedItem = ({
         <div className="flex h-9 items-center px-2">
           {model?.model && (
             <ModelIcon
-              className="mr-1 size-5 shrink-0"
+              className="me-1 size-5 shrink-0"
               provider={provider}
               modelName={model.model}
             />

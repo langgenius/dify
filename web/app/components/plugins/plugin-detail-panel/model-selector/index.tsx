@@ -238,7 +238,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           />
         </div>
         <PopoverContent
-          placement={isInWorkflow ? 'left' : 'bottom-end'}
+          side={isInWorkflow ? 'left' : 'bottom'}
+          align={isInWorkflow ? 'center' : 'end'}
           sideOffset={4}
           className={cn(popupClassName, 'w-97.25 rounded-2xl')}
         >

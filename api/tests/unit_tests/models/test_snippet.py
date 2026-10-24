@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from models import snippet as snippet_module
 from models.account import Account
+from models.base import Base, TypeBase
 from models.enums import TagType
 from models.model import Tag, TagBinding
 from models.snippet import CustomizedSnippet
@@ -17,6 +18,16 @@ APP_ID = "33333333-3333-3333-3333-333333333333"
 SNIPPET_ID = "44444444-4444-4444-4444-444444444444"
 ACCOUNT_1_ID = "55555555-5555-5555-5555-555555555555"
 ACCOUNT_2_ID = "55555555-5555-5555-5555-555555555556"
+
+
+def test_customized_snippet_uses_typebase_registry_and_generates_ids() -> None:
+    snippet = CustomizedSnippet()
+    another_snippet = CustomizedSnippet()
+
+    assert CustomizedSnippet.__mapper__.registry is TypeBase.registry
+    assert CustomizedSnippet.__mapper__.registry is not Base.registry
+    assert snippet.id != another_snippet.id
+    assert CustomizedSnippet(id=SNIPPET_ID).id == SNIPPET_ID
 
 
 def test_get_graph_dict_returns_empty_without_workflow_id(sqlite_session: Session) -> None:

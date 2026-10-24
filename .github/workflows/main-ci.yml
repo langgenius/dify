@@ -126,7 +126,7 @@ jobs:
               - '.github/actions/wait-e2e-web-build/**'
             vdb:
               - 'api/core/rag/datasource/**'
-              - 'api/tests/integration_tests/vdb/**'
+              - 'api/tests/e2e_tests/middleware/vdb/**'
               - 'api/conftest.py'
               - 'api/tests/pytest_dify.py'
               - 'api/providers/vdb/*/tests/**'

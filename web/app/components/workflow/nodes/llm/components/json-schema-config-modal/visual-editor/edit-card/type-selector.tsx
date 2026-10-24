@@ -34,11 +34,11 @@ const TypeSelector: FC<TypeSelectorProps> = ({ items, currentValue, onSelect }) 
         if (selected) onSelect(selected)
       }}
     >
-      <SelectTrigger className="h-auto w-auto rounded-[5px] bg-transparent p-0.5 pl-1 hover:bg-state-base-hover data-popup-open:bg-state-base-hover">
+      <SelectTrigger className="h-auto w-auto rounded-[5px] bg-transparent p-0.5 ps-1 hover:bg-state-base-hover data-popup-open:bg-state-base-hover">
         <SelectValue className="system-xs-medium text-text-tertiary" />
       </SelectTrigger>
       <SelectPortal>
-        <SelectPositioner sideOffset={4}>
+        <SelectPositioner>
           <SelectPopup className="w-40 rounded-xl border-[0.5px] p-1 shadow-lg shadow-shadow-shadow-5">
             <SelectList className="p-0">
               {items.map((item) => (
