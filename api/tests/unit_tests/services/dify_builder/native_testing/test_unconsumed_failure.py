@@ -467,6 +467,8 @@ def test_real_physical_claim_and_terminal_settlement_serialize_on_existing_owner
         "checkpoint_drift",
         "no_resume_event",
         "missing_events",
+        "owner_drift",
+        "continuation_ref_drift",
     ],
 )
 def test_failure_settlement_refuses_ambiguous_or_changed_evidence(
@@ -521,7 +523,7 @@ def test_failure_settlement_refuses_ambiguous_or_changed_evidence(
             ).generation = 0
     if fault == "live_child":
         owner.child_status = "running"
-    elif fault in {"receipt_drift", "generation_drift"}:
+    elif fault in {"receipt_drift", "generation_drift", "owner_drift", "continuation_ref_drift"}:
         original = owner.commands.backend.client.get_events_sync
 
         def mutate_after_read(child: str, *, after: str, limit: int) -> RunEventsResponse:
@@ -529,8 +531,12 @@ def test_failure_settlement_refuses_ambiguous_or_changed_evidence(
             with owner.factory.begin() as sql:
                 if fault == "receipt_drift":
                     _row(sql.get(NativePayloadObject, "association"), NativePayloadObject).storage_key = "replacement"
-                else:
+                elif fault == "generation_drift":
                     _row(sql.get(NativeTestScope, owner.request_id), NativeTestScope).generation = 3
+                elif fault == "owner_drift":
+                    _row(sql.scalar(select(NativeInvocationState)), NativeInvocationState).app_id = "foreign-app"
+                else:
+                    _row(sql.scalar(select(NativeContinuation)), NativeContinuation).payload_ref = "foreign-receipt"
             return events
 
         monkeypatch.setattr(owner.commands.backend.client, "get_events_sync", mutate_after_read)
