@@ -32,7 +32,9 @@ def test_projection_is_published_and_output_contract_is_honest() -> None:
     )
     candidate = project_published_agent(agent=agent, snapshot=snapshot)
     assert candidate.snapshot_id == snapshot.id
-    assert candidate.display_version == 3
+    # A pure snapshot projection has no native visible-history evidence.
+    assert candidate.display_version is None
+    assert candidate.snapshot_version == 3
     assert candidate.description == "Review risk evidence"
     assert candidate.input_schema == {"report": {"type": "string", "required": True}}
     assert candidate.output_schema is None
@@ -444,6 +446,123 @@ def test_missing_tool_credentials_remain_discoverable_with_setup_status(
     assert len(candidates) == 1
     assert candidates[0].readiness == "missing_config"
     assert candidates[0].dependencies == ("model:model-plugin/provider/test-model", "tool:plugin/provider/read")
+
+
+@pytest.mark.parametrize("origin", ["agent_app", "roster", "imported_app", "imported_roster"])
+def test_catalog_public_version_matches_native_visible_history_with_hidden_revisions(
+    sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch, origin: str
+) -> None:
+    from models.agent import AgentConfigRevision, AgentConfigRevisionOperation, AgentSource
+    from services.agent.roster_service import AgentRosterService
+    from services.dify_builder.agent import resources
+    from services.dify_builder.native_testing.agent_catalog import AgentCatalogService, project_published_agent
+    from tests.builder_agent_fixtures import make_case
+
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+    case = make_case(sqlite_session)
+    case.agent.source = (
+        AgentSource.IMPORTED
+        if origin.startswith("imported")
+        else AgentSource.ROSTER
+        if origin == "roster"
+        else AgentSource.AGENT_APP
+    )
+    if origin == "imported_app":
+        case.agent.app_id = case.workflow.app_id
+    initial_revision = sqlite_session.query(AgentConfigRevision).filter_by(agent_id=case.agent.id).one()
+    initial_revision.operation = (
+        AgentConfigRevisionOperation.IMPORT_PACKAGE
+        if origin.startswith("imported")
+        else AgentConfigRevisionOperation.CREATE_VERSION
+        if origin == "roster"
+        else AgentConfigRevisionOperation.PUBLISH_DRAFT
+    )
+    snapshots = {}
+    for number in (2, 3, 4):
+        snapshot = AgentConfigSnapshot(
+            tenant_id=case.actor.tenant_id,
+            agent_id=case.agent.id,
+            version=number,
+            summary="Published risk review",
+            config_snapshot=case.snapshot.config_snapshot,
+        )
+        sqlite_session.add(snapshot)
+        sqlite_session.flush()
+        snapshots[number] = snapshot
+    for revision, snapshot_number, operation in (
+        (2, 2, AgentConfigRevisionOperation.SAVE_CURRENT_VERSION),  # hidden snapshot revision
+        (3, 3, AgentConfigRevisionOperation.SAVE_NEW_VERSION),
+        (4, 3, AgentConfigRevisionOperation.RESTORE_VERSION),  # duplicate visible reference, not a new version
+        (5, 4, AgentConfigRevisionOperation.SAVE_NEW_VERSION),  # newer than the active restored snapshot
+    ):
+        sqlite_session.add(
+            AgentConfigRevision(
+                tenant_id=case.actor.tenant_id,
+                agent_id=case.agent.id,
+                current_snapshot_id=snapshots[snapshot_number].id,
+                revision=revision,
+                operation=operation,
+            )
+        )
+    active = snapshots[3]
+    case.agent.active_config_snapshot_id = active.id
+    sqlite_session.commit()
+    versions = AgentRosterService(sqlite_session).list_agent_versions(
+        tenant_id=case.actor.tenant_id, agent_id=case.agent.id
+    )
+    native_active = next(version for version in versions if version["id"] == active.id)
+    assert native_active["display_version"] == 2
+    assert native_active["snapshot_version"] == 3
+    assert len(versions) == 3
+
+    candidate = AgentCatalogService(sqlite_session).list_candidates(
+        tenant_id=case.actor.tenant_id, actor_id=case.actor.account_id, app_id=None, query=None
+    )[0]
+
+    assert candidate.display_version == native_active["display_version"]
+    assert candidate.snapshot_version == native_active["snapshot_version"]
+    # Display numbering must not change the confirmed snapshot binding/digest.
+    assert candidate.resource_id == project_published_agent(agent=case.agent, snapshot=active).resource_id
+    monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
+    monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
+    ref = resources.list_tenant_resources(case.actor.tenant_id, account_id=case.actor.account_id).agents[0]
+    assert f"Published version 2 (snapshot {active.id})" in ref.meta
+    assert ref.agent_contract is not None
+    assert ref.agent_contract["display_version"] == 2
+    assert ref.agent_contract["snapshot_version"] == 3
+
+
+def test_catalog_without_native_visible_version_labels_only_the_snapshot_revision(
+    sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from models.agent import AgentSource
+    from services.agent.roster_service import AgentRosterService
+    from services.dify_builder.agent import resources
+    from tests.builder_agent_fixtures import make_case
+
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+    case = make_case(sqlite_session)
+    case.agent.source = AgentSource.ROSTER
+    sqlite_session.commit()
+    # Direct roster eligibility is valid even without a user-facing version entry.
+    assert (
+        AgentRosterService(sqlite_session).list_agent_versions(tenant_id=case.actor.tenant_id, agent_id=case.agent.id)
+        == []
+    )
+    monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
+    monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
+
+    ref = resources.list_tenant_resources(case.actor.tenant_id, account_id=case.actor.account_id).agents[0]
+
+    assert f"Snapshot revision 1 (snapshot {case.snapshot.id}); public version unavailable" in ref.meta
+    assert "Published version" not in ref.meta
+    assert ref.agent_contract is not None
+    assert ref.agent_contract["display_version"] is None
+    assert ref.agent_contract["snapshot_version"] == 1
 
 
 @pytest.mark.parametrize("state", ["unchanged", "drifted", "revoked"])
