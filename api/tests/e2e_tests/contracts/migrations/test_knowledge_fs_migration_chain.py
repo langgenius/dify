@@ -24,6 +24,14 @@ _KNOWLEDGE_FS_CHAIN = [
     "a8c2e6f4b901",
     "b9d3f7a5c102",
 ]
+_WORKSPACE_LIMIT_CHAIN = [
+    "a7f3c9d2e1b4",
+    "f0b73c8d2e19",
+    "b9e4a0d6c813",
+    "d6a91c8e40f2",
+    "f3b2e6c980a1",
+]
+_MERGED_HEAD = "c4e8a9f1d270"
 
 
 def _scripts() -> ScriptDirectory:
@@ -31,7 +39,11 @@ def _scripts() -> ScriptDirectory:
 
 
 def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
-    assert _scripts().get_heads() == [_KNOWLEDGE_FS_CHAIN[-1]]
+    scripts = _scripts()
+    assert scripts.get_heads() == [_MERGED_HEAD]
+    merged = scripts.get_revision(_MERGED_HEAD)
+    assert merged is not None
+    assert merged.down_revision == (_WORKSPACE_LIMIT_CHAIN[-1], _KNOWLEDGE_FS_CHAIN[-1])
 
 
 def test_upgrade_from_main_head_applies_knowledge_fs_chain_linearly() -> None:
@@ -43,7 +55,7 @@ def test_upgrade_from_main_head_applies_knowledge_fs_chain_linearly() -> None:
         if revision.revision not in applied_on_main
     ]
 
-    assert pending == _KNOWLEDGE_FS_CHAIN
+    assert pending == [*_KNOWLEDGE_FS_CHAIN, *_WORKSPACE_LIMIT_CHAIN, _MERGED_HEAD]
     for parent, revision in zip([_MAIN_HEAD, *_KNOWLEDGE_FS_CHAIN[:-1]], _KNOWLEDGE_FS_CHAIN, strict=True):
         script = scripts.get_revision(revision)
         assert script is not None
