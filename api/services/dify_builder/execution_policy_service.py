@@ -77,7 +77,7 @@ def _raw_object(raw: Any, reason: str, *, absent_allowed: bool = False) -> dict[
             raise ValueError("not an object")
         canonical_digest(value)
         return value
-    except (ValueError, TypeError, UnicodeError, RecursionError):
+    except (ValueError, TypeError, RecursionError):
         raise BuilderExecutionPolicyError(reason) from None
 
 
@@ -284,7 +284,7 @@ def _bound_request(db: Session, context: ExecutionContext, *, lock: bool) -> Dif
     _validate_context(context)
     statement = select(DifyBuilderExecutionRequest).where(DifyBuilderExecutionRequest.id == context.request_id)
     if lock:
-        statement = statement.with_for_update()
+        statement = statement.with_for_update().execution_options(populate_existing=True)
     row = db.scalar(statement)
     if row is None or row.context_digest != context.context_digest or row.context != context.model_dump(mode="json"):
         raise BuilderExecutionPolicyError("execution_request_mismatch")
@@ -634,6 +634,9 @@ class BuilderExecutionPolicyService:
         with self._session_factory.begin() as db:
             from services.dify_builder.task_controls import lock_execution, lock_task_admission
 
+            # Authenticate the persisted request binding before choosing its
+            # Task lock; revalidate fresh state under the Request lock below.
+            _bound_request(db, context, lock=False)
             lock_task_admission(db, context.session_id)
             lock_execution(db)
             row = _bound_request(db, context, lock=True)
@@ -1056,7 +1059,7 @@ class BuilderExecutionPolicyService:
         owner: ExecutionOwnerSnapshot,
     ) -> bool:
         """Require the exact Start/Tool/End SQL chain and Tool TEXT receipt."""
-        from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+        from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 
         try:
             snapshot = restricted_admission_snapshot(owner.workflow, owner.app)
@@ -1167,7 +1170,6 @@ class BuilderExecutionPolicyService:
             TypeError,
             KeyError,
             StopIteration,
-            UnicodeError,
         ):
             return False
 
@@ -1259,7 +1261,7 @@ class BuilderExecutionPolicyService:
         consent: DifyBuilderRealCallConsent,
     ) -> bool:
         """Exact admitted graph, inputs, ordered Start/Tool/End rows and the claimed Tool row."""
-        from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+        from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 
         try:
             graph = _raw_object(native.graph, "invalid_native_graph")
@@ -1318,13 +1320,14 @@ class BuilderExecutionPolicyService:
                 or consent.native_node_execution_id != tool.node_execution_id
             ):
                 return False
-            if native.status == "succeeded" and (
-                len(nodes) != len(expected)
-                or native.exceptions_count != 0
-                or any(n.status != "succeeded" for n in nodes)
-            ):
-                return False
-            return True
+            return not (
+                native.status == "succeeded"
+                and (
+                    len(nodes) != len(expected)
+                    or native.exceptions_count != 0
+                    or any(n.status != "succeeded" for n in nodes)
+                )
+            )
         except (BuilderExecutionPolicyError, ValidationError, ValueError, TypeError, KeyError, IndexError):
             return False
 
@@ -1425,7 +1428,7 @@ class BuilderExecutionPolicyService:
         observations: list[BuilderExecutionObservation],
     ) -> bool:
         """Check graph/index chain coverage and retries; optional predecessors must agree."""
-        from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
+        from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 
         try:
             graph = _raw_object(native.graph, "invalid_native_graph")
@@ -1503,11 +1506,10 @@ class BuilderExecutionPolicyService:
                 expected is not None or len(nodes) != len(by_id)
             ):
                 return False
-            if native.status == "succeeded" and (
-                native.exceptions_count != 0 or any(n.status != "succeeded" for n in nodes)
-            ):
-                return False
-            return True
+            return not (
+                native.status == "succeeded"
+                and (native.exceptions_count != 0 or any(n.status != "succeeded" for n in nodes))
+            )
         except (BuilderExecutionPolicyError, ValidationError, ValueError, TypeError, KeyError, StopIteration):
             return False
 

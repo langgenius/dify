@@ -11,7 +11,7 @@ import json
 import socket
 import threading
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar
 from copy import deepcopy
@@ -20,6 +20,7 @@ from typing import Literal, cast
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from psycopg2 import extensions as pg_extensions
 from sqlalchemy import Connection, Engine, create_engine, event, func, select, text
 from sqlalchemy.engine import make_url
@@ -32,6 +33,7 @@ from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Graph, MutationIntent
 from core.dify_builder.models import Session as DomainSession
 from core.dify_builder.state import PcState
+from extensions.ext_database import db
 from models.account import Account
 from models.agent import WorkflowAgentNodeBinding
 from models.base import Base
@@ -43,6 +45,7 @@ from models.dify_builder import (
     DifyBuilderSessionCommit,
 )
 from models.model import App
+from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.dify_builder import dify_port
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
@@ -97,6 +100,7 @@ def task_postgres_engine() -> Iterator[Engine]:
                         App,
                         Workflow,
                         WorkflowAgentNodeBinding,
+                        WorkflowWebhookTrigger,
                         DifyBuilderSession,
                         DifyBuilderSessionCommit,
                         DifyBuilderConversationItem,
@@ -110,8 +114,26 @@ def task_postgres_engine() -> Iterator[Engine]:
             engine.dispose()
 
 
+@pytest.fixture
+def task_flask_app(task_postgres_engine: Engine) -> Generator[Flask]:
+    # Combined native tests register real draft-sync signal receivers. They
+    # require an app context, including on the worker thread, and must use this
+    # disposable database rather than whichever native app ran previously.
+    app = Flask("builder-task-postgres")
+    app.config["SQLALCHEMY_DATABASE_URI"] = task_postgres_engine.url.render_as_string(hide_password=False)
+    db.init_app(app)
+    with app.app_context():
+        try:
+            assert db.engine.url == task_postgres_engine.url
+            yield app
+        finally:
+            db.session.remove()
+            db.engine.dispose()
+
+
 @dataclass
 class TaskWorld:
+    flask_app: Flask
     factory: sessionmaker[Session]
     repo: SqlDifyBuilderRepository
     service: DifyBuilderService
@@ -126,7 +148,10 @@ class TaskWorld:
     def mutate(self, mutation: Mutation, *, generation: int = _GENERATION) -> object:
         # Deliberately model a worker that already passed its advisory check.
         # The transaction's persisted fence must remain sufficient on its own.
-        with execution_scope(ExecutionFence(self.session_id, generation, lambda: None, {})):
+        with (
+            self.flask_app.app_context(),
+            execution_scope(ExecutionFence(self.session_id, generation, lambda: None, {})),
+        ):
             port = WorkflowServiceDifyPort()
             if mutation == "restore":
                 graph = deepcopy(self.graph)
@@ -155,11 +180,12 @@ class TaskWorld:
             return dict(workflow.graph_dict)
 
     def stop(self, *, key: str = "stop") -> SessionView:
-        return self.service.stop_task(self.session_id, self.actor, base_version=1, client_action_id=key)
+        with self.flask_app.app_context():
+            return self.service.stop_task(self.session_id, self.actor, base_version=1, client_action_id=key)
 
 
 @pytest.fixture
-def task_world(task_postgres_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> TaskWorld:
+def task_world(task_postgres_engine: Engine, task_flask_app: Flask, monkeypatch: pytest.MonkeyPatch) -> TaskWorld:
     factory = sessionmaker(bind=task_postgres_engine, expire_on_commit=False)
     # Inject the disposable DB at existing adapter seams. Both objects still run
     # their real production methods; no mutation or authorization is replaced.
@@ -237,7 +263,9 @@ def task_world(task_postgres_engine: Engine, monkeypatch: pytest.MonkeyPatch) ->
         enqueue_fn=enqueue,
         get_app_revision_fn=lambda app_id, actor: port.read_graph(app_id, actor)[1],
     )
-    return TaskWorld(factory, repo, service, actor, app.id, workflow.id, domain.id, graph, revision, enqueued)
+    return TaskWorld(
+        task_flask_app, factory, repo, service, actor, app.id, workflow.id, domain.id, graph, revision, enqueued
+    )
 
 
 def _session_lock_statement(statement: str) -> bool:

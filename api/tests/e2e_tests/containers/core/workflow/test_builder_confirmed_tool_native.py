@@ -145,7 +145,6 @@ from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService, StrandedObservation
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import execution_revision
-from services.dify_builder.serde import context_to_dict
 from services.enterprise.rbac_service import RBACService
 from services.entities.feature_entities import FeatureModel
 from services.feature_service import FeatureService
@@ -154,6 +153,7 @@ from services.tools.builtin_tools_manage_service import BuilderCredentialRuntime
 from services.workflow_runtime import node_factory
 from tasks import dify_builder_advance_task
 from tasks.dify_builder_advance_task import advance_session
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import advance_builder_context
 from tests.test_containers_integration_tests.core.workflow.test_builder_real_call_consent_persistence import (
     MIGRATED_TABLES,
     PLUGIN,
@@ -1214,16 +1214,13 @@ def gmail(
         test_input = session.get(DifyBuilderTestInput, test_input_id)
         assert test_input is not None
         test_input.start_schema_hash = schema_hash(start_schema(graph))
-        session.add(
-            DifyBuilderSessionCommit(
-                session_id=session_id,
-                version=1,
-                state=str(PcState.BUILD_AWAIT_TESTDATA),
-                context=context_to_dict(DifyBuilderContext(plan_items=["Read one message"])),
-                actor="",
-            )
-        )
         world.credential_id, world.client_id = credential.id, client.id
+    advance_builder_context(
+        factory,
+        session_id,
+        state=PcState.BUILD_AWAIT_TESTDATA,
+        context=DifyBuilderContext(plan_items=["Read one message"]),
+    )
 
     # Normal draft admission now verifies the complete installed catalogue.
     # Fake only its daemon HTTP transport; transformation, installed-ID checks,

@@ -16,7 +16,10 @@ from models.workflow import Workflow
 from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit
 from services.dify_builder.native_testing.pending_intents import PendingDecisionGuard
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    advance_builder_context,
+    require_instance,
+)
 
 if TYPE_CHECKING:
     from multiprocessing.connection import Connection as ProcessConnection
@@ -639,7 +642,9 @@ def test_auth_start_persists_compiled_context_and_replays_without_second_admissi
     )
     monkeypatch.setattr(controller, "build_native_test_api_service", lambda **_kwargs: service)
     from core.dify_builder.input_schema import schema_hash, start_schema
-    from models.dify_builder import DifyBuilderSessionCommit, DifyBuilderTestInput
+    from core.dify_builder.models import DifyBuilderContext
+    from core.dify_builder.state import PcState
+    from models.dify_builder import DifyBuilderTestInput
     from models.workflow import Workflow
 
     with c.factory.begin() as session:
@@ -658,19 +663,14 @@ def test_auth_start_persists_compiled_context_and_replays_without_second_admissi
                 start_schema_hash=schema_hash(start_schema(dict(require_instance(workflow, Workflow).graph_dict))),
             )
         )
-        session.add(
-            DifyBuilderSessionCommit(
-                session_id=require_instance(row, DifyBuilderExecutionRequest).session_id,
-                version=1,
-                state="build.review",
-                actor="user",
-                context={"test_input_ref": input_id},
-            )
-        )
+        session_id = require_instance(row, DifyBuilderExecutionRequest).session_id
+    version = advance_builder_context(
+        c.factory, session_id, state=PcState.BUILD_REVIEW, context=DifyBuilderContext(test_input_ref=input_id)
+    )
     body = {
         "schema_version": "builder-native-test-v1",
         "test_input_id": input_id,
-        "expected_version": 1,
+        "expected_version": version,
         "mode": "native",
         "idempotency_key": "start-1",
     }
