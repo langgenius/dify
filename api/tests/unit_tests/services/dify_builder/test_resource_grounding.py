@@ -430,6 +430,150 @@ def test_named_missing_resource_is_explained_before_approval(
     assert not context.checkpoint_id
 
 
+@pytest.mark.parametrize("kind", ["model", "tool"])
+@pytest.mark.parametrize("source_error", [None, "inventory_unavailable"])
+def test_unavailable_resource_public_form_recovers_from_fresh_catalogue_without_losing_request(
+    monkeypatch: pytest.MonkeyPatch, kind: str, source_error: str | None
+) -> None:
+    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent import edit
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+    from services.dify_builder.application.handlers_edit import edit_registry
+    from services.dify_builder.application.runner import Runner
+    from services.dify_builder.plan import WorkflowPlan
+    from services.dify_builder.service import DifyBuilderService
+    from tests.unit_tests.core.dify_builder.test_handlers_edit import _new_env
+    from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
+
+    goal = "Use requested and keep the title provided."
+    directory = resources.TenantResources(
+        models=[],
+        tools=[],
+        datasets=[],
+        model_source_error=source_error if kind == "model" else None,
+        tool_source_error=source_error if kind == "tool" else None,
+    )
+    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_args, **_kwargs: directory)
+    monkeypatch.setattr(
+        edit.llm,
+        "invoke_json",
+        lambda *_args, **_kwargs: {
+            "fields": [{"key": "title", "type": "text", "required": True}],
+            "values": {"title": "Original title"},
+            "target_node_ids": ["llm"],
+            "resource_requests": [{"kind": kind, "node_id": "llm", "query": "requested"}],
+        },
+    )
+    agent = LlmBuilderAgent("tenant-1", account_id="acc-1")
+    monkeypatch.setattr(agent, "model_or_none", lambda: object())
+    planned = []
+
+    def plan(rules: Graph, _graph: Graph, **_kwargs: object) -> WorkflowPlan:
+        planned.append(dict(rules))
+        return WorkflowPlan("Change", "Input", "Output", ["Use confirmed resource"])
+
+    monkeypatch.setattr(agent, "propose_edit_plan", plan)
+    from tests.unit_tests.core.dify_builder.fakes import FakeEditDifyPort
+
+    dify = FakeEditDifyPort()
+    env, repo = _new_env(agent=agent, dify=dify)
+    runner = Runner(env, edit_registry())
+    actor = Actor(account_id="acc-1", tenant_id="tenant-1")
+    session = Session(
+        app_id="app",
+        tenant_id="tenant-1",
+        owner_account_id="acc-1",
+        entry_mode=EntryMode.EDIT,
+        current_state=PcState.EDIT_CAPABILITY_CHECK,
+    )
+    repo.create_session(session, DifyBuilderContext(), [])
+    service = DifyBuilderService(repo, FakeSessionLock(), lambda *_args: None, get_app_revision_fn=lambda *_args: "")
+    out = runner.advance(
+        session.id, Turn(actor=actor, action=Action(kind="send_edit_goal", payload={"text": goal}, base_version=1))
+    )
+    assert out.current_state == PcState.EDIT_IMPACT_ANALYSIS
+
+    def public_form() -> Graph:
+        view = service.get_session_view(session.id, actor)
+        assert view.active_interaction is not None
+        card = view.active_interaction.card
+        history = service.get_conversation_page(session.id, actor, limit=100)
+        assert card in history.data
+        fields = card.payload["fields"]
+        assert isinstance(fields, list)
+        assert all(isinstance(field, dict) for field in fields)
+        assert not any(f["type"] == "select" and f["required"] and not f["options"] for f in fields)
+        assert any(f["key"] == "change" for f in fields)
+        return card.payload
+
+    assert public_form()["values"]["change"] == goal
+    for selected in ("", f"{kind}:provider/fake"):
+        out = runner.advance(
+            session.id,
+            Turn(
+                actor=actor,
+                action=Action(
+                    kind="submit_edit_rules",
+                    payload={"title": "Confirmed title", "__builder_resource__0": selected},
+                    base_version=out.version,
+                ),
+            ),
+        )
+        assert out.current_state == PcState.EDIT_IMPACT_ANALYSIS
+        assert public_form()["values"]["title"] == "Confirmed title"
+        _, stored = repo.get_session(session.id)
+        unresolved = next(f for f in stored.form_fields if f.get("resource_kind"))
+        assert (unresolved["resource_kind"], unresolved["resource_node_id"], unresolved["resource_query"]) == (
+            kind,
+            "llm",
+            "requested",
+        )
+        assert stored.edit_rules["change"] == goal
+        assert not stored.checkpoint_id
+        assert not stored.resource_selection
+        assert planned == []
+
+    ref = resources.ResourceRef(
+        id="provider/requested",
+        label="Requested",
+        binding=(
+            {"provider": "provider", "name": "requested"}
+            if kind == "model"
+            else {"provider_type": "builtin", "provider_id": "provider", "tool_name": "requested"}
+        ),
+    )
+    directory = resources.TenantResources(
+        models=[ref] if kind == "model" else [], tools=[ref] if kind == "tool" else [], datasets=[]
+    )
+    out = runner.advance(
+        session.id, Turn(actor=actor, action=Action(kind="submit_edit_rules", base_version=out.version))
+    )
+    assert out.current_state == PcState.EDIT_IMPACT_ANALYSIS
+    fields = public_form()["fields"]
+    choice = next(f for f in fields if f["key"] == "__builder_resource__0")
+    assert choice["options"] == [f"{kind}:provider/requested"]
+    assert choice["required"] is True
+    assert planned == []
+    out = runner.advance(
+        session.id,
+        Turn(
+            actor=actor,
+            action=Action(
+                kind="submit_edit_rules",
+                payload={"__builder_resource__0": f"{kind}:provider/requested"},
+                base_version=out.version,
+            ),
+        ),
+    )
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+    assert len(planned) == 1
+    assert planned[0]["change"] == goal
+    assert planned[0]["title"] == "Confirmed title"
+    assert dify.applied == []
+    assert not dify.published
+
+
 def test_ambiguous_resources_have_no_automatic_choice() -> None:
     import pytest
 
