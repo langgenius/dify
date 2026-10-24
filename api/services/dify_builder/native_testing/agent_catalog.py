@@ -30,6 +30,8 @@ class PublishedAgentCandidate:
     input_contract_source: Literal["published_soul.app_variables"]
     output_contract_source: Literal["node_job_required"]
     capability_digest: str
+    # Eligibility of returned actor-scoped catalog entries to be referenced;
+    # this never asserts their internal tools/accounts can execute.
     reference_permitted: bool = True
     readiness: Literal["ready", "missing_config"] = "ready"
 

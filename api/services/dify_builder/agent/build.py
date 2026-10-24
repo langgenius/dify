@@ -613,7 +613,10 @@ def discover_resources(
 ) -> list[ResourceOption]:
     """Recommend installed tools and models for the plan.
 
-    Tools are every installed tool -- ready or needing setup -- ranked by
+    Agent recommendations include a bounded model rationale grounded in their
+    public capability declarations. Discovery eligibility is server-owned and
+    is separate from runtime setup/authorization, which binding and execution
+    revalidate. Tools are every installed tool -- ready or needing setup -- ranked by
     relevance to the goal, requirements and plan and bounded to
     ``_MAX_DISCOVERY_TOOLS``. A recommended missing_config tool keeps that
     readiness and its setup note in ``meta``; installed tools remain bindable
@@ -639,20 +642,43 @@ def discover_resources(
         "Never infer provider retirement from a service error or an empty catalogue; "
         "lifecycle needs explicit evidence. "
         "Use ONLY listed ids. Reply with ONLY JSON: "
-        '{"resource_ids": ["<id>", ...]}.'
+        '{"resource_ids": ["<id>", ...], "selection_reasons": {"<selected Agent id>": "<reason>"}}.'
     )
     if inv.agent_source_error:
         system += " Published Agent catalog is unavailable; do not infer that the workspace has no Agents."
-    system += " Agent resources are published Workspace Agents; their node-job outputs must be declared by the caller."
+    system += (
+        " Agent resources are published Workspace Agents; their node-job outputs must be declared by the caller. "
+        "For each selected Agent id, provide a nonempty selection_reasons entry of at most 360 characters explaining "
+        "how its declared capability (with the supplied provenance) fits the original goal and plan. "
+        "Use capability declarations, not name similarity; do not invent capabilities or output schemas. "
+        "Reasons must describe capability relevance only, never grant permission or claim runtime readiness. "
+        "Reference eligibility is established only by the actor-scoped catalog, and runtime authorization remains "
+        "unverified even when setup metadata says ready. Omit reasons for unselected ids."
+    )
     listing = "\n".join(_discovery_line(rid, kind, ref) for rid, (kind, ref) in catalog.items())
     user = f"{_cognition_source(goal_text, requirements)}\n\nPLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
-        chosen_ids = [rid for rid in (data.get("resource_ids") or []) if rid in catalog]
+        selected = data.get("resource_ids")
+        chosen_ids = (
+            list(dict.fromkeys(rid for rid in selected if isinstance(rid, str) and rid in catalog))
+            if isinstance(selected, list)
+            else []
+        )
+        reasons = data.get("selection_reasons")
+        agent_reasons = {
+            rid: " ".join(reason.split())
+            for rid in chosen_ids
+            if catalog[rid][0] == "agent"
+            and isinstance(reasons, dict)
+            and isinstance(reason := reasons.get(rid), str)
+            and 0 < len(reason.strip()) <= 360
+        }
     except Exception:
         trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         logger.warning("dify_builder: resource recommendation failed; recommending none", exc_info=True)
         chosen_ids = []
+        agent_reasons = {}
     # Recommending nothing is the honest answer when there is no signal -- no
     # model, a failed call, or a model that picked none. The old code fell back
     # to the whole tenant inventory, and because the client pre-checks every
@@ -663,11 +689,14 @@ def discover_resources(
         ResourceOption(
             id=rid,
             label=catalog[rid][1].label,
-            meta=catalog[rid][1].meta,
+            meta=(catalog[rid][1].meta + f" Selection rationale (model): {agent_reasons[rid]}").strip()
+            if rid in agent_reasons
+            else catalog[rid][1].meta,
             kind=catalog[rid][0],
             readiness=catalog[rid][1].readiness,
         )
         for rid in chosen_ids
+        if catalog[rid][0] != "agent" or rid in agent_reasons
     ]
 
 
