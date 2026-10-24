@@ -1658,17 +1658,21 @@ class _HeldLease:
         self.acquired = 0
         self.released: list[str] = []
 
-    def acquire(self, session_id: str) -> str | None:
+    def acquire(self, session_id: str, *, generation: int | None = None) -> str | None:
         if session_id in self.tokens:
             return None
         self.acquired += 1
-        self.tokens[session_id] = f"token-{self.acquired}"
+        token = f"token-{self.acquired}"
+        self.tokens[session_id] = f"g{generation}:{token}" if generation is not None else token
         return self.tokens[session_id]
 
     def release(self, session_id: str, token: str) -> None:
         self.released.append(token)
         if self.tokens.get(session_id) == token:
             del self.tokens[session_id]
+
+    def current_owner(self, session_id: str) -> str | None:
+        return self.tokens.get(session_id)
 
     def exists(self, session_id: str) -> bool:
         return session_id in self.tokens
@@ -2311,9 +2315,9 @@ def request_sql_world(
 
     class _ObservedLease(_HeldLease):
         @override
-        def acquire(self, session_id: str) -> str | None:
+        def acquire(self, session_id: str, *, generation: int | None = None) -> str | None:
             observe("lease_acquire")
-            return super().acquire(session_id)
+            return super().acquire(session_id, generation=generation)
 
         @override
         def release(self, session_id: str, token: str) -> None:
@@ -2583,10 +2587,12 @@ def test_another_owners_request_write_is_preserved_and_refused(
 
 @pytest.mark.parametrize("operation", ["stop", "resume"])
 def test_task_control_routes_delegate_fixed_operation_and_return_session_json(
-    operation: str, monkeypatch: pytest.MonkeyPatch
+    operation: str, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockerFixture
 ) -> None:
-    service = Mock()
-    command = service.stop_task if operation == "stop" else service.resume_task
+    service = _route_service()
+    stop = mocker.patch.object(service, "stop_task")
+    resume = mocker.patch.object(service, "resume_task")
+    command = stop if operation == "stop" else resume
     command.return_value = _session_view(run_status=RunStatus.PAUSED)
     monkeypatch.setattr(mod, "build_service", lambda: service)
     resource = mod.DifyBuilderTaskStopApi if operation == "stop" else mod.DifyBuilderTaskResumeApi
@@ -2597,7 +2603,7 @@ def test_task_control_routes_delegate_fixed_operation_and_return_session_json(
         wiring.session_view_to_dict(command.return_value)
     ).model_dump(mode="json")
     command.assert_called_once_with("s1", _actor(), base_version=7, client_action_id="control-1", base_app_revision="")
-    (service.resume_task if operation == "stop" else service.stop_task).assert_not_called()
+    (resume if operation == "stop" else stop).assert_not_called()
     assert _decorator_chain(resource.post) == [
         "setup_required",
         "login_required",
@@ -2631,10 +2637,9 @@ def test_task_control_routes_delegate_fixed_operation_and_return_session_json(
     ],
 )
 def test_task_control_invalid_payload_never_calls_service(
-    operation: str, body: object, monkeypatch: pytest.MonkeyPatch
+    operation: str, body: object, mocker: pytest_mock.MockerFixture
 ) -> None:
-    factory = Mock()
-    monkeypatch.setattr(mod, "build_service", factory)
+    factory = mocker.patch.object(mod, "build_service", side_effect=AssertionError("service must not be built"))
     resource = mod.DifyBuilderTaskStopApi if operation == "stop" else mod.DifyBuilderTaskResumeApi
     with Flask(__name__).test_request_context(json=body), pytest.raises(mod.BadRequest):
         unwrap(resource.post)(object(), "ten-1", _account(), "s1")
@@ -2652,10 +2657,12 @@ def test_task_control_invalid_payload_never_calls_service(
     ],
 )
 def test_task_control_domain_errors_raise_standard_http_errors(
-    operation: str, error: Exception, status: int, monkeypatch: pytest.MonkeyPatch
+    operation: str, error: Exception, status: int, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockerFixture
 ) -> None:
-    service = Mock()
-    (service.stop_task if operation == "stop" else service.resume_task).side_effect = error
+    service = _route_service()
+    stop = mocker.patch.object(service, "stop_task")
+    resume = mocker.patch.object(service, "resume_task")
+    (stop if operation == "stop" else resume).side_effect = error
     monkeypatch.setattr(mod, "build_service", lambda: service)
     resource = mod.DifyBuilderTaskStopApi if operation == "stop" else mod.DifyBuilderTaskResumeApi
     with Flask(__name__).test_request_context(json={"base_version": 1, "client_action_id": "c"}):
@@ -2667,11 +2674,16 @@ def test_task_control_domain_errors_raise_standard_http_errors(
 
 @pytest.mark.parametrize("operation", ["stop", "resume"])
 def test_task_control_served_json_preserves_trusted_actor_and_no_request_sql(
-    operation: str, request_sql_world: _RequestSqlWorld, monkeypatch: pytest.MonkeyPatch
+    operation: str,
+    request_sql_world: _RequestSqlWorld,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: pytest_mock.MockerFixture,
 ) -> None:
     world = request_sql_world
-    service = Mock()
-    command = service.stop_task if operation == "stop" else service.resume_task
+    service = _route_service()
+    stop = mocker.patch.object(service, "stop_task")
+    resume = mocker.patch.object(service, "resume_task")
+    command = stop if operation == "stop" else resume
 
     def control(session_id: str, actor: Actor, **kwargs: object) -> SessionView:
         assert not world.registry().in_transaction()
@@ -2702,10 +2714,16 @@ def test_task_control_served_json_preserves_trusted_actor_and_no_request_sql(
 @pytest.mark.parametrize("operation", ["stop", "resume"])
 @pytest.mark.parametrize("failure", ["owner", "permission", "invalid"])
 def test_task_control_served_errors_follow_console_contract(
-    operation: str, failure: str, request_sql_world: _RequestSqlWorld, monkeypatch: pytest.MonkeyPatch
+    operation: str,
+    failure: str,
+    request_sql_world: _RequestSqlWorld,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: pytest_mock.MockerFixture,
 ) -> None:
-    service = Mock()
-    command = service.stop_task if operation == "stop" else service.resume_task
+    service = _route_service()
+    stop = mocker.patch.object(service, "stop_task")
+    resume = mocker.patch.object(service, "resume_task")
+    command = stop if operation == "stop" else resume
     command.side_effect = NotFoundError("private owner") if failure == "owner" else Forbidden()
     monkeypatch.setattr(mod, "build_service", lambda: service)
     body = {"base_version": 3, "client_action_id": "c"}
@@ -2721,10 +2739,11 @@ def test_task_control_served_errors_follow_console_contract(
 
 @pytest.mark.parametrize("operation", ["stop", "resume"])
 def test_task_control_requires_authentication_before_service(
-    operation: str, request_sql_world: _RequestSqlWorld, monkeypatch: pytest.MonkeyPatch
+    operation: str,
+    request_sql_world: _RequestSqlWorld,
+    mocker: pytest_mock.MockerFixture,
 ) -> None:
-    factory = Mock()
-    monkeypatch.setattr(mod, "build_service", factory)
+    factory = mocker.patch.object(mod, "build_service", side_effect=AssertionError("service must not be built"))
     request_sql_world.client.environ_base.pop("HTTP_AUTHORIZATION")
     response = request_sql_world.client.post(
         f"/console/api/dify-builder/sessions/s1/{operation}", json={"base_version": 3, "client_action_id": "c"}
