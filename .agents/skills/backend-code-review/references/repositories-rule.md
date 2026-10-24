@@ -1,60 +1,19 @@
 # Rule Catalog - Repositories Abstraction
 
 ## Scope
-- Covers: when to reuse existing repository abstractions, when to introduce new repositories, and how to preserve dependency direction between service/core and infrastructure implementations.
-- Does NOT cover: SQLAlchemy session lifecycle and query-shape specifics (handled by `sqlalchemy-rule.md`), and table schema/migration design (handled by `db-schema-rule.md`).
+- Covers: reaching persistence through consumer-owned ports, reusing existing repositories, and preserving dependency direction between application services and persistence adapters.
+- Does NOT cover: SQLAlchemy session lifecycle and query-shape specifics (handled by `sqlalchemy-rule.md`), table/schema/migration design (handled by `db-schema-rule.md`), and the overall slice pattern (handled by `architecture-rule.md`).
 
 ## Rules
 
-### Introduce repositories abstraction
+### Reach persistence only through consumer-owned ports
 - Category: maintainability
-- Description: If a table/model already has a repository abstraction, all reads/writes/queries for that table should use the existing repository. If no repository exists, introduce one only when complexity justifies it, such as large/high-volume tables, repeated complex query logic, or likely storage-strategy variation.
+- Description: Application services never query tables or hold persistence models. Each service declares the persistence it needs as a port in its own module, and a repository implements that port. When a table already has a repository, extend it or let it implement the new port instead of adding a parallel query path.
 - Suggested fix:
-  - First check  `api/repositories`, `api/core/repositories`, and `api/extensions/*/repositories/` to verify whether the table/model already has a repository abstraction. If it exists, route all operations through it and add missing repository methods instead of bypassing it with ad-hoc SQLAlchemy access.
-  - If no repository exists, add one only when complexity warrants it (for example, repeated complex queries, large data domains, or multiple storage strategies). Follow `api/AGENTS.md`: put new abstractions and implementations outside migration-only `api/core/`, with services/domain code depending on abstractions and infrastructure providing implementations.
+  - First check `api/repositories`, `api/core/repositories`, and `api/extensions/*/repositories/` for an existing repository. If one exists, add the missing operation there and depend on it through the consumer's port.
+  - Otherwise, declare the port next to the service that needs it and implement it in a repository outside migration-only `api/core/`. The repository owns its sessions, filters by the complete owner chain, returns plain records, and is wired only in the composition root.
 - Example:
-  - Bad:
-    ```python
-    # Existing repository is ignored and service uses ad-hoc table queries.
-    class AppService:
-        def archive_app(self, app_id: str, tenant_id: str) -> None:
-            app = self.session.execute(select(App).where(App.id == app_id, App.tenant_id == tenant_id)).scalar_one()
-            app.archived = True
-            self.session.commit()
-    ```
-  - Good:
-    ```python
-    # Case A: Existing repository must be reused for all table operations.
-    class AppService:
-        def archive_app(self, app_id: str, tenant_id: str) -> None:
-            app = self.app_repo.get_by_id(app_id=app_id, tenant_id=tenant_id)
-            app.archived = True
-            self.app_repo.save(app)
-
-
-    # If the query is missing, extend the existing abstraction.
-    active_apps = self.app_repo.list_active_for_tenant(tenant_id=tenant_id)
-    ```
-  - Bad:
-    ```python
-    # No repository exists, but large-domain query logic is scattered in service code.
-    class ConversationService:
-        def list_recent_for_app(self, app_id: str, tenant_id: str, limit: int) -> list[Conversation]:
-            ...
-            # many filters/joins/pagination variants duplicated across services
-    ```
-  - Good:
-    ```python
-    # Case B: Introduce repository for large/complex domains or storage variation.
-    class ConversationRepository(Protocol):
-        def list_recent_for_app(self, app_id: str, tenant_id: str, limit: int) -> list[Conversation]: ...
-
-
-    class SqlAlchemyConversationRepository:
-        def list_recent_for_app(self, app_id: str, tenant_id: str, limit: int) -> list[Conversation]: ...
-
-
-    class ConversationService:
-        def __init__(self, conversation_repo: ConversationRepository):
-            self.conversation_repo = conversation_repo
-    ```
+  - Bad: a service opens a session, queries a table, changes the loaded persistence model, and commits.
+  - Good: the service calls an operation on a port it declares, passing the owner identifiers. The repository behind that port performs the scoped write in one bounded transaction and reports a missing target with an application error.
+  - Bad: filters, joins, and pagination for one business area are repeated across several services.
+  - Good: the services share one port for that area's reads, and a single repository implements it.
