@@ -1245,6 +1245,7 @@ class NativeTestLifecycleService:
         dispatch_id: str,
         generation: int,
         outcome: NativeWorkflowOutcome,
+        terminal_failure: bool = False,
     ) -> None:
         """SQL projection only, after caller's real outcome/checkpoint/result preparation."""
         ref = owned.ref
@@ -1256,11 +1257,15 @@ class NativeTestLifecycleService:
         dispatch = session.scalar(
             owner_query(NativeDispatch, ref, owned.tenant_id).where(NativeDispatch.id == dispatch_id)
         )
+        # Only the confirmed terminal owner supplies this after exact source,
+        # terminal child and unconsumed effect proof under this same root lock.
+        # It closes a quarantine; it never restores execution authority.
+        close_quarantine = terminal_failure and outcome.status == "completed" and outcome.native_status == "failed"
         if (
             dispatch is None
             or type(generation) is not int
             or dispatch.generation != generation
-            or dispatch.state != "claimed"
+            or dispatch.state not in ({"claimed", "unknown"} if close_quarantine else {"claimed"})
             or state.generation != generation
             or scope.cancelled
         ):
@@ -1297,7 +1302,10 @@ class NativeTestLifecycleService:
                 is None
             ):
                 raise BuilderExecutionPolicyError("native_result_owner_mismatch")
-        if outcome.status == "completed" and has_unknown_descendant(session, ref, owned.tenant_id):
+        if outcome.status == "completed" and any(
+            child.state == "unknown" and not (close_quarantine and child.invocation_id == ref.invocation_id)
+            for child in self._subtree(session, ref, owned.tenant_id)
+        ):
             raise BuilderExecutionPolicyError("native_subtree_unknown")
         if outcome.status == "unknown":
             quarantine_unknown(session, ref=ref, tenant_id=owned.tenant_id, outcome=outcome.model_dump(mode="json"))
