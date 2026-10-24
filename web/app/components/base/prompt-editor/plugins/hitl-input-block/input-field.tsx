@@ -51,8 +51,9 @@ const InputField: React.FC<InputFieldProps> = ({
   onChange,
   onCancel,
 }) => {
-  const rootRef = useRef<HTMLDivElement>(null)
+  const rootRef = useRef<HTMLFormElement>(null)
   const outputVariableNameInputId = React.useId()
+  const defaultOptionInputId = React.useId()
   const { t } = useTranslation(['appDebug', 'common', 'workflow', 'workflowHumanInput'])
   const [tempPayload, setTempPayload] = useState<FormInputItem>(
     () => payload || createDefaultParagraphFormInput(),
@@ -231,8 +232,13 @@ const InputField: React.FC<InputFieldProps> = ({
   )
 
   return (
-    <div
+    <form
       ref={rootRef}
+      onSubmit={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        handleSave()
+      }}
       className="flex max-h-(--shortcut-popup-max-height,80dvh) w-93 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
     >
       <div className="shrink-0 p-3 pb-2">
@@ -333,6 +339,22 @@ const InputField: React.FC<InputFieldProps> = ({
                 />
               </div>
             )}
+            <label
+              htmlFor={defaultOptionInputId}
+              className="mt-4 mb-1.5 block system-xs-medium text-text-secondary"
+            >
+              {t(($) => $[`${i18nPrefix}.prePopulateField`], { ns: 'workflowHumanInput' })}
+            </label>
+            <Input
+              id={defaultOptionInputId}
+              value={tempPayload.default_value ?? ''}
+              onChange={(event) => {
+                const value = event.target.value
+                setTempPayload((prev) =>
+                  isSelectFormInput(prev) ? { ...prev, default_value: value } : prev,
+                )
+              }}
+            />
           </div>
         )}
         {isFileFormInput(tempPayload) && (
@@ -362,13 +384,15 @@ const InputField: React.FC<InputFieldProps> = ({
       </div>
       <div className="shrink-0 bg-components-panel-bg p-3">
         <div className="flex justify-end space-x-2">
-          <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+          <Button type="button" onClick={onCancel}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
           {isEdit ? (
-            <Button variant="primary" onClick={handleSave} disabled={!nameValid}>
+            <Button type="submit" variant="primary" disabled={!nameValid}>
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           ) : (
-            <Button className="flex" variant="primary" disabled={!nameValid} onClick={handleSave}>
+            <Button type="submit" className="flex" variant="primary" disabled={!nameValid}>
               <span>{t(($) => $[`${i18nPrefix}.insert`], { ns: 'workflowHumanInput' })}</span>
               <KbdGroup>
                 {formatForDisplay(SAVE_HOTKEY, { parts: true }).map((key) => (
@@ -381,7 +405,7 @@ const InputField: React.FC<InputFieldProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </form>
   )
 }
 

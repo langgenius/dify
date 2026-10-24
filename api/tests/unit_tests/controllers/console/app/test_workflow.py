@@ -1456,8 +1456,9 @@ class TestWorkflowHumanInputDebugApiCases:
             ),
         ],
     )
+    @pytest.mark.parametrize("default_value", ["", "two"])
     def test_human_input_preview_delegates_to_service(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, case: PreviewCase
+        app: Flask, monkeypatch: pytest.MonkeyPatch, case: PreviewCase, default_value: str
     ) -> None:
         account = _make_account()
         app_model = _make_app(case.mode)
@@ -1473,6 +1474,7 @@ class TestWorkflowHumanInputDebugApiCases:
                 {
                     "type": "select",
                     "output_variable_name": "choice",
+                    "default_value": default_value,
                     "option_source": {"type": "constant", "selector": list[str](), "value": ["one", "two"]},
                 },
                 {
