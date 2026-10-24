@@ -2213,6 +2213,12 @@ jobs:
            'test_unrelated_old_resource_does_not_block_other_edits': 1,
            'test_visible_model_without_configuration_is_not_ready': 1}
           a4_expected['tests.unit_tests.services.dify_builder.test_serde'] = {'test_repair_loop_fields_default_when_absent': 1, 'test_repair_loop_fields_round_trip': 1}
+          # Actual Local insertion assessment must retain satisfied placements.
+          a4_expected['tests.unit_tests.services.dify_builder.test_edit_cognition'].update({
+              'test_local_preserved_start_is_not_an_invented_insertion_requirement': 2,
+              'test_requested_placement_is_checked_from_actual_graph_facts': 1,
+              'test_repeated_legacy_assessment_refuses_without_inventing_requested_edges': 1,
+          })
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:
