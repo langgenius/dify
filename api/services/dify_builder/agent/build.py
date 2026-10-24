@@ -614,7 +614,8 @@ def discover_resources(
     """Recommend installed tools and models for the plan.
 
     Agent recommendations include a bounded model rationale grounded in their
-    public capability declarations. Discovery eligibility is server-owned and
+    public capability declarations, or an explicit note when unavailable so
+    selected identities survive a malformed explanation. Discovery eligibility is server-owned and
     is separate from runtime setup/authorization, which binding and execution
     revalidate. Tools are every installed tool -- ready or needing setup -- ranked by
     relevance to the goal, requirements and plan and bounded to
@@ -674,6 +675,8 @@ def discover_resources(
             and isinstance(reason := reasons.get(rid), str)
             and 0 < len(reason.strip()) <= 360
         }
+        if any(catalog[rid][0] == "agent" and rid not in agent_reasons for rid in chosen_ids):
+            trace_diagnostics.report("response_schema_invalid", fallback_used=True)
     except Exception:
         trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         logger.warning("dify_builder: resource recommendation failed; recommending none", exc_info=True)
@@ -685,19 +688,25 @@ def discover_resources(
     # recommendation and submits them by default, that silently bound dozens of
     # unrelated resources and appended their names to the plan fed to the
     # generator. The caller states the situation instead.
-    return [
-        ResourceOption(
-            id=rid,
-            label=catalog[rid][1].label,
-            meta=(catalog[rid][1].meta + f" Selection rationale (model): {agent_reasons[rid]}").strip()
-            if rid in agent_reasons
-            else catalog[rid][1].meta,
-            kind=catalog[rid][0],
-            readiness=catalog[rid][1].readiness,
-        )
-        for rid in chosen_ids
-        if catalog[rid][0] != "agent" or rid in agent_reasons
-    ]
+    options: list[ResourceOption] = []
+    for rid in chosen_ids:
+        kind, ref = catalog[rid]
+        meta = ref.meta
+        if kind == "agent":
+            # A missing explanation is a model format failure, not evidence
+            # that a valid selected Agent does not match. Preserve its server
+            # facts and expose the missing rationale at the confirmation gate.
+            note = (
+                f"Selection rationale (model): {agent_reasons[rid]}"
+                if rid in agent_reasons
+                else (
+                    "Selection rationale unavailable; "
+                    "review the declared capability against your goal before confirming."
+                )
+            )
+            meta = f"{meta} {note}".strip()
+        options.append(ResourceOption(id=rid, label=ref.label, meta=meta, kind=kind, readiness=ref.readiness))
+    return options
 
 
 def _discovery_line(rid: str, kind: str, ref: ResourceRef) -> str:
