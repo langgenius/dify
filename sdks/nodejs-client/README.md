@@ -102,7 +102,15 @@ Notes:
 
 ## Maintainers
 
-This package is published from the repository workspace. Install dependencies from the repository root with `pnpm install`, then use `./scripts/publish.sh` for dry runs and publishing so `catalog:` dependencies are resolved before release.
+This package is published from the repository workspace. Install dependencies from the repository root with `pnpm install`, then run the following commands from the same directory so `catalog:` dependencies are resolved before release:
+
+```sh
+# Check the package without publishing
+./sdks/nodejs-client/scripts/publish.sh --dry-run
+
+# Publish the package
+./sdks/nodejs-client/scripts/publish.sh
+```
 
 ## License
 
