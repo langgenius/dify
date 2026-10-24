@@ -417,3 +417,31 @@ it('keeps the original URL and infers the file type when remote metadata is null
   expect(new URL(request.mock.calls[0]![0]).pathname).toBe('/console/api/remote-files/upload')
   expect(uploadPublicRemoteFileInfo).not.toHaveBeenCalled()
 })
+
+it('rejects a local upload when the configured count is already reached', () => {
+  const files = ['one', 'two', 'three', 'four', 'five'].map(entity)
+  const { result } = setup({ files })
+  act(() =>
+    result.current.handleLocalFileUpload(new File(['x'], 'six.txt', { type: 'text/plain' })),
+  )
+  expect(result.current.files).toEqual(files)
+  expect(toast.error).toHaveBeenCalledWith(
+    expect.stringContaining('common.fileUploader.uploadNumLimit'),
+  )
+  expect(fileUpload).not.toHaveBeenCalled()
+})
+
+it('counts uploads admitted while other local FileReaders are pending', async () => {
+  const { result } = setup({ fileConfig: { ...config, number_limits: 1 } })
+  act(() => {
+    result.current.handleLocalFileUpload(new File(['a'], 'one.txt', { type: 'text/plain' }))
+    result.current.handleLocalFileUpload(new File(['b'], 'two.txt', { type: 'text/plain' }))
+  })
+  await waitFor(() =>
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringContaining('common.fileUploader.uploadNumLimit'),
+    ),
+  )
+  expect(result.current.files).toHaveLength(1)
+  expect(fileUpload).toHaveBeenCalledTimes(1)
+})

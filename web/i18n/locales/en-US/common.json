@@ -117,6 +117,7 @@
   "fileUploader.uploadFromComputerLimit": "Upload {{type}} cannot exceed {{size}}",
   "fileUploader.uploadFromComputerReadError": "File reading failed, please try again.",
   "fileUploader.uploadFromComputerUploadError": "File upload failed, please upload again.",
+  "fileUploader.uploadNumLimit": "You can only upload up to {{count}} files",
   "imageGallery.previewImage": "Preview image {{index}} of {{total}}",
   "imageInput.browse": "browse",
   "imageInput.dropImageHere": "Drop your image here, or",
