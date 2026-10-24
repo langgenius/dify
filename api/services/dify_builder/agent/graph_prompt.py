@@ -252,7 +252,10 @@ OP_LIST = (
     "  When from_node is an if-else, question-classifier or human-input node (or a node with "
     "error_strategy fail-branch), source_handle is required and must be one of the handles "
     "listed for that node in GRAPH.\n"
-    "- insert_between: {edge: {source, target}, node_type, config, node_id?}\n"
+    "- insert_between: {edge: {source, target, sourceHandle?, targetHandle?}, "
+    "node_type, config, node_id?, reuse_existing?}\n"
+    "  reuse_existing=true connects an existing isolated node without recreating it: exact node_id/type, "
+    "config={}, no position override. Already connected or container/unsupported branch nodes need manual wiring.\n"
 )
 
 # graphon's own comparison literals, in graphon's own order

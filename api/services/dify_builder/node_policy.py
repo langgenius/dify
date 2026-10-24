@@ -51,7 +51,9 @@ def proposal_policy_rejections(graph: Graph, intents: list[MutationIntent]) -> l
         except Exception:
             # Existing structural/native validation explains malformed proposals.
             continue
-        if intent.op in ("create_node", "insert_between"):
+        if intent.op in ("create_node", "insert_between") and not (
+            intent.op == "insert_between" and intent.args.get("reuse_existing") is True
+        ):
             node_type = intent.args["node_type"]
             if node_type in _UNAVAILABLE_ADDITIONS and not (
                 node_type == BuiltinNodeTypes.AGENT

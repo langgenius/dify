@@ -1485,3 +1485,168 @@ def test_edit_retry_can_correct_added_node_wiring_to_existing_anchor() -> None:
     graph = graph_ops.filter_applicable(_GRAPH, intents).graph
     assert [(e["source"], e["target"]) for e in graph["edges"]] == [("llm", "added")]
     assert len(model.calls) == 2
+
+
+@pytest.mark.parametrize("wiring", ["none", "incoming", "outgoing"])
+def test_approved_insertion_corrects_missing_wiring_once(
+    retained_bypass: tuple[Graph, Graph, Graph], wiring: str
+) -> None:
+    from services.dify_builder.plan import WorkflowPlan
+
+    graph, batch, corrected = retained_bypass
+    proposal = {"intents": batch["intents"][:1]}
+    if wiring != "none":
+        proposal["intents"].append(batch["intents"][1 if wiring == "incoming" else 2])
+    model = _RecordingInstance(
+        [json.dumps(proposal), '{"required_insertions":[1],"uncertain":false}', json.dumps(corrected)]
+    )
+    plan = WorkflowPlan("Insert mark", "Receipt", "Marked receipt", ["Replace receipt→end with receipt→mark→end"])
+    intents = edit.build_edit_intents(model, {"change": "Insert mark"}, graph, approved_plan=plan)
+    result = graph_ops.filter_applicable(graph, intents).graph
+    assert {(e["source"], e["target"]) for e in result["edges"]} == {
+        ("start", "receipt"),
+        ("receipt", "mark"),
+        ("mark", "end"),
+    }
+    assert result["nodes"][:3] == graph["nodes"]
+    assert len(model.calls) == 3
+    evidence = json.loads(_message_text(model.calls[1]["prompt_messages"][1]))
+    assert (
+        evidence["candidate_graph"]["edges"]
+        == graph_ops.filter_applicable(graph, [MutationIntent(**i) for i in proposal["intents"]]).graph["edges"]
+    )
+
+
+@pytest.mark.parametrize("proposal_kind", ["config", "empty", "bypass"])
+@pytest.mark.parametrize("corrected", [True, False])
+def test_approved_existing_orphan_requires_complete_path_or_refusal(
+    retained_bypass: tuple[Graph, Graph, Graph], proposal_kind: str, corrected: bool
+) -> None:
+    from services.dify_builder.plan import WorkflowPlan
+
+    graph, batch, _ = retained_bypass
+    graph = graph_ops.filter_applicable(graph, [MutationIntent(**batch["intents"][0])]).graph
+    graph["nodes"][-1].update({"annotation": {"note": "retain"}, "position": {"x": 777, "y": 333}})
+    incomplete: Graph = {
+        "intents": [{"op": "set_node_config", "args": {"node_id": "mark", "path": "title", "value": "Mark"}}]
+    }
+    if proposal_kind == "empty":
+        incomplete = {"intents": []}
+    elif proposal_kind == "bypass":
+        incomplete = {"intents": batch["intents"][1:]}
+    complete: Graph = {
+        "intents": [
+            {
+                "op": "insert_between",
+                "args": {
+                    "edge": {"source": "receipt", "target": "end"},
+                    "node_id": "mark",
+                    "node_type": "template-transform",
+                    "config": {},
+                    "reuse_existing": True,
+                },
+            }
+        ]
+    }
+    index = 0 if proposal_kind == "bypass" else 1
+    assessment = json.dumps({"required_insertions": [index], "uncertain": False})
+    replies = [json.dumps(incomplete), assessment, json.dumps(complete if corrected else incomplete)]
+    if not corrected:
+        replies.append(assessment)
+    model = _RecordingInstance(replies)
+    plan = WorkflowPlan(
+        "Connect existing mark", "Receipt", "Marked receipt", ["Replace receipt→end with receipt→mark→end"]
+    )
+    if not corrected:
+        with pytest.raises(ProposalWouldRunWrongError, match="receipt"):
+            edit.build_edit_intents(
+                model, {"wiring": "connect_existing"}, graph, approved_plan=plan, edit_target_node_ids=["mark"]
+            )
+        return
+    intents = edit.build_edit_intents(
+        model, {"wiring": "connect_existing"}, graph, approved_plan=plan, edit_target_node_ids=["mark"]
+    )
+    result = graph_ops.filter_applicable(graph, intents).graph
+    assert {(e["source"], e["target"]) for e in result["edges"]} == {
+        ("start", "receipt"),
+        ("receipt", "mark"),
+        ("mark", "end"),
+    }
+    assert result["nodes"] == graph["nodes"]
+    assert len(model.calls) == 3
+
+
+@pytest.mark.parametrize("draft_kind", ["intentional_tool", "unrelated_orphan"])
+def test_approved_plan_keeps_intentional_or_unrelated_isolated_draft(
+    retained_bypass: tuple[Graph, Graph, Graph], draft_kind: str
+) -> None:
+    from services.dify_builder.plan import WorkflowPlan
+
+    graph, batch, _ = retained_bypass
+    if draft_kind == "intentional_tool":
+        batch: Graph = {
+            "intents": [
+                {
+                    "op": "create_node",
+                    "args": {
+                        "node_id": "draft",
+                        "node_type": "tool",
+                        "config": {
+                            "title": "Unconfigured",
+                            "provider_id": "",
+                            "provider_type": "builtin",
+                            "provider_name": "",
+                            "tool_name": "",
+                            "tool_label": "",
+                            "tool_parameters": {},
+                            "tool_configurations": {},
+                        },
+                    },
+                }
+            ]
+        }
+        target_ids = ["receipt"]
+        plan = WorkflowPlan(
+            "Isolated Tool draft",
+            "Existing path",
+            "Untested draft",
+            ["Add unconfigured isolated Tool; preserve existing path"],
+        )
+        replies = [json.dumps(batch), '{"required_insertions":[],"uncertain":false}']
+    else:
+        graph = graph_ops.filter_applicable(graph, [MutationIntent(**batch["intents"][0])]).graph
+        batch = {
+            "intents": [{"op": "set_node_config", "args": {"node_id": "receipt", "path": "title", "value": "Renamed"}}]
+        }
+        target_ids = ["receipt"]
+        plan = WorkflowPlan("Rename receipt", "Existing path", "Same output", ["Rename receipt only"])
+        replies = [json.dumps(batch)]
+    model = _RecordingInstance(replies)
+    intents = edit.build_edit_intents(model, {}, graph, approved_plan=plan, edit_target_node_ids=target_ids)
+    result = graph_ops.filter_applicable(graph, intents).graph
+    assert result["edges"] == graph["edges"]
+    assert len(model.calls) == len(replies)
+    if draft_kind == "intentional_tool":
+        tool = next(n for n in result["nodes"] if n["id"] == "draft")
+        assert tool["data"]["provider_id"] == tool["data"]["tool_name"] == ""
+
+
+def test_existing_orphan_correction_cannot_recreate_away_canvas_metadata(
+    retained_bypass: tuple[Graph, Graph, Graph],
+) -> None:
+    from services.dify_builder.plan import WorkflowPlan
+
+    graph, batch, atomic = retained_bypass
+    graph = graph_ops.filter_applicable(graph, [MutationIntent(**batch["intents"][0])]).graph
+    orphan = graph["nodes"][-1]
+    orphan["position"] = {"x": 777, "y": 333}
+    orphan["width"] = 400
+    orphan["annotation"] = {"owner_note": "Keep this exact object"}
+    first = {"intents": [{"op": "set_node_config", "args": {"node_id": "mark", "path": "title", "value": "Mark"}}]}
+    unsafe = {"intents": [{"op": "delete_node", "args": {"node_id": "mark"}}, *atomic["intents"]]}
+    model = _RecordingInstance([json.dumps(first), '{"required_insertions":[1],"uncertain":false}', json.dumps(unsafe)])
+    plan = WorkflowPlan(
+        "Connect mark", "Receipt", "Marked receipt", ["Connect existing mark; preserve its configuration"]
+    )
+    with pytest.raises(ProposalWouldRunWrongError, match="metadata"):
+        edit.build_edit_intents(model, {}, graph, approved_plan=plan, edit_target_node_ids=["mark"])

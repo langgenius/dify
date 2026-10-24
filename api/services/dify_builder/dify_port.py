@@ -1123,7 +1123,9 @@ class WorkflowServiceDifyPort:
             graph_ops.validate_intent_args(intent)
             graph, changed = apply_fn(graph, **intent.args)
             changed_nodes.extend(changed)
-            if intent.op != "connect":
+            if intent.op != "connect" and not (
+                intent.op == "insert_between" and intent.args.get("reuse_existing") is True
+            ):
                 written_nodes.extend(changed)
             if on_canvas is not None:
                 canvas_events.append(_canvas_payload(intent, changed))

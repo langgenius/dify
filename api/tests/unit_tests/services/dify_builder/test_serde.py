@@ -236,16 +236,18 @@ def test_repair_loop_fields_round_trip() -> None:
     # in handlers_build.py structurally unreachable (BUILD_AWAIT_REPAIR is
     # a waiting state -- every approve_repair is a fresh turn that reloads
     # the context via context_from_dict).
-    fc = DifyBuilderContext(repair_attempts=5, last_repair_error="boom")
+    fc = DifyBuilderContext(repair_attempts=5, last_repair_error="boom", last_repair_graph_revision="executable")
     result = context_from_dict(context_to_dict(fc))
     assert result.repair_attempts == 5
     assert result.last_repair_error == "boom"
+    assert result.last_repair_graph_revision == "executable"
 
 
 def test_repair_loop_fields_default_when_absent() -> None:
     out = context_from_dict({})  # an older row with no repair_attempts/last_repair_error keys
     assert out.repair_attempts == 0
     assert out.last_repair_error == ""
+    assert out.last_repair_graph_revision == ""
 
 
 def test_unknown_outcome_count_round_trips_and_defaults_to_zero() -> None:

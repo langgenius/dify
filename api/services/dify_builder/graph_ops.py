@@ -15,6 +15,7 @@ from typing import Any, NamedTuple
 
 from core.dify_builder.models import Graph, MutationIntent
 from core.dify_builder.node_defaults import default_config_or_empty
+from core.trigger.constants import TRIGGER_NODE_TYPES
 from services.dify_builder import credentials
 from services.workflow_generation.graph_normalizers import declared_branch_handles, heal_nodes_for_preflight
 
@@ -439,6 +440,63 @@ def apply_connect(
     return new_graph, [from_node, to_node]
 
 
+def _reused_insertion_node(
+    graph: Graph,
+    edge: dict[str, str],
+    node_type: str,
+    config: dict[str, Any],
+    position: dict[str, float] | None,
+    node_id: str | None,
+) -> dict[str, Any]:
+    """Validate opt-in wiring of one existing, ordinary native canvas node."""
+    matches = [node for node in graph.get("nodes", []) if node.get("id") == node_id]
+    if not node_id or len(matches) != 1:
+        raise ValueError("reuse_existing requires one exact existing node_id")
+    node = matches[0]
+    data = node.get("data", {})
+    if node_id in {edge["source"], edge["target"]}:
+        raise ValueError("reuse_existing node cannot be the source or target of the replaced edge")
+    if config != {} or position is not None:
+        raise ValueError("reuse_existing requires config={} and no position override; node data is preserved")
+    if data.get("type") != node_type:
+        raise ValueError("reuse_existing requires the existing node's exact native type")
+    if node_type in {
+        "start",
+        "datasource",
+        "end",
+        "answer",
+        "iteration",
+        "loop",
+        "iteration-start",
+        "loop-start",
+        *TRIGGER_NODE_TYPES,
+    } or (
+        node.get("parentId")
+        or data.get("iteration_id")
+        or data.get("loop_id")
+        or data.get("isInIteration")
+        or data.get("isInLoop")
+    ):
+        raise ValueError("reuse_existing does not support entry, terminal or container nodes/children")
+    declared = declared_branch_handles(node)
+    if declared and "source" not in declared:
+        raise ValueError("reuse_existing node does not declare the required outgoing source handle")
+    source = next((n for n in graph.get("nodes", []) if n.get("id") == edge["source"]), None)
+    target = next((n for n in graph.get("nodes", []) if n.get("id") == edge["target"]), None)
+    if source is None or target is None or edge["source"] == edge["target"]:
+        raise ValueError("reuse_existing requires distinct existing edge endpoints")
+    if any(
+        endpoint.get("parentId")
+        or any(endpoint.get("data", {}).get(key) for key in ("iteration_id", "loop_id", "isInIteration", "isInLoop"))
+        for endpoint in (source, target)
+    ):
+        raise ValueError("reuse_existing does not support edges inside containers")
+    declared_source = declared_branch_handles(source)
+    if declared_source and edge.get("sourceHandle", "source") not in declared_source:
+        raise ValueError("reuse_existing edge does not name a declared source branch handle")
+    return node
+
+
 def apply_insert_between(
     graph: Graph,
     edge: dict[str, str],
@@ -446,26 +504,60 @@ def apply_insert_between(
     config: dict[str, Any],
     position: dict[str, float] | None = None,
     node_id: str | None = None,
+    reuse_existing: bool = False,
 ) -> tuple[Graph, list[str]]:
     """Split an existing edge with a new node: remove the old edge, add
     ``old_source -> new_node`` and ``new_node -> old_target``.
 
     ``edge`` identifies the edge to split by ``{"source": ..., "target": ...}``
     (matching Dify's own edge fields, not a caller-known internal edge id).
-    Raises ``ValueError`` if no edge in ``graph["edges"]`` matches (the
-    Slice 1 dangling-ref validation). Returns ``(new_graph, [new_node_id])``.
+    Raises ``ValueError`` if no edge matches. Opt-in ``reuse_existing=True``
+    retains the complete existing node object: exact ID/type, config={}, no
+    position override, isolated node only, no container/terminal/invalid branch insertion. Optional
+    edge handles disambiguate parallel edges. Default creation is unchanged.
+    Returns ``(new_graph, [node_id])``; reuse writes edges only.
     """
+    if type(reuse_existing) is not bool:
+        raise ValueError("reuse_existing must be a boolean")
     old_source = edge["source"]
     old_target = edge["target"]
     new_graph = copy.deepcopy(graph)
     edges = new_graph.get("edges", [])
-    matched = next((e for e in edges if e.get("source") == old_source and e.get("target") == old_target), None)
+    matches = [e for e in edges if e.get("source") == old_source and e.get("target") == old_target]
+    if reuse_existing:
+        matches = [
+            e
+            for e in matches
+            if all(
+                e.get(k, default) == edge[k]
+                for k, default in (("sourceHandle", "source"), ("targetHandle", "target"))
+                if k in edge
+            )
+        ]
+        if len(matches) != 1:
+            raise ValueError("reuse_existing requires one exact existing edge, including handles when ambiguous")
+    matched = matches[0] if matches else None
     if matched is None:
         raise ValueError(f"edge not found: {old_source} -> {old_target}")
 
-    node = _build_node(new_graph, node_type, config, position, node_id)
+    if reuse_existing:
+        if any(
+            matched.get(key, default) != default and key not in edge
+            for key, default in (("sourceHandle", "source"), ("targetHandle", "target"))
+        ):
+            raise ValueError("reuse_existing requires explicit nondefault edge handles")
+        exact_edge = {
+            **edge,
+            "sourceHandle": matched.get("sourceHandle", "source"),
+            "targetHandle": matched.get("targetHandle", "target"),
+        }
+        node = _reused_insertion_node(new_graph, exact_edge, node_type, config, position, node_id)
+        if any(node_id in {e.get("source"), e.get("target")} for e in edges):
+            raise ValueError("reuse_existing requires an isolated node; existing dependencies need manual wiring")
+    else:
+        node = _build_node(new_graph, node_type, config, position, node_id)
+        new_graph.setdefault("nodes", []).append(node)
     new_id = node["id"]
-    new_graph.setdefault("nodes", []).append(node)
 
     remaining_edges = [e for e in edges if e is not matched]
     existing_edge_ids = {e.get("id") for e in remaining_edges}
@@ -569,7 +661,9 @@ def already_present_predicate(graph: Graph, intents: list[MutationIntent]) -> Ca
     An interrupted step's Retry re-sends the same batch against an
     already-mutated draft, so a ``create_node`` for an id that is now present and
     a ``connect`` for an edge that is now present are clean no-ops rather than
-    errors. ``dify_port.apply_repair`` drops them before its apply loop, and
+    errors. Reused insertions are no-ops only when their exact replacement
+    edges are present and the original edge is absent.
+    ``dify_port.apply_repair`` drops them before its apply loop, and
     ``filter_applicable`` skips them in its dry run for the same reason: without
     this the dry run rejects a duplicate ``create_node`` ("node id already
     exists") that the port would have quietly dropped, and burns the one
@@ -602,6 +696,37 @@ def already_present_predicate(graph: Graph, intents: list[MutationIntent]) -> Ca
     def already_present(intent: MutationIntent) -> bool:
         if intent.op == "create_node":
             return intent.args.get("node_id") in present_node_ids
+        if intent.op == "insert_between" and intent.args.get("reuse_existing") is True:
+            try:
+                validate_intent_args(intent)
+                args = intent.args
+                edge = args["edge"]
+                node_id = args.get("node_id")
+                _reused_insertion_node(graph, edge, args["node_type"], args["config"], args.get("position"), node_id)
+                if {node_id, edge["source"], edge["target"]} & deleted_ids:
+                    return False
+                keys = {
+                    (e.get("source"), e.get("target"), e.get("sourceHandle", "source"), e.get("targetHandle", "target"))
+                    for e in graph.get("edges", [])
+                }
+                return (
+                    (
+                        edge["source"],
+                        edge["target"],
+                        edge.get("sourceHandle", "source"),
+                        edge.get("targetHandle", "target"),
+                    )
+                    not in keys
+                    and (edge["source"], node_id, edge.get("sourceHandle", "source"), "target") in keys
+                    and (node_id, edge["target"], "source", edge.get("targetHandle", "target")) in keys
+                    and {key for key in keys if node_id in key[:2]}
+                    == {
+                        (edge["source"], node_id, edge.get("sourceHandle", "source"), "target"),
+                        (node_id, edge["target"], "source", edge.get("targetHandle", "target")),
+                    }
+                )
+            except (ValueError, KeyError, TypeError):
+                return False
         if intent.op == "connect":
             return (
                 intent.args.get("from_node"),
@@ -629,7 +754,7 @@ class DryRun(NamedTuple):
     narrower than a change set in two deliberate ways, and both matter because
     a node in it loses its pre-existing-defect exemption entirely:
 
-    * ``connect`` is EXCLUDED. ``apply_connect`` reports both endpoints as
+    * ``connect`` and ``insert_between(reuse_existing=True)`` are EXCLUDED. ``apply_connect`` reports both endpoints as
       changed -- correct for a diff, wrong here: adding an edge cannot change
       either endpoint's ``validate_node_config`` verdict, so counting them would
       let merely WIRING an already-broken node make that node's pre-existing
@@ -702,7 +827,7 @@ def filter_applicable(
             continue
         # A connect writes an EDGE; its endpoints' node data is untouched (see
         # ``DryRun.changed_nodes``). Mirrored in ``dify_port.apply_repair``.
-        if intent.op != "connect":
+        if intent.op != "connect" and not (intent.op == "insert_between" and intent.args.get("reuse_existing") is True):
             changed_nodes.extend(changed)
         applicable.append(intent)
     heal_nodes_for_preflight(working.get("nodes") or [])

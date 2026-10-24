@@ -658,3 +658,65 @@ def test_direct_write_allows_edge_only_wiring_without_retrieval_config_changes(m
     written = sync.call_args.kwargs["graph"]
     assert written["nodes"] == graph["nodes"]
     assert [(edge["source"], edge["target"]) for edge in written["edges"]] == [("node1", "r")]
+
+
+def test_apply_repair_reuses_full_existing_node_and_reports_only_actual_wiring(mock_session: Session) -> None:
+    graph: Graph = {
+        "nodes": [
+            deepcopy(_START),
+            {"id": "end", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
+            {
+                "id": "mark",
+                "type": "custom",
+                "position": {"x": 777, "y": 333},
+                "annotation": {"note": "retain"},
+                "data": {"type": "template-transform", "title": "Mark", "template": "hello", "variables": []},
+            },
+        ],
+        "edges": [{"id": "old", "source": "node1", "target": "end"}],
+    }
+    original = deepcopy(graph)
+    intent = MutationIntent(
+        op="insert_between",
+        args={
+            "edge": {"source": "node1", "target": "end"},
+            "node_type": "template-transform",
+            "node_id": "mark",
+            "config": {},
+            "reuse_existing": True,
+        },
+    )
+    result, sync = _apply(mock_session, graph, [intent])
+    written = sync.call_args.kwargs["graph"]
+    assert written["nodes"] == original["nodes"]
+    assert {(e["source"], e["target"]) for e in written["edges"]} == {("node1", "mark"), ("mark", "end")}
+    assert result.scope == "structure"
+    assert set(result.changes) == {"− node1 → end", "＋ node1 → mark", "＋ mark → end"}
+    assert graph == original
+
+
+def test_reuse_existing_cannot_make_unbound_tool_executable(mock_session: Session) -> None:
+    from services.dify_builder.resource_grounding import ResourceBindingError
+
+    graph: Graph = {
+        "nodes": [
+            deepcopy(_START),
+            {"id": "end", "data": {"type": "end", "outputs": []}},
+            {"id": "tool", "data": {"type": "tool", "provider_id": "", "tool_name": ""}},
+        ],
+        "edges": [{"source": "node1", "target": "end"}],
+    }
+    intent = MutationIntent(
+        op="insert_between",
+        args={
+            "edge": {"source": "node1", "target": "end"},
+            "node_type": "tool",
+            "node_id": "tool",
+            "config": {},
+            "reuse_existing": True,
+        },
+    )
+    with patch("services.dify_builder.dify_port._sync_graph_only") as sync:
+        with pytest.raises(ResourceBindingError, match="resource_selection_required"):
+            _apply(mock_session, graph, [intent])
+        sync.assert_not_called()

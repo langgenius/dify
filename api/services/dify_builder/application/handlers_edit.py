@@ -24,6 +24,7 @@ from core.dify_builder.models import (
     ChangeSet,
     Diagnosis,
     DifyBuilderContext,
+    Graph,
     NodeEvent,
     Risk,
     Run,
@@ -125,12 +126,11 @@ def handle_capability_check(
     if ok and text:
         if text != fc.goal_text:
             clear_task_acceptance(fc)
+            fc.repair_attempts = 0
+            fc.last_repair_error = ""
+            fc.last_repair_graph_revision = ""
         fc.goal_text = text
-    # A new goal is a new repair loop: the breaker's counter must not carry
-    # over from whatever the previous edit was stuck on, and neither may the
-    # engine's refusal of a change this goal has nothing to do with.
-    fc.repair_attempts = 0
-    fc.last_repair_error = ""
+    # Re-entering with the same goal must not replenish a failed repair budget.
     fc.last_edit_rejection = ""
 
     progress = ProgressReporter.for_session(
@@ -437,8 +437,6 @@ def _resume_adjusting(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) 
         emit_canvas(env, "highlight_edit_target", node_id=node_id)
     fc.test_input_ref = ""
     fc.verify_run_id = ""
-    fc.repair_attempts = 0
-    fc.last_repair_error = ""
     fc.unknown_outcome_count = 0
     decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.ACTIONS_CONTINUE_ADJUSTING)))
     form_items = append_card(
@@ -762,6 +760,37 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     return StepResult(next=PcState.EDIT_TEST_AFFECTED_PATHS, context=fc)
 
 
+def _disconnected_draft_guidance(graph: Graph, affected_ids: list[str]) -> str:
+    """Current, affected canvas facts for a failed draft; never a test verdict."""
+    incoming = {edge.get("target") for edge in graph.get("edges", [])}
+    outgoing = {edge.get("source") for edge in graph.get("edges", [])}
+    lines = []
+    for node in graph.get("nodes", []):
+        node_id = node.get("id")
+        data = node.get("data", {})
+        if node_id not in affected_ids or node_id in incoming and node_id in outgoing:
+            continue
+        # Native entry/terminal nodes legitimately have only one direction.
+        if data.get("type") in {"start", "end", "answer"}:
+            continue
+        missing = []
+        if node_id not in incoming:
+            missing.append("incoming connection")
+        if node_id not in outgoing:
+            missing.append("outgoing connection")
+        if data.get("type") == "tool" and (not data.get("provider_id") or not data.get("tool_name")):
+            missing.append("a real Tool action binding and its required parameters")
+        lines.append(f"- {node_id} ({data.get('title') or node_id}): missing {', '.join(missing)}.")
+    if not lines:
+        return ""
+    return (
+        "\n\nCurrent draft checklist:\n"
+        + "\n".join(lines)
+        + "\nConnect and configure these nodes manually, or remove them. "
+        "Keep draft intentionally leaves them untested; revert restores the checkpoint."
+    )
+
+
 def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(working, auto) Live affected-path test via run_draft. Success ->
     edit.review; failure -> real diagnose + propose_repair, staged for the
@@ -1063,7 +1092,10 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     from services.dify_builder.condition_evidence import diagnose_failure, propose_failure
 
     diagnosis = diagnose_failure(env, s.app_id, turn.actor, run, graph, task=(s, fc, _hash))
-    note_repair_error(fc, run, business_signature=business_failure.signature if business_failure else "")
+    guidance = _disconnected_draft_guidance(
+        graph, [*fc.edit_target_node_ids, diagnosis.culprit_node_id, first_failed_node(per_node)]
+    )
+    note_repair_error(fc, run, business_signature=business_failure.signature if business_failure else "", graph=graph)
     if repair_is_repeating(fc):
         # Same breaker as Build's: the identical engine failure has survived
         # MAX_REPEATED_REPAIRS repairs, so another round would aim at the same
@@ -1084,7 +1116,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             fc,
             f"{diagnosis.root_cause or copy_text(BuilderCopyId.TEST_FAILED_FALLBACK)}\n\n"
             "The same error survived the last repairs, so I've stopped retrying. "
-            "Edit the node directly and test again, or revert.",
+            "Edit the node directly and test again, keep the untested draft, or revert." + guidance,
             execution=execution,
             cards=["test_result"],
             turn_id=progress.operation_id,
@@ -1124,6 +1156,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     )
     if not intents and risk.reason and risk.reason != NO_REPAIR_REASON:
         reply_text = text_parts(reply_text, "\n", copy_text(BuilderCopyId.REPAIR_REASON, reason=risk.reason))
+    reply_text = text_parts(reply_text, guidance)
     turn_items = append_assistant(
         env,
         s,
@@ -1389,8 +1422,6 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     fc.checkpoint_seq = fc.next_seq
     fc.test_input_ref = ""
     fc.verify_run_id = ""
-    fc.repair_attempts = 0
-    fc.last_repair_error = ""
     fc.unknown_outcome_count = 0
     progress.activate("edit-create-checkpoint")
     mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)

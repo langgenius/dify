@@ -414,7 +414,9 @@ def failure_signature(run: Run) -> str:
     return f"|{launch_error}" if launch_error else ""
 
 
-def note_repair_error(fc: DifyBuilderContext, run: Run, *, business_signature: str = "") -> None:
+def note_repair_error(
+    fc: DifyBuilderContext, run: Run, *, business_signature: str = "", graph: Graph | None = None
+) -> None:
     """Record this failure's signature and count CONSECUTIVE repeats of it.
 
     ``repair_attempts`` is not a global budget: a different failure means the
@@ -426,13 +428,32 @@ def note_repair_error(fc: DifyBuilderContext, run: Run, *, business_signature: s
     Native failures use the Run's engine evidence. A caller may instead pass
     the signature of a validated current explicit business mismatch; that key
     comes from its contract/checks, never from an LLM's diagnosis prose.
+    ``graph`` binds the failure to executable progress across recovery; legacy
+    callers without a graph retain failure-only convergence. New Tasks clear
+    the stored evidence, while same-goal flow restarts preserve it.
     """
+    from services.dify_builder.revision import executable_graph_revision
+
+    # The native revision owner removes canvas presentation. Titles/descriptions
+    # also cannot fix a failure, even though they participate in draft revision.
+    revision = ""
+    if graph is not None:
+        executable = {
+            **graph,
+            "nodes": [
+                {**node, "data": {k: v for k, v in node.get("data", {}).items() if k not in {"title", "desc"}}}
+                for node in graph.get("nodes", [])
+            ],
+        }
+        revision = executable_graph_revision(executable)
     signature = business_signature or failure_signature(run)
-    if signature and signature == fc.last_repair_error:
+    same_graph = not revision or not fc.last_repair_graph_revision or revision == fc.last_repair_graph_revision
+    if signature and signature == fc.last_repair_error and same_graph:
         fc.repair_attempts += 1
     else:
         fc.repair_attempts = 0
     fc.last_repair_error = signature
+    fc.last_repair_graph_revision = revision
 
 
 def repair_is_repeating(fc: DifyBuilderContext) -> bool:
@@ -1102,7 +1123,7 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     )
     repeating_business = False
     if business is not None:
-        note_repair_error(fc, failed, business_signature=business.signature)
+        note_repair_error(fc, failed, business_signature=business.signature, graph=graph)
         repeating_business = repair_is_repeating(fc)
         if repeating_business:
             fc.staged_repair = []
