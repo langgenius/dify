@@ -20,14 +20,16 @@ from typing import Literal, cast
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, create_engine, event, func, select, text
+from psycopg2 import extensions as pg_extensions
+from sqlalchemy import Connection, Engine, create_engine, event, func, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 from testcontainers.core.wait_strategies import ExecWaitStrategy
 from testcontainers.postgres import PostgresContainer
 
+from core.dify_builder.contract import SessionView
 from core.dify_builder.errors import ConflictError
-from core.dify_builder.models import Actor, DifyBuilderContext, EntryMode, Graph, MutationIntent
+from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Graph, MutationIntent
 from core.dify_builder.models import Session as DomainSession
 from core.dify_builder.state import PcState
 from models.account import Account
@@ -53,6 +55,7 @@ from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
 _TIMEOUT = 15
 _GENERATION = 7
 Mutation = Literal["restore", "repair"]
+type Enqueued = tuple[str, Action, Actor, str]
 
 
 @pytest.fixture(scope="module")
@@ -88,15 +91,18 @@ def task_postgres_engine() -> Iterator[Engine]:
             Base.metadata.create_all(
                 engine,
                 tables=[
-                    Account.__table__,
-                    App.__table__,
-                    Workflow.__table__,
-                    WorkflowAgentNodeBinding.__table__,
-                    DifyBuilderSession.__table__,
-                    DifyBuilderSessionCommit.__table__,
-                    DifyBuilderConversationItem.__table__,
-                    DifyBuilderExecutionRequest.__table__,
-                    DifyBuilderRun.__table__,
+                    Base.metadata.tables[model.__tablename__]
+                    for model in (
+                        Account,
+                        App,
+                        Workflow,
+                        WorkflowAgentNodeBinding,
+                        DifyBuilderSession,
+                        DifyBuilderSessionCommit,
+                        DifyBuilderConversationItem,
+                        DifyBuilderExecutionRequest,
+                        DifyBuilderRun,
+                    )
                 ],
             )
             yield engine
@@ -115,7 +121,7 @@ class TaskWorld:
     session_id: str
     graph: Graph
     revision: str
-    enqueued: list[tuple]
+    enqueued: list[Enqueued]
 
     def mutate(self, mutation: Mutation, *, generation: int = _GENERATION) -> object:
         # Deliberately model a worker that already passed its advisory check.
@@ -148,7 +154,7 @@ class TaskWorld:
             assert workflow is not None
             return dict(workflow.graph_dict)
 
-    def stop(self, *, key: str = "stop"):
+    def stop(self, *, key: str = "stop") -> SessionView:
         return self.service.stop_task(self.session_id, self.actor, base_version=1, client_action_id=key)
 
 
@@ -162,7 +168,7 @@ def task_world(task_postgres_engine: Engine, monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(dify_port, "notify_workflow_draft_changed", lambda *_args, **_kwargs: None)
     account = Account(name="Task fence owner", email=f"{uuid4()}@example.invalid")
     tenant_id = str(uuid4())
-    graph = {
+    graph: Graph = {
         "nodes": [
             {
                 "id": "start",
@@ -220,11 +226,15 @@ def task_world(task_postgres_engine: Engine, monkeypatch: pytest.MonkeyPatch) ->
     actor = Actor(account_id=account.id, tenant_id=tenant_id)
     port = WorkflowServiceDifyPort()
     revision = port.read_graph(app.id, actor)[1]
-    enqueued: list[tuple] = []
+    enqueued: list[Enqueued] = []
+
+    def enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
+        enqueued.append((session_id, action, actor, token))
+
     service = DifyBuilderService(
         repo=repo,
         session_lock=FakeSessionLock(),
-        enqueue_fn=lambda *args: enqueued.append(args),
+        enqueue_fn=enqueue,
         get_app_revision_fn=lambda app_id, actor: port.read_graph(app_id, actor)[1],
     )
     return TaskWorld(factory, repo, service, actor, app.id, workflow.id, domain.id, graph, revision, enqueued)
@@ -234,18 +244,26 @@ def _session_lock_statement(statement: str) -> bool:
     return "FROM dify_builder_sessions" in statement and "FOR UPDATE" in statement
 
 
+def _backend_pid(connection: Connection) -> int:
+    driver = connection.connection.driver_connection
+    assert isinstance(driver, pg_extensions.connection)
+    return driver.get_backend_pid()
+
+
 @pytest.mark.parametrize("mutation", ["restore", "repair"])
 def test_stop_commits_before_old_worker_actual_draft_write(task_world: TaskWorld, mutation: Mutation) -> None:
     world = task_world
     at_write_fence, continue_worker = threading.Event(), threading.Event()
     role: ContextVar[Literal["worker"] | None] = ContextVar("sql_role", default=None)
 
-    def before_sql(_connection, _cursor, statement, _parameters, _context, _many):
+    def before_sql(
+        _connection: Connection, _cursor: object, statement: str, _parameters: object, _context: object, _many: bool
+    ) -> None:
         if role.get() == "worker" and _session_lock_statement(statement):
             at_write_fence.set()
             assert continue_worker.wait(_TIMEOUT), "worker was not released from the write barrier"
 
-    def worker():
+    def worker() -> object:
         role.set("worker")
         return world.mutate(mutation)
 
@@ -279,27 +297,31 @@ def test_old_worker_draft_commit_before_stop_is_retained(task_world: TaskWorld, 
     pids: dict[str, int] = {}
     worker_locks: list[str] = []
 
-    def before_sql(connection, _cursor, statement, _parameters, _context, _many):
+    def before_sql(
+        connection: Connection, _cursor: object, statement: str, _parameters: object, _context: object, _many: bool
+    ) -> None:
         if role.get() == "stop" and _session_lock_statement(statement):
-            pids["stop"] = connection.connection.driver_connection.get_backend_pid()
+            pids["stop"] = _backend_pid(connection)
             stop_attempting_lock.set()
 
-    def after_sql(connection, _cursor, statement, _parameters, _context, _many):
+    def after_sql(
+        connection: Connection, _cursor: object, statement: str, _parameters: object, _context: object, _many: bool
+    ) -> None:
         if role.get() != "worker" or "FOR UPDATE" not in statement:
             return
         if _session_lock_statement(statement):
-            pids["worker"] = connection.connection.driver_connection.get_backend_pid()
+            pids["worker"] = _backend_pid(connection)
             worker_locks.append("session")
             worker_has_lock.set()
             assert finish_worker.wait(_TIMEOUT), "worker was not released while holding the session row"
         elif "FROM workflows" in statement:
             worker_locks.append("workflow")
 
-    def worker():
+    def worker() -> object:
         role.set("worker")
         return world.mutate(mutation)
 
-    def stop():
+    def stop() -> SessionView:
         role.set("stop")
         return world.stop()
 
@@ -317,9 +339,11 @@ def test_old_worker_draft_commit_before_stop_is_retained(task_world: TaskWorld, 
                 # There is no sleep or scheduling-dependent winning assertion.
                 with engine.connect() as observer:
                     deadline = time.monotonic() + _TIMEOUT
-                    blockers = []
+                    blockers: list[int] = []
                     while time.monotonic() < deadline:
-                        blockers = observer.scalar(text("SELECT pg_blocking_pids(:pid)"), {"pid": pids["stop"]})
+                        observed = observer.scalar(text("SELECT pg_blocking_pids(:pid)"), {"pid": pids["stop"]})
+                        assert observed is not None
+                        blockers = observed
                         if pids["worker"] in blockers:
                             break
                     assert pids["worker"] in blockers, "PostgreSQL did not serialize Stop behind the actual writer"
@@ -359,11 +383,31 @@ def test_resumed_generation_rejects_old_worker_even_at_current_revision(
         client_action_id="resume",
     )
     domain, context = world.repo.get_session(world.session_id)
-    assert resumed.version == domain.version
+    # This enqueue only records a delivery: exactly one dispatch reservation
+    # follows the pinned ACK, and no worker can advance the session head.
+    assert domain.version == resumed.version + 1
+    receipt = world.repo.find_task_control(world.session_id, "resume")
+    assert receipt is not None
+    assert receipt["version"] == resumed.version
+    assert receipt["view"] == asdict(resumed)
+    _, acknowledged_context = world.repo.get_session_at_version(world.session_id, resumed.version)
+    assert acknowledged_context.task_control["receipt"]["view"] == asdict(resumed)
+    assert acknowledged_context.task_control["receipt"]["enqueue"] == "pending"
+    assert acknowledged_context.task_control["generation"] == _GENERATION + 1
+    assert not acknowledged_context.paused
     assert not context.paused
     assert context.task_control["generation"] == _GENERATION + 1
     assert context.task_control["dsl"]["features"]["opening_statement"] == "Edited while paused"
     assert len(world.enqueued) == 1
+    queued_session, action, queued_actor, _token = world.enqueued[0]
+    assert queued_session == world.session_id
+    assert queued_actor == world.actor
+    assert action.base_version == domain.version
+    assert action.command_id == "resume"
+    assert action.execution_generation == _GENERATION + 1
+    assert receipt["enqueue"] == "dispatching"
+    assert receipt["delivery_id"]
+    assert action.payload["task_control_delivery"] == receipt["delivery_id"]
     with pytest.raises(ConflictError, match="stopped or superseded"):
         world.mutate(mutation)
     assert world.draft() == world.graph
@@ -412,7 +456,9 @@ def test_control_receipt_replay_survives_resume_without_new_commit(task_world: T
     assert not context.paused
     assert asdict(world.stop()) == asdict(stopped)
     assert world.repo.get_session(world.session_id)[0].version == current.version
-    assert world.repo.find_task_control(world.session_id, "stop")["view"] == asdict(stopped)
+    receipt = world.repo.find_task_control(world.session_id, "stop")
+    assert receipt is not None
+    assert receipt["view"] == asdict(stopped)
     with pytest.raises(ConflictError, match="different intent"):
         world.service.stop_task(world.session_id, world.actor, base_version=current.version, client_action_id="stop")
     with pytest.raises(ConflictError, match="superseded"):
@@ -426,7 +472,9 @@ def test_simultaneous_same_stop_identity_commits_one_durable_projection(task_wor
     both_at_lock = threading.Barrier(2, timeout=_TIMEOUT)
     arrived: ContextVar[bool] = ContextVar("arrived_at_sql_lock", default=False)
 
-    def before_sql(_connection, _cursor, statement, _parameters, _context, _many):
+    def before_sql(
+        _connection: Connection, _cursor: object, statement: str, _parameters: object, _context: object, _many: bool
+    ) -> None:
         if not arrived.get() and _session_lock_statement(statement):
             arrived.set(True)
             both_at_lock.wait()
