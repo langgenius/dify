@@ -29,6 +29,7 @@
   "appSelector.noParams": "パラメータは必要ありません",
   "appSelector.params": "アプリパラメータ",
   "appSelector.placeholder": "アプリを選択...",
+  "appSelector.searchPlaceholder": "名前でアプリを検索…",
   "chooseAppFile": "アプリパッケージまたは DSL ファイルを選択",
   "deleteAppConfirmContent": "アプリを削除すると、元に戻すことはできません。他のユーザーはもはやこのアプリにアクセスできず、すべてのプロンプトの設定とログが永久に削除されます。",
   "deleteAppConfirmInputLabel": "確認するには、下のボックスに<appName>{{appName}}</appName>と入力してください：",
