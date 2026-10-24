@@ -313,6 +313,7 @@ def test_resume_preserves_goal_inputs_checkpoint_and_passes_complete_dsl_to_cogn
 def test_pending_stop_get_reconciles_terminal_evidence_without_cancelling_again(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from dataclasses import asdict
     from uuid import uuid4
 
     from models.dify_builder import DifyBuilderExecutionRequest
@@ -362,15 +363,34 @@ def test_pending_stop_get_reconciles_terminal_evidence_without_cancelling_again(
     monkeypatch.setattr(actions, "current", read_current)
     monkeypatch.setattr(actions, "execute", execute)
     service._test_actions = actions
+    service._get_app_revision_fn = lambda *_: "original-draft"
     stopped = service.stop_task(s.id, _actor(), base_version=base, client_action_id="stop")
+    original_ack = asdict(stopped)
     assert str(stopped.run_status) == "processing"
     current = current.model_copy(update={"status": "terminal", "outcome": "cancelled"})
+    service._get_app_revision_fn = lambda *_: "edited-draft"
     view = service.get_session_view(s.id, _actor())
     assert str(view.run_status) == "paused"
     assert not view.canvas_read_only
     assert calls == ["cancel"]
     history = service.get_conversation_page(s.id, _actor(), limit=20)
     assert history.data == []
+
+    assert view.version > stopped.version
+    service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph()), "edited-draft")
+    service.resume_task(s.id, _actor(), base_version=view.version, client_action_id="resume")
+    before, context = repo.get_session(s.id)
+    assert not context.paused
+    replayed = service.stop_task(s.id, _actor(), base_version=base, client_action_id="stop")
+    assert asdict(replayed) == original_ack
+    saved = repo.find_task_control(s.id, "stop")
+    assert saved is not None
+    assert saved["version"] == stopped.version
+    assert saved["view"] == original_ack
+    after, context = repo.get_session(s.id)
+    assert after.version == before.version
+    assert not context.paused
+    assert calls == ["cancel"]
 
 
 def test_resume_rejects_autosave_between_dsl_read_and_reservation(
