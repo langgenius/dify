@@ -6,17 +6,24 @@ run_draft path. Browser payloads identify a disclosed operation, never authority
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC
 from typing import TYPE_CHECKING, Any, Literal, Protocol
+from uuid import NAMESPACE_URL, uuid5
 
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.errors import BadRequestError, ConflictError
 from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderConversationItem, DifyBuilderExecutionRequest, DifyBuilderSession
-from runtime_contracts.builder.execution import BuilderExecutionPolicyError, Digest
+from models.enums import CreatorUserRole
+from models.workflow import WorkflowRun
+from runtime_contracts.builder.execution import BuilderExecutionPolicyError, Digest, canonical_digest
 from runtime_contracts.builder.native.contracts import ID, Counter, FrozenDTO
+from runtime_contracts.builder.native.observation import parse_native_model_failure
+from services.dify_builder import trace_diagnostics
+from services.dify_builder.execution_policy_service import load_execution_owners
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 
 if TYPE_CHECKING:
@@ -84,6 +91,10 @@ class TestActionPort(Protocol):
 
     def current(self, *, actor: Actor, session_id: str, test_input_id: str) -> NativeTestPublicReceipt | None: ...
 
+    def current_diagnostics(
+        self, *, actor: Actor, session_id: str, test_input_id: str, receipt: NativeTestPublicReceipt
+    ) -> list[dict[str, Any]]: ...
+
     def execute(
         self, *, actor: Actor, session_id: str, test_input_id: str, command: TestCommand, idempotency_key: str
     ) -> NativeTestPublicReceipt: ...
@@ -136,6 +147,90 @@ class BuilderTestActions:
         if request_id is None:
             return None
         return self.command_factory(actor=actor).peek(actor=actor, session_id=session_id, request_id=request_id)
+
+    def current_diagnostics(
+        self, *, actor: Actor, session_id: str, test_input_id: str, receipt: NativeTestPublicReceipt
+    ) -> list[dict[str, Any]]:
+        """Observe only the current owned parent; never reconcile or inspect child I/O."""
+        try:
+            with self.sessions() as sql:
+                request = sql.scalar(
+                    select(DifyBuilderExecutionRequest)
+                    .where(
+                        DifyBuilderExecutionRequest.tenant_id == actor.tenant_id,
+                        DifyBuilderExecutionRequest.actor_id == actor.account_id,
+                        DifyBuilderExecutionRequest.session_id == session_id,
+                        DifyBuilderExecutionRequest.test_input_id == test_input_id,
+                        DifyBuilderExecutionRequest.context["policy_version"].as_string() == "builder-native-test-v1",
+                    )
+                    .order_by(DifyBuilderExecutionRequest.created_at.desc(), DifyBuilderExecutionRequest.id.desc())
+                    .limit(1)
+                )
+                if request is None or request.id != receipt.request_id or not receipt.native_run_id:
+                    return []
+                load_execution_owners(
+                    sql,
+                    actor=actor,
+                    app_id=request.app_id,
+                    workflow_id=request.workflow_id,
+                    session_id=session_id,
+                    test_input_id=test_input_id,
+                )
+                context = request.context
+                expected = {
+                    "request_id": request.id,
+                    "tenant_id": actor.tenant_id,
+                    "actor_id": actor.account_id,
+                    "app_id": request.app_id,
+                    "workflow_id": request.workflow_id,
+                    "session_id": session_id,
+                    "test_input_id": test_input_id,
+                    "native_run_id": receipt.native_run_id,
+                }
+                if (
+                    canonical_digest(context) != request.context_digest
+                    or any(context.get(key) != value for key, value in expected.items())
+                    or request.native_run_id not in (None, receipt.native_run_id)
+                ):
+                    return []
+                parent = sql.execute(
+                    select(
+                        WorkflowRun.id, func.substr(WorkflowRun.error, 1, 257).label("error"), WorkflowRun.finished_at
+                    )
+                    .where(
+                        WorkflowRun.id == receipt.native_run_id,
+                        WorkflowRun.tenant_id == actor.tenant_id,
+                        WorkflowRun.app_id == request.app_id,
+                        WorkflowRun.workflow_id == request.workflow_id,
+                        WorkflowRun.created_by == actor.account_id,
+                        WorkflowRun.created_by_role == CreatorUserRole.ACCOUNT,
+                        WorkflowRun.status == "failed",
+                    )
+                    .limit(1)
+                ).first()
+                if parent is None or parent.finished_at is None or not isinstance(parent.error, str):
+                    return []
+                diagnostic = parse_native_model_failure(parent.error)
+                legacy = parent.error == "NativeAgentModelDispatchFailed: Native Agent model invocation failed."
+                if diagnostic is None and not legacy:
+                    return []
+                stage, category = (diagnostic.stage, diagnostic.category) if diagnostic else (None, None)
+                at = parent.finished_at
+                at = at.replace(tzinfo=UTC) if at.tzinfo is None else at.astimezone(UTC)
+                record = trace_diagnostics.project(
+                    {
+                        "code": "native_model_invocation_failed",
+                        "native_stage": stage,
+                        "native_category": category,
+                        "id": str(uuid5(NAMESPACE_URL, f"builder-native:{request.id}:{parent.id}:{stage}:{category}")),
+                        "at": at.isoformat(),
+                    }
+                )
+                record["session_id"] = session_id
+                return [record]
+        except Exception:
+            # Optional observations must not prevent ordinary GET/reconnect.
+            return []
 
     def execute(
         self, *, actor: Actor, session_id: str, test_input_id: str, command: TestCommand, idempotency_key: str

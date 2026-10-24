@@ -2243,6 +2243,29 @@ jobs:
                   'test_periodic_worker_beat_routes_registered_task_to_builder_consumer_queue': 1,
               },
           })
+          # ENG-1240: frozen safe model diagnostics; retain every earlier exact inventory.
+          for module, functions in {
+              "tests.unit_tests.controllers.inner_api.test_agent_llm": {
+                  "test_native_model_failure_stage_survives_real_gateway_without_private_text": 14,
+                  "test_native_model_failure_decoder_rejects_untrusted_text": 9,
+                  "test_native_model_failure_codec_preserves_all_fixed_stage_category_pairs": 1
+              },
+              "tests.unit_tests.services.dify_builder.test_agent_model_result_canonical": {
+                  "test_closed_model_stream_preserves_generator_exit_and_unknown_without_diagnostic": 1,
+                  "test_model_diagnostic_observer_failure_preserves_original_owner_exception": 2
+              },
+              "tests.unit_tests.services.dify_builder.test_trace_diagnostics": {
+                  "test_native_model_projection_is_fixed_and_does_not_copy_exception_metadata": 1,
+                  "test_current_native_diagnostic_merge_is_bounded_and_deduplicated": 1,
+                  "test_native_model_projection_keeps_allowlisted_stage_and_category": 10,
+                  "test_native_model_projection_rejects_malformed_classification": 4
+              },
+              "tests.unit_tests.services.dify_builder.test_native_live_stream": {
+                  "test_current_model_failure_diagnostic_is_stable_owned_and_readonly": 2,
+                  "test_native_model_diagnostic_owner_drift": 12
+              }
+          }.items():
+              a4_expected.setdefault(module, a3_expected.get(module, {}).copy()).update(functions)
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:

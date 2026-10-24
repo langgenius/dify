@@ -1560,11 +1560,23 @@ class DifyBuilderService:
             else None
         )
         recovery_ref = recovery.recovery_ref_for(fc.recovery_class)
+        diagnostics = trace_diagnostics.from_history(
+            self._repo.list_recent_conversation(s.id, limit=24), session_id=s.id, version=s.version
+        )
+        if self._test_actions is not None and receipt is not None:
+            with suppress(Exception):
+                diagnostics = trace_diagnostics.merge_current(
+                    diagnostics,
+                    self._test_actions.current_diagnostics(
+                        actor=Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id),
+                        session_id=s.id,
+                        test_input_id=fc.test_input_ref,
+                        receipt=receipt,
+                    ),
+                )
         return SessionView(
             test_execution=test_execution,
-            diagnostics=trace_diagnostics.from_history(
-                self._repo.list_recent_conversation(s.id, limit=24), session_id=s.id, version=s.version
-            ),
+            diagnostics=diagnostics,
             session_id=s.id,
             app_id=s.app_id,
             version=s.version,

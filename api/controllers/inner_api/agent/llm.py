@@ -15,7 +15,12 @@ from controllers.inner_api.wraps import agent_endpoint_api_only
 from core.errors.error import QuotaExceededError
 from libs.exception import BaseHTTPException
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError
+from runtime_contracts.builder.native.observation import format_native_model_failure
+from services.agent_llm_inner_service import (
+    AgentLLMInnerService,
+    AgentLLMInnerServiceError,
+    NativeAgentModelDispatchError,
+)
 from services.dify_builder.native_testing.agent_bridge import claim_agent_endpoint
 from services.entities.agent_llm_inner import AgentLLMInvokeRequest
 
@@ -123,7 +128,11 @@ class AgentLLMInvokeApi(Resource):
                     "error_type": "NativeAgentModelDispatchFailed"
                     if payload.native_dispatch is not None
                     else type(exc).__name__,
-                    "message": "Native Agent model invocation failed."
+                    "message": (
+                        format_native_model_failure(exc.diagnostic)
+                        if isinstance(exc, NativeAgentModelDispatchError)
+                        else "Native Agent model invocation failed."
+                    )
                     if payload.native_dispatch is not None
                     else str(exc) or "Agent LLM invocation failed.",
                 }

@@ -127,6 +127,15 @@ class ActionCommands:
         assert session_id
         return self.receipt if test_input_id == "input-1" else None
 
+    def current_diagnostics(
+        self, *, actor: Actor, session_id: str, test_input_id: str, receipt: NativeTestPublicReceipt
+    ) -> list[dict[str, object]]:
+        assert actor.account_id
+        assert session_id
+        assert test_input_id
+        assert receipt.request_id
+        return []
+
     def execute(
         self, *, actor: Actor, session_id: str, test_input_id: str, command: NativeCommand, idempotency_key: str
     ) -> NativeTestPublicReceipt:
