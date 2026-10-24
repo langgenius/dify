@@ -42,10 +42,10 @@ const InvitationLink = ({ value }: IInvitationLinkProps) => {
               render={
                 <button
                   type="button"
-                  className="absolute inset-x-0 top-0 block w-full cursor-pointer truncate border-none bg-transparent p-0 px-2 text-left text-text-primary"
+                  className="absolute inset-x-0 top-0 block w-full cursor-pointer truncate border-none bg-transparent p-0 px-2 text-start text-text-primary"
                   onClick={copyHandle}
                 >
-                  {value.url}
+                  <span dir="ltr">{value.url}</span>
                 </button>
               }
             />

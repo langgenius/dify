@@ -1,17 +1,28 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import InvitedModal from '../index'
+import InvitationResultsContent from '../index'
 
+const mockOnCancel = vi.fn()
 let deploymentEdition: DeploymentEdition = 'COMMUNITY'
 const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: deploymentEdition } })
+  renderWithConsoleQuery(
+    <Dialog
+      defaultOpen
+      onOpenChange={(open) => {
+        if (!open) mockOnCancel()
+      }}
+    >
+      <DialogContent>{ui}</DialogContent>
+    </Dialog>,
+    { systemFeatures: { deployment_edition: deploymentEdition } },
+  )
 
-describe('InvitedModal', () => {
-  const mockOnCancel = vi.fn()
+describe('InvitationResultsContent', () => {
   const results: MemberInviteResponse['invitation_results'] = [
     { email: 'success@example.com', status: 'success', url: 'http://invite.com/1' },
     {
@@ -28,7 +39,7 @@ describe('InvitedModal', () => {
   })
 
   it('should show invitation results', async () => {
-    render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
+    render(<InvitationResultsContent invitationResults={results} />)
 
     expect(await screen.findByText(/members\.invitationSent$/i)).toBeInTheDocument()
     expect(await screen.findByText(/members\.invitationLink/i)).toBeInTheDocument()
@@ -42,11 +53,10 @@ describe('InvitedModal', () => {
   it('opens and reopens a failure reason with the keyboard without closing the results dialog', async () => {
     const user = userEvent.setup()
     render(
-      <InvitedModal
+      <InvitationResultsContent
         invitationResults={[
           { email: 'failed@example.com', status: 'failed', message: 'Quota exceeded' },
         ]}
-        onCancel={mockOnCancel}
       />,
     )
 
@@ -78,7 +88,7 @@ describe('InvitedModal', () => {
 
   it('opens a failure reason by clicking without hovering first', async () => {
     const user = userEvent.setup({ skipHover: true })
-    render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
+    render(<InvitationResultsContent invitationResults={results} />)
 
     await user.click(screen.getByRole('button', { name: 'failed@example.com' }))
 
@@ -91,12 +101,11 @@ describe('InvitedModal', () => {
   it('shows each failure reason when its email is hovered', async () => {
     const user = userEvent.setup()
     render(
-      <InvitedModal
+      <InvitationResultsContent
         invitationResults={[
           { email: 'first@example.com', status: 'failed', message: 'Quota exceeded' },
           { email: 'second@example.com', status: 'failed', message: 'Email delivery failed' },
         ]}
-        onCancel={mockOnCancel}
       />,
     )
 
@@ -123,7 +132,7 @@ describe('InvitedModal', () => {
       { email: 'fail@example.com', status: 'failed', message: 'Quota exceeded' },
     ]
 
-    render(<InvitedModal invitationResults={failedOnly} onCancel={mockOnCancel} />)
+    render(<InvitationResultsContent invitationResults={failedOnly} />)
 
     expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
     expect(screen.getByText(/members\.failedInvitationEmails/i)).toBeInTheDocument()
@@ -134,7 +143,7 @@ describe('InvitedModal', () => {
       { email: 'ok@example.com', status: 'success', url: 'http://invite.com/2' },
     ]
 
-    render(<InvitedModal invitationResults={successOnly} onCancel={mockOnCancel} />)
+    render(<InvitationResultsContent invitationResults={successOnly} />)
 
     expect(screen.getByText(/members\.invitationLink/i)).toBeInTheDocument()
     expect(screen.queryByText(/members\.failedInvitationEmails/i)).not.toBeInTheDocument()
@@ -152,7 +161,7 @@ describe('InvitedModal', () => {
         },
       ]
 
-      render(<InvitedModal invitationResults={alreadyMembers} onCancel={mockOnCancel} />)
+      render(<InvitationResultsContent invitationResults={alreadyMembers} />)
 
       expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
       expect(screen.getByText(/members\.alreadyInTeamTip/i)).toBeInTheDocument()
@@ -162,9 +171,7 @@ describe('InvitedModal', () => {
   )
 })
 
-describe('InvitedModal (Cloud edition)', () => {
-  const mockOnCancel = vi.fn()
-
+describe('InvitationResultsContent (Cloud edition)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     deploymentEdition = 'CLOUD'
@@ -175,7 +182,7 @@ describe('InvitedModal (Cloud edition)', () => {
       { email: 'success@example.com', status: 'success', url: 'http://invite.com/1' },
     ]
 
-    render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
+    render(<InvitationResultsContent invitationResults={results} />)
 
     expect(await screen.findByText(/members\.invitationSentTip/i)).toBeInTheDocument()
     expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()

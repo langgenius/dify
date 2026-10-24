@@ -1,8 +1,41 @@
 import type { Role } from '@/models/access-control'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useRef } from 'react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import AssignRolesModal from '../index'
+import AssignRolesContent from '../index'
+
+function TestDialog({
+  onClose,
+  onSubmit,
+  selectedRoles,
+  allowMultipleRoles,
+}: {
+  onClose: () => void
+  onSubmit: (roles: Role[]) => void
+  selectedRoles: Role[]
+  allowMultipleRoles?: boolean
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  return (
+    <Dialog
+      defaultOpen
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      <DialogContent initialFocus={inputRef}>
+        <AssignRolesContent
+          searchInputRef={inputRef}
+          selectedRoles={selectedRoles}
+          allowMultipleRoles={allowMultipleRoles}
+          onSubmit={onSubmit}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: 'role-1',
@@ -36,16 +69,16 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-describe('AssignRolesModal', () => {
+describe('AssignRolesContent', () => {
   describe('Role selection', () => {
     it.each([false, true])(
-      'submits the selected roles with multiple=%s and closes',
+      'submits the selected roles with multiple=%s',
       async (allowMultipleRoles) => {
         const user = userEvent.setup()
         const onSubmit = vi.fn()
         const onClose = vi.fn()
         render(
-          <AssignRolesModal
+          <TestDialog
             selectedRoles={[roles[0]!]}
             allowMultipleRoles={allowMultipleRoles}
             onClose={onClose}
@@ -53,29 +86,29 @@ describe('AssignRolesModal', () => {
           />,
         )
         await user.click(
-          await screen.findByRole(allowMultipleRoles ? 'checkbox' : 'radio', {
+          await screen.findByRole('option', {
             name: /Second role/,
           }),
         )
-        expect(
-          screen.getByRole(allowMultipleRoles ? 'checkbox' : 'radio', { name: /First role/ }),
-        ).toHaveAttribute('aria-checked', String(allowMultipleRoles))
+        expect(screen.getByRole('option', { name: /First role/ })).toHaveAttribute(
+          'aria-selected',
+          String(allowMultipleRoles),
+        )
         await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/ }))
         expect(onSubmit).toHaveBeenCalledExactlyOnceWith(allowMultipleRoles ? roles : [roles[1]])
-        expect(onClose).toHaveBeenCalledTimes(1)
       },
     )
 
     it('should disable confirm when the last selected role is unchecked', async () => {
       const user = userEvent.setup()
 
-      render(<AssignRolesModal selectedRoles={[roles[0]!]} onClose={vi.fn()} onSubmit={vi.fn()} />)
+      render(<TestDialog selectedRoles={[roles[0]!]} onClose={vi.fn()} onSubmit={vi.fn()} />)
 
       const confirmButton = screen.getByRole('button', { name: /common\.operation\.confirm/i })
 
       expect(confirmButton).toBeEnabled()
 
-      await user.click(await screen.findByRole('checkbox', { name: /First role/i }))
+      await user.click(await screen.findByRole('option', { name: /First role/i }))
 
       expect(confirmButton).toBeDisabled()
     })

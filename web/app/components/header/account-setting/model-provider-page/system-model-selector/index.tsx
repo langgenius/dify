@@ -333,7 +333,7 @@ function SystemModelSession({
         <Infotip>
           <InfotipTrigger
             aria-labelledby={`${modelLabelId}-${labelKey}`}
-            className="ml-0.5 text-text-tertiary"
+            className="ms-0.5 text-text-tertiary"
           />
           <InfotipContent aria-labelledby={`${modelLabelId}-${labelKey}`} className="w-65.25">
             {tipText}

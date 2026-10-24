@@ -1,9 +1,11 @@
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createRef } from 'react'
 import { vi } from 'vite-plus/test'
 import { consoleClient } from '@/service/console'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import EditWorkspaceModal from '../index'
+import EditWorkspaceContent from '../index'
 
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
@@ -31,7 +33,7 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-describe('EditWorkspaceModal', () => {
+describe('EditWorkspaceContent', () => {
   const mockOnCancel = vi.fn()
   const { mockNotify } = toastMocks
 
@@ -47,9 +49,16 @@ describe('EditWorkspaceModal', () => {
 
   const renderModal = () =>
     render(
-      <>
-        <EditWorkspaceModal onCancel={mockOnCancel} />
-      </>,
+      <Dialog
+        defaultOpen
+        onOpenChange={(open) => {
+          if (!open) mockOnCancel()
+        }}
+      >
+        <DialogContent>
+          <EditWorkspaceContent inputRef={createRef<HTMLInputElement>()} />
+        </DialogContent>
+      </Dialog>,
       { currentWorkspace: { name: 'Test Workspace', role: isOwner ? 'owner' : 'normal' } },
     )
 

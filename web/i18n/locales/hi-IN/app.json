@@ -29,6 +29,7 @@
   "appSelector.noParams": "कोई पैरामीटर की आवश्यकता नहीं है।",
   "appSelector.params": "ऐप पैरामीटर",
   "appSelector.placeholder": "एक ऐप चुनें...",
+  "appSelector.searchPlaceholder": "नाम से ऐप खोजें…",
   "chooseAppFile": "ऐप पैकेज या DSL फ़ाइल चुनें",
   "deleteAppConfirmContent": "ऐप को हटाना अपरिवर्तनीय है। उपयोगकर्ता अब आपके ऐप तक पहुँचने में सक्षम नहीं होंगे, और सभी प्रॉम्प्ट कॉन्फ़िगरेशन और लॉग स्थायी रूप से हटा दिए जाएंगे।",
   "deleteAppConfirmInputLabel": "पुष्टि करने के लिए, नीचे दिए गए बॉक्स में <appName>{{appName}}</appName> टाइप करें:",
