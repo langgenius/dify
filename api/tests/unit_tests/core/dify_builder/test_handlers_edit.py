@@ -2357,11 +2357,13 @@ def test_connect_existing_form_selection_reaches_plan_and_real_intent_guard(corr
     }
     replies = [
         json.dumps(incomplete),
-        '{"required_insertions":[1],"uncertain":false}',
+        '{"requested_insertions":[1],"uncertain":false}',
         json.dumps(complete if corrected else incomplete),
     ]
     replies.append(
-        '{"required_insertions":[],"uncertain":false}' if corrected else '{"required_insertions":[1],"uncertain":false}'
+        '{"requested_insertions":[1],"uncertain":false}'
+        if corrected
+        else '{"requested_insertions":[1],"uncertain":false}'
     )
     model = _RecordingInstance(replies)
     seen: list[object] = []
