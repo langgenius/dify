@@ -1399,6 +1399,9 @@ def test_actual_activated_startup_failure_consumes_only_original_zero_activity_v
     assert runtime.host.lifetime._node_scopes == []
 
 
+# Like the other 130-delivery stress case below, this validates owner retention,
+# not a 20-second throughput contract; keep a bounded CI watchdog.
+@pytest.mark.timeout(60)
 def test_same_worker_reclaims_over_128_closed_consumed_requests_but_keeps_unknown_live(
     case: ObservationOwnerCase, monkeypatch: pytest.MonkeyPatch
 ) -> None:
