@@ -96,6 +96,8 @@ def git_output(*args: str, allow_missing: bool = False) -> str:
         ["git", *args],
         cwd=SCAN_ROOT,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         check=False,
     )
@@ -197,6 +199,8 @@ def run_ast_grep(source: str, *, rule: Path) -> list[Match]:
             ],
             cwd=REPO_ROOT,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             capture_output=True,
             check=False,
         )
