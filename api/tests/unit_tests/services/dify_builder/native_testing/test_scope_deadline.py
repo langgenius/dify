@@ -10,8 +10,10 @@ from models.dify_builder_native_tests import NativeTestScope
 from services.dify_builder.native_testing import agent_operations, api_service
 from services.dify_builder.native_testing.context_binding import NativeAdmissionCompiler, NativeRuntimeProfile
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from tests.unit_tests.services.dify_builder import test_execution_policy_service as policy_fixtures
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
-from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
+
+owned = policy_fixtures.owned
 
 
 @pytest.mark.parametrize("constructor", ["ordinary", "native"])
@@ -55,6 +57,12 @@ def test_admission_deadline_uses_stricter_existing_cap_without_renewal(
                 limits={"calls": 4, "dispatches": 4, "cost_units": 4},
             ).ref.request_id
     else:
+        from runtime_contracts.builder.native.contracts import NativeTestContextRef
+
+        class Launch:
+            def launch(self, *, ref: NativeTestContextRef) -> None:
+                assert ref.request_id
+
         service = api_service.NativeTestApiService(
             session_factory=factory,
             actor=actor,
@@ -69,7 +77,7 @@ def test_admission_deadline_uses_stricter_existing_cap_without_renewal(
                     implementation_revision="test",
                     limits={"calls": 4, "dispatches": 4, "cost_units": 4},
                 ),
-                launch=None,
+                launch=Launch(),
             ),
         )
         monkeypatch.setattr(service, "_launch", lambda **_: None)
