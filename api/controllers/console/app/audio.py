@@ -153,27 +153,27 @@ def _transcribe_audio_to_text(
                 end_user=None,
             )
         return dump_response(AudioTranscriptResponse, response)
-    except services.errors.app_model_config.AppModelConfigBrokenError:
+    except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
         logger.exception("App model config broken.")
-        raise AppUnavailableError()
-    except NoAudioUploadedServiceError:
-        raise NoAudioUploadedError()
+        raise AppUnavailableError() from caught_error
+    except NoAudioUploadedServiceError as caught_error:
+        raise NoAudioUploadedError() from caught_error
     except AudioTooLargeServiceError as e:
-        raise AudioTooLargeError(str(e))
-    except UnsupportedAudioTypeServiceError:
-        raise UnsupportedAudioTypeError()
-    except ProviderNotSupportSpeechToTextServiceError:
-        raise ProviderNotSupportSpeechToTextError()
-    except SpeechToTextDisabledServiceError:
-        raise SpeechToTextDisabledError()
+        raise AudioTooLargeError(str(e)) from e
+    except UnsupportedAudioTypeServiceError as caught_error:
+        raise UnsupportedAudioTypeError() from caught_error
+    except ProviderNotSupportSpeechToTextServiceError as caught_error:
+        raise ProviderNotSupportSpeechToTextError() from caught_error
+    except SpeechToTextDisabledServiceError as caught_error:
+        raise SpeechToTextDisabledError() from caught_error
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
-    except QuotaExceededError:
-        raise ProviderQuotaExceededError()
-    except ModelCurrentlyNotSupportError:
-        raise ProviderModelCurrentlyNotSupportError()
+        raise ProviderNotInitializeError(ex.description) from ex
+    except QuotaExceededError as caught_error:
+        raise ProviderQuotaExceededError() from caught_error
+    except ModelCurrentlyNotSupportError as caught_error:
+        raise ProviderModelCurrentlyNotSupportError() from caught_error
     except InvokeError as e:
-        raise CompletionRequestError(e.description)
+        raise CompletionRequestError(e.description) from e
     except HTTPException:
         raise
     except ValueError:
@@ -314,19 +314,19 @@ def _text_to_speech(*, payload: TextToSpeechPayload, app_model: App, session: Se
             message_ref=message_ref,
             is_draft=True,
         )
-    except services.errors.app_model_config.AppModelConfigBrokenError:
+    except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
         logger.exception("App model config broken.")
-        raise AppUnavailableError()
-    except ProviderNotSupportTextToSpeechServiceError:
-        raise ProviderNotSupportTextToSpeechError()
+        raise AppUnavailableError() from caught_error
+    except ProviderNotSupportTextToSpeechServiceError as caught_error:
+        raise ProviderNotSupportTextToSpeechError() from caught_error
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
-    except QuotaExceededError:
-        raise ProviderQuotaExceededError()
-    except ModelCurrentlyNotSupportError:
-        raise ProviderModelCurrentlyNotSupportError()
+        raise ProviderNotInitializeError(ex.description) from ex
+    except QuotaExceededError as caught_error:
+        raise ProviderQuotaExceededError() from caught_error
+    except ModelCurrentlyNotSupportError as caught_error:
+        raise ProviderModelCurrentlyNotSupportError() from caught_error
     except InvokeError as e:
-        raise CompletionRequestError(e.description)
+        raise CompletionRequestError(e.description) from e
     except HTTPException:
         raise
     except ValueError:
@@ -431,18 +431,18 @@ def _get_text_to_speech_voices(*, tenant_id: str, language: str):
 
         return dump_response(TextToSpeechVoiceListResponse, response)
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
-    except QuotaExceededError:
-        raise ProviderQuotaExceededError()
-    except ModelCurrentlyNotSupportError:
-        raise ProviderModelCurrentlyNotSupportError()
+        raise ProviderNotInitializeError(ex.description) from ex
+    except QuotaExceededError as caught_error:
+        raise ProviderQuotaExceededError() from caught_error
+    except ModelCurrentlyNotSupportError as caught_error:
+        raise ProviderModelCurrentlyNotSupportError() from caught_error
     except InvokeError as e:
-        raise CompletionRequestError(e.description)
+        raise CompletionRequestError(e.description) from e
     except ValueError as e:
         raise e
     except Exception as e:
         logger.exception("Failed to handle get request to TextModesApi")
-        raise InternalServerError()
+        raise InternalServerError() from e
 
 
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio/voices")

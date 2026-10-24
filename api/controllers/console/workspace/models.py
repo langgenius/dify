@@ -216,7 +216,6 @@ class DefaultModelApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserGetDefault)
     def get(self, req_data: ParserGetDefault, tenant_id: str):
-
         model_provider_service = ModelProviderService()
         default_model_entity = model_provider_service.get_default_model_of_model_type(
             tenant_id=tenant_id, model_type=req_data.model_type
@@ -323,7 +322,6 @@ class ModelProviderModelApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserDeleteModels)
     def delete(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
-
         model_provider_service = ModelProviderService()
         model_provider_service.remove_model(
             tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
@@ -349,7 +347,6 @@ class ModelProviderModelCredentialApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserGetCredentials)
     def get(self, req_data: ParserGetCredentials, tenant_id: str, user: Account, provider: str):
-
         model_provider_service = ModelProviderService()
         current_credential = model_provider_service.get_model_credential(
             tenant_id=tenant_id,
@@ -412,7 +409,6 @@ class ModelProviderModelCredentialApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserCreateCredential)
     def post(self, req_data: ParserCreateCredential, tenant_id: str, provider: str):
-
         model_provider_service = ModelProviderService()
 
         try:
@@ -431,7 +427,7 @@ class ModelProviderModelCredentialApi(Resource):
                 req_data.model,
                 req_data.model_type,
             )
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 201
 
@@ -445,7 +441,6 @@ class ModelProviderModelCredentialApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserUpdateCredential)
     def put(self, req_data: ParserUpdateCredential, current_tenant_id: str, provider: str):
-
         model_provider_service = ModelProviderService()
 
         try:
@@ -459,7 +454,7 @@ class ModelProviderModelCredentialApi(Resource):
                 credential_name=req_data.name,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
@@ -473,7 +468,6 @@ class ModelProviderModelCredentialApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserDeleteCredential)
     def delete(self, req_data: ParserDeleteCredential, current_tenant_id: str, provider: str):
-
         model_provider_service = ModelProviderService()
         model_provider_service.remove_model_credential(
             tenant_id=current_tenant_id,
@@ -498,7 +492,6 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserSwitch)
     def post(self, req_data: ParserSwitch, current_tenant_id: str, provider: str):
-
         service = ModelProviderService()
         service.add_model_credential_to_model_list(
             tenant_id=current_tenant_id,
@@ -523,7 +516,6 @@ class ModelProviderModelEnableApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @model_validate(ParserDeleteModels)
     def patch(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
-
         model_provider_service = ModelProviderService()
         model_provider_service.enable_model(
             tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
@@ -545,7 +537,6 @@ class ModelProviderModelDisableApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @model_validate(ParserDeleteModels)
     def patch(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
-
         model_provider_service = ModelProviderService()
         model_provider_service.disable_model(
             tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
@@ -577,7 +568,6 @@ class ModelProviderModelValidateApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserValidate)
     def post(self, req_data: ParserValidate, tenant_id: str, provider: str):
-
         model_provider_service = ModelProviderService()
 
         result = True
@@ -615,7 +605,6 @@ class ModelProviderModelParameterRuleApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserParameter)
     def get(self, req_data: ParserParameter, tenant_id: str, provider: str):
-
         model_provider_service = ModelProviderService()
         parameter_rules = model_provider_service.get_model_parameter_rules(
             tenant_id=tenant_id, provider=provider, model=req_data.model

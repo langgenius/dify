@@ -152,9 +152,9 @@ it('combines text search, sort field and direction, then clears only the keyword
   const user = userEvent.setup()
   render(<ControlledFilter />)
   await user.type(screen.getByRole('searchbox'), 'failure')
-  await user.click(screen.getByRole('button', { name: /filter.sortBy/ }))
+  await user.click(screen.getByRole('button', { name: /sorting.sortBy/ }))
   await user.click(await screen.findByRole('menuitemradio', { name: /header.updatedTime/ }))
-  await user.click(screen.getByRole('button', { name: /filter.descending/ }))
+  await user.click(screen.getByRole('button', { name: /sorting.descending/ }))
   expect(onChange).toHaveBeenLastCalledWith({
     ...initialQuery,
     keyword: 'failure',
@@ -166,15 +166,16 @@ it('combines text search, sort field and direction, then clears only the keyword
 
 it('omits chat sorting for completion logs', () => {
   render(<ControlledFilter isChatMode={false} />)
-  expect(screen.queryByRole('button', { name: /filter.sortBy/ })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /sorting.sortBy/ })).not.toBeInTheDocument()
 })
 
 it.each(['loading', 'unavailable'] as const)(
-  'does not expose filters while annotations are %s',
+  'keeps filters visible while annotations are %s',
   (state) => {
     mockAnnotationsCountLoading = state === 'loading'
     mockAnnotationsCountData = null
     render(<ControlledFilter />)
-    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(screen.getByRole('searchbox')).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'appLog.filter.annotation.all' })).toBeDisabled()
   },
 )

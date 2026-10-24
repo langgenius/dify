@@ -264,7 +264,7 @@ class TestOnToolEnd:
 
 class TestReturnRetrieverResourceInfo:
     def test_publish_called(self, handler: DatasetIndexToolCallbackHandler, mock_queue_manager, mocker: MockerFixture):
-        mock_event = mocker.patch("core.callback_handler.index_tool_callback_handler.QueueRetrieverResourcesEvent")
+        mocker.patch("core.callback_handler.index_tool_callback_handler.QueueRetrieverResourcesEvent")
         resources = [mocker.Mock()]
 
         handler.return_retriever_resource_info(resources)

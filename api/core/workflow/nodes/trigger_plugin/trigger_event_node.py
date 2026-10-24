@@ -56,8 +56,8 @@ class TriggerEventNode(Node[TriggerEventNodeData]):
                 "plugin_unique_identifier": self.node_data.plugin_unique_identifier,
             },
         }
-        node_inputs = dict(self.graph_runtime_state.variable_pool.get_by_prefix(self.id))
-        system_inputs = self.graph_runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
+        node_inputs = dict(self.runtime_state.variable_pool.get_by_prefix(self.id))
+        system_inputs = self.runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
 
         for variable_name, value in system_inputs.items():
             node_inputs[f"{SYSTEM_VARIABLE_NODE_ID}.{variable_name}"] = value

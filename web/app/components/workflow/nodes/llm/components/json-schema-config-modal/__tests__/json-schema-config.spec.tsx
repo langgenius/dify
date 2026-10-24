@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { consoleQuery } from '@/service/console'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
@@ -203,6 +204,46 @@ describe('StructureOutput schema sessions', () => {
       JSON.stringify(namedSchema, null, 2),
     )
   })
+  it.each(['save', 'switch to the visual editor'])(
+    'checks consecutive-array depth before %s',
+    async (action) => {
+      const user = userEvent.setup()
+      const { onChange } = renderOutput()
+      function schemaWithDepth(depth: number) {
+        let item: object = emptySchema
+        // The root, two arrays and their object item contribute four levels.
+        for (let level = 4; level < depth; level++)
+          item = { ...emptySchema, properties: { nested: item } }
+        return {
+          ...emptySchema,
+          properties: { child: { type: 'array', items: { type: 'array', items: item } } },
+        }
+      }
+      await openEditor(user)
+      await editJSON(user, JSON.stringify(schemaWithDepth(JSON_SCHEMA_MAX_DEPTH + 1)))
+      await user.click(
+        action === 'save'
+          ? screen.getByRole('button', { name: saveName })
+          : screen.getByRole('tab', { name: 'Visual Editor' }),
+      )
+      expect(
+        screen.getByText(`Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`),
+      ).toBeVisible()
+      expect(screen.getByRole('tab', { name: 'JSON Schema' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+      expect(onChange).not.toHaveBeenCalled()
+
+      const boundarySchema = schemaWithDepth(JSON_SCHEMA_MAX_DEPTH)
+      await editJSON(user, JSON.stringify(boundarySchema))
+      await user.click(screen.getByRole('button', { name: saveName }))
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog', { name: dialogName })).not.toBeInTheDocument(),
+      )
+      expect(onChange).toHaveBeenCalledExactlyOnceWith({ schema: boundarySchema })
+    },
+  )
   it.each([
     ['invalid root', JSON.stringify({ type: 'string' })],
     [
