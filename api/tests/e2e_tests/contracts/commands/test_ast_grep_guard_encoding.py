@@ -13,7 +13,7 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 SCRIPT_PATH = SCRIPTS_DIR / "check_no_new_getattr.py"
 
 # UTF-8 source content the guard must decode correctly regardless of host stdio.
-CHINESE_MODULE = "VALUE = \"显示名\"\n"
+CHINESE_MODULE = 'VALUE = "显示名"\n'
 
 
 def init_repo(repo: Path) -> None:
@@ -86,8 +86,8 @@ def test_git_output_round_trips_non_ascii_source(tmp_path: Path) -> None:
 
     result = run_driver(tmp_path)
 
-    assert result.returncode == 0, (
-        result.stdout.decode("utf-8", errors="replace") + result.stderr.decode("utf-8", errors="replace")
+    assert result.returncode == 0, result.stdout.decode("utf-8", errors="replace") + result.stderr.decode(
+        "utf-8", errors="replace"
     )
 
 
