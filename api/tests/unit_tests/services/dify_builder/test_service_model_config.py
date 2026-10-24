@@ -23,25 +23,33 @@ class _FakeRepo(InMemoryRepository):
         self.created_fc = initial_fc
         session.id = "sess-1"
         session.version = 1
+        super().create_session(session, initial_fc, items)
 
     @override
     def save_run(self, session_id: str, run: Run) -> None:
         pass
 
-    @override
-    def get_session(self, id: str) -> Never:
-        raise AssertionError("view not needed for this test")
-
 
 class _FakeLock:
-    def acquire(self, session_id: str) -> str:  # noqa: ARG002
-        return "tok"
+    def __init__(self) -> None:
+        self.tokens: dict[str, str] = {}
+
+    def acquire(self, session_id: str, *, generation: int | None = None) -> str | None:
+        if session_id in self.tokens:
+            return None
+        token = f"g{generation}:tok" if generation is not None else "tok"
+        self.tokens[session_id] = token
+        return token
 
     def release(self, session_id: str, token: str) -> None:
-        pass
+        if self.tokens.get(session_id) == token:
+            del self.tokens[session_id]
 
-    def exists(self, session_id: str) -> bool:  # noqa: ARG002
-        return True
+    def current_owner(self, session_id: str) -> str | None:
+        return self.tokens.get(session_id)
+
+    def exists(self, session_id: str) -> bool:
+        return session_id in self.tokens
 
 
 class SchedulingBoundary:

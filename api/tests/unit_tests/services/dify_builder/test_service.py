@@ -1058,13 +1058,14 @@ def test_controls_preserve_recovery_admission_and_resume_only_paused_task(
         current_state=PcState.BUILD_REVIEW,
     )
     repo.create_session(recovery_session, DifyBuilderContext(recovery_class="config_only"), [])
-    for kind, payload in (
-        ("message", {"text": "context", "client_turn_id": "turn-1"}),
-        ("update_model", {}),
-        ("check_recovery", {}),
-    ):
+    blocked_actions = (
+        Action(kind="message", payload={"text": "context", "client_turn_id": "turn-1"}, base_version=1),
+        Action(kind="update_model", base_version=1),
+        Action(kind="check_recovery", base_version=1),
+    )
+    for action in blocked_actions:
         with pytest.raises(BadRequestError, match="not allowed"):
-            svc._prepare_action(recovery_session.id, _actor(), Action(kind=kind, payload=payload, base_version=1))
+            svc._prepare_action(recovery_session.id, _actor(), action)
     svc._prepare_action(recovery_session.id, _actor(), Action(kind="recovery_continue", base_version=1))
     svc._prepare_action(recovery_session.id, _actor(), Action(kind="recovery_restart", base_version=1))
 
