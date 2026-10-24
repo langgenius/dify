@@ -23,6 +23,7 @@ const DatasetSettingsForm = ({
 
     // Basic form
     name,
+    nameInvalid,
     setName,
     description,
     setDescription,
@@ -74,6 +75,7 @@ const DatasetSettingsForm = ({
       <BasicInfoSection
         currentDataset={currentDataset}
         name={name}
+        nameInvalid={nameInvalid}
         setName={setName}
         description={description}
         setDescription={setDescription}

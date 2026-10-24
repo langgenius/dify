@@ -289,7 +289,7 @@ describe('useFormState', () => {
   })
 
   describe('handleSave', () => {
-    it('should show error toast when name is empty', async () => {
+    it('should mark the name invalid when it is empty', async () => {
       const { toast } = await import('@/app/notifications')
       const { result } = renderHook(() => useFormState(mockDataset))
 
@@ -301,10 +301,11 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(toast.error).toHaveBeenCalledWith(expect.any(String))
+      expect(result.current.nameInvalid).toBe(true)
+      expect(toast.error).not.toHaveBeenCalled()
     })
 
-    it('should show error toast when name is whitespace only', async () => {
+    it('should mark the name invalid when it is whitespace only', async () => {
       const { toast } = await import('@/app/notifications')
       const { result } = renderHook(() => useFormState(mockDataset))
 
@@ -316,7 +317,8 @@ describe('useFormState', () => {
         await result.current.handleSave()
       })
 
-      expect(toast.error).toHaveBeenCalledWith(expect.any(String))
+      expect(result.current.nameInvalid).toBe(true)
+      expect(toast.error).not.toHaveBeenCalled()
     })
 
     it('should call updateDatasetSetting with correct params', async () => {
