@@ -476,13 +476,6 @@ export const zTextToAudioPayload = z.object({
 })
 
 /**
- * AudioBinaryResponse
- */
-export const zAudioBinaryResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
-)
-
-/**
  * ProviderNotSupportTextToSpeechError
  *
  * Provider does not support text to speech.
@@ -1640,7 +1633,9 @@ export const zPostInstalledAppsByInstalledAppIdTextToAudioPath = z.object({
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdTextToAudioResponse = zAudioBinaryResponse
+export const zPostInstalledAppsByInstalledAppIdTextToAudioResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zPostInstalledAppsByInstalledAppIdWorkflowsRunBody = zWorkflowRunPayload
 

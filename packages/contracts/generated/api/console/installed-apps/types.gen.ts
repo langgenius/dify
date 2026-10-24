@@ -613,8 +613,6 @@ export type TextToAudioPayload = {
   voice?: string | null
 }
 
-export type AudioBinaryResponse = Blob | File
-
 export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
   code: 'provider_not_support_text_to_speech'
   status: 400
@@ -1675,7 +1673,7 @@ export type PostInstalledAppsByInstalledAppIdTextToAudioError =
   PostInstalledAppsByInstalledAppIdTextToAudioErrors[keyof PostInstalledAppsByInstalledAppIdTextToAudioErrors]
 
 export type PostInstalledAppsByInstalledAppIdTextToAudioResponses = {
-  200: AudioBinaryResponse
+  200: Blob | File
 }
 
 export type PostInstalledAppsByInstalledAppIdTextToAudioResponse =

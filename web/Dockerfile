@@ -41,9 +41,11 @@ COPY --from=packages /app/ .
 COPY . .
 
 WORKDIR /app/web
+# Bound native compiler parallelism while loader workers process the console specification.
+ENV RAYON_NUM_THREADS=2
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV pnpm_config_verify_deps_before_run=false
-RUN pnpm build && pnpm build:vinext
+RUN pnpm --filter @dify/contracts compose:console && pnpm --filter @dify/openapi-content-mapper build && pnpm build && pnpm build:vinext
 
 
 # production stage

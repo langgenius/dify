@@ -294,6 +294,25 @@ const task = (overrides: Partial<DocumentProcessingTask>): DocumentProcessingTas
   ...overrides,
 })
 
+// The migrated reader uses the inferred SDK; keep its real Query helpers and share
+// the existing request responses with the remaining oRPC mutations.
+vi.mock('@/service/console/inferred', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console/inferred')>()
+  const { consoleClient } = await import('@/service/console')
+  return {
+    ...actual,
+    consoleClient: {
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: {
+            metadata: { get: consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.get },
+          },
+        },
+      },
+    },
+  }
+})
+
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses, withConsoleResponses } =

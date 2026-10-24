@@ -25,6 +25,7 @@ from fields.base import ResponseModel
 from libs import helper
 from libs.exception import RelayedHTTPError
 from libs.external_api import error_responses
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.skill_management_service import (
@@ -659,6 +660,10 @@ class WorkspaceSkillFilePreviewApi(Resource):
 class WorkspaceSkillFileContentApi(Resource):
     @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.doc(params={**query_params_from_model(SkillFileQuery), "download": "Return as an attachment when 1."})
+    @console_ns.doc(
+        produces=["*/*"],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["*/*"]},
+    )
     @console_ns.response(200, "Skill file content", console_ns.models[BinaryFileResponse.__name__])
     @console_account_admission()
     @with_session

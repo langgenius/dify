@@ -296,6 +296,29 @@ def test_finalize_openapi_payload_only_marks_explicit_binary_responses():
     assert "x-dify-binary-response-media-types" not in operation
 
 
+def test_console_file_and_audio_responses_declare_binary_success_and_json_errors(tmp_path: Path):
+    module = _load_generate_swagger_specs_module()
+    module.generate_specs(tmp_path)
+    payload = json.loads((tmp_path / "console-openapi.json").read_text(encoding="utf-8"))
+    audio_media = {"audio/aac", "audio/flac", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm"}
+    operations = [
+        ("/workspaces/current/plugin/asset", "get", {"application/octet-stream"}),
+        ("/workspaces/current/plugin/icon", "get", {"*/*"}),
+        ("/workspaces/current/skills/{skill_id}/files/content", "get", {"*/*"}),
+        ("/installed-apps/{installed_app_id}/text-to-audio", "post", audio_media),
+        ("/trial-apps/{app_id}/text-to-audio", "post", audio_media),
+    ]
+    for path, method, media_types in operations:
+        responses = payload["paths"][path][method]["responses"]
+        assert responses["200"]["content"] == {
+            media_type: {"schema": {"type": "string", "format": "binary"}} for media_type in media_types
+        }, path
+        errors = {status: response for status, response in responses.items() if status.startswith(("4", "5"))}
+        assert errors, path
+        for status, response in errors.items():
+            assert set(response["content"]) == {"application/json"}, (path, status)
+
+
 def test_system_features_specs_exclude_backend_only_fields(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 

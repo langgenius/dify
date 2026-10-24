@@ -504,13 +504,6 @@ export const zWorkspacePermissionResponse = z.object({
 })
 
 /**
- * BinaryFileResponse
- */
-export const zBinaryFileResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
-)
-
-/**
  * PluginError
  *
  * Plugin operation failed.
@@ -5220,7 +5213,9 @@ export const zGetWorkspacesCurrentPluginAssetQuery = z.object({
 /**
  * Success
  */
-export const zGetWorkspacesCurrentPluginAssetResponse = zBinaryFileResponse
+export const zGetWorkspacesCurrentPluginAssetResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zPostWorkspacesCurrentPluginAutoUpgradeChangeBody = zParserAutoUpgradeChange
 
@@ -5268,7 +5263,9 @@ export const zGetWorkspacesCurrentPluginIconQuery = z.object({
 /**
  * Success
  */
-export const zGetWorkspacesCurrentPluginIconResponse = zBinaryFileResponse
+export const zGetWorkspacesCurrentPluginIconResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zPostWorkspacesCurrentPluginInstallGithubBody = zParserGithubInstall
 
@@ -6306,7 +6303,9 @@ export const zGetWorkspacesCurrentSkillsBySkillIdFilesContentQuery = z.object({
 /**
  * Skill file content
  */
-export const zGetWorkspacesCurrentSkillsBySkillIdFilesContentResponse = zBinaryFileResponse
+export const zGetWorkspacesCurrentSkillsBySkillIdFilesContentResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zGetWorkspacesCurrentSkillsBySkillIdFilesPreviewPath = z.object({
   skill_id: z.string(),
