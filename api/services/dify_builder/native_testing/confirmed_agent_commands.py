@@ -813,6 +813,21 @@ class ConfirmedAgentCommands:
         request = _request(session, actor=self.actor, ref=ref)
         if request is None or request.state not in {"running", "waiting"}:
             return None
+        # Optional receipt recovery must not add backend-history dependencies
+        # to ordinary known terminal C03 settlement.
+        candidate = session.scalar(
+            owner_query(NativeEffectOperation, ref, request.tenant_id)
+            .where(NativeEffectOperation.state == "claimed", NativeEffectOperation.result_ref.is_(None))
+            .limit(1)
+        )
+        if (
+            candidate is None
+            or session.scalar(
+                select(NativeEffectDispatchClaim.id).where(NativeEffectDispatchClaim.operation_id == candidate.id)
+            )
+            is not None
+        ):
+            return None
         proof_owner = ConfirmedAgentCancellation(self)
         native_id = _native_run_id(request)
         native, _ = proof_owner._rows(session, request, native_id, lock=False)
@@ -1052,7 +1067,14 @@ class ConfirmedAgentCommands:
         return True
 
     def finish_resume(self, *, ref, generation, dispatch_id):
-        if self._settle_unconsumed_failure(ref=ref, generation=generation, dispatch_id=dispatch_id):
+        try:
+            settled = self._settle_unconsumed_failure(ref=ref, generation=generation, dispatch_id=dispatch_id)
+        except Exception:
+            # Missing optional proof grants nothing. The original owner below
+            # still validates and conservatively settles its actual effect facts.
+            logger.warning("Confirmed Agent failed effect settlement remains unproven")
+            settled = False
+        if settled:
             self._complete_builder(ref=ref)
             return
         try:
