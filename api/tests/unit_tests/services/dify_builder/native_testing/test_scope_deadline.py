@@ -1,11 +1,11 @@
 """New admissions use the deployment cap once; reconnect never renews authority."""
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import select
 
-from configs import dify_config
 from models.dify_builder_native_tests import NativeTestScope
 from services.dify_builder.native_testing import agent_operations, api_service
 from services.dify_builder.native_testing.context_binding import NativeAdmissionCompiler, NativeRuntimeProfile
@@ -23,6 +23,7 @@ owned = policy_fixtures.owned
 def test_admission_deadline_uses_stricter_existing_cap_without_renewal(
     owned: Owned,
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     constructor: str,
     app_seconds: int,
     workflow_seconds: int,
@@ -30,8 +31,7 @@ def test_admission_deadline_uses_stricter_existing_cap_without_renewal(
 ) -> None:
     factory, actor, app, _workflow, session_id, input_id = owned
     now = datetime(2030, 1, 1, tzinfo=UTC)
-    monkeypatch.setattr(dify_config, "APP_MAX_EXECUTION_TIME", app_seconds)
-    monkeypatch.setattr(dify_config, "WORKFLOW_MAX_EXECUTION_TIME", workflow_seconds)
+    config_overrides(APP_MAX_EXECUTION_TIME=app_seconds, WORKFLOW_MAX_EXECUTION_TIME=workflow_seconds)
     monkeypatch.setattr(api_service, "utc_now", lambda: now)
     monkeypatch.setattr("services.dify_builder.native_testing.repository.utc_now", lambda: now)
     monkeypatch.setattr(NativeExecutionStateStore, "initialize_context", lambda *_args, **_kwargs: None)
@@ -113,8 +113,7 @@ def test_admission_deadline_uses_stricter_existing_cap_without_renewal(
         assert scope.expires_at == (datetime(2030, 1, 1, minute=deadline) if deadline < 60 else datetime(2030, 1, 1, 1))
         original = scope.expires_at
     now = datetime(2030, 1, 2, tzinfo=UTC)
-    monkeypatch.setattr(dify_config, "APP_MAX_EXECUTION_TIME", 7200)
-    monkeypatch.setattr(dify_config, "WORKFLOW_MAX_EXECUTION_TIME", 7200)
+    config_overrides(APP_MAX_EXECUTION_TIME=7200, WORKFLOW_MAX_EXECUTION_TIME=7200)
     assert admit() == request_id
     with factory() as sql:
         scope = sql.get(NativeTestScope, request_id)
