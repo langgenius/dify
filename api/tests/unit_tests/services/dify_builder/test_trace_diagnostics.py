@@ -437,3 +437,77 @@ def test_resource_binding_refusal_retains_safe_code_and_target_without_private_m
     assert records[0]["validation_codes"] == ["RESOURCE_SELECTION_REQUIRED"]
     assert records[0]["node_id"] == "order_explain_llm"
     assert "private" not in json.dumps(records)
+
+
+def test_native_model_projection_is_fixed_and_does_not_copy_exception_metadata() -> None:
+    safe = diagnostics.project(
+        {
+            "code": "native_model_invocation_failed",
+            "native_stage": "invoke",
+            "native_category": "quota_exceeded",
+            "exception_type": "PrivateException",
+            "message": "private provider body",
+            "provider": "private/provider",
+            "reason": "rate_limit",
+        }
+    )
+    assert safe["native_stage"] == "invoke"
+    assert safe["native_category"] == "quota_exceeded"
+    assert safe["category"] == "native"
+    assert "exception_type" not in safe
+    assert "provider" not in safe
+    assert "reason" not in safe
+    assert "private" not in json.dumps(safe).lower()
+    assert (
+        diagnostics.project(
+            {"code": "native_model_invocation_failed", "native_stage": "forged", "native_category": "quota_exceeded"}
+        )
+        == {}
+    )
+
+
+def test_current_native_diagnostic_merge_is_bounded_and_deduplicated() -> None:
+    from uuid import uuid4
+
+    records = [diagnostics.project({"code": "provider_invocation_failed", "id": str(uuid4())}) for _ in range(40)]
+    current = diagnostics.project({"code": "native_outcome_unknown", "id": str(uuid4())})
+    merged = diagnostics.merge_current(records, [current, current])
+    assert len(merged) == 33
+    assert merged[0]["code"] == "diagnostics_truncated"
+    assert merged[-1] == current
+    assert sum(record["id"] == current["id"] for record in merged) == 1
+
+
+@pytest.mark.parametrize(
+    ("stage", "category"),
+    [
+        ("invoke", "quota_exceeded"),
+        ("invoke", "authentication"),
+        ("invoke", "bad_request"),
+        ("invoke", "rate_limit"),
+        ("invoke", "connection"),
+        ("invoke", "timeout"),
+        ("receipt_append", "service_unavailable"),
+        ("result_store", "result_too_large"),
+        ("outcome_complete", "invalid_response"),
+        ("unknown_settlement", "internal_unknown"),
+    ],
+)
+def test_native_model_projection_keeps_allowlisted_stage_and_category(stage: str, category: str) -> None:
+    safe = diagnostics.project(
+        {"code": "native_model_invocation_failed", "native_stage": stage, "native_category": category}
+    )
+    assert safe["native_stage"] == stage
+    assert safe["native_category"] == category
+
+
+@pytest.mark.parametrize(
+    ("stage", "category"), [("invoke", "provider secret"), (None, "timeout"), ("invoke", None), ({}, [])]
+)
+def test_native_model_projection_rejects_malformed_classification(stage: object, category: object) -> None:
+    assert (
+        diagnostics.project(
+            {"code": "native_model_invocation_failed", "native_stage": stage, "native_category": category}
+        )
+        == {}
+    )

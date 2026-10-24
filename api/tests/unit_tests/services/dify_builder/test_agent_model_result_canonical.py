@@ -112,7 +112,10 @@ def test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_acceptin
         calls.append("provider")
         yield from chunks
 
-    yielded = list(service.invoke_model(envelope=pending, invoke=provider))
+    def unexpected_failure(_stage: object, _error: Exception) -> None:
+        pytest.fail("a successful receipt emitted a failure diagnostic")
+
+    yielded = list(service.invoke_model(envelope=pending, invoke=provider, on_failure=unexpected_failure))
     sdk_receipt = ProtectedModelChunkReceipt()
     for chunk in yielded:
         sdk_receipt.append(LLMResultChunk.model_validate(chunk.model_dump(mode="json")))
@@ -172,7 +175,10 @@ def test_actual_oversized_model_output_stops_before_yield_and_keeps_unknown_with
                 delta=LLMResultChunkDelta(index=index, message=AssistantPromptMessage(content=text)),
             )
 
-    stream = service.invoke_model(envelope=pending, invoke=provider)
+    failures: list[tuple[str, Exception]] = []
+    stream = service.invoke_model(
+        envelope=pending, invoke=provider, on_failure=lambda stage, error: failures.append((stage, error))
+    )
     assert next(stream).delta.message.content == "small"
     with pytest.raises(NativePolicyStopped, match="native_model_result_too_large"):
         next(stream)
@@ -182,3 +188,81 @@ def test_actual_oversized_model_output_stops_before_yield_and_keeps_unknown_with
     assert len(outcomes) == 1
     assert outcomes[0]["outcome"] == "unknown"
     assert outcomes[0]["result_ref"] is None
+    assert len(failures) == 1
+    assert failures[0][0] == "receipt_append"
+    assert isinstance(failures[0][1], NativePolicyStopped)
+
+
+def test_closed_model_stream_preserves_generator_exit_and_unknown_without_diagnostic(
+    monkeypatch: pytest.MonkeyPatch, operations_service: AgentOperationService
+) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(operations_service, "validate_model", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        operations_service.bridge.authorization, "claim_dispatch", lambda **_kwargs: calls.append("claim")
+    )
+    monkeypatch.setattr(
+        operations_service.bridge.authorization, "record_outcome", lambda **kwargs: calls.append(kwargs["outcome"])
+    )
+    monkeypatch.setattr(
+        operations_service.state_store, "store_result", lambda **_kwargs: pytest.fail("closed stream saved a result")
+    )
+
+    def provider() -> Iterator[LLMResultChunk]:
+        calls.append("provider")
+        yield LLMResultChunk(
+            model="synthetic-model", delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="safe"))
+        )
+        pytest.fail("closed stream resumed its provider")
+
+    def unexpected_failure(_stage: object, _error: Exception) -> None:
+        pytest.fail("GeneratorExit was turned into a model failure")
+
+    stream = operations_service.invoke_model(envelope=envelope(), invoke=provider, on_failure=unexpected_failure)
+    assert next(stream).delta.message.content == "safe"
+    stream.close()
+    assert calls == ["claim", "provider", "unknown"]
+
+
+@pytest.mark.parametrize("failed_stage", ["invoke", "unknown_settlement"])
+def test_model_diagnostic_observer_failure_preserves_original_owner_exception(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    operations_service: AgentOperationService,
+    failed_stage: str,
+) -> None:
+    calls: list[str] = []
+    observed: list[str] = []
+    provider_error = LookupError("original provider failure")
+    ledger_error = OSError("original unknown settlement failure")
+    monkeypatch.setattr(operations_service, "validate_model", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        operations_service.bridge.authorization, "claim_dispatch", lambda **_kwargs: calls.append("claim")
+    )
+    monkeypatch.setattr(
+        operations_service.state_store, "store_result", lambda **_kwargs: pytest.fail("failed model stored a result")
+    )
+
+    def record(**kwargs: object) -> None:
+        assert kwargs["outcome"] == "unknown"
+        calls.append("unknown")
+        if failed_stage == "unknown_settlement":
+            raise ledger_error
+
+    def provider() -> Iterator[LLMResultChunk]:
+        calls.append("provider")
+        raise provider_error
+        yield
+
+    def broken_observer(stage: str, _error: Exception) -> None:
+        observed.append(stage)
+        raise ValueError("diagnostic observer failure")
+
+    monkeypatch.setattr(operations_service.bridge.authorization, "record_outcome", record)
+    expected = ledger_error if failed_stage == "unknown_settlement" else provider_error
+    with pytest.raises(type(expected)) as error:
+        list(operations_service.invoke_model(envelope=envelope(), invoke=provider, on_failure=broken_observer))
+    assert error.value is expected
+    assert calls == ["claim", "provider", "unknown"]
+    assert observed == (["invoke", "unknown_settlement"] if failed_stage == "unknown_settlement" else ["invoke"])
+    assert caplog.text == ""
