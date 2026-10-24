@@ -528,6 +528,11 @@ jobs:
           # ENG-1321: independent task controls must run with the execution owners.
           FILES += ["api/tests/unit_tests/services/dify_builder/test_task_controls.py"]
           FILES += ["api/tests/unit_tests/services/dify_builder/test_stream_frames.py"]
+          # ENG-1240: fixed admission deadlines and terminal unused-permit settlement.
+          FILES += [
+              "api/tests/unit_tests/services/dify_builder/native_testing/test_scope_deadline.py",
+              "api/tests/unit_tests/services/dify_builder/native_testing/test_unconsumed_failure.py",
+          ]
           SELECTED_GUARDS = [
               'api/tests/unit_tests/core/dify_builder/test_handlers_edit.py::test_sufficient_goal_reaches_plan_gate_or_actionable_retry_with_monotonic_progress',
               'api/tests/unit_tests/core/dify_builder/test_handlers_edit.py::test_edit_capability_check_renders_agent_fields',
@@ -2221,6 +2226,18 @@ jobs:
               'test_local_preserved_start_is_not_an_invented_insertion_requirement': 2,
               'test_requested_placement_is_checked_from_actual_graph_facts': 1,
               'test_repeated_legacy_assessment_refuses_without_inventing_requested_edges': 1,
+          })
+          a4_expected.update({
+              'tests.unit_tests.services.dify_builder.native_testing.test_scope_deadline': {
+                  'test_admission_deadline_uses_stricter_existing_cap_without_renewal': 6,
+              },
+              'tests.unit_tests.services.dify_builder.native_testing.test_unconsumed_failure': {
+                  'test_failed_exact_source_seals_unconsumed_attempt_and_preserves_completed_results': 2,
+                  'test_restored_real_permit_then_expired_preparation_reconciles_original_run_on_get': 1,
+                  'test_real_physical_claim_and_terminal_settlement_serialize_on_existing_owner': 2,
+                  'test_failure_settlement_refuses_ambiguous_or_changed_evidence': 14,
+                  'test_optional_terminal_proof_failure_does_not_block_original_resume_settlement': 3,
+              },
           })
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
