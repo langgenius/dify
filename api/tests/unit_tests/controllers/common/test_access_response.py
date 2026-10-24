@@ -192,13 +192,13 @@ def mcp_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch, mocker: MockerF
     http_app.register_blueprint(bp)
     monkeypatch.setattr(mcp, "mcp_ns", namespace)
     calls = _session_calls(mocker)
-    maker = sessionmaker()
 
     @contextmanager
-    def begin() -> Generator[Session]:
+    def session_scope() -> Generator[Session]:
         yield calls.session
 
-    mocker.patch.object(maker, "begin", side_effect=begin)
+    maker = mocker.Mock(spec=sessionmaker, side_effect=session_scope)
+    maker.begin.side_effect = session_scope
     monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: maker)
     execute = mocker.patch.object(mcp, "handle_mcp_request")
     end_user = mocker.patch.object(mcp.MCPAppApi, "_retrieve_end_user")
@@ -401,7 +401,7 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
     remaining = iter((initial, execution))
 
     @contextmanager
-    def begin() -> Generator[Session]:
+    def session_scope() -> Generator[Session]:
         session = next(remaining)
         opened.append(session)
         active_sessions.append(session)
@@ -410,8 +410,8 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
         finally:
             active_sessions.pop()
 
-    maker = sessionmaker()
-    mocker.patch.object(maker, "begin", side_effect=begin)
+    maker = mocker.Mock(spec=sessionmaker, side_effect=session_scope)
+    maker.begin.side_effect = session_scope
     monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: maker)
     form = mocker.patch.object(mcp.MCPAppApi, "_get_user_input_form", return_value=[])
     process = mocker.patch.object(mcp.MCPAppApi, "_process_mcp_message", return_value=Response("ok", status=200))
