@@ -230,6 +230,8 @@ it.each([
   ["attachment; filename*=UTF-8''dir%2Freport.zip; filename=fallback.zip", 'fallback.zip'],
   ['attachment; filename=report%20name.zip', 'report%20name.zip'],
   ["attachment; filename*=ISO-8859-1''%A3.zip; filename=fallback.zip", 'fallback.zip'],
+  ["attachment; filename*=UTF-8''dir%2Freport.zip", 'report.zip'],
+  ["attachment; filename*=UTF-8''invoice%E2%80%AEfdp.exe; filename=fallback.zip", 'fallback.zip'],
 ])('file resolves download names from %s', async (disposition, filename) => {
   const dir = mkdtempSync(join(tmpdir(), 'difyctl-filename-'))
   const cwd = process.cwd()
