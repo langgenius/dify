@@ -25,13 +25,13 @@ import { webAppLogout } from '@/service/webapp-auth'
 import InfoModal from './info-modal'
 
 type Props = Readonly<
-  Pick<DropdownMenuContentProps, 'placement'> & {
+  Pick<DropdownMenuContentProps, 'side' | 'align'> & {
     data?: SiteInfo
     hideLogout?: boolean
   }
 >
 
-function MenuDropdown({ data, placement, hideLogout }: Props) {
+function MenuDropdown({ data, side, align, hideLogout }: Props) {
   const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
   const router = useRouter()
   const pathname = usePathname()
@@ -64,7 +64,7 @@ function MenuDropdown({ data, placement, hideLogout }: Props) {
             </IconButton>
           }
         />
-        <DropdownMenuContent placement={placement || 'bottom-end'} sideOffset={4} className="w-56">
+        <DropdownMenuContent side={side} align={align} className="w-56">
           <DropdownMenuRadioGroup
             value={theme ?? 'system'}
             onValueChange={setTheme}

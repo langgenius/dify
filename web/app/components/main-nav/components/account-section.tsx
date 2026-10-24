@@ -24,8 +24,8 @@ const AccountSection = ({ compact = false }: AccountSectionProps) => {
           type="button"
           title={userProfile.name}
           className={cn(
-            'flex min-w-0 shrink items-center rounded-full text-left text-components-main-nav-text transition-colors hover:bg-state-base-hover focus-visible:ring-inset disabled:cursor-default disabled:hover:bg-transparent',
-            compact ? 'justify-center p-1' : 'max-w-45 gap-3 py-1 pr-4 pl-1',
+            'flex min-w-0 shrink items-center rounded-full text-start text-components-main-nav-text transition-colors hover:bg-state-base-hover focus-visible:ring-inset disabled:cursor-default disabled:hover:bg-transparent',
+            compact ? 'justify-center p-1' : 'max-w-45 gap-3 py-1 ps-1 pe-4',
             'data-popup-open:bg-state-base-hover',
           )}
         >

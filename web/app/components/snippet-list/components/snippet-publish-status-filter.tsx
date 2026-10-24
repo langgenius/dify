@@ -1,5 +1,6 @@
 'use client'
 
+import type { SnippetPublishStatus } from '../query-params'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -11,8 +12,6 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-
-export type SnippetPublishStatus = 'all' | 'published' | 'draft'
 
 type SnippetPublishStatusFilterProps = {
   value: SnippetPublishStatus
@@ -58,7 +57,7 @@ const SnippetPublishStatusFilter = ({ value, onChange }: SnippetPublishStatusFil
         <span className="px-1 text-text-tertiary">{triggerLabel}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" className="w-55">
+      <DropdownMenuContent align="start" className="w-55">
         <DropdownMenuRadioGroup<SnippetPublishStatus>
           value={value}
           onValueChange={(nextValue) => onChange(nextValue)}

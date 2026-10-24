@@ -2,7 +2,7 @@ import type { SkillResponse } from '@dify/contracts/api/console/workspaces/types
 import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider, skipToken } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
@@ -635,7 +635,16 @@ describe('AgentSkills', () => {
     expect(screen.queryByText('Tender Analyzer')).not.toBeInTheDocument()
   })
 
-  it('should upload a skill through the config endpoint and add it to the draft UI', async () => {
+  it('keeps the skill upload open until the uploaded skill reaches the draft', async () => {
+    let finishUpload!: () => void
+    const upload = new Promise<void>((resolve) => {
+      finishUpload = resolve
+    })
+    const uploadSkill = mocks.uploadSkillMutationFn.getMockImplementation()!
+    mocks.uploadSkillMutationFn.mockImplementationOnce(async (input) => {
+      await upload
+      return uploadSkill(input)
+    })
     const user = userEvent.setup()
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
@@ -670,7 +679,14 @@ describe('AgentSkills', () => {
       )
     })
 
-    expect(screen.getByText('Invoice Helper')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'common.operation.close' }),
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    finishUpload()
+    expect(await screen.findByText('Invoice Helper')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_skills).toEqual([
       expect.objectContaining({

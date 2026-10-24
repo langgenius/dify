@@ -154,7 +154,7 @@ function InputGroupDropdownDemo() {
                 </IconButton>
               }
             />
-            <DropdownMenuContent placement="bottom-end" sideOffset={8}>
+            <DropdownMenuContent side="bottom" align="end" sideOffset={8}>
               <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuItem>Copy path</DropdownMenuItem>
             </DropdownMenuContent>

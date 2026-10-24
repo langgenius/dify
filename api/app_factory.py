@@ -190,6 +190,7 @@ def initialize_extensions(app: DifyApp):
         ext_hosting_provider,
         ext_import_modules,
         ext_key_provider,
+        ext_knowledge_fs_observability,
         ext_logging,
         ext_login,
         ext_logstore,
@@ -241,6 +242,7 @@ def initialize_extensions(app: DifyApp):
         ext_enterprise_telemetry,
         ext_request_logging,
         ext_session_factory,
+        ext_knowledge_fs_observability,
         ext_application_services,
         ext_oauth_bearer,
     ]

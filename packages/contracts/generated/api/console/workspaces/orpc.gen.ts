@@ -28,7 +28,6 @@ import {
   zRoleAlreadyAssignedError,
   zTooManyFilesError,
   zUnsupportedFileTypeError,
-  zWorkflowToolHumanInputNotSupportedError,
 } from './zod.gen.ts'
 import {
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath,
@@ -4746,12 +4745,6 @@ export const post69 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderWorkflowCreateBody }))
   .output(zPostWorkspacesCurrentToolProviderWorkflowCreateResponse)
-  .errors({
-    workflow_tool_human_input_not_supported: {
-      status: 400,
-      data: zWorkflowToolHumanInputNotSupportedError,
-    },
-  })
 
 export const create2 = {
   post: post69,
@@ -4814,12 +4807,6 @@ export const post71 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderWorkflowUpdateBody }))
   .output(zPostWorkspacesCurrentToolProviderWorkflowUpdateResponse)
-  .errors({
-    workflow_tool_human_input_not_supported: {
-      status: 400,
-      data: zWorkflowToolHumanInputNotSupportedError,
-    },
-  })
 
 export const update5 = {
   post: post71,

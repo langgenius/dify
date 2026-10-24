@@ -39,6 +39,27 @@ assembly and native Agent arguments. Knowledge eager results stay in the user
 role through a native model-request hook. Tool dispatch, instructions and
 capability hooks use native Pydantic AI interfaces.
 
+The sandbox's installed `dify-agent` CLI can read the saved Agent Soul system
+prompt with `dify-agent config prompt pull [--to PATH]`. It writes UTF-8 text to
+`./.dify_conf/prompt.md` by default and prints the file's absolute path. The text
+includes raw, unexpanded mention markers; whitespace and line endings are preserved.
+The prompt is fetched separately and is not included in the config manifest.
+
+To persist an edit, use `dify-agent config prompt push [PATH|-]`. Omitting PATH
+reads the default file; `-` reads stdin. Push fully replaces the prompt and prints
+`{"prompt": "saved text"}` as JSON. Empty text clears it. A missing file, invalid
+UTF-8, missing prompt field, or JSON null is an error. Local edits alone do not
+change Agent configuration.
+
+Authenticated `GET/PUT /agent-stub/config/prompt` exchange `{"prompt": "raw text"}`
+with `GET/PUT /inner/api/agent-config/<agent_id>/prompt`. The Stub derives tenant,
+agent, user, and version scope solely from the signed execution context. Reads
+follow snapshot, shared-draft, and personal build-draft access rules. Writes are
+allowed only to the current account's build draft and only replace
+`AgentSoulConfig.prompt.system_prompt`. Later requests built from that draft use
+the saved prompt and resolve its mentions; already-built requests keep their
+prompt. Draft merge and publication retain their existing lifecycle.
+
 See [run lifecycle](concepts/run-lifecycle/index.md),
 [resources](concepts/runtime-resources/index.md), and the
 [operations guide](guide/index.md).

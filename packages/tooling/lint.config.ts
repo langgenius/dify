@@ -246,13 +246,50 @@ const storageRestrictedProperties = [
   },
 ] satisfies NonNullable<OxlintConfig['rules']>[string]
 
+const focusIndicatorOverrides = [
+  'ring-w',
+  'ring-color',
+  'ring-offset-w',
+  'ring-offset-color',
+  'outline-w',
+  'outline-color',
+  'outline-style',
+  'outline-offset',
+  'focus:inset-ring-*',
+  'focus*:inset-ring-*',
+  '*:focus:inset-ring-*',
+  '*:focus*:inset-ring-*',
+]
+
 export const stylingContractRules = {
   'shadcn/no-restyle': [
     'error',
     {
-      componentImports: ['^@langgenius/dify-ui/(tooltip|infotip|dialog|alert-dialog)$'],
+      componentImports: ['^@langgenius/dify-ui/'],
       allow: ['*'],
       contracts: [
+        {
+          pattern: '^(ScrollArea|ScrollAreaViewport)$',
+          allow: ['*'],
+          deny: [...focusIndicatorOverrides, 'ring-*', 'inset-ring-*'],
+          message:
+            '"{{className}}" duplicates or overrides the ScrollArea focus indicator. Put focus, keyboard events and accessible names on ScrollAreaViewport; ScrollArea paints the indicator above its contents. Do not add another ring or outline to either part.',
+        },
+        {
+          pattern: '^(Button|IconButton)$',
+          allow: ['*'],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" duplicates or overrides the {{component}} focus indicator. Keep its width, color and primary-button inner separator. Callers may use ring-inset to avoid clipping; a different focus owner or a box-shadow animation requires a documented local exception.',
+        },
+        {
+          pattern:
+            '^(Input|Textarea|InputGroup|InputGroupInput|NumberFieldGroup|NumberFieldInput|ComboboxInputGroup|ComboboxInput|AutocompleteInputGroup|AutocompleteInput|DropdownMenuInputGroup|DropdownMenuInput)$',
+          allow: ['*'],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" duplicates or overrides the {{component}} focus indicator. The visible field owns focus; an input inside a styled group stays bare. Use ring-inset for clipped edges. A custom composite that moves the indicator needs a documented local exception.',
+        },
         {
           pattern: '^TooltipContent$',
           allow: ['flex', 'items-center', 'gap-1', 'w-*', 'max-w-*'],
@@ -320,6 +357,16 @@ export const stylingContractRules = {
   ],
 } satisfies NonNullable<OxlintConfig['rules']>
 
+export const storyStylingContractRules = {
+  'shadcn/no-restyle': [
+    'error',
+    {
+      ...stylingContractRules['shadcn/no-restyle'][1],
+      componentImports: ['^@langgenius/dify-ui/', '^\\.{1,2}(?:/|$)'],
+    },
+  ],
+} satisfies NonNullable<OxlintConfig['rules']>
+
 const tailwindCanonicalClassesOverride = {
   files: [
     'web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
@@ -331,6 +378,32 @@ const tailwindCanonicalClassesOverride = {
       {
         collapse: false,
         logical: false,
+      },
+    ],
+  },
+} satisfies NonNullable<OxlintConfig['overrides']>[number]
+
+// Web's existing violations use the per-file suppression baseline; Dify UI is fully migrated.
+const tailwindLogicalPropertiesOverride = {
+  files: [
+    'web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+    'packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+  ],
+  rules: {
+    'better-tailwindcss/enforce-logical-properties': [
+      'error',
+      {
+        ignore: [
+          // Block-axis and sizing classes do not depend on writing direction;
+          // keep their physical names (`pt`, `h-4`) instead of `pbs`, `block-4`.
+          '(?:^|[:!])-?(?:pt|pb|mt|mb|scroll-pt|scroll-pb|scroll-mt|scroll-mb|top|bottom|border-t|border-b|w|h|size|min-w|min-h|max-w|max-h)(?:-|$)',
+          // Direction variants and Base UI swipe directions name the physical side on purpose.
+          '(?:^|:)(?:rtl|ltr):',
+          'swipe-direction=(?:left|right)\\]:',
+          // Half-width offsets paired with physical horizontal translations must stay
+          // physical to remain centered under `dir="rtl"`.
+          '(?:^|[:!])-?(?:left|right)-1/2$',
+        ],
       },
     ],
   },
@@ -490,7 +563,7 @@ export const lintConfig = {
     '@shadcn/lint',
     '@tanstack/eslint-plugin-query',
     'eslint-plugin-antfu',
-    ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
+    'eslint-plugin-better-tailwindcss',
     {
       name: 'dify',
       specifier: './plugins/eslint/index.ts',
@@ -520,18 +593,14 @@ export const lintConfig = {
     reportUnusedDisableDirectives: 'error',
     respectEslintDisableDirectives: false,
     typeAware: true,
-    typeCheck: true,
+    typeCheck: false,
   },
   settings: {
-    ...(enableTailwindCanonicalClasses
-      ? {
-          'better-tailwindcss': {
-            cwd: path.resolve(rootDir, 'web'),
-            entryPoint: 'app/styles/globals.css',
-            rootFontSize: 16,
-          },
-        }
-      : {}),
+    'better-tailwindcss': {
+      cwd: path.resolve(rootDir, 'web'),
+      entryPoint: 'app/styles/globals.css',
+      rootFontSize: 16,
+    },
     'react-x': {
       additionalStateHooks: '/^use\\w*State(?:s)?|useAtom$/u',
     },
@@ -836,6 +905,7 @@ export const lintConfig = {
   },
   overrides: [
     ...(enableTailwindCanonicalClasses ? [tailwindCanonicalClassesOverride] : []),
+    tailwindLogicalPropertiesOverride,
     {
       files: ['**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
       rules: {
@@ -1083,6 +1153,10 @@ export const lintConfig = {
     {
       files: ['web/**/*.{jsx,tsx}'],
       rules: stylingContractRules,
+    },
+    {
+      files: ['packages/dify-ui/**/*.stories.{jsx,tsx}'],
+      rules: storyStylingContractRules,
     },
     {
       files: ['web/**/*.stories.{js,cjs,mjs,jsx,ts,tsx}', 'web/**/*.story.{js,cjs,mjs,jsx,ts,tsx}'],

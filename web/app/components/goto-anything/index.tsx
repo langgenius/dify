@@ -470,6 +470,7 @@ export function GotoAnything() {
             >
               <AutocompleteInputGroup
                 size="medium"
+                // oxlint-disable-next-line shadcn/no-restyle -- The inline command palette keeps focus in search and indicates navigation on the active descendant.
                 className="h-auto shrink-0 gap-3 rounded-none border-0 bg-components-panel-bg-blur px-4 py-3 has-[input:focus]:ring-0"
               >
                 <span aria-hidden className="i-ri-search-line size-4 text-text-quaternary" />
