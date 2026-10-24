@@ -25,9 +25,9 @@ No schema change, no migration. Native confirmed runs additionally recover
 terminal Builder result projections from already committed execution evidence;
 this never starts or resumes a workflow and respects newer user transitions.
 
-Runs on the default worker (no ``queue=``), like the other lightweight
-``schedule/*`` beat tasks -- NOT the ``dify_builder`` queue used by
-``tasks.dify_builder_advance_task``. The ``FlaskTask`` base
+Runs on the existing ``dify_builder`` worker queue, also consumed by
+``tasks.dify_builder_advance_task``. The default ``celery`` queue is not in
+ordinary Builder worker subscriptions. The ``FlaskTask`` base
 (``extensions.ext_celery.init_app``) already provides ``app_context``; this
 module must not push its own.
 """
@@ -38,7 +38,8 @@ from datetime import timedelta
 from typing import cast
 
 from celery import shared_task
-from sqlalchemy import select
+from sqlalchemy import String, func, select
+from sqlalchemy import cast as cast_sql
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
@@ -64,7 +65,7 @@ def _session_factory() -> sessionmaker:
     return sessionmaker(bind=db.engine, expire_on_commit=False)
 
 
-@shared_task
+@shared_task(queue="dify_builder")
 def reconcile_interrupted_sessions() -> int:
     """Beat sweeper: sessions stuck in a working state with no live advance
     lock past the staleness threshold are interrupted (the advancing task died
@@ -122,7 +123,17 @@ def reconcile_native_tests(*, limit: int = 100) -> int:
     """Recover durable native outbox/cleanup and missed terminal result projections."""
     from core.dify_builder.models import Actor
     from models.dify_builder import DifyBuilderExecutionRequest
-    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
+    from models.dify_builder_native_tests import (
+        NativeDispatch,
+        NativeEffectDispatchClaim,
+        NativeEffectOperation,
+        NativeEffectOutcome,
+        NativeInvocationState,
+        NativeTestInvocation,
+        NativeTestScope,
+    )
+    from models.enums import CreatorUserRole
+    from models.workflow import WorkflowRun
     from services.dify_builder.wiring import build_native_test_api_service, native_runtime_owner
     from tasks.dify_builder_advance_task import advance_native_test
 
@@ -191,6 +202,84 @@ def reconcile_native_tests(*, limit: int = 100) -> int:
             .order_by(DifyBuilderExecutionRequest.id.desc())
             .limit(limit)
         ).all()
+        # Quarantine is never an outbox candidate. Observe only a failed parent's
+        # sole unused shell operation; the existing get owner must still prove
+        # its exact source, protected receipts and child terminal events.
+        unfinished_count = (
+            select(func.count())
+            .select_from(NativeEffectOperation)
+            .where(
+                NativeEffectOperation.request_id == DifyBuilderExecutionRequest.id,
+                NativeEffectOperation.state.not_in(("completed", "failed", "not_dispatched")),
+            )
+            .correlate(DifyBuilderExecutionRequest)
+            .scalar_subquery()
+        )
+        failed_unknowns = session.execute(
+            select(
+                DifyBuilderExecutionRequest.tenant_id,
+                DifyBuilderExecutionRequest.actor_id,
+                DifyBuilderExecutionRequest.session_id,
+                DifyBuilderExecutionRequest.id,
+                NativeTestInvocation.bindings,
+                NativeEffectOperation.operation_digest,
+            )
+            .join(NativeInvocationState, NativeInvocationState.request_id == DifyBuilderExecutionRequest.id)
+            .join(NativeTestScope, NativeTestScope.request_id == DifyBuilderExecutionRequest.id)
+            .join(NativeTestInvocation, NativeTestInvocation.request_id == DifyBuilderExecutionRequest.id)
+            .join(NativeEffectOperation, NativeEffectOperation.request_id == DifyBuilderExecutionRequest.id)
+            .join(
+                WorkflowRun,
+                cast_sql(WorkflowRun.id, String)
+                == func.coalesce(
+                    cast_sql(DifyBuilderExecutionRequest.native_run_id, String),
+                    DifyBuilderExecutionRequest.context["native_run_id"].as_string(),
+                ),
+            )
+            .where(
+                DifyBuilderExecutionRequest.context["profile"]["profile_id"].as_string()
+                == "builder-agent-confirmed-v1",
+                DifyBuilderExecutionRequest.state != "sealed",
+                NativeInvocationState.parent_invocation_id.is_(None),
+                NativeInvocationState.state == "unknown",
+                NativeTestScope.cancelled.is_(False),
+                NativeInvocationState.cancellation_key.is_(None),
+                NativeInvocationState.tenant_id == DifyBuilderExecutionRequest.tenant_id,
+                NativeTestScope.tenant_id == DifyBuilderExecutionRequest.tenant_id,
+                NativeTestInvocation.tenant_id == DifyBuilderExecutionRequest.tenant_id,
+                NativeTestInvocation.invocation_id == NativeInvocationState.invocation_id,
+                NativeEffectOperation.tenant_id == DifyBuilderExecutionRequest.tenant_id,
+                NativeEffectOperation.invocation_id == NativeInvocationState.invocation_id,
+                NativeEffectOperation.state == "claimed",
+                NativeEffectOperation.result_ref.is_(None),
+                unfinished_count == 1,
+                WorkflowRun.tenant_id == DifyBuilderExecutionRequest.tenant_id,
+                WorkflowRun.app_id == DifyBuilderExecutionRequest.app_id,
+                WorkflowRun.workflow_id == DifyBuilderExecutionRequest.workflow_id,
+                WorkflowRun.created_by == DifyBuilderExecutionRequest.actor_id,
+                WorkflowRun.created_by_role == CreatorUserRole.ACCOUNT,
+                WorkflowRun.status == "failed",
+                ~select(NativeEffectDispatchClaim.id)
+                .where(NativeEffectDispatchClaim.operation_id == NativeEffectOperation.id)
+                .exists(),
+                ~select(NativeEffectOutcome.id)
+                .where(NativeEffectOutcome.operation_id == NativeEffectOperation.id)
+                .exists(),
+                ~select(NativeDispatch.id)
+                .where(
+                    NativeDispatch.request_id == DifyBuilderExecutionRequest.id,
+                    NativeDispatch.state.in_(("queued", "published", "claimed")),
+                )
+                .exists(),
+            )
+            .order_by(DifyBuilderExecutionRequest.id.desc())
+            .limit(max(0, limit - len(observations)))
+        ).all()
+        observations.extend(
+            row[:4]
+            for row in failed_unknowns
+            if row.bindings.get(row.operation_digest, {}).get("kind") in {"shell", "bootstrap"}
+        )
     for tenant_id, actor_id, session_id, request_id in observations:
         try:
             actor = Actor(account_id=actor_id, tenant_id=tenant_id)
