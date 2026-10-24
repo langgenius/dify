@@ -2238,6 +2238,9 @@ jobs:
                   'test_failure_settlement_refuses_ambiguous_or_changed_evidence': 16,
                   'test_optional_terminal_proof_failure_does_not_block_original_resume_settlement': 3,
                   'test_stranded_fixture_restores_real_storage_after_patch_owner_teardown': 1,
+                  'test_periodic_worker_settles_original_unused_failure_without_public_get_or_replay': 2,
+                  'test_periodic_worker_excludes_unproven_unknown_candidates': 6,
+                  'test_periodic_worker_beat_routes_registered_task_to_builder_consumer_queue': 1,
               },
           })
           for module, expected in {**a3_expected, **a4_expected}.items():
