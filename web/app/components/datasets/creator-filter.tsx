@@ -102,10 +102,10 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
             'flex items-center rounded-lg border-[0.5px] px-2 whitespace-nowrap transition-colors motion-reduce:transition-none',
             value.length > 0
               ? 'border-components-button-secondary-border bg-components-button-secondary-bg pr-7 shadow-xs hover:bg-state-base-hover data-popup-open:bg-state-base-hover'
-              : 'border-transparent bg-components-input-bg-normal text-text-tertiary hover:bg-components-input-bg-hover',
+              : 'border-transparent bg-components-input-bg-normal text-text-secondary hover:bg-components-input-bg-hover',
           )}
         >
-          <span className="px-1 system-sm-regular text-text-tertiary">{label}</span>
+          <span className="px-1 system-sm-regular text-text-secondary">{label}</span>
           {selectedCreators.slice(0, 3).map((creator, index) => (
             <Avatar
               key={creator.id}
@@ -118,7 +118,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
             </Avatar>
           ))}
           {value.length > 0 ? (
-            <span className="px-1 text-xs font-medium text-text-tertiary">+{value.length}</span>
+            <span className="px-1 text-xs font-medium text-text-secondary">+{value.length}</span>
           ) : (
             <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-text-tertiary" />
           )}

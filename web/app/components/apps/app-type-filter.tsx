@@ -71,7 +71,7 @@ export function AppTypeFilter({ value, onValueChange }: AppTypeFilterProps) {
       }}
     >
       <SelectTrigger aria-label={typesLabel} className="w-auto">
-        <SelectValue className="text-text-tertiary">
+        <SelectValue className="text-text-secondary">
           {isFiltered ? undefined : typesLabel}
         </SelectValue>
       </SelectTrigger>
