@@ -1,7 +1,9 @@
 """An actual failed continuation closes only its unconsumed shell permit."""
 
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Protocol, cast
 
 import pytest
 import pytest_mock
@@ -651,3 +653,185 @@ def test_stranded_fixture_restores_real_storage_after_patch_owner_teardown(
         )
         state_store.storage.save("after-fixture.txt", b"subsequent real storage read")
         assert state_store.storage.load("after-fixture.txt") == b"subsequent real storage read"
+
+
+def _periodic_worker(owner: CompletedOwner, monkeypatch: pytest.MonkeyPatch) -> tuple[Callable[[], int], list[str]]:
+    from types import MethodType
+
+    from schedule import dify_builder_reconcile_task as task
+    from services.dify_builder import wiring
+    from services.dify_builder.native_testing.api_service import NativeTestApiService
+    from services.dify_builder.native_testing.confirmed_agent_commands import (
+        ConfirmedAgentCommands,
+        ProfiledNativeTestCommands,
+    )
+    from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
+    from tasks.dify_builder_advance_task import advance_native_test
+
+    monkeypatch.setattr(owner.commands.api, "get", MethodType(NativeTestApiService.get, owner.commands.api))
+    monkeypatch.setattr(owner.commands, "_request", MethodType(ConfirmedAgentCommands._request, owner.commands))
+    monkeypatch.setattr(owner.commands, "_root_ref", MethodType(ConfirmedAgentCommands._root_ref, owner.commands))
+    service = ProfiledNativeTestCommands(
+        sessions=owner.factory,
+        actor=owner.case.actor,
+        confirmed_factory=lambda: owner.commands,
+        legacy_factory=lambda: pytest.fail("confirmed worker selected legacy execution"),
+    )
+    selected: list[str] = []
+
+    def service_for_actor(**values: object) -> ProfiledNativeTestCommands:
+        assert values["actor"] == owner.case.actor
+        selected.append(owner.request_id)
+        return service
+
+    monkeypatch.setattr(task, "_session_factory", lambda: owner.factory)
+    monkeypatch.setattr(wiring, "build_native_test_api_service", service_for_actor)
+    monkeypatch.setattr(wiring, "native_runtime_owner", DifyNativeRuntimeOwner)
+    monkeypatch.setattr(advance_native_test, "delay", lambda **_: pytest.fail("unknown was published to outbox"))
+    return task.reconcile_native_tests, selected
+
+
+@pytest.mark.parametrize("column_bound", [False, True])
+def test_periodic_worker_settles_original_unused_failure_without_public_get_or_replay(
+    stranded: CompletedOwner, monkeypatch: pytest.MonkeyPatch, column_bound: bool
+) -> None:
+    """A quarantined failed parent must reach the real terminal owner through beat."""
+    owner = stranded
+    with owner.factory.begin() as sql:
+        request = _row(sql.get(DifyBuilderExecutionRequest, owner.request_id), DifyBuilderExecutionRequest)
+        request.native_run_id = owner.native_id if column_bound else None
+    reconcile, selected = _periodic_worker(owner, monkeypatch)
+    before_version = owner.repo.get_session(owner.session.id)[0].version
+    assert (
+        owner.commands.peek(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id).outcome
+        == "unknown"
+    )
+    assert owner.repo.get_session(owner.session.id)[0].version == before_version
+    reconcile()
+    with owner.factory() as sql:
+        assert _row(sql.get(NativeEffectOperation, "file-operation"), NativeEffectOperation).state == "not_dispatched"
+        assert (
+            _row(sql.get(DifyBuilderExecutionRequest, owner.request_id), DifyBuilderExecutionRequest).state == "sealed"
+        )
+        assert _row(sql.get(NativeDispatch, "source"), NativeDispatch).state == "completed"
+        outcomes = sql.scalars(select(NativeEffectOutcome)).all()
+        assert len(outcomes) == 1
+        assert outcomes[0].outcome == "not_dispatched"
+        assert len(sql.scalars(select(NativeEffectAttempt)).all()) == 1
+        assert sql.scalars(select(NativeEffectDispatchClaim)).all() == []
+        assert _row(sql.get(NativeTestScope, owner.request_id), NativeTestScope).spent_dispatches == 3
+        assert len(sql.scalars(select(WorkflowRun)).all()) == 1
+        assert len(sql.scalars(select(DifyBuilderExecutionRequest)).all()) == 1
+        assert _row(sql.get(NativeEffectOperation, "prior-skill"), NativeEffectOperation).result_ref == "skill-result"
+    assert selected == [owner.request_id]
+    for identity in (owner.reservation.id, owner.verify_id):
+        run = owner.repo.get_run(identity)
+        assert run.status == "failed"
+        assert run.immutable
+        assert _present(_present(run.verification).execution_evidence).sealed
+    version = owner.repo.get_session(owner.session.id)[0].version
+    reconcile()
+    assert selected == [owner.request_id]
+    assert owner.repo.get_session(owner.session.id)[0].version == version
+    with owner.factory() as sql:
+        assert len(sql.scalars(select(NativeEffectOutcome)).all()) == 1
+        assert len(sql.scalars(select(NativeEffectAttempt)).all()) == 1
+        assert sql.scalars(select(NativeEffectDispatchClaim)).all() == []
+
+
+@pytest.mark.parametrize("excluded", ["claim", "paused", "cancelled", "foreign_parent", "non_shell", "sealed"])
+def test_periodic_worker_excludes_unproven_unknown_candidates(
+    stranded: CompletedOwner, monkeypatch: pytest.MonkeyPatch, excluded: str
+) -> None:
+    owner = stranded
+    if excluded == "claim":
+        permit, effect = _reserve_through_actual_owner(owner, monkeypatch)
+        owner.commands.api.authorization.claim_dispatch(ref=owner.ref, intent=effect, permit=permit)
+        with owner.factory.begin() as sql:
+            _row(sql.scalar(select(NativeInvocationState)), NativeInvocationState).state = "unknown"
+            _row(sql.get(NativeDispatch, "source"), NativeDispatch).state = "unknown"
+            _row(sql.scalar(select(NativeTestInvocation)), NativeTestInvocation).active = False
+    with owner.factory.begin() as sql:
+        if excluded == "paused":
+            _row(sql.get(WorkflowRun, owner.native_id), WorkflowRun).status = WorkflowExecutionStatus.PAUSED
+        elif excluded == "cancelled":
+            _row(sql.get(NativeTestScope, owner.request_id), NativeTestScope).cancelled = True
+        elif excluded == "foreign_parent":
+            _row(sql.get(WorkflowRun, owner.native_id), WorkflowRun).tenant_id = "foreign"
+        elif excluded == "non_shell":
+            invocation = _row(sql.scalar(select(NativeTestInvocation)), NativeTestInvocation)
+            bindings = dict(invocation.bindings)
+            digest = _row(sql.get(NativeEffectOperation, "file-operation"), NativeEffectOperation).operation_digest
+            bindings[digest] = {**bindings[digest], "kind": "model"}
+            invocation.bindings = bindings
+        elif excluded == "sealed":
+            _row(sql.get(DifyBuilderExecutionRequest, owner.request_id), DifyBuilderExecutionRequest).state = "sealed"
+    reconcile, selected = _periodic_worker(owner, monkeypatch)
+    reconcile()
+    assert selected == []
+    with owner.factory() as sql:
+        assert _row(sql.get(NativeEffectOperation, "file-operation"), NativeEffectOperation).state == "claimed"
+        assert _row(sql.get(NativeDispatch, "source"), NativeDispatch).state == "unknown"
+        assert len(sql.scalars(select(NativeEffectAttempt)).all()) == 1
+        assert sql.scalars(select(NativeEffectOutcome)).all() == []
+        assert len(sql.scalars(select(NativeEffectDispatchClaim)).all()) == (1 if excluded == "claim" else 0)
+    assert owner.repo.get_run(owner.verify_id).status == "running"
+
+
+# Celery's installed typing omits these real Beat/signal/AMQP APIs. These
+# protocols describe the boundary; the test still executes the actual objects.
+class _BeatScheduler(Protocol):
+    def apply_async(self, entry: object, *, advance: bool) -> object: ...
+
+
+class _PublishSignal(Protocol):
+    def connect(self, receiver: Callable[..., None], *, weak: bool) -> None: ...
+
+    def disconnect(self, receiver: Callable[..., None]) -> bool: ...
+
+
+class _ConsumerQueues(Protocol):
+    consume_from: Mapping[str, object]
+
+    def select(self, include: list[str]) -> None: ...
+
+
+class _RoutingAMQP(Protocol):
+    queues: _ConsumerQueues
+
+
+class _MemoryChannel(Protocol):
+    def queue_purge(self, queue: str) -> int: ...
+
+
+def test_periodic_worker_beat_routes_registered_task_to_builder_consumer_queue() -> None:
+    """Beat must publish to the existing worker queue, not an unconsumed default."""
+    from celery import Celery
+    from celery.beat import ScheduleEntry, Scheduler
+    from celery.signals import before_task_publish
+
+    from schedule.dify_builder_reconcile_task import reconcile_interrupted_sessions
+
+    published: list[str | None] = []
+    task_name = reconcile_interrupted_sessions.name
+
+    def capture_route(sender: str | None = None, routing_key: str | None = None, **_kwargs: object) -> None:
+        if sender == task_name:
+            published.append(routing_key)
+
+    with Celery("builder-reconcile-route", broker="memory://", set_as_current=False) as app:
+        queues = cast(_RoutingAMQP, app.amqp).queues
+        queues.select(["dify_builder"])
+        entry = cast(Callable[..., object], ScheduleEntry)(name="dify_builder_reconcile", task=task_name, app=app)
+        signal = cast(_PublishSignal, before_task_publish)
+        signal.connect(capture_route, weak=False)
+        try:
+            scheduler = cast(Callable[..., _BeatScheduler], Scheduler)(app=app, lazy=True)
+            scheduler.apply_async(entry, advance=False)
+            assert published == ["dify_builder"]
+            assert published[0] in queues.consume_from
+        finally:
+            signal.disconnect(capture_route)
+            with app.connection_for_write() as connection:
+                for queue_name in ("celery", "dify_builder"):
+                    cast(_MemoryChannel, connection.channel()).queue_purge(queue_name)
