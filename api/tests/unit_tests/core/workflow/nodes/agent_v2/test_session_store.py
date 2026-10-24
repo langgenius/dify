@@ -519,37 +519,23 @@ def test_load_existing_pointer_rejects_conflicting_workflow_identity(sqlite_sess
 
 
 def test_load_or_create_fails_before_binding_create_when_caller_row_is_missing(
-    monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     executed_statements: list[str],
 ) -> None:
-    sleep = MagicMock()
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.time.sleep", sleep)
-
     with pytest.raises(AgentWorkspaceNotFoundError, match="Workflow node execution caller is unavailable"):
         WorkflowAgentWorkspaceStore().load_or_create_node_execution_session(_scope(), home_snapshot_id="home-1")
 
-    assert len(_execution_selects(executed_statements)) == 60
-    assert sleep.call_count == 59
+    assert len(_execution_selects(executed_statements)) == 1
     assert sqlite_session.scalar(select(func.count()).select_from(AgentWorkspaceBinding)) == 0
 
 
-def test_load_existing_scope_waits_for_caller_row_to_become_visible(
-    monkeypatch: pytest.MonkeyPatch,
+def test_load_existing_scope_reads_committed_caller_once(
     sqlite_session_factory: sessionmaker[Session],
     executed_statements: list[str],
 ) -> None:
-    sleep_count = 0
-
-    def make_caller_visible(_seconds: float) -> None:
-        nonlocal sleep_count
-        sleep_count += 1
-        if sleep_count == 2:
-            with sqlite_session_factory() as observer:
-                observer.add(_execution_row())
-                observer.commit()
-
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.time.sleep", make_caller_visible)
+    with sqlite_session_factory() as observer:
+        observer.add(_execution_row())
+        observer.commit()
 
     scope = WorkflowAgentWorkspaceStore().load_existing_node_execution_scope(
         tenant_id="tenant-1",
@@ -561,8 +547,7 @@ def test_load_existing_scope_waits_for_caller_row_to_become_visible(
     )
 
     assert scope is None
-    assert len(_execution_selects(executed_statements)) == 3
-    assert sleep_count == 2
+    assert len(_execution_selects(executed_statements)) == 1
 
 
 def test_save_snapshot_targets_binding(sqlite_session: Session) -> None:

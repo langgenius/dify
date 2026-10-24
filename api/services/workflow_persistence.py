@@ -7,7 +7,8 @@ and history before the engine starts. Engine events remain storage-agnostic.
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, override
+from threading import Lock
+from typing import Any, Protocol, override, runtime_checkable
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
@@ -19,6 +20,7 @@ from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeE
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY, keep_agent_and_tool_ids
+from core.workflow.node_runtime import resolve_dify_run_context
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
@@ -47,6 +49,7 @@ from graphon.enums import (
     WorkflowType,
 )
 from graphon.node_events import NodeRunResult
+from graphon.nodes.base.node import Node
 from libs.datetime_utils import naive_utc_now
 from repositories.entities.workflow_execution import WorkflowExecution
 from services.workflow.inspector_events import (
@@ -55,6 +58,13 @@ from services.workflow.inspector_events import (
 from services.workflow.inspector_events import (
     publish_workflow_completed as _inspector_publish_workflow_completed,
 )
+
+
+@runtime_checkable
+class _CallerPersistenceAwareNode(Protocol):
+    """Report persistence failures that Graphon's best-effort hooks otherwise swallow."""
+
+    def record_caller_persistence_result(self, *, error: Exception | None = None) -> None: ...
 
 
 @dataclass(slots=True)
@@ -90,6 +100,8 @@ class WorkflowPersistenceLayer(Layer):
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
         self._node_run_indices: Mapping[str, int] = {}
         self._workflow_tool_layers: dict[tuple[str, str], WorkflowPersistenceLayer] = {}
+        self._persisted_caller_execution_ids: set[str] = set()
+        self._node_start_lock = Lock()
 
     @property
     def workflow_execution(self) -> WorkflowExecution:
@@ -104,6 +116,7 @@ class WorkflowPersistenceLayer(Layer):
         self._node_execution_cache = {
             execution.node_execution_id or execution.id: execution for execution in executions
         }
+        self._persisted_caller_execution_ids = set(self._node_execution_cache)
 
     def create_workflow_tool_event_listener(
         self,
@@ -155,6 +168,54 @@ class WorkflowPersistenceLayer(Layer):
     # ------------------------------------------------------------------
     # Layer lifecycle
     # ------------------------------------------------------------------
+    @override
+    def on_node_run_start(self, node: Node) -> None:
+        """Commit the caller before Graphon's worker advances the Agent generator.
+
+        WorkflowRunIndex runs first, so the durable row uses the same index as
+        published events. Source workflow nodes must use their source repository,
+        including when the source workflow is the root workflow itself.
+        """
+        if node.node_type != BuiltinNodeTypes.AGENT or node.version() != "2":
+            return
+        if not isinstance(node, _CallerPersistenceAwareNode):
+            raise TypeError("Agent v2 node must support caller persistence coordination")
+
+        try:
+            context = resolve_dify_run_context(node.run_context)
+            layer = self
+            if context.workflow_tool_invocation_id:
+                layer = self._workflow_tool_layers[(context.app_id, node.workflow_id)]
+                layer._workflow_execution = self._get_workflow_execution()
+            with layer._node_start_lock:
+                if node.execution_id not in layer._persisted_caller_execution_ids:
+                    previous = layer._node_execution_cache.get(node.execution_id)
+                    execution = DifyWorkflowNodeExecution(
+                        id=previous.id if previous is not None else node.execution_id,
+                        node_execution_id=node.execution_id,
+                        workflow_id=layer._workflow_info.workflow_id,
+                        workflow_execution_id=layer._get_workflow_execution().id_,
+                        index=layer._node_run_indices[node.execution_id],
+                        node_id=node.id,
+                        node_type=node.node_type,
+                        title=node.title,
+                        status=WorkflowNodeExecutionStatus.RUNNING,
+                        created_at=previous.created_at if previous is not None else naive_utc_now(),
+                        process_data={
+                            WORKFLOW_TOOL_ROOT_APP_ID_KEY: self._application_generate_entity.app_config.app_id,
+                        }
+                        if context.workflow_tool_invocation_id
+                        else None,
+                    )
+                    layer._workflow_node_execution_repository.save_synchronously(execution)
+                    layer._node_execution_cache[node.execution_id] = execution
+                    layer._persisted_caller_execution_ids.add(node.execution_id)
+        except Exception as error:
+            node.record_caller_persistence_result(error=error)
+            raise
+        else:
+            node.record_caller_persistence_result()
+
     @override
     def on_event(self, event: EngineEvent) -> None:
         match event:
@@ -290,7 +351,11 @@ class WorkflowPersistenceLayer(Layer):
         )
 
         self._node_execution_cache[event.id] = domain_execution
-        if event.node_type == BuiltinNodeTypes.AGENT and event.node_version == "2":
+        if (
+            event.node_type == BuiltinNodeTypes.AGENT
+            and event.node_version == "2"
+            and event.id not in self._persisted_caller_execution_ids
+        ):
             self._workflow_node_execution_repository.save_synchronously(domain_execution)
         else:
             self._workflow_node_execution_repository.save(domain_execution)
