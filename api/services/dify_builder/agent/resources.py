@@ -342,7 +342,10 @@ def list_tenant_resources(
                     id=item.resource_id,
                     label=item.name,
                     meta=(
-                        f"Published version {item.display_version}; outputs must be declared by the node job. "
+                        f"Published version {item.display_version} (snapshot {item.snapshot_id}); "
+                        "Reference eligible for this member in this workspace "
+                        "(actor-scoped published catalog); runtime authorization unverified. "
+                        "Outputs must be declared by the node job. "
                         f"{SETUP_REQUIRED_NOTE if item.readiness == 'missing_config' else ''} "
                         f"{capability_sources[item.capability_source]}: "
                         f"{item.description}"
@@ -351,7 +354,14 @@ def list_tenant_resources(
                     description=item.description,
                     capability=item.capability,
                     agent_contract={
+                        "agent_id": item.agent_id,
+                        "snapshot_id": item.snapshot_id,
+                        "display_version": item.display_version,
+                        "capability": item.capability[:4000],
                         "capability_source": item.capability_source,
+                        "reference_permitted": item.reference_permitted,
+                        "reference_permission_source": "actor_scoped_published_catalog",
+                        "runtime_authorization": "unverified",
                         "input_schema": item.input_schema,
                         "input_contract_source": item.input_contract_source,
                         "dependencies": list(item.dependencies),
