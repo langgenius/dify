@@ -259,7 +259,7 @@ def test_selected_agent_uses_existing_resource_option_and_fresh_binding(monkeypa
 
 
 @pytest.mark.parametrize("reason", [None, "", "  ", 7, [], {"reason": "review"}, "x" * 361])
-def test_agent_recommendation_requires_a_valid_reason_for_its_selected_id(
+def test_agent_recommendation_preserves_selection_with_an_unavailable_reason_note(
     monkeypatch: pytest.MonkeyPatch, reason: object
 ) -> None:
     from services.dify_builder.agent import build, resources
@@ -268,7 +268,14 @@ def test_agent_recommendation_requires_a_valid_reason_for_its_selected_id(
         models=[resources.ResourceRef(id="provider/model", label="Model", meta="Configured model")],
         datasets=[],
         tools=[],
-        agents=[resources.ResourceRef(id="agent:reviewer:snapshot:digest", label="Reviewer")],
+        agents=[
+            resources.ResourceRef(
+                id="agent:reviewer:snapshot:digest",
+                label="Reviewer",
+                meta="Published version 3; reference eligible for this member; capability: report risk review.",
+                readiness="missing_config",
+            )
+        ],
     )
     monkeypatch.setattr(resources, "list_tenant_resources", lambda *_args, **_kwargs: inv)
     monkeypatch.setattr(
@@ -286,8 +293,51 @@ def test_agent_recommendation_requires_a_valid_reason_for_its_selected_id(
 
     options = build.discover_resources(object(), "tenant", ["Review the report"])
 
-    assert [option.id for option in options] == ["provider/model"]
-    assert options[0].meta == "Configured model"
+    assert [option.id for option in options] == ["agent:reviewer:snapshot:digest", "provider/model"]
+    assert options[0].meta == (
+        "Published version 3; reference eligible for this member; capability: report risk review. "
+        "Selection rationale unavailable; review the declared capability against your goal before confirming."
+    )
+    assert options[0].readiness == "missing_config"
+    assert options[1].meta == "Configured model"
+
+
+@pytest.mark.parametrize("reason_map", [None, [], {}, "malformed"])
+def test_agent_only_legacy_or_malformed_reason_response_is_not_a_false_no_match(
+    monkeypatch: pytest.MonkeyPatch, reason_map: object
+) -> None:
+    from services.dify_builder.agent import build, resources
+    from services.dify_builder.trace_diagnostics import scope
+
+    inv = resources.TenantResources(
+        models=[],
+        datasets=[],
+        tools=[],
+        agents=[resources.ResourceRef(id="agent:chosen", label="Chosen", meta="Published version 3")],
+    )
+    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_args, **_kwargs: inv)
+    calls: list[dict[str, object]] = []
+
+    def recommend(_model: object, **kwargs: object) -> dict[str, object]:
+        calls.append(kwargs)
+        result: dict[str, object] = {"resource_ids": ["agent:chosen", "agent:unknown"]}
+        if reason_map is not None:
+            result["selection_reasons"] = reason_map
+        return result
+
+    monkeypatch.setattr(build.llm, "invoke_json", recommend)
+
+    diagnostics: list[dict[str, object]] = []
+    with scope(diagnostics.append, "discover-resources"):
+        options = build.discover_resources(object(), "tenant", ["Review a contract"])
+
+    assert [option.id for option in options] == ["agent:chosen"]
+    assert options[0].meta == (
+        "Published version 3 Selection rationale unavailable; "
+        "review the declared capability against your goal before confirming."
+    )
+    assert len(calls) == 1
+    assert [(item["code"], item["fallback_used"]) for item in diagnostics] == [("response_schema_invalid", True)]
 
 
 def test_agent_reason_cannot_select_an_unchosen_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
