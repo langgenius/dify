@@ -1,7 +1,7 @@
 //go:build integration
 
-// Package tests runs the same acceptance test suite against both the Python
-// and Go shellctl server implementations to verify API compatibility.
+// Package tests runs the same acceptance test suite against every configured
+// shellctl server implementation to verify API compatibility.
 //
 // Prerequisites:
 //
@@ -15,19 +15,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 var (
 	goURL     = envOrDefault("SHELLCTL_GO_URL", "http://localhost:15005")
 	authToken = envOrDefault("SHELLCTL_TEST_TOKEN", "test-token-123")
+	rustURL   = os.Getenv("SHELLCTL_RUST_URL")
+	rustToken = envOrDefault("SHELLCTL_RUST_TEST_TOKEN", authToken)
 
 	goURLNoIsolation     = os.Getenv("SHELLCTL_GO_URL_NO_ISOLATION")
 	authTokenNoIsolation = os.Getenv("SHELLCTL_TEST_TOKEN_NO_ISOLATION")
+	rustURLNoIsolation   = os.Getenv("SHELLCTL_RUST_URL_NO_ISOLATION")
+	rustTokenNoIsolation = envOrDefault("SHELLCTL_RUST_TEST_TOKEN_NO_ISOLATION", authTokenNoIsolation)
 
 	httpClient = &http.Client{Timeout: 120 * time.Second}
 )
@@ -36,19 +43,28 @@ var (
 type target struct {
 	name    string
 	baseURL string
+	token   string
 }
 
 func targets() []target {
-	return []target{
-		{name: "go", baseURL: goURL},
+	result := []target{
+		{name: "go", baseURL: goURL, token: authToken},
 	}
+	if rustURL != "" {
+		result = append(result, target{name: "rust", baseURL: rustURL, token: rustToken})
+	}
+	return result
 }
 
-func noIsolationTarget() (target, bool) {
-	if goURLNoIsolation == "" {
-		return target{}, false
+func noIsolationTargets() []target {
+	var result []target
+	if goURLNoIsolation != "" {
+		result = append(result, target{name: "go-no-isolation", baseURL: goURLNoIsolation, token: authTokenNoIsolation})
 	}
-	return target{name: "go-no-isolation", baseURL: goURLNoIsolation}, true
+	if rustURLNoIsolation != "" {
+		result = append(result, target{name: "rust-no-isolation", baseURL: rustURLNoIsolation, token: rustTokenNoIsolation})
+	}
+	return result
 }
 
 func TestMain(m *testing.M) {
@@ -59,7 +75,7 @@ func TestMain(m *testing.M) {
 			os.Exit(1)
 		}
 	}
-	if tgt, ok := noIsolationTarget(); ok {
+	for _, tgt := range noIsolationTargets() {
 		if !waitForServer(tgt) {
 			fmt.Fprintf(os.Stderr, "ERROR: %s server not ready at %s\n", tgt.name, tgt.baseURL)
 			os.Exit(1)
@@ -69,8 +85,8 @@ func TestMain(m *testing.M) {
 	for _, tgt := range targets() {
 		warmupJob(tgt)
 	}
-	if tgt, ok := noIsolationTarget(); ok {
-		warmupJobWithToken(tgt, authTokenNoIsolation)
+	for _, tgt := range noIsolationTargets() {
+		warmupJob(tgt)
 	}
 	os.Exit(m.Run())
 }
@@ -101,7 +117,7 @@ func warmupJob(tgt target) {
 	for attempt := 0; attempt < 3; attempt++ {
 		req, _ := http.NewRequest("POST", tgt.baseURL+"/v1/jobs/run", bytes.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer "+authToken)
+		req.Header.Set("Authorization", "Bearer "+tgt.token)
 		resp, err := warmupClient.Do(req)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "WARN: %s warmup job attempt %d failed: %v\n", tgt.name, attempt+1, err)
@@ -458,7 +474,7 @@ func TestDeleteJob(t *testing.T) {
 			// Delete it
 			req, _ := http.NewRequest("DELETE",
 				fmt.Sprintf("%s/v1/jobs/%s", tgt.baseURL, jobID), nil)
-			req.Header.Set("Authorization", "Bearer "+authToken)
+			req.Header.Set("Authorization", "Bearer "+tgt.token)
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				t.Fatalf("delete request failed: %v", err)
@@ -489,7 +505,7 @@ func TestForceDeleteRunningJob(t *testing.T) {
 			// Force delete
 			req, _ := http.NewRequest("DELETE",
 				fmt.Sprintf("%s/v1/jobs/%s?force=true&grace_seconds=1", tgt.baseURL, jobID), nil)
-			req.Header.Set("Authorization", "Bearer "+authToken)
+			req.Header.Set("Authorization", "Bearer "+tgt.token)
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				t.Fatalf("delete request failed: %v", err)
@@ -585,6 +601,297 @@ func TestJobNotFound(t *testing.T) {
 			}
 			resp.Body.Close()
 		})
+	}
+}
+
+func TestInvalidBearerTokenContract(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			req, _ := http.NewRequest("GET", tgt.baseURL+"/v1/jobs", nil)
+			req.Header.Set("Authorization", "Bearer definitely-wrong")
+			resp, err := httpClient.Do(req)
+			if err != nil {
+				t.Fatalf("request failed: %v", err)
+			}
+			assertAPIError(t, resp, 401, "unauthorized")
+		})
+	}
+}
+
+func TestRunValidationErrorContract(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload map[string]any
+		status  int
+		code    string
+	}{
+		{name: "empty-script", payload: map[string]any{"script": ""}, status: 400, code: "invalid_request"},
+		{name: "invalid-mode", payload: map[string]any{"script": "true", "mode": "stdout"}, status: 422, code: "validation_error"},
+		{name: "empty-env-name", payload: map[string]any{"script": "true", "env": map[string]string{"": "x"}}, status: 422, code: "validation_error"},
+		{name: "equals-in-env-name", payload: map[string]any{"script": "true", "env": map[string]string{"A=B": "x"}}, status: 422, code: "validation_error"},
+		{name: "nul-in-env-value", payload: map[string]any{"script": "true", "env": map[string]string{"A": "x\x00y"}}, status: 422, code: "validation_error"},
+	}
+
+	for _, tgt := range targets() {
+		for _, tc := range tests {
+			t.Run(tgt.name+"/"+tc.name, func(t *testing.T) {
+				resp := doPost(t, tgt, "/v1/jobs/run", tc.payload, true)
+				assertAPIError(t, resp, tc.status, tc.code)
+			})
+		}
+	}
+}
+
+func TestOutputLimitZeroUsesDefault(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			result := runJob(t, tgt, map[string]any{
+				"script":       "printf zero-limit-output",
+				"timeout":      10,
+				"output_limit": 0,
+			})
+			assertJobDone(t, result)
+			if output := result["output"].(string); output != "zero-limit-output" {
+				t.Fatalf("output_limit=0 should use the default, got %q", output)
+			}
+		})
+	}
+}
+
+func TestLargeUTF8OutputIsChunkedWithoutSplittingCodepoints(t *testing.T) {
+	const repetitions = 6000
+	const outputLimit = 4097
+	expected := strings.Repeat("世界", repetitions)
+
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			result := runJob(t, tgt, map[string]any{
+				"script":       fmt.Sprintf("i=0; while [ \"$i\" -lt %d ]; do printf '世界'; i=$((i+1)); done", repetitions),
+				"timeout":      20,
+				"output_limit": outputLimit,
+			})
+			jobID := result["job_id"].(string)
+			var combined strings.Builder
+
+			for chunk := 0; chunk < 32; chunk++ {
+				output := result["output"].(string)
+				if !utf8.ValidString(output) {
+					t.Fatalf("chunk %d is not valid UTF-8", chunk)
+				}
+				if len(output) > outputLimit {
+					t.Fatalf("chunk %d exceeded output limit: %d > %d", chunk, len(output), outputLimit)
+				}
+				combined.WriteString(output)
+				if result["done"] == true && result["truncated"] != true {
+					break
+				}
+				offset := int(result["offset"].(float64))
+				result = waitJob(t, tgt, jobID, map[string]any{
+					"offset":       offset,
+					"timeout":      10,
+					"output_limit": outputLimit,
+				})
+			}
+
+			if got := combined.String(); got != expected {
+				t.Fatalf("reassembled output mismatch: got %d bytes, want %d", len(got), len(expected))
+			}
+		})
+	}
+}
+
+func TestWaitRejectsOffsetPastEnd(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			result := runJob(t, tgt, map[string]any{"script": "printf short", "timeout": 10})
+			jobID := result["job_id"].(string)
+			offset := int(result["offset"].(float64)) + 1
+			resp := doPost(t, tgt, fmt.Sprintf("/v1/jobs/%s/wait", jobID), map[string]any{
+				"offset":  offset,
+				"timeout": 0,
+			}, true)
+			assertAPIError(t, resp, 400, "invalid_offset")
+		})
+	}
+}
+
+func TestListZeroLimitUsesDefaultAndStatusFilter(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			result := runJob(t, tgt, map[string]any{"script": "true", "timeout": 10})
+			assertJobDone(t, result)
+
+			resp := doGet(t, tgt, "/v1/jobs?limit=0&status=exited", true)
+			assertStatus(t, resp, 200)
+			var list struct {
+				Jobs []struct {
+					Status string `json:"status"`
+				} `json:"jobs"`
+			}
+			if err := json.Unmarshal(readBody(t, resp), &list); err != nil {
+				t.Fatalf("decode list: %v", err)
+			}
+			if len(list.Jobs) == 0 {
+				t.Fatal("limit=0 should use the default rather than returning an empty list")
+			}
+			if len(list.Jobs) > 50 {
+				t.Fatalf("default list limit exceeded: %d", len(list.Jobs))
+			}
+			for _, job := range list.Jobs {
+				if job.Status != "exited" {
+					t.Fatalf("status filter returned %q", job.Status)
+				}
+			}
+		})
+	}
+}
+
+func TestTerminalInputAndRunningDeleteConflicts(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			completed := runJob(t, tgt, map[string]any{"script": "true", "timeout": 10})
+			completedID := completed["job_id"].(string)
+			resp := doPost(t, tgt, fmt.Sprintf("/v1/jobs/%s/input", completedID), map[string]any{
+				"text": "ignored\n", "offset": 0, "timeout": 1,
+			}, true)
+			assertAPIError(t, resp, 409, "job_not_running")
+
+			running := runJob(t, tgt, map[string]any{"script": "sleep 60", "timeout": 0.1})
+			runningID := running["job_id"].(string)
+			resp = doDelete(t, tgt, fmt.Sprintf("/v1/jobs/%s", runningID))
+			assertAPIError(t, resp, 409, "job_running")
+
+			resp = doDelete(t, tgt, fmt.Sprintf("/v1/jobs/%s?force=true&grace_seconds=0", runningID))
+			assertStatus(t, resp, 200)
+			resp.Body.Close()
+		})
+	}
+}
+
+func TestTerminateIsIdempotentAndDeleteIsNot(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			result := runJob(t, tgt, map[string]any{"script": "sleep 60", "timeout": 0.1})
+			jobID := result["job_id"].(string)
+			path := fmt.Sprintf("/v1/jobs/%s/terminate", jobID)
+
+			for attempt := 0; attempt < 2; attempt++ {
+				resp := doPost(t, tgt, path, map[string]any{"grace_seconds": 0}, true)
+				assertStatus(t, resp, 200)
+				var view map[string]any
+				if err := json.Unmarshal(readBody(t, resp), &view); err != nil {
+					t.Fatalf("decode terminate response: %v", err)
+				}
+				if view["done"] != true {
+					t.Fatalf("terminate attempt %d did not return terminal state: %v", attempt+1, view)
+				}
+			}
+
+			resp := doDelete(t, tgt, fmt.Sprintf("/v1/jobs/%s", jobID))
+			assertStatus(t, resp, 200)
+			resp.Body.Close()
+			resp = doDelete(t, tgt, fmt.Sprintf("/v1/jobs/%s", jobID))
+			assertAPIError(t, resp, 404, "job_not_found")
+		})
+	}
+}
+
+func TestConcurrentJobCreationAndCompletion(t *testing.T) {
+	const jobs = 8
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			for index := 0; index < jobs; index++ {
+				index := index
+				t.Run(fmt.Sprintf("job-%02d", index), func(t *testing.T) {
+					t.Parallel()
+					marker := fmt.Sprintf("concurrent-%02d", index)
+					result := runJob(t, tgt, map[string]any{
+						"script":  fmt.Sprintf("printf %s", marker),
+						"timeout": 20,
+					})
+					assertJobDone(t, result)
+					assertExitCode(t, result, 0)
+					if result["output"] != marker {
+						t.Fatalf("unexpected output: %q", result["output"])
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestRustContainerRestartPreservesStateAndRecoversRunningJobs(t *testing.T) {
+	image := os.Getenv("SHELLCTL_RUST_IMAGE")
+	if image == "" {
+		t.Skip("Rust integration image is not configured")
+	}
+	container := fmt.Sprintf("sandbox-rt-rust-restart-%d", time.Now().UnixNano())
+	token := "restart-recovery-token"
+	output, err := exec.Command(
+		"docker",
+		"run",
+		"-d",
+		"--name",
+		container,
+		"-p",
+		"127.0.0.1::5004",
+		"-e",
+		"SHELLCTL_AUTH_TOKEN="+token,
+		image,
+	).CombinedOutput()
+	if err != nil {
+		t.Fatalf("start dedicated restart container: %v: %s", err, output)
+	}
+	defer func() {
+		if cleanup, cleanupErr := exec.Command("docker", "rm", "-f", container).CombinedOutput(); cleanupErr != nil {
+			t.Errorf("remove dedicated restart container: %v: %s", cleanupErr, cleanup)
+		}
+	}()
+
+	tgt := target{name: "rust-restart", baseURL: containerPublishedURL(t, container), token: token}
+	if !waitForServer(tgt) {
+		t.Fatal("dedicated Rust runtime did not become healthy")
+	}
+	completed := runJob(t, tgt, map[string]any{"script": "printf persisted", "timeout": 10})
+	completedID := completed["job_id"].(string)
+	running := runJob(t, tgt, map[string]any{"script": "sleep 60", "timeout": 0.1})
+	runningID := running["job_id"].(string)
+
+	output, err = exec.Command("docker", "restart", "--timeout", "1", container).CombinedOutput()
+	if err != nil {
+		t.Fatalf("restart Rust container: %v: %s", err, output)
+	}
+	tgt.baseURL = containerPublishedURL(t, container)
+	if !waitForServer(tgt) {
+		t.Fatal("Rust runtime did not become healthy after restart")
+	}
+
+	completedStatus := getJobStatus(t, tgt, completedID)
+	if completedStatus["status"] != "exited" || completedStatus["done"] != true {
+		t.Fatalf("completed job changed across restart: %v", completedStatus)
+	}
+	tail := doGet(t, tgt, fmt.Sprintf("/v1/jobs/%s/log/tail", completedID), true)
+	assertStatus(t, tail, 200)
+	var persisted map[string]any
+	if err := json.Unmarshal(readBody(t, tail), &persisted); err != nil {
+		t.Fatalf("decode persisted output: %v", err)
+	}
+	if persisted["output"] != "persisted" {
+		t.Fatalf("completed output was not preserved: %q", persisted["output"])
+	}
+
+	runningStatus := getJobStatus(t, tgt, runningID)
+	if runningStatus["done"] != true {
+		t.Fatalf("pre-restart running job was not reconciled: %v", runningStatus)
+	}
+	if status := runningStatus["status"]; status == "created" || status == "starting" || status == "running" {
+		t.Fatalf("pre-restart job remained nonterminal: %v", runningStatus)
+	}
+
+	after := runJob(t, tgt, map[string]any{"script": "printf after-restart", "timeout": 10})
+	assertJobDone(t, after)
+	if after["output"] != "after-restart" {
+		t.Fatalf("runtime failed to accept work after restart: %v", after)
 	}
 }
 
@@ -754,23 +1061,27 @@ func TestLandlockCannotReadOtherAgentHome(t *testing.T) {
 // TestLandlockDisabledAllowsWriteOutsideHome uses the pre-started no-isolation
 // container (SHELLCTL_ENABLE_PATH_ISOLATION=false) and verifies that isolation is off.
 func TestLandlockDisabledAllowsWriteOutsideHome(t *testing.T) {
-	tgt, ok := noIsolationTarget()
-	if !ok {
+	targets := noIsolationTargets()
+	if len(targets) == 0 {
 		t.Skip("SHELLCTL_GO_URL_NO_ISOLATION not set; no-isolation container not available")
 	}
 
-	// With isolation disabled, writes to /tmp should succeed.
-	// /tmp is world-writable (Unix perms) but blocked by Landlock when enabled.
-	result := runJobWithToken(t, tgt, authTokenNoIsolation, map[string]any{
-		"script":  "touch /tmp/landlock-disabled-test && echo write_ok",
-		"env":     map[string]string{"HOME": "/home/dify"},
-		"timeout": 10,
-	})
-	assertJobDone(t, result)
-	assertExitCode(t, result, 0)
-	output := result["output"].(string)
-	if !strings.Contains(output, "write_ok") {
-		t.Errorf("expected write to /tmp to succeed with isolation disabled, got %q", output)
+	for _, tgt := range targets {
+		t.Run(tgt.name, func(t *testing.T) {
+			// With isolation disabled, writes to /tmp should succeed.
+			// /tmp is world-writable but blocked by Landlock when enabled.
+			result := runJob(t, tgt, map[string]any{
+				"script":  "touch /tmp/landlock-disabled-test && echo write_ok",
+				"env":     map[string]string{"HOME": "/home/dify"},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			assertExitCode(t, result, 0)
+			output := result["output"].(string)
+			if !strings.Contains(output, "write_ok") {
+				t.Errorf("expected write to /tmp to succeed with isolation disabled, got %q", output)
+			}
+		})
 	}
 }
 
@@ -826,7 +1137,7 @@ func doGet(t *testing.T, tgt target, path string, withAuth bool) *http.Response 
 	t.Helper()
 	req, _ := http.NewRequest("GET", tgt.baseURL+path, nil)
 	if withAuth {
-		req.Header.Set("Authorization", "Bearer "+authToken)
+		req.Header.Set("Authorization", "Bearer "+tgt.token)
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -841,7 +1152,7 @@ func doPost(t *testing.T, tgt target, path string, payload map[string]any, withA
 	req, _ := http.NewRequest("POST", tgt.baseURL+path, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	if withAuth {
-		req.Header.Set("Authorization", "Bearer "+authToken)
+		req.Header.Set("Authorization", "Bearer "+tgt.token)
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -855,18 +1166,54 @@ func cleanupJobBestEffort(tgt target, jobID string) {
 	body, _ := json.Marshal(map[string]any{"grace_seconds": 0})
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/v1/jobs/%s/terminate", tgt.baseURL, jobID), bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("Authorization", "Bearer "+tgt.token)
 	if resp, err := client.Do(req); err == nil {
 		_, _ = io.Copy(io.Discard, resp.Body)
 		_ = resp.Body.Close()
 	}
 
 	req, _ = http.NewRequest("DELETE", fmt.Sprintf("%s/v1/jobs/%s?force=true&grace_seconds=0", tgt.baseURL, jobID), nil)
-	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("Authorization", "Bearer "+tgt.token)
 	if resp, err := client.Do(req); err == nil {
 		_, _ = io.Copy(io.Discard, resp.Body)
 		_ = resp.Body.Close()
 	}
+}
+
+func doDelete(t *testing.T, tgt target, path string) *http.Response {
+	t.Helper()
+	req, _ := http.NewRequest("DELETE", tgt.baseURL+path, nil)
+	req.Header.Set("Authorization", "Bearer "+tgt.token)
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		t.Fatalf("[%s] DELETE %s failed: %v", tgt.name, path, err)
+	}
+	return resp
+}
+
+func getJobStatus(t *testing.T, tgt target, jobID string) map[string]any {
+	t.Helper()
+	resp := doGet(t, tgt, fmt.Sprintf("/v1/jobs/%s", jobID), true)
+	assertStatus(t, resp, 200)
+	var result map[string]any
+	if err := json.Unmarshal(readBody(t, resp), &result); err != nil {
+		t.Fatalf("decode job status: %v", err)
+	}
+	return result
+}
+
+func containerPublishedURL(t *testing.T, container string) string {
+	t.Helper()
+	output, err := exec.Command("docker", "port", container, "5004/tcp").CombinedOutput()
+	if err != nil {
+		t.Fatalf("resolve published port for %s: %v: %s", container, err, output)
+	}
+	line := strings.TrimSpace(strings.Split(string(output), "\n")[0])
+	_, port, err := net.SplitHostPort(line)
+	if err != nil || port == "" {
+		t.Fatalf("parse published port %q for %s: %v", line, container, err)
+	}
+	return "http://127.0.0.1:" + port
 }
 
 func readBody(t *testing.T, resp *http.Response) []byte {
@@ -885,6 +1232,23 @@ func assertStatus(t *testing.T, resp *http.Response, expected int) {
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		t.Fatalf("expected status %d, got %d: %s", expected, resp.StatusCode, string(body))
+	}
+}
+
+func assertAPIError(t *testing.T, resp *http.Response, expectedStatus int, expectedCode string) {
+	t.Helper()
+	assertStatus(t, resp, expectedStatus)
+	var result struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(readBody(t, resp), &result); err != nil {
+		t.Fatalf("decode error response: %v", err)
+	}
+	if result.Error.Code != expectedCode {
+		t.Fatalf("expected error code %q, got %q (%s)", expectedCode, result.Error.Code, result.Error.Message)
 	}
 }
 
@@ -912,47 +1276,4 @@ func envOrDefault(key, defaultVal string) string {
 		return v
 	}
 	return defaultVal
-}
-
-func warmupJobWithToken(tgt target, token string) {
-	warmupClient := &http.Client{Timeout: 180 * time.Second}
-	payload, _ := json.Marshal(map[string]any{
-		"script":  "echo warmup",
-		"timeout": 10,
-	})
-	for attempt := 0; attempt < 3; attempt++ {
-		req, _ := http.NewRequest("POST", tgt.baseURL+"/v1/jobs/run", bytes.NewReader(payload))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer "+token)
-		resp, err := warmupClient.Do(req)
-		if err != nil {
-			time.Sleep(2 * time.Second)
-			continue
-		}
-		io.Copy(io.Discard, resp.Body)
-		resp.Body.Close()
-		if resp.StatusCode == 200 {
-			return
-		}
-		time.Sleep(2 * time.Second)
-	}
-}
-
-func runJobWithToken(t *testing.T, tgt target, token string, payload map[string]any) map[string]any {
-	t.Helper()
-	body, _ := json.Marshal(payload)
-	req, _ := http.NewRequest("POST", tgt.baseURL+"/v1/jobs/run", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		t.Fatalf("[%s] POST /v1/jobs/run failed: %v", tgt.name, err)
-	}
-	assertStatus(t, resp, 200)
-	respBody := readBody(t, resp)
-	var result map[string]any
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		t.Fatalf("[%s] failed to parse run response: %v\nbody: %s", tgt.name, err, string(respBody))
-	}
-	return result
 }
