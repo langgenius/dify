@@ -17,6 +17,18 @@ type RunBatchCallbacks = {
 
 const GROUP_SIZE = BATCH_CONCURRENCY
 
+// CSV checkbox cells stay strings. Accept the same aliases as the API:
+// true/1/yes/on and false/0/no/off, ignoring case and surrounding whitespace.
+const CHECKBOX_TRUE_ALIASES = new Set(['true', '1', 'yes', 'on'])
+const CHECKBOX_FALSE_ALIASES = new Set(['false', '0', 'no', 'off'])
+
+const parseCheckboxCsvValue = (value: string) => {
+  const normalized = value.trim().toLowerCase()
+  if (CHECKBOX_TRUE_ALIASES.has(normalized)) return true
+  if (CHECKBOX_FALSE_ALIASES.has(normalized)) return false
+  return undefined
+}
+
 export const useTextGenerationBatch = ({
   promptConfig,
   notify,
@@ -201,6 +213,10 @@ export const useTextGenerationBatch = ({
         promptVariables.forEach((variable, varIndex) => {
           const input = item[varIndex]
           inputs[variable.key] = input
+          if (variable.type === 'checkbox' && input) {
+            const parsed = parseCheckboxCsvValue(input)
+            if (parsed !== undefined) inputs[variable.key] = parsed
+          }
           if (!input)
             inputs[variable.key] =
               variable.type === 'string' || variable.type === 'paragraph' ? '' : undefined
