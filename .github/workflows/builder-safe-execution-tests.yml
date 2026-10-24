@@ -2237,6 +2237,7 @@ jobs:
                   'test_real_physical_claim_and_terminal_settlement_serialize_on_existing_owner': 2,
                   'test_failure_settlement_refuses_ambiguous_or_changed_evidence': 16,
                   'test_optional_terminal_proof_failure_does_not_block_original_resume_settlement': 3,
+                  'test_stranded_fixture_restores_real_storage_after_patch_owner_teardown': 1,
               },
           })
           for module, expected in {**a3_expected, **a4_expected}.items():
