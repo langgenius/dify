@@ -7,6 +7,21 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
 
+class CursorPaginationGuard:
+    """Reject repeated cursors within one listing; use a fresh guard for each listing."""
+
+    def __init__(self) -> None:
+        self._seen_cursors: set[str] = set()
+
+    def check(self, cursor: str | None) -> None:
+        """Record a cursor before requesting its page. None denotes the initial page."""
+        if cursor is None:
+            return
+        if cursor in self._seen_cursors:
+            raise ValueError("Repeated pagination cursor detected.")
+        self._seen_cursors.add(cursor)
+
+
 @dataclass
 class PaginatedResult[T]:
     """Minimal pagination container backed by plain SQLAlchemy queries.
