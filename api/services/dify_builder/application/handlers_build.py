@@ -1102,7 +1102,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     from services.dify_builder.condition_evidence import diagnose_failure, propose_failure
 
     diagnosis = diagnose_failure(env, s.app_id, turn.actor, run, graph, task=(s, fc, _hash))
-    _note_repair_error(fc, run, business_signature=business_failure.signature if business_failure else "")
+    _note_repair_error(fc, run, business_signature=business_failure.signature if business_failure else "", graph=graph)
     if _repair_is_repeating(fc):
         # The same failure has now survived _MAX_REPEATED_REPAIRS repairs, so
         # another round would aim at the same wrong thing. Stop spending runs
