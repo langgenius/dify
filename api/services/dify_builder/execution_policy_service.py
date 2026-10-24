@@ -284,7 +284,7 @@ def _bound_request(db: Session, context: ExecutionContext, *, lock: bool) -> Dif
     _validate_context(context)
     statement = select(DifyBuilderExecutionRequest).where(DifyBuilderExecutionRequest.id == context.request_id)
     if lock:
-        statement = statement.with_for_update()
+        statement = statement.with_for_update().execution_options(populate_existing=True)
     row = db.scalar(statement)
     if row is None or row.context_digest != context.context_digest or row.context != context.model_dump(mode="json"):
         raise BuilderExecutionPolicyError("execution_request_mismatch")
@@ -634,6 +634,9 @@ class BuilderExecutionPolicyService:
         with self._session_factory.begin() as db:
             from services.dify_builder.task_controls import lock_execution, lock_task_admission
 
+            # Authenticate the persisted request binding before choosing its
+            # Task lock; revalidate fresh state under the Request lock below.
+            _bound_request(db, context, lock=False)
             lock_task_admission(db, context.session_id)
             lock_execution(db)
             row = _bound_request(db, context, lock=True)

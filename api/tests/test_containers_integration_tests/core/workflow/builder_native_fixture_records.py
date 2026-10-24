@@ -20,7 +20,8 @@ if TYPE_CHECKING:
     from shellctl.shared.schemas import NativeScopeSpec
     from sqlalchemy.orm import Session, sessionmaker
 
-    from core.dify_builder.models import Actor
+    from core.dify_builder.models import Actor, DifyBuilderContext
+    from core.dify_builder.state import PcState
     from runtime_contracts.builder.native.agent_contracts import AgentParentNodeRef, AgentTestWorkspaceRef
     from runtime_contracts.builder.native.contracts import (
         DispatchPermit,
@@ -240,6 +241,17 @@ def require_instance[T](value: object, expected: type[T]) -> T:
     """Assert the actual ORM/payload class at a positive test boundary."""
     assert isinstance(value, expected)
     return value
+
+
+def advance_builder_context(
+    factory: sessionmaker[Session], session_id: str, *, state: PcState, context: DifyBuilderContext
+) -> int:
+    """Append a fixture's next context through the real session version CAS."""
+    from services.dify_builder.repository import SqlDifyBuilderRepository
+
+    repo = SqlDifyBuilderRepository(factory)
+    current, _ = repo.get_session(session_id)
+    return repo.compare_and_advance(session_id, current.version, state, context, [])
 
 
 class NativeRuntimeWitness:

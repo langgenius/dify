@@ -70,8 +70,8 @@ from services.dify_builder.application.execution_policy import (
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import execution_revision
-from services.dify_builder.serde import context_to_dict
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import advance_builder_context
 from tests.test_containers_integration_tests.core.workflow.test_builder_execution_policy_persistence import race
 from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414 - shared pytest fixture
@@ -338,16 +338,13 @@ def world(
         assert test_input is not None
         test_input.inputs = {"note": "ci"}
         test_input.start_schema_hash = schema_hash(start_schema(graph))
-        db.add(
-            DifyBuilderSessionCommit(
-                session_id=session_id,
-                version=1,
-                state=str(PcState.BUILD_AWAIT_TESTDATA),
-                context=context_to_dict(DifyBuilderContext(plan_items=["Read one message"])),
-                actor="",
-            )
-        )
         state.credential_id, state.client_id, state.workflow_id = credential.id, client.id, workflow.id
+    advance_builder_context(
+        factory,
+        session_id,
+        state=PcState.BUILD_AWAIT_TESTDATA,
+        context=DifyBuilderContext(plan_items=["Read one message"]),
+    )
     return state
 
 
@@ -412,6 +409,8 @@ def test_postgres_stale_session_cas_rolls_back_every_reservation_write(
     world: World, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     decision = world.confirmed()
+    initial_commits = world.count(DifyBuilderSessionCommit)
+    assert initial_commits == 2  # canonical initial task plus the confirmed-tool fixture context
     original = SqlDifyBuilderRepository._compare_and_advance_in_session
 
     def lose(
@@ -429,7 +428,7 @@ def test_postgres_stale_session_cas_rolls_back_every_reservation_write(
     monkeypatch.setattr(SqlDifyBuilderRepository, "_compare_and_advance_in_session", lose)
     assert race(lambda: world.reserve(decision)) == ["stale_session_version"]
     assert world.count(DifyBuilderExecutionRequest) == 0
-    assert world.count(DifyBuilderSessionCommit) == 1
+    assert world.count(DifyBuilderSessionCommit) == initial_commits
     row = world.consent(decision.consent_id)
     assert (row.state, row.command_id, row.execute_key) == ("confirmed", None, None)
 

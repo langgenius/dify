@@ -64,12 +64,11 @@ from httpx._types import AuthTypes
 from sqlalchemy import select
 
 from core.dify_builder.input_schema import schema_hash, start_schema
-from core.dify_builder.models import Actor, Graph
+from core.dify_builder.models import Actor, DifyBuilderContext, Graph
+from core.dify_builder.state import PcState
 from models.account import Tenant
 from models.dify_builder import (
     DifyBuilderExecutionRequest,
-    DifyBuilderSession,
-    DifyBuilderSessionCommit,
     DifyBuilderTestInput,
 )
 from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestScope
@@ -85,6 +84,7 @@ from services.dify_builder.native_testing.repository import OwnedNativeTest
 from services.dify_builder.native_testing.runtime import DifyNativeRuntime, DifyNativeRuntimeOwner, build_native_api
 from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
     RuntimeDeliveryCase,
+    advance_builder_context,
     require_present,
 )
 from tests.test_containers_integration_tests.core.workflow.builder_native_runtime_diagnostics import (
@@ -246,20 +246,14 @@ def runtime_case(
             require_instance(saved_input, DifyBuilderTestInput).start_schema_hash = schema_hash(
                 start_schema(dict(require_instance(actual, Workflow).graph_dict), app.mode)
             )
-            builder = session.get(DifyBuilderSession, session_id)
-            # This fixture exercises the independently qualified direct-start
-            # API from an idle Builder state, not an ordinary queued test action.
-            require_instance(builder, DifyBuilderSession).current_state = "build.review"
-            version = require_instance(builder, DifyBuilderSession).version
-            session.add(
-                DifyBuilderSessionCommit(
-                    session_id=session_id,
-                    version=version,
-                    state=require_instance(builder, DifyBuilderSession).current_state,
-                    actor="user",
-                    context={"test_input_ref": input_id},
-                )
-            )
+        # The qualified direct-start API needs an idle state and a matching
+        # new commit; preserve the canonical initial commit from native_owner.
+        version = advance_builder_context(
+            factory,
+            session_id,
+            state=PcState.BUILD_REVIEW,
+            context=DifyBuilderContext(test_input_ref=input_id),
+        )
         published: list[NativeDeliveryMessage] = []
         sends: list[httpx.Request] = []
 
