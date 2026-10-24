@@ -3,7 +3,12 @@ import type {
   AccountWithRoleResponse,
   MemberInviteResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { Role } from '@/models/access-control'
+import type { RemoveMemberPayload } from './remove-member-content'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import {
   createDialogHandle,
   Dialog,
@@ -12,7 +17,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,6 +36,8 @@ import InvitationResultsContent from './invitation-results-content'
 import { InviteModal } from './invite-modal'
 import MemberDetailsContent from './member-details-content'
 import MemberRow from './member-row'
+import RemoveMemberContent from './remove-member-content'
+import { useUpdateMemberRoles } from './use-update-member-roles'
 
 const MembersPage = () => {
   const { t } = useTranslation([
@@ -84,28 +91,31 @@ const MembersPage = () => {
     ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
     : t(($) => $['members.role'], { ns: 'workspaceMembers' })
 
-  const { mutateAsync: updateRolesOfMember, isPending: isSavingMember } = useMutation(
-    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
+  const { submitAsync: updateRolesOfMember, isPending: isSavingMember } = useUpdateMemberRoles(
+    systemFeatures.rbac_enabled,
+    () => detailsDialogHandle.close(),
+  )
+  const [removeDialogHandle] = useState(() => createAlertDialogHandle<RemoveMemberPayload>())
+  const removeReturnFocusRef = useRef<HTMLButtonElement>(null)
+  const listRef = useRef<HTMLTableElement>(null)
+  const queryClient = useQueryClient()
+  const removal = useMutation(
+    consoleQuery.workspaces.current.members.byMemberId.delete.mutationOptions({
       context: { silent: true },
+      onSuccess: () => {
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.members.get.key(),
+        })
+        removeDialogHandle.close()
+      },
     }),
   )
-
-  const handleAssignRolesSubmit = (member: AccountWithRoleResponse, roles: Role[]) => {
-    const roleIds = systemFeatures.rbac_enabled
-      ? roles.map((role) => role.id)
-      : roles.slice(0, 1).map((role) => role.id)
-
-    return updateRolesOfMember({
-      params: { member_id: member.id },
-      body: { role_ids: roleIds },
-    })
-  }
 
   return (
     <Dialog
       handle={detailsDialogHandle}
       onOpenChange={(open, details) => {
-        if (!open && isSavingMember) details.cancel()
+        if (!open && isSavingMember && details.reason !== 'imperative-action') details.cancel()
       }}
     >
       {({ payload: member }) => (
@@ -195,7 +205,11 @@ const MembersPage = () => {
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-150 table-fixed text-start">
+              <table
+                ref={listRef}
+                tabIndex={-1}
+                className="w-full min-w-150 table-fixed text-start"
+              >
                 <colgroup>
                   <col className="w-65" />
                   <col className="w-30" />
@@ -221,6 +235,8 @@ const MembersPage = () => {
                     <MemberRow
                       key={account.id}
                       member={account}
+                      removeDialogHandle={removeDialogHandle}
+                      removeReturnFocusRef={removeReturnFocusRef}
                       roles={account.roles ?? []}
                       isCurrentUser={userProfileEmail === account.email}
                       canManage={canManageMembers}
@@ -234,6 +250,42 @@ const MembersPage = () => {
               </table>
             </div>
           </div>
+          <AlertDialog
+            handle={removeDialogHandle}
+            onOpenChange={(open, details) => {
+              if (!open && removal.isPending && details.reason !== 'imperative-action')
+                details.cancel()
+            }}
+            onOpenChangeComplete={(open) => {
+              if (!open) removal.reset()
+            }}
+          >
+            {({ payload }) => (
+              <AlertDialogContent
+                finalFocus={() =>
+                  removeReturnFocusRef.current?.isConnected
+                    ? removeReturnFocusRef.current
+                    : listRef.current
+                }
+                backdropProps={{ forceRender: true }}
+              >
+                {payload && (
+                  <RemoveMemberContent
+                    name={payload.name || payload.email}
+                    isPending={removal.isPending}
+                    error={
+                      removal.isError
+                        ? t(($) => $['api.actionFailed'], { ns: 'common' })
+                        : undefined
+                    }
+                    onSubmit={() => {
+                      if (!removal.isPending) removal.mutate({ params: { member_id: payload.id } })
+                    }}
+                  />
+                )}
+              </AlertDialogContent>
+            )}
+          </AlertDialog>
           <Dialog handle={invitationDialogHandle}>
             {({ payload: results }) => (
               <DialogContent backdropProps={{ forceRender: true }}>
@@ -251,7 +303,7 @@ const MembersPage = () => {
                 }
                 allowMultipleRoles={systemFeatures.rbac_enabled}
                 onClose={() => detailsDialogHandle.close()}
-                onAssignSubmit={(roles) => handleAssignRolesSubmit(member, roles)}
+                onAssignSubmit={(roles) => updateRolesOfMember(member.id, roles)}
               />
             )}
           </DialogContent>
