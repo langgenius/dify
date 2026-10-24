@@ -116,7 +116,13 @@ def _app(
     )
 
 
-def _harness(*, role: str | None = "owner", paid: bool = True, app_mode: str = "workflow") -> _Harness:
+def _harness(
+    *,
+    role: str | None = "owner",
+    paid: bool = True,
+    app_mode: str = "workflow",
+    rbac_enabled: Callable[[], bool] = lambda: False,
+) -> _Harness:
     control_plane = create_autospec(NetworkAccessGroupControlPlane, instance=True, spec_set=True)
     apps = create_autospec(NetworkAccessGroupAppQuery, instance=True, spec_set=True)
     memberships = create_autospec(WorkspaceMembershipRoleQuery, instance=True, spec_set=True)
@@ -139,6 +145,7 @@ def _harness(*, role: str | None = "owner", paid: bool = True, app_mode: str = "
             apps=apps,
             memberships=memberships,
             entitlement=entitlement,
+            rbac_enabled=rbac_enabled,
         ),
         control_plane=control_plane,
         apps=apps,
@@ -245,6 +252,15 @@ def test_policy_reads_allow_persisted_owner_admin_and_editor(role: str) -> None:
 
     harness.control_plane.list_groups.assert_called_once_with(WORKSPACE_ID, ACCOUNT_ID)
     harness.control_plane.get_group.assert_called_once_with(WORKSPACE_ID, GROUP_ID, ACCOUNT_ID)
+
+
+def test_service_skips_legacy_role_check_when_rbac_is_enabled() -> None:
+    """RBAC grants are authoritative when enabled; legacy roles are the fallback only."""
+    harness = _harness(role="normal", rbac_enabled=lambda: True)
+
+    harness.service.list_groups(_context())
+
+    harness.control_plane.list_groups.assert_called_once_with(WORKSPACE_ID, ACCOUNT_ID)
 
 
 @pytest.mark.parametrize(

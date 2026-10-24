@@ -313,7 +313,10 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
         "Workspace network access group retrieved successfully",
         console_ns.models[NetworkAccessGroupMutationResponse.__name__],
     )
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(
+        editions=frozenset({DeploymentEdition.CLOUD}),
+        rbac_checks=[RBACCheck(RBACPermission.IP_POLICY_VIEW, Workspace())],
+    )
     def get(self, request_context: RequestContext, group_id: UUID) -> dict[str, Any]:
         try:
             payload = application_services().network_access_groups.get_group(
@@ -393,7 +396,10 @@ class CurrentWorkspaceNetworkAccessGroupCurrentIPApi(Resource):
     )
     @console_ns.response(403, "The workspace role does not allow network access policy reads")
     @console_ns.response(503, "A trusted current client IP is unavailable")
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(
+        editions=frozenset({DeploymentEdition.CLOUD}),
+        rbac_checks=[RBACCheck(RBACPermission.IP_POLICY_VIEW, Workspace())],
+    )
     def get(self, request_context: RequestContext) -> dict[str, Any]:
         @after_this_request
         def disable_client_ip_response_cache(response: Response) -> Response:
@@ -419,7 +425,10 @@ class CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi(Resource):
         "Current client IP checked against the workspace network access group",
         console_ns.models[NetworkAccessGroupCurrentIPCheckResponse.__name__],
     )
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(
+        editions=frozenset({DeploymentEdition.CLOUD}),
+        rbac_checks=[RBACCheck(RBACPermission.IP_POLICY_VIEW, Workspace())],
+    )
     def get(self, request_context: RequestContext, group_id: UUID) -> dict[str, Any]:
         @after_this_request
         def disable_client_ip_response_cache(response: Response) -> Response:
@@ -447,7 +456,10 @@ class AppNetworkAccessGroupApi(Resource):
         "App network access group binding retrieved successfully",
         console_ns.models[AppNetworkAccessGroupResponse.__name__],
     )
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(
+        editions=frozenset({DeploymentEdition.CLOUD}),
+        rbac_checks=[RBACCheck(RBACPermission.IP_POLICY_VIEW, Workspace())],
+    )
     def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, Any]:
         try:
             payload = application_services().network_access_groups.get_app_binding(
@@ -465,7 +477,10 @@ class AppNetworkAccessGroupApi(Resource):
         "App network access group binding updated successfully",
         console_ns.models[AppNetworkAccessGroupMutationResponse.__name__],
     )
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(
+        editions=frozenset({DeploymentEdition.CLOUD}),
+        rbac_checks=[RBACCheck(RBACPermission.IP_POLICY_MANAGE, Workspace())],
+    )
     @cloud_edition_billing_paid_plan_required
     @model_validate(AppNetworkAccessGroupUpdatePayload)
     def put(
@@ -496,7 +511,10 @@ class AppNetworkAccessGroupStatusApi(Resource):
         "App network access control entry status retrieved successfully",
         console_ns.models[AppNetworkAccessGroupStatusResponse.__name__],
     )
-    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    @console_account_admission(
+        editions=frozenset({DeploymentEdition.CLOUD}),
+        rbac_checks=[RBACCheck(RBACPermission.IP_POLICY_VIEW, Workspace())],
+    )
     def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, Any]:
         try:
             payload = application_services().network_access_groups.get_app_status(
