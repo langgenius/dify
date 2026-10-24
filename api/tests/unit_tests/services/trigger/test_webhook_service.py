@@ -949,6 +949,48 @@ class TestWebhookServiceCases:
                     }
                 }
 
+                with pytest.raises(ValueError, match="Required file missing: file"):
+                    WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+
+        def test_extract_and_validate_webhook_request_present_required_file(self) -> None:
+            app = Flask(__name__)
+            file_storage = FileStorage(stream=BytesIO(b"content"), filename="a.txt", content_type="text/plain")
+            with app.test_request_context(
+                "/webhook",
+                method="POST",
+                data={"note": "test", "file": file_storage},
+                content_type="multipart/form-data",
+            ):
+                node_config = {
+                    "data": {
+                        "method": "post",
+                        "content_type": "multipart/form-data",
+                        "body": [{"name": "file", "type": "file", "required": True}],
+                    }
+                }
+
+                with patch.object(WebhookService, "_process_file_uploads", autospec=True) as mock_process_files:
+                    mock_process_files.return_value = {"file": {"id": "f-1"}}
+                    result = WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+
+            assert result["files"] == {"file": {"id": "f-1"}}
+
+        def test_extract_and_validate_webhook_request_missing_optional_file(self) -> None:
+            app = Flask(__name__)
+            with app.test_request_context(
+                "/webhook",
+                method="POST",
+                data={"note": "test"},
+                content_type="multipart/form-data",
+            ):
+                node_config = {
+                    "data": {
+                        "method": "post",
+                        "content_type": "multipart/form-data",
+                        "body": [{"name": "file", "type": "file", "required": False}],
+                    }
+                }
+
                 result = WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
 
             assert result["files"] == {}
@@ -1191,6 +1233,20 @@ class TestWebhookServiceAdditionalCases:
             result = WebhookService._process_body_parameters(raw_body, body_configs, ContentType.FORM_DATA)
 
             assert result == {"message": "hello", "extra": "x"}
+
+        def test_validate_required_files_should_raise_when_only_another_file_is_uploaded(self) -> None:
+            configs = [
+                WebhookBodyParameter(name="invoice", type=SegmentType.FILE, required=True),
+                WebhookBodyParameter(name="receipt", type=SegmentType.FILE, required=False),
+            ]
+
+            with pytest.raises(ValueError, match="Required file missing: invoice"):
+                WebhookService._validate_required_files({"receipt": {"id": "f-1"}}, configs, ContentType.FORM_DATA)
+
+        def test_validate_required_files_should_ignore_other_content_types(self) -> None:
+            configs = [WebhookBodyParameter(name="raw", type=SegmentType.FILE, required=True)]
+
+            WebhookService._validate_required_files({}, configs, ContentType.BINARY)
 
         def test_validate_required_headers_should_accept_sanitized_header_names(self) -> None:
             headers = {"x_api_key": "123"}
