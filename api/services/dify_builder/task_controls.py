@@ -4,7 +4,7 @@ The Redis lease only schedules work. A session row and its persisted task
  generation decide whether an old worker can still mutate the draft.
 """
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -31,7 +31,7 @@ def generation(context) -> int:
 
 
 @contextmanager
-def execution_scope(fence: ExecutionFence) -> Iterator[None]:
+def execution_scope(fence: ExecutionFence) -> Generator[None]:
     token = _current.set(fence)
     try:
         yield
