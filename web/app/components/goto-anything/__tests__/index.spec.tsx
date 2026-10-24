@@ -154,7 +154,9 @@ function setup({ datasetOperator = false, enableSkill = true, canInstall = true 
 }
 async function openSearch() {
   triggerSearchShortcut()
-  return screen.findByRole('combobox', { name: 'app.gotoAnything.searchTitle' })
+  const input = await screen.findByRole('combobox', { name: 'app.gotoAnything.searchTitle' })
+  await waitFor(() => expect(input).toHaveFocus())
+  return input
 }
 
 beforeEach(() => {
