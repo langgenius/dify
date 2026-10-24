@@ -46,6 +46,9 @@ EXPOSE 5001
 
 # set timezone
 ENV TZ=UTC
+# Python's zoneinfo reads the tzdata package pinned in uv.lock, not Debian's
+# tzdata, which lags IANA releases (e.g. 2026e for western Canada).
+ENV PYTHONTZPATH=""
 
 # Set UTF-8 locale
 ENV LANG=en_US.UTF-8
