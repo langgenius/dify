@@ -350,3 +350,19 @@ def test_retained_inputs_are_prefill_only_after_edit_invalidates_active_input() 
     assert not stored.test_input_ref
     assert not stored.effect_confirmation
     assert any(field["key"] == "count" and field["required"] for field in form.payload["fields"])
+
+
+def test_new_task_after_completion_resets_native_failure_budget() -> None:
+    env, repo, session = setup_task("edit")
+    _, fc = repo.get_session(session.id)
+    fc.repair_attempts = 3
+    fc.last_repair_error = "tool-draft|unconnected"
+    fc.last_repair_graph_revision = "previous-executable-graph"
+    repo.compare_and_advance(session.id, session.version, session.current_state, fc, [])
+    session, _ = repo.get_session(session.id)
+    out = continue_task(env, session)
+    assert out.current_state == PcState.EDIT_IMPACT_ANALYSIS
+    _, current = repo.get_session(session.id)
+    assert current.repair_attempts == 0
+    assert current.last_repair_error == ""
+    assert current.last_repair_graph_revision == ""

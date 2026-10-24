@@ -1300,3 +1300,159 @@ def test_create_marker_canonicalizes_wrapper_without_changing_existing_entry(
 def test_create_ordinary_node_preserves_caller_flow_type() -> None:
     out, _ = apply_create_node({"nodes": [], "edges": []}, "llm", {}, node_id="child", flow_type="caller-wrapper")
     assert out["nodes"][0]["type"] == "caller-wrapper"
+
+
+@pytest.fixture
+def reusable_insertion_graph() -> Graph:
+    return {
+        "nodes": [
+            {"id": "a", "data": {"type": "template-transform", "template": "a", "variables": []}},
+            {"id": "b", "data": {"type": "end", "outputs": []}},
+            {
+                "id": "existing",
+                "position": {"x": 777, "y": 333},
+                "width": 400,
+                "annotation": {"note": "preserve"},
+                "data": {
+                    "type": "template-transform",
+                    "title": "Existing",
+                    "template": "{{ v }}",
+                    "variables": [{"variable": "v", "value_selector": ["a", "output"]}],
+                },
+            },
+        ],
+        "edges": [{"id": "old", "source": "a", "target": "b", "sourceHandle": "source", "targetHandle": "target"}],
+    }
+
+
+def test_insert_between_can_reuse_complete_existing_node_and_replay_without_duplicates(
+    reusable_insertion_graph: Graph,
+) -> None:
+    graph = reusable_insertion_graph
+    original = copy.deepcopy(graph)
+    intent = MutationIntent(
+        op="insert_between",
+        args={
+            "edge": {"source": "a", "target": "b"},
+            "node_type": "template-transform",
+            "config": {},
+            "node_id": "existing",
+            "reuse_existing": True,
+        },
+    )
+    dry = graph_ops.filter_applicable(graph, [intent])
+    assert dry.rejected == []
+    assert dry.graph["nodes"] == original["nodes"]
+    assert dry.changed_nodes == []  # wiring did not write any node data
+    assert {(e["source"], e["target"], e["sourceHandle"], e["targetHandle"]) for e in dry.graph["edges"]} == {
+        ("a", "existing", "source", "target"),
+        ("existing", "b", "source", "target"),
+    }
+    replay = graph_ops.filter_applicable(dry.graph, [intent])
+    assert replay.rejected == []
+    assert replay.graph == dry.graph
+    assert graph == original
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        "missing",
+        "source",
+        "target",
+        "config",
+        "position",
+        "type",
+        "container",
+        "child",
+        "edge_child",
+        "duplicate_id",
+        "connected",
+        "branch",
+        "source_handle",
+        "ambiguous_edge",
+        "non_boolean",
+    ],
+)
+def test_reuse_existing_insertion_rejects_invalid_or_ambiguous_request(
+    reusable_insertion_graph: Graph, invalid: str
+) -> None:
+    graph = reusable_insertion_graph
+    args: Graph = {
+        "edge": {"source": "a", "target": "b"},
+        "node_type": "template-transform",
+        "config": {},
+        "node_id": "existing",
+        "reuse_existing": True,
+    }
+    match invalid:
+        case "missing":
+            args["node_id"] = "missing"
+        case "source":
+            args["node_id"] = "a"
+        case "target":
+            args["node_id"] = "b"
+        case "config":
+            args["config"] = {"title": "overwrite"}
+        case "position":
+            args["position"] = {"x": 1, "y": 2}
+        case "type":
+            args["node_type"] = "code"
+        case "container":
+            graph["nodes"][-1]["data"]["type"] = args["node_type"] = "iteration"
+        case "child":
+            graph["nodes"][-1]["parentId"] = "container"
+        case "edge_child":
+            graph["nodes"][0]["parentId"] = "container"
+        case "connected":
+            graph["edges"].append({"source": "existing", "target": "b"})
+        case "duplicate_id":
+            graph["nodes"].append(copy.deepcopy(graph["nodes"][-1]))
+        case "branch":
+            graph["nodes"][-1]["data"] = {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}
+            args["node_type"] = "if-else"
+        case "source_handle":
+            graph["nodes"][0]["data"] = {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}
+        case "ambiguous_edge":
+            graph["edges"].append({**graph["edges"][0], "id": "second", "sourceHandle": "other"})
+        case "non_boolean":
+            args["reuse_existing"] = "true"
+    original = copy.deepcopy(graph)
+    result = graph_ops.filter_applicable(graph, [MutationIntent(op="insert_between", args=args)])
+    assert result.applicable == []
+    assert result.rejected
+    assert result.graph == original
+    assert graph == original
+
+
+def test_reuse_existing_insertion_preserves_unrelated_edges_and_exact_branch_handle(
+    reusable_insertion_graph: Graph,
+) -> None:
+    graph = reusable_insertion_graph
+    graph["nodes"][0]["data"] = {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}
+    graph["edges"][0]["sourceHandle"] = "true"
+    graph["edges"].append(
+        {"id": "parallel", "source": "a", "target": "b", "sourceHandle": "false", "targetHandle": "target"}
+    )
+    original_nodes = copy.deepcopy(graph["nodes"])
+    result = graph_ops.filter_applicable(
+        graph,
+        [
+            MutationIntent(
+                op="insert_between",
+                args={
+                    "edge": {"source": "a", "target": "b", "sourceHandle": "true", "targetHandle": "target"},
+                    "node_type": "template-transform",
+                    "config": {},
+                    "node_id": "existing",
+                    "reuse_existing": True,
+                },
+            )
+        ],
+    )
+    assert result.rejected == []
+    assert result.graph["nodes"] == original_nodes
+    assert graph["edges"][1] in result.graph["edges"]
+    assert any(
+        e["source"] == "a" and e["target"] == "existing" and e["sourceHandle"] == "true" for e in result.graph["edges"]
+    )

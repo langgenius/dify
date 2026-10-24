@@ -229,7 +229,7 @@ class MutationIntent:
     - ``create_node``: ``{node_type, config, position?, node_id?}``
     - ``delete_node``: ``{node_id}``
     - ``connect``: ``{from_node, to_node, source_handle?, target_handle?}``
-    - ``insert_between``: ``{edge, node_type, config, position?, node_id?}``
+    - ``insert_between``: ``{edge, node_type, config, position?, node_id?, reuse_existing?}``
     """
 
     op: str = ""
@@ -322,6 +322,8 @@ class DifyBuilderContext:
     # handlers_build._failure_signature), NOT human-readable prose -- it is
     # compared for equality to detect a repair loop and is never displayed.
     last_repair_error: str = ""
+    # Executable graph for that failure; retained across same-task recovery.
+    last_repair_graph_revision: str = ""
     # Consecutive verify runs whose outcome could not be established (stream
     # ended with neither a terminal nor an error frame). Reset by any
     # determinate outcome; ``handlers_fix.MAX_UNKNOWN_OUTCOMES`` caps it so a
