@@ -9,6 +9,7 @@ import { createEdge, createNode, createStartNode } from '../../../__tests__/fixt
 import { BlockEnum, InputVarType, VarType } from '../../../types'
 import ConditionOperator from '../components/condition-list/condition-operator'
 import ConditionNumberInput from '../components/condition-number-input'
+import Node from '../node'
 import Panel from '../panel'
 import { ComparisonOperator, LogicalOperator } from '../types'
 
@@ -18,6 +19,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.defaultModel.get': async () => ({ data: null }),
       'spec.schemaDefinitions.get': async () => [],
       'workspaces.current.tools.builtin.get': async () => [],
       'workspaces.current.tools.api.get': async () => [],
@@ -109,6 +111,17 @@ const renderPanel = (data: IfElseNodeType) =>
     edges: [createEdge({ source: 'node-1', target: 'if-else-node' })],
   })
 
+const nodeTypes = { ifElse: Node }
+const renderDisplay = (data: IfElseNodeType) =>
+  renderWorkflowFlowComponent(<></>, {
+    nodes: [
+      createStartNode({ id: 'node-1', type: 'input', data: { title: 'Start Node' } }),
+      createNode({ id: 'if-else-node', type: 'ifElse', data }),
+    ],
+    edges: [createEdge({ source: 'node-1', target: 'if-else-node' })],
+    reactFlowProps: { nodeTypes },
+  })
+
 describe('if-else path', () => {
   describe('Condition controls', () => {
     it('adds a selected upstream variable to the saved case', async () => {
@@ -194,6 +207,87 @@ describe('if-else path', () => {
       expect(screen.getByText('OR')).toBeInTheDocument()
       expect(readCases()[0]!.logical_operator).toBe(LogicalOperator.or)
       expect(readCases()[0]!.conditions).toEqual(data.cases[0]!.conditions)
+    })
+  })
+
+  describe('Display rendering', () => {
+    it('renders upstream variable names, formatted values, and file sub-conditions', () => {
+      const data = createData()
+      data.cases[0]!.conditions = [
+        { ...data.cases[0]!.conditions[0]!, value: '{{#node-1.answer#}}' },
+        {
+          id: 'condition-files',
+          varType: VarType.arrayFile,
+          variable_selector: ['node-1', 'files'],
+          comparison_operator: ComparisonOperator.contains,
+          value: '',
+          sub_variable_condition: {
+            case_id: 'sub-case',
+            logical_operator: LogicalOperator.and,
+            conditions: [
+              {
+                id: 'sub-condition',
+                key: 'name',
+                varType: VarType.string,
+                comparison_operator: ComparisonOperator.contains,
+                value: 'report',
+              },
+            ],
+          },
+        },
+      ]
+      renderDisplay(data)
+
+      expect(screen.getByText('Start Node')).toBeInTheDocument()
+      expect(screen.getByText('answer')).toBeInTheDocument()
+      expect(screen.getByText('{{answer}}')).toBeInTheDocument()
+      expect(screen.getByText('files')).toBeInTheDocument()
+      expect(screen.getByText('name')).toBeInTheDocument()
+      expect(screen.getByText('report')).toBeInTheDocument()
+    })
+
+    it('renders case labels, missing setup, false values, and branch handles', () => {
+      const { container } = renderDisplay(
+        createData({
+          cases: [
+            {
+              case_id: 'case-1',
+              logical_operator: LogicalOperator.and,
+              conditions: [
+                {
+                  id: 'condition-empty',
+                  varType: VarType.string,
+                  variable_selector: [],
+                  comparison_operator: ComparisonOperator.contains,
+                  value: '',
+                },
+              ],
+            },
+            {
+              case_id: 'case-2',
+              logical_operator: LogicalOperator.or,
+              conditions: [
+                {
+                  id: 'condition-ready',
+                  varType: VarType.boolean,
+                  variable_selector: ['node-1', 'passed'],
+                  comparison_operator: ComparisonOperator.is,
+                  value: false,
+                },
+              ],
+            },
+          ],
+        }),
+      )
+
+      expect(screen.getByText('IF')).toBeInTheDocument()
+      expect(screen.getByText('ELIF')).toBeInTheDocument()
+      expect(screen.getByText('workflowLogic.nodes.ifElse.conditionNotSetup')).toBeInTheDocument()
+      expect(screen.getByText('False')).toBeInTheDocument()
+      expect(screen.getByText('ELSE')).toBeInTheDocument()
+      expect(container.querySelector('[data-handleid="case-1"]')).toBeInTheDocument()
+      expect(container.querySelector('[data-handleid="case-2"]')).toBeInTheDocument()
+      expect(container.querySelector('[data-handleid="false"]')).toBeInTheDocument()
     })
   })
 

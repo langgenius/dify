@@ -1,7 +1,9 @@
 import type { NodeProps } from 'reactflow'
 import type { CommonNodeType } from '../../../../types'
 import ReactFlow from 'reactflow'
+import { onTestFinished } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { CanvasNodesCatalogProbe } from '../../../../__tests__/canvas-nodes-catalog-probe'
 import { renderWorkflowBrowserComponent } from '../../../../__tests__/workflow-browser-test-env'
 import { fullWorkflowAccessControl } from '../../../../hooks-store/store'
@@ -10,11 +12,8 @@ import NodeControl from '../node-control'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 import 'reactflow/dist/style.css'
 
-const unexpectedFetch = vi.fn<typeof fetch>(() => new Promise(() => {}))
-beforeEach(() => vi.stubGlobal('fetch', unexpectedFetch))
-afterEach(() => {
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
+beforeEach(() => {
+  onTestFinished(guardUnexpectedFetch())
 })
 
 // Plugin installation is outside node trigger and popup focus ownership.
