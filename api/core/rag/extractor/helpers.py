@@ -47,6 +47,10 @@ def detect_file_encodings(file_path: str, timeout: int = 5, sample_size: int = 1
         except concurrent.futures.TimeoutError as caught_error:
             raise TimeoutError(f"Timeout reached while detecting encoding for {file_path}") from caught_error
 
-    if all(encoding.encoding is None for encoding in encodings):
+    # Filter out None encodings first, then check if any valid encodings remain.
+    # This fixes a bug where charset_normalizer could return a result with encoding=None,
+    # which would previously raise a misleading "Could not detect encoding" error.
+    valid_encodings = [enc for enc in encodings if enc.encoding is not None]
+    if not valid_encodings:
         raise RuntimeError(f"Could not detect encoding for {file_path}")
-    return [enc for enc in encodings if enc.encoding is not None]
+    return valid_encodings
