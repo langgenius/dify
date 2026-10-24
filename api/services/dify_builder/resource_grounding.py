@@ -8,6 +8,8 @@ import re
 from collections.abc import Sequence
 from typing import Any
 
+from core.dify_builder.contract import FormField
+from core.dify_builder.models import DifyBuilderContext
 from runtime_contracts.builder.presentation import BuilderText
 from services.dify_builder.agent.resources import ResourceRef, TenantResources
 from services.dify_builder.errors import PreflightError
@@ -358,6 +360,42 @@ def edit_resource_guidance(fields: list[dict], reply_language: str) -> BuilderTe
     )
 
 
+def edit_rule_form_fields(context: DifyBuilderContext) -> list[FormField]:
+    """Render actionable recovery while retaining unresolved requests for validation.
+
+    Resource specs with no candidates remain server-owned in form_fields: both
+    resolution and a fresh catalogue retry need their original query/node/kind.
+    They cannot be presented as required empty selects. The existing editable
+    goal is the recovery action, and a later refresh can offer real choices.
+    An empty failed-planning form likewise needs an editable goal for retry.
+    """
+    from dataclasses import asdict
+
+    from runtime_contracts.builder.copy_ids import BuilderCopyId
+    from runtime_contracts.builder.presentation import copy_text
+    from services.dify_builder.application.handlers_fix import build_form_fields
+
+    unavailable = {
+        str(field.get("key"))
+        for field in context.form_fields
+        if str(field.get("key", "")).startswith(_RESOURCE_FIELD_PREFIX) and not field.get("options")
+    }
+    if (unavailable or not context.form_fields) and not any(
+        field.get("key") == "change" for field in context.form_fields
+    ):
+        context.form_fields.insert(
+            0,
+            {
+                "key": "change",
+                "label_copy": asdict(copy_text(BuilderCopyId.FORMS_GOAL)),
+                "type": "textarea",
+                "required": True,
+            },
+        )
+        context.edit_rules["change"] = context.goal_text
+    return build_form_fields([field for field in context.form_fields if str(field.get("key")) not in unavailable])
+
+
 def resolve_plan_resources(agent: Any, context: Any, graph: dict) -> None:
     try:
         resolver = agent.resolve_edit_bindings
@@ -396,7 +434,7 @@ def selection_failure_step(
     from runtime_contracts.builder.copy_ids import BuilderCopyId
     from runtime_contracts.builder.presentation import copy_text
     from services.dify_builder import trace_diagnostics
-    from services.dify_builder.application.handlers_fix import append_assistant, append_card, build_form_fields
+    from services.dify_builder.application.handlers_fix import append_assistant, append_card
     from services.dify_builder.application.runner import StepResult
 
     trace_diagnostics.report(
@@ -444,7 +482,7 @@ def selection_failure_step(
             variant="edit_rules",
             title=copy_text(BuilderCopyId.FORMS_EDIT_RULES_TITLE),
             description=message,
-            fields=build_form_fields(context.form_fields),
+            fields=edit_rule_form_fields(context),
             values=dict(context.edit_rules),
             frozen=False,
         ),

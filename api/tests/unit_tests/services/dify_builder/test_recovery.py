@@ -123,7 +123,10 @@ def test_conflict_restart_reanalyzes_saved_edit_goal_without_a_send_choice(edit_
     assert [action.id for action in resumed.actions] == ["submit_edit_rules"]
     assert resumed.decision is None
     assert resumed.active_interaction is not None
-    assert resumed.active_interaction.card.payload["values"] == {"tone": "formal"}
+    assert resumed.active_interaction.card.payload["values"] == {
+        "change": "Make the response formal",
+        "tone": "formal",
+    }
     assert resumed.active_interaction.valid_at_version == resumed.version
     assert resumed.app_revision is not None
     assert not resumed.app_revision.conflicted

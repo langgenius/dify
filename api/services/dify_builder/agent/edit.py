@@ -8,7 +8,6 @@ Degrades to an honest result on model-None / provider-error / parse-fail."""
 
 import json
 from collections.abc import Callable, Sequence
-from dataclasses import asdict
 from typing import Any, TypedDict
 
 import json_repair
@@ -22,8 +21,6 @@ from core.workflow.generator.prompts.builder_prompts import (
     TOOL_PARAMETER_SEMANTICS_RULES,
 )
 from graphon.enums import BUILT_IN_NODE_TYPES
-from runtime_contracts.builder.copy_ids import BuilderCopyId
-from runtime_contracts.builder.presentation import copy_text
 from services.dify_builder import credentials, diagnostic_context, graph_ops, preflight
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import form_schema, graph_prompt, llm
@@ -187,12 +184,17 @@ def analyze_impact(
     *,
     reply_language: str | None = None,
 ) -> dict[str, Any]:
+    """Ask only necessary unanswered business decisions; retain the full goal internally."""
     if model is None:
         return _degraded_impact(goal_text)
     system = (
         "You are a Dify workflow edit-impact analyst. Given an edit goal and the current graph, "
-        "propose 2-5 goal-shaped edit-rule fields, sensible values, and which EXISTING node ids the "
-        f"change touches. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
+        "identify which EXISTING node ids the change touches and any necessary unanswered business decisions. "
+        "Use zero fields (fields=[]) when the goal is sufficient. There is no question quota. "
+        "Only ask a field when its unanswered business decision materially changes the requested behavior. "
+        "Do not ask the user to restate the goal, confirm supplied values, choose internal node IDs, "
+        "name implementation variables, or write implementation instructions you can derive from the goal/graph. "
+        f"Preserve known business values. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
         'Reply with ONLY JSON: {"fields": [{"key","label","type","options"}], '
         '"values": {...}, "target_node_ids": ["<existing id>", ...], '
         '"resource_requests": [{"kind": "model|tool", "node_id": "<target id>", '
@@ -231,18 +233,9 @@ def analyze_impact(
     targets = [str(t) for t in raw_targets if str(t) in ids] if isinstance(raw_targets, list) else []
     fields = data.get("fields") if isinstance(data.get("fields"), list) else []
     values = data.get("values") if isinstance(data.get("values"), dict) else {}
-    # Planning receives the confirmed form, not goal_text. A title-only impact
-    # must not silently discard the requested topology/configuration boundaries.
+    # Planning receives edit_rules, not goal_text. Preserve the complete request
+    # internally without requiring a second confirmation of the same goal.
     fields = [field for field in fields if not isinstance(field, dict) or field.get("key") != "change"]
-    fields.insert(
-        0,
-        {
-            "key": "change",
-            "label_copy": asdict(copy_text(BuilderCopyId.FORMS_GOAL)),
-            "type": "textarea",
-            "required": True,
-        },
-    )
     values = {"change": goal_text, **{key: value for key, value in values.items() if key != "change"}}
     return {
         "fields": form_schema.reconcile_form_fields(fields, values),

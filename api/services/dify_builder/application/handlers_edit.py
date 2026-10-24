@@ -20,6 +20,7 @@ from core.dify_builder.contract import (
 from core.dify_builder.errors import DraftWouldNotStartError, HashMismatchError, ProposalWouldRunWrongError
 from core.dify_builder.input_schema import schema_hash, validate_runtime_inputs
 from core.dify_builder.models import (
+    Action,
     ChangeSet,
     Diagnosis,
     DifyBuilderContext,
@@ -44,7 +45,6 @@ from services.dify_builder.application.handlers_fix import (
     append_assistant,
     append_card,
     build_change_set,
-    build_form_fields,
     confirmed_tool_test,
     dead_end_branch_node_id,
     drop_unapplied_repair,
@@ -90,6 +90,7 @@ from services.dify_builder.execution_messages import change_scope_label
 from services.dify_builder.plan import EditPlanNotActionableError, WorkflowPlan, make_plan_card, store_plan
 from services.dify_builder.plan_failure import edit_planning_failed
 from services.dify_builder.repair_gate import NO_REPAIR_REASON
+from services.dify_builder.resource_grounding import edit_rule_form_fields
 
 logger = logging.getLogger(__name__)
 
@@ -113,9 +114,9 @@ def handle_capability_check(
 ) -> StepResult:
     """(waiting) Entry state. On ``send_edit_goal`` read the existing graph,
     emit a read-only context summary, analyze impact into edit_rules + target
-    nodes (highlighting them), and transition to edit.impact_analysis emitting
-    its form plus a streamed impact summary. The canvas is read only here after
-    the goal is sent (mock 02-edit.txt:3,9)."""
+    nodes (highlighting them). Necessary questions wait at edit.impact_analysis;
+    a sufficient goal proceeds to the existing plan/checkpoint approval gate.
+    The canvas is read only here after the goal is sent (mock 02-edit.txt:3,9)."""
     kind = action_kind(turn)
     if kind != "send_edit_goal":
         return StepResult(next=PcState.EDIT_CAPABILITY_CHECK, context=fc)
@@ -154,7 +155,7 @@ def handle_capability_check(
     progress.activate("edit-analyze-impact")
     impact = env.agent.analyze_impact(fc.goal_text, graph, reply_language=fc.reply_language or None)
     fc.form_fields = list(impact.get("fields") or [])
-    fc.edit_rules = dict(impact.get("values") or {})
+    fc.edit_rules = {**dict(impact.get("values") or {}), "change": fc.goal_text}
     fc.edit_target_node_ids = list(impact.get("target_node_ids") or [])
     if submitted_rules is not None:
         # A revised goal owns a fresh resource request. Carry confirmed ordinary
@@ -172,17 +173,19 @@ def handle_capability_check(
         emit_canvas(env, "highlight_edit_target", node_id=node_id)
 
     progress.activate("edit-prepare-impact")
-    form_items = append_card(
-        fc,
-        FormCard(
-            variant="edit_rules",
-            title=copy_text(BuilderCopyId.FORMS_EDIT_RULES_TITLE),
-            description=copy_text(BuilderCopyId.FORMS_EDIT_RULES_DESCRIPTION),
-            fields=build_form_fields(fc.form_fields),
-            values=dict(fc.edit_rules),
-            frozen=False,
-        ),
-    )
+    form_items = []
+    if fc.form_fields:
+        form_items = append_card(
+            fc,
+            FormCard(
+                variant="edit_rules",
+                title=copy_text(BuilderCopyId.FORMS_EDIT_RULES_TITLE),
+                description=copy_text(BuilderCopyId.FORMS_EDIT_RULES_DESCRIPTION),
+                fields=edit_rule_form_fields(fc),
+                values=dict(fc.edit_rules),
+                frozen=False,
+            ),
+        )
     execution = progress.finish()
     target_text = ", ".join(fc.edit_target_node_ids)
     from services.dify_builder.resource_grounding import edit_resource_guidance
@@ -199,9 +202,19 @@ def handle_capability_check(
             text_parts("\n\n", resource_guidance) if resource_guidance is not None else "",
         ),
         execution=execution,
-        cards=["form"],
+        cards=["form"] if form_items else None,
         turn_id=progress.operation_id,
     )
+    if not fc.form_fields:
+        # Reuse the existing planning gate, including its checkpoint and error
+        # recovery state. This never approves a plan or applies the edit.
+        result = handle_impact_analysis(
+            env,
+            replace(turn, action=Action(kind="submit_edit_rules")),
+            replace(s, current_state=PcState.EDIT_IMPACT_ANALYSIS),
+            fc,
+        )
+        return replace(result, items=[*turn_items, *result.items])
     return StepResult(
         next=PcState.EDIT_IMPACT_ANALYSIS,
         context=fc,
@@ -420,9 +433,7 @@ def _resume_adjusting(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) 
     decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.ACTIONS_CONTINUE_ADJUSTING)))
     form_items = append_card(
         fc,
-        FormCard(
-            variant="edit_rules", fields=build_form_fields(fc.form_fields), values=dict(fc.edit_rules), frozen=False
-        ),
+        FormCard(variant="edit_rules", fields=edit_rule_form_fields(fc), values=dict(fc.edit_rules), frozen=False),
     )
     target_text = ", ".join(fc.edit_target_node_ids)
     turn_items = append_assistant(
