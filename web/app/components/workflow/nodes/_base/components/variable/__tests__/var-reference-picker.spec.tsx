@@ -21,6 +21,9 @@ type Props = ComponentProps<typeof VarReferencePicker>
 const fetchOptions = vi.hoisted(() =>
   vi.fn<typeof consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get>(),
 )
+const fetchTreeOptions = vi.hoisted(() =>
+  vi.fn<typeof consoleClient.workspaces.current.plugin.parameters.dynamicTreeOptions.get>(),
+)
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses } = await import('@/test/console/service-responses')
@@ -28,6 +31,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.parameters.dynamicOptions.get': (input) => fetchOptions(input),
+      'workspaces.current.plugin.parameters.dynamicTreeOptions.get': (input) =>
+        fetchTreeOptions(input),
     }),
   }
 })
@@ -131,7 +136,10 @@ const dynamicProps = {
   },
   value: '',
 } satisfies Partial<Props>
-beforeEach(() => fetchOptions.mockReset())
+beforeEach(() => {
+  fetchOptions.mockReset()
+  fetchTreeOptions.mockReset()
+})
 
 it('resolves upstream outputs, filters out unrelated branches, and displays the selected reference', async () => {
   const { user, onChange } = setup()
@@ -271,4 +279,48 @@ it('allows removing a table row while its dynamic options are loading', async ()
   expect(onRemove).toHaveBeenCalledOnce()
   expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   await act(async () => request.resolve({ options: [] }))
+})
+
+it('loads nested constants with credentials and sibling values, preserving multiple choices across reopening', async () => {
+  fetchTreeOptions.mockResolvedValue({
+    options: [
+      {
+        value: 'parent',
+        label: { en_US: 'Parent' },
+        children: [
+          { value: 'first', label: { en_US: 'First' } },
+          { value: 'second', label: { en_US: 'Second' } },
+        ],
+      },
+    ],
+  })
+  const { user, onChange } = setup({
+    ...dynamicProps,
+    currentProvider: { ...provider, credential_id: 'credential-1' },
+    schema: { ...dynamicProps.schema, type: FormTypeEnum.dynamicTreeSelect, multiple: true },
+    value: ['first'],
+    dynamicSelectLazy: true,
+    dynamicSelectParameterValues: { region: 'us' },
+  })
+  await waitFor(() => expect(screen.getByRole('button', { name: 'First' })).toBeEnabled())
+  expect(fetchTreeOptions).toHaveBeenCalledWith({
+    query: {
+      plugin_id: 'vendor/search',
+      provider: 'search',
+      action: 'lookup',
+      parameter: 'field',
+      credential_id: 'credential-1',
+      parameter_values: JSON.stringify({ region: 'us' }),
+    },
+  })
+  await user.click(screen.getByRole('button', { name: 'First' }))
+  await user.click(await screen.findByRole('option', { name: 'Second' }))
+  expect(onChange).toHaveBeenLastCalledWith(['first', 'second'], VarKindType.constant, undefined)
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: 'First, Second' }))
+  expect(await screen.findByRole('option', { name: 'Second' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  expect(fetchTreeOptions.mock.calls.length).toBeGreaterThan(1)
 })

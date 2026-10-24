@@ -23,6 +23,7 @@ type MultiSelectFieldProps = {
   isLoading?: boolean
   items: SelectItem[]
   onChange: (value: string[]) => void
+  onOpenChange?: (open: boolean) => void
   placeholder?: string
   selectedLabel: string
   value: string[]
@@ -40,6 +41,7 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
   isLoading = false,
   items,
   onChange,
+  onOpenChange,
   placeholder,
   selectedLabel,
   value,
@@ -60,7 +62,13 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
   }
 
   return (
-    <Select multiple value={value} onValueChange={onChange} disabled={disabled || isLoading}>
+    <Select
+      multiple
+      value={value}
+      onValueChange={onChange}
+      onOpenChange={onOpenChange}
+      disabled={disabled || isLoading}
+    >
       <div className="min-w-0 grow">
         <SelectTrigger aria-label={placeholder || selectedLabel || 'Options'}>
           <span className={cn('flex min-w-0 items-center', textClassName)}>

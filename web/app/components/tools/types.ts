@@ -111,6 +111,8 @@ export type ToolParameter = {
   required: boolean
   multiple: boolean
   default?: ContractToolParameter['default']
+  /** Load tool dynamic options when the dropdown opens. */
+  dynamic_select_lazy_load?: boolean
   options?: {
     label: LocalizedText
     value: string

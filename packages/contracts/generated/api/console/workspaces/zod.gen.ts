@@ -585,6 +585,7 @@ export const zParserDynamicOptionsWithCredentials = z.object({
   credential_id: z.string(),
   credentials: z.record(z.string(), z.unknown()),
   parameter: z.string(),
+  parameter_values: z.record(z.string(), z.unknown()).nullish(),
   plugin_id: z.string(),
   provider: z.string(),
 })
@@ -2189,6 +2190,7 @@ export const zI18nObject = z.object({
  * PluginParameterOption
  */
 export const zPluginParameterOption = z.object({
+  children: z.array(z.lazy((): any => zPluginParameterOption)).optional(),
   icon: z.string().nullish(),
   label: zI18nObject,
   value: z.string(),
@@ -3485,6 +3487,7 @@ export const zToolParameterType = z.enum([
   'date',
   'date-range',
   'dynamic-select',
+  'dynamic-tree-select',
   'file',
   'files',
   'model-selector',
@@ -4101,6 +4104,7 @@ export const zToolParameter = z.object({
       z.record(z.string(), z.unknown()),
     ])
     .nullish(),
+  dynamic_select_lazy_load: z.boolean().optional().default(false),
   form: zToolParameterForm,
   human_description: zI18nObject.nullish(),
   input_schema: z.record(z.string(), z.unknown()).nullish(),
@@ -4319,6 +4323,7 @@ export const zAgentStrategyParameter = z.object({
       z.record(z.string(), z.unknown()),
     ])
     .nullish(),
+  dynamic_select_lazy_load: z.boolean().optional().default(false),
   help: zI18nObject.nullish(),
   label: zI18nObject,
   max: z.union([z.number(), z.int()]).nullish(),
@@ -5338,6 +5343,7 @@ export const zGetWorkspacesCurrentPluginParametersDynamicOptionsQuery = z.object
   action: z.string(),
   credential_id: z.string().optional(),
   parameter: z.string(),
+  parameter_values: z.string().optional(),
   plugin_id: z.string(),
   provider: z.string(),
   provider_type: z.enum(['tool', 'trigger']),
@@ -5356,6 +5362,21 @@ export const zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentials
  * Success
  */
 export const zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponse =
+  zPluginDynamicOptionsResponse
+
+export const zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsQuery = z.object({
+  action: z.string(),
+  credential_id: z.string().optional(),
+  parameter: z.string(),
+  parameter_values: z.string().optional(),
+  plugin_id: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentPluginParametersDynamicTreeOptionsResponse =
   zPluginDynamicOptionsResponse
 
 export const zPostWorkspacesCurrentPluginPermissionChangeBody = zParserPermissionChange
