@@ -1,14 +1,15 @@
 """Actor-conditioned published Agent metadata. Discovery performs no capability I/O."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
 from pydantic import JsonValue
-from sqlalchemy import Select, select
-from sqlalchemy.orm import Session
+from sqlalchemy import Select, and_, case, distinct, func, or_, select
+from sqlalchemy.orm import Session, aliased
 
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
-from models.agent import Agent, AgentConfigSnapshot
+from models.agent import Agent, AgentConfigRevision, AgentConfigRevisionOperation, AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
 from runtime_contracts.builder.execution import canonical_digest
 from services.agent import access_service
@@ -19,7 +20,9 @@ from services.agent.roster_service import AgentRosterService
 class PublishedAgentCandidate:
     agent_id: str
     snapshot_id: str
-    display_version: int
+    # None means native visible-history numbering is unavailable.
+    display_version: int | None
+    snapshot_version: int
     name: str
     description: str
     capability: str
@@ -41,7 +44,14 @@ class PublishedAgentCandidate:
         return f"agent:{self.agent_id}:{self.snapshot_id}:{self.capability_digest}"
 
 
-def project_published_agent(*, agent: Agent, snapshot: AgentConfigSnapshot) -> PublishedAgentCandidate:
+def project_published_agent(
+    *, agent: Agent, snapshot: AgentConfigSnapshot, display_version: int | None = None
+) -> PublishedAgentCandidate:
+    """Project public snapshot facts; only the catalog supplies visible-history numbering.
+
+    Binding also uses this pure projection to compare capability digests without
+    reading history, in which case a public display version is unknown.
+    """
     if snapshot.tenant_id != agent.tenant_id or snapshot.agent_id != agent.id:
         raise ValueError("Agent snapshot owner mismatch")
     soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
@@ -95,7 +105,8 @@ def project_published_agent(*, agent: Agent, snapshot: AgentConfigSnapshot) -> P
     return PublishedAgentCandidate(
         agent_id=agent.id,
         snapshot_id=snapshot.id,
-        display_version=snapshot.version,
+        display_version=display_version,
+        snapshot_version=snapshot.version,
         name=agent.name,
         description=description,
         capability=capability,
@@ -164,16 +175,91 @@ class AgentCatalogService:
 
     def _project_candidates(self, *, tenant_id: str, stmt: Select[tuple[Agent]]) -> list[PublishedAgentCandidate]:
         agents = self.session.scalars(stmt).all()
-        result = []
-        for agent in agents:
-            snapshot = self.session.scalar(
+        if not agents:
+            return []
+        snapshots = {
+            snapshot.agent_id: snapshot
+            for snapshot in self.session.scalars(
                 select(AgentConfigSnapshot).where(
                     AgentConfigSnapshot.tenant_id == tenant_id,
-                    AgentConfigSnapshot.agent_id == agent.id,
-                    AgentConfigSnapshot.id == agent.active_config_snapshot_id,
+                    or_(
+                        *(
+                            and_(
+                                AgentConfigSnapshot.agent_id == agent.id,
+                                AgentConfigSnapshot.id == agent.active_config_snapshot_id,
+                            )
+                            for agent in agents
+                        )
+                    ),
                 )
             )
-            if snapshot is None:
-                raise ValueError("Published Agent snapshot unavailable")
-            result.append(project_published_agent(agent=agent, snapshot=snapshot))
-        return result
+        }
+        if len(snapshots) != len(agents):
+            raise ValueError("Published Agent snapshot unavailable")
+        display_versions = self._display_versions_by_snapshot_id(tenant_id=tenant_id, agents=agents)
+        return [
+            project_published_agent(
+                agent=agent,
+                snapshot=snapshots[agent.id],
+                display_version=display_versions.get(snapshots[agent.id].id),
+            )
+            for agent in agents
+        ]
+
+    def _display_versions_by_snapshot_id(self, *, tenant_id: str, agents: Sequence[Agent]) -> dict[str, int]:
+        """Native visible-snapshot rank in one bounded aggregate, without loading history.
+
+        The roster API numbers distinct visible snapshots by snapshot revision,
+        not publication audit entries. Count only visible snapshots at or before
+        each active snapshot; a restored older version retains its original rank.
+        Source-specific visibility remains owned by AgentRosterService.
+        """
+        operations_by_agents: dict[frozenset[AgentConfigRevisionOperation], list[str]] = {}
+        for agent in agents:
+            operations = frozenset(AgentRosterService._visible_version_operations(agent))
+            operations_by_agents.setdefault(operations, []).append(agent.id)
+        active = aliased(AgentConfigSnapshot)
+        rows = self.session.execute(
+            select(
+                active.id,
+                func.count(distinct(AgentConfigSnapshot.id)),
+                func.max(case((AgentConfigSnapshot.id == active.id, 1), else_=0)),
+            )
+            .select_from(active)
+            .join(
+                AgentConfigSnapshot,
+                and_(
+                    AgentConfigSnapshot.tenant_id == active.tenant_id,
+                    AgentConfigSnapshot.agent_id == active.agent_id,
+                    AgentConfigSnapshot.version <= active.version,
+                ),
+            )
+            .join(
+                AgentConfigRevision,
+                and_(
+                    AgentConfigRevision.tenant_id == AgentConfigSnapshot.tenant_id,
+                    AgentConfigRevision.agent_id == AgentConfigSnapshot.agent_id,
+                    AgentConfigRevision.current_snapshot_id == AgentConfigSnapshot.id,
+                ),
+            )
+            .where(
+                active.tenant_id == tenant_id,
+                or_(
+                    *(
+                        and_(active.agent_id == agent.id, active.id == agent.active_config_snapshot_id)
+                        for agent in agents
+                    )
+                ),
+                or_(
+                    *(
+                        and_(
+                            AgentConfigSnapshot.agent_id.in_(agent_ids),
+                            AgentConfigRevision.operation.in_(operations),
+                        )
+                        for operations, agent_ids in operations_by_agents.items()
+                    )
+                ),
+            )
+            .group_by(active.id)
+        )
+        return {snapshot_id: int(rank) for snapshot_id, rank, active_is_visible in rows if active_is_visible}
