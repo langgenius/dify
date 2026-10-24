@@ -159,6 +159,7 @@ export function FileTree({
   detail,
   fileMutationCoordinator,
   files,
+  onBeforeExport,
   onCollapsedChange,
   onSelect,
   readonly,
@@ -171,6 +172,7 @@ export function FileTree({
   detail: SkillDetailResponse | undefined
   fileMutationCoordinator: SkillFileMutationCoordinator
   files: SkillFileResponse[]
+  onBeforeExport: () => Promise<boolean>
   onCollapsedChange: (collapsed: boolean) => void
   onSelect: (path: string, files?: SkillFileResponse[], mode?: 'pinned' | 'preview') => void
   readonly: boolean
@@ -1331,6 +1333,7 @@ export function FileTree({
                     canDelete={canDelete}
                     canEdit={canEdit}
                     detail={detail}
+                    onBeforeExport={onBeforeExport}
                     onRename={() => setSkillRenameEditing(true)}
                   />
                 )}
