@@ -27,7 +27,7 @@ from services.entities.account_entities import (
     AccountChangeEmailOldEmailVerifiedToken,
     AccountChangeEmailPhase,
 )
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 
 def _context() -> RequestContext:
@@ -101,7 +101,6 @@ def test_send_old_email_code_coerces_unexpected_phase_to_initial_state(
     service: AccountChangeEmailService,
     boundaries: dict[str, MagicMock],
 ) -> None:
-
     token = service.send_code(
         _context(),
         requested_email="OLD@example.com",

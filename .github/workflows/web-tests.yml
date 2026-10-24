@@ -70,7 +70,18 @@ jobs:
         run: vp exec playwright install --with-deps --only-shell chromium
 
       - name: Run browser tests
-        run: vp test run --project browser --silent=passed-only
+        run: vp test run --project browser --silent=passed-only --coverage
+
+      - name: Report browser coverage
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: web/coverage/coverage-final.json
+          disable_search: true
+          fail_ci_if_error: true
+          flags: web
+          name: web-browser
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload browser failure artifacts
         if: ${{ failure() && !cancelled() }}

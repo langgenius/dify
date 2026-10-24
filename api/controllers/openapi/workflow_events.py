@@ -127,8 +127,8 @@ class OpenApiWorkflowEventsApi(Resource):
             event_generator = _generate_finished_events
         else:
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
-            generator = AdvancedChatAppGenerator() if app_mode == AppMode.ADVANCED_CHAT else WorkflowAppGenerator()
+            generator: type[BaseAppGenerator]
+            generator = AdvancedChatAppGenerator if app_mode == AppMode.ADVANCED_CHAT else WorkflowAppGenerator
 
             include_state_snapshot = query.include_state_snapshot
             continue_on_pause = query.continue_on_pause

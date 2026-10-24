@@ -16,7 +16,7 @@
 /.agents/skills/ @hyoban
 
 # Packages
-/packages/ @lyzno1
+/packages/ @lyzno1 @hyoban
 /packages/contracts/ @crazywoola @laipz8200
 
 # Docs
@@ -30,36 +30,97 @@
 /dify-agent/ @BeautyyuYanli
 
 # E2E
-/e2e/ @lyzno1
-/.github/workflows/web-e2e.yml @lyzno1
+/e2e/ @lyzno1 @hyoban
+/.github/workflows/web-e2e.yml @lyzno1 @hyoban
 
 # Backend (default owner, more specific rules below will override)
 /api/ @QuantumGhost
 
-# Backend - Tests (default owners, domain-specific rules below will override)
-/api/tests/ @laipz8200 @QuantumGhost
-/api/tests/*/core/rag/ @JohnJyong
-/api/tests/*/services/rag_pipeline/ @JohnJyong
-/api/tests/*/services/dataset_service/ @JohnJyong
-/api/tests/*/controllers/console/datasets/ @JohnJyong
-/api/tests/*/controllers/service_api/dataset/ @JohnJyong
-/api/tests/*/vdb/ @JohnJyong
-/api/tests/*/core/plugin/ @WH-2099
-/api/tests/*/services/plugin/ @WH-2099
-/api/tests/*/controllers/inner_api/plugin/ @WH-2099
-/api/tests/*/plugin/ @WH-2099
-/api/tests/*/controllers/trigger/ @CourTeous33
-/api/tests/*/core/trigger/ @CourTeous33
-/api/tests/*/trigger/ @CourTeous33
-/api/tests/*/controllers/console/billing/ @zyssyz123
-/api/tests/*/services/enterprise/ @GareArc
-/api/tests/*/migrations/ @snakevash @laipz8200 @MRZHUH
+# Backend - Tests (inherit the production owners)
+/api/tests/**/core/rag/ @JohnJyong
+/api/tests/**/services/knowledge/ @JohnJyong
+/api/tests/**/services/rag_pipeline/ @JohnJyong
+/api/tests/**/services/test_hit_testing_service.py @JohnJyong
+/api/tests/**/services/entities/knowledge_entities/ @JohnJyong
+/api/tests/**/services/entities/external_knowledge_entities/ @JohnJyong
+/api/tests/**/controllers/console/datasets/ @JohnJyong
+/api/tests/**/controllers/service_api/dataset/ @JohnJyong
+/api/tests/**/models/test_dataset.py @JohnJyong
+/api/tests/**/tasks/rag_pipeline/ @JohnJyong
+/api/tests/**/tasks/test_add_document_to_index_task.py @JohnJyong
+/api/tests/**/tasks/test_batch_clean_document_task.py @JohnJyong
+/api/tests/**/tasks/test_clean_document_task.py @JohnJyong
+/api/tests/**/tasks/test_clean_notion_document_task.py @JohnJyong
+/api/tests/**/tasks/test_document_indexing_task.py @JohnJyong
+/api/tests/**/tasks/test_document_indexing_sync_task.py @JohnJyong
+/api/tests/**/tasks/test_document_indexing_update_task.py @JohnJyong
+/api/tests/**/tasks/test_duplicate_document_indexing_task.py @JohnJyong
+/api/tests/**/tasks/test_recover_document_indexing_task.py @JohnJyong
+/api/tests/**/tasks/test_remove_document_from_index_task.py @JohnJyong
+/api/tests/**/tasks/test_retry_document_indexing_task.py @JohnJyong
+/api/tests/**/tasks/test_sync_website_document_indexing_task.py @JohnJyong
+/api/tests/**/tasks/test_batch_create_segment_to_index_task.py @JohnJyong
+/api/tests/**/tasks/test_create_segment_to_index_task.py @JohnJyong
+/api/tests/**/tasks/test_delete_segment_from_index_task.py @JohnJyong
+/api/tests/**/tasks/test_disable_segment_from_index_task.py @JohnJyong
+/api/tests/**/tasks/test_disable_segments_from_index_task.py @JohnJyong
+/api/tests/**/tasks/test_enable_segment_to_index_task.py @JohnJyong
+/api/tests/**/tasks/test_enable_segments_to_index_task.py @JohnJyong
+/api/tests/**/tasks/test_clean_dataset_task.py @JohnJyong
+/api/tests/**/tasks/test_deal_dataset_index_update_task.py @JohnJyong
+/api/tests/**/tasks/test_deal_dataset_vector_index_task.py @JohnJyong
+/api/tests/**/core/plugin/ @WH-2099
+/api/tests/**/services/plugin/ @WH-2099
+/api/tests/**/controllers/console/workspace/test_plugin.py @WH-2099
+/api/tests/**/controllers/inner_api/plugin/ @WH-2099
+/api/tests/**/tasks/test_process_tenant_plugin_autoupgrade_check_task.py @WH-2099
+/api/tests/**/controllers/trigger/ @CourTeous33
+/api/tests/**/controllers/console/app/test_workflow_trigger.py @CourTeous33
+/api/tests/**/controllers/console/workspace/test_trigger_providers.py @CourTeous33
+/api/tests/**/core/trigger/ @CourTeous33
+/api/tests/**/core/app/layers/test_trigger_post_layer.py @CourTeous33
+/api/tests/**/services/trigger/ @CourTeous33
+/api/tests/**/models/test_trigger.py @CourTeous33
+/api/tests/**/repositories/test_workflow_trigger_log_repository.py @CourTeous33
+/api/tests/**/repositories/test_sqlalchemy_workflow_trigger_log_repository.py @CourTeous33
+/api/tests/**/libs/test_schedule_utils.py @CourTeous33
+/api/tests/**/services/workflow/test_scheduler.py @CourTeous33
+/api/tests/**/schedule/test_trigger_provider_refresh_task.py @CourTeous33
+/api/tests/**/schedule/test_workflow_schedule_task.py @CourTeous33
+/api/tests/**/tasks/test_trigger_processing_tasks.py @CourTeous33
+/api/tests/**/tasks/test_trigger_subscription_refresh_tasks.py @CourTeous33
+/api/tests/**/tasks/test_workflow_schedule_tasks.py @CourTeous33
+/api/tests/**/tasks/workflow_cfs_scheduler/ @CourTeous33
+/api/tests/**/events/event_handlers/test_sync_plugin_trigger_when_app_created.py @CourTeous33
+/api/tests/**/events/event_handlers/test_update_app_triggers_when_app_published_workflow_updated.py @CourTeous33
+/api/tests/**/events/event_handlers/test_sync_workflow_schedule_when_app_published.py @CourTeous33
+/api/tests/**/events/event_handlers/test_sync_webhook_when_app_created.py @CourTeous33
+/api/tests/**/services/test_async_workflow_service.py @Mairuis
+/api/tests/**/tasks/test_async_workflow_tasks.py @Mairuis
+/api/tests/**/services/test_billing_service.py @zyssyz123
+/api/tests/**/controllers/console/billing/ @zyssyz123
+/api/tests/**/configs/enterprise/ @GareArc
+/api/tests/**/services/enterprise/ @GareArc
+/api/tests/**/services/test_feature_service.py @GareArc
+/api/tests/**/controllers/console/test_feature.py @GareArc
+/api/tests/**/controllers/web/test_feature.py @GareArc
+/api/tests/**/migrations/ @snakevash @laipz8200 @MRZHUH
+/api/tests/**/configs/middleware/vdb/* @JohnJyong
+
+# E2E scenarios retain names spanning the corresponding production modules.
+/api/tests/e2e_tests/*/services/test_dataset* @JohnJyong
+/api/tests/e2e_tests/*/services/test_document* @JohnJyong
+/api/tests/e2e_tests/*/services/test_metadata* @JohnJyong
+/api/tests/e2e_tests/*/services/test_schedule_service.py @CourTeous33
+/api/tests/e2e_tests/*/services/test_webhook* @CourTeous33
+/api/tests/e2e_tests/*/services/test_trigger* @CourTeous33
+/api/tests/e2e_tests/*/trigger/ @CourTeous33
+/api/tests/e2e_tests/*/commands/test_legacy_model_type_migration.py @QuantumGhost
 
 # Backend - RAG (Retrieval Augmented Generation)
 /api/core/rag/ @JohnJyong
 /api/services/knowledge/ @JohnJyong
 /api/services/rag_pipeline/ @JohnJyong
-/api/services/knowledge_service.py @JohnJyong
 /api/services/hit_testing_service.py @JohnJyong
 /api/services/entities/knowledge_entities/ @JohnJyong
 /api/services/entities/external_knowledge_entities/ @JohnJyong
@@ -145,17 +206,20 @@
 /web/ @iamjoel
 
 # Frontend - Tooling
-/lint.config.ts @hyoban @lyzno1
+/packages/tooling/ @hyoban @lyzno1
 /eslint.config.mjs @hyoban @lyzno1
 /knip.config.ts @hyoban @lyzno1
 /vite.config.ts @hyoban @lyzno1
+/web/vite.config.ts @lyzno1 @hyoban
+/web/next.config.ts @lyzno1 @hyoban
+/web/plugins/vite/ @lyzno1 @hyoban
+/web/next/ @lyzno1 @hyoban
 
 # Frontend - Platform and Features
-/web/config/ @lyzno1
-/web/env.ts @lyzno1
-/web/features/ @lyzno1
-/web/hooks/ @lyzno1
-/web/scripts/gen-icons.mjs @lyzno1
+/web/config/ @lyzno1 @hyoban
+/web/env.ts @lyzno1 @hyoban
+/web/features/ @lyzno1 @hyoban
+/web/hooks/ @lyzno1 @hyoban
 
 # Frontend - Web Tests
 /.github/workflows/web-tests.yml @iamjoel
@@ -177,10 +241,6 @@
 /web/app/components/app/create-app-dialog/ @JzoNgKVO @iamjoel
 /web/app/components/app/create-app-modal/ @JzoNgKVO @iamjoel
 /web/app/components/app/create-from-dsl-modal/ @JzoNgKVO @iamjoel
-
-# Frontend - App - API Documentation
-/web/app/components/develop/ @JzoNgKVO @iamjoel
-/web/app/components/develop/template/*.mdx @JzoNgKVO @iamjoel @RiskeyL
 
 # Frontend - App - Logs and Annotations
 /web/app/components/app/workflow-log/ @JzoNgKVO @iamjoel
@@ -279,20 +339,18 @@
 /web/app/(commonLayout)/layout.tsx @iamjoel @lyzno1
 /web/app/(commonLayout)/providers.tsx @iamjoel @lyzno1
 /web/app/(commonLayout)/hydration-boundary.tsx @iamjoel @lyzno1
-/web/app/(commonLayout)/profile-bootstrap-gate.tsx @iamjoel @lyzno1
 /web/app/(commonLayout)/error.tsx @iamjoel @lyzno1
 /web/app/account/(commonLayout)/layout.tsx @iamjoel @lyzno1
-/web/app/components/main-nav/* @iamjoel @lyzno1
-/web/app/components/main-nav/components/* @iamjoel @lyzno1
-/web/context/query-client.tsx @iamjoel @lyzno1
-/web/context/query-client-server.ts @iamjoel @lyzno1
+/web/app/components/main-nav/ @iamjoel @lyzno1
 /web/proxy.ts @iamjoel @lyzno1
 /web/app/auth/refresh/route.ts @iamjoel @lyzno1
-/web/service/server.ts @iamjoel @lyzno1
+
+# Frontend - Query Infrastructure and Console Service
+/web/app/get-query-client.ts @lyzno1 @hyoban
+/web/service/console/ @lyzno1 @hyoban
 
 # Frontend - Browser Mode Tests
-/web/app/**/*.browser.spec.ts @lyzno1
-/web/app/**/*.browser.spec.tsx @lyzno1
+/web/app/**/*.browser.spec.tsx @lyzno1 @hyoban
 
 # Docker
 /docker/* @laipz8200

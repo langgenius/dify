@@ -113,7 +113,7 @@ export function VersionItem({
               </IconButton>
             }
           />
-          <DropdownMenuContent placement="bottom-end" className="min-w-40">
+          <DropdownMenuContent className="min-w-40">
             {onRestore && (
               <DropdownMenuItem
                 disabled={restoreDisabled}

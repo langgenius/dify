@@ -39,7 +39,7 @@ export function AgentWorkflowReferencesDropdown({
         </span>
         <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" sideOffset={4} className="w-66 p-1">
+      <DropdownMenuContent align="start" className="w-66 p-1">
         <DropdownMenuGroup>
           <DropdownMenuGroupLabel className="flex w-full min-w-0 truncate pt-2 pr-3 pb-1.5 pl-2 system-xs-medium normal-case">
             {t(($) => $['roster.references.label'], { ns: 'agentRoster', name: agentName })}
@@ -71,7 +71,7 @@ export function AgentWorkflowReferencesDropdown({
                 <span className="min-w-0 flex-1 truncate">{reference.app_name}</span>
                 <span
                   aria-hidden
-                  className="i-ri-external-link-line size-3 shrink-0 text-text-quaternary group-data-highlighted:text-text-secondary"
+                  className="i-ri-external-link-line size-3 shrink-0 text-text-quaternary group-data-highlighted:text-text-secondary [&:dir(rtl)]:-scale-x-100"
                 />
               </DropdownMenuLinkItem>
             )

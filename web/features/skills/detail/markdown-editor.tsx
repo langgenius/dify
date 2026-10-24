@@ -10,7 +10,7 @@ import type {
   ComponentPropsWithoutRef,
   CSSProperties,
   FocusEventHandler,
-  FormEvent,
+  InputEvent,
   KeyboardEvent,
   MouseEvent,
   RefObject,
@@ -774,7 +774,7 @@ export function MarkdownLiveBodyEditor({
   body: string
   contentRevision: number
   editorRef: RefObject<HTMLDivElement | null>
-  onInput: (event: FormEvent<HTMLDivElement>) => void
+  onInput: (event: InputEvent<HTMLDivElement>) => void
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void
   onOpenReference: (path: string) => void
   placeholder: string

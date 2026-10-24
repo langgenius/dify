@@ -63,7 +63,6 @@
   "account.workspaceNamePlaceholder": "Introduceți numele spațiului de lucru",
   "resourceAccessToken.accessibleResources": "Resurse accesibile",
   "resourceAccessToken.actions": "Acțiuni",
-  "resourceAccessToken.app": "Aplicație",
   "resourceAccessToken.appCount": "{{count}} Aplicație",
   "resourceAccessToken.appsCount": "{{count}} Aplicații",
   "resourceAccessToken.appsSection": "Aplicații",
@@ -80,7 +79,6 @@
   "resourceAccessToken.editTitle": "Editează tokenul de acces",
   "resourceAccessToken.empty": "Nu există încă tokenuri de acces",
   "resourceAccessToken.emptyDescription": "Creează un token de acces pentru ca sarcinile automatizate și sistemele externe să poată descoperi și accesa resursele selectate prin Difyctl.",
-  "resourceAccessToken.knowledge": "Bază de cunoștințe",
   "resourceAccessToken.knowledgeBasesSection": "Baze de cunoștințe",
   "resourceAccessToken.knowledgeCount": "{{count}} Bază de cunoștințe",
   "resourceAccessToken.knowledgesCount": "{{count}} Baze de cunoștințe",
@@ -100,6 +98,5 @@
   "resourceAccessToken.tabApps": "Aplicații",
   "resourceAccessToken.tabKnowledgeBases": "Baze de cunoștințe",
   "resourceAccessToken.token": "Token",
-  "resourceAccessToken.total": "{{total}} în total",
-  "resourceAccessToken.trackingId": "ID de urmărire"
+  "resourceAccessToken.total": "{{total}} în total"
 }

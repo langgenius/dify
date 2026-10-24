@@ -63,7 +63,6 @@
   "account.workspaceNamePlaceholder": "Vnesite ime delovnega prostora",
   "resourceAccessToken.accessibleResources": "Dostopni viri",
   "resourceAccessToken.actions": "Dejanja",
-  "resourceAccessToken.app": "Aplikacija",
   "resourceAccessToken.appCount": "{{count}} Aplikacija",
   "resourceAccessToken.appsCount": "{{count}} Aplikacije",
   "resourceAccessToken.appsSection": "Aplikacije",
@@ -80,7 +79,6 @@
   "resourceAccessToken.editTitle": "Uredi žeton za dostop",
   "resourceAccessToken.empty": "Žetonov za dostop še ni",
   "resourceAccessToken.emptyDescription": "Ustvari žeton za dostop, da lahko avtomatizirana opravila in zunanji sistemi z orodjem Difyctl poiščejo izbrane vire in dostopajo do njih.",
-  "resourceAccessToken.knowledge": "Baza znanja",
   "resourceAccessToken.knowledgeBasesSection": "Baze znanja",
   "resourceAccessToken.knowledgeCount": "{{count}} Baza znanja",
   "resourceAccessToken.knowledgesCount": "{{count}} Baze znanja",
@@ -100,6 +98,5 @@
   "resourceAccessToken.tabApps": "Aplikacije",
   "resourceAccessToken.tabKnowledgeBases": "Baze znanja",
   "resourceAccessToken.token": "Žeton",
-  "resourceAccessToken.total": "Skupaj: {{total}}",
-  "resourceAccessToken.trackingId": "ID sledenja"
+  "resourceAccessToken.total": "Skupaj: {{total}}"
 }

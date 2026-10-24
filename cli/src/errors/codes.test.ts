@@ -8,7 +8,6 @@ it('maps every code to the frozen exit taxonomy', () => {
   expect(exitFor(ErrorCode.UsageInvalidFlag)).toBe(ExitCode.Usage)
   expect(exitFor(ErrorCode.CatalogUnavailable)).toBe(ExitCode.Catalog)
   expect(exitFor(ErrorCode.UnknownOp)).toBe(ExitCode.Catalog)
-  expect(exitFor(ErrorCode.ConfigSchemaUnsupported)).toBe(ExitCode.Catalog)
   expect(exitFor(ErrorCode.RateLimited)).toBe(ExitCode.RateLimited)
   expect(exitFor(ErrorCode.ServerError)).toBe(ExitCode.Generic)
   expect(exitFor('something_from_the_future')).toBe(ExitCode.Generic)
