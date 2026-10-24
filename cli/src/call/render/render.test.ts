@@ -216,3 +216,39 @@ it('file reports other write failures as a failed write, not an existing file', 
     message: `failed to write file: ${out}`,
   })
 })
+
+it.each([
+  ["attachment; filename*=UTF-8''%E6%B5%8B%E8%AF%95.zip", '\u6D4B\u8BD5.zip'],
+  [
+    "attachment; filename=export.zip; filename*=UTF-8'en'%E6%B5%8B%E8%AF%95.zip",
+    '\u6D4B\u8BD5.zip',
+  ],
+  ["attachment; FILENAME*=utf-8''report%20%2B%20100%25.zip", 'report + 100%.zip'],
+  ["attachment; filename*=UTF-8''broken%ZZ.zip; filename=fallback.zip", 'fallback.zip'],
+  ["attachment; filename*=UTF-8''%FF.zip; filename=fallback.zip", 'fallback.zip'],
+  ["attachment; filename*=UTF-8''; filename=fallback.zip", 'fallback.zip'],
+  ["attachment; filename*=UTF-8''dir%2Freport.zip; filename=fallback.zip", 'fallback.zip'],
+  ['attachment; filename=report%20name.zip', 'report%20name.zip'],
+  ["attachment; filename*=ISO-8859-1''%A3.zip; filename=fallback.zip", 'fallback.zip'],
+  ["attachment; filename*=UTF-8''dir%2Freport.zip", 'report.zip'],
+  ["attachment; filename*=UTF-8''invoice%E2%80%AEfdp.exe; filename=fallback.zip", 'fallback.zip'],
+])('file resolves download names from %s', async (disposition, filename) => {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-filename-'))
+  const cwd = process.cwd()
+  process.chdir(dir)
+  const here = process.cwd()
+  try {
+    const r = render(
+      'file',
+      new Response(new Uint8Array([1, 2, 3]), {
+        headers: { 'content-disposition': disposition },
+      }),
+    )
+    expect(await r.code).toBe(0)
+    const path = join(here, filename)
+    expect(JSON.parse(r.buf.outBuf())).toMatchObject({ path, size: 3 })
+    expect(readFileSync(path)).toEqual(Buffer.from([1, 2, 3]))
+  } finally {
+    process.chdir(cwd)
+  }
+})
