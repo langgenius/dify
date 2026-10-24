@@ -3421,21 +3421,6 @@
       "count": 8
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/app-selector/app-picker.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/app-selector/app-trigger.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/app-selector/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/detail-header.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
@@ -6893,19 +6878,9 @@
       "count": 18
     }
   },
-  "web/features/new-rag/documents/metadata/create-form.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/features/new-rag/documents/metadata/drawer.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
-    }
-  },
-  "web/features/new-rag/documents/metadata/picker.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/features/new-rag/documents/tasks/documents-drawer.tsx": {
