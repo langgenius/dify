@@ -3,8 +3,7 @@
 import io
 import json
 import logging
-from collections.abc import Buffer, Generator
-from contextlib import contextmanager
+from collections.abc import Buffer
 from dataclasses import dataclass
 from typing import Literal, Never, cast, override
 from unittest.mock import MagicMock
@@ -193,12 +192,7 @@ def mcp_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch, mocker: MockerF
     monkeypatch.setattr(mcp, "mcp_ns", namespace)
     calls = _session_calls(mocker)
     maker = sessionmaker()
-
-    @contextmanager
-    def begin() -> Generator[Session]:
-        yield calls.session
-
-    mocker.patch.object(maker, "begin", side_effect=begin)
+    mocker.patch.object(maker, "class_", return_value=calls.session)
     monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: maker)
     execute = mocker.patch.object(mcp, "handle_mcp_request")
     end_user = mocker.patch.object(mcp.MCPAppApi, "_retrieve_end_user")
@@ -400,18 +394,23 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
     )
     remaining = iter((initial, execution))
 
-    @contextmanager
-    def begin() -> Generator[Session]:
+    def create_session(**_kwargs: object) -> Session:
         session = next(remaining)
         opened.append(session)
         active_sessions.append(session)
-        try:
-            yield session
-        finally:
-            active_sessions.pop()
+        close = session.close
+
+        def close_session() -> None:
+            try:
+                close()
+            finally:
+                active_sessions.pop()
+
+        mocker.patch.object(session, "close", side_effect=close_session)
+        return session
 
     maker = sessionmaker()
-    mocker.patch.object(maker, "begin", side_effect=begin)
+    mocker.patch.object(maker, "class_", side_effect=create_session)
     monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: maker)
     form = mocker.patch.object(mcp.MCPAppApi, "_get_user_input_form", return_value=[])
     process = mocker.patch.object(mcp.MCPAppApi, "_process_mcp_message", return_value=Response("ok", status=200))
@@ -440,6 +439,7 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
     )
     assert read_sessions
     assert not any(read_sessions)
+    assert not active_sessions
     assert opened == ([initial] if change == "initial-missing" else [initial, execution])
     if change == "unchanged":
         assert response.status_code == 200
