@@ -8,7 +8,7 @@ from typing import cast
 from urllib.parse import urlsplit
 
 from dify_agent.layers.read_media import normalize_media_mime
-from pydantic import JsonValue, TypeAdapter
+from pydantic import JsonValue, TypeAdapter, ValidationError
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, get_credit_usage_app_type
@@ -16,6 +16,7 @@ from core.app.file_access import DatabaseFileAccessController, FileAccessScope, 
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.db.session_factory import session_factory as default_session_factory
 from core.entities.model_entities import ModelStatus
+from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.workflow.file_reference import is_canonical_file_reference
@@ -29,10 +30,52 @@ from graphon.model_runtime.entities.message_entities import (
     PromptMessageContentUnionTypes,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from models.model import App
+from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+from runtime_contracts.builder.native.observation import (
+    NativeModelFailureCategory,
+    NativeModelFailureDiagnostic,
+    NativeModelFailureStage,
+)
 from services.entities.agent_llm_inner import AgentLLMInvokeRequest
 
 _PROMPT_CONTENT_ADAPTER = TypeAdapter(PromptMessageContentUnionTypes)
+
+
+class NativeAgentModelDispatchError(BuilderExecutionPolicyError):
+    """Preserve the original native failure contract with fixed diagnostic facts."""
+
+    def __init__(self, diagnostic: NativeModelFailureDiagnostic) -> None:
+        self.diagnostic = diagnostic
+        super().__init__("native_agent_model_dispatch_failed")
+
+
+def _model_failure(stage: NativeModelFailureStage, error: Exception) -> NativeModelFailureDiagnostic:
+    from dify_agent.runtime.native_continuation import NativePolicyStopped
+
+    categories: dict[type[Exception], NativeModelFailureCategory] = {
+        QuotaExceededError: "quota_exceeded",
+        InvokeAuthorizationError: "authentication",
+        InvokeBadRequestError: "bad_request",
+        InvokeRateLimitError: "rate_limit",
+        InvokeConnectionError: "connection",
+        ConnectionError: "connection",
+        ConnectionRefusedError: "connection",
+        TimeoutError: "timeout",
+        InvokeServerUnavailableError: "service_unavailable",
+        ValidationError: "invalid_response",
+    }
+    category = categories.get(type(error), "internal_unknown")
+    if stage == "receipt_append" and type(error) is NativePolicyStopped:
+        category = "result_too_large"
+    return NativeModelFailureDiagnostic(stage=stage, category=category)
 
 
 class AgentLLMInnerServiceError(RuntimeError):
@@ -134,13 +177,23 @@ class AgentLLMInnerService:
             from services.dify_builder.native_testing.agent_operations import agent_operations_for_ref
 
             envelope = prepared.request.native_dispatch
+            failure: NativeModelFailureDiagnostic | None = None
+
+            def observe_failure(stage: NativeModelFailureStage, error: Exception) -> None:
+                nonlocal failure
+                failure = _model_failure(stage, error)
+
             try:
                 owner = agent_operations_for_ref(envelope.ref)
                 owner.validate_model_request(request=prepared.request)
-                yield from owner.invoke_model(envelope=envelope, invoke=lambda: self._invoke(prepared))
-            except BuilderExecutionPolicyError:
-                raise
-            except Exception:
+                yield from owner.invoke_model(
+                    envelope=envelope, invoke=lambda: self._invoke(prepared), on_failure=observe_failure
+                )
+            except Exception as error:
+                if failure is not None:
+                    raise NativeAgentModelDispatchError(failure) from None
+                if isinstance(error, BuilderExecutionPolicyError):
+                    raise
                 raise BuilderExecutionPolicyError("native_agent_model_dispatch_failed") from None
             return
         yield from self._invoke(prepared)

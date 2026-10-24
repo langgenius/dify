@@ -14,6 +14,8 @@ from functools import wraps
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
+from runtime_contracts.builder.native.observation import parse_native_model_failure
+
 DiagnosticCallback = Callable[[dict[str, Any]], None]
 _current: ContextVar[tuple[DiagnosticCallback | None, str]] = ContextVar("builder_diagnostics", default=(None, ""))
 _MESSAGES = {
@@ -65,6 +67,11 @@ _MESSAGES = {
         "validation",
         "A graph generation attempt failed validation. Review node references and supported configuration.",
     ),
+    "native_model_invocation_failed": (
+        "native",
+        "Native Agent model invocation failed. The existing Run outcome remains authoritative; "
+        "review the failure before deciding whether to run again.",
+    ),
     "native_outcome_unknown": (
         "native",
         "Native execution outcome is unknown. Reconcile the existing Run before deciding whether to run again.",
@@ -98,6 +105,20 @@ def project(record: Mapping[str, Any]) -> dict[str, Any]:
                 result["at"] = parsed_at.isoformat()
         except ValueError:
             pass
+    if code == "native_model_invocation_failed":
+        stage, category = record.get("native_stage"), record.get("native_category")
+        if stage is None and category is None:
+            return result  # Exact historical generic failure; no reconstructed cause.
+        if not isinstance(stage, str) or not isinstance(category, str):
+            return {}
+        diagnostic = parse_native_model_failure(
+            f"NativeAgentModelDispatchFailed: Native Agent model invocation failed. [stage={stage}; reason={category}]"
+        )
+        if diagnostic is None:
+            return {}
+        result["native_stage"] = diagnostic.stage
+        result["native_category"] = diagnostic.category
+        return result
     for key in ("span_id", "exception_type"):
         value = record.get(key)
         if isinstance(value, str) and re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,79}", value):
@@ -320,3 +341,19 @@ def from_history(items: Sequence[Any], *, session_id: str, version: int) -> list
     if len(records) > 32:
         return [project({"code": "diagnostics_truncated"}), *records[-32:]]
     return records
+
+
+def merge_current(history: Sequence[dict[str, Any]], current: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Retain the current read-only observation once within the existing Trace cap."""
+    records: dict[str, dict[str, Any]] = {}
+    truncated = False
+    for record in (*history, *current):
+        if record.get("code") == "diagnostics_truncated":
+            truncated = True
+            continue
+        records.pop(record["id"], None)
+        records[record["id"]] = record
+    values = list(records.values())
+    if truncated or len(values) > 32:
+        return [project({"code": "diagnostics_truncated"}), *values[-32:]]
+    return values

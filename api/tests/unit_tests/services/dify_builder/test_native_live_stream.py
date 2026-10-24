@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.models import Actor
+from graphon.enums import WorkflowExecutionStatus
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.broadcast_channel.redis.streams_channel import _StreamsSubscription
 from models.dify_builder_native_tests import (
@@ -470,3 +471,311 @@ def test_resumed_cancelled_parent_session_history_and_sse_stay_readonly(
         assert state is not None
         assert not state.cleanup_complete
     assert owner.repo.get_run(owner.verify_id).status == "failed"
+
+
+@pytest.mark.parametrize("completed", ["confirmed"], indirect=True)
+@pytest.mark.parametrize("legacy", [False, True])
+def test_current_model_failure_diagnostic_is_stable_owned_and_readonly(
+    completed: CompletedOwner, legacy: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from sqlalchemy import event
+
+    from models.dify_builder import DifyBuilderExecutionRequest
+    from services.dify_builder.test_actions import BuilderTestActions
+
+    owner = completed
+    failure = "NativeAgentModelDispatchFailed: Native Agent model invocation failed."
+    if not legacy:
+        failure += " [stage=invoke; reason=quota_exceeded]"
+    at = datetime(2026, 10, 24, 12, tzinfo=UTC)
+    with owner.factory.begin() as sql:
+        run = sql.get(WorkflowRun, owner.native_id)
+        assert run is not None
+        run.status, run.error, run.finished_at = WorkflowExecutionStatus.FAILED, failure, at
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert request is not None
+        request.state, request.completion_summary = "running", None
+        state = sql.scalar(select(NativeInvocationState))
+        assert state is not None
+        state.state, state.outcome = "unknown", {"status": "unknown"}
+        scope = sql.get(NativeTestScope, owner.request_id)
+        assert scope is not None
+        scope.expires_at = datetime(2020, 1, 1, tzinfo=UTC)  # History remains readable after grant expiry.
+        state.app_id, state.workflow_id = owner.case.workflow.app_id, owner.case.workflow.id
+        sql.add(
+            NativeTestInvocation(
+                tenant_id=owner.case.actor.tenant_id,
+                request_id=owner.request_id,
+                invocation_id="root",
+                active=True,
+                bindings={},
+            )
+        )
+    reader = BuilderTestActions(owner.factory, lambda **_: pytest.fail("diagnostic executed command"))
+    receipt = NativeTestPublicReceipt(
+        request_id=owner.request_id,
+        generation=1,
+        version=1,
+        status="running",
+        wait_reason=None,
+        native_run_id=owner.native_id,
+        native_status="failed",
+        pending=(),
+        outcome="unknown",
+        evidence_refs=(),
+    )
+    statements: list[str] = []
+
+    def observe(_c: object, _u: object, statement: str, _p: object, _x: object, _m: object) -> None:
+        statements.append(statement)
+
+    engine = owner.factory.kw["bind"]
+    event.listen(engine, "before_cursor_execute", observe)
+    try:
+        first = reader.current_diagnostics(
+            actor=owner.case.actor, session_id=owner.session.id, test_input_id=owner.saved_id, receipt=receipt
+        )
+        assert len(first) == 1
+        assert (
+            reader.current_diagnostics(
+                actor=owner.case.actor, session_id=owner.session.id, test_input_id=owner.saved_id, receipt=receipt
+            )
+            == first
+        )
+        assert first[0]["at"] == at.isoformat()
+        assert first[0]["code"] == "native_model_invocation_failed"
+        if legacy:
+            assert "native_stage" not in first[0]
+            assert "native_category" not in first[0]
+        else:
+            assert first[0]["native_stage"] == "invoke"
+            assert first[0]["native_category"] == "quota_exceeded"
+        assert (
+            reader.current_diagnostics(
+                actor=Actor(account_id="foreign", tenant_id=owner.case.actor.tenant_id),
+                session_id=owner.session.id,
+                test_input_id=owner.saved_id,
+                receipt=receipt,
+            )
+            == []
+        )
+        assert (
+            reader.current_diagnostics(
+                actor=owner.case.actor, session_id=owner.session.id, test_input_id="foreign", receipt=receipt
+            )
+            == []
+        )
+        assert (
+            reader.current_diagnostics(
+                actor=owner.case.actor, session_id="foreign", test_input_id=owner.saved_id, receipt=receipt
+            )
+            == []
+        )
+        assert (
+            reader.current_diagnostics(
+                actor=Actor(account_id=owner.case.actor.account_id, tenant_id="foreign"),
+                session_id=owner.session.id,
+                test_input_id=owner.saved_id,
+                receipt=receipt,
+            )
+            == []
+        )
+        assert (
+            reader.current_diagnostics(
+                actor=owner.case.actor,
+                session_id=owner.session.id,
+                test_input_id=owner.saved_id,
+                receipt=receipt.model_copy(update={"request_id": "foreign"}),
+            )
+            == []
+        )
+        from dataclasses import asdict
+
+        from controllers.console.dify_builder_fields import DifyBuilderSessionViewResponse
+        from libs.helper import dump_response
+        from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
+        from services.dify_builder.service import DifyBuilderService
+        from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
+
+        _restore_public_reads(owner, monkeypatch)
+        assert owner.commands.backend is None  # No SDK/backend can be invoked by this read.
+        commands = ProfiledNativeTestCommands(
+            sessions=owner.factory,
+            actor=owner.case.actor,
+            confirmed_factory=lambda: owner.commands,
+            legacy_factory=lambda: pytest.fail("changed profile"),
+        )
+        service = DifyBuilderService(
+            owner.repo,
+            FakeSessionLock(),
+            lambda *_: pytest.fail("read enqueued work"),
+            get_app_revision_fn=lambda *_: "fixture-revision",
+            test_actions=BuilderTestActions(owner.factory, lambda **_: commands),
+        )
+        view = service.get_session_view(owner.session.id, owner.case.actor)
+        assert view.diagnostics == first
+        assert service.get_session_view(owner.session.id, owner.case.actor).diagnostics == first
+        exported = dump_response(
+            DifyBuilderSessionViewResponse, wiring._public_session_view(asdict(view), include_last_command_id=True)
+        )
+        assert exported["diagnostics"] == first
+        subscription = _subscription(
+            monkeypatch, [json.dumps({"kind": "native_state_changed", "session_id": owner.session.id}).encode()]
+        )
+        frames = list(
+            wiring.stream_advance_frames(
+                asdict(view),
+                subscription,
+                False,
+                emit_command_finished_when_settled=True,
+                emit_command_started=False,
+                native_receipts=lambda: (receipt,),
+                read_session_view=lambda: asdict(service.get_session_view(owner.session.id, owner.case.actor)),
+            )
+        )
+        envelopes = [json.loads(frame.split("data: ", 1)[1]) for frame in frames]
+        snapshots = [envelope["data"] for envelope in envelopes if envelope["event"] == "command_finished"]
+        assert len(snapshots) == 2
+        assert all(snapshot["diagnostics"] == first for snapshot in snapshots)
+        _assert_closed(subscription)
+        monkeypatch.setattr(
+            service._test_actions, "current_diagnostics", lambda **_: (_ for _ in ()).throw(RuntimeError())
+        )
+        without_diagnostic = service.get_session_view(owner.session.id, owner.case.actor)
+        assert asdict(without_diagnostic) == {**asdict(view), "diagnostics": []}
+        assert (
+            reader.current_diagnostics(
+                actor=owner.case.actor,
+                session_id=owner.session.id,
+                test_input_id=owner.saved_id,
+                receipt=receipt.model_copy(update={"native_run_id": "foreign"}),
+            )
+            == []
+        )
+    finally:
+        event.remove(engine, "before_cursor_execute", observe)
+    assert not any(q.lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE")) for q in statements)
+    with owner.factory() as sql:
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        state = sql.scalar(select(NativeInvocationState))
+        assert request is not None
+        assert request.state == "running"
+        assert request.completion_summary is None
+        assert state is not None
+        assert state.state == "unknown"
+        assert state.outcome == {"status": "unknown"}
+        scope = sql.get(NativeTestScope, owner.request_id)
+        assert scope is not None
+        assert scope.expires_at == datetime(2020, 1, 1)
+
+
+@pytest.mark.parametrize("completed", ["confirmed"], indirect=True)
+@pytest.mark.parametrize(
+    "drift",
+    [
+        "tenant",
+        "app",
+        "workflow",
+        "creator",
+        "role",
+        "session",
+        "input",
+        "context",
+        "current",
+        "error",
+        "unfinished",
+        "draft",
+    ],
+)
+def test_native_model_diagnostic_owner_drift(completed: CompletedOwner, drift: str) -> None:
+    from uuid import uuid4
+
+    from sqlalchemy import update
+
+    from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderTestInput
+    from services.dify_builder.test_actions import BuilderTestActions
+
+    owner = completed
+    with owner.factory.begin() as sql:
+        parent = sql.get(WorkflowRun, owner.native_id)
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert parent is not None
+        assert request is not None
+        parent.status = WorkflowExecutionStatus.FAILED
+        parent.error = (
+            "NativeAgentModelDispatchFailed: Native Agent model invocation failed. [stage=invoke; reason=timeout]"
+        )
+        parent.finished_at = datetime(2026, 10, 24, tzinfo=UTC)
+        if drift in {"tenant", "app", "workflow", "creator", "role"}:
+            column = {
+                "tenant": "tenant_id",
+                "app": "app_id",
+                "workflow": "workflow_id",
+                "creator": "created_by",
+                "role": "created_by_role",
+            }[drift]
+            sql.execute(
+                update(WorkflowRun)
+                .where(WorkflowRun.id == owner.native_id)
+                .values({column: "end_user" if drift == "role" else str(uuid4())})
+            )
+        elif drift == "session":
+            sql.execute(
+                update(DifyBuilderSession)
+                .where(DifyBuilderSession.id == owner.session.id)
+                .values(owner_account_id=str(uuid4()))
+            )
+        elif drift == "input":
+            sql.execute(
+                update(DifyBuilderTestInput)
+                .where(DifyBuilderTestInput.id == owner.saved_id)
+                .values(session_id=str(uuid4()))
+            )
+        elif drift == "context":
+            request.context_digest = "f" * 64
+        elif drift == "current":
+            sql.add(
+                DifyBuilderExecutionRequest(
+                    id=str(uuid4()),
+                    tenant_id=request.tenant_id,
+                    app_id=request.app_id,
+                    workflow_id=request.workflow_id,
+                    actor_id=request.actor_id,
+                    session_id=request.session_id,
+                    test_input_id=request.test_input_id,
+                    context=request.context,
+                    context_digest=request.context_digest,
+                    created_at=request.created_at + timedelta(days=1),
+                )
+            )
+        elif drift == "error":
+            parent.error = "NativeAgentModelDispatchFailed: Native Agent model invocation failed. secret-provider-body"
+        elif drift == "unfinished":
+            parent.finished_at = None
+        elif drift == "draft":
+            from models.workflow import Workflow
+
+            workflow = sql.get(Workflow, request.workflow_id)
+            assert workflow is not None
+            workflow.graph = json.dumps({"nodes": [], "edges": []})
+    reader = BuilderTestActions(owner.factory, lambda **_: pytest.fail("diagnostic executed work"))
+    receipt = NativeTestPublicReceipt(
+        request_id=owner.request_id,
+        generation=1,
+        version=1,
+        status="running",
+        wait_reason=None,
+        native_run_id=owner.native_id,
+        native_status="failed",
+        pending=(),
+        outcome="unknown",
+        evidence_refs=(),
+    )
+    observed = reader.current_diagnostics(
+        actor=owner.case.actor, session_id=owner.session.id, test_input_id=owner.saved_id, receipt=receipt
+    )
+    if drift == "draft":
+        assert len(observed) == 1
+        assert observed[0]["native_category"] == "timeout"
+    else:
+        assert observed == []

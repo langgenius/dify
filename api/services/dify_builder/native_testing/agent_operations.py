@@ -6,6 +6,7 @@ HTTP response; response loss therefore cannot turn a completed effect unknown.
 """
 
 from collections.abc import Callable
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import NotRequired, TypedDict
 
@@ -41,6 +42,7 @@ from runtime_contracts.builder.native.contracts import (
     OperationKey,
     operation_digest,
 )
+from runtime_contracts.builder.native.observation import NativeModelFailureStage
 from services.dify_builder.native_testing.agent_bridge import (
     AgentNativeTestingBridge,
     NativeAgentCredentialMaterializer,
@@ -823,7 +825,7 @@ class AgentOperationService:
             raise BuilderExecutionPolicyError("native_endpoint_arguments_mismatch")
         self.validate_model(envelope=envelope)
 
-    def invoke_model(self, *, envelope, invoke):
+    def invoke_model(self, *, envelope, invoke, on_failure: Callable[[NativeModelFailureStage, Exception], None]):
         from dify_agent.adapters.llm.provider import ProtectedModelChunkReceipt
 
         ref, intent, permit = api_ref(envelope.ref), api_intent(envelope.intent), api_permit(envelope.permit)
@@ -831,17 +833,31 @@ class AgentOperationService:
         self.bridge.authorization.claim_dispatch(ref=ref, intent=intent, permit=permit)
         complete = False
         receipt = ProtectedModelChunkReceipt()
+        stage: NativeModelFailureStage = "invoke"
         try:
             for chunk in invoke():
                 # Share the SDK's bounded canonical receipt before exposing a chunk.
+                stage = "receipt_append"
                 receipt.append(chunk)
                 yield chunk
+                stage = "invoke"
+            stage = "result_store"
             result_ref = self.state_store.store_result(ref=ref, key=intent.key, result=receipt.value)
+            stage = "outcome_complete"
             self.bridge.authorization.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
             complete = True
+        except Exception as error:
+            with suppress(Exception):
+                on_failure(stage, error)
+            raise
         finally:
             if not complete:
-                self.bridge.authorization.record_outcome(permit=permit, outcome="unknown", result_ref=None)
+                try:
+                    self.bridge.authorization.record_outcome(permit=permit, outcome="unknown", result_ref=None)
+                except Exception as error:
+                    with suppress(Exception):
+                        on_failure("unknown_settlement", error)
+                    raise
 
     def _persist(self, *, ref, intent, proposal, assessment, descriptor, binding):
         owned = self.loader.load(ref=ref)
