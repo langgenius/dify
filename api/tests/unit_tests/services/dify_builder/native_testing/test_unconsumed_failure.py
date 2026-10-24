@@ -5,7 +5,9 @@ from datetime import UTC, datetime
 import pytest
 from dify_agent.protocol.schemas import RunEventsResponse
 from sqlalchemy import Table, select
+from sqlalchemy.orm import Session as SqlSession
 
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import (
     NativeContinuation,
@@ -22,21 +24,28 @@ from models.dify_builder_native_tests import (
 )
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from runtime_contracts.builder.execution import canonical_digest
-from runtime_contracts.builder.native.contracts import EffectIntent, OperationKey, operation_digest
+from runtime_contracts.builder.native.contracts import DispatchPermit, EffectIntent, OperationKey, operation_digest
 from services.dify_builder.native_testing import state_store
+from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 from services.dify_builder.native_testing.repository import NativeBinding
+from tests.unit_tests.services.dify_builder.native_testing import test_confirmed_agent_completion as completion_fixtures
 from tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion import (
     CompletedOwner,
 )
-from tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion import (
-    completed as completed,  # noqa: PLC0414
-)
-from tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion import (
-    declining as declining,  # noqa: PLC0414
-)
-from tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion import (
-    retrying_decline as retrying_decline,  # noqa: PLC0414
-)
+
+completed = completion_fixtures.completed
+declining = completion_fixtures.declining
+retrying_decline = completion_fixtures.retrying_decline
+
+
+def _row[T](value: object, expected: type[T]) -> T:
+    assert isinstance(value, expected)
+    return value
+
+
+def _present[T](value: T | None) -> T:
+    assert value is not None
+    return value
 
 
 @pytest.fixture
@@ -99,7 +108,7 @@ def stranded(retrying_decline: CompletedOwner, monkeypatch: pytest.MonkeyPatch) 
             model.__table__.create(sql.connection(), checkfirst=True)
         native = sql.get(WorkflowRun, owner.native_id)
         assert native is not None
-        native.status, native.error = "failed", "policy refusal from actual child"
+        native.status, native.error = WorkflowExecutionStatus.FAILED, "policy refusal from actual child"
         request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
         assert request is not None
         request.state = "running"
@@ -206,7 +215,7 @@ def stranded(retrying_decline: CompletedOwner, monkeypatch: pytest.MonkeyPatch) 
         )
         node = sql.scalar(select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "agent"))
         assert node is not None
-        node.id, node.status = parent.execution_id, "failed"
+        node.id, node.status = parent.execution_id, WorkflowNodeExecutionStatus.FAILED
     owner.child_status = "failed"
 
     def events(child: str, *, after: str, limit: int) -> RunEventsResponse:
@@ -256,36 +265,35 @@ def test_failed_exact_source_seals_unconsumed_attempt_and_preserves_completed_re
         state.state = "running" if source_state == "claimed" else "unknown"
     owner.commands.finish_resume(ref=owner.ref, generation=2, dispatch_id="source")
     with owner.factory() as sql:
-        assert sql.get(NativeEffectOperation, "file-operation").state == "not_dispatched"
-        assert sql.get(NativeDispatch, "source").state == "completed"
-        assert sql.get(DifyBuilderExecutionRequest, owner.request_id).state == "sealed"
-        assert sql.get(NativeEffectOperation, "prior-skill").result_ref == "skill-result"
-        assert sql.get(NativeTestScope, owner.request_id).spent_dispatches == 3
+        assert _row(sql.get(NativeEffectOperation, "file-operation"), NativeEffectOperation).state == "not_dispatched"
+        assert _row(sql.get(NativeDispatch, "source"), NativeDispatch).state == "completed"
+        assert (
+            _row(sql.get(DifyBuilderExecutionRequest, owner.request_id), DifyBuilderExecutionRequest).state == "sealed"
+        )
+        assert _row(sql.get(NativeEffectOperation, "prior-skill"), NativeEffectOperation).result_ref == "skill-result"
+        assert _row(sql.get(NativeTestScope, owner.request_id), NativeTestScope).spent_dispatches == 3
         assert len(sql.scalars(select(NativeEffectOutcome)).all()) == 1
         assert len(sql.scalars(select(NativeEffectAttempt)).all()) == 1
         assert sql.scalars(select(NativeEffectDispatchClaim)).all() == []
     assert owner.repo.get_run(owner.verify_id).status == "failed"
     assert owner.repo.get_run(owner.reservation.id).status == "failed"
-    assert owner.repo.get_run(owner.verify_id).verification.execution_evidence.sealed
+    assert _present(_present(owner.repo.get_run(owner.verify_id).verification).execution_evidence).sealed
 
 
-def _reserve_through_actual_owner(owner: CompletedOwner, monkeypatch: pytest.MonkeyPatch):
+def _reserve_through_actual_owner(
+    owner: CompletedOwner, monkeypatch: pytest.MonkeyPatch
+) -> tuple[DispatchPermit, EffectIntent]:
     """Reproduce restored before_call with real grant/spend/attempt owners."""
-    from sqlalchemy import DateTime, delete, event
+    from sqlalchemy import delete, event
 
-    def postgres_timestamps(_session, instance):
-        for column in instance.__mapper__.columns:
-            value = getattr(instance, column.key)
-            if (
-                isinstance(column.type, DateTime)
-                and column.type.timezone
-                and isinstance(value, datetime)
-                and value.tzinfo is None
-            ):
-                setattr(instance, column.key, value.replace(tzinfo=UTC))
+    from models.dify_builder_native_tests import NativeEffectGrant
+
+    def postgres_timestamps(_session: SqlSession, instance: object) -> None:
+        if isinstance(instance, (NativeTestScope, NativeEffectGrant, NativeEffectAttempt)):
+            if instance.expires_at.tzinfo is None:
+                instance.expires_at = instance.expires_at.replace(tzinfo=UTC)
 
     event.listen(owner.factory, "loaded_as_persistent", postgres_timestamps)
-    from models.dify_builder_native_tests import NativeEffectGrant
     from runtime_contracts.builder.native.contracts import DispatchPermit
     from services.dify_builder.native_testing.authorization import _scope_digest
     from services.dify_builder.native_testing.repository import utc_now
@@ -299,12 +307,14 @@ def _reserve_through_actual_owner(owner: CompletedOwner, monkeypatch: pytest.Mon
         binding = NativeBinding.model_validate(invocation.bindings[operation_digest(effect.key)])
 
     class Metadata:
-        def resolve_binding(self, **_kwargs):
+        def resolve_binding(self, **_kwargs: object) -> NativeBinding:
             return binding
 
     monkeypatch.setattr(owner.commands.loader, "resolver", Metadata())
     with owner.factory.begin() as sql:
-        NativeEffectGrant.__table__.create(sql.connection(), checkfirst=True)
+        table = NativeEffectGrant.__table__
+        assert isinstance(table, Table)
+        table.create(sql.connection(), checkfirst=True)
         sql.execute(delete(NativeEffectAttempt))
         op = sql.get(NativeEffectOperation, "file-operation")
         assert op is not None
@@ -346,7 +356,7 @@ def _reserve_through_actual_owner(owner: CompletedOwner, monkeypatch: pytest.Mon
     return permit, effect
 
 
-def _public_get(owner: CompletedOwner, monkeypatch: pytest.MonkeyPatch):
+def _public_get(owner: CompletedOwner, monkeypatch: pytest.MonkeyPatch) -> NativeTestPublicReceipt:
     from types import MethodType
 
     from services.dify_builder.native_testing.api_service import NativeTestApiService
@@ -385,7 +395,7 @@ def test_restored_real_permit_then_expired_preparation_reconciles_original_run_o
         assert run.status == "failed"
         assert run.immutable
         assert run.verification is not None
-        assert run.verification.execution_evidence.sealed
+        assert _present(run.verification.execution_evidence).sealed
     version = owner.repo.get_session(owner.session.id)[0].version
     assert _public_get(owner, monkeypatch).outcome == "failed"
     assert owner.repo.get_session(owner.session.id)[0].version == version
@@ -393,8 +403,8 @@ def test_restored_real_permit_then_expired_preparation_reconciles_original_run_o
         attempt = sql.get(NativeEffectAttempt, permit.attempt_id)
         assert attempt is not None
         assert len(sql.scalars(select(NativeEffectAttempt)).all()) == 1
-        assert sql.get(NativeTestScope, owner.request_id).spent_dispatches == 3
-        assert sql.get(NativeEffectOperation, "prior-skill").result_ref == "skill-result"
+        assert _row(sql.get(NativeTestScope, owner.request_id), NativeTestScope).spent_dispatches == 3
+        assert _row(sql.get(NativeEffectOperation, "prior-skill"), NativeEffectOperation).result_ref == "skill-result"
 
 
 @pytest.mark.parametrize("winner", ["claim", "settlement"])
@@ -409,9 +419,9 @@ def test_real_physical_claim_and_terminal_settlement_serialize_on_existing_owner
     if winner == "claim":
         events = owner.commands.backend.client.get_events_sync
 
-        def claim_during_terminal_read(*args, **kwargs):
+        def claim_during_terminal_read(child: str, *, after: str, limit: int) -> RunEventsResponse:
             authorization.claim_dispatch(ref=owner.ref, intent=effect, permit=permit)
-            return events(*args, **kwargs)
+            return events(child, after=after, limit=limit)
 
         monkeypatch.setattr(owner.commands.backend.client, "get_events_sync", claim_during_terminal_read)
         receipt = _public_get(owner, monkeypatch)
@@ -427,7 +437,7 @@ def test_real_physical_claim_and_terminal_settlement_serialize_on_existing_owner
         assert _public_get(owner, monkeypatch).outcome == "unknown"
         with owner.factory() as sql:
             assert len(sql.scalars(select(NativeEffectDispatchClaim)).all()) == 1
-            assert sql.get(NativeEffectOperation, "file-operation").state == "claimed"
+            assert _row(sql.get(NativeEffectOperation, "file-operation"), NativeEffectOperation).state == "claimed"
             assert sql.scalars(select(NativeEffectOutcome)).all() == []
     else:
         assert _public_get(owner, monkeypatch).outcome == "failed"
@@ -435,7 +445,9 @@ def test_real_physical_claim_and_terminal_settlement_serialize_on_existing_owner
             authorization.claim_dispatch(ref=owner.ref, intent=effect, permit=permit)
         with owner.factory() as sql:
             assert sql.scalars(select(NativeEffectDispatchClaim)).all() == []
-            assert sql.get(NativeEffectOperation, "file-operation").state == "not_dispatched"
+            assert (
+                _row(sql.get(NativeEffectOperation, "file-operation"), NativeEffectOperation).state == "not_dispatched"
+            )
 
 
 @pytest.mark.parametrize(
@@ -491,45 +503,48 @@ def test_failure_settlement_refuses_ambiguous_or_changed_evidence(
             assert op is not None
             op.result_ref = "committed-result"
         elif fault == "stale_source":
-            sql.get(NativeDispatch, "source").generation = 3
+            _row(sql.get(NativeDispatch, "source"), NativeDispatch).generation = 3
         elif fault == "foreign_attempt":
-            sql.get(NativeEffectAttempt, "file-attempt").execution_id = "other-execution"
+            _row(sql.get(NativeEffectAttempt, "file-attempt"), NativeEffectAttempt).execution_id = "other-execution"
         elif fault == "live_node":
-            sql.scalar(
-                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "end")
-            ).status = "running"
+            _row(
+                sql.scalar(select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "end")),
+                WorkflowNodeExecutionModel,
+            ).status = WorkflowNodeExecutionStatus.RUNNING
         elif fault == "unknown_effect":
-            sql.get(NativeEffectOperation, "file-operation").state = "unknown"
+            _row(sql.get(NativeEffectOperation, "file-operation"), NativeEffectOperation).state = "unknown"
         elif fault == "foreign_owner":
-            sql.get(NativeEffectAttempt, "file-attempt").tenant_id = "foreign"
+            _row(sql.get(NativeEffectAttempt, "file-attempt"), NativeEffectAttempt).tenant_id = "foreign"
         elif fault == "checkpoint_drift":
-            sql.get(NativeContinuation, sql.scalar(select(NativeContinuation.id))).generation = 0
+            _row(
+                sql.get(NativeContinuation, sql.scalar(select(NativeContinuation.id))), NativeContinuation
+            ).generation = 0
     if fault == "live_child":
         owner.child_status = "running"
     elif fault in {"receipt_drift", "generation_drift"}:
         original = owner.commands.backend.client.get_events_sync
 
-        def mutate_after_read(*args, **kwargs):
-            events = original(*args, **kwargs)
+        def mutate_after_read(child: str, *, after: str, limit: int) -> RunEventsResponse:
+            events = original(child, after=after, limit=limit)
             with owner.factory.begin() as sql:
                 if fault == "receipt_drift":
-                    sql.get(NativePayloadObject, "association").storage_key = "replacement"
+                    _row(sql.get(NativePayloadObject, "association"), NativePayloadObject).storage_key = "replacement"
                 else:
-                    sql.get(NativeTestScope, owner.request_id).generation = 3
+                    _row(sql.get(NativeTestScope, owner.request_id), NativeTestScope).generation = 3
             return events
 
         monkeypatch.setattr(owner.commands.backend.client, "get_events_sync", mutate_after_read)
     elif fault == "missing_events":
 
-        def missing_events(*_args, **_kwargs):
+        def missing_events(*_args: object, **_kwargs: object) -> RunEventsResponse:
             raise LookupError("runtime event retention ended")
 
         monkeypatch.setattr(owner.commands.backend.client, "get_events_sync", missing_events)
     elif fault == "no_resume_event":
         original = owner.commands.backend.client.get_events_sync
 
-        def terminal_without_resume(*args, **kwargs):
-            events = original(*args, **kwargs)
+        def terminal_without_resume(child: str, *, after: str, limit: int) -> RunEventsResponse:
+            events = original(child, after=after, limit=limit)
             return events.model_copy(update={"events": events.events[1:]})
 
         monkeypatch.setattr(owner.commands.backend.client, "get_events_sync", terminal_without_resume)
@@ -539,7 +554,9 @@ def test_failure_settlement_refuses_ambiguous_or_changed_evidence(
         result = False
     assert not result
     with owner.factory() as sql:
-        assert sql.get(DifyBuilderExecutionRequest, owner.request_id).state == "running"
-        assert sql.get(NativeDispatch, "source").state == "unknown"
+        assert (
+            _row(sql.get(DifyBuilderExecutionRequest, owner.request_id), DifyBuilderExecutionRequest).state == "running"
+        )
+        assert _row(sql.get(NativeDispatch, "source"), NativeDispatch).state == "unknown"
         assert not any(outcome.outcome == "not_dispatched" for outcome in sql.scalars(select(NativeEffectOutcome)))
-        assert sql.get(NativeEffectOperation, "prior-skill").result_ref == "skill-result"
+        assert _row(sql.get(NativeEffectOperation, "prior-skill"), NativeEffectOperation).result_ref == "skill-result"
