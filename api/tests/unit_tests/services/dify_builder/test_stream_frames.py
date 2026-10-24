@@ -401,3 +401,32 @@ def test_reconnect_restores_progress_before_live_events_without_replaying_commit
         ]
         assert (data["revision"], data["reply_language"]) == (5, "zh-Hans")
     assert subscription.closed
+
+
+@pytest.mark.parametrize("task_paused", [False, True])
+@pytest.mark.parametrize("native_notification", [False, True])
+def test_observation_uses_original_command_only_for_task_stop(task_paused: bool, native_notification: bool) -> None:
+    raw = json.dumps({"kind": "native_state_changed", "session_id": "s1"}).encode() if native_notification else None
+    subscription = _FakeSubscription([raw])
+    latest = _view(
+        version=2,
+        run_status="paused" if task_paused else "waiting_input",
+        last_command_id="command-2",
+        _task_paused=task_paused,
+    )
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(),
+            subscription,
+            expect_advance=True,
+            emit_command_started=False,
+            command_id="command-1",
+            read_session_view=lambda: latest,
+        )
+    )
+    assert len(frames) == 1
+    event = _event(frames[0])
+    assert event["event"] == "command_finished"
+    assert event["data"]["command_id"] == ("command-1" if task_paused else "command-2")
+    assert "_task_paused" not in event["data"]
+    assert subscription.closed

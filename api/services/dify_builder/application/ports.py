@@ -325,6 +325,8 @@ class Repository(Protocol):
 
     def get_session_at_version(self, session_id: str, version: int) -> tuple[Session, DifyBuilderContext]: ...
 
+    def is_task_active(self, session_id: str, expected_generation: int) -> bool: ...
+
     def compare_and_advance(
         self,
         session_id: str,
