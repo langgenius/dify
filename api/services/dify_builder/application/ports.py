@@ -323,6 +323,8 @@ class Repository(Protocol):
 
     def get_session(self, id: str) -> tuple[Session, DifyBuilderContext]: ...
 
+    def get_session_at_version(self, session_id: str, version: int) -> tuple[Session, DifyBuilderContext]: ...
+
     def compare_and_advance(
         self,
         session_id: str,

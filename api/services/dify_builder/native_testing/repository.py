@@ -15,7 +15,7 @@ from types import MappingProxyType
 from typing import Annotated, Literal, Protocol
 
 from pydantic import Field, StrictBool
-from sqlalchemy import event, select
+from sqlalchemy import Select, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.models import Actor
@@ -215,7 +215,7 @@ class OwnedNativeTestLoader:
             owned, scope = self._load(session, ref=ref, lock=True, settlement=settlement)
             yield session, owned, scope
 
-    def _request_query(self, ref: NativeTestContextRef):
+    def _request_query(self, ref: NativeTestContextRef) -> Select[tuple[DifyBuilderExecutionRequest]]:
         return select(DifyBuilderExecutionRequest).where(
             DifyBuilderExecutionRequest.id == ref.request_id,
             DifyBuilderExecutionRequest.tenant_id == self.actor.tenant_id,
@@ -223,7 +223,9 @@ class OwnedNativeTestLoader:
         )
 
     @staticmethod
-    def _request_binding(request, ref):
+    def _request_binding(
+        request: DifyBuilderExecutionRequest | None, ref: NativeTestContextRef
+    ) -> tuple[str, str, str, str, str]:
         if request is None or request.context_digest != ref.context_digest:
             raise BuilderExecutionPolicyError("native_owner_mismatch")
         if (
@@ -233,7 +235,7 @@ class OwnedNativeTestLoader:
             raise BuilderExecutionPolicyError("native_context_mismatch")
         return (request.session_id, request.app_id, request.workflow_id, request.test_input_id, request.context_digest)
 
-    def lock_task_admission(self, session: Session, *, ref: NativeTestContextRef):
+    def lock_task_admission(self, session: Session, *, ref: NativeTestContextRef) -> tuple[str, str, str, str, str]:
         from core.dify_builder.errors import ConflictError
         from services.dify_builder.task_controls import lock_task_admission
 
@@ -257,6 +259,8 @@ class OwnedNativeTestLoader:
         if lock:
             query = query.with_for_update().execution_options(populate_existing=True)
         request = session.scalar(query)
+        if request is None:
+            raise BuilderExecutionPolicyError("native_owner_mismatch")
         current_binding = self._request_binding(request, ref)
         if binding is not None and current_binding != binding:
             raise BuilderExecutionPolicyError("native_owner_mismatch")

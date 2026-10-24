@@ -156,6 +156,7 @@ def control(
                 raise ConflictError("task stop has not safely settled")
             from services.dify_builder.task_controls import validate_dsl_binding
 
+            assert dsl is not None
             validate_dsl_binding(sql, dsl)
             controls["generation"] = expected_generation + 1
             controls["dsl_before_resume"] = controls.get("dsl", {})
