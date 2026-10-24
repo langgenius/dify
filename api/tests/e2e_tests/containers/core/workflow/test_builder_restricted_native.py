@@ -22,10 +22,16 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
-from core.dify_builder.models import Actor, Graph, Inputs, Run
+from core.dify_builder.input_schema import schema_hash, start_schema
+from core.dify_builder.models import Actor, DifyBuilderContext, Graph, Inputs, Run
 from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderTestInput
+from models.dify_builder import (
+    DifyBuilderExecutionRequest,
+    DifyBuilderSession,
+    DifyBuilderSessionCommit,
+    DifyBuilderTestInput,
+)
 from models.model import App
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from runtime_contracts.builder.execution import BuilderExecutionRecorder
@@ -42,6 +48,7 @@ from services.dify_builder.application.verification import is_execution_policy_b
 from services.dify_builder.dify_port import WorkflowServiceDifyPort, _BuilderExecutionLaunch
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 from services.dify_builder.revision import executable_graph_revision, execution_revision
+from services.dify_builder.serde import context_to_dict
 
 FIXTURES = Path(__file__).parents[3] / "fixtures/workflow/builder_restricted"
 
@@ -92,6 +99,7 @@ def native_owner(flask_req_ctx_with_containers: None, db_session_with_containers
         owner_account_id=account.id,
         entry_mode="build",
         current_state="build.await_testdata",
+        version=1,
     )
     published = Workflow(
         tenant_id=tenant.id,
@@ -112,9 +120,26 @@ def native_owner(flask_req_ctx_with_containers: None, db_session_with_containers
     session.add_all([workflow, builder_session])
     session.flush()
     test_input = DifyBuilderTestInput(
-        session_id=builder_session.id, source="user", inputs={"text": "native scalar"}, start_schema_hash=""
+        session_id=builder_session.id,
+        source="user",
+        inputs={"text": "native scalar"},
+        start_schema_hash=schema_hash(start_schema(dict(workflow.graph_dict), app.mode)),
     )
     session.add(test_input)
+    session.flush()
+    # Task admission validates the same current commit production creates.
+    # A standalone Session row is not an active Builder task authority.
+    session.add(
+        DifyBuilderSessionCommit(
+            session_id=builder_session.id,
+            version=builder_session.version,
+            state=builder_session.current_state,
+            context=context_to_dict(
+                DifyBuilderContext(test_input_ref=test_input.id, last_snapshot_hash=execution_revision(workflow))
+            ),
+            actor=account.id,
+        )
+    )
     session.commit()
     yield (
         sessionmaker(bind=engine, expire_on_commit=False),
