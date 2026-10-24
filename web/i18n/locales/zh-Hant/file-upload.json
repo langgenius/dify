@@ -15,7 +15,7 @@
   "feature.imageUpload.title": "圖片上傳",
   "vision.description": "開啟視覺功能將允許模型輸入圖片，並根據影象內容的理解回答使用者問題",
   "vision.name": "視覺",
-  "vision.onlySupportVisionModelTip": "僅支持視覺模型",
+  "vision.onlySupportVisionModelTip": "僅支援視覺模型",
   "vision.visionSettings.both": "兩者",
   "vision.visionSettings.high": "高",
   "vision.visionSettings.localUpload": "本地上傳",
