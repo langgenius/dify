@@ -106,9 +106,12 @@ def test_agent_contract_reaches_planning_without_private_soul_values(
     payloads = []
     if phase == "discovery":
 
-        def recommend(_model: object, **kwargs: object) -> dict[str, list[str]]:
+        def recommend(_model: object, **kwargs: object) -> dict[str, object]:
             payloads.append(kwargs["user"])
-            return {"resource_ids": [candidate.resource_id]}
+            return {
+                "resource_ids": [candidate.resource_id],
+                "selection_reasons": {candidate.resource_id: "Its public review capability matches report review."},
+            }
 
         monkeypatch.setattr(build.llm, "invoke_json", recommend)
         options = build.discover_resources(
@@ -116,6 +119,12 @@ def test_agent_contract_reaches_planning_without_private_soul_values(
         )
         assert len(options) == 1
         assert "public roster description" in options[0].meta
+        assert f"Published version {case.snapshot.version}" in options[0].meta
+        assert "Reference eligible for this member" in options[0].meta
+        assert "actor-scoped published catalog" in options[0].meta
+        assert "runtime authorization unverified" in options[0].meta
+        assert "requires setup" in options[0].meta
+        assert "Its public review capability matches report review." in options[0].meta
     else:
         mc = ModelConfig.model_validate({"provider": "provider", "name": "model", "mode": "chat"})
         monkeypatch.setattr(build, "_generator_model_config", lambda *_args: mc)
@@ -186,6 +195,11 @@ def test_agent_contract_reaches_planning_without_private_soul_values(
         "public_roster.description",
         "model:model-plugin/provider/test-model",
         "tool:plugin/provider/read",
+        '"reference_permitted": true',
+        '"reference_permission_source": "actor_scoped_published_catalog"',
+        f'"display_version": {case.snapshot.version}',
+        # Capability evidence beyond the display prose cap remains available.
+        '"capability": "' + case.agent.description,
     ):
         assert public_value in prompt
     assert "PRIVATE" not in prompt
@@ -227,12 +241,92 @@ def test_selected_agent_uses_existing_resource_option_and_fresh_binding(monkeypa
     ref = resources.ResourceRef(id=item.resource_id, label=item.name)
     inv = resources.TenantResources(models=[], datasets=[], tools=[], agents=[ref])
     monkeypatch.setattr(resources, "list_tenant_resources", lambda *_args, **_kwargs: inv)
-    monkeypatch.setattr(build.llm, "invoke_json", lambda *_args, **_kwargs: {"resource_ids": [item.resource_id]})
+    monkeypatch.setattr(
+        build.llm,
+        "invoke_json",
+        lambda *_args, **_kwargs: {
+            "resource_ids": [item.resource_id],
+            "selection_reasons": {
+                item.resource_id: "Its published risk review capability matches the risk review step."
+            },
+        },
+    )
     options = build.discover_resources(object(), agent.tenant_id, ["Review risk"])
     assert len(options) == 1
     assert options[0].kind == "agent"
     assert options[0].id == item.resource_id
     assert item.resource_id in build.bind_resources(None, agent.tenant_id, ["Review risk"], [item.resource_id])[0]
+
+
+@pytest.mark.parametrize("reason", [None, "", "  ", 7, [], {"reason": "review"}, "x" * 361])
+def test_agent_recommendation_requires_a_valid_reason_for_its_selected_id(
+    monkeypatch: pytest.MonkeyPatch, reason: object
+) -> None:
+    from services.dify_builder.agent import build, resources
+
+    inv = resources.TenantResources(
+        models=[resources.ResourceRef(id="provider/model", label="Model", meta="Configured model")],
+        datasets=[],
+        tools=[],
+        agents=[resources.ResourceRef(id="agent:reviewer:snapshot:digest", label="Reviewer")],
+    )
+    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_args, **_kwargs: inv)
+    monkeypatch.setattr(
+        build.llm,
+        "invoke_json",
+        lambda *_args, **_kwargs: {
+            "resource_ids": ["agent:reviewer:snapshot:digest", "provider/model", "agent:unknown"],
+            "selection_reasons": {
+                "agent:reviewer:snapshot:digest": reason,
+                "agent:unknown": "Invented candidate",
+                "provider/model": "Must not change existing model metadata",
+            },
+        },
+    )
+
+    options = build.discover_resources(object(), "tenant", ["Review the report"])
+
+    assert [option.id for option in options] == ["provider/model"]
+    assert options[0].meta == "Configured model"
+
+
+def test_agent_reason_cannot_select_an_unchosen_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
+    from services.dify_builder.agent import build, resources
+
+    inv = resources.TenantResources(
+        models=[],
+        datasets=[],
+        tools=[],
+        agents=[
+            resources.ResourceRef(id="agent:chosen", label="Chosen", meta="Published version 3"),
+            resources.ResourceRef(id="agent:unchosen", label="Unchosen"),
+        ],
+    )
+    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_args, **_kwargs: inv)
+    calls: list[dict[str, object]] = []
+
+    def recommend(_model: object, **kwargs: object) -> dict[str, object]:
+        calls.append(kwargs)
+        return {
+            "resource_ids": ["agent:chosen", "agent:chosen", "agent:unknown", {"id": "agent:unchosen"}],
+            "selection_reasons": {
+                "agent:chosen": "  Its declared contract risk review matches the requested contract analysis.  ",
+                "agent:unchosen": "This reason must not select a candidate",
+                "agent:unknown": "This reason must not invent a candidate",
+            },
+        }
+
+    monkeypatch.setattr(build.llm, "invoke_json", recommend)
+
+    options = build.discover_resources(object(), "tenant", ["Analyze contract risks"], goal_text="Review a contract")
+
+    assert [option.id for option in options] == ["agent:chosen"]
+    assert options[0].meta == (
+        "Published version 3 Selection rationale (model): "
+        "Its declared contract risk review matches the requested contract analysis."
+    )
+    assert len(calls) == 1
+    assert "Review a contract" in str(calls[0]["user"])
 
 
 def test_changed_agent_selection_cannot_silently_rebind(monkeypatch: pytest.MonkeyPatch) -> None:
