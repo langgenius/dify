@@ -1,14 +1,17 @@
 """Task Stop fences real native admission owners before cancellation delivery."""
 
 from datetime import UTC, datetime, timedelta
+from typing import Literal, NoReturn
 
 import pytest
 
+from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderSession, DifyBuilderSessionCommit
 from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import DispatchPermit, decode_native_ref
 from services.dify_builder.native_testing.authorization import EffectAuthorizationService
+from services.dify_builder.native_testing.context_binding import NativeAdmissionCompilation, NativeRuntimeProfile
 from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
 from tests.unit_tests.services.dify_builder.native_testing.test_authorization import intent
 from tests.unit_tests.services.dify_builder.native_testing.test_native_runtime import (
@@ -50,11 +53,35 @@ def test_saved_unlaunched_start_retry_cannot_enqueue_after_task_stop(
     assert isinstance(state, NativeInvocationState)
     state.state = "running"
     c.published.clear()
+    assert c.api.admission is not None
     compiler = c.api.admission.compiler
     compile_before_stop = compiler.compile
 
-    def compile_then_pause(**kwargs):
-        prepared = compile_before_stop(**kwargs)
+    def compile_then_pause(
+        *,
+        actor: Actor,
+        session_id: str,
+        test_input_id: str,
+        expected_version: int,
+        mode: Literal["native", "mock"],
+        request_id: str,
+        invocation_id: str,
+        native_run_id: str,
+        profile: NativeRuntimeProfile,
+        revision_basis: Literal["confirmed-canvas-v1"] | None = None,
+    ) -> NativeAdmissionCompilation:
+        prepared = compile_before_stop(
+            actor=actor,
+            session_id=session_id,
+            test_input_id=test_input_id,
+            expected_version=expected_version,
+            mode=mode,
+            request_id=request_id,
+            invocation_id=invocation_id,
+            native_run_id=native_run_id,
+            profile=profile,
+            revision_basis=revision_basis,
+        )
         pause_task(c)
         return prepared
 
@@ -90,7 +117,7 @@ def test_effect_dispatch_claim_is_fenced_after_task_stop_before_native_cancel(
     monkeypatch.setattr(service, "_permit_ref", lambda _: ref)
     validations = []
 
-    def validate(**_kwargs):
+    def validate(**_kwargs: object) -> NoReturn:
         validations.append("claim")
         raise RuntimeError("dispatch validation reached")
 
@@ -111,7 +138,7 @@ def test_host_capacity_claim_cannot_bypass_paused_task_as_settlement(
     ref = decode_native_ref(message["ref"])
 
     class CleanupVerifier:
-        def consume_cleanup(self, **_kwargs):
+        def consume_cleanup(self, **_kwargs: object) -> None:
             pytest.fail("capacity admission must not request cleanup")
 
     delivery = NativeHostCapacity(c.api.lifecycle, cleanup_verifier=CleanupVerifier())
@@ -120,7 +147,7 @@ def test_host_capacity_claim_cannot_bypass_paused_task_as_settlement(
     original_state = dispatch.state
     scans = []
 
-    def scan(*_args):
+    def scan(*_args: object) -> NoReturn:
         scans.append("capacity")
         raise RuntimeError("capacity scan reached")
 

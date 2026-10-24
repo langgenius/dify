@@ -162,7 +162,7 @@ def build_real_call_consent_service() -> BuilderRealCallConsentService:
 
 
 def build_service() -> DifyBuilderService:
-    app = current_app._get_current_object()
+    app = current_app.app_context().app
     repo = SqlDifyBuilderRepository(sessionmaker(bind=db.engine, expire_on_commit=False))
     return DifyBuilderService(
         repo,

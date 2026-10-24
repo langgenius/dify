@@ -1,16 +1,38 @@
 """Independent task controls use SQL history rather than the advance lease."""
 
+from collections.abc import Callable, Sequence
+from pathlib import Path
+from typing import Literal
+
 import pytest
+from sqlalchemy.orm import Session as SqlSession
 
 from core.dify_builder.errors import ConflictError
-from core.dify_builder.models import DifyBuilderContext, EntryMode, Session
+from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Graph, Session, Turn
 from core.dify_builder.state import PcState
-from tests.unit_tests.services.dify_builder.test_service import ACCOUNT_ID, APP_ID, TENANT_ID, _actor
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
+from models.dify_builder import DifyBuilderSession as DomainRow
+from services.dify_builder.application.runner import Env, StepResult
+from services.dify_builder.dify_port import WorkflowServiceDifyPort
+from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+from services.dify_builder.repository import SqlDifyBuilderRepository
+from services.dify_builder.service import DifyBuilderService
+from services.dify_builder.test_actions import BuilderTestActions
+from services.dify_builder.test_actions import TestCommand as NativeCommand
+from tests.unit_tests.services.dify_builder.test_service import (
+    ACCOUNT_ID,
+    APP_ID,
+    TENANT_ID,
+    Enqueued,
+    FakeSessionLock,
+    _actor,
+)
 
 pytest_plugins = ["tests.unit_tests.services.dify_builder.test_service"]
 
 
-def seed(repo, state=PcState.BUILD_TEST_AND_REPAIR):
+def seed(repo: SqlDifyBuilderRepository, state: PcState = PcState.BUILD_TEST_AND_REPAIR) -> Session:
     s = Session(
         app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID, entry_mode=EntryMode.BUILD, current_state=state
     )
@@ -18,7 +40,9 @@ def seed(repo, state=PcState.BUILD_TEST_AND_REPAIR):
     return s
 
 
-def test_stop_during_advance_preserves_checkpoint_and_fences_generation(service, repo, lock):
+def test_stop_during_advance_preserves_checkpoint_and_fences_generation(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, lock: FakeSessionLock
+) -> None:
     s = seed(repo)
     lock.acquire(s.id)
     view = service.stop_task(s.id, _actor(), base_version=1, client_action_id="stop-one")
@@ -33,9 +57,11 @@ def test_stop_during_advance_preserves_checkpoint_and_fences_generation(service,
         service.resume_task(s.id, _actor(), base_version=1, client_action_id="stop-one")
 
 
-def test_stop_accepts_progress_but_old_stop_cannot_pause_resumed_generation(service, repo):
+def test_stop_accepts_progress_but_old_stop_cannot_pause_resumed_generation(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     s = seed(repo, PcState.BUILD_PLAN_APPROVAL)
-    service._read_task_dsl_fn = lambda *_: ({"graph": {"nodes": [], "edges": []}, "features": {}}, "new-revision")
+    service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph(nodes=[], edges=[]), features=Graph()), "new-revision")
     _, fc = repo.get_session(s.id)
     repo.compare_and_advance(s.id, 1, s.current_state, fc, [])
     stopped = service.stop_task(s.id, _actor(), base_version=1, client_action_id="stop")
@@ -49,9 +75,11 @@ def test_stop_accepts_progress_but_old_stop_cannot_pause_resumed_generation(serv
     assert repo.get_session(s.id)[0].version == before_replay
 
 
-def test_resume_enqueue_failure_is_retryable_without_duplicate_command(service, repo, enqueued):
+def test_resume_enqueue_failure_is_retryable_without_duplicate_command(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[Enqueued]
+) -> None:
     s = seed(repo, PcState.BUILD_PLAN_APPROVAL)
-    service._read_task_dsl_fn = lambda *_: ({"graph": {"nodes": [], "edges": []}}, "current")
+    service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph(nodes=[], edges=[])), "current")
     stopped = service.stop_task(s.id, _actor(), base_version=1, client_action_id="stop")
     enqueue = service._enqueue_fn
     service._enqueue_fn = lambda *_: (_ for _ in ()).throw(RuntimeError("queue unavailable"))
@@ -64,9 +92,11 @@ def test_resume_enqueue_failure_is_retryable_without_duplicate_command(service, 
     assert len(enqueued) == 1
 
 
-def test_stop_replay_returns_durable_original_projection_after_resume(service, repo):
+def test_stop_replay_returns_durable_original_projection_after_resume(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     s = seed(repo, PcState.BUILD_PLAN_APPROVAL)
-    service._read_task_dsl_fn = lambda *_: ({"graph": {"nodes": [], "edges": []}}, "current")
+    service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph(nodes=[], edges=[])), "current")
     service._get_app_revision_fn = lambda *_: "original"
     stopped = service.stop_task(s.id, _actor(), base_version=1, client_action_id="stop")
     service.resume_task(s.id, _actor(), base_version=stopped.version, client_action_id="resume")
@@ -76,19 +106,27 @@ def test_stop_replay_returns_durable_original_projection_after_resume(service, r
     assert asdict(service.stop_task(s.id, _actor(), base_version=1, client_action_id="stop")) == asdict(stopped)
 
 
-def test_blocked_provider_late_result_cannot_be_consumed(service, repo):
-    from types import SimpleNamespace
-
+def test_blocked_provider_late_result_cannot_be_consumed(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder.agent.llm import invoke_text
     from services.dify_builder.task_controls import ExecutionFence, execution_scope, require_active
 
     s = seed(repo)
-    consumed = []
+    consumed: list[str] = []
+
+    def consume(_message: AssistantPromptMessage) -> str:
+        consumed.append("late")
+        return "late"
+
+    monkeypatch.setattr(AssistantPromptMessage, "get_text_content", consume)
 
     class Model:
-        def invoke_llm(self, **_kwargs):
+        def invoke_llm(self, **_kwargs: object) -> LLMResult:
             service.stop_task(s.id, _actor(), base_version=1, client_action_id="blocked-stop")
-            return SimpleNamespace(message=SimpleNamespace(get_text_content=lambda: consumed.append("late") or "late"))
+            return LLMResult(
+                model="blocked", message=AssistantPromptMessage(content="late"), usage=LLMUsage.empty_usage()
+            )
 
     fence = ExecutionFence(s.id, 0, lambda: require_active(repo, s.id, 0), {})
     with execution_scope(fence), pytest.raises(ConflictError):
@@ -96,13 +134,21 @@ def test_blocked_provider_late_result_cannot_be_consumed(service, repo):
     assert consumed == []
 
 
-def test_continuation_delivery_is_claimed_once_and_old_finally_keeps_new_owner(service, repo, lock, enqueued):
+def test_continuation_delivery_is_claimed_once_and_old_finally_keeps_new_owner(
+    service: DifyBuilderService,
+    repo: SqlDifyBuilderRepository,
+    lock: FakeSessionLock,
+    enqueued: list[Enqueued],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from services.dify_builder.task_control_service import claim_continuation
 
     s = seed(repo, PcState.BUILD_PLAN_APPROVAL)
-    service._read_task_dsl_fn = lambda *_: ({"graph": {}}, "revision")
+    service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph()), "revision")
     old_token = lock.acquire(s.id)
+    assert old_token is not None
     old_owner = lock.activate(s.id, old_token)
+    assert old_owner is not None
     stopped = service.stop_task(s.id, _actor(), base_version=1, client_action_id="stop")
     service.resume_task(s.id, _actor(), base_version=stopped.version, client_action_id="resume")
     action = enqueued[0][1]
@@ -111,13 +157,11 @@ def test_continuation_delivery_is_claimed_once_and_old_finally_keeps_new_owner(s
     lock.release(s.id, old_owner)
     assert lock.current_owner(s.id) == new_owner
     claim_continuation(repo, s.id, _actor(), action)
-    from types import SimpleNamespace
-
     from services.dify_builder.task_control_service import refresh_continuation
 
-    refresh_continuation(
-        repo, SimpleNamespace(read_task_dsl=lambda *_: ({"graph": {}}, "revision")), s.id, _actor(), action
-    )
+    port = WorkflowServiceDifyPort()
+    monkeypatch.setattr(port, "read_task_dsl", lambda *_: (Graph(graph=Graph()), "revision"))
+    refresh_continuation(repo, port, s.id, _actor(), action)
     with pytest.raises(ConflictError):
         claim_continuation(repo, s.id, _actor(), action)
     lock.release(s.id, new_owner)
@@ -125,7 +169,9 @@ def test_continuation_delivery_is_claimed_once_and_old_finally_keeps_new_owner(s
     assert len(enqueued) == 1
 
 
-def test_stopped_generation_rejects_sql_mutation_even_with_unchanged_app_revision(service, repo):
+def test_stopped_generation_rejects_sql_mutation_even_with_unchanged_app_revision(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     from services.dify_builder.task_controls import ExecutionFence, execution_scope, lock_execution
 
     s = seed(repo)
@@ -135,7 +181,9 @@ def test_stopped_generation_rejects_sql_mutation_even_with_unchanged_app_revisio
             lock_execution(sql, app_id=APP_ID)
 
 
-def test_internal_continuation_cannot_enter_through_public_action(service, repo):
+def test_internal_continuation_cannot_enter_through_public_action(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     from core.dify_builder.errors import BadRequestError
     from core.dify_builder.models import Action
 
@@ -153,12 +201,17 @@ def test_internal_continuation_cannot_enter_through_public_action(service, repo)
     ],
 )
 def test_native_stop_settlement_is_truthful_and_unknown_never_resumes(
-    service, repo, outcome, status, expected, editable
-):
+    service: DifyBuilderService,
+    repo: SqlDifyBuilderRepository,
+    monkeypatch: pytest.MonkeyPatch,
+    outcome: Literal["cancelled", "unknown"] | None,
+    status: Literal["running", "terminal"],
+    expected: str,
+    editable: bool,
+) -> None:
     from uuid import uuid4
 
     from models.dify_builder import DifyBuilderExecutionRequest
-    from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 
     s = seed(repo)
     _, fc = repo.get_session(s.id)
@@ -193,28 +246,32 @@ def test_native_stop_settlement_is_truthful_and_unknown_never_resumes(
         evidence_refs=(),
     )
 
-    class Actions:
-        def current(self, **_kwargs):
-            return receipt
+    def current(**_kwargs: object) -> NativeTestPublicReceipt:
+        return receipt
 
-        def execute(self, **kwargs):
-            assert kwargs["command"].method == "cancel"
-            assert kwargs["idempotency_key"] == "task-stop:stop"
-            return receipt
+    def execute(**kwargs: object) -> NativeTestPublicReceipt:
+        command = kwargs["command"]
+        assert isinstance(command, NativeCommand)
+        assert command.method == "cancel"
+        assert kwargs["idempotency_key"] == "task-stop:stop"
+        return receipt
 
-    service._test_actions = Actions()
+    actions = BuilderTestActions(repo._session_factory, lambda *_: pytest.fail("unexpected command factory"))
+    monkeypatch.setattr(actions, "current", current)
+    monkeypatch.setattr(actions, "execute", execute)
+    service._test_actions = actions
     view = service.stop_task(s.id, _actor(), base_version=base, client_action_id="stop")
     assert str(view.run_status) == expected
     assert view.canvas_read_only is not editable
     if outcome != "cancelled":
-        service._read_task_dsl_fn = lambda *_: ({"graph": {}}, "revision")
+        service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph()), "revision")
         with pytest.raises(ConflictError, match="settled"):
             service.resume_task(s.id, _actor(), base_version=view.version, client_action_id="resume")
 
 
-def test_resume_preserves_goal_inputs_checkpoint_and_passes_complete_dsl_to_cognition(service, repo, enqueued):
-    from types import SimpleNamespace
-
+def test_resume_preserves_goal_inputs_checkpoint_and_passes_complete_dsl_to_cognition(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[Enqueued]
+) -> None:
     from services.dify_builder.agent.llm import invoke_text
     from services.dify_builder.task_controls import ExecutionFence, execution_scope
 
@@ -223,7 +280,7 @@ def test_resume_preserves_goal_inputs_checkpoint_and_passes_complete_dsl_to_cogn
     fc.test_input_ref = "old-input"
     fc.effect_confirmation = {"http": "old-consent"}
     base = repo.compare_and_advance(s.id, 1, s.current_state, fc, [])
-    dsl = {
+    dsl: Graph = {
         "graph": {"nodes": [{"id": "model", "data": {"model": {"name": "new-model"}}}]},
         "features": {"file_upload": {"enabled": True}},
         "environment_variables": [{"name": "region", "value": "new-region"}],
@@ -238,12 +295,14 @@ def test_resume_preserves_goal_inputs_checkpoint_and_passes_complete_dsl_to_cogn
     assert fresh.retained_test_input_ref == "old-input"
     assert fresh.test_input_ref == ""
     assert fresh.effect_confirmation == {}
-    prompts = []
+    prompts: list[PromptMessage] = []
 
     class Model:
-        def invoke_llm(self, **kwargs):
-            prompts.extend(kwargs["prompt_messages"])
-            return SimpleNamespace(message=SimpleNamespace(get_text_content=lambda: "ok"))
+        def invoke_llm(self, *, prompt_messages: Sequence[PromptMessage], **_kwargs: object) -> LLMResult:
+            prompts.extend(prompt_messages)
+            return LLMResult(
+                model="capture", message=AssistantPromptMessage(content="ok"), usage=LLMUsage.empty_usage()
+            )
 
     with execution_scope(ExecutionFence(s.id, 1, lambda: None, fresh.task_control["dsl"])):
         invoke_text(Model(), system="system", user="continue")
@@ -251,11 +310,12 @@ def test_resume_preserves_goal_inputs_checkpoint_and_passes_complete_dsl_to_cogn
     assert enqueued[0][1].execution_generation == 1
 
 
-def test_pending_stop_get_reconciles_terminal_evidence_without_cancelling_again(service, repo):
+def test_pending_stop_get_reconciles_terminal_evidence_without_cancelling_again(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from uuid import uuid4
 
     from models.dify_builder import DifyBuilderExecutionRequest
-    from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 
     s = seed(repo)
     _, fc = repo.get_session(s.id)
@@ -289,17 +349,19 @@ def test_pending_stop_get_reconciles_terminal_evidence_without_cancelling_again(
         outcome=None,
         evidence_refs=(),
     )
-    calls = []
+    calls: list[str] = []
 
-    class Actions:
-        def current(self, **_kwargs):
-            return current
+    def read_current(**_kwargs: object) -> NativeTestPublicReceipt:
+        return current
 
-        def execute(self, **_kwargs):
-            calls.append("cancel")
-            return current
+    def execute(**_kwargs: object) -> NativeTestPublicReceipt:
+        calls.append("cancel")
+        return current
 
-    service._test_actions = Actions()
+    actions = BuilderTestActions(repo._session_factory, lambda *_: pytest.fail("unexpected command factory"))
+    monkeypatch.setattr(actions, "current", read_current)
+    monkeypatch.setattr(actions, "execute", execute)
+    service._test_actions = actions
     stopped = service.stop_task(s.id, _actor(), base_version=base, client_action_id="stop")
     assert str(stopped.run_status) == "processing"
     current = current.model_copy(update={"status": "terminal", "outcome": "cancelled"})
@@ -311,7 +373,9 @@ def test_pending_stop_get_reconciles_terminal_evidence_without_cancelling_again(
     assert history.data == []
 
 
-def test_resume_rejects_autosave_between_dsl_read_and_reservation(service, repo):
+def test_resume_rejects_autosave_between_dsl_read_and_reservation(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     import json
 
     from models.workflow import Workflow
@@ -336,11 +400,12 @@ def test_resume_rejects_autosave_between_dsl_read_and_reservation(service, repo)
         binding = draft_binding(workflow)
     stopped = service.stop_task(s.id, _actor(), base_version=1, client_action_id="stop")
 
-    def read_then_autosave(*_args):
+    def read_then_autosave(*_args: object) -> tuple[Graph, str]:
         with repo._session_factory() as sql, sql.begin():
             workflow = sql.get(Workflow, workflow_id)
+            assert workflow is not None
             workflow.features = '{"edited":true}'
-        return {"graph": {}, "_draft_binding": {"workflow_id": workflow_id, "digest": binding}}, "old"
+        return Graph(graph=Graph(), _draft_binding={"workflow_id": workflow_id, "digest": binding}), "old"
 
     service._read_task_dsl_fn = read_then_autosave
     with pytest.raises(ConflictError, match="synchronizing"):
@@ -348,7 +413,9 @@ def test_resume_rejects_autosave_between_dsl_read_and_reservation(service, repo)
     assert repo.get_session(s.id)[1].paused
 
 
-def test_retest_after_resume_mints_new_input_and_builder_run_without_consent(service, repo, enqueued):
+def test_retest_after_resume_mints_new_input_and_builder_run_without_consent(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[Enqueued]
+) -> None:
     from datetime import datetime
 
     from core.dify_builder.models import Action, Run, TestInput, Turn
@@ -394,14 +461,18 @@ def test_retest_after_resume_mints_new_input_and_builder_run_without_consent(ser
     assert port.run_draft_effect_confirmation == {}
 
 
-def test_stop_captures_late_old_generation_lease_and_resume_keeps_new_owner(service, repo, lock, monkeypatch):
+def test_stop_captures_late_old_generation_lease_and_resume_keeps_new_owner(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, lock: FakeSessionLock, monkeypatch: pytest.MonkeyPatch
+) -> None:
     s = seed(repo, PcState.BUILD_PLAN_APPROVAL)
     transact = repo.control_transaction
-    old_owner = None
+    old_owner: str | None = None
     inject = True
 
-    def transaction(session_id, change):
-        def late_acquire(sql, session, fc):
+    def transaction(
+        session_id: str, change: Callable[[SqlSession, DomainRow, DifyBuilderContext], bool]
+    ) -> tuple[Session, DifyBuilderContext]:
+        def late_acquire(sql: SqlSession, session: DomainRow, fc: DifyBuilderContext) -> bool:
             nonlocal inject, old_owner
             if inject:
                 inject = False
@@ -413,20 +484,24 @@ def test_stop_captures_late_old_generation_lease_and_resume_keeps_new_owner(serv
     monkeypatch.setattr(repo, "control_transaction", transaction)
     stopped = service.stop_task(s.id, _actor(), base_version=1, client_action_id="stop")
     assert not lock.exists(s.id)
-    service._read_task_dsl_fn = lambda *_: ({"graph": {}}, "current")
+    service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph()), "current")
     service.resume_task(s.id, _actor(), base_version=stopped.version, client_action_id="resume")
     owner = lock.current_owner(s.id)
+    assert owner is not None
     assert owner.startswith("g1:")
+    assert old_owner is not None
     lock.release(s.id, old_owner)
     assert lock.current_owner(s.id) == owner
 
 
-def test_stale_queued_action_cannot_bind_to_new_resumed_generation(service, repo):
+def test_stale_queued_action_cannot_bind_to_new_resumed_generation(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     from core.dify_builder.models import Action
 
     s = seed(repo, PcState.BUILD_PLAN_APPROVAL)
     stopped = service.stop_task(s.id, _actor(), base_version=1, client_action_id="stop")
-    service._read_task_dsl_fn = lambda *_: ({"graph": {}}, "current")
+    service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph()), "current")
     service.resume_task(s.id, _actor(), base_version=stopped.version, client_action_id="resume")
     action = Action(kind="approve_repair", base_version=1)
     with pytest.raises(ConflictError):
@@ -434,7 +509,9 @@ def test_stale_queued_action_cannot_bind_to_new_resumed_generation(service, repo
     assert action.execution_generation == 0
 
 
-def test_actual_action_stream_closes_on_stop_of_blocked_command(service, repo, monkeypatch):
+def test_actual_action_stream_closes_on_stop_of_blocked_command(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import json
 
     from core.dify_builder.models import Action
@@ -446,11 +523,12 @@ def test_actual_action_stream_closes_on_stop_of_blocked_command(service, repo, m
     class Subscription:
         closed = False
 
-        def receive(self, **_kwargs):
+        def receive(self, timeout: float | None = 0.1) -> bytes | None:
+            del timeout
             service.stop_task(s.id, _actor(), base_version=1, client_action_id="stop-active")
             return json.dumps({"kind": "native_state_changed", "session_id": s.id}).encode()
 
-        def close(self):
+        def close(self) -> None:
             self.closed = True
 
     sub = Subscription()
@@ -463,10 +541,11 @@ def test_actual_action_stream_closes_on_stop_of_blocked_command(service, repo, m
     assert sub.closed
 
 
-def test_actual_wired_command_stream_reads_after_request_context_teardown(repo, monkeypatch):
-    from types import SimpleNamespace
-
+def test_actual_wired_command_stream_reads_after_request_context_teardown(
+    repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from flask import Flask, current_app
+    from flask_sqlalchemy import SQLAlchemy
 
     from core.dify_builder.models import Action
     from services.dify_builder import wiring
@@ -476,20 +555,24 @@ def test_actual_wired_command_stream_reads_after_request_context_teardown(repo, 
     app = Flask("task-control-stream")
 
     class Subscription:
-        def receive(self, **_kwargs):
+        def receive(self, timeout: float | None = 0.1) -> bytes | None:
+            del timeout
             return None
 
-        def close(self):
+        def close(self) -> None:
             pass
 
     lock = FakeSessionLock()
-    monkeypatch.setattr(wiring, "db", SimpleNamespace(engine=repo._session_factory.kw["bind"]))
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
+    database = SQLAlchemy(app)
+    monkeypatch.setattr(wiring, "db", database)
+    monkeypatch.setattr(wiring, "SqlDifyBuilderRepository", lambda _: repo)
     monkeypatch.setattr(wiring, "session_lock", lock)
     monkeypatch.setattr(wiring, "_enqueue", lambda *_: None)
     monkeypatch.setattr(wiring, "_build_test_actions", lambda: None)
 
-    def read_revision(*_args):
-        assert current_app._get_current_object() is app
+    def read_revision(*_args: object) -> str:
+        assert current_app.app_context().app is app
         return app.name
 
     monkeypatch.setattr(wiring, "_authorize_app", read_revision)
@@ -508,14 +591,16 @@ def test_actual_wired_command_stream_reads_after_request_context_teardown(repo, 
     assert "command_finished" in frames[-1]
 
 
-def test_legacy_flag_only_pause_resumes_through_dsl_owner(service, repo, enqueued):
+def test_legacy_flag_only_pause_resumes_through_dsl_owner(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[Enqueued]
+) -> None:
     from core.dify_builder.models import Action
 
     s = seed(repo, PcState.BUILD_REVIEW)
     _, fc = repo.get_session(s.id)
     fc.paused = True
     base = repo.compare_and_advance(s.id, 1, s.current_state, fc, [])
-    dsl = {"graph": {"nodes": []}, "features": {"edited": True}}
+    dsl: Graph = {"graph": {"nodes": []}, "features": {"edited": True}}
     service._read_task_dsl_fn = lambda *_: (dsl, "edited")
     view = service.submit_action(s.id, _actor(), Action(kind="resume", base_version=base))
     assert str(view.run_status) == "processing"
@@ -526,7 +611,9 @@ def test_legacy_flag_only_pause_resumes_through_dsl_owner(service, repo, enqueue
     assert enqueued[0][1].kind == "task_continue"
 
 
-def test_direct_native_admission_rejects_stopped_task_without_worker_context(service, repo):
+def test_direct_native_admission_rejects_stopped_task_without_worker_context(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     from services.dify_builder.task_controls import lock_task_admission
 
     s = seed(repo)
@@ -535,7 +622,9 @@ def test_direct_native_admission_rejects_stopped_task_without_worker_context(ser
         lock_task_admission(sql, s.id)
 
 
-def test_resume_response_receipt_cannot_invalidate_running_worker_cas(tmp_path, monkeypatch):
+def test_resume_response_receipt_cannot_invalidate_running_worker_cas(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from dataclasses import asdict
     from threading import Event, Thread
 
@@ -546,11 +635,10 @@ def test_resume_response_receipt_cannot_invalidate_running_worker_cas(tmp_path, 
     from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
     from models.base import Base
     from services.dify_builder.agent.llm import invoke_text
-    from services.dify_builder.application.runner import StepResult
     from services.dify_builder.repository import SqlDifyBuilderRepository
     from services.dify_builder.service import DifyBuilderService
     from tasks import dify_builder_advance_task as task
-    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+    from tests.unit_tests.core.dify_builder.fakes import StubAgent
     from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
 
     engine = create_engine(f"sqlite:///{tmp_path / 'resume-race.db'}")
@@ -558,20 +646,22 @@ def test_resume_response_receipt_cannot_invalidate_running_worker_cas(tmp_path, 
     repository = SqlDifyBuilderRepository(sessionmaker(engine, expire_on_commit=False))
     lock = FakeSessionLock()
     entered, release = Event(), Event()
-    workers = []
-    failures = []
-    port = FakeBuildDifyPort()
-    port.read_task_dsl = lambda *_: ({"graph": port.graph}, port.hash)
+    workers: list[Thread] = []
+    failures: list[BaseException] = []
+    port = WorkflowServiceDifyPort()
+    monkeypatch.setattr(port, "read_task_dsl", lambda *_: (Graph(graph=Graph()), "current"))
+    monkeypatch.setattr(port, "get_app_mode", lambda *_: "workflow")
+    monkeypatch.setattr(port, "read_graph", lambda *_: (Graph(nodes=[], edges=[]), "current"))
 
     class Model:
-        def invoke_llm(self, **_kwargs):
+        def invoke_llm(self, **_kwargs: object) -> LLMResult:
             entered.set()
             assert release.wait(5)
             return LLMResult(
                 model="barrier", message=AssistantPromptMessage(content="continued"), usage=LLMUsage.empty_usage()
             )
 
-    def cognition(_env, _turn, _session, context):
+    def cognition(_env: Env, _turn: Turn, _session: Session, context: DifyBuilderContext) -> StepResult:
         invoke_text(Model(), system="continue", user="continue")
         return StepResult(next=PcState.BUILD_REVIEW, context=context)
 
@@ -588,8 +678,8 @@ def test_resume_response_receipt_cannot_invalidate_running_worker_cas(tmp_path, 
     monkeypatch.setattr(task.progress_bus, "publish_native_change", lambda *_: None)
     monkeypatch.setattr(task.progress_snapshot, "save", lambda *_args, **_kwargs: None)
 
-    def enqueue(session_id, action, actor, token):
-        def work():
+    def enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
+        def work() -> None:
             try:
                 task.advance_session(session_id, asdict(action), asdict(actor), token)
             except BaseException as error:
@@ -623,8 +713,12 @@ def test_resume_response_receipt_cannot_invalidate_running_worker_cas(tmp_path, 
 
 @pytest.mark.parametrize("revised_goal", [False, True])
 def test_resume_opening_edit_goal_continues_cognition_without_resubmission(
-    service, repo, enqueued, monkeypatch, revised_goal
-):
+    service: DifyBuilderService,
+    repo: SqlDifyBuilderRepository,
+    enqueued: list[Enqueued],
+    monkeypatch: pytest.MonkeyPatch,
+    revised_goal: bool,
+) -> None:
     from datetime import datetime
 
     from core.dify_builder.models import Action, Turn
@@ -633,7 +727,7 @@ def test_resume_opening_edit_goal_continues_cognition_without_resubmission(
     from services.dify_builder.task_control_service import claim_continuation
     from tests.unit_tests.core.dify_builder.fakes import FakeEditDifyPort, StubAgent
 
-    service._read_task_dsl_fn = lambda *_: ({"graph": {}}, "current")
+    service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph()), "current")
     original_goal = "Preserve Start and End while updating the calculation"
     session_id, opening = service._prepare_edit_session(APP_ID, _actor(), original_goal)
     expected_goal = "Use Unicode-aware calculation and preserve bindings" if revised_goal else original_goal
@@ -654,10 +748,10 @@ def test_resume_opening_edit_goal_continues_cognition_without_resubmission(
     service.resume_task(session_id, _actor(), base_version=stopped.version, client_action_id="resume-opening")
     continuation = enqueued[-1][1]
     claim_continuation(repo, session_id, _actor(), continuation)
-    observed = []
+    observed: list[tuple[str, Graph]] = []
     agent = StubAgent()
 
-    def analyze(goal, graph, **_kwargs):
+    def analyze(goal: str, graph: Graph, **_kwargs: object) -> Graph:
         observed.append((goal, graph))
         return {"fields": [], "values": {}, "target_node_ids": []}
 
@@ -674,7 +768,9 @@ def test_resume_opening_edit_goal_continues_cognition_without_resubmission(
     assert observed == [(expected_goal, port.graph)]
 
 
-def test_busy_edit_goal_is_not_persisted_without_dispatch_admission(service, repo, lock):
+def test_busy_edit_goal_is_not_persisted_without_dispatch_admission(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, lock: FakeSessionLock
+) -> None:
     from core.dify_builder.errors import BusyError
     from core.dify_builder.models import Action
 
