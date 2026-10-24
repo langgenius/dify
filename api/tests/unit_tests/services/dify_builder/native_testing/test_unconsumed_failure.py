@@ -1,8 +1,10 @@
 """An actual failed continuation closes only its unconsumed shell permit."""
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
+import pytest_mock
 from dify_agent.protocol.schemas import RunEventsResponse
 from sqlalchemy import Table, select
 from sqlalchemy.orm import Session as SqlSession
@@ -49,7 +51,9 @@ def _present[T](value: T | None) -> T:
 
 
 @pytest.fixture
-def stranded(retrying_decline: CompletedOwner, monkeypatch: pytest.MonkeyPatch) -> CompletedOwner:
+def stranded(
+    retrying_decline: CompletedOwner, mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
+) -> CompletedOwner:
     owner = retrying_decline
     with owner.factory() as sql:
         checkpoint = sql.get(NativePayloadObject, "checkpoint")
@@ -99,8 +103,12 @@ def stranded(retrying_decline: CompletedOwner, monkeypatch: pytest.MonkeyPatch) 
         payload={"intent": effect.model_dump(mode="json")},
     )
     original_load = state_store.storage.load
-    monkeypatch.setattr(
-        state_store.storage, "load", lambda key: raw.encode() if key == "intent-storage" else original_load(key)
+    # Keep all nested patches of this shared reader on the inherited mocker
+    # owner, so reverse teardown cannot restore an already-stopped mock.
+    mocker.patch.object(
+        state_store.storage,
+        "load",
+        side_effect=lambda key: raw.encode() if key == "intent-storage" else original_load(key),
     )
     with owner.factory.begin() as sql:
         for model in (NativeEffectAttempt, NativeEffectDispatchClaim, NativeEffectOutcome, NativePendingAction):
@@ -618,3 +626,28 @@ def test_optional_terminal_proof_failure_does_not_block_original_resume_settleme
             assert source.state == "unknown"
             assert _row(sql.get(NativeEffectOperation, "file-operation"), NativeEffectOperation).state == "claimed"
             assert sql.scalars(select(NativeEffectOutcome)).all() == []
+
+
+def test_stranded_fixture_restores_real_storage_after_patch_owner_teardown(
+    stranded: CompletedOwner,
+    mocker: pytest_mock.MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Real inherited fixtures must not restore a stopped mock after teardown."""
+    from extensions.ext_storage import Storage
+    from extensions.storage.opendal_storage import OpenDALStorage
+
+    assert stranded.commands is not None
+    assert state_store.storage.load("intent-storage")
+    # This is the actual order of the two pytest owners in the affected shard.
+    # Calling both finalizers is idempotent when pytest later completes teardown.
+    mocker.stopall()
+    monkeypatch.undo()
+    assert getattr(state_store.storage.load, "__func__", None) is Storage.load
+    with pytest.MonkeyPatch.context() as storage_patch:
+        storage_patch.setattr(
+            state_store.storage, "storage_runner", OpenDALStorage(scheme="fs", root=str(tmp_path)), raising=False
+        )
+        state_store.storage.save("after-fixture.txt", b"subsequent real storage read")
+        assert state_store.storage.load("after-fixture.txt") == b"subsequent real storage read"
