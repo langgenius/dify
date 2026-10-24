@@ -560,3 +560,55 @@ def test_failure_settlement_refuses_ambiguous_or_changed_evidence(
         assert _row(sql.get(NativeDispatch, "source"), NativeDispatch).state == "unknown"
         assert not any(outcome.outcome == "not_dispatched" for outcome in sql.scalars(select(NativeEffectOutcome)))
         assert _row(sql.get(NativeEffectOperation, "prior-skill"), NativeEffectOperation).result_ref == "skill-result"
+
+
+@pytest.mark.parametrize("effect", ["completed", "consumed", "unconsumed"])
+def test_optional_terminal_proof_failure_does_not_block_original_resume_settlement(
+    stranded: CompletedOwner, monkeypatch: pytest.MonkeyPatch, effect: str
+) -> None:
+    from tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion import _context
+
+    owner = stranded
+    with owner.factory.begin() as sql:
+        state = _row(sql.scalar(select(NativeInvocationState)), NativeInvocationState)
+        state.state = "running"
+        _row(sql.scalar(select(NativeTestInvocation)), NativeTestInvocation).active = True
+        _row(sql.get(NativeDispatch, "source"), NativeDispatch).state = "claimed"
+        if effect == "completed":
+            operation = _row(sql.get(NativeEffectOperation, "file-operation"), NativeEffectOperation)
+            operation.state, operation.result_ref = "completed", "completed-result"
+        elif effect == "consumed":
+            sql.add(
+                NativeEffectDispatchClaim(
+                    tenant_id=owner.case.actor.tenant_id,
+                    request_id=owner.request_id,
+                    invocation_id=owner.ref.invocation_id,
+                    operation_id="file-operation",
+                    attempt_id="file-attempt",
+                    claimed_at=datetime(2026, 1, 1),
+                )
+            )
+    monkeypatch.setattr(owner.commands.api.store, "load_context", lambda **_: _context(owner, generation=2))
+
+    def unavailable(*_args: object, **_kwargs: object) -> RunEventsResponse:
+        if effect == "completed":
+            pytest.fail("Already completed effects must not require optional backend history")
+        raise LookupError("runtime events no longer retained")
+
+    monkeypatch.setattr(owner.commands.backend.client, "get_events_sync", unavailable)
+    owner.commands.finish_resume(ref=owner.ref, generation=2, dispatch_id="source")
+    with owner.factory() as sql:
+        request = _row(sql.get(DifyBuilderExecutionRequest, owner.request_id), DifyBuilderExecutionRequest)
+        state = _row(sql.scalar(select(NativeInvocationState)), NativeInvocationState)
+        source = _row(sql.get(NativeDispatch, "source"), NativeDispatch)
+        if effect == "completed":
+            assert request.state == "sealed"
+            assert state.state == "completed"
+            assert source.state == "completed"
+            assert owner.repo.get_run(owner.verify_id).status == "failed"
+        else:
+            assert request.state == "running"
+            assert state.state == "unknown"
+            assert source.state == "unknown"
+            assert _row(sql.get(NativeEffectOperation, "file-operation"), NativeEffectOperation).state == "claimed"
+            assert sql.scalars(select(NativeEffectOutcome)).all() == []
