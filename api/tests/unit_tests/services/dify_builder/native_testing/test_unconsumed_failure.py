@@ -644,7 +644,7 @@ def test_stranded_fixture_restores_real_storage_after_patch_owner_teardown(
     # Calling both finalizers is idempotent when pytest later completes teardown.
     mocker.stopall()
     monkeypatch.undo()
-    assert getattr(state_store.storage.load, "__func__", None) is Storage.load
+    assert state_store.storage.load == Storage.load.__get__(state_store.storage, Storage)
     with pytest.MonkeyPatch.context() as storage_patch:
         storage_patch.setattr(
             state_store.storage, "storage_runner", OpenDALStorage(scheme="fs", root=str(tmp_path)), raising=False
