@@ -527,6 +527,7 @@ jobs:
           FILES += ["api/tests/unit_tests/services/dify_builder/test_native_live_stream.py"]
           # ENG-1321: independent task controls must run with the execution owners.
           FILES += ["api/tests/unit_tests/services/dify_builder/test_task_controls.py"]
+          FILES += ["api/tests/unit_tests/services/dify_builder/test_stream_frames.py"]
           SELECTED_GUARDS = [
               "api/tests/unit_tests/core/dify_builder/test_handlers_edit.py::test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate",
               "api/tests/unit_tests/controllers/console/app/test_workflow.py::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
@@ -1879,7 +1880,20 @@ jobs:
               'test_resume_opening_edit_goal_continues_cognition_without_resubmission': 2,
               'test_busy_edit_goal_is_not_persisted_without_dispatch_admission': 1,
           }
-          a4_expected['tests.unit_tests.services.dify_builder.test_stream_frames']['test_observation_uses_original_command_only_for_task_stop'] = 4
+          a4_expected['tests.unit_tests.services.dify_builder.test_stream_frames'] = {'test_stream_advance_frames_closes_subscription_when_never_iterated': 1,
+           'test_stream_advance_frames_relays_typed_envelopes_until_command_finished': 1,
+           'test_stream_advance_frames_turns_invalid_progress_into_typed_terminal_error': 3,
+           'test_stream_advance_frames_normalizes_internal_error_event': 1,
+           'test_native_workflow_terminal_event_does_not_end_the_builder_command': 3,
+           'test_ignored_workflow_event_is_not_sent_to_the_browser': 1,
+           'test_stream_advance_frames_settled_call_yields_minimal_command_handshake_only': 1,
+           'test_stream_advance_frames_can_emit_public_command_finished_for_settled_message': 1,
+           'test_reconnect_stream_skips_handshake_and_emits_settled_state': 1,
+           'test_reconnect_recovers_settled_state_when_terminal_notification_is_missing': 3,
+           'test_reconnect_keeps_watching_while_the_worker_is_active': 1,
+           'test_stream_advance_frames_emits_synchronously_persisted_items_individually': 1,
+           'test_reconnect_restores_progress_before_live_events_without_replaying_committed_progress': 2,
+           'test_observation_uses_original_command_only_for_task_stop': 4}
           task_control_transport_expected = {
               'test_task_control_routes_delegate_fixed_operation_and_return_session_json': 2,
               'test_task_control_invalid_payload_never_calls_service': 20,
