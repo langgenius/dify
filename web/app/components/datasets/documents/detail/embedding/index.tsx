@@ -4,8 +4,6 @@ import type { RETRIEVE_METHOD } from '@/types/app'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { useDocumentContext } from '../context'
 import { ProgressBar, RuleDetail, SegmentProgress, StatusHeader } from './components'
@@ -26,7 +24,6 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
   indexingType,
   retrievalMethod,
 }) => {
-  const { t } = useTranslation(['common'])
   const contextDatasetId = useDocumentContext((s) => s.datasetId)
   const contextDocumentId = useDocumentContext((s) => s.documentId)
   const datasetId = dstId ?? contextDatasetId
@@ -51,30 +48,20 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
       enabled: !!documentId,
     }),
   )
-  const handleSuccess = useCallback(() => {
-    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-  }, [t])
-  const handleError = useCallback(() => {
-    toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-  }, [t])
   const pauseMutation = usePauseIndexing({
     datasetId,
     documentId,
     onSuccess: () => {
-      handleSuccess()
       resetStatus()
     },
-    onError: handleError,
   })
   const resumeMutation = useResumeIndexing({
     datasetId,
     documentId,
     onSuccess: () => {
-      handleSuccess()
       refetch()
       detailUpdate()
     },
-    onError: handleError,
   })
   const handlePause = useCallback(() => {
     pauseMutation.mutate()
