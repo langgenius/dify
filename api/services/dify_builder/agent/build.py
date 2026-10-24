@@ -642,7 +642,8 @@ def discover_resources(
         "ready resource that fits equally well. Readiness proves configuration metadata only, not live availability. "
         "Never infer provider retirement from a service error or an empty catalogue; "
         "lifecycle needs explicit evidence. "
-        "Use ONLY listed ids. Reply with ONLY JSON: "
+        "Use ONLY listed ids. Copy each complete id verbatim, including every Agent snapshot/digest suffix; "
+        "do not shorten an Agent id to its UUID. Reply with ONLY JSON: "
         '{"resource_ids": ["<id>", ...], "selection_reasons": {"<selected Agent id>": "<reason>"}}.'
     )
     if inv.agent_source_error:
@@ -661,18 +662,37 @@ def discover_resources(
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
         selected = data.get("resource_ids")
-        chosen_ids = (
-            list(dict.fromkeys(rid for rid in selected if isinstance(rid, str) and rid in catalog))
-            if isinstance(selected, list)
-            else []
-        )
+        selected_sources: dict[str, str] = {}
+        for raw_id in selected if isinstance(selected, list) else []:
+            if not isinstance(raw_id, str):
+                continue
+            rid = raw_id
+            if rid not in catalog:
+                # Recover only an exact short Agent UUID against this current,
+                # actor-scoped catalog. Never strip a stale full selection's
+                # snapshot/digest or search by name for a replacement.
+                if not re.fullmatch(r"agent:[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}", raw_id):
+                    continue
+                matches = [
+                    candidate
+                    for candidate, (kind, _) in catalog.items()
+                    if kind == "agent" and candidate.startswith(raw_id + ":") and candidate.count(":") == 3
+                ]
+                if len(matches) != 1:
+                    continue
+                rid = matches[0]
+            # Keep the rationale attached to the selected spelling. An explicit
+            # full identity takes precedence if both spellings were selected.
+            if rid not in selected_sources or raw_id == rid:
+                selected_sources[rid] = raw_id
+        chosen_ids = list(selected_sources)
         reasons = data.get("selection_reasons")
         agent_reasons = {
             rid: " ".join(reason.split())
             for rid in chosen_ids
             if catalog[rid][0] == "agent"
             and isinstance(reasons, dict)
-            and isinstance(reason := reasons.get(rid), str)
+            and isinstance(reason := reasons.get(selected_sources[rid]), str)
             and 0 < len(reason.strip()) <= 360
         }
         if any(catalog[rid][0] == "agent" and rid not in agent_reasons for rid in chosen_ids):
