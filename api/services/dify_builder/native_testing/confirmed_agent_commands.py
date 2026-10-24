@@ -21,8 +21,13 @@ from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import (
     NativeContinuation,
     NativeDispatch,
+    NativeEffectAttempt,
+    NativeEffectDispatchClaim,
     NativeEffectOperation,
+    NativeEffectOutcome,
+    NativeInvocationState,
     NativeTestInvocation,
+    NativeTestScope,
 )
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
@@ -33,8 +38,13 @@ from services.dify_builder.native_testing.api_service import NativeTestApiServic
 from services.dify_builder.native_testing.confirmed_agent_continuation import PROFILE, ConfirmedAgentContinuation
 from services.dify_builder.native_testing.private_reads import validate_private_read
 from services.dify_builder.native_testing.repository import utc_now
-from services.dify_builder.native_testing.state_store import invocation_state, owner_query
-from services.dify_builder.native_testing.transitions import quarantine_unknown
+from services.dify_builder.native_testing.state_store import (
+    NativeExecutionStateStore,
+    ObjectReceipt,
+    invocation_state,
+    owner_query,
+)
+from services.dify_builder.native_testing.transitions import quarantine_unknown, validate_pending_history
 
 logger = logging.getLogger(__name__)
 
@@ -245,6 +255,16 @@ class ConfirmedAgentCommands:
                 # A physical cleanup receipt cannot close the ordinary pause.
                 # Confirmed callers need the separately saved logical stop.
                 return receipt.model_copy(update={"status": "running", "outcome": None})
+        if (
+            receipt.cancellation is None
+            and receipt.native_status == "failed"
+            and receipt.outcome not in {"succeeded", "failed"}
+        ):
+            try:
+                if self._settle_unconsumed_failure(ref=ref):
+                    receipt = self.api.get(actor=actor, session_id=session_id, request_id=request_id)
+            except Exception:
+                logger.warning("Confirmed Agent failed effect settlement remains unproven")
         if receipt.status == "terminal" and receipt.outcome in {"succeeded", "failed"}:
             self._complete_builder(ref=ref)
         if receipt.status == "waiting":
@@ -696,7 +716,7 @@ class ConfirmedAgentCommands:
             raise BuilderExecutionPolicyError("native_agent_continuation_unknown") from None
         return protected
 
-    def _continuation_observed(self, *, protected, require_terminal=False):
+    def _continuation_observed(self, *, protected, require_terminal=False, failed_resume=False):
         from dify_agent.protocol.schemas import (
             RunCancelledEvent,
             RunEventsResponse,
@@ -713,7 +733,7 @@ class ConfirmedAgentCommands:
         try:
             status = self.backend.client.get_run_sync(run_id)
             status = RunStatusResponse.model_validate(status.model_dump(mode="json"))
-            if status.run_id != run_id:
+            if status.run_id != run_id or failed_resume and status.status != "failed":
                 raise ValueError("owner")
             cursor, resumed, terminal = wait.backend_wait_event_id, False, None
             for _ in range(16):
@@ -722,10 +742,14 @@ class ConfirmedAgentCommands:
                 _validate_event_page(page=page, run_id=run_id, after=cursor)
                 for event in page.events:
                     if isinstance(event, RunResumedEvent):
+                        if failed_resume and terminal is not None:
+                            raise ValueError("resumed after terminal")
                         if event.data.generation != wait.agent_generation + 1:
                             raise ValueError("generation")
                         resumed = True
                     if isinstance(event, (RunSucceededEvent, RunFailedEvent, RunCancelledEvent)):
+                        if failed_resume and not resumed:
+                            raise ValueError("terminal before expected resume")
                         terminal = {
                             RunSucceededEvent: "succeeded",
                             RunFailedEvent: "failed",
@@ -733,7 +757,7 @@ class ConfirmedAgentCommands:
                         }[type(event)]
                 if not page.events or page.next_cursor is None:
                     if require_terminal:
-                        if terminal is not None and terminal == status.status:
+                        if terminal is not None and terminal == status.status and (not failed_resume or resumed):
                             return True
                         raise ValueError("terminal event unavailable")
                     if resumed or terminal is not None and terminal == status.status:
@@ -781,7 +805,256 @@ class ConfirmedAgentCommands:
                 logger.warning("Confirmed Agent cancellation acknowledgement unavailable")
         return self.get(actor=actor, session_id=session_id, request_id=request_id)
 
+    def _failed_resume_source(self, session, *, ref, generation=None, dispatch_id=None):
+        """SQL facts only. This lane supports one terminal Agent producer, never a subtree."""
+        from services.dify_builder.native_testing.confirmed_agent_cancellation import ConfirmedAgentCancellation
+        from services.dify_builder.native_testing.confirmed_agent_completion import _native_run_id, _request
+
+        request = _request(session, actor=self.actor, ref=ref)
+        if request is None or request.state not in {"running", "waiting"}:
+            return None
+        proof_owner = ConfirmedAgentCancellation(self)
+        native_id = _native_run_id(request)
+        native, _ = proof_owner._rows(session, request, native_id, lock=False)
+        if native is None or native.status != "failed":
+            return None
+        states = session.scalars(
+            select(NativeInvocationState).where(NativeInvocationState.request_id == ref.request_id)
+        ).all()
+        invocations = session.scalars(
+            select(NativeTestInvocation).where(NativeTestInvocation.request_id == ref.request_id)
+        ).all()
+        if len(states) != 1 or len(invocations) != 1:
+            return None
+        state, invocation = states[0], invocations[0]
+        scope = session.get(NativeTestScope, ref.request_id)
+        if (
+            scope is None
+            or scope.cancelled
+            or scope.tenant_id != request.tenant_id
+            or state.tenant_id != request.tenant_id
+            or invocation.tenant_id != request.tenant_id
+            or state.invocation_id != ref.invocation_id
+            or invocation.invocation_id != ref.invocation_id
+            or state.parent_invocation_id is not None
+            or state.state not in {"running", "unknown"}
+            or state.wait_reason is not None
+            or state.generation <= 0
+            or state.generation != scope.generation
+            or generation is not None
+            and state.generation != generation
+        ):
+            return None
+        sources = proof_owner._sources(session, ref)
+        selected = [source for source in sources if source[3] == state.generation]
+        if len(selected) != 1:
+            return None
+        source = selected[0]
+        if (
+            source[1:3] != (request.tenant_id, ref.invocation_id)
+            or source[4] not in {"claimed", "unknown"}
+            or source[5] != state.checkpoint_id
+            or dispatch_id is not None
+            and source[0] != dispatch_id
+            or any(
+                row[1:3] != source[1:3] or row[3] >= state.generation or row[4] != "completed"
+                for row in sources
+                if row != source
+            )
+        ):
+            return None
+        validate_pending_history(
+            session, ref=ref, tenant_id=request.tenant_id, state=state, dispatch_states=("claimed", "unknown")
+        )
+        continuation = session.scalar(
+            owner_query(NativeContinuation, ref, request.tenant_id).where(
+                NativeContinuation.checkpoint_id == state.checkpoint_id
+            )
+        )
+        if continuation is None or continuation.generation != state.generation - 1:
+            return None
+        return (
+            native_id,
+            state.generation,
+            source[0],
+            state.checkpoint_id,
+            continuation.payload_digest,
+            proof_owner._objects(session, ref, request.tenant_id),
+            sources,
+            canonical_digest(invocation.bindings),
+            state.context_object_id,
+            tuple(state.pending_ids),
+        )
+
+    def _settle_unconsumed_failure(self, *, ref, generation=None, dispatch_id=None):
+        """Observe a failed exact child, then fence an unused shell permit under C02's root lock.
+
+        Receipt reads work for an inactive quarantine, without broadening active
+        execution readers. No queue publication, permit refund or recovery occurs.
+        Any physical claim, recorded outcome or result leaves uncertainty intact.
+        """
+        from runtime_contracts.builder.native.agent_contracts import AgentNodeAssociation, AgentProtectedState
+        from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload
+
+        validate_private_read(self.loader, ref)
+        with self.loader.session_factory() as session:
+            proof = self._failed_resume_source(session, ref=ref, generation=generation, dispatch_id=dispatch_id)
+        if proof is None:
+            return False
+        native_id, selected_generation, source_id, checkpoint_id, checkpoint_digest, objects, *_ = proof
+        receipts = {value["id"]: ObjectReceipt(**value) for value in objects}
+        checkpoint = receipts.get(checkpoint_id)
+        if checkpoint is None or checkpoint.kind != "checkpoint" or checkpoint.payload_digest != checkpoint_digest:
+            return False
+        payload = NativeCheckpointPayload.model_validate(self.api.store._read_object(checkpoint))
+        if (
+            payload.native_run_id != native_id
+            or payload.generation != selected_generation - 1
+            or len(payload.agent_associations) != 1
+            or payload.child_refs
+        ):
+            return False
+        wait = payload.agent_associations[0]
+        receipt = receipts.get(wait.association_object_ref)
+        if (
+            wait.parent_node.ref != ref
+            or receipt is None
+            or receipt.kind != "result"
+            or receipt.logical_key != NativeExecutionStateStore._agent_key("agent-bind", wait.parent_node)
+        ):
+            return False
+        association = AgentNodeAssociation.model_validate(self.api.store._read_object(receipt))
+        if association.parent_node != wait.parent_node or association.workflow_native_run_id != native_id:
+            return False
+        protected = AgentProtectedState(
+            association_object_ref=receipt.id,
+            association=association,
+            wait=wait,
+            checkpoint=None,
+            terminal_result_ref=None,
+            terminal_result=None,
+        )
+        if not self._continuation_observed(protected=protected, require_terminal=True, failed_resume=True):
+            return False
+        with self.loader.locked(ref=ref, settlement=True) as (session, owned, scope):
+            if (
+                self._failed_resume_source(session, ref=ref, generation=selected_generation, dispatch_id=source_id)
+                != proof
+            ):
+                return False
+            nodes = session.scalars(
+                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.workflow_run_id == native_id)
+            ).all()
+            parent = wait.parent_node
+            if not any(
+                node.id == parent.execution_id
+                and node.status == "failed"
+                and node.tenant_id == owned.tenant_id
+                and node.app_id == owned.app_id
+                and node.workflow_id == owned.workflow_id
+                for node in nodes
+            ) or any(node.status not in {"failed", "succeeded", "skipped"} for node in nodes):
+                return False
+            operations = session.scalars(
+                select(NativeEffectOperation).where(NativeEffectOperation.request_id == ref.request_id)
+            ).all()
+            candidates = [
+                operation
+                for operation in operations
+                if operation.state not in {"completed", "failed", "not_dispatched"}
+            ]
+            if len(candidates) != 1 or any(
+                (operation.tenant_id, operation.invocation_id) != (owned.tenant_id, ref.invocation_id)
+                for operation in operations
+            ):
+                return False
+            operation = candidates[0]
+            pending = validate_pending_history(
+                session,
+                ref=ref,
+                tenant_id=owned.tenant_id,
+                state=invocation_state(session, ref, owned.tenant_id),
+                dispatch_states=("claimed", "unknown"),
+            )
+            if len(pending) != 1 or pending[0].category != "approval" or pending[0].operation_id != operation.id:
+                return False
+            if operation.state != "claimed" or operation.result_ref is not None:
+                return False
+            attempts = session.scalars(
+                owner_query(NativeEffectAttempt, ref, owned.tenant_id).where(
+                    NativeEffectAttempt.operation_id == operation.id
+                )
+            ).all()
+            if len(attempts) != 1 or attempts[0].execution_id != parent.execution_id:
+                return False
+            attempt = attempts[0]
+            if (
+                session.scalar(
+                    select(NativeEffectDispatchClaim.id).where(NativeEffectDispatchClaim.operation_id == operation.id)
+                )
+                is not None
+                or session.scalar(
+                    select(NativeEffectOutcome.id).where(NativeEffectOutcome.operation_id == operation.id)
+                )
+                is not None
+            ):
+                return False
+            if any(value["logical_key"] == operation.operation_digest for value in objects):
+                return False
+            # SQL binding proves this is the existing shell owner whose I/O
+            # cannot precede a committed NativeEffectDispatchClaim.
+            descriptor = owned.bindings.get("_agent_operations_v1", {}).get(operation.operation_digest, {})
+            binding = owned.bindings.get(operation.operation_digest, {})
+            if (
+                descriptor.get("parent_node") != parent.model_dump(mode="json")
+                or descriptor.get("workflow_native_run_id") != native_id
+                or descriptor.get("shell_boundary")
+                not in {
+                    "bootstrap",
+                    "config_pull",
+                    "shell_run",
+                    "shell_wait",
+                    "shell_input",
+                    "shell_interrupt",
+                    "file_upload",
+                }
+                or binding.get("kind") not in {"shell", "bootstrap"}
+                or binding.get("invocation_digest") != attempt.invocation_digest
+                or binding.get("intent_digest") != operation.intent_digest
+                or attempt.invocation_digest != operation.intent_digest
+                or binding.get("execution_id") != parent.execution_id
+            ):
+                return False
+            # All checks precede the write. Changing claimed to not_dispatched
+            # closes the very predicate claim_dispatch rechecks under this lock.
+            self.api.authorization._append_outcome(session, owned, operation, attempt, "not_dispatched", None)
+            session.flush()
+            outcome = NativeWorkflowOutcome(
+                status="completed",
+                ref=ref,
+                native_run_id=native_id,
+                checkpoint_ref=None,
+                pending_operation_ids=(),
+                reason_code=None,
+                wait_reason=None,
+                native_status="failed",
+                output_result_ref=None,
+            )
+            self.api.lifecycle.finalize_dispatch_locked(
+                session=session,
+                owned=owned,
+                scope=scope,
+                dispatch_id=source_id,
+                generation=selected_generation,
+                outcome=outcome,
+                terminal_failure=True,
+            )
+        return True
+
     def finish_resume(self, *, ref, generation, dispatch_id):
+        if self._settle_unconsumed_failure(ref=ref, generation=generation, dispatch_id=dispatch_id):
+            self._complete_builder(ref=ref)
+            return
         try:
             context = self.api.store.load_context(ref=ref)
         except BuilderExecutionPolicyError as error:
