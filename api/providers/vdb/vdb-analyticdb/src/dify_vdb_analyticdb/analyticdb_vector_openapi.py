@@ -34,7 +34,7 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict[str, Any]):
+    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
         if not values["access_key_id"]:
             raise ValueError("config ANALYTICDB_KEY_ID is required")
         if not values["access_key_secret"]:
@@ -62,7 +62,7 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
 
 
 class AnalyticdbVectorOpenAPI:
-    def __init__(self, collection_name: str, config: AnalyticdbVectorOpenAPIConfig):
+    def __init__(self, collection_name: str, config: AnalyticdbVectorOpenAPIConfig) -> None:
         try:
             from alibabacloud_gpdb20160503.client import Client  # type: ignore
             from alibabacloud_tea_openapi import models as open_api_models  # type: ignore
@@ -74,7 +74,7 @@ class AnalyticdbVectorOpenAPI:
         self._client = Client(self._client_config)
         self._initialize()
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         cache_key = f"vector_initialize_{self.config.instance_id}"
         lock_name = f"{cache_key}_lock"
         with redis_client.lock(lock_name, timeout=20):
@@ -85,7 +85,7 @@ class AnalyticdbVectorOpenAPI:
             self._create_namespace_if_not_exists()
             redis_client.set(database_exist_cache_key, 1, ex=3600)
 
-    def _initialize_vector_database(self):
+    def _initialize_vector_database(self) -> None:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models  # type: ignore
 
         request = gpdb_20160503_models.InitVectorDatabaseRequest(
@@ -96,7 +96,7 @@ class AnalyticdbVectorOpenAPI:
         )
         self._client.init_vector_database(request)
 
-    def _create_namespace_if_not_exists(self):
+    def _create_namespace_if_not_exists(self) -> None:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
         from Tea.exceptions import TeaException  # type: ignore
 
@@ -123,7 +123,7 @@ class AnalyticdbVectorOpenAPI:
             else:
                 raise ValueError(f"failed to create namespace {self.config.namespace}: {e}") from e
 
-    def create_collection_if_not_exists(self, embedding_dimension: int):
+    def create_collection_if_not_exists(self, embedding_dimension: int) -> None:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
         from Tea.exceptions import TeaException
 
@@ -163,7 +163,7 @@ class AnalyticdbVectorOpenAPI:
                     raise ValueError(f"failed to create collection {self._collection_name}: {e}") from e
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 
         rows: list[gpdb_20160503_models.UpsertCollectionDataRequestRows] = []
@@ -207,7 +207,7 @@ class AnalyticdbVectorOpenAPI:
         response = self._client.query_collection_data(request)
         return len(response.body.matches.match) > 0
 
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 
         ids_str = ",".join(f"'{id}'" for id in ids)
@@ -222,7 +222,7 @@ class AnalyticdbVectorOpenAPI:
         )
         self._client.delete_collection_data(request)
 
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 
         request = gpdb_20160503_models.DeleteCollectionDataRequest(
@@ -308,7 +308,7 @@ class AnalyticdbVectorOpenAPI:
         documents = sorted(documents, key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True)
         return documents
 
-    def delete(self):
+    def delete(self) -> None:
         try:
             from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 

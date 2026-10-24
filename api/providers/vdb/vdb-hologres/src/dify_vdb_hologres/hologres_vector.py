@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from typing import Any, cast, override
+from typing import TYPE_CHECKING, Any, cast, override
 
 import holo_search_sdk as holo  # type: ignore
 from holo_search_sdk.types import BaseQuantizationType, DistanceType, TokenizerType
@@ -18,6 +18,9 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+if TYPE_CHECKING:
+    from holo_search_sdk.client import Client
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +47,7 @@ class HologresVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict[str, Any]):
+    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
         if not values.get("host"):
             raise ValueError("config HOLOGRES_HOST is required")
         if not values.get("database"):
@@ -63,13 +66,13 @@ class HologresVector(BaseVector):
     Supports semantic search (vector), full-text search, and hybrid search.
     """
 
-    def __init__(self, collection_name: str, config: HologresVectorConfig):
+    def __init__(self, collection_name: str, config: HologresVectorConfig) -> None:
         super().__init__(collection_name)
         self._config = config
         self._client = self._init_client(config)
         self.table_name = f"embedding_{collection_name}".lower()
 
-    def _init_client(self, config: HologresVectorConfig):
+    def _init_client(self, config: HologresVectorConfig) -> "Client":
         """Initialize and return a holo-search-sdk client."""
         client = holo.connect(
             host=config.host,
@@ -87,14 +90,14 @@ class HologresVector(BaseVector):
         return VectorType.HOLOGRES
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         """Create collection table with vector and full-text indexes, then add texts."""
         dimension = len(embeddings[0])
         self._create_collection(dimension)
         self.add_texts(texts, embeddings)
 
     @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         """Add texts with embeddings to the collection using batch upsert."""
         if not documents:
             return []
@@ -159,7 +162,7 @@ class HologresVector(BaseVector):
         return None
 
     @override
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         """Delete documents by their doc_id list."""
         if not ids:
             return
@@ -174,7 +177,7 @@ class HologresVector(BaseVector):
         )
 
     @override
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         """Delete documents by metadata field key and value."""
         if not self._client.check_table_exist(self.table_name):
             return
@@ -283,12 +286,12 @@ class HologresVector(BaseVector):
         return docs
 
     @override
-    def delete(self):
+    def delete(self) -> None:
         """Delete the entire collection table."""
         if self._client.check_table_exist(self.table_name):
             self._client.drop_table(self.table_name)
 
-    def _create_collection(self, dimension: int):
+    def _create_collection(self, dimension: int) -> None:
         """Create the collection table with vector and full-text indexes."""
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):

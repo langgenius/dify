@@ -2,11 +2,13 @@ import hashlib
 import json
 import logging
 import uuid
+from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any, Literal, cast, override
 
 import mysql.connector
 from mysql.connector import Error as MySQLError
+from mysql.connector.pooling import MySQLConnectionPool
 from pydantic import BaseModel, model_validator
 from sqlalchemy.orm import Session
 
@@ -36,7 +38,7 @@ class AlibabaCloudMySQLVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict[str, Any]):
+    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
         if not values.get("host"):
             raise ValueError("config ALIBABACLOUD_MYSQL_HOST is required")
         if not values.get("port"):
@@ -73,7 +75,7 @@ CREATE FULLTEXT INDEX idx_{index_hash}_text ON {table_name} (text) WITH PARSER n
 
 
 class AlibabaCloudMySQLVector(BaseVector):
-    def __init__(self, collection_name: str, config: AlibabaCloudMySQLVectorConfig):
+    def __init__(self, collection_name: str, config: AlibabaCloudMySQLVectorConfig) -> None:
         super().__init__(collection_name)
         self.pool = self._create_connection_pool(config)
         self.table_name = collection_name.lower()
@@ -86,7 +88,7 @@ class AlibabaCloudMySQLVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.ALIBABACLOUD_MYSQL
 
-    def _create_connection_pool(self, config: AlibabaCloudMySQLVectorConfig):
+    def _create_connection_pool(self, config: AlibabaCloudMySQLVectorConfig) -> MySQLConnectionPool:
         # Create connection pool using mysql-connector-python pooling
         pool_config: dict[str, Any] = {
             "host": config.host,
@@ -102,7 +104,7 @@ class AlibabaCloudMySQLVector(BaseVector):
         }
         return mysql.connector.pooling.MySQLConnectionPool(**pool_config)
 
-    def _check_vector_support(self):
+    def _check_vector_support(self) -> None:
         """Check if the MySQL server supports vector operations."""
         try:
             with self._get_cursor() as cur:
@@ -128,7 +130,7 @@ class AlibabaCloudMySQLVector(BaseVector):
             raise e
 
     @contextmanager
-    def _get_cursor(self):
+    def _get_cursor(self) -> Generator[Any]:
         conn = self.pool.get_connection()
         cur = conn.cursor(dictionary=True)
         try:
@@ -138,13 +140,13 @@ class AlibabaCloudMySQLVector(BaseVector):
             conn.close()
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         dimension = len(embeddings[0])
         self._create_collection(dimension)
         return self.add_texts(texts, embeddings)
 
     @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         values = []
         pks = []
         for i, doc in enumerate(documents):
@@ -189,7 +191,7 @@ class AlibabaCloudMySQLVector(BaseVector):
         return docs
 
     @override
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         # Avoiding crashes caused by performing delete operations on empty lists
         if not ids:
             return
@@ -206,7 +208,7 @@ class AlibabaCloudMySQLVector(BaseVector):
                     raise e
 
     @override
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         with self._get_cursor() as cur:
             cur.execute(
                 f"DELETE FROM {self.table_name} WHERE JSON_UNQUOTE(JSON_EXTRACT(meta, %s)) = %s", (f"$.{key}", value)
@@ -226,7 +228,7 @@ class AlibabaCloudMySQLVector(BaseVector):
 
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
-        params = []
+        params: list[str] = []
 
         if document_ids_filter:
             placeholders = ",".join(["%s"] * len(document_ids_filter))
@@ -287,7 +289,7 @@ class AlibabaCloudMySQLVector(BaseVector):
 
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
-        params = []
+        params: list[str] = []
 
         if document_ids_filter:
             placeholders = ",".join(["%s"] * len(document_ids_filter))
@@ -315,11 +317,11 @@ class AlibabaCloudMySQLVector(BaseVector):
         return docs
 
     @override
-    def delete(self):
+    def delete(self) -> None:
         with self._get_cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
 
-    def _create_collection(self, dimension: int):
+    def _create_collection(self, dimension: int) -> None:
         collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
         lock_name = f"{collection_exist_cache_key}_lock"
         with redis_client.lock(lock_name, timeout=20):

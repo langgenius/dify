@@ -49,7 +49,7 @@ class MilvusConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict[str, Any]):
+    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
         """
         Validate the configuration values.
         Raises ValueError if required fields are missing.
@@ -83,7 +83,7 @@ class MilvusVector(BaseVector):
     Milvus vector storage implementation.
     """
 
-    def __init__(self, collection_name: str, config: MilvusConfig):
+    def __init__(self, collection_name: str, config: MilvusConfig) -> None:
         super().__init__(collection_name)
         self._client_config = config
         self._client = self._init_client(config)
@@ -93,7 +93,7 @@ class MilvusVector(BaseVector):
             self._load_collection_fields()
         self._hybrid_search_enabled = self._check_hybrid_search_support()  # Check if hybrid search is supported
 
-    def _load_collection_fields(self, fields: list[str] | None = None):
+    def _load_collection_fields(self, fields: list[str] | None = None) -> None:
         if fields is None:
             # Load collection fields from remote server
             collection_info = cast(dict[str, Any], self._client.describe_collection(self._collection_name))
@@ -129,7 +129,7 @@ class MilvusVector(BaseVector):
         return VectorType.MILVUS
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         """
         Create a collection and add texts with embeddings.
         """
@@ -139,7 +139,7 @@ class MilvusVector(BaseVector):
         self.add_texts(texts, embeddings)
 
     @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         """
         Add texts and their embeddings to the collection.
         """
@@ -169,7 +169,7 @@ class MilvusVector(BaseVector):
         return pks
 
     @override
-    def get_ids_by_metadata_field(self, key: str, value: str):
+    def get_ids_by_metadata_field(self, key: str, value: str) -> list[str] | None:
         """
         Get document IDs by metadata field key and value.
         """
@@ -182,7 +182,7 @@ class MilvusVector(BaseVector):
             return None
 
     @override
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         """
         Delete documents by metadata field key and value.
         """
@@ -192,7 +192,7 @@ class MilvusVector(BaseVector):
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
     @override
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         """
         Delete documents by their IDs.
         """
@@ -205,7 +205,7 @@ class MilvusVector(BaseVector):
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
     @override
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete the entire collection.
         """
@@ -321,7 +321,7 @@ class MilvusVector(BaseVector):
         embeddings: list[list[float]],
         metadatas: list[dict[str, Any]] | None = None,
         index_params: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Create a new collection in Milvus with the specified schema and index parameters.
         """

@@ -26,7 +26,7 @@ class ElasticSearchJaVector(ElasticSearchVector):
         embeddings: list[list[float]],
         metadatas: list[dict[Any, Any]] | None = None,
         index_params: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"

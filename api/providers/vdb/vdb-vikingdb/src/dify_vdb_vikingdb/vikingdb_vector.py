@@ -1,5 +1,5 @@
 import json
-from typing import Any, override
+from typing import Any, cast, override
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -40,7 +40,7 @@ class VikingDBConfig(BaseModel):
 
 
 class VikingDBVector(BaseVector):
-    def __init__(self, collection_name: str, group_id: str, config: VikingDBConfig):
+    def __init__(self, collection_name: str, group_id: str, config: VikingDBConfig) -> None:
         super().__init__(collection_name)
         self._group_id = group_id
         self._client_config = config
@@ -69,7 +69,7 @@ class VikingDBVector(BaseVector):
             return False
         return True
 
-    def _create_collection(self, dimension: int):
+    def _create_collection(self, dimension: int) -> None:
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
@@ -112,13 +112,13 @@ class VikingDBVector(BaseVector):
         return VectorType.VIKINGDB
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         dimension = len(embeddings[0])
         self._create_collection(dimension)
         self.add_texts(texts, embeddings, **kwargs)
 
     @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         page_contents = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
         docs = []
@@ -151,11 +151,11 @@ class VikingDBVector(BaseVector):
         return not_exists_str not in docs.fields.get("message", "")
 
     @override
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         self._client.get_collection(self._collection_name).delete_data(ids)
 
     @override
-    def get_ids_by_metadata_field(self, key: str, value: str):
+    def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
         # Note: Metadata field value is an dict, but vikingdb field
         # not support json type
         results = self._client.get_index(self._collection_name, self._index_name).search(
@@ -177,7 +177,7 @@ class VikingDBVector(BaseVector):
         return ids
 
     @override
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         ids = self.get_ids_by_metadata_field(key, value)
         self.delete_by_ids(ids)
 
@@ -193,14 +193,14 @@ class VikingDBVector(BaseVector):
             docs = [doc for doc in docs if doc.metadata.get("document_id") in document_ids_filter]
         return docs
 
-    def _get_search_res(self, results, score_threshold) -> list[Document]:
+    def _get_search_res(self, results: list[Data], score_threshold: float) -> list[Document]:
         if len(results) == 0:
             return []
 
         docs = []
         for result in results:
             metadata = parse_metadata_json(result.fields.get(vdb_Field.METADATA_KEY))
-            if result.score >= score_threshold:
+            if cast(float, result.score) >= score_threshold:
                 metadata["score"] = result.score
                 doc = Document(page_content=result.fields.get(vdb_Field.CONTENT_KEY), metadata=metadata)
                 docs.append(doc)
@@ -212,7 +212,7 @@ class VikingDBVector(BaseVector):
         return []
 
     @override
-    def delete(self):
+    def delete(self) -> None:
         if self._has_index():
             self._client.drop_index(self._collection_name, self._index_name)
         if self._has_collection():

@@ -10,6 +10,7 @@ import json
 import logging
 import threading
 import uuid
+from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from typing import TYPE_CHECKING, Any, override
 
@@ -191,7 +192,7 @@ class IrisVector(BaseVector):
         return VectorType.IRIS
 
     @contextmanager
-    def _get_cursor(self):
+    def _get_cursor(self) -> Generator[Any]:
         """Context manager for database cursor with connection pooling."""
         conn = self.pool.get_connection()
         cursor = conn.cursor()
@@ -206,7 +207,7 @@ class IrisVector(BaseVector):
             self.pool.return_connection(conn)
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         dimension = len(embeddings[0])
         self._create_collection(dimension)
         return self.add_texts(texts, embeddings)

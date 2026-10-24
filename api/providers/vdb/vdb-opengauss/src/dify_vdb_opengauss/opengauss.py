@@ -1,10 +1,12 @@
 import json
 import uuid
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import psycopg2.extras
 import psycopg2.pool
+from psycopg2.pool import SimpleConnectionPool
 from pydantic import BaseModel, model_validator
 from sqlalchemy.orm import Session
 
@@ -16,6 +18,9 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+if TYPE_CHECKING:
+    from psycopg2.extensions import cursor
 
 
 class OpenGaussConfig(BaseModel):
@@ -30,7 +35,7 @@ class OpenGaussConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict[str, Any]):
+    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
         if not values["host"]:
             raise ValueError("config OPENGAUSS_HOST is required")
         if not values["port"]:
@@ -71,7 +76,7 @@ USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 
 
 class OpenGauss(BaseVector):
-    def __init__(self, collection_name: str, config: OpenGaussConfig):
+    def __init__(self, collection_name: str, config: OpenGaussConfig) -> None:
         super().__init__(collection_name)
         self.pool = self._create_connection_pool(config)
         self.table_name = f"embedding_{collection_name}"
@@ -81,7 +86,7 @@ class OpenGauss(BaseVector):
     def get_type(self) -> str:
         return VectorType.OPENGAUSS
 
-    def _create_connection_pool(self, config: OpenGaussConfig):
+    def _create_connection_pool(self, config: OpenGaussConfig) -> SimpleConnectionPool:
         return psycopg2.pool.SimpleConnectionPool(
             config.min_connection,
             config.max_connection,
@@ -93,7 +98,7 @@ class OpenGauss(BaseVector):
         )
 
     @contextmanager
-    def _get_cursor(self):
+    def _get_cursor(self) -> Generator["cursor"]:
         conn = self.pool.getconn()
         cur = conn.cursor()
         try:
@@ -104,13 +109,13 @@ class OpenGauss(BaseVector):
             self.pool.putconn(conn)
 
     @override
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: Any) -> None:
         dimension = len(embeddings[0])
         self._create_collection(dimension)
         self.add_texts(texts, embeddings)
         self._create_index(dimension)
 
-    def _create_index(self, dimension: int):
+    def _create_index(self, dimension: int) -> None:
         index_cache_key = f"vector_index_{self._collection_name}"
         lock_name = f"{index_cache_key}_lock"
         with redis_client.lock(lock_name, timeout=60):
@@ -129,7 +134,7 @@ class OpenGauss(BaseVector):
             redis_client.set(index_exist_cache_key, 1, ex=3600)
 
     @override
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: Any) -> list[str]:
         values = []
         pks = []
         for i, doc in enumerate(documents):
@@ -165,7 +170,7 @@ class OpenGauss(BaseVector):
         return docs
 
     @override
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         # Avoiding crashes caused by performing delete operations on empty lists in certain scenarios
         # Scenario 1: extract a document fails, resulting in a table not being created.
         # Then clicking the retry button triggers a delete operation on an empty list.
@@ -175,7 +180,7 @@ class OpenGauss(BaseVector):
             cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
 
     @override
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE meta->>%s = %s", (key, value))
 
@@ -232,11 +237,11 @@ class OpenGauss(BaseVector):
         return docs
 
     @override
-    def delete(self):
+    def delete(self) -> None:
         with self._get_cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
 
-    def _create_collection(self, dimension: int):
+    def _create_collection(self, dimension: int) -> None:
         cache_key = f"vector_indexing_{self._collection_name}"
         lock_name = f"{cache_key}_lock"
         with redis_client.lock(lock_name, timeout=20):
