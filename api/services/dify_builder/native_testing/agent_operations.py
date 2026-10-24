@@ -16,6 +16,7 @@ from pydantic import Field, JsonValue, StrictBool
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
+from configs import dify_config
 from core.dify_builder.models import Actor
 from core.tools.entities.tool_entities import ToolProviderType
 from extensions.ext_database import db
@@ -1400,7 +1401,12 @@ def admit_confirmed_agent_execution(
                     generation=0,
                     task_approved=True,
                     cancelled=False,
-                    expires_at=utc_now() + timedelta(minutes=15),
+                    # One admission wall-clock cap, including confirmation waits.
+                    # Reconnect and existing admissions never renew this scope.
+                    expires_at=utc_now()
+                    + timedelta(
+                        seconds=min(dify_config.APP_MAX_EXECUTION_TIME, dify_config.WORKFLOW_MAX_EXECUTION_TIME)
+                    ),
                     max_calls=limits["calls"],
                     max_dispatches=limits["dispatches"],
                     max_cost_units=limits["cost_units"],
