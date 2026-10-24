@@ -1,3 +1,4 @@
+import hashlib
 import io
 from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
@@ -157,7 +158,7 @@ def test_extract_calls_extract_images(monkeypatch: pytest.MonkeyPatch) -> None:
             extractor = pe.PdfExtractor(file_path="test.pdf", tenant_id=TENANT_ID, user_id=USER_ID)
 
             # Mock _extract_images to return a known string
-            monkeypatch.setattr(extractor, "_extract_images", lambda _page: "![image](img_url)")
+            monkeypatch.setattr(extractor, "_extract_images", lambda _page, _page_number=0: "![image](img_url)")
 
             documents = list(extractor.extract())
 
@@ -210,3 +211,86 @@ def test_extract_images_skipped_without_tenant_context() -> None:
 
     assert result == ""
     mock_page.get_objects.assert_not_called()
+
+
+def _mock_image_page(image_bytes: bytes) -> MagicMock:
+    mock_page = MagicMock()
+    mock_image_obj = MagicMock()
+
+    def mock_extract(buf: io.BytesIO, **_kwargs: object) -> None:
+        buf.write(image_bytes)
+
+    mock_image_obj.extract.side_effect = mock_extract
+    mock_page.get_objects.return_value = [mock_image_obj]
+    return mock_page
+
+
+@pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
+def test_extract_images_with_source_file_id_reuses_existing_assets(
+    mock_dependencies: _Dependencies,
+) -> None:
+    """Repeated extraction of the same source must not accumulate duplicate assets."""
+    source_file_id = str(uuid4())
+    jpeg_bytes = b"\xff\xd8\xff some jpeg"
+    mock_page = _mock_image_page(jpeg_bytes)
+
+    with patch("pypdfium2.raw", autospec=True) as mock_raw:
+        mock_raw.FPDF_PAGEOBJ_IMAGE = 1
+
+        first_extractor = pe.PdfExtractor(
+            file_path="test.pdf",
+            tenant_id=TENANT_ID,
+            user_id=USER_ID,
+            source_file_id=source_file_id,
+        )
+        first_link = first_extractor._extract_images(mock_page, 2)
+
+        second_extractor = pe.PdfExtractor(
+            file_path="test.pdf",
+            tenant_id=TENANT_ID,
+            user_id=USER_ID,
+            source_file_id=source_file_id,
+        )
+        second_link = second_extractor._extract_images(mock_page, 2)
+
+    rows = mock_dependencies.session.scalars(select(UploadFile)).all()
+    assert len(rows) == 1
+    upload_file = rows[0]
+    assert f"![image](http://files.local/files/{upload_file.id}/file-preview)" == first_link
+    assert first_link == second_link
+    # Storage must be written exactly once across both extractions.
+    assert mock_dependencies.storage.saves == [(upload_file.key, jpeg_bytes)]
+    # Deterministic key: tenant/source/page/index/content-hash.
+    expected_hash = hashlib.sha256(jpeg_bytes).hexdigest()
+    assert upload_file.key == (f"image_files/{TENANT_ID}/{source_file_id}/p2_i0_{expected_hash}.jpg")
+    assert upload_file.hash == expected_hash
+
+
+@pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
+def test_extract_images_with_source_file_id_keeps_unique_keys_per_page(
+    mock_dependencies: _Dependencies,
+) -> None:
+    """The same image content on different pages maps to distinct assets."""
+    source_file_id = str(uuid4())
+    jpeg_bytes = b"\xff\xd8\xff some jpeg"
+
+    with patch("pypdfium2.raw", autospec=True) as mock_raw:
+        mock_raw.FPDF_PAGEOBJ_IMAGE = 1
+
+        extractor = pe.PdfExtractor(
+            file_path="test.pdf",
+            tenant_id=TENANT_ID,
+            user_id=USER_ID,
+            source_file_id=source_file_id,
+        )
+        first_link = extractor._extract_images(_mock_image_page(jpeg_bytes), 0)
+        second_link = extractor._extract_images(_mock_image_page(jpeg_bytes), 1)
+
+    rows = mock_dependencies.session.scalars(select(UploadFile)).all()
+    assert len(rows) == 2
+    assert {row.key for row in rows} == {
+        f"image_files/{TENANT_ID}/{source_file_id}/p0_i0_{hashlib.sha256(jpeg_bytes).hexdigest()}.jpg",
+        f"image_files/{TENANT_ID}/{source_file_id}/p1_i0_{hashlib.sha256(jpeg_bytes).hexdigest()}.jpg",
+    }
+    assert first_link != second_link
+    assert len(mock_dependencies.storage.saves) == 2
