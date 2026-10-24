@@ -38,6 +38,7 @@ jobs:
         run: |
           cd docker
           cp .env.example .env
+          echo "SANDBOX_API_KEY=$(openssl rand -hex 32)" >> .env
           DIFY_API_IMAGE_TAG="$DIFY_VERSION" \
           DIFY_WEB_IMAGE_TAG="$DIFY_VERSION" \
           docker compose up -d api worker web db redis
