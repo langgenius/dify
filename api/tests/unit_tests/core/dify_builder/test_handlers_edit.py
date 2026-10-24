@@ -781,17 +781,7 @@ def test_reverted_retry_returns_to_plan_approval_with_fresh_checkpoint() -> None
 
 
 def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id() -> None:
-    """Both re-plan/revert escape paths (review's continue_adjusting and
-    reverted's retry_after_revert) must clear fc.test_input_ref and
-    fc.verify_run_id -- otherwise the retest after a rebuild reuses the
-    FIRST build's stale mock inputs instead of regenerating fresh
-    schema-shaped ones. They must also reset the repair breaker's counter
-    (fc.repair_attempts / fc.last_repair_error), same as Build's parallel
-    handlers -- otherwise a count left over from an earlier repair cycle
-    survives into the next adjustment and the breaker can trip one round
-    early. The unknown-outcome count resets too: after the cap (2) ->
-    keep_draft -> review -> re_fix, the new cycle's FIRST unknown outcome
-    would otherwise re-cap with "twice in a row"."""
+    """Replanning refreshes test input while retaining same-task convergence."""
     from services.dify_builder.application.handlers_edit import handle_reverted, handle_review
 
     env, repo = _new_env()
@@ -811,8 +801,8 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id() -> None:
     assert res.context is not None
     assert res.context.test_input_ref == ""
     assert res.context.verify_run_id == ""
-    assert res.context.repair_attempts == 0
-    assert res.context.last_repair_error == ""
+    assert res.context.repair_attempts == 1
+    assert res.context.last_repair_error == "llm|boom"
     assert res.context.unknown_outcome_count == 0
 
     env2, repo2 = _new_env()
@@ -831,8 +821,8 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id() -> None:
     assert res2.context is not None
     assert res2.context.test_input_ref == ""
     assert res2.context.verify_run_id == ""
-    assert res2.context.repair_attempts == 0
-    assert res2.context.last_repair_error == ""
+    assert res2.context.repair_attempts == 1
+    assert res2.context.last_repair_error == "llm|boom"
     assert res2.context.unknown_outcome_count == 0
 
 
@@ -2271,3 +2261,217 @@ def test_approved_edit_uses_the_presented_plan_snapshot_for_generation() -> None
         )
     ]
     assert result.next == PcState.EDIT_PLAN_APPROVAL
+
+
+def test_disconnected_tool_failure_surfaces_current_checklist_and_bounded_exit() -> None:
+    from core.dify_builder.models import Run, TestInput
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
+    from services.dify_builder.application.handlers_fix import MAX_REPEATED_REPAIRS
+    from services.dify_builder.application.recovery import apply_recovery_action
+    from services.dify_builder.service import _actions_for
+
+    dify = FakeEditDifyPort()
+    dify.graph["nodes"].append(
+        {"id": "tool-draft", "data": {"type": "tool", "title": "Unbound action", "provider_id": "", "tool_name": ""}}
+    )
+    dify.run_draft = lambda *_a, **_k: Run(
+        kind="verify",
+        immutable=True,
+        status="failed",
+        error="node tool-draft is unconnected",
+        verification=successful_verification(dify),
+    )
+    env, repo = _new_env(dify=dify, agent=StubAgent())
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(
+        goal_text="Connect existing Tool", test_input_ref="ti-1", edit_target_node_ids=["tool-draft"]
+    )
+    result: StepResult | None = None
+    text = ""
+    for _ in range(MAX_REPEATED_REPAIRS + 1):
+        result = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
+        text = english_text(next(i for i in result.items if i.kind == "assistant_turn").payload["reply_text"])
+        assert "tool-draft" in text
+        assert "Unbound action" in text
+        assert "incoming" in text
+        assert "outgoing" in text
+        assert "Tool action" in text
+        assert "parameters" in text
+        assert "untested" in text
+        if fc.repair_attempts < MAX_REPEATED_REPAIRS:
+            apply_recovery_action(dify, Turn(action=Action(kind="recovery_restart"), actor=_actor()), s, fc)
+            # Re-analysis selects the same orphan; recovery does not create a Task.
+            fc.edit_target_node_ids = ["tool-draft"]
+            fc.test_input_ref = "ti-1"
+    assert result is not None
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+    assert fc.staged_repair == []
+    assert "stopped retrying" in text
+    assert {a.id for a in _actions_for(PcState.EDIT_AWAIT_REPAIR, fc)} == {"keep_draft", "revert"}
+
+
+def test_same_goal_capability_reentry_preserves_repair_budget() -> None:
+    from services.dify_builder.application.handlers_edit import handle_capability_check
+
+    env, repo = _new_env()
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK, repair_attempts=3, last_repair_error="llm|boom")
+    stored, fc = repo.get_session(s.id)
+    result = handle_capability_check(
+        env, Turn(action=Action(kind="send_edit_goal", payload={"text": fc.goal_text}), actor=_actor()), stored, fc
+    )
+    assert result.context is not None
+    assert result.context.repair_attempts == 3
+    assert result.context.last_repair_error == "llm|boom"
+
+
+@pytest.mark.parametrize("corrected", [True, False])
+def test_connect_existing_form_selection_reaches_plan_and_real_intent_guard(corrected: bool) -> None:
+    import json
+
+    from services.dify_builder import graph_ops
+    from services.dify_builder.agent import edit
+    from services.dify_builder.application.handlers_edit import edit_registry
+    from tests.unit_tests.services.dify_builder.test_edit_cognition import _RecordingInstance
+
+    plan = WorkflowPlan(
+        "Connect existing Mark", "Receipt", "Marked receipt", ["Replace receipt→end with receipt→mark→end"]
+    )
+    config: Graph = {"title": "Mark", "template": "mark", "variables": []}
+    incomplete: Graph = {
+        "intents": [{"op": "set_node_config", "args": {"node_id": "mark", "path": "title", "value": "Mark"}}]
+    }
+    complete: Graph = {
+        "intents": [
+            {
+                "op": "insert_between",
+                "args": {
+                    "edge": {"source": "receipt", "target": "end"},
+                    "node_id": "mark",
+                    "node_type": "template-transform",
+                    "config": {},
+                    "reuse_existing": True,
+                },
+            }
+        ]
+    }
+    replies = [
+        json.dumps(incomplete),
+        '{"required_insertions":[1],"uncertain":false}',
+        json.dumps(complete if corrected else incomplete),
+    ]
+    if not corrected:
+        replies.append('{"required_insertions":[1],"uncertain":false}')
+    model = _RecordingInstance(replies)
+    seen: list[object] = []
+
+    class ConnectAgent(StubAgent):
+        @override
+        def analyze_impact(
+            self, goal_text: str, graph: Graph, *, reply_language: str | None = None
+        ) -> dict[str, object]:
+            return {
+                "fields": [
+                    {
+                        "key": "wiring",
+                        "label": "Wiring",
+                        "type": "select",
+                        "options": [
+                            {"value": "connect_existing", "label": "Connect existing node"},
+                            {"value": "keep_isolated", "label": "Keep isolated draft"},
+                        ],
+                    }
+                ],
+                "values": {"wiring": "keep_isolated"},
+                "target_node_ids": ["mark"],
+            }
+
+        @override
+        def propose_edit_plan(
+            self, edit_rules: dict[str, object], graph: Graph, *, reply_language: str | None = None
+        ) -> WorkflowPlan:
+            seen.append(dict(edit_rules))
+            return plan
+
+        @override
+        def build_edit_intents(
+            self,
+            edit_rules: dict[str, object],
+            graph: Graph,
+            *,
+            edit_target_node_ids: Sequence[str] = (),
+            last_edit_rejection: str | None = None,
+            approved_plan: WorkflowPlan | None = None,
+        ) -> list[MutationIntent]:
+            seen.append((dict(edit_rules), list(edit_target_node_ids), approved_plan))
+            return edit.build_edit_intents(
+                model, edit_rules, graph, edit_target_node_ids=edit_target_node_ids, approved_plan=approved_plan
+            )
+
+    dify = FakeEditDifyPort()
+    dify.graph = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "variables": []}},
+            {"id": "receipt", "data": {"type": "template-transform", "template": "hello", "variables": []}},
+            {"id": "end", "data": {"type": "end", "outputs": []}},
+        ],
+        "edges": [{"source": "start", "target": "receipt"}, {"source": "receipt", "target": "end"}],
+    }
+    dify.graph = graph_ops.filter_applicable(
+        dify.graph,
+        [
+            MutationIntent(
+                op="create_node", args={"node_id": "mark", "node_type": "template-transform", "config": config}
+            )
+        ],
+    ).graph
+    dify.graph["nodes"][-1].update({"annotation": {"note": "keep"}, "position": {"x": 777, "y": 333}})
+    before = dify.graph
+    env, repo = _new_env(dify=dify, agent=ConnectAgent())
+    session = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK)
+    runner = Runner(env, edit_registry())
+    out = runner.advance(
+        session.id,
+        Turn(
+            action=Action(
+                kind="send_edit_goal", payload={"text": "Connect existing Mark between Receipt and End"}, base_version=1
+            ),
+            actor=_actor(),
+        ),
+    )
+    _, context = repo.get_session(session.id)
+    field = next(field for field in context.form_fields if field["key"] == "wiring")
+    assert field["options"][0]["value"] == "connect_existing"
+    out = runner.advance(
+        session.id,
+        Turn(
+            action=Action(kind="submit_edit_rules", payload={"wiring": "connect_existing"}, base_version=out.version),
+            actor=_actor(),
+        ),
+    )
+    out = runner.advance(
+        session.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor())
+    )
+    assert seen == [
+        {"change": "Connect existing Mark between Receipt and End", "wiring": "connect_existing"},
+        ({"change": "Connect existing Mark between Receipt and End", "wiring": "connect_existing"}, ["mark"], plan),
+    ]
+    _, context = repo.get_session(session.id)
+    if corrected:
+        assert dify.graph["nodes"] == before["nodes"]
+        assert out.current_state == PcState.EDIT_APPLY_CHANGES
+        assert {(e["source"], e["target"]) for e in dify.graph["edges"]} == {
+            ("start", "receipt"),
+            ("receipt", "mark"),
+            ("mark", "end"),
+        }
+        assert context.change_set is not None
+        assert "− receipt → end" in context.change_set.diff
+        assert "＋ receipt → mark" in context.change_set.diff
+        assert "＋ mark → end" in context.change_set.diff
+    else:
+        assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+        assert dify.graph == before
+        assert dify.applied == []
+        assert context.change_set is None
+        assert "receipt" in context.last_edit_rejection
