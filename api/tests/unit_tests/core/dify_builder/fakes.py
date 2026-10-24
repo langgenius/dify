@@ -162,6 +162,16 @@ class InMemoryRepository(Repository):
             return copy.deepcopy(session), copy.deepcopy(self._contexts[id])
 
     @override
+    def is_task_active(self, session_id: str, expected_generation: int) -> bool:
+        with self._lock:
+            context = self._contexts.get(session_id)
+            return (
+                context is not None
+                and not context.paused
+                and int(context.task_control.get("generation", 0) or 0) == expected_generation
+            )
+
+    @override
     def get_session_at_version(self, session_id: str, version: int) -> tuple[Session, DifyBuilderContext]:
         with self._lock:
             snapshot = self._history.get((session_id, version))
