@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react'
-import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { onTestFinished } from 'vite-plus/test'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { AppSourceType, sendCompletionMessage } from '@/service/share'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createChatConfigFixture } from '@/test/fixtures/chat'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import TextGeneration from '../index'
 
 const { searchParams, acceptCSV } = vi.hoisted(() => ({
@@ -86,6 +88,11 @@ beforeEach(() => {
 })
 
 describe('TextGeneration', () => {
+  beforeEach(() => {
+    const stopGuard = guardUnexpectedFetch()
+    onTestFinished(stopGuard)
+  })
+
   it('shows loading until app metadata is ready', () => {
     renderGeneration({ ready: false })
     expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
@@ -155,13 +162,4 @@ describe('TextGeneration', () => {
     expect(await screen.findByText('Batch result for Alice')).toBeInTheDocument()
     expect(within(batch).getByRole('button', { name: 'share.generation.run' })).toBeEnabled()
   })
-})
-
-// Every exercised transport is mocked above; fail if a newly reached child makes a real request.
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected network request')))
-beforeEach(() => vi.stubGlobal('fetch', unexpectedFetch))
-afterEach(() => {
-  cleanup()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
 })

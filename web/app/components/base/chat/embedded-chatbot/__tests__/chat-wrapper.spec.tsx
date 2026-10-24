@@ -1,7 +1,8 @@
 import type { ChatItemInTree } from '../../types'
 import type { EmbeddedChatbotContextValue } from '../context'
-import { act, cleanup, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { onTestFinished } from 'vite-plus/test'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 // oxlint-disable-next-line no-restricted-imports -- Exercise the existing chat SSE transport at its network boundary.
@@ -20,6 +21,7 @@ import {
   createHumanInputFormFixture,
   createWorkflowProcessFixture,
 } from '@/test/fixtures/workflow-process'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ChatWrapper from '../chat-wrapper'
 import { EmbeddedChatbotContext } from '../context'
 
@@ -157,6 +159,11 @@ function confirmPaused() {
 }
 
 describe('Embedded chatbot orchestration', () => {
+  beforeEach(() => {
+    const stopGuard = guardUnexpectedFetch()
+    onTestFinished(stopGuard)
+  })
+
   it.each([
     [InputVarType.textInput, '', true],
     [InputVarType.textInput, 'Ada', false],
@@ -384,24 +391,30 @@ describe('Embedded chatbot orchestration', () => {
     expect(get).toHaveBeenCalledTimes(1)
   })
 
-  it('shows the welcome text when input collection is hidden', async () => {
-    renderSubject({
+  it('shows welcome when inputs hidden and hides it while responding', async () => {
+    const { user } = renderSubject({
+      newConversationInputs: { name: 'Ada' },
+      newConversationInputsRef: { current: { name: 'Ada' } },
       inputsForms: [
         { variable: 'name', label: 'Name', required: true, type: InputVarType.textInput },
       ],
       allInputsHidden: true,
       appParams: createChatConfigFixture({ opening_statement: 'Welcome to the app' }),
     })
-    expect(await screen.findByText('Welcome to the app')).toBeInTheDocument()
+    const welcome = await screen.findByText('Welcome to the app')
+    expect(welcome).toBeVisible()
     expect(screen.queryByRole('textbox', { name: 'Name' })).not.toBeInTheDocument()
-  })
-})
 
-// Every exercised transport is mocked above; fail if a newly reached child makes a real request.
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected network request')))
-beforeEach(() => vi.stubGlobal('fetch', unexpectedFetch))
-afterEach(() => {
-  cleanup()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
+    await user.type(screen.getByPlaceholderText('Ask the assistant'), 'hello world{Enter}')
+    act(() =>
+      post.mock.calls[0]![2].onData?.('In progress', true, {
+        messageId: 'response-0',
+        taskId: 'task-0',
+      }),
+    )
+    expect(screen.getByRole('button', { name: /stopResponding/ })).toBeVisible()
+    // The opening statement remains in chat, but the original welcome presentation is removed.
+    expect(welcome).not.toBeInTheDocument()
+    expect(screen.getByText('Welcome to the app')).toBeVisible()
+  })
 })
