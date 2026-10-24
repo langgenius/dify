@@ -2,7 +2,8 @@ import importlib
 import json
 import sys
 from collections import UserDict
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,14 +12,17 @@ from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
+if TYPE_CHECKING:
+    from dify_vdb_vikingdb.vikingdb_vector import VikingDBConfig
 
-def _build_fake_vikingdb_modules():
+
+def _build_fake_vikingdb_modules() -> dict[str, FakeModule]:
     volcengine = FakeModule("volcengine")
     volcengine.__path__ = []
     viking_db = FakeModule("volcengine.viking_db")
 
     class Data(UserDict):
-        def __init__(self, payload):
+        def __init__(self, payload: dict[str, object]) -> None:
             super().__init__(payload)
             self.fields = payload
 
@@ -37,26 +41,26 @@ def _build_fake_vikingdb_modules():
         Vector = "vector"
 
     class Field:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
 
     class VectorIndexParams:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
 
     class _Collection:
-        def __init__(self):
+        def __init__(self) -> None:
             self.upsert_data = MagicMock()
             self.fetch_data = MagicMock(return_value=None)
             self.delete_data = MagicMock()
 
     class _Index:
-        def __init__(self):
+        def __init__(self) -> None:
             self.search = MagicMock(return_value=[])
             self.search_by_vector = MagicMock(return_value=[])
 
     class VikingDBService:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
             self.create_collection = MagicMock()
             self.create_index = MagicMock()
@@ -80,7 +84,7 @@ def _build_fake_vikingdb_modules():
 
 
 @pytest.fixture
-def vikingdb_module(monkeypatch: pytest.MonkeyPatch):
+def vikingdb_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     for name, module in _build_fake_vikingdb_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -89,7 +93,7 @@ def vikingdb_module(monkeypatch: pytest.MonkeyPatch):
     return importlib.reload(module)
 
 
-def _config(module):
+def _config(module: ModuleType) -> "VikingDBConfig":
     return module.VikingDBConfig(
         access_key="ak",
         secret_key="sk",
@@ -101,7 +105,7 @@ def _config(module):
     )
 
 
-def test_init_get_type_and_has_checks(vikingdb_module):
+def test_init_get_type_and_has_checks(vikingdb_module: ModuleType) -> None:
     vector = vikingdb_module.VikingDBVector("collection_1", "group-1", _config(vikingdb_module))
 
     assert vector.get_type() == vikingdb_module.VectorType.VIKINGDB
@@ -118,7 +122,9 @@ def test_init_get_type_and_has_checks(vikingdb_module):
     assert vector._has_index() is False
 
 
-def test_create_collection_cache_and_creation_paths(vikingdb_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_cache_and_creation_paths(
+    vikingdb_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -142,7 +148,7 @@ def test_create_collection_cache_and_creation_paths(vikingdb_module, monkeypatch
     vikingdb_module.redis_client.set.assert_called_once()
 
 
-def test_create_and_add_texts(vikingdb_module):
+def test_create_and_add_texts(vikingdb_module: ModuleType) -> None:
     vector = vikingdb_module.VikingDBVector("collection_1", "group-1", _config(vikingdb_module))
     vector._create_collection = MagicMock()
     vector.add_texts = MagicMock()
@@ -166,7 +172,7 @@ def test_create_and_add_texts(vikingdb_module):
     assert upsert_docs[0][vikingdb_module.vdb_Field.GROUP_KEY] == "group-2"
 
 
-def test_text_exists_and_delete_operations(vikingdb_module):
+def test_text_exists_and_delete_operations(vikingdb_module: ModuleType) -> None:
     vector = vikingdb_module.VikingDBVector("collection_1", "group-1", _config(vikingdb_module))
 
     vector._client.get_collection.return_value.fetch_data.return_value = SimpleNamespace(fields={"message": "ok"})
@@ -189,10 +195,10 @@ def test_text_exists_and_delete_operations(vikingdb_module):
     vector.delete_by_ids.assert_called_once_with(["id-2"])
 
 
-def test_get_ids_and_search_helpers(vikingdb_module):
+def test_get_ids_and_search_helpers(vikingdb_module: ModuleType) -> None:
     vector = vikingdb_module.VikingDBVector("collection_1", "group-1", _config(vikingdb_module))
 
-    vector._client.get_index.return_value.search.return_value = []
+    vector._client.get_index.return_value.search.return_value = list[object]()
     assert vector.get_ids_by_metadata_field("doc_id", "x") == []
 
     vector._client.get_index.return_value.search.return_value = [
@@ -234,7 +240,7 @@ def test_get_ids_and_search_helpers(vikingdb_module):
     assert vector.search_by_full_text("query") == []
 
 
-def test_delete_drops_index_and_collection_when_present(vikingdb_module):
+def test_delete_drops_index_and_collection_when_present(vikingdb_module: ModuleType) -> None:
     vector = vikingdb_module.VikingDBVector("collection_1", "group-1", _config(vikingdb_module))
     vector._has_index = MagicMock(return_value=True)
     vector._has_collection = MagicMock(return_value=True)
@@ -254,7 +260,9 @@ def test_delete_drops_index_and_collection_when_present(vikingdb_module):
     vector._client.drop_collection.assert_not_called()
 
 
-def test_vikingdb_factory_validates_config_and_builds_vector(vikingdb_module, monkeypatch: pytest.MonkeyPatch):
+def test_vikingdb_factory_validates_config_and_builds_vector(
+    vikingdb_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     factory = vikingdb_module.VikingDBVectorFactory()
     dataset_with_index = Dataset(
         id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
@@ -293,8 +301,8 @@ def test_vikingdb_factory_validates_config_and_builds_vector(vikingdb_module, mo
     ],
 )
 def test_vikingdb_factory_raises_when_required_config_missing(
-    vikingdb_module, monkeypatch: pytest.MonkeyPatch, field, message
-):
+    vikingdb_module: ModuleType, monkeypatch: pytest.MonkeyPatch, field: str, message: str
+) -> None:
     factory = vikingdb_module.VikingDBVectorFactory()
     dataset = Dataset(id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "existing"}}))
 
