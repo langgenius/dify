@@ -177,8 +177,17 @@ def gmail_graph(credential_id: str) -> dict[str, object]:
 
 
 class World:
-    def __init__(self, factory: sessionmaker[Session], actor: Actor, session_id: str, test_input_id: str) -> None:
+    def __init__(
+        self,
+        factory: sessionmaker[Session],
+        actor: Actor,
+        session_id: str,
+        test_input_id: str,
+        *,
+        at_version: int,
+    ) -> None:
         self.factory, self.actor, self.session_id, self.test_input_id = factory, actor, session_id, test_input_id
+        self.at_version = at_version
         self.credential_id = ""
         self.client_id = ""
         self.workflow_id = ""
@@ -197,7 +206,7 @@ class World:
             node_id="tool",
             test_input_id=self.test_input_id,
             credential_id=self.credential_id,
-            at_version=1,
+            at_version=self.at_version,
             base_app_revision=revision,
             idempotency_key=key,
         )
@@ -309,7 +318,6 @@ def world(
 
     monkeypatch.setattr(real_call_metadata, "resolve_installed_get_message", synthetic_installation)
     monkeypatch.setattr(PluginService, "is_plugin_verified", unverified)
-    state = World(factory, actor, session_id, test_input_id)
     with factory.begin() as db:
         credential = BuiltinToolProvider(
             name="CI mailbox",
@@ -335,13 +343,14 @@ def world(
         assert test_input is not None
         test_input.inputs = {"note": "ci"}
         test_input.start_schema_hash = schema_hash(start_schema(graph))
-        state.credential_id, state.client_id, state.workflow_id = credential.id, client.id, workflow.id
-    advance_builder_context(
+    version = advance_builder_context(
         factory,
         session_id,
         state=PcState.BUILD_AWAIT_TESTDATA,
         context=DifyBuilderContext(plan_items=["Read one message"]),
     )
+    state = World(factory, actor, session_id, test_input_id, at_version=version)
+    state.credential_id, state.client_id, state.workflow_id = credential.id, client.id, workflow.id
     return state
 
 
@@ -365,7 +374,7 @@ def test_postgres_simultaneous_execute_commits_exactly_one_launch(world: World) 
     assert receipts[0] == receipts[1]
     assert world.count(DifyBuilderExecutionRequest) == 1
     session, fc = SqlDifyBuilderRepository(world.factory).get_session(world.session_id)
-    assert session.version == 2
+    assert session.version == world.at_version + 1
     assert fc.last_command_id == receipts[0].command_id
 
 
@@ -385,14 +394,14 @@ def test_postgres_reservation_and_unrelated_commit_cannot_both_advance(world: Wo
 
     def unrelated() -> str:
         try:
-            repo.compare_and_advance(world.session_id, 1, PcState.BUILD_AWAIT_TESTDATA, fc, [])
+            repo.compare_and_advance(world.session_id, world.at_version, PcState.BUILD_AWAIT_TESTDATA, fc, [])
         except ConflictError:
             return "conflict"
         return "advanced"
 
     reservation, other = race(lambda: world.reserve(decision), unrelated)
     session, _fc = repo.get_session(world.session_id)
-    assert session.version == 2
+    assert session.version == world.at_version + 1
     if isinstance(reservation, tuple):
         assert other == "conflict"
         assert world.count(DifyBuilderExecutionRequest) == 1
