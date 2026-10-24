@@ -2235,7 +2235,7 @@ jobs:
                   'test_failed_exact_source_seals_unconsumed_attempt_and_preserves_completed_results': 2,
                   'test_restored_real_permit_then_expired_preparation_reconciles_original_run_on_get': 1,
                   'test_real_physical_claim_and_terminal_settlement_serialize_on_existing_owner': 2,
-                  'test_failure_settlement_refuses_ambiguous_or_changed_evidence': 14,
+                  'test_failure_settlement_refuses_ambiguous_or_changed_evidence': 16,
                   'test_optional_terminal_proof_failure_does_not_block_original_resume_settlement': 3,
               },
           })
