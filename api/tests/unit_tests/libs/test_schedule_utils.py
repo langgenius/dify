@@ -1,5 +1,6 @@
 import contextlib
 import unittest
+import zoneinfo
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -827,6 +828,37 @@ if __name__ == "__main__":
     from datetime import timedelta
 
     unittest.main()
+
+
+class TestPinnedTzdata:
+    """The API image sets PYTHONTZPATH="", so zoneinfo reads only the tzdata package."""
+
+    @pytest.fixture(autouse=True)
+    def tzdata_package_only(self):
+        zoneinfo.reset_tzpath(to=[])
+        zoneinfo.ZoneInfo.clear_cache()
+        yield
+        zoneinfo.reset_tzpath()
+        zoneinfo.ZoneInfo.clear_cache()
+
+    @pytest.mark.parametrize(
+        ("timezone", "expected_hour"),
+        [
+            # IANA 2026b-2026e: no fall-back on 2026-11-01 in BC, Alberta, NWT and Manitoba
+            ("America/Vancouver", 16),
+            ("America/Edmonton", 15),
+            ("America/Yellowknife", 15),
+            ("America/Winnipeg", 14),
+            # IANA 2026c: Morocco on permanent UTC+00
+            ("Africa/Casablanca", 9),
+            # control: Ontario still falls back
+            ("America/Toronto", 14),
+        ],
+    )
+    def test_daily_run_uses_current_iana_rules(self, timezone, expected_hour):
+        base_time = datetime(2026, 11, 1, 0, 0, tzinfo=UTC)
+        result = calculate_next_run_at("0 9 * * *", timezone, base_time)
+        assert result == datetime(2026, 11, 1, expected_hour, 0, tzinfo=UTC)
 
 
 if __name__ == "__main__":
