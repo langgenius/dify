@@ -114,7 +114,11 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   return (
     <Dialog
       open={show}
-      onOpenChange={(open) => {
+      onOpenChange={(open, details) => {
+        if (!open && loading) {
+          details.cancel()
+          return
+        }
         if (!open) onClose()
       }}
     >
@@ -129,6 +133,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
           <DialogHeader>
             <DialogTitle>{t(($) => $.title, { ns: 'datasetSettings' })}</DialogTitle>
             <DialogHeaderCloseButton
+              disabled={loading}
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             />
           </DialogHeader>
@@ -176,7 +181,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
             </Field>
           </DialogBody>
           <DialogFooter>
-            <Button type="button" onClick={onClose}>
+            <Button type="button" disabled={loading} onClick={onClose}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button type="submit" loading={loading} variant="primary">
