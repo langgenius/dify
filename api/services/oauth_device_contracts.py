@@ -1,9 +1,11 @@
 """Framework-neutral contracts shared by the OAuth device-flow use cases."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import NotRequired, Protocol, TypedDict
+from typing import Literal, NotRequired, Protocol, TypedDict
+
+from constants.oauth_bearer import SubjectType
 
 DEVICE_FLOW_TTL_SECONDS = 15 * 60
 DEFAULT_POLL_INTERVAL_SECONDS = 5
@@ -42,6 +44,42 @@ class PollPayload(TypedDict):
     token_id: str
     subject_email: NotRequired[str]
     subject_issuer: NotRequired[str]
+
+
+class DeviceApprovalMinter(Protocol):
+    """Mints the token for each kind of approval record."""
+
+    def mint_account(self, state: "DeviceFlowStateView", approval: "AccountApprovalRecord") -> PollPayload: ...
+
+    def mint_external(self, state: "DeviceFlowStateView", approval: "ExternalApprovalRecord") -> PollPayload: ...
+
+
+@dataclass(frozen=True, slots=True)
+class AccountApprovalRecord:
+    account_id: str
+    workspace_id: str
+    subject_email: str
+    subject_issuer: str
+    subject_type: Literal[SubjectType.ACCOUNT] = field(default=SubjectType.ACCOUNT, init=False)
+
+    def mint(self, minter: DeviceApprovalMinter, state: "DeviceFlowStateView") -> PollPayload:
+        return minter.mint_account(state, self)
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalApprovalRecord:
+    subject_email: str
+    subject_issuer: str
+    subject_type: Literal[SubjectType.EXTERNAL_SSO] = field(default=SubjectType.EXTERNAL_SSO, init=False)
+    account_id: None = field(default=None, init=False)
+    workspace_id: None = field(default=None, init=False)
+
+    def mint(self, minter: DeviceApprovalMinter, state: "DeviceFlowStateView") -> PollPayload:
+        return minter.mint_external(state, self)
+
+
+# Who approved a device code; the token is minted from it on the first successful poll.
+DeviceApprovalRecord = AccountApprovalRecord | ExternalApprovalRecord
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,12 +206,17 @@ class DeviceApprovalContext:
 
 
 class DeviceFlowStateView(Protocol):
+    user_code: str
     client_id: str
     device_label: str
     status: DeviceFlowStatus
     token_id: str | None
     created_ip: str
+    approval: DeviceApprovalRecord | None
+    # Read only from approved states written before approval records existed.
     poll_payload: PollPayload | None
+
+    def to_json(self) -> str: ...
 
 
 class OAuthDeviceError(Exception):
@@ -205,10 +248,6 @@ class ExpiredOrUnknownError(OAuthDeviceError):
 
 
 class AlreadyResolvedError(OAuthDeviceError):
-    pass
-
-
-class ApprovalInProgressError(OAuthDeviceError):
     pass
 
 

@@ -2,14 +2,15 @@ import type { PollSuccess } from '@/auth/device-api'
 import type { Pending, PendingLoginStore } from '@/auth/pending-login'
 import type { CommandContext } from '@/plugins/base'
 import type { Login as SavedLogin } from '@/plugins/session'
-import { hostname } from 'node:os'
 import { z } from 'zod'
 import { deviceApi } from '@/auth/device-api'
 import { awaitAuthorization, pollAuthorization, realClock } from '@/auth/device-flow'
+import { deviceLabel } from '@/auth/installation'
 import { assertNotEnvLogin, revokeAndClearSession } from '@/auth/logout'
 import { pendingLoginStore } from '@/auth/pending-login'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
+import { errorMessage } from '@/errors/message'
 import { Command } from '@/plugins/commands/command'
 import { io } from '@/plugins/io'
 import { session } from '@/plugins/session'
@@ -56,6 +57,7 @@ const ENV_LOGIN_MESSAGE = 'unset DIFY_TOKEN to log in interactively'
 const NO_EMAIL_MESSAGE = 'login response carries no account or subject email'
 const NO_SERVER_MESSAGE = 'pass --server <url>: the Dify server to log in to'
 const NO_SERVER_HINT = 'ask the user which server; Dify Cloud is https://cloud.dify.ai'
+const PREVIOUS_CLEANUP_FAILED_PREFIX = 'could not clear the previous login: '
 
 // A present-but-empty email is the same as absent: neither account.email nor
 // subject_email is meaningful until it has a value.
@@ -103,14 +105,8 @@ export default class Login extends Command<typeof INPUT> {
 
     const server = resolveHost({ raw: input.server, insecure: input.insecure })
     const streams = await ctx.get(io)
-    const current = await sessionService.current()
-    if (current !== null) {
-      await revokeAndClearSession(ctx, current)
-      streams.notice(`logged out ${current.email} from ${current.server}`)
-    }
-
     const api = deviceApi(server, { insecure: input.insecure })
-    const code = await api.requestCode({ device_label: hostname() })
+    const code = await api.requestCode({ device_label: await deviceLabel(ctx) })
     // Checked before it is printed: a URI difyctl would refuse to open is one the
     // operator should not be invited to paste either.
     validateVerificationURI(code.verification_uri, input.insecure)
@@ -149,6 +145,22 @@ function loginReport(login: SavedLogin) {
     account: login.account,
     workspace_id: login.workspaceId,
   }
+}
+
+// Runs only once the new token is in hand, so an abandoned login keeps the old session.
+// The server has already minted the new token, so a failed local cleanup only warns.
+async function replacePrevious(ctx: CommandContext): Promise<void> {
+  const previous = await (await ctx.get(session)).current()
+  if (previous === null) return
+  const streams = await ctx.get(io)
+  try {
+    const outcome = await revokeAndClearSession(ctx, previous)
+    if (!outcome.revoked) return
+  } catch (err) {
+    streams.notice(`${PREVIOUS_CLEANUP_FAILED_PREFIX}${errorMessage(err)}`)
+    return
+  }
+  streams.notice(`logged out ${previous.email} from ${previous.server}`)
 }
 
 // `get` throws not_logged_in when the saved login's token is gone from the store.
@@ -196,8 +208,10 @@ async function finish(ctx: CommandContext, pending: Pending, success: PollSucces
     workspaceId: success.default_workspace_id ?? null,
     tokenStorage,
     insecure: pending.insecure,
+    sessionId: success.token_id ?? null,
   }
 
+  await replacePrevious(ctx)
   await sessionService.save(login)
   await tokenService.write(login, success.token)
   return loginReport(login)

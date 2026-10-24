@@ -485,7 +485,6 @@ export const zDeviceFlowErrorResponse = z.object({
     'access_denied',
     'already_resolved',
     'approval_outcome_unknown',
-    'approve_in_progress',
     'authorization_pending',
     'expired_or_unknown',
     'expired_token',
@@ -1796,6 +1795,7 @@ export const zSessionListQuery = z.object({
 export const zSessionRow = z.object({
   client_id: z.string(),
   created_at: z.string().nullish(),
+  current: z.boolean(),
   device_label: z.string(),
   expires_at: z.string().nullish(),
   id: z.string(),

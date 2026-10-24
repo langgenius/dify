@@ -2,7 +2,7 @@
 
 ## Log in
 
-`login` uses the device flow: it prints a URL and a code, the human approves in a browser, and difyctl stores a token. One login at a time. A new login replaces the old one, and it replaces the code the human is looking at.
+`login` uses the device flow: it prints a URL and a code, the human approves in a browser, and difyctl stores a token. One login at a time. A new login replaces the saved one. An old code the human approves after that does nothing; only the login that collects its token counts.
 
 **Check first.** Run `difyctl login --resume`. If it prints an `email`, you are logged in: skip login. If it fails with `not_logged_in`, log in.
 
@@ -35,3 +35,5 @@ The token goes to the OS keyring by default. On Linux without a DBus session, di
 ## Files
 
 `DIFY_CONFIG_DIR` holds login, tokens and catalog. `DIFY_CACHE_DIR` is unused.
+
+If you copy a config dir to another machine, delete `installation.yml` in the copy. It identifies this install, so two machines that share it log each other out.

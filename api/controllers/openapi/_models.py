@@ -178,6 +178,7 @@ class SessionRow(BaseModel):
     prefix: str
     client_id: str
     device_label: str
+    current: bool
     created_at: str | None = None
     last_used_at: str | None = None
     expires_at: str | None = None
@@ -236,7 +237,6 @@ class DeviceFlowErrorResponse(BaseModel):
         "access_denied",
         "expired_or_unknown",
         "already_resolved",
-        "approve_in_progress",
         "approval_outcome_unknown",
         "state_lost",
     ]

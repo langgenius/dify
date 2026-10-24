@@ -1,12 +1,18 @@
 import type { TestWorld } from '@test/fixtures/kernel'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { hostname } from 'node:os'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
+import {
+  DEVICE_LABEL_HOSTNAME_MAX,
+  DEVICE_LABEL_ID_LENGTH,
+  installationId,
+} from '@/auth/installation'
 import { PENDING_FILE_NAME } from '@/auth/pending-login'
 import { Context } from '@/kernel/context'
 import { commands } from '@/plugins/commands'
-import { session } from '@/plugins/session'
+import { LOGIN_FILE_NAME, session } from '@/plugins/session'
 import { token } from '@/plugins/token'
 
 const worlds: TestWorld[] = []
@@ -98,6 +104,8 @@ it('falls back to the external-SSO subject email when there is no account', asyn
   const login = await (await w.ctx.get(session)).current()
   expect(login?.email).toBe('sso@dify.ai')
   expect(login?.account).toBeNull()
+  expect(login?.sessionId).toBe('tok-sso-1')
+  expect(readFileSync(join(w.dir, LOGIN_FILE_NAME), 'utf8')).toContain('session_id: tok-sso-1')
 })
 
 it('resume with no pending login reports the saved login', async () => {
@@ -259,3 +267,27 @@ it.each(['happy', 'denied', 'expired'] as const)(
     expect(existsSync(pendingPath)).toBe(false)
   },
 )
+
+const LOGIN_FLAGS = ['--no-browser', '--no-keyring', '--insecure'] as const
+
+it('two config dirs on one host log in with different device labels', async () => {
+  const labels: unknown[] = []
+  for (const _dir of ['first', 'second']) {
+    const seed = await testContext({ login: false })
+    worlds.push(seed)
+    const w = await testContext({
+      login: false,
+      argv: ['login', '--server', seed.mock.url, ...LOGIN_FLAGS],
+      reuseDirOf: seed,
+    })
+    worlds.push(w)
+    expect(await (await w.ctx.get(commands)).run()).toBe(0)
+    const id = await installationId(w.ctx)
+    expect(w.mock.lastDeviceCodeBody).toEqual({
+      client_id: 'difyctl',
+      device_label: `${hostname().slice(0, DEVICE_LABEL_HOSTNAME_MAX)} (${id.slice(0, DEVICE_LABEL_ID_LENGTH)})`,
+    })
+    labels.push(w.mock.lastDeviceCodeBody?.device_label)
+  }
+  expect(new Set(labels).size).toBe(2)
+})

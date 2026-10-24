@@ -20,8 +20,7 @@ export default class Logout extends Command<typeof INPUT> {
     assertNotEnvLogin(sessionService.fromEnv, ENV_LOGOUT_MESSAGE)
     await (await pendingLoginStore(ctx)).clear()
     const login = await sessionService.require()
-    await revokeAndClearSession(ctx, login)
-
-    return { logged_out: true, server: login.server }
+    const outcome = await revokeAndClearSession(ctx, login)
+    return { logged_out: true, server: login.server, ...outcome }
   }
 }
