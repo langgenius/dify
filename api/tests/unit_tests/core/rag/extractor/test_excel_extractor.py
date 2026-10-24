@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
@@ -354,6 +355,32 @@ class TestExcelExtractor:
 
         assert len(docs) == 1
         assert docs[0].page_content == '"A":"x";"B":"1"'
+
+    def test_extract_xls_preserves_numeric_looking_text(self):
+        # Real BIFF cells are needed here: a mocked DataFrame cannot expose pandas' type inference.
+        # Fixture and tests contributed by PointerL; native-value expectations follow
+        # this PR's stored-type approach (native values keep their baseline serialized
+        # form: Quantity stays 7/9, Amount 7.0, Enabled 1.0/0.0).
+        file_path = Path(__file__).resolve().parents[4] / "fixtures" / "rag" / "text_identifiers.xls"
+
+        docs = ExcelExtractor(str(file_path)).extract()
+
+        assert [doc.page_content for doc in docs[:2]] == [
+            '"Code":"00123";"ScientificText":"1e3";"DecimalText":"01.20";"Quantity":"7";"Note":"he said \\"hi\\""',
+            '"Code":"00456";"ScientificText":"2e3";"DecimalText":"03.40";"Quantity":"9";"Note":"second"',
+        ]
+        assert all(doc.metadata == {"source": str(file_path)} for doc in docs)
+
+    def test_extract_xls_preserves_native_values_and_skips_empty_rows(self):
+        file_path = Path(__file__).resolve().parents[4] / "fixtures" / "rag" / "text_identifiers.xls"
+
+        docs = ExcelExtractor(str(file_path)).extract()
+
+        assert len(docs) == 4
+        assert [doc.page_content for doc in docs[2:]] == [
+            '"Amount":"7.0";"Enabled":"1.0";"Date":"2026-01-02 00:00:00";"Note":"he said \\"hi\\""',
+            '"Amount":"2.5";"Enabled":"0.0";"Date":"2026-03-04 05:06:07";"Note":"plain"',
+        ]
 
     def test_extract_unsupported_extension_raises(self):
         extractor = ExcelExtractor("/tmp/sample.txt")
