@@ -101,11 +101,22 @@ def test_analyze_impact_returns_fields_values_targets() -> None:
     )
     out = edit.analyze_impact(m, "make formal", _GRAPH)
     assert out["values"] == {"change": "make formal", "tone": "formal"}
-    assert out["fields"][0]["key"] == "change"
-    assert out["fields"][0]["required"] is True
-    assert out["fields"][0]["type"] == "textarea"
-    assert sum(field["key"] == "change" for field in out["fields"]) == 1
+    assert [field["key"] for field in out["fields"]] == ["tone"]
     assert out["target_node_ids"] == ["llm"]  # unknown id dropped
+
+
+def test_sufficient_impact_retains_original_request_without_a_confirmation_field() -> None:
+    goal = "Rename the existing LLM title to 'Support answer'."
+    model = _RecordingInstance([json.dumps({"fields": [], "values": {}, "target_node_ids": ["llm"]})])
+
+    impact = edit.analyze_impact(model, goal, _GRAPH)
+
+    assert impact["fields"] == []
+    assert impact["values"] == {"change": goal}
+    prompt = _message_text(model.calls[0]["prompt_messages"][0])
+    assert "2-5" not in prompt
+    assert "unanswered business" in prompt
+    assert "zero" in prompt
 
 
 def test_analyze_impact_reconciles_boolean_value_with_field_type() -> None:
