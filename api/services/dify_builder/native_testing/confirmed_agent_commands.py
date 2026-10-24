@@ -26,6 +26,7 @@ from models.dify_builder_native_tests import (
     NativeEffectOperation,
     NativeEffectOutcome,
     NativeInvocationState,
+    NativePayloadObject,
     NativeTestInvocation,
     NativeTestScope,
 )
@@ -852,6 +853,7 @@ class ConfirmedAgentCommands:
             or state.invocation_id != ref.invocation_id
             or invocation.invocation_id != ref.invocation_id
             or state.parent_invocation_id is not None
+            or (state.app_id, state.workflow_id) != (request.app_id, request.workflow_id)
             or state.state not in {"running", "unknown"}
             or state.wait_reason is not None
             or state.generation <= 0
@@ -886,7 +888,18 @@ class ConfirmedAgentCommands:
                 NativeContinuation.checkpoint_id == state.checkpoint_id
             )
         )
-        if continuation is None or continuation.generation != state.generation - 1:
+        checkpoint = session.scalar(
+            owner_query(NativePayloadObject, ref, request.tenant_id).where(
+                NativePayloadObject.id == state.checkpoint_id, NativePayloadObject.kind == "checkpoint"
+            )
+        )
+        if (
+            continuation is None
+            or checkpoint is None
+            or continuation.generation != state.generation - 1
+            or (continuation.payload_ref, continuation.payload_digest)
+            != (checkpoint.storage_key, checkpoint.payload_digest)
+        ):
             return None
         return (
             native_id,
