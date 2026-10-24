@@ -2093,20 +2093,12 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/common/document-picker/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/common/document-picker/preview-document-picker.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
     }
   },
   "web/app/components/datasets/common/document-status-with-action/status-with-action.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    },
     "eslint-react/static-components": {
       "count": 2
     }
@@ -3427,21 +3419,6 @@
   "web/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form.tsx": {
     "typescript/no-explicit-any": {
       "count": 8
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/app-selector/app-picker.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/app-selector/app-trigger.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/app-selector/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/plugins/plugin-detail-panel/detail-header.tsx": {
@@ -6901,19 +6878,9 @@
       "count": 18
     }
   },
-  "web/features/new-rag/documents/metadata/create-form.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/features/new-rag/documents/metadata/drawer.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
-    }
-  },
-  "web/features/new-rag/documents/metadata/picker.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/features/new-rag/documents/tasks/documents-drawer.tsx": {

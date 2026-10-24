@@ -29,6 +29,7 @@
   "appSelector.noParams": "無需參數",
   "appSelector.params": "應用程式參數",
   "appSelector.placeholder": "選擇應用程式...",
+  "appSelector.searchPlaceholder": "依名稱搜尋應用程式…",
   "chooseAppFile": "選擇應用程式套件或 DSL 檔案",
   "deleteAppConfirmContent": "刪除應用將無法復原。使用者將無法存取你的應用，所有 Prompt 設定和日誌都將一併被刪除。",
   "deleteAppConfirmInputLabel": "請在下方輸入框中輸入<appName>{{appName}}</appName>以確認：",
