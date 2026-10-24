@@ -186,3 +186,27 @@ def test_conflict_continue_at_edit_entry_reanalyzes_the_saved_goal(edit_flow: Ed
     assert resumed.decision is None
     assert agent.impact_calls == [("Make the response formal", dify.graph)]
     assert len([item for item in repo.list_conversation(session.id) if item.kind == "user"]) == 1
+
+
+def test_restart_same_goal_and_executable_graph_keeps_repeated_failure_budget(edit_flow: EditFlow) -> None:
+    from core.dify_builder.models import Run
+    from services.dify_builder.application.handlers_fix import note_repair_error, repair_is_repeating
+    from services.dify_builder.application.recovery import apply_recovery_action
+    from services.dify_builder.serde import context_from_dict, context_to_dict
+
+    _service, _repo, dify, _agent, session, actor = edit_flow
+    context = DifyBuilderContext(goal_text="Connect mark")
+    run = Run(status="failed", error="node mark is unconnected")
+    for attempt in range(3):
+        note_repair_error(context, run, graph=dify.graph)
+        assert context.repair_attempts == attempt
+        context = context_from_dict(context_to_dict(context))
+        apply_recovery_action(dify, Turn(action=Action(kind="recovery_restart"), actor=actor), session, context)
+        # Layout and display titles are not executable progress.
+        dify.graph["nodes"][0]["position"] = {"x": attempt, "y": 10}
+        dify.graph["nodes"][0]["data"]["title"] = f"Title {attempt}"
+    assert repair_is_repeating(context)
+    dify.graph["nodes"][0]["data"]["prompt_template"] = "new prompt"
+    note_repair_error(context, run, graph=dify.graph)
+    assert not repair_is_repeating(context)
+    assert context.repair_attempts == 0

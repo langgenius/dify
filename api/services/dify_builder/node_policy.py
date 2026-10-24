@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.dify_builder.models import Graph, MutationIntent
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
+from domain.workflow.agent_node import is_dify_agent_node_data
 from graphon.enums import BuiltinNodeTypes
 from services.dify_builder import graph_ops
 from services.dify_builder.native_testing.agent_binding import has_native_roster_binding
@@ -51,7 +51,9 @@ def proposal_policy_rejections(graph: Graph, intents: list[MutationIntent]) -> l
         except Exception:
             # Existing structural/native validation explains malformed proposals.
             continue
-        if intent.op in ("create_node", "insert_between"):
+        if intent.op in ("create_node", "insert_between") and not (
+            intent.op == "insert_between" and intent.args.get("reuse_existing") is True
+        ):
             node_type = intent.args["node_type"]
             if node_type in _UNAVAILABLE_ADDITIONS and not (
                 node_type == BuiltinNodeTypes.AGENT

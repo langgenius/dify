@@ -2510,15 +2510,13 @@ def test_repeated_failure_stops_offering_a_repair() -> None:
     assert _repair_is_repeating(fc) is False
 
 
-def test_repair_counter_is_cleared_on_recovery_reentry() -> None:
-    """A fresh build that inherited repair_attempts >= the ceiling would
-    decline a repair on its first failure, one nobody ever approved."""
+def test_repair_counter_survives_same_task_recovery_reentry() -> None:
     from services.dify_builder.application.recovery import _reset_working_fields
 
     fc = DifyBuilderContext(repair_attempts=5, last_repair_error="boom")
     _reset_working_fields(fc)
-    assert fc.repair_attempts == 0
-    assert fc.last_repair_error == ""
+    assert fc.repair_attempts == 5
+    assert fc.last_repair_error == "boom"
 
 
 def test_test_and_repair_stops_offering_a_repair_through_the_handler() -> None:

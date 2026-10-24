@@ -93,6 +93,7 @@ def prepare_continuation(
     context.change_set = None
     context.repair_attempts = 0
     context.last_repair_error = ""
+    context.last_repair_graph_revision = ""
     context.last_edit_rejection = ""
     context.unknown_outcome_count = 0
     context.verify_run_id = ""
