@@ -13,6 +13,7 @@ from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.utils.condition.entities import Condition, SupportedComparisonOperator
 from services.dify_builder import credentials, graph_ops
 from services.dify_builder.agent import edit, graph_prompt
+from services.dify_builder.plan import WorkflowPlan
 from services.dify_builder.preflight import new_preflight_problems, preflight_errors
 
 
@@ -1238,7 +1239,7 @@ def test_edit_exposes_approved_insertion_plan_and_preserves_receipt_contract() -
                     ]
                 }
             ),
-            '{"required_insertions":[],"uncertain":false}',
+            '{"requested_insertions":[1],"uncertain":false}',
         ]
     )
     intents = edit.build_edit_intents(model, {}, graph, approved_plan=plan, edit_target_node_ids=["receipt", "end"])
@@ -1298,9 +1299,9 @@ def test_edit_corrects_retained_bypass_before_returning_insertion(retained_bypas
     model = _RecordingInstance(
         [
             json.dumps(batch),
-            '{"required_insertions":[1],"uncertain":false}',
+            '{"requested_insertions":[1],"uncertain":false}',
             json.dumps(corrected),
-            '{"required_insertions":[],"uncertain":false}',
+            '{"requested_insertions":[1],"uncertain":false}',
         ]
     )
     plan = WorkflowPlan("Insert mark", "Original input", "Marked output", ["Replace receipt→end with receipt→mark→end"])
@@ -1317,7 +1318,7 @@ def test_edit_corrects_retained_bypass_before_returning_insertion(retained_bypas
 @pytest.mark.parametrize("retry", ["same", "empty"])
 def test_edit_refuses_still_condemned_bypass(retained_bypass: tuple[Graph, Graph, Graph], retry: str) -> None:
     graph, batch, _ = retained_bypass
-    assessment = '{"required_insertions":[0],"uncertain":false}'
+    assessment = '{"requested_insertions":[0],"uncertain":false}'
     replies = [json.dumps(batch), assessment, json.dumps(batch) if retry == "same" else "{}", assessment]
     with pytest.raises(ProposalWouldRunWrongError, match="receipt"):
         edit.build_edit_intents(_RecordingInstance(replies), {"change": "Insert mark; remove old edge"}, graph)
@@ -1325,7 +1326,7 @@ def test_edit_refuses_still_condemned_bypass(retained_bypass: tuple[Graph, Graph
 
 def test_edit_keeps_explicit_parallel_path(retained_bypass: tuple[Graph, Graph, Graph]) -> None:
     graph, batch, _ = retained_bypass
-    model = _RecordingInstance([json.dumps(batch), '{"required_insertions":[],"uncertain":false}'])
+    model = _RecordingInstance([json.dumps(batch), '{"requested_insertions":[],"uncertain":false}'])
     intents = edit.build_edit_intents(model, {"change": "Add a parallel mark path; preserve receipt→end"}, graph)
     result = graph_ops.filter_applicable(graph, intents).graph
     assert {(e["source"], e["target"]) for e in result["edges"]} == {
@@ -1346,9 +1347,9 @@ def test_insertion_retry_cannot_drop_or_reclassify_the_required_path(
     model = _RecordingInstance(
         [
             json.dumps(batch),
-            '{"required_insertions":[0],"uncertain":false}',
+            '{"requested_insertions":[0],"uncertain":false}',
             json.dumps(retry),
-            '{"required_insertions":[],"uncertain":false}',
+            '{"requested_insertions":[],"uncertain":false}',
         ]
     )
     with pytest.raises(ProposalWouldRunWrongError, match="receipt"):
@@ -1366,7 +1367,7 @@ def test_insertion_only_retry_preserves_valid_new_node_config(retained_bypass: t
     model = _RecordingInstance(
         [
             json.dumps(batch),
-            '{"required_insertions":[0],"uncertain":false}',
+            '{"requested_insertions":[0],"uncertain":false}',
             json.dumps(corrected),
         ]
     )
@@ -1389,7 +1390,7 @@ def test_edit_checks_paths_through_multiple_added_nodes(retained_bypass: tuple[G
     )
     batch["intents"][-1]["args"]["to_node"] = "mark2"
     batch["intents"].append({"op": "connect", "args": {"from_node": "mark2", "to_node": "end"}})
-    model = _RecordingInstance([json.dumps(batch), '{"required_insertions":[0],"uncertain":false}', "{}"])
+    model = _RecordingInstance([json.dumps(batch), '{"requested_insertions":[0],"uncertain":false}', "{}"])
     with pytest.raises(ProposalWouldRunWrongError, match="receipt"):
         edit.build_edit_intents(model, {"change": "Insert two sequential marks"}, graph)
 
@@ -1410,7 +1411,7 @@ def test_assessment_has_candidate_node_metadata_and_full_plan(retained_bypass: t
     graph, batch, _ = retained_bypass
     graph["nodes"][1]["data"]["title"] = "Original receipt"
     plan = WorkflowPlan("Parallel receipt review", "Receipt input", "Both paths reach End", ["Add review path"])
-    model = _RecordingInstance([json.dumps(batch), '{"required_insertions":[],"uncertain":false}'])
+    model = _RecordingInstance([json.dumps(batch), '{"requested_insertions":[],"uncertain":false}'])
     edit.build_edit_intents(model, {}, graph, approved_plan=plan)
     user = json.loads(_message_text(model.calls[-1]["prompt_messages"][1]))
     assert user["approved_plan"]["title"] == "Parallel receipt review"
@@ -1434,7 +1435,7 @@ def test_unavailable_assessment_does_not_authorize_a_bypass(
 
 @pytest.mark.parametrize(
     "assessment",
-    ["{}", '{"required_insertions":[99],"uncertain":false}', '{"required_insertions":[],"uncertain":true}'],
+    ["{}", '{"requested_insertions":[99],"uncertain":false}', '{"requested_insertions":[],"uncertain":true}'],
 )
 def test_edit_does_not_accept_unassessed_bypass(retained_bypass: tuple[Graph, Graph, Graph], assessment: str) -> None:
     graph, batch, _ = retained_bypass
@@ -1506,9 +1507,9 @@ def test_approved_insertion_corrects_missing_wiring_once(
     model = _RecordingInstance(
         [
             json.dumps(proposal),
-            '{"required_insertions":[1],"uncertain":false}',
+            '{"requested_insertions":[1],"uncertain":false}',
             json.dumps(corrected),
-            '{"required_insertions":[],"uncertain":false}',
+            '{"requested_insertions":[1],"uncertain":false}',
         ]
     )
     plan = WorkflowPlan("Insert mark", "Receipt", "Marked receipt", ["Replace receipt→end with receipt→mark→end"])
@@ -1560,9 +1561,9 @@ def test_approved_existing_orphan_requires_complete_path_or_refusal(
         ]
     }
     index = 1
-    assessment = json.dumps({"required_insertions": [index], "uncertain": False})
+    assessment = json.dumps({"requested_insertions": [index], "uncertain": False})
     replies = [json.dumps(incomplete), assessment, json.dumps(complete if corrected else incomplete)]
-    replies.append('{"required_insertions":[],"uncertain":false}' if corrected else assessment)
+    replies.append('{"requested_insertions":[1],"uncertain":false}' if corrected else assessment)
     model = _RecordingInstance(replies)
     plan = WorkflowPlan(
         "Connect existing mark", "Receipt", "Marked receipt", ["Replace receipt→end with receipt→mark→end"]
@@ -1622,7 +1623,7 @@ def test_approved_plan_keeps_intentional_or_unrelated_isolated_draft(
             "Untested draft",
             ["Add unconfigured isolated Tool; preserve existing path"],
         )
-        replies = [json.dumps(batch), '{"required_insertions":[],"uncertain":false}']
+        replies = [json.dumps(batch), '{"requested_insertions":[],"uncertain":false}']
     else:
         graph = graph_ops.filter_applicable(graph, [MutationIntent(**batch["intents"][0])]).graph
         batch = {
@@ -1657,9 +1658,9 @@ def test_existing_orphan_correction_cannot_recreate_away_canvas_metadata(
     model = _RecordingInstance(
         [
             json.dumps(first),
-            '{"required_insertions":[1],"uncertain":false}',
+            '{"requested_insertions":[1],"uncertain":false}',
             json.dumps(unsafe),
-            '{"required_insertions":[],"uncertain":false}',
+            '{"requested_insertions":[1],"uncertain":false}',
         ]
     )
     plan = WorkflowPlan(
@@ -1708,14 +1709,14 @@ def test_approved_insertion_rejects_or_corrects_fully_wired_wrong_anchors(
     if anchor_kind == "atomic":
         proposal = copy.deepcopy(repair)
         proposal["intents"][0]["args"]["edge"] = {"source": "start", "target": "receipt"}
-    index = 0 if anchor_kind == "atomic" else 1
-    assessment = json.dumps({"required_insertions": [index], "uncertain": False})
+    index = 1
+    assessment = json.dumps({"requested_insertions": [index], "uncertain": False})
     model = _RecordingInstance(
         [
             json.dumps(proposal),
             assessment,
             json.dumps(repair if corrected else proposal),
-            '{"required_insertions":[],"uncertain":false}' if corrected else assessment,
+            '{"requested_insertions":[1],"uncertain":false}' if corrected else assessment,
         ]
     )
     plan = WorkflowPlan(
@@ -1765,7 +1766,7 @@ def test_approved_intentional_parallel_span_keeps_existing_path(
 
     graph, batch, _ = retained_bypass
     batch["intents"][1]["args"]["from_node"] = "start"
-    model = _RecordingInstance([json.dumps(batch), '{"required_insertions":[],"uncertain":false}'])
+    model = _RecordingInstance([json.dumps(batch), '{"requested_insertions":[],"uncertain":false}'])
     plan = WorkflowPlan("Parallel mark", "Start", "Both paths", ["Keep start→receipt→end; add parallel start→mark→end"])
     intents = edit.build_edit_intents(model, {}, graph, approved_plan=plan)
     result = graph_ops.filter_applicable(graph, intents).graph
@@ -1776,3 +1777,195 @@ def test_approved_intentional_parallel_span_keeps_existing_path(
         ("mark", "end"),
     }
     assert len(model.calls) == 2
+
+
+@pytest.fixture
+def local_preserved_start_insertion() -> tuple[Graph, Graph, WorkflowPlan]:
+    """Sanitized graph/plan from the 2026-10-24 Local false-refusal evidence."""
+    graph: Graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "data": {
+                    "type": "start",
+                    "title": "Start",
+                    "variables": [
+                        {
+                            "variable": "text",
+                            "label": "Text",
+                            "type": "text-input",
+                            "required": True,
+                            "max_length": 2000,
+                        }
+                    ],
+                },
+            },
+            {
+                "id": "code",
+                "type": "custom",
+                "position": {"x": 300, "y": 0},
+                "data": {
+                    "type": "code",
+                    "title": "Code",
+                    "code_language": "python3",
+                    "code": 'def main(text: str) -> dict:\n    return {"result": text.strip()}\n',
+                    "variables": [{"variable": "text", "value_selector": ["start", "text"]}],
+                    "outputs": {"result": {"type": "string", "children": None}},
+                },
+            },
+            {
+                "id": "end",
+                "type": "custom",
+                "position": {"x": 600, "y": 0},
+                "data": {
+                    "type": "end",
+                    "title": "End",
+                    "outputs": [{"variable": "result", "value_selector": ["code", "result"]}],
+                },
+            },
+        ],
+        "edges": [
+            {
+                "id": "start-code",
+                "source": "start",
+                "target": "code",
+                "sourceHandle": "source",
+                "targetHandle": "target",
+                "type": "custom",
+                "data": {"sourceType": "start", "targetType": "code"},
+            },
+            {
+                "id": "code-end",
+                "source": "code",
+                "target": "end",
+                "sourceHandle": "source",
+                "targetHandle": "target",
+                "type": "custom",
+                "data": {"sourceType": "code", "targetType": "end"},
+            },
+        ],
+    }
+    proposal: Graph = {
+        "intents": [
+            {
+                "op": "insert_between",
+                "args": {
+                    "edge": {"source": "code", "target": "end"},
+                    "node_id": "mark",
+                    "node_type": "template-transform",
+                    "config": {
+                        "title": "Mark",
+                        "template": "【ENG1269】{{ value }}",
+                        "variables": [
+                            {"variable": "value", "value_selector": ["code", "result"], "value_type": "string"}
+                        ],
+                    },
+                },
+            },
+            {
+                "op": "set_node_config",
+                "args": {"node_id": "end", "path": "outputs.0.value_selector", "value": ["mark", "output"]},
+            },
+        ]
+    }
+    plan = WorkflowPlan(
+        "在 Code 与 End 之间插入 Mark 模板转换节点并调整输出",
+        "工作流从 Start 节点接收必填文本输入 text，并将其原样传递给 Code 节点处理。",
+        "Code 节点处理后的结果经 Mark 节点按“【ENG1269】…”格式包装，最终由 End 节点通过 result 输出该格式化文本。",
+        [
+            "在 code 节点和 end 节点之间新建 template-transform 节点，节点 id 设为 mark，标题设为 Mark。",
+            "将 Mark 节点的模板内容配置为“【ENG1269】{{ value }}”，并添加变量 value："
+            "类型为 string，value_selector 指向 [code, result]。",
+            "删除现有 code→end 连线。",
+            "新增 code→mark 连线，使用真实节点端口：从 code 节点的 result 输出端口连接到 mark 节点的 value 输入端口。",
+            "新增 mark→end 连线，使用真实节点端口：从 mark 节点的 output 输出端口连接到 end 节点。",
+            "将 End 节点 outputs 中 result 的 value_selector 从 [code, result] 修改为 [mark, output]。",
+            "保持 start→code 连线不变，保持 Start 节点和 Code 节点的完整配置、代码、输入输出变量及其他参数不变。",
+        ],
+    )
+    return graph, proposal, plan
+
+
+@pytest.mark.parametrize("legacy_first_assessment", [False, True])
+def test_local_preserved_start_is_not_an_invented_insertion_requirement(
+    local_preserved_start_insertion: tuple[Graph, Graph, WorkflowPlan],
+    legacy_first_assessment: bool,
+) -> None:
+    graph, proposal, plan = local_preserved_start_insertion
+    requested = '{"requested_insertions":[1],"uncertain":false}'
+    # The saved Local reasoning and refusal identify legacy [0] as the false
+    # start→code requirement. Invalid legacy schema may spend the one correction,
+    # but must not become a durable invented placement requirement.
+    replies = [json.dumps(proposal), requested]
+    if legacy_first_assessment:
+        replies = [
+            json.dumps(proposal),
+            '{"required_insertions":[0],"uncertain":false}',
+            json.dumps(proposal),
+            requested,
+        ]
+    model = _RecordingInstance(replies)
+    intents = edit.build_edit_intents(
+        model,
+        {"change": "保留 start→code；在 code 与 end 间插入 mark"},
+        graph,
+        approved_plan=plan,
+        edit_target_node_ids=["code", "end"],
+    )
+    result = graph_ops.filter_applicable(graph, intents).graph
+    assert {(e["source"], e["target"]) for e in result["edges"]} == {
+        ("start", "code"),
+        ("code", "mark"),
+        ("mark", "end"),
+    }
+    assert result["nodes"][:2] == graph["nodes"][:2]
+    assert result["nodes"][2]["data"]["outputs"][0]["value_selector"] == ["mark", "output"]
+    assert len(model.calls) == (4 if legacy_first_assessment else 2)
+    facts = json.loads(_message_text(model.calls[1]["prompt_messages"][1]))
+    assert facts["candidates"][1] == {
+        "edge": {"source": "code", "target": "end", "sourceHandle": "source", "targetHandle": "target"},
+        "via": ["mark"],
+    }
+    assert facts["native_control_flow_handles"] == {
+        "default_source": "source",
+        "default_target": "target",
+        "branch_source_handles": {},
+    }
+    assert facts["candidate_facts"][0] == {"direct_edge_present": True, "replacement_path": None}
+    assert facts["candidate_facts"][1] == {"direct_edge_present": False, "replacement_path": ["mark"]}
+    instruction = _message_text(model.calls[1]["prompt_messages"][0])
+    assert "POSSIBLE placements, not requirements" in instruction
+    assert "First decide whether the approved request requires that EXACT original edge" in instruction
+    assert "Value selectors/output variables are not control-flow handle names" in instruction
+
+
+def test_requested_placement_is_checked_from_actual_graph_facts(
+    retained_bypass: tuple[Graph, Graph, Graph],
+) -> None:
+    graph, batch, _ = retained_bypass
+    plan = WorkflowPlan("Insert mark", "Receipt", "Marked receipt", ["Replace receipt→end with receipt→mark→end"])
+    candidate = graph_ops.filter_applicable(graph, [MutationIntent(**batch["intents"][0])]).graph
+    reasons, required = edit._assess_retained_bypasses(
+        _RecordingInstance(['{"requested_insertions":[1],"uncertain":false}']), graph, candidate, {}, plan, None
+    )
+    assert "receipt" in reasons[0]
+    assert required == [
+        {
+            "edge": {"source": "receipt", "target": "end", "sourceHandle": "source", "targetHandle": "target"},
+            "via": ["mark"],
+        }
+    ]
+
+
+def test_repeated_legacy_assessment_refuses_without_inventing_requested_edges(
+    local_preserved_start_insertion: tuple[Graph, Graph, WorkflowPlan],
+) -> None:
+    graph, proposal, plan = local_preserved_start_insertion
+    legacy = '{"required_insertions":[0],"uncertain":false}'
+    model = _RecordingInstance([json.dumps(proposal), legacy, json.dumps(proposal), legacy])
+    with pytest.raises(ProposalWouldRunWrongError, match="Could not verify which exact edge/via"):
+        edit.build_edit_intents(model, {}, graph, approved_plan=plan, edit_target_node_ids=["code", "end"])
+    assert len(model.calls) == 4
+    assert {(edge["source"], edge["target"]) for edge in graph["edges"]} == {("start", "code"), ("code", "end")}
