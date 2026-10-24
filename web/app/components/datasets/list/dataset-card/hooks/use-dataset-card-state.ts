@@ -57,7 +57,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   }, [])
 
   // API mutations
-  const { mutateAsync: deleteDatasetMutation } = useMutation(
+  const { mutate: deleteDatasetMutation, isPending: isDeleting } = useMutation(
     consoleQuery.datasets.byDatasetId.delete.mutationOptions(),
   )
   const { mutateAsync: exportPipelineConfig } = useMutation(
@@ -117,18 +117,18 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
     }
   }, [dataset.id, queryClient, t])
 
-  const onConfirmDelete = useCallback(async () => {
-    try {
-      await deleteDatasetMutation({
-        params: {
-          dataset_id: dataset.id,
+  const onConfirmDelete = useCallback(() => {
+    if (isDeleting) return
+    deleteDatasetMutation(
+      { params: { dataset_id: dataset.id } },
+      {
+        onSuccess: () => {
+          onSuccess?.()
+          closeConfirmDelete()
         },
-      })
-      onSuccess?.()
-    } finally {
-      closeConfirmDelete()
-    }
-  }, [dataset.id, deleteDatasetMutation, onSuccess, closeConfirmDelete])
+      },
+    )
+  }, [dataset.id, deleteDatasetMutation, isDeleting, onSuccess, closeConfirmDelete])
 
   return {
     // Modal state
@@ -146,5 +146,6 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
     handleExportPipeline,
     detectIsUsedByApp,
     onConfirmDelete,
+    isDeleting,
   }
 }

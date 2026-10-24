@@ -27,6 +27,7 @@ type DatasetCardModalsProps = {
   onCloseConfirm: () => void
   onCloseAccessConfig: () => void
   onConfirmDelete: () => void
+  isDeleting: boolean
   onSuccess?: () => void
 }
 
@@ -36,6 +37,7 @@ const DatasetCardModals = ({
   onCloseRename,
   onCloseConfirm,
   onConfirmDelete,
+  isDeleting,
   onSuccess,
 }: DatasetCardModalsProps) => {
   const { t } = useTranslation(['common', 'dataset'])
@@ -52,7 +54,13 @@ const DatasetCardModals = ({
       )}
       <AlertDialog
         open={modalState.showConfirmDelete}
-        onOpenChange={(open) => !open && onCloseConfirm()}
+        onOpenChange={(open, details) => {
+          if (!open && isDeleting) {
+            details.cancel()
+            return
+          }
+          if (!open) onCloseConfirm()
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -62,10 +70,10 @@ const DatasetCardModals = ({
             <AlertDialogDescription>{modalState.confirmMessage}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton disabled={isDeleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={onConfirmDelete}>
+            <AlertDialogConfirmButton loading={isDeleting} onClick={onConfirmDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>

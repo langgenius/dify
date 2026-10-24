@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetCard from '../index'
@@ -185,5 +186,43 @@ it('rechecks usage after cancellation and deletes only after confirmation', asyn
     }),
   )
   await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(onSuccess).toHaveBeenCalledOnce()
+})
+
+async function openDeleteDialog(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
+  return screen.findByRole('alertdialog', { name: 'dataset.deleteDatasetConfirmTitle' })
+}
+
+it('keeps a pending deletion open and prevents cancellation or duplicate confirmation', async () => {
+  const pending = createDeferred<void>()
+  api.deleteDataset.mockReturnValueOnce(pending.promise)
+  const { user, onSuccess } = setup({ permission_keys: [DatasetACLPermission.Delete] })
+  const dialog = await openDeleteDialog(user)
+  const confirm = within(dialog).getByRole('button', { name: 'common.operation.confirm' })
+  await user.click(confirm)
+  await user.click(confirm)
+  expect(api.deleteDataset).toHaveBeenCalledOnce()
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+  await user.keyboard('{Escape}')
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  expect(onSuccess).not.toHaveBeenCalled()
+  await act(async () => pending.resolve())
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(onSuccess).toHaveBeenCalledOnce()
+})
+
+it('keeps a failed deletion available for retry and closes only after success', async () => {
+  api.deleteDataset.mockRejectedValueOnce(new Error('delete failed'))
+  const { user, onSuccess } = setup({ permission_keys: [DatasetACLPermission.Delete] })
+  const dialog = await openDeleteDialog(user)
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() => expect(api.deleteDataset).toHaveBeenCalledOnce())
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  expect(onSuccess).not.toHaveBeenCalled()
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(api.deleteDataset).toHaveBeenCalledTimes(2)
   expect(onSuccess).toHaveBeenCalledOnce()
 })

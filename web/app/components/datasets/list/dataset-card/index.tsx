@@ -62,6 +62,7 @@ const DatasetCard = ({
     handleExportPipeline,
     detectIsUsedByApp,
     onConfirmDelete,
+    isDeleting,
   } = datasetCard
 
   const isExternalProvider = dataset.provider === EXTERNAL_PROVIDER
@@ -163,6 +164,7 @@ const DatasetCard = ({
         onCloseConfirm={closeConfirmDelete}
         onCloseAccessConfig={closeAccessConfig}
         onConfirmDelete={onConfirmDelete}
+        isDeleting={isDeleting}
         onSuccess={onSuccess}
       />
     </li>
