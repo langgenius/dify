@@ -265,9 +265,12 @@ def _settle_stop(repo, test_actions, session_id, actor, key, *, deliver=True):
         if fc.task_control.get("settlement") == settlement:
             return False
         fc.task_control["settlement"] = settlement
-        fc.task_control["receipt"]["settlement"] = settlement
-        fc.task_control["receipt"]["version"] = session.version + 1
-        fc.task_control["receipt"].pop("view", None)
+        receipt = fc.task_control["receipt"]
+        receipt["settlement"] = settlement
+        # Settlement advances the current projection, while an acknowledged
+        # response remains immutable for exact historical command replay.
+        if not receipt.get("view"):
+            receipt["version"] = session.version + 1
         return True
 
     repo.control_transaction(session_id, settle)
