@@ -383,10 +383,13 @@ def test_agent_reason_cannot_select_an_unchosen_candidate(monkeypatch: pytest.Mo
     assert "Review a contract" in str(calls[0]["user"])
 
 
-# The short identity was observed in Dev reasoning; the snapshot/digest below
-# are a controlled canonical catalog fixture, not a historical final JSON trace.
+# Public id/label/meta captured from QA's current actor-scoped catalog on
+# 2026-10-24 (actor-catalog-current.safe.json), not the historical final reply.
 _DISCOVERY_AGENT_ALIAS = "agent:01a14c90-9556-7625-bba7-aa36ac56b8a8"
-_DISCOVERY_AGENT_ID = _DISCOVERY_AGENT_ALIAS + ":01234567-89ab-cdef-0123-456789abcdef:" + "a" * 64
+_DISCOVERY_AGENT_ID = (
+    _DISCOVERY_AGENT_ALIAS
+    + ":01a14c90-e353-7868-8712-5ffebbc5119f:44d6b55b87771784006483de9db9f2006360285e6bb1af98c911d03a33e1c65a"
+)
 
 
 @pytest.mark.parametrize("full_id_position", ["absent", "first", "last"])
@@ -395,13 +398,126 @@ def test_agent_discovery_returns_current_canonical_identity_and_selected_reason(
 ) -> None:
     from services.dify_builder.agent import build, resources
 
-    ref = resources.ResourceRef(
-        id=_DISCOVERY_AGENT_ID,
-        label="Contract reviewer",
-        meta="Published version 3; actor-scoped reference eligible; runtime authorization unverified.",
-        readiness="missing_config",
-    )
-    inv = resources.TenantResources(models=[], datasets=[], tools=[], agents=[ref])
+    captured_agents = [
+        resources.ResourceRef(
+            id="agent:01a16857-1d43-789c-a307-6baccc155c44:01a16857-1e83-70d3-ad20-0a7b064d3462:79c0b6f7b3255c5d819a2ca00040314eb55a17ebc8fd4f44035c598cf19080d2",
+            label="ENG1293 synthetic NewAgent 160997b9f393",
+            meta=(
+                "Published version 1 (snapshot 01a16857-1e83-70d3-ad20-0a7b064d3462); Reference eligible for "
+                "this member in this workspace (actor-scoped published catalog); runtime authorization "
+                "unverified. Outputs must be declared by the node job. requires setup: authorize this tool's "
+                "credentials in the workspace before it can run no published capability summary: "
+            ),
+        ),
+        resources.ResourceRef(
+            id="agent:01a1684d-e6ba-74c0-a076-082c6abeab1f:01a1684d-ea5b-7ded-842c-9f35ce57faf5:ab9ca845800746137bcd58b4e672bb1e3a18f690f35a0caf19a1e184324f241c",
+            label="ENG1293 synthetic NewAgent b73392efa5ee",
+            meta=(
+                "Published version 1 (snapshot 01a1684d-ea5b-7ded-842c-9f35ce57faf5); Reference eligible for "
+                "this member in this workspace (actor-scoped published catalog); runtime authorization "
+                "unverified. Outputs must be declared by the node job. requires setup: authorize this tool's "
+                "credentials in the workspace before it can run no published capability summary: "
+            ),
+        ),
+        resources.ResourceRef(
+            id="agent:01a167bc-4c46-78c8-a99e-627670d85e73:01a167bc-4e81-77f0-a6f6-770fff1d9686:b96674a1f2747d45d4baf133ac5251d142fd2cabc12d200f0f001f11d2692fef",
+            label="ENG1293 synthetic NewAgent f0f195388278",
+            meta=(
+                "Published version 1 (snapshot 01a167bc-4e81-77f0-a6f6-770fff1d9686); Reference eligible for "
+                "this member in this workspace (actor-scoped published catalog); runtime authorization "
+                "unverified. Outputs must be declared by the node job. requires setup: authorize this tool's "
+                "credentials in the workspace before it can run no published capability summary: "
+            ),
+        ),
+        resources.ResourceRef(
+            id="agent:01a167a5-8a7a-7ea2-ab32-53c9762363b5:01a167a5-8bc4-74b5-b606-c01419c380b2:b5389f7ac94df435bc6a4f0ddd484dca2fa06220683506ee9479a1d938935db3",
+            label="ENG1293 synthetic NewAgent 92eb4f35f7bb",
+            meta=(
+                "Published version 1 (snapshot 01a167a5-8bc4-74b5-b606-c01419c380b2); Reference eligible for "
+                "this member in this workspace (actor-scoped published catalog); runtime authorization "
+                "unverified. Outputs must be declared by the node job. requires setup: authorize this tool's "
+                "credentials in the workspace before it can run no published capability summary: "
+            ),
+        ),
+        resources.ResourceRef(
+            id="agent:01a1678d-c3dc-7478-8a6f-833819e46eef:01a1678d-c544-7014-a912-c9085bf93bd0:ad8737666e8ddb0614ddef669b770301ee951cd9519fddad9d3b11832d6f3e8c",
+            label="ENG1293 synthetic NewAgent 3965fd4b7667",
+            meta=(
+                "Published version 1 (snapshot 01a1678d-c544-7014-a912-c9085bf93bd0); Reference eligible for "
+                "this member in this workspace (actor-scoped published catalog); runtime authorization "
+                "unverified. Outputs must be declared by the node job. requires setup: authorize this tool's "
+                "credentials in the workspace before it can run no published capability summary: "
+            ),
+        ),
+        resources.ResourceRef(
+            id="agent:01a16783-a58c-743a-a101-f15a1e70d303:01a16784-0692-7d33-ad61-c69902595e47:c78c410bd6b38aaaa48cb55842e834ba39b5ca99abcb79fea40a816cd38e0250",
+            label="ENG1293 synthetic NewAgent de614f49701c",
+            meta=(
+                "Published version 1 (snapshot 01a16784-0692-7d33-ad61-c69902595e47); Reference eligible for "
+                "this member in this workspace (actor-scoped published catalog); runtime authorization "
+                "unverified. Outputs must be declared by the node job. requires setup: authorize this tool's "
+                "credentials in the workspace before it can run no published capability summary: "
+            ),
+        ),
+        resources.ResourceRef(
+            id="agent:01a16721-2e89-7175-b095-a1fb4d590c6f:01a16721-3116-7924-8d87-ee69aa3c1db4:298d40390e4b4b4ed0762030e60b6799bc86f7a835f65fe5b44a65b1a88d5700",
+            label="ENG1293 synthetic NewAgent 9f8fda6d8a3d",
+            meta=(
+                "Published version 1 (snapshot 01a16721-3116-7924-8d87-ee69aa3c1db4); Reference eligible for "
+                "this member in this workspace (actor-scoped published catalog); runtime authorization "
+                "unverified. Outputs must be declared by the node job. requires setup: authorize this tool's "
+                "credentials in the workspace before it can run no published capability summary: "
+            ),
+        ),
+        resources.ResourceRef(
+            id="agent:01a15234-774f-760a-b1bd-ec76e84ad371:01a15234-7982-71ac-84f4-21a1427a8dea:760de71d69c774e4c101d5c288141379f7b82836f47b8b6dfe2a90d962eb7181",
+            label="ENG1184 Synthetic JSON Clause Inspector dc070128",
+            meta=(
+                "Published version 1 (snapshot 01a15234-7982-71ac-84f4-21a1427a8dea); Reference eligible for "
+                "this member in this workspace (actor-scoped published catalog); runtime authorization "
+                "unverified. Outputs must be declared by the node job. requires setup: authorize this tool's "
+                "credentials in the workspace before it can run public roster description (no published "
+                "summary): Synthetic clause inspector; published New Agent with official JSON Parse. No mailbox"
+                " or external business effects."
+            ),
+        ),
+        resources.ResourceRef(
+            id="agent:01a14d1c-f331-7393-94e9-d22a0df2aca5:01a14d1c-f651-7db0-9678-9ae6cfe65aec:43a3e94ca4f59bed849ab399d8a473a9c229a944f5ca351f1a97cef838001c3a",
+            label="GPT Synthetic JSON Clause Inspector 058ec5da",
+            meta=(
+                "Published version 1 (snapshot 01a14d1c-f651-7db0-9678-9ae6cfe65aec); Reference eligible for "
+                "this member in this workspace (actor-scoped published catalog); runtime authorization "
+                "unverified. Outputs must be declared by the node job. requires setup: authorize this tool's "
+                "credentials in the workspace before it can run public roster description (no published "
+                "summary): Synthetic clause inspector; published New Agent with official JSON Parse. No mailbox"
+                " or external business effects."
+            ),
+        ),
+        resources.ResourceRef(
+            id="agent:01a14c90-9556-7625-bba7-aa36ac56b8a8:01a14c90-e353-7868-8712-5ffebbc5119f:44d6b55b87771784006483de9db9f2006360285e6bb1af98c911d03a33e1c65a",
+            label="GPT Synthetic Contract Reviewer ec5a090a",
+            meta=(
+                "Published version 3 (snapshot 01a14c90-e353-7868-8712-5ffebbc5119f); Reference eligible for "
+                "this member in this workspace (actor-scoped published catalog); runtime authorization "
+                "unverified. Outputs must be declared by the node job.  public roster description (no published"
+                " summary): Synthetic contract clause risk review; text-only DeepSeek, no business tool "
+                "configuration."
+            ),
+        ),
+        resources.ResourceRef(
+            id="agent:01a14c8c-1b6e-7ac6-9101-7f82068bffc1:01a14c8c-1d90-72db-9a41-402fb9d4af56:75a278f4f814fba0938917aff17eb2094323918b2b14ed5c8a6b7eb89c7eeff3",
+            label="GPT Synthetic Contract Reviewer 7892fefc",
+            meta=(
+                "Published version 2 (snapshot 01a14c8c-1d90-72db-9a41-402fb9d4af56); Reference eligible for "
+                "this member in this workspace (actor-scoped published catalog); runtime authorization "
+                "unverified. Outputs must be declared by the node job.  public roster description (no published"
+                " summary): Synthetic contract clause risk review; text-only DeepSeek, no business tool "
+                "configuration."
+            ),
+        ),
+    ]
+    ref = next(item for item in captured_agents if item.id == _DISCOVERY_AGENT_ID)
+    inv = resources.TenantResources(models=[], datasets=[], tools=[], agents=captured_agents)
     monkeypatch.setattr(resources, "list_tenant_resources", lambda *_args, **_kwargs: inv)
     selected = [_DISCOVERY_AGENT_ALIAS, _DISCOVERY_AGENT_ALIAS]
     if full_id_position == "first":
@@ -428,7 +544,7 @@ def test_agent_discovery_returns_current_canonical_identity_and_selected_reason(
     assert options[0].id == _DISCOVERY_AGENT_ID
     assert options[0].kind == "agent"
     assert options[0].label == ref.label
-    assert options[0].readiness == "missing_config"
+    assert options[0].readiness == ref.readiness
     reason = (
         "Its canonical selection fits the requested risk review."
         if full_id_position != "absent"
@@ -447,7 +563,7 @@ def test_agent_discovery_returns_current_canonical_identity_and_selected_reason(
         " " + _DISCOVERY_AGENT_ALIAS,
         _DISCOVERY_AGENT_ALIAS + ":",
         _DISCOVERY_AGENT_ALIAS + ":stale-snapshot:" + "a" * 64,
-        _DISCOVERY_AGENT_ALIAS + ":01234567-89ab-cdef-0123-456789abcdef:" + "b" * 64,
+        _DISCOVERY_AGENT_ALIAS + ":01a14c90-e353-7868-8712-5ffebbc5119f:" + "b" * 64,
         _DISCOVERY_AGENT_ID + ":extra",
     ],
 )
