@@ -66,9 +66,10 @@ import pytest_mock
 from sqlalchemy import inspect, select
 from sqlalchemy import inspect as inspect_orm
 
-from core.dify_builder.models import Actor
+from core.dify_builder.input_schema import schema_hash, start_schema
+from core.dify_builder.models import Actor, DifyBuilderContext
 from models.account import Account, Tenant, TenantAccountJoin
-from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
+from models.dify_builder import DifyBuilderSession, DifyBuilderSessionCommit, DifyBuilderTestInput
 from models.dify_builder_native_tests import (
     NativeContinuation,
     NativeDispatch,
@@ -85,6 +86,8 @@ from services.dify_builder.native_testing.pending_actions import NativePendingAc
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
 from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from services.dify_builder.revision import execution_revision
+from services.dify_builder.serde import context_to_dict
 from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
     CapacityOwnerCase,
     require_present,
@@ -169,20 +172,41 @@ def _peer(
             workflow.id, workflow.app_id, workflow.tenant_id = str(uuid4()), app.id, actor.tenant_id
             app.workflow_id = workflow.id
             session.add_all((app, workflow))
+        app = require_present(app)
         builder = DifyBuilderSession(
-            app_id=require_present(app).id,
+            app_id=app.id,
             tenant_id=actor.tenant_id,
             owner_account_id=actor.account_id,
             entry_mode="build",
             current_state="build.await_testdata",
+            version=1,
         )
         session.add(builder)
         session.flush()
         inputs = DifyBuilderTestInput(
-            session_id=builder.id, source="user", inputs=dict(c.context.inputs), start_schema_hash=""
+            session_id=builder.id,
+            source="user",
+            inputs=dict(c.context.inputs),
+            start_schema_hash=schema_hash(start_schema(dict(require_present(workflow).graph_dict), app.mode)),
         )
         session.add(inputs)
         session.flush()
+        # A peer is an independent active task, with its own canonical current
+        # context; the shared native_owner commit belongs only to the first task.
+        session.add(
+            DifyBuilderSessionCommit(
+                session_id=builder.id,
+                version=builder.version,
+                state=builder.current_state,
+                context=context_to_dict(
+                    DifyBuilderContext(
+                        test_input_ref=inputs.id,
+                        last_snapshot_hash=execution_revision(require_present(workflow)),
+                    )
+                ),
+                actor=actor.account_id,
+            )
+        )
         sid, tid = builder.id, inputs.id
         session.expunge(app)
         session.expunge(workflow)
