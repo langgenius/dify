@@ -755,7 +755,7 @@ def test_chat_dsl_import_preserves_valid_feature_fields(sqlite_session: Session)
 
 
 def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock()))
+    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock(), scalar=Mock(return_value="app-1")))
     service = AppDslService(session=session)
     app = SimpleNamespace(
         id="app-1",
@@ -795,7 +795,9 @@ def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: py
 
 
 def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock()))
+    session = cast(
+        Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock(), scalar=Mock(return_value="app-1"))
+    )
     service = AppDslService(session=session)
     app = SimpleNamespace(
         id="app-1",
@@ -1102,6 +1104,8 @@ def _guarded_overwrite(
     workflow_service = _DraftWorkflowService(draft=draft)
     monkeypatch.setattr("services.app_dsl_service.WorkflowService", lambda: workflow_service)
     app = _app(mode=AppMode.WORKFLOW)
+    session.add(app)
+    session.flush()
 
     def overwrite(draft_hash: str) -> App:
         return service._create_or_update_app(
@@ -1115,10 +1119,10 @@ def _guarded_overwrite(
 
 
 def test_guarded_overwrite_saves_against_the_locked_draft_it_matched(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     draft = _workflow_draft(_app(mode=AppMode.WORKFLOW))
-    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, unbound_session, draft=draft)
+    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, sqlite_session, draft=draft)
 
     overwrite(draft_token(draft))
 
@@ -1128,10 +1132,10 @@ def test_guarded_overwrite_saves_against_the_locked_draft_it_matched(
 
 @pytest.mark.parametrize("draft_exists", [True, False], ids=["draft-changed", "draft-gone"])
 def test_guarded_overwrite_refuses_a_draft_that_no_longer_matches(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, draft_exists: bool
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, draft_exists: bool
 ) -> None:
     draft = _workflow_draft(_app(mode=AppMode.WORKFLOW)) if draft_exists else None
-    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, unbound_session, draft=draft)
+    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, sqlite_session, draft=draft)
 
     with pytest.raises(DraftChangedError):
         overwrite("exported")
@@ -1140,10 +1144,10 @@ def test_guarded_overwrite_refuses_a_draft_that_no_longer_matches(
 
 
 def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     app = _app(mode=AppMode.WORKFLOW)
-    service, workflow_service, _ = _guarded_overwrite(monkeypatch, unbound_session, draft=_workflow_draft(app))
+    service, workflow_service, _ = _guarded_overwrite(monkeypatch, sqlite_session, draft=_workflow_draft(app))
     cached: list[str] = []
     monkeypatch.setattr("services.app_dsl_service.redis_client.setex", lambda key, _expiry, _value: cached.append(key))
     dependency = PluginDependency(

@@ -656,7 +656,7 @@ class AppDslService:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
         # Check the draft before any write so a refused import leaves the app and its cached dependencies alone.
-        locked_draft = self._lock_draft_matching(app=app, draft_hash=draft_hash) if draft_hash is not None else None
+        locked_draft: Workflow | None = None
         site_data = SiteDsl.model_validate(data["site"]) if data.get("site") is not None else None
         if app_mode == AppMode.AGENT:
             self._ensure_agent_import_permission(account, app=app)
@@ -669,10 +669,19 @@ class AppDslService:
             workflow_data = data.get("workflow")
             if not workflow_data or not isinstance(workflow_data, dict):
                 raise ValueError("Missing workflow data for workflow/advanced chat app")
-            if draft_hash is None and app is not None:
-                # Detect legacy ambiguity before app metadata writes, and retain
-                # the absence lock through trusted initialization/package import.
-                locked_draft = WorkflowService().get_draft_workflow_for_creation(app, session=self._session)
+            if app is not None:
+                # Import also writes App metadata. Take its exact owner before
+                # any draft lock, including the hash guard, so an initializer's
+                # stale absence recheck cannot invert the metadata flush order.
+                owner_id = self._session.scalar(
+                    select(App.id).where(App.id == app.id, App.tenant_id == app.tenant_id).with_for_update()
+                )
+                if owner_id is None:
+                    raise WorkflowNotFoundError("App not found for draft initialization.")
+                if draft_hash is None:
+                    locked_draft = WorkflowService().get_draft_workflow_for_creation(app, session=self._session)
+        if draft_hash is not None:
+            locked_draft = self._lock_draft_matching(app=app, draft_hash=draft_hash)
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
