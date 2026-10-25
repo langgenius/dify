@@ -256,7 +256,7 @@ describe('FilterCondition', () => {
       />,
     )
 
-    expect(screen.queryByRole('textbox', { name: 'variable-input' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
   })
 
