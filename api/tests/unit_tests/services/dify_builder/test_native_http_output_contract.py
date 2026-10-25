@@ -269,8 +269,14 @@ def build_messages(
         user = str(prompt_messages[1].content)
         node_id = next(node["id"] for node in nodes if f"id={node['id']}, type=" in user)
         captured[node_id] = prompt_messages
+        node_type = next(node["node_type"] for node in nodes if node["id"] == node_id)
+        config: dict[str, object] = {}
+        if node_type == "template-transform":
+            config = {"template": "HTTP result", "variables": list[object]()}
         return LLMResult(
-            model="gpt-4o", message=AssistantPromptMessage(content='{"config":{}}'), usage=LLMUsage.empty_usage()
+            model="gpt-4o",
+            message=AssistantPromptMessage(content=json.dumps({"config": config})),
+            usage=LLMUsage.empty_usage(),
         )
 
     model_instance = make_model_instance(provider="openai", model="gpt-4o")

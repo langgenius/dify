@@ -34,6 +34,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from typing import Any, ClassVar, cast
 
+from jinja2 import TemplateSyntaxError
+from jinja2.sandbox import SandboxedEnvironment
+
 from configs import dify_config
 from core.workflow.generator.prompts.node_builder_prompts import (
     NODE_BUILDER_USER_PROMPT,
@@ -231,7 +234,7 @@ _DECLARED_OUTPUT_NAME_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]{0,29}")
 
 
 # Included in a trailing user message on the SECOND (and only) attempt when
-# the first response failed JSON or config-envelope validation. Keep this
+# the first response failed JSON or node-config validation. Keep this
 # terse — the model already has its full instructions in the original system
 # message; this is a corrective nudge, not a re-statement of the spec.
 _JSON_RETRY_HINT = (
@@ -1291,7 +1294,7 @@ class WorkflowGenerator:
 
         Refine plans can mark existing nodes as ``keep``; those nodes bypass
         the model entirely and retain their full data config. Every other node
-        gets one compact call and at most one JSON/config-envelope correction,
+        gets one compact call and at most one JSON/node-config correction,
         with at most ``_node_builder_max_workers()`` calls in flight. Exhausted
         or permanent fragment failures abort the graph, preserving the
         generator's existing fail-closed contract.
@@ -1471,6 +1474,20 @@ class WorkflowGenerator:
                 raise _StageSchemaError(stage, "missing 'config' object")
             if not isinstance(parsed["config"], dict):
                 raise _StageSchemaError(stage, f"'config' must be an object, got {type(parsed['config']).__name__}")
+            if node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM:
+                template = parsed["config"].get("template")
+                if not isinstance(template, str):
+                    raise _StageSchemaError(stage, "Template 'template' must be a string")
+                try:
+                    # Parse only AI-produced configs, before assembly; kept nodes
+                    # bypass builders. Native Jinja grammar permits advanced syntax.
+                    SandboxedEnvironment().parse(template)
+                except TemplateSyntaxError:
+                    raise _StageSchemaError(
+                        stage,
+                        "Template must use valid Jinja syntax: reference declared variables[].variable "
+                        "as {{ alias }}, not Dify {{#node.variable#}} placeholders.",
+                    ) from None
             if node_type == BuiltinNodeTypes.AGENT:
                 errors = native_agent_config_errors(parsed["config"])
                 if errors:
