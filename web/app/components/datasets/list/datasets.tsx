@@ -121,11 +121,11 @@ const Datasets = ({
               <DatasetCard
                 key={dataset.id}
                 dataset={dataset}
-                onDelete={(target, trigger) =>
+                onDelete={(item) =>
                   deleteDialog.openWithPayload({
-                    id: target.id,
-                    adjacentFocusTargets: getAdjacentFocusTargets(trigger?.closest('li'), (item) =>
-                      item.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+                    id: dataset.id,
+                    adjacentFocusTargets: getAdjacentFocusTargets(item, (sibling) =>
+                      sibling.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
                     ),
                     fallbackFocus: { current: null },
                   })

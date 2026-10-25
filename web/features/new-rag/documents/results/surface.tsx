@@ -1,6 +1,5 @@
 'use client'
 
-import type { LogicalDocument } from '../models'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -229,7 +228,7 @@ function DependencyRecoveryBoundary({ children }: { children: React.ReactNode })
 function DocumentCollectionState({
   onRemove,
 }: {
-  onRemove: (document: LogicalDocument, trigger: HTMLButtonElement | null) => void
+  onRemove: (documentId: string, row: HTMLTableRowElement | null) => void
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
@@ -320,13 +319,12 @@ export function DocumentResultsSurface() {
           <DocumentQueryRecoveryNotice />
           <DependencyRecoveryBoundary>
             <DocumentCollectionState
-              onRemove={(target, trigger) => {
-                const adjacentFocusTargets = getAdjacentFocusTargets(
-                  trigger?.closest('tr'),
-                  (row) => row.querySelector<HTMLAnchorElement>('a[href]'),
+              onRemove={(documentId, row) => {
+                const adjacentFocusTargets = getAdjacentFocusTargets(row, (sibling) =>
+                  sibling.querySelector<HTMLAnchorElement>('a[href]'),
                 )
                 deleteDialog.openWithPayload({
-                  documentId: target.id,
+                  documentId,
                   adjacentFocusTargets,
                   fallbackFocus: { current: null },
                 })

@@ -92,7 +92,7 @@ describe('MemberRow details entry points', () => {
     await user.click(
       screen.getByRole('menuitem', { name: 'workspaceMembers.members.removeFromTeam' }),
     )
-    expect(onRemove).toHaveBeenCalledWith(member, trigger)
+    expect(onRemove).toHaveBeenCalledExactlyOnceWith(screen.getByRole('row'))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

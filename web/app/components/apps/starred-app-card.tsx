@@ -1,11 +1,10 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppCardInteractionsProps } from './app-card/interactions'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback, useId, useMemo } from 'react'
+import { memo, useCallback, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
@@ -21,7 +20,7 @@ import { StudioListLink } from './list-navigation'
 
 type StarredAppCardProps = {
   app: AppPartial
-  onDelete: AppCardInteractionsProps['onDelete']
+  onDelete: (item: HTMLLIElement | null) => void
   stepByStepTourCardTarget?: string
   stepByStepTourCardHighlightPart?: string
 }
@@ -33,6 +32,7 @@ export const StarredAppCard = memo(
     stepByStepTourCardTarget,
     stepByStepTourCardHighlightPart,
   }: StarredAppCardProps) => {
+    const itemRef = useRef<HTMLLIElement>(null)
     const { t } = useTranslation(['app', 'common', 'time'])
     const { data: currentUserId } = useSuspenseQuery({
       ...userProfileQueryOptions(),
@@ -92,6 +92,7 @@ export const StarredAppCard = memo(
 
     return (
       <li
+        ref={itemRef}
         className={cn(
           "group relative isolate overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
           !isPreviewOnly &&
@@ -110,7 +111,7 @@ export const StarredAppCard = memo(
             {cardContent}
           </button>
         ) : (
-          <AppCardInteractions app={app} onDelete={onDelete}>
+          <AppCardInteractions app={app} onDelete={() => onDelete(itemRef.current)}>
             <StudioListLink
               href={href}
               aria-labelledby={appNameId}

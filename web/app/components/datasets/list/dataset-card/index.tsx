@@ -4,7 +4,7 @@ import type { DatasetCardItem } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useId, useMemo, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -29,7 +29,7 @@ const EXTERNAL_PROVIDER = 'external'
 type DatasetCardProps = {
   dataset: DatasetCardItem
   onSuccess?: () => void
-  onDelete: (dataset: DatasetCardItem, trigger: HTMLButtonElement | null) => void
+  onDelete: (item: HTMLLIElement | null) => void
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuHighlightPart?: string
   stepByStepTourActionMenuOpen?: boolean
@@ -45,6 +45,7 @@ const DatasetCard = ({
   stepByStepTourActionMenuOpen,
   stepByStepTourCardTarget,
 }: DatasetCardProps) => {
+  const itemRef = useRef<HTMLLIElement>(null)
   const { t } = useTranslation(['app'])
   const nameId = useId()
   const { data: currentUserId } = useSuspenseQuery({
@@ -98,6 +99,7 @@ const DatasetCard = ({
 
   return (
     <li
+      ref={itemRef}
       className={cn(
         "group relative isolate col-span-1 flex min-h-41.5 min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-[background-color,box-shadow] duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt focus-within:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-[>[data-dataset-card-entry]:focus-visible]:after:inset-ring-2 has-[>[data-dataset-card-entry]:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
         isPreviewOnly
@@ -142,7 +144,7 @@ const DatasetCard = ({
           dataset={dataset}
           openRenameModal={() => setRenameOpen(true)}
           handleExportPipeline={handleExportPipeline}
-          onDelete={(trigger) => onDelete(dataset, trigger)}
+          onDelete={() => onDelete(itemRef.current)}
           openAccessConfig={openAccessConfig}
           stepByStepTourHighlightPart={stepByStepTourActionMenuHighlightPart}
           stepByStepTourOpen={stepByStepTourActionMenuOpen}

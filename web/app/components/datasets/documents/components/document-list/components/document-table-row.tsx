@@ -34,7 +34,7 @@ type DocumentTableRowProps = {
   isQAMode: boolean
   embeddingAvailable: boolean
   onShowRenameModal: (doc: LocalDoc) => void
-  onDelete: (id: string, trigger: HTMLButtonElement | null) => void
+  onDelete: (row: HTMLTableRowElement | null) => void
   onUpdate: () => void
 }
 
@@ -62,6 +62,7 @@ const DocumentTableRow = React.memo(
     const { formatTime } = useTimestamp()
     const router = useRouter()
     const searchParams = useSearchParams()
+    const rowRef = React.useRef<HTMLTableRowElement>(null)
     const documentNameId = React.useId()
     const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
     const { data: currentUserId } = useSuspenseQuery({
@@ -106,6 +107,7 @@ const DocumentTableRow = React.memo(
 
     return (
       <tr
+        ref={rowRef}
         className="h-8 cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
         onClick={handleRowClick}
       >
@@ -197,7 +199,7 @@ const DocumentTableRow = React.memo(
               'display_status',
             ])}
             onUpdate={onUpdate}
-            onDelete={onDelete}
+            onDelete={() => onDelete(rowRef.current)}
             canEdit={datasetACLCapabilities.canEdit}
             canDownload={datasetACLCapabilities.canDocumentDownload}
             canDelete={datasetACLCapabilities.canDeleteFile}

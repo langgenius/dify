@@ -199,9 +199,9 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           documents={documentsList || []}
           datasetId={datasetId}
           onUpdate={handleUpdate}
-          onDelete={(id, trigger) => {
-            const adjacentFocusTargets = getAdjacentFocusTargets(trigger?.closest('tr'), (row) =>
-              row.querySelector<HTMLAnchorElement>('a[href]'),
+          onDelete={(id, row) => {
+            const adjacentFocusTargets = getAdjacentFocusTargets(row, (sibling) =>
+              sibling.querySelector<HTMLAnchorElement>('a[href]'),
             )
             deleteDialog.openWithPayload({
               id,

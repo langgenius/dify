@@ -21,7 +21,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValueRawSync } from 'jotai'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   documentCanDownload,
@@ -264,12 +264,11 @@ export function DocumentActionsDropdown({
   onRemove,
 }: {
   className?: string
-  onRemove: (document: LogicalDocument, trigger: HTMLButtonElement | null) => void
+  onRemove: () => void
   document: LogicalDocument
 }) {
   const { t } = useTranslation(['dataset', 'knowledgeDocuments'])
   const busy = useDocumentRowActionBusy(document.id)
-  const triggerRef = useRef<HTMLButtonElement>(null)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
   const unavailableReasonId = `new-document-${document.id}-actions-unavailable`
 
@@ -277,7 +276,6 @@ export function DocumentActionsDropdown({
     <>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger
-          ref={triggerRef}
           aria-label={t(($) => $.documentActions, {
             ns: 'knowledgeDocuments',
             name: document.title,
@@ -304,10 +302,7 @@ export function DocumentActionsDropdown({
           <DownloadDocumentMenuItem document={document} />
           <ToggleDocumentAvailabilityMenuItem document={document} />
           <DropdownMenuSeparator className="my-px" />
-          <RemoveDocumentMenuItem
-            document={document}
-            onOpen={() => onRemove(document, triggerRef.current)}
-          />
+          <RemoveDocumentMenuItem document={document} onOpen={onRemove} />
         </DropdownMenuContent>
       </DropdownMenu>
       <span id={unavailableReasonId} className="sr-only">

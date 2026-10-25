@@ -253,14 +253,14 @@ const MembersPage = () => {
                     <MemberRow
                       key={account.id}
                       member={account}
-                      onRemove={(target, trigger) => {
-                        const adjacentFocusTargets = getAdjacentFocusTargets(
-                          trigger?.closest('tr'),
-                          (row) =>
-                            row.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]'),
+                      onRemove={(row) => {
+                        const adjacentFocusTargets = getAdjacentFocusTargets(row, (sibling) =>
+                          sibling.querySelector<HTMLButtonElement>(
+                            'button[aria-haspopup="dialog"]',
+                          ),
                         )
                         removeDialog.openWithPayload({
-                          member: target,
+                          member: account,
                           adjacentFocusTargets,
                           fallbackFocus: { current: null },
                         })

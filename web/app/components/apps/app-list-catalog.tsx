@@ -8,7 +8,6 @@ import type {
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { RefObject } from 'react'
-import type { AppCardInteractionsProps } from './app-card/interactions'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -115,12 +114,12 @@ function AppListCatalogContent({
   const deletion = useMutation(
     consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
   )
-  const openDeleteDialog = useCallback<AppCardInteractionsProps['onDelete']>(
-    (app, trigger) =>
+  const openDeleteDialog = useCallback(
+    (app: Pick<AppPartial, 'id' | 'name'>, item: HTMLLIElement | null) =>
       deleteDialog.openWithPayload({
         ...app,
-        adjacentFocusTargets: getAdjacentFocusTargets(trigger?.closest('li'), (item) =>
-          item.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+        adjacentFocusTargets: getAdjacentFocusTargets(item, (sibling) =>
+          sibling.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
         ),
         fallbackFocus: { current: null },
       }),
@@ -222,7 +221,7 @@ function AppListCatalogContent({
                   <AppCard
                     key={app.id}
                     app={app}
-                    onDelete={openDeleteDialog}
+                    onDelete={(item) => openDeleteDialog(app, item)}
                     onlineUsers={workflowOnlineUsersMap[app.id]}
                     onOpenTagManagement={onOpenTagManagement}
                     stepByStepTourActionMenuOpen={

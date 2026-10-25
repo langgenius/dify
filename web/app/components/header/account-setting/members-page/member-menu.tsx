@@ -20,7 +20,7 @@ import TransferOwnershipContent from './transfer-ownership-content'
 
 type MemberMenuProps = {
   member: AccountWithRoleResponse
-  onRemove: (member: AccountWithRoleResponse, trigger: HTMLButtonElement | null) => void
+  onRemove: () => void
   isCurrentUser: boolean
   canTransferOwnership?: boolean
   allowMultipleRoles?: boolean
@@ -34,7 +34,6 @@ const MemberMenu = ({
   allowMultipleRoles = true,
 }: MemberMenuProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
-  const triggerRef = useRef<HTMLButtonElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [transferOpen, setTransferOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
@@ -87,7 +86,6 @@ const MemberMenu = ({
     <div>
       <DropdownMenu>
         <DropdownMenuTrigger
-          ref={triggerRef}
           render={
             <IconButton
               size="lg"
@@ -118,11 +116,7 @@ const MemberMenu = ({
           )}
           {(canAssignRoles || showTransferOwnership) && canRemove && <DropdownMenuSeparator />}
           {canRemove && (
-            <DropdownMenuItem
-              variant="destructive"
-              className="system-sm-medium"
-              onClick={() => onRemove(member, triggerRef.current)}
-            >
+            <DropdownMenuItem variant="destructive" className="system-sm-medium" onClick={onRemove}>
               {t(($) => $['members.removeFromTeam'], { ns: 'workspaceMembers' })}
             </DropdownMenuItem>
           )}

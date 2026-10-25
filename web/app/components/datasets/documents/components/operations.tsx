@@ -38,7 +38,7 @@ type OperationsProps = {
     display_status?: string | null
   }
   datasetId: string
-  onDelete: (id: string, trigger: HTMLButtonElement | null) => void
+  onDelete: () => void
   onUpdate: (operationName?: string) => void
   scene?: 'list' | 'detail'
   className?: string
@@ -68,7 +68,6 @@ const Operations = ({
   const { id, name, data_source_type, display_status } = detail
   const enabled = detail.enabled ?? false
   const archived = detail.archived ?? false
-  const triggerRef = React.useRef<HTMLButtonElement>(null)
   const { t } = useTranslation(['common', 'datasetDocuments'])
   const router = useRouter()
   const documents = consoleQuery.datasets.byDatasetId.documents
@@ -215,8 +214,8 @@ const Operations = ({
   const handleDeleteClick = useCallback(() => {
     if (!canDelete) return
 
-    onDelete(id, triggerRef.current)
-  }, [canDelete, id, onDelete])
+    onDelete()
+  }, [canDelete, onDelete])
   const handleDownloadClick = useCallback(
     (evt: React.MouseEvent<HTMLElement>) => {
       evt.preventDefault()
@@ -321,7 +320,6 @@ const Operations = ({
         <>
           <DropdownMenu>
             <DropdownMenuTrigger
-              ref={triggerRef}
               aria-label={t(($) => $['operation.more'], { ns: 'common' })}
               className={cn(
                 isListScene

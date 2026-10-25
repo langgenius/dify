@@ -435,14 +435,13 @@ export function NewKnowledgeList({
                 <KnowledgeSpaceCard
                   key={knowledgeSpace.control_space_id}
                   knowledgeSpace={knowledgeSpace}
-                  onDelete={(target, trigger) =>
+                  onDelete={(item) =>
                     deleteDialog.openWithPayload({
-                      id: target.control_space_id,
-                      name: target.technical_summary?.name ?? target.control_space_id,
-                      adjacentFocusTargets: getAdjacentFocusTargets(
-                        trigger?.closest('li'),
-                        (item) =>
-                          item.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+                      id: knowledgeSpace.control_space_id,
+                      name:
+                        knowledgeSpace.technical_summary?.name ?? knowledgeSpace.control_space_id,
+                      adjacentFocusTargets: getAdjacentFocusTargets(item, (sibling) =>
+                        sibling.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
                       ),
                       fallbackFocus: { current: null },
                     })

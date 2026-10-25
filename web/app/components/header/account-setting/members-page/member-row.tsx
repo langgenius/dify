@@ -12,7 +12,7 @@ import RoleBadges from './role-badges'
 
 type MemberRowProps = {
   member: AccountWithRoleResponse
-  onRemove: (member: AccountWithRoleResponse, trigger: HTMLButtonElement | null) => void
+  onRemove: (row: HTMLTableRowElement | null) => void
   roles: Array<{
     id: string
     name: string
@@ -33,6 +33,7 @@ const MemberRow = ({
   allowMultipleRoles,
 }: MemberRowProps) => {
   const { t } = useTranslation(['workspaceMembers'])
+  const rowRef = useRef<HTMLTableRowElement>(null)
   const detailsTriggerRef = useRef<HTMLButtonElement>(null)
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
@@ -54,6 +55,7 @@ const MemberRow = ({
 
   return (
     <tr
+      ref={rowRef}
       data-testid={`member-row-${member.id}`}
       className="cursor-pointer border-b border-divider-subtle hover:bg-state-base-hover has-[[aria-haspopup=dialog]:focus-visible]:bg-state-base-hover has-[[aria-haspopup=dialog]:focus-visible]:inset-ring-2 has-[[aria-haspopup=dialog]:focus-visible]:inset-ring-state-accent-solid has-[[aria-haspopup=dialog]:focus-visible]:outline-hidden has-[[aria-haspopup=menu]:hover]:bg-transparent"
       onClick={handleRowClick}
@@ -100,7 +102,7 @@ const MemberRow = ({
         <td className="px-3 py-2">
           <MemberMenu
             member={member}
-            onRemove={onRemove}
+            onRemove={() => onRemove(rowRef.current)}
             isCurrentUser={isCurrentUser}
             canTransferOwnership={canTransferOwnership}
             allowMultipleRoles={allowMultipleRoles}

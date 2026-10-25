@@ -326,19 +326,22 @@ const DocumentRow = memo(
     onRemove,
   }: {
     document: LogicalDocument
-    onRemove: (document: LogicalDocument, trigger: HTMLButtonElement | null) => void
-  }) => (
-    <tr className="h-12 border-t border-divider-subtle">
-      <DocumentSelectionCell document={document} />
-      <DocumentTitleCell document={document} />
-      <DocumentSourceCell documentId={document.id} />
-      <DocumentStatusCell documentId={document.id} />
-      <DocumentUpdatedCell updatedAt={document.updatedAt} />
-      <td className="w-10 align-middle">
-        <DocumentActionsDropdown document={document} onRemove={onRemove} />
-      </td>
-    </tr>
-  ),
+    onRemove: (row: HTMLTableRowElement | null) => void
+  }) => {
+    const rowRef = useRef<HTMLTableRowElement>(null)
+    return (
+      <tr ref={rowRef} className="h-12 border-t border-divider-subtle">
+        <DocumentSelectionCell document={document} />
+        <DocumentTitleCell document={document} />
+        <DocumentSourceCell documentId={document.id} />
+        <DocumentStatusCell documentId={document.id} />
+        <DocumentUpdatedCell updatedAt={document.updatedAt} />
+        <td className="w-10 align-middle">
+          <DocumentActionsDropdown document={document} onRemove={() => onRemove(rowRef.current)} />
+        </td>
+      </tr>
+    )
+  },
 )
 
 export function DocumentsEmpty() {
@@ -519,7 +522,7 @@ function DocumentsTableHeader() {
 function DocumentsTable({
   onRemove,
 }: {
-  onRemove: (document: LogicalDocument, trigger: HTMLButtonElement | null) => void
+  onRemove: (documentId: string, row: HTMLTableRowElement | null) => void
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
@@ -586,7 +589,11 @@ function DocumentsTable({
           <DocumentsTableHeader />
           <tbody>
             {visibleDocuments.map((document) => (
-              <DocumentRow key={document.id} document={document} onRemove={onRemove} />
+              <DocumentRow
+                key={document.id}
+                document={document}
+                onRemove={(row) => onRemove(document.id, row)}
+              />
             ))}
           </tbody>
         </table>
@@ -684,7 +691,7 @@ function DocumentsTable({
 export function DocumentsList({
   onRemove,
 }: {
-  onRemove: (document: LogicalDocument, trigger: HTMLButtonElement | null) => void
+  onRemove: (documentId: string, row: HTMLTableRowElement | null) => void
 }) {
   const { t } = useTranslation(['knowledgeDocuments'])
 

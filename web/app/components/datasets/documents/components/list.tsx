@@ -41,7 +41,7 @@ type DocumentListProps = {
   onSelectedIdChange: (selectedIds: string[]) => void
   datasetId: string
   pagination: PaginationProps
-  onDelete: (id: string, trigger: HTMLButtonElement | null) => void
+  onDelete: (id: string, row: HTMLTableRowElement | null) => void
   onUpdate: () => void
   onManageMetadata: () => void
   remoteSortValue: string
@@ -224,7 +224,7 @@ const DocumentList = ({
                 embeddingAvailable={embeddingAvailable}
                 onShowRenameModal={handleShowRenameModal}
                 onUpdate={onUpdate}
-                onDelete={onDelete}
+                onDelete={(row) => onDelete(doc.id, row)}
               />
             ))}
           </tbody>

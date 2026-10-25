@@ -1,6 +1,6 @@
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useId } from 'react'
+import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
@@ -21,15 +21,13 @@ export function KnowledgeSpaceCard({
   highlighted = false,
 }: {
   knowledgeSpace: KnowledgeFsSpaceListItemResponse
-  onDelete: (
-    knowledgeSpace: KnowledgeFsSpaceListItemResponse,
-    trigger: HTMLButtonElement | null,
-  ) => void
+  onDelete: (item: HTMLLIElement | null) => void
   onOpenTagManagement: () => void
   highlighted?: boolean
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeOverview'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const itemRef = useRef<HTMLLIElement>(null)
   const nameId = useId()
   const descriptionId = useId()
   const linkedAppsDescriptionId = useId()
@@ -44,6 +42,7 @@ export function KnowledgeSpaceCard({
 
   return (
     <li
+      ref={itemRef}
       className={cn(
         "group relative isolate h-41.5 overflow-hidden rounded-xl bg-components-card-bg text-left transition-[background-color,box-shadow] after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt focus-within:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] hover:bg-components-card-bg-alt hover:shadow-md hover:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt [@media(hover:none)]:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)]",
         highlighted
@@ -102,7 +101,10 @@ export function KnowledgeSpaceCard({
           onOpenTagManagement={onOpenTagManagement}
         />
       </div>
-      <KnowledgeSpaceActions knowledgeSpace={knowledgeSpace} onDelete={onDelete} />
+      <KnowledgeSpaceActions
+        knowledgeSpace={knowledgeSpace}
+        onDelete={() => onDelete(itemRef.current)}
+      />
     </li>
   )
 }

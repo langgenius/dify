@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { newKnowledgeSettingsPath } from '../routes'
@@ -20,13 +19,9 @@ export function KnowledgeSpaceActions({
   onDelete,
 }: {
   knowledgeSpace: KnowledgeFsSpaceListItemResponse
-  onDelete: (
-    knowledgeSpace: KnowledgeFsSpaceListItemResponse,
-    trigger: HTMLButtonElement | null,
-  ) => void
+  onDelete: () => void
 }) {
   const { t: tCommon } = useTranslation(['common'])
-  const triggerRef = useRef<HTMLButtonElement>(null)
   const canEdit = knowledgeSpace.permission_keys.includes('knowledge_space_edit')
   const canDelete = knowledgeSpace.permission_keys.includes('knowledge_space_delete')
   if (!canEdit && !canDelete) return null
@@ -36,7 +31,6 @@ export function KnowledgeSpaceActions({
       <div className="pointer-events-auto flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs">
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
-            ref={triggerRef}
             render={
               <IconButton
                 aria-label={tCommon(($) => $['operation.more'])}
@@ -59,10 +53,7 @@ export function KnowledgeSpaceActions({
             {canDelete && (
               <>
                 {canEdit && <DropdownMenuSeparator />}
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => onDelete(knowledgeSpace, triggerRef.current)}
-                >
+                <DropdownMenuItem variant="destructive" onClick={onDelete}>
                   <span aria-hidden className="mr-1 i-ri-delete-bin-line size-4" />
                   {tCommon(($) => $['operation.delete'])}
                 </DropdownMenuItem>

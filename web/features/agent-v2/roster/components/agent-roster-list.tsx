@@ -233,12 +233,12 @@ function AgentRosterItem({
   onDelete,
 }: {
   agent: AgentAppPartial
-  onDelete: (agent: AgentAppPartial, trigger: HTMLButtonElement | null) => void
+  onDelete: (item: HTMLLIElement | null) => void
 }) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tApp } = useTranslation(['app'])
   const { formatTime } = useTimestamp()
-  const moreButtonRef = useRef<HTMLButtonElement>(null)
+  const itemRef = useRef<HTMLLIElement>(null)
   const nameId = useId()
   const descriptionId = useId()
   const draftStatusId = useId()
@@ -336,6 +336,7 @@ function AgentRosterItem({
 
   return (
     <li
+      ref={itemRef}
       aria-labelledby={nameId}
       aria-describedby={defaultSection ? undefined : accessibleDescriptionIds || undefined}
       className={cn(
@@ -380,9 +381,7 @@ function AgentRosterItem({
               onEdit={capabilities.canEdit ? handleEditOpen : undefined}
               onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
               onExport={capabilities.canImportExportDSL ? handleExport : undefined}
-              onDelete={
-                capabilities.canDelete ? () => onDelete(agent, moreButtonRef.current) : undefined
-              }
+              onDelete={capabilities.canDelete ? () => onDelete(itemRef.current) : undefined}
             />
           </ContextMenuContent>
         )}
@@ -392,7 +391,6 @@ function AgentRosterItem({
           <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
-                ref={moreButtonRef}
                 render={
                   <IconButton
                     aria-label={t(($) => $['roster.moreActions'], {
@@ -413,11 +411,7 @@ function AgentRosterItem({
                   onEdit={capabilities.canEdit ? handleEditOpen : undefined}
                   onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
                   onExport={capabilities.canImportExportDSL ? handleExport : undefined}
-                  onDelete={
-                    capabilities.canDelete
-                      ? () => onDelete(agent, moreButtonRef.current)
-                      : undefined
-                  }
+                  onDelete={capabilities.canDelete ? () => onDelete(itemRef.current) : undefined}
                 />
               </DropdownMenuContent>
             </DropdownMenu>
@@ -535,14 +529,12 @@ export function AgentRosterList({
                   <AgentRosterItem
                     key={agent.id}
                     agent={agent}
-                    onDelete={(target, trigger) => {
+                    onDelete={(item) => {
                       deleteDialog.openWithPayload({
-                        id: target.id,
-                        name: target.name,
-                        adjacentFocusTargets: getAdjacentFocusTargets(
-                          trigger?.closest('li'),
-                          (item) =>
-                            item.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+                        id: agent.id,
+                        name: agent.name,
+                        adjacentFocusTargets: getAdjacentFocusTargets(item, (sibling) =>
+                          sibling.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
                         ),
                         fallbackFocus: { current: null },
                       })
