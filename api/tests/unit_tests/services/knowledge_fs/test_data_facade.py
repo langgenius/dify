@@ -34,6 +34,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSMetadataFieldCreatePayload,
     KnowledgeFSMetadataFieldUpdatePayload,
+    KnowledgeFSNamespacePreviewConsumePayload,
+    KnowledgeFSNamespacePreviewCreatePayload,
     KnowledgeFSProductRerankProfile,
     KnowledgeFSProductRetrievalProfile,
     KnowledgeFSProductScoreThreshold,
@@ -68,7 +70,7 @@ from services.knowledge_fs.product_remote import (
 from services.knowledge_fs.query_images import KnowledgeFSQueryImagePreview
 from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 from tests.helpers.unit.services.knowledge_fs_fakes import UnexpectedCapabilityIssuer
-from tests.helpers.unit.services.knowledge_fs_services_a_fakes import CallRecorder, RecordedCall
+from tests.helpers.unit.services.knowledge_fs_services_a_fakes import CallRecorder
 
 
 class _FacadeScope(TypedDict, closed=True):
@@ -161,12 +163,6 @@ def _offline_facade() -> KnowledgeFSDataFacade:
     return KnowledgeFSDataFacade(broker=UnexpectedCapabilityIssuer(), remote=FailingRemote())
 
 
-def _payload_dump(call: RecordedCall, *, exclude_none: bool = False) -> dict[str, object]:
-    payload = call.kwargs["payload"]
-    assert isinstance(payload, BaseModel)
-    return payload.model_dump(mode="json", by_alias=True, exclude_none=exclude_none)
-
-
 class RecordingBroker(UnexpectedCapabilityIssuer):
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
@@ -227,7 +223,7 @@ class RecordingRemote:
         _ = kwargs
         return {}
 
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> JsonValue:
         self.requests.append(request)
         if request.operation_id in {"listKnowledgeFs", "findKnowledgeFs"}:
             return {"items": [], "path": "/knowledge", "truncated": False}
@@ -542,6 +538,19 @@ class RecordingRemote:
         )
 
 
+class ScriptedRemote(RecordingRemote):
+    """Return wire responses while keeping request building and DTO validation real."""
+
+    def __init__(self, *responses: JsonValue) -> None:
+        super().__init__()
+        self.responses = deque(responses)
+
+    @override
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> JsonValue:
+        self.requests.append(request)
+        return self.responses.popleft()
+
+
 class ActiveSettingsRemote(RecordingRemote):
     def __init__(
         self,
@@ -564,7 +573,7 @@ class ActiveSettingsRemote(RecordingRemote):
         self.rerank_enabled = rerank_enabled
 
     @override
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> JsonValue:
         if request.operation_id == "getSettings":
             self.requests.append(request)
             return {
@@ -647,7 +656,7 @@ class QueryImageRemote(RecordingRemote):
     UPLOAD_FILE_ID = "00000000-0000-4000-8000-000000000001"
 
     @override
-    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> JsonValue:
         gateway_image: dict[str, JsonValue] = {
             "byteSize": 2048,
             "mimeType": "image/png",
@@ -1672,7 +1681,7 @@ def test_active_settings_use_durable_profile_migration_routes() -> None:
 def test_active_settings_accept_direct_unpublished_profile_activation() -> None:
     class DirectActivationRemote(ActiveSettingsRemote):
         @override
-        def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
+        def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> JsonValue:
             if request.operation_id == "updateRetrievalProfile":
                 self.requests.append(request)
                 return {
@@ -1966,8 +1975,7 @@ def test_active_settings_reject_concurrent_profile_migrations() -> None:
 
 
 def test_golden_question_facade_binds_direct_evidence_metadata() -> None:
-    facade = _offline_facade()
-    raw = {
+    raw: JsonValue = {
         "createdAt": "2026-08-02T12:00:00Z",
         "expectedEvidenceIds": ["node-1"],
         "id": "golden-1",
@@ -1980,26 +1988,24 @@ def test_golden_question_facade_binds_direct_evidence_metadata() -> None:
         "tags": ["billing"],
         "updatedAt": "2026-08-02T12:00:00Z",
     }
-    interactive = CallRecorder(result=raw)
-
-    with patch.object(facade, "_interactive", interactive):
-        result = facade.create_golden_question(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            control_space_id="control-1",
-            payload=KnowledgeFSGoldenQuestionPayload(
-                annotation=" Reviewer note ",
-                evidence_text=" Refunds are available for 30 days. ",
-                expected_evidence_ids=[" node-1 ", "node-1"],
-                question=" How long is the refund window? ",
-                tags=[" billing ", "billing"],
-            ),
-        )
-
+    remote = ScriptedRemote(raw)
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)
+    result = facade.create_golden_question(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSGoldenQuestionPayload(
+            annotation=" Reviewer note ",
+            evidence_text=" Refunds are available for 30 days. ",
+            expected_evidence_ids=[" node-1 ", "node-1"],
+            question=" How long is the refund window? ",
+            tags=[" billing ", "billing"],
+        ),
+    )
     assert result.status == "active"
     assert result.expected_evidence_ids == ["node-1"]
-    assert interactive.last.kwargs["operation_id"] == "createGoldenQuestion"
-    assert _payload_dump(interactive.last) == {
+    assert remote.requests[-1].operation_id == "createGoldenQuestion"
+    assert remote.requests[-1].payload == {
         "expectedEvidenceIds": ["node-1"],
         "metadata": {
             "annotation": "Reviewer note",
@@ -2009,12 +2015,21 @@ def test_golden_question_facade_binds_direct_evidence_metadata() -> None:
         "question": "How long is the refund window?",
         "tags": ["billing"],
     }
+    assert [(request.method, request.path) for request in remote.requests] == [
+        ("POST", "/knowledge-spaces/space-1/golden-questions")
+    ]
+    assert all(
+        request.namespace_id == "tenant-1"
+        and request.knowledge_space_id == "space-1"
+        and request.capability_token == "capability-token"
+        and request.trace_id == "trace-1"
+        for request in remote.requests
+    )
 
 
 def test_golden_question_update_preserves_evidence_when_new_fields_are_omitted() -> None:
-    facade = _offline_facade()
-    interactive_child = CallRecorder(
-        result={
+    remote = ScriptedRemote(
+        {
             "createdAt": "2026-08-02T12:00:00Z",
             "expectedEvidenceIds": ["node-1"],
             "id": "golden-1",
@@ -2029,32 +2044,36 @@ def test_golden_question_update_preserves_evidence_when_new_fields_are_omitted()
             "updatedAt": "2026-08-02T12:01:00Z",
         }
     )
-
-    with patch.object(facade, "_interactive_child", interactive_child):
-        result = facade.update_golden_question(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            control_space_id="control-1",
-            question_id="golden-1",
-            payload=KnowledgeFSGoldenQuestionPayload(
-                annotation="Updated note",
-                question="Updated question?",
-            ),
-        )
-
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)
+    result = facade.update_golden_question(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        question_id="golden-1",
+        payload=KnowledgeFSGoldenQuestionPayload(annotation="Updated note", question="Updated question?"),
+    )
     assert result.expected_evidence_ids == ["node-1"]
     assert result.match_policy == "any"
-    assert _payload_dump(interactive_child.last, exclude_none=True) == {
+    assert remote.requests[-1].payload == {
         "metadata": {"annotation": "Updated note"},
         "question": "Updated question?",
         "tags": [],
     }
+    assert [(request.method, request.path) for request in remote.requests] == [
+        ("PATCH", "/knowledge-spaces/space-1/golden-questions/golden-1")
+    ]
+    assert all(
+        request.namespace_id == "tenant-1"
+        and request.knowledge_space_id == "space-1"
+        and request.capability_token == "capability-token"
+        and request.trace_id == "trace-1"
+        for request in remote.requests
+    )
 
 
 def test_golden_question_facade_matches_evidence_and_forwards_csv_as_one_batch() -> None:
-    facade = _offline_facade()
-    interactive = CallRecorder(
-        outcomes=deque(
+    remote = ScriptedRemote(
+        *deque[JsonValue](
             [
                 {
                     "items": [
@@ -2090,63 +2109,64 @@ def test_golden_question_facade_matches_evidence_and_forwards_csv_as_one_batch()
             ]
         )
     )
-
-    with patch.object(facade, "_interactive", interactive):
-        match = facade.match_golden_question_evidence(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            control_space_id="control-1",
-            payload=KnowledgeFSGoldenQuestionEvidenceMatchPayload(evidence=" Refund policy "),
-        )
-        imported = facade.bulk_import_golden_questions(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            control_space_id="control-1",
-            payload=KnowledgeFSGoldenQuestionBulkImportPayload(
-                rows=[
-                    KnowledgeFSGoldenQuestionBulkImportRowPayload(
-                        evidence=" Refunds are available for 30 days. ",
-                        question=" How long is the refund window? ",
-                        tags=[" billing ", "billing"],
-                    )
-                ]
-            ),
-        )
-
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)
+    match = facade.match_golden_question_evidence(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSGoldenQuestionEvidenceMatchPayload(evidence=" Refund policy "),
+    )
+    imported = facade.bulk_import_golden_questions(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSGoldenQuestionBulkImportPayload(
+            rows=[
+                KnowledgeFSGoldenQuestionBulkImportRowPayload(
+                    evidence=" Refunds are available for 30 days. ",
+                    question=" How long is the refund window? ",
+                    tags=[" billing ", "billing"],
+                )
+            ]
+        ),
+    )
     assert match.matched is True
     assert match.candidates[0].node_id == "node-1"
     assert imported.active_count == 1
     assert imported.items[0].question_id == "golden-1"
-    assert [call.kwargs["operation_id"] for call in interactive.calls] == [
+    assert [call.operation_id for call in remote.requests] == [
         "matchGoldenQuestionEvidence",
         "bulkImportGoldenQuestions",
     ]
-    assert _payload_dump(interactive.calls[0], exclude_none=True) == {
-        "evidenceTexts": ["Refund policy"],
-        "minimumSimilarity": 0.7,
-        "topK": 5,
-    }
-    assert _payload_dump(interactive.calls[1]) == {
+    assert remote.requests[0].payload == {"evidenceTexts": ["Refund policy"], "minimumSimilarity": 0.7, "topK": 5}
+    assert remote.requests[1].payload == {
         "matchPolicy": "all",
         "minimumSimilarity": 0.7,
         "rows": [
             {
                 "evidence": "Refunds are available for 30 days.",
-                "metadata": {
-                    "evidenceText": "Refunds are available for 30 days.",
-                    "importSource": "csv",
-                },
+                "metadata": {"evidenceText": "Refunds are available for 30 days.", "importSource": "csv"},
                 "question": "How long is the refund window?",
                 "tags": ["billing"],
             }
         ],
     }
+    assert [(request.method, request.path) for request in remote.requests] == [
+        ("POST", "/knowledge-spaces/space-1/golden-questions/evidence-matches"),
+        ("POST", "/knowledge-spaces/space-1/golden-questions/bulk-import"),
+    ]
+    assert all(
+        request.namespace_id == "tenant-1"
+        and request.knowledge_space_id == "space-1"
+        and request.capability_token == "capability-token"
+        and request.trace_id == "trace-1"
+        for request in remote.requests
+    )
 
 
 def test_golden_question_facade_resolves_saved_evidence_ids_without_a_search_term() -> None:
-    facade = _offline_facade()
-    interactive = CallRecorder(
-        result={
+    remote = ScriptedRemote(
+        {
             "items": [],
             "resolvedEvidence": [
                 {
@@ -2159,38 +2179,40 @@ def test_golden_question_facade_resolves_saved_evidence_ids_without_a_search_ter
             ],
         }
     )
-
-    with patch.object(facade, "_interactive", interactive):
-        result = facade.match_golden_question_evidence(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            control_space_id="control-1",
-            payload=KnowledgeFSGoldenQuestionEvidenceMatchPayload(node_ids=[" node-1 ", "node-1"]),
-        )
-
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)
+    result = facade.match_golden_question_evidence(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSGoldenQuestionEvidenceMatchPayload(node_ids=[" node-1 ", "node-1"]),
+    )
     assert result.evidence == ""
     assert result.matched is False
     assert result.candidates[0].node_id == "node-1"
     assert result.candidates[0].projection_id is None
     assert result.candidates[0].score is None
-    assert _payload_dump(interactive.last, exclude_none=True) == {
-        "minimumSimilarity": 0.7,
-        "nodeIds": ["node-1"],
-        "topK": 5,
-    }
+    assert remote.requests[-1].payload == {"minimumSimilarity": 0.7, "nodeIds": ["node-1"], "topK": 5}
+    assert [(request.method, request.path) for request in remote.requests] == [
+        ("POST", "/knowledge-spaces/space-1/golden-questions/evidence-matches")
+    ]
+    assert all(
+        request.namespace_id == "tenant-1"
+        and request.knowledge_space_id == "space-1"
+        and request.capability_token == "capability-token"
+        and request.trace_id == "trace-1"
+        for request in remote.requests
+    )
 
 
 @pytest.mark.parametrize(
     "remote_response",
     [None, True, 1, 1.5, [], "invalid", {}, {"items": []}, {"items": [None]}],
 )
-def test_golden_question_evidence_match_rejects_malformed_remote_response(remote_response: object) -> None:
-    facade = _offline_facade()
+def test_golden_question_evidence_match_rejects_malformed_remote_response(remote_response: JsonValue) -> None:
+    remote = ScriptedRemote(remote_response)
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)
 
-    with (
-        patch.object(facade, "_interactive", return_value=remote_response),
-        pytest.raises(KnowledgeFSProductRemoteError, match="invalid evidence match response"),
-    ):
+    with pytest.raises(KnowledgeFSProductRemoteError, match="invalid evidence match response"):
         facade.match_golden_question_evidence(
             tenant_id="tenant-1",
             account_id="account-1",
@@ -2305,7 +2327,7 @@ def test_advanced_facade_binds_child_resources_parent_space_and_idempotency() ->
 def test_deletion_receipt_read_is_scoped_to_the_admitted_knowledge_space() -> None:
     class DeletionReceiptRemote(RecordingRemote):
         @override
-        def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
+        def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> JsonValue:
             self.requests.append(request)
             return {
                 "id": "deletion-1",
@@ -2907,6 +2929,417 @@ def test_service_settings_migration_preserves_service_identity_on_every_operatio
         "/knowledge-spaces/space-1/product-settings",
         "/knowledge-spaces/space-1/embedding-profile",
     ]
+
+
+@pytest.mark.parametrize(
+    "question_id",
+    ["", " ", " id", "id ", ".", "..", "a/b", "a\\b", "a%2fb", "a?b", "a#b", "a\x00b", "a\x7fb", "x" * 1001],
+    ids=[
+        "empty",
+        "blank",
+        "leading-space",
+        "trailing-space",
+        "dot",
+        "parent",
+        "slash",
+        "backslash",
+        "encoded",
+        "query",
+        "fragment",
+        "control",
+        "delete",
+        "oversize",
+    ],
+)
+def test_golden_question_delete_rejects_unsafe_child_paths_before_remote_io(question_id: str) -> None:
+    remote = RecordingRemote()
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)
+
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as error:
+        facade.delete_golden_question(
+            tenant_id="tenant-1", account_id="account-1", control_space_id="control-1", question_id=question_id
+        )
+
+    assert error.value.status_code == 400
+    assert remote.requests == []
+
+
+def test_golden_question_delete_preserves_admitted_space_and_child_binding() -> None:
+    broker = RecordingBroker()
+    remote = ScriptedRemote(None)
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)
+
+    facade.delete_golden_question(
+        tenant_id="tenant-1", account_id="account-1", control_space_id="control-1", question_id="golden-1"
+    )
+
+    assert broker.calls == [
+        {
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "control_space_id": "control-1",
+            "operation_id": "deleteGoldenQuestion",
+            "resource_id": "golden-1",
+        }
+    ]
+    assert remote.requests == [
+        KnowledgeFSRemoteJSONRequest(
+            operation_id="deleteGoldenQuestion",
+            method="DELETE",
+            path="/knowledge-spaces/space-1/golden-questions/golden-1",
+            namespace_id="tenant-1",
+            knowledge_space_id="space-1",
+            capability_token="capability-token",
+            trace_id="trace-1",
+            payload=None,
+        )
+    ]
+
+
+@pytest.mark.parametrize("update", [False, True], ids=["create", "update"])
+def test_golden_question_explicit_evidence_and_bad_case_provenance_reach_the_remote(update: bool) -> None:
+    remote = ScriptedRemote(
+        {
+            "id": "golden-1",
+            "question": "Refund window?",
+            "expectedEvidenceIds": [],
+            "metadata": {"sourceBadCaseId": "bad-1", "evidenceText": "", "matchPolicy": "any"},
+            "tags": [],
+            "createdAt": "2030-01-01T00:00:00Z",
+            "updatedAt": "2030-01-01T00:00:00Z",
+        }
+    )
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)
+    payload = KnowledgeFSGoldenQuestionPayload(
+        question="Refund window?",
+        evidence_text="",
+        expected_evidence_ids=[],
+        match_policy="any",
+        source_bad_case_id="bad-1",
+    )
+    if update:
+        result = facade.update_golden_question(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            question_id="golden-1",
+            payload=payload,
+        )
+    else:
+        result = facade.create_golden_question(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            payload=payload,
+        )
+
+    assert result.expected_evidence_ids == []
+    assert result.match_policy == "any"
+    assert remote.requests[0].payload == {
+        "question": "Refund window?",
+        "expectedEvidenceIds": [],
+        "tags": [],
+        "metadata": {"annotation": "", "evidenceText": "", "matchPolicy": "any", "sourceBadCaseId": "bad-1"},
+    }
+
+
+class NamespaceBroker(RecordingBroker):
+    @override
+    def issue_namespace_interactive(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        operation_id: str,
+        trace_id: str | None = None,
+    ) -> KnowledgeFSIssuedProductCapability:
+        self.calls.append(
+            {
+                "tenant_id": tenant_id,
+                "account_id": account_id,
+                "operation_id": operation_id,
+                "trace_id": trace_id,
+            }
+        )
+        return KnowledgeFSIssuedProductCapability(
+            token="namespace-token",
+            expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+            operation_id=operation_id,
+            knowledge_space_id="unused-space",
+            knowledge_space_revision=42,
+            trace_id="namespace-trace",
+        )
+
+
+def test_namespace_preview_requests_bind_namespace_and_import_to_admitted_space() -> None:
+    fingerprint = "a" * 64
+    response: dict[str, JsonValue] = {
+        "jobId": "preview-1",
+        "status": "queued",
+        "configurationFingerprint": fingerprint,
+        "expiresAt": "2030-01-01T00:00:00Z",
+    }
+    remote = ScriptedRemote(
+        response, {**response, "status": "completed"}, {**response, "status": "canceled"}, {"workflowId": "import-1"}
+    )
+    broker = NamespaceBroker()
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)
+
+    created = facade.create_namespace_source_preview(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        payload=KnowledgeFSNamespacePreviewCreatePayload(
+            credential_id="credential-1",
+            datasource="crawl",
+            plugin_id="plugin-1",
+            provider="provider-1",
+            root_url="https://example.test/docs",
+            configuration_fingerprint=fingerprint,
+        ),
+    )
+    loaded = facade.get_namespace_source_preview(tenant_id="tenant-1", account_id="account-1", job_id=created.job_id)
+    canceled = facade.cancel_namespace_source_preview(
+        tenant_id="tenant-1", account_id="account-1", job_id=created.job_id
+    )
+    imported = facade.consume_namespace_source_preview(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        source_id="source-1",
+        payload=KnowledgeFSNamespacePreviewConsumePayload(
+            preview_job_id="preview-1",
+            page_ids=["page-1"],
+            configuration_fingerprint=fingerprint,
+        ),
+        idempotency_key="import-once",
+    )
+
+    assert (created.status, loaded.status, canceled.status, imported.workflow_id) == (
+        "queued",
+        "completed",
+        "canceled",
+        "import-1",
+    )
+    assert [(request.method, request.path) for request in remote.requests] == [
+        ("POST", "/namespace/source-preview-jobs"),
+        ("GET", "/namespace/source-preview-jobs/preview-1"),
+        ("DELETE", "/namespace/source-preview-jobs/preview-1"),
+        ("POST", "/knowledge-spaces/space-1/sources/source-1/namespace-preview-import"),
+    ]
+    assert all(request.namespace_id == "tenant-1" for request in remote.requests)
+    assert all(
+        request.knowledge_space_id == "tenant-1"
+        and request.capability_token == "namespace-token"
+        and request.trace_id == "namespace-trace"
+        for request in remote.requests[:3]
+    )
+    assert remote.requests[0].payload == {
+        "credentialId": "credential-1",
+        "datasource": "crawl",
+        "pluginId": "plugin-1",
+        "provider": "provider-1",
+        "rootUrl": "https://example.test/docs",
+        "parameters": {},
+        "configurationFingerprint": fingerprint,
+    }
+    assert remote.requests[-1].payload == {
+        "previewJobId": "preview-1",
+        "pageIds": ["page-1"],
+        "configurationFingerprint": fingerprint,
+    }
+    assert remote.requests[-1].headers == (("Idempotency-Key", "import-once"),)
+    assert remote.requests[-1].capability_token == "capability-token"
+    assert broker.calls[-1]["resource_id"] == "source-1"
+
+
+@pytest.mark.parametrize(
+    ("filename", "content_type", "body"),
+    [("", "text/plain", b"hello"), ("doc.txt", "", b"hello"), ("doc.txt", "text/plain", b"")],
+)
+def test_document_upload_rejects_invalid_file_before_remote_io(filename: str, content_type: str, body: bytes) -> None:
+    remote = RecordingRemote()
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)
+
+    def read_body(limit: int) -> KnowledgeFSRemoteMultipartFile:
+        assert limit > 0
+        return KnowledgeFSRemoteMultipartFile(filename=filename, content_type=content_type, body=body)
+
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as error:
+        facade.create_document(
+            tenant_id="tenant-1", account_id="account-1", control_space_id="control-1", body_reader=read_body
+        )
+    assert error.value.status_code == 422
+    assert remote.multipart_requests == []
+
+
+def test_small_file_upload_rejects_empty_body_before_remote_io() -> None:
+    remote = RecordingRemote()
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)
+
+    def read_body(limit: int) -> bytes:
+        assert limit > 0
+        return b""
+
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as error:
+        facade.upload_small_file(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            upload_session_id="upload-1",
+            body_reader=read_body,
+        )
+    assert error.value.status_code == 422
+    assert remote.binary_requests == []
+
+
+@pytest.mark.parametrize("operation_id", ["createQuery", "createDocument", "uploadSmallFile", "missing-operation"])
+def test_service_json_dispatch_rejects_wrong_transport_before_capability_or_remote_io(operation_id: str) -> None:
+    broker = UnexpectedCapabilityIssuer()
+    remote = FailingRemote()
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)
+    profile = KnowledgeFSServiceApiProfile(
+        tenant_id="tenant-1",
+        control_space_id="control-1",
+        api_token_id="token-1",
+        principal_id="token-1",
+        knowledge_space_id="space-1",
+        knowledge_space_revision=9,
+        membership_epoch=1,
+        space_acl_epoch=1,
+        external_access_epoch=1,
+        content_policy_revision=1,
+    )
+    with pytest.raises(KnowledgeFSOperationUnavailableError):
+        facade.execute_service(profile=profile, operation_id=operation_id)
+    assert remote.calls == 0
+
+
+@pytest.fixture
+def service_profile() -> KnowledgeFSServiceApiProfile:
+    return KnowledgeFSServiceApiProfile(
+        tenant_id="tenant-1",
+        control_space_id="control-1",
+        api_token_id="token-1",
+        principal_id="token-1",
+        knowledge_space_id="space-1",
+        knowledge_space_revision=9,
+        membership_epoch=1,
+        space_acl_epoch=1,
+        external_access_epoch=1,
+        content_policy_revision=1,
+    )
+
+
+@pytest.mark.parametrize(
+    ("operation_id", "payload", "bind_space", "revision", "message"),
+    [
+        ("updateSpace", KnowledgeFSSpaceUpdatePayload(name="Renamed"), False, 0, "metadata revision"),
+        ("updateSpace", None, False, 9, "metadata revision"),
+        ("createResearchTask", None, True, 9, "body binding"),
+        ("getCompilationJob", None, False, 9, "child resource"),
+        ("deleteGoldenQuestion", None, False, 9, "path resolver"),
+    ],
+)
+def test_service_dispatch_rejects_incomplete_bindings_without_remote_io(
+    service_profile: KnowledgeFSServiceApiProfile,
+    operation_id: str,
+    payload: BaseModel | None,
+    bind_space: bool,
+    revision: int,
+    message: str,
+) -> None:
+    remote = RecordingRemote()
+    facade = KnowledgeFSDataFacade(broker=ServiceBroker(), remote=remote)
+
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match=message):
+        facade.execute_service(
+            profile=service_profile._replace(knowledge_space_revision=revision),
+            operation_id=operation_id,
+            payload=payload,
+            bind_space_in_body=bind_space,
+        )
+    assert remote.requests == []
+
+
+def test_service_space_update_forwards_only_supplied_metadata_and_authoritative_revision(
+    service_profile: KnowledgeFSServiceApiProfile,
+) -> None:
+    remote = RecordingRemote()
+    facade = KnowledgeFSDataFacade(broker=ServiceBroker(), remote=remote)
+    facade.execute_service(
+        profile=service_profile,
+        operation_id="updateSpace",
+        payload=KnowledgeFSSpaceUpdatePayload(description=""),
+    )
+    assert remote.requests[0].payload == {"expectedRevision": 9, "description": ""}
+    assert remote.requests[0].path == "/knowledge-spaces/space-1"
+
+
+def test_settings_missing_retrieval_revision_prevents_remote_write() -> None:
+    remote = ActiveSettingsRemote(active_profile_revisions={"embedding": 3})
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)
+    model = KnowledgeFSProfileModelSelection(model="model-1", plugin_id="plugin-1", provider="provider-1")
+    payload = KnowledgeFSSettingsPayload(
+        expected_revision=9,
+        retrieval=KnowledgeFSProductRetrievalProfile(
+            default_mode="fast",
+            reasoning_model=model,
+            rerank=KnowledgeFSProductRerankProfile(enabled=True, model=model),
+            score_threshold=KnowledgeFSProductScoreThreshold(enabled=False, stage="rerank", value=0.5),
+            top_k=3,
+        ),
+    )
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match="active retrieval profile revision"):
+        facade.update_settings(
+            tenant_id="tenant-1", account_id="account-1", control_space_id="control-1", payload=payload
+        )
+    assert [(request.method, request.path) for request in remote.requests] == [
+        ("GET", "/knowledge-spaces/space-1/product-settings"),
+    ]
+
+
+def test_trace_history_preserves_missing_previews_and_forwards_source_filter() -> None:
+    remote = QueryImageRemote()
+
+    def previews(
+        *,
+        tenant_id: str,
+        account_id: str,
+        upload_file_ids: Sequence[str],
+    ) -> dict[str, KnowledgeFSQueryImagePreview]:
+        assert (tenant_id, account_id, list(upload_file_ids)) == (
+            "tenant-1",
+            "account-1",
+            [QueryImageRemote.UPLOAD_FILE_ID],
+        )
+        return {}
+
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote, query_image_previews=previews)
+    result = facade.list_traces(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        source="service-api",
+        cursor="next-page",
+    )
+    assert result.data[0].query_images[0].upload_file_id == QueryImageRemote.UPLOAD_FILE_ID
+    assert result.data[0].query_images[0].preview_url is None
+    assert remote.requests[0].query == (("cursor", "next-page"), ("source", "service-api"))
+
+
+def test_document_upload_rejects_oversize_file_without_remote_io() -> None:
+    remote = RecordingRemote()
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)
+
+    def read_body(limit: int) -> KnowledgeFSRemoteMultipartFile:
+        return KnowledgeFSRemoteMultipartFile(filename="doc.txt", content_type="text/plain", body=b"x" * (limit + 1))
+
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as error:
+        facade.create_document(
+            tenant_id="tenant-1", account_id="account-1", control_space_id="control-1", body_reader=read_body
+        )
+    assert error.value.status_code == 413
+    assert remote.multipart_requests == []
 
 
 def logical_document(
