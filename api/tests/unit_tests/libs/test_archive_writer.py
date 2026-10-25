@@ -15,6 +15,7 @@ from libs.archive_writer import (
     ArchiveTooLargeError,
     StrictPathPolicy,
     chunks_of,
+    entries_from_folder,
     write_archive,
 )
 
@@ -65,3 +66,12 @@ def test_strict_policy_names_the_rejected_path_as_spelled(paths: list[str], reas
     with pytest.raises(ArchivePathError) as exc:
         StrictPathPolicy().admit([_entry(path) for path in paths])
     assert (exc.value.path, exc.value.reason) == (paths[-1], reason)
+
+
+def test_folder_source_drops_exact_junk_names_before_counting_and_normalizes() -> None:
+    parts = {_NFD_CAFE: io.BytesIO(b"a"), "x.DS_Store": io.BytesIO(b""), "__MACOSX/a": io.BytesIO(b"")}
+    result = write_archive(entries_from_folder(parts), _options(max_entries=2))
+    with result.file:
+        assert [entry.path for entry in result.entries] == [_NFC_CAFE, "x.DS_Store"]
+    with pytest.raises(ArchiveEmptyError):
+        write_archive(entries_from_folder({".DS_Store": io.BytesIO(b"")}), _options())

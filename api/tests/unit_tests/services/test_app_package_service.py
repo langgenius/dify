@@ -16,7 +16,16 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
 
+from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from libs.archive_writer import (
+    ArchiveLimits,
+    ArchiveOptions,
+    ArchiveResult,
+    StrictPathPolicy,
+    entries_from_folder,
+    write_archive,
+)
 from models import Account, App, AppMode
 from models.agent import (
     Agent,
@@ -816,6 +825,20 @@ def _roster_archive(binding: dict[str, object], agent_job: dict[str, object] | N
         return io.BytesIO(package.archive.read())
 
 
+_FOLDER_DSL = "kind: app\nversion: 0.1.0\napp:\n  mode: workflow\n"
+
+
+def _rebuild_from_folder(extra: dict[str, bytes]) -> ArchiveResult:
+    with (
+        AppPackageService().export(dsl=_FOLDER_DSL, name="Example", workflow_tools=[]) as package,
+        zipfile.ZipFile(package.archive) as source,
+    ):
+        parts = {name: io.BytesIO(source.read(name)) for name in source.namelist()}
+    parts.update({path: io.BytesIO(data) for path, data in extra.items()})
+    limits = ArchiveLimits(dify_config.AGENT_PACKAGE_MAX_ENTRIES, dify_config.AGENT_PACKAGE_MAX_BYTES)
+    return write_archive(entries_from_folder(parts), ArchiveOptions(StrictPathPolicy(), limits))
+
+
 class TestAppPackageServiceCases:
     @staticmethod
     @pytest.mark.parametrize("mode", ["workflow", "advanced-chat", "chat", "completion", "agent-chat"])
@@ -933,6 +956,17 @@ class TestAppPackageServiceCases:
         assert prepared is not None
         assert prepared.agents == {}
         prepared.close()
+
+    @staticmethod
+    def test_an_unpacked_export_rebuilt_from_folder_parts_reads_back_and_nesting_is_refused() -> None:
+        with _rebuild_from_folder({".DS_Store": b""}).file as archive:
+            prepared = AppPackageService().read_package(archive)
+            assert prepared is not None
+            with prepared:
+                assert prepared.dsl == _FOLDER_DSL
+        with _rebuild_from_folder({"skills/a/SKILL.md": b""}).file as archive:
+            with pytest.raises(InvalidRosterAgentPackageError, match="unsafe path"):
+                AppPackageService().read_package(archive)
 
 
 """Packages bundle the workflows an App calls through Workflow Tools as nested App packages."""

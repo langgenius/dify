@@ -5,10 +5,10 @@ import stat
 import tempfile
 import unicodedata
 import zipfile
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import BinaryIO, Protocol
+from typing import BinaryIO, Final, Protocol, cast, override
 
 _COPY_CHUNK_SIZE = 1024 * 1024
 _SPOOL_MAX_MEMORY = 16 * 1024 * 1024
@@ -19,6 +19,9 @@ _PATH_SEPARATOR = "/"
 _BACKSLASH = "\\"
 _FIRST_PRINTABLE_ORDINAL = 0x20
 _UNSAFE_SEGMENTS = frozenset({"", ".", ".."})
+
+OS_JUNK_FILE_NAMES: Final[frozenset[str]] = frozenset({".DS_Store", "Thumbs.db", "desktop.ini"})
+OS_JUNK_DIR_NAMES: Final[frozenset[str]] = frozenset({"__MACOSX"})
 
 
 class ArchiveCompression(StrEnum):
@@ -70,6 +73,7 @@ class ArchivePathError(ArchiveError):
         self.other = other
         super().__init__(str(self))
 
+    @override
     def __str__(self) -> str:
         text = f"{self.path}: {self.reason.message}"
         if self.other is not None:
@@ -168,6 +172,17 @@ def chunks_of(stream: BinaryIO) -> ChunkSource:
     return read_chunks
 
 
+def is_os_junk(path: str) -> bool:
+    segments = path.split(_PATH_SEPARATOR)
+    if segments[-1] in OS_JUNK_FILE_NAMES:
+        return True
+    return not OS_JUNK_DIR_NAMES.isdisjoint(segments)
+
+
+def entries_from_folder(parts: Mapping[str, BinaryIO]) -> list[ArchiveEntry]:
+    return [ArchiveEntry(path, chunks_of(stream)) for path, stream in parts.items() if not is_os_junk(path)]
+
+
 def write_archive(entries: Iterable[ArchiveEntry], options: ArchiveOptions) -> ArchiveResult:
     items = list(entries)
     if not items:
@@ -177,7 +192,7 @@ def write_archive(entries: Iterable[ArchiveEntry], options: ArchiveOptions) -> A
         raise ArchiveTooLargeError(ArchiveLimitKind.ENTRIES, limits.max_entries)
     admitted = sorted(options.path_policy.admit(items), key=lambda entry: entry.path)
 
-    spool = tempfile.SpooledTemporaryFile(max_size=_SPOOL_MAX_MEMORY, mode="w+b")  # noqa: SIM115
+    spool = cast(BinaryIO, tempfile.SpooledTemporaryFile(max_size=_SPOOL_MAX_MEMORY, mode="w+b"))  # noqa: SIM115
     try:
         written = _write_entries(spool, admitted, options)
         spool.seek(0)
