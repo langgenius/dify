@@ -4,6 +4,8 @@ import { useStore } from '../store'
 // graph initialized by the real provider instead of capturing provider props in a mock.
 export function WorkflowInitializationProbe() {
   const graph = useStore((state) => state.workflowHistory)
+  const draftHash = useStore((state) => state.syncWorkflowDraftHash)
+
   return (
     <>
       <output aria-label="Initialized nodes">
@@ -12,6 +14,7 @@ export function WorkflowInitializationProbe() {
       <output aria-label="Initialized edges">
         {graph.edges.map((edge) => `${edge.source}->${edge.target}`).join(',')}
       </output>
+      <output aria-label="Draft hash">{draftHash}</output>
     </>
   )
 }
