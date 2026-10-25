@@ -2266,6 +2266,11 @@ jobs:
               }
           }.items():
               a4_expected.setdefault(module, a3_expected.get(module, {}).copy()).update(functions)
+          # ENG-1240: additive waiting-binding retention and fair maintenance inventory.
+          for module, functions in {'tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion': {'test_waiting_binding_retention_is_health_only_and_fails_closed': 24, 'test_waiting_binding_task_selects_bounded_owned_wait_without_recovery': 1, 'test_profiled_retention_only_forwards_the_confirmed_owner': 2, 'test_waiting_binding_cursor_reaches_101st_owner_after_a_blocked_prefix': 3}, 'tests.unit_tests.services.dify_builder.test_reconcile': {'test_waiting_binding_retention_has_own_one_minute_schedule': 2, 'test_waiting_binding_task_has_a_finite_wall_time_budget': 1}}.items():
+              a4_expected.setdefault(module, a3_expected.get(module, {}).copy()).update(functions)
+          # Promote the previously unguarded reconciler module with its full inventory.
+          a4_expected["tests.unit_tests.services.dify_builder.test_reconcile"] = {'test_reconcile_flags_stale_working_session_with_no_live_lock': 1, 'test_reconcile_empty_sweep_when_nothing_stale': 1, 'test_reconcile_settles_stranded_confirmed_launch_without_redispatch': 1, 'test_reconcile_skips_confirmed_launch_while_its_lease_is_live': 1, 'test_stranded_observation_and_settlement_close_sql_before_redis': 1, 'test_waiting_binding_retention_has_own_one_minute_schedule': 2, 'test_waiting_binding_task_has_a_finite_wall_time_budget': 1}
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:
@@ -2985,6 +2990,9 @@ jobs:
           EXPECTED['tests.local.dify_agent.server.test_app'].update({
               'test_confirmed_stub_uses_strict_owner_alongside_legacy_ordinary_services': 1,
           })
+          # ENG-1240: additive waiting-binding health transport inventory.
+          for module, functions in {'tests.local.dify_agent.server.test_app': {'test_keep_alive_is_absent_without_configured_control_plane_auth': 1, 'test_create_app_authenticates_control_plane_routes': 5}, 'tests.local.dify_agent.client.test_client': {'test_sync_keep_alive_client_uses_typed_private_route_once': 1, 'test_async_keep_alive_client_uses_typed_private_route_once': 1}}.items():
+              EXPECTED.setdefault(module, {}).update(functions)
           REPORT = "builder-agent-regressions.xml"
           code = pytest.main(['tests/local/dify_agent/protocol/test_protocol_schemas.py', 'tests/local/dify_agent/protocol/test_working_environment.py', 'tests/local/dify_agent/runtime/test_runner.py', 'tests/local/dify_agent/runtime/test_run_scheduler.py', 'tests/local/dify_agent/storage/test_redis_run_store.py', 'tests/local/dify_agent/server/test_runs_routes.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/client/test_client.py', 'tests/local/dify_agent/test_client_safe_exports.py', 'tests/local/dify_agent/server/test_auth.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-agent-regressions.xml'])
           problems = []
@@ -3057,6 +3065,9 @@ jobs:
                   'test_confirmed_stub_uses_strict_owner_alongside_legacy_ordinary_services': 1,
               },
           }.items():
+              EXPECTED.setdefault(module, {}).update(functions)
+          # ENG-1240: additive waiting-binding health transport inventory.
+          for module, functions in {'tests.local.dify_agent.runtime_backend.test_enterprise_backend': {'test_enterprise_idle_binding_is_lost_after_six_minutes_without_health': 1, 'test_enterprise_keep_alive_preserves_same_binding_across_approval_wait': 1, 'test_enterprise_keep_alive_is_one_health_read_and_closes_without_transport_retry': 3, 'test_enterprise_keep_alive_malformed_health_is_private_and_closed': 1, 'test_enterprise_keep_alive_cancellation_propagates_and_closes_transport': 1}, 'tests.local.dify_agent.server.test_execution_bindings': {'test_keep_alive_unsupported_backend_returns_false_without_operations': 1, 'test_keep_alive_real_unsupported_backends_never_open_transport': 3, 'test_keep_alive_sdk_route_actual_health_wire_is_fixed_and_private': 5, 'test_keep_alive_validation_does_not_echo_private_input': 2}, 'tests.local.dify_agent.server.test_app': {'test_keep_alive_is_absent_without_configured_control_plane_auth': 1, 'test_create_app_authenticates_control_plane_routes': 5}, 'tests.local.dify_agent.client.test_client': {'test_sync_keep_alive_client_uses_typed_private_route_once': 1, 'test_async_keep_alive_client_uses_typed_private_route_once': 1}}.items():
               EXPECTED.setdefault(module, {}).update(functions)
           REPORT = "builder-agent-workspace-regressions.xml"
           code = pytest.main(['tests/local/dify_agent/runtime_backend', 'tests/local/dify_agent/layers', 'tests/local/dify_agent/server/test_binding_files.py', 'tests/local/dify_agent/server/test_execution_bindings.py', 'tests/local/dify_agent/server/test_home_snapshots.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/runtime/test_runner.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/client/test_client.py', 'tests/local/dify_agent/runtime/test_modules.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-agent-workspace-regressions.xml'])

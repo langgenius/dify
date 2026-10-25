@@ -229,3 +229,46 @@ def test_stranded_observation_and_settlement_close_sql_before_redis(
         event.remove(engine, "begin", begin)
         event.remove(engine, "commit", end)
         event.remove(engine, "rollback", end)
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_waiting_binding_retention_has_own_one_minute_schedule(enabled: bool, monkeypatch: pytest.MonkeyPatch) -> None:
+    from celery.contrib.testing.app import setup_default_app
+
+    from dify_app import DifyApp
+    from extensions import ext_celery
+    from tests.unit_tests.config_override import config_overrides_context
+
+    monkeypatch.setattr(ext_celery, "setup_workflow_warm_shutdown_handler", lambda: None)
+    with (
+        setup_default_app(mod.reconcile_interrupted_sessions.app),
+        config_overrides_context(
+            ENABLE_DIFY_BUILDER_RECONCILER=enabled, DIFY_BUILDER_RECONCILE_INTERVAL=5, DISABLE_TELEMETRY=True
+        ),
+    ):
+        app = ext_celery.init_app(DifyApp(__name__))
+        try:
+            schedule = app.conf.beat_schedule
+            if enabled:
+                assert schedule["dify_builder_retain_waiting_agent_bindings"] == {
+                    "task": "schedule.dify_builder_reconcile_task.retain_waiting_agent_bindings",
+                    "schedule": timedelta(seconds=60),
+                    "options": {"expires": 60, "queue": "dify_builder"},
+                }
+                assert schedule["dify_builder_reconcile"]["schedule"] == timedelta(minutes=5)
+            else:
+                assert "dify_builder_retain_waiting_agent_bindings" not in schedule
+        finally:
+            app.close()
+
+
+def test_waiting_binding_task_has_a_finite_wall_time_budget() -> None:
+    from typing import Protocol, cast
+
+    class QueuedTask(Protocol):
+        queue: str
+
+    task = mod.retain_waiting_agent_bindings
+    assert task.soft_time_limit == 45
+    assert task.time_limit == 50
+    assert cast(QueuedTask, task).queue == "dify_builder"

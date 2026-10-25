@@ -190,6 +190,7 @@ class FakeHttpxModule:
     [
         "/runs",
         "/execution-bindings",
+        "/execution-bindings/keep-alive",
         "/home-snapshots/from-binding",
         "/execution-bindings/files/list",
     ],
@@ -203,6 +204,7 @@ def test_create_app_authenticates_control_plane_routes(
 
     with TestClient(create_app(settings)) as client:
         assert client.post(path, json={}).status_code == 401
+        assert client.post(path, headers={"Authorization": "Bearer wrong-token"}, json={}).status_code == 401
         assert client.post(path, headers={"Authorization": "Bearer secret-token"}, json={}).status_code != 401
 
 
@@ -613,3 +615,11 @@ def test_confirmed_stub_uses_strict_owner_alongside_legacy_ordinary_services(mon
     assert len(seen) == 1
     assert seen[0].url.path == "/inner/api/agent/runtime/config/agent/skills/alpha/inspect"
     assert "X-Dify-Agent-Dispatch" in seen[0].headers
+
+
+def test_keep_alive_is_absent_without_configured_control_plane_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_app_lifecycle(monkeypatch)
+    settings = ServerSettings(redis_url="redis://example.invalid/0", api_token=None)
+    with TestClient(create_app(settings)) as client:
+        response = client.post("/execution-bindings/keep-alive", json={"binding_ref": "private-binding"})
+    assert response.status_code == 404

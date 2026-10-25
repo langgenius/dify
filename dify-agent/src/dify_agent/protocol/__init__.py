@@ -40,6 +40,8 @@ from .execution_binding import (
     CreateExecutionBindingRequest,
     CreateExecutionBindingResponse,
     DestroyExecutionBindingRequest,
+    KeepAliveExecutionBindingRequest,
+    KeepAliveExecutionBindingResponse,
 )
 from .binding_file import (
     BindingFileDownloadRequest,
@@ -78,6 +80,8 @@ __all__ = [
     "DIFY_AGENT_MODEL_LAYER_ID",
     "DIFY_AGENT_OUTPUT_LAYER_ID",
     "DestroyExecutionBindingRequest",
+    "KeepAliveExecutionBindingRequest",
+    "KeepAliveExecutionBindingResponse",
     "EmptyRunEventData",
     "HomeSnapshotResponse",
     "PydanticAIStreamRunEvent",

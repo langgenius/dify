@@ -6,17 +6,21 @@ from dify_agent.protocol import (
     CreateExecutionBindingRequest,
     CreateExecutionBindingResponse,
     DestroyExecutionBindingRequest,
+    KeepAliveExecutionBindingRequest,
+    KeepAliveExecutionBindingResponse,
 )
 from dify_agent.runtime_backend import (
     BindingCapacityExhaustedError,
     BindingCreateError,
     BindingDestroyError,
+    BindingLostError,
     ExecutionBindingBackend,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
     SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
 )
+from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
 
 
@@ -64,6 +68,20 @@ class ExecutionBindingService:
             binding_ref=allocation.binding_ref,
             workspace_ref=allocation.workspace_ref,
         )
+
+    async def keep_alive(self, request: KeepAliveExecutionBindingRequest) -> KeepAliveExecutionBindingResponse:
+        """Refresh one supported existing binding without allocating or running a job."""
+        if not isinstance(self.backend, EnterpriseExecutionBindingBackend):
+            return KeepAliveExecutionBindingResponse(supported=False)
+        try:
+            await self.backend.keep_alive(request.binding_ref)
+        except BindingLostError:
+            raise ExecutionBindingServiceError("binding_lost", "binding unavailable", status_code=410) from None
+        except Exception:
+            raise ExecutionBindingServiceError(
+                "binding_keep_alive_failed", "binding health unavailable", status_code=502
+            ) from None
+        return KeepAliveExecutionBindingResponse(supported=True)
 
     async def destroy_binding(self, request: DestroyExecutionBindingRequest) -> None:
         try:

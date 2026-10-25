@@ -36,8 +36,10 @@ import logging
 from collections.abc import Callable
 from datetime import timedelta
 from typing import cast
+from uuid import UUID
 
 from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import String, func, select
 from sqlalchemy import cast as cast_sql
 from sqlalchemy.orm import sessionmaker
@@ -45,6 +47,7 @@ from sqlalchemy.orm import sessionmaker
 from configs import dify_config
 from core.dify_builder.state import PcState, is_working
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dify_builder import DifyBuilderSession
 from services.dify_builder import progress_bus, session_lock
@@ -59,6 +62,7 @@ _WORKING_STATES = [str(s) for s in PcState if is_working(s)]
 
 # Upper bound of reserved grants examined per sweep by the terminal-settlement repair.
 _TERMINAL_REPAIR_LIMIT = 100
+_WAITING_BINDING_CURSOR_KEY = "dify_builder:waiting_binding_retention:cursor"
 
 
 def _session_factory() -> sessionmaker:
@@ -117,6 +121,96 @@ def reconcile_interrupted_sessions() -> int:
         logger.exception("Dify Builder terminal confirmed grant repair failed")
     reconcile_native_tests()
     return flagged
+
+
+@shared_task(queue="dify_builder", soft_time_limit=45, time_limit=50)
+def retain_waiting_agent_bindings(*, limit: int = 100) -> int:
+    """Bounded health-only retention, independent of the five-minute sweeper.
+
+    The command owner repeats all current authority, checkpoint and workspace
+    checks after this detached candidate scan. No recovery or dispatch occurs.
+    """
+    from core.dify_builder.models import Actor
+    from models.dify_builder import DifyBuilderExecutionRequest
+    from models.dify_builder_native_tests import NativeInvocationState, NativeTestInvocation, NativeTestScope
+    from services.dify_builder.wiring import build_native_test_api_service
+
+    if not 1 <= limit <= 100:
+        return 0
+    try:
+        raw_cursor = redis_client.get(_WAITING_BINDING_CURSOR_KEY)
+    except SoftTimeLimitExceeded:
+        raise
+    except Exception:
+        logger.warning("Dify Builder waiting binding retention cursor unavailable")
+        return 0
+    cursor = None
+    try:
+        value = raw_cursor.decode("ascii") if isinstance(raw_cursor, bytes) and len(raw_cursor) == 36 else raw_cursor
+        if isinstance(value, str) and len(value) == 36 and str(UUID(value)) == value:
+            cursor = value
+    except (ValueError, UnicodeError):
+        pass  # Scheduling metadata is never authority or an SQL expression.
+    query = (
+        select(
+            DifyBuilderExecutionRequest.tenant_id,
+            DifyBuilderExecutionRequest.actor_id,
+            DifyBuilderExecutionRequest.session_id,
+            DifyBuilderExecutionRequest.id,
+        )
+        .join(
+            NativeTestScope,
+            (NativeTestScope.request_id == DifyBuilderExecutionRequest.id)
+            & (NativeTestScope.tenant_id == DifyBuilderExecutionRequest.tenant_id),
+        )
+        .join(
+            NativeInvocationState,
+            (NativeInvocationState.request_id == DifyBuilderExecutionRequest.id)
+            & (NativeInvocationState.tenant_id == DifyBuilderExecutionRequest.tenant_id),
+        )
+        .join(
+            NativeTestInvocation,
+            (NativeTestInvocation.request_id == NativeInvocationState.request_id)
+            & (NativeTestInvocation.tenant_id == NativeInvocationState.tenant_id)
+            & (NativeTestInvocation.invocation_id == NativeInvocationState.invocation_id),
+        )
+        .where(
+            DifyBuilderExecutionRequest.context["profile"]["profile_id"].as_string() == "builder-agent-confirmed-v1",
+            DifyBuilderExecutionRequest.state == "waiting",
+            NativeTestScope.task_approved.is_(True),
+            NativeTestScope.cancelled.is_(False),
+            NativeTestScope.expires_at > naive_utc_now(),
+            NativeInvocationState.parent_invocation_id.is_(None),
+            NativeInvocationState.state == "waiting",
+            NativeInvocationState.cancellation_key.is_(None),
+            NativeTestInvocation.active.is_(True),
+        )
+        .order_by(DifyBuilderExecutionRequest.id)
+        .limit(limit)
+    )
+    with _session_factory()() as session:
+        selected = query.where(DifyBuilderExecutionRequest.id > cursor) if cursor is not None else query
+        owners = session.execute(selected).all()
+        if not owners and cursor is not None:
+            owners = session.execute(query).all()
+    retained = 0
+    for tenant_id, actor_id, session_id, request_id in owners:
+        try:
+            # Advance before I/O, so a killed or slow prefix cannot monopolize
+            # the next pass. This cursor never grants workspace authority.
+            if not redis_client.set(_WAITING_BINDING_CURSOR_KEY, request_id, ex=3600):
+                return retained
+            actor = Actor(account_id=actor_id, tenant_id=tenant_id)
+            retained += bool(
+                build_native_test_api_service(actor=actor).keep_alive_waiting_binding(
+                    actor=actor, session_id=session_id, request_id=request_id
+                )
+            )
+        except SoftTimeLimitExceeded:
+            raise
+        except Exception:
+            logger.warning("Dify Builder waiting binding retention unavailable (request=%s)", request_id)
+    return retained
 
 
 def reconcile_native_tests(*, limit: int = 100) -> int:

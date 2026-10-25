@@ -263,6 +263,11 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.dify_builder_reconcile_task.reconcile_interrupted_sessions",
             "schedule": timedelta(minutes=dify_config.DIFY_BUILDER_RECONCILE_INTERVAL),
         }
+        beat_schedule["dify_builder_retain_waiting_agent_bindings"] = {
+            "task": "schedule.dify_builder_reconcile_task.retain_waiting_agent_bindings",
+            "schedule": timedelta(seconds=60),
+            "options": {"expires": 60, "queue": "dify_builder"},
+        }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.extend(("schedule.check_upgradable_plugin_task", "tasks.process_tenant_plugin_autoupgrade_check_task"))
         beat_schedule["check_upgradable_plugin_task"] = {

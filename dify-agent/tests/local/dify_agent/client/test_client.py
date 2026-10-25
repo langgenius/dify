@@ -1349,3 +1349,47 @@ def test_private_checkpoint_invalid_copied_request_refuses_without_serializer_wa
     assert "private-canary" not in str(caught.value)
     assert emitted == []
     assert attempts == []
+
+
+def test_sync_keep_alive_client_uses_typed_private_route_once() -> None:
+    from dify_agent import protocol
+
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        assert request.method == "POST"
+        assert request.url.path == "/execution-bindings/keep-alive"
+        assert json.loads(request.content) == {"binding_ref": "binding"}
+        return httpx.Response(200, json={"supported": True})
+
+    with Client(
+        base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler))
+    ) as client:
+        response = client.keep_alive_execution_binding_sync(
+            protocol.KeepAliveExecutionBindingRequest(binding_ref="binding")
+        )
+    assert response.supported is True
+    assert len(requests) == 1
+
+
+@pytest.mark.anyio
+async def test_async_keep_alive_client_uses_typed_private_route_once() -> None:
+    from dify_agent import protocol
+
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        assert request.method == "POST" and request.url.path == "/execution-bindings/keep-alive"
+        assert json.loads(request.content) == {"binding_ref": "binding"}
+        return httpx.Response(200, json={"supported": False})
+
+    async with Client(
+        base_url="http://testserver", async_http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    ) as client:
+        response = await client.keep_alive_execution_binding(
+            protocol.KeepAliveExecutionBindingRequest(binding_ref="binding")
+        )
+    assert response.supported is False
+    assert len(requests) == 1

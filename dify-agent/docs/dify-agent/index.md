@@ -57,3 +57,14 @@ never triggers automatic replay. The runtime releases its borrowed lease but
 does not force-delete tracked jobs on confirmed Run exit. Workspace retirement
 stays with its existing owner, and an HTTP timeout does not prove remote process
 cleanup.
+
+A configured service bearer also exposes the private Execution Binding
+`POST /execution-bindings/keep-alive` operation. It accepts only `binding_ref`
+and returns `supported`: Enterprise touches the existing sandbox through the
+Gateway's shellctl health endpoint; Local, E2B and OpenShell return false without
+performing health I/O. Health never allocates a replacement, runs a command,
+spends a tool permit or retries a lost operation. Missing bindings return a fixed
+410 `binding_lost`; other health failures return fixed502 diagnostics without
+provider text or binding credentials. The endpoint is absent in anonymous
+migration mode. The owning API decides whether a Run remains eligible for this
+bounded infrastructure operation; the immutable test scope and grants are not renewed.
