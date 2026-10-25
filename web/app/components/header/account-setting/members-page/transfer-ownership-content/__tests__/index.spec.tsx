@@ -1,11 +1,12 @@
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
+import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
-import TransferOwnershipModal from '../index'
+import TransferOwnershipContent from '../index'
 
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
@@ -43,7 +44,7 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-describe('TransferOwnershipModal', () => {
+describe('TransferOwnershipContent', () => {
   const mockOnClose = vi.fn()
   const { mockNotify } = toastMocks
 
@@ -95,7 +96,20 @@ describe('TransferOwnershipModal', () => {
         },
       ],
     })
-    return render(<TransferOwnershipModal show onClose={mockOnClose} />, { wrapper })
+    return render(
+      <Dialog
+        defaultOpen
+        onOpenChange={(open) => {
+          if (!open) mockOnClose()
+        }}
+      >
+        <DialogTrigger>Transfer ownership</DialogTrigger>
+        <DialogContent>
+          <TransferOwnershipContent />
+        </DialogContent>
+      </Dialog>,
+      { wrapper },
+    )
   }
 
   const mockEmailVerification = ({
@@ -285,6 +299,22 @@ describe('TransferOwnershipModal', () => {
         }),
       )
     })
+  })
+
+  it('starts a new verification session after closing and reopening', async () => {
+    const user = userEvent.setup()
+    mockEmailVerification()
+    renderModal()
+    await user.click(screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/ }))
+    const code = await screen.findByRole('textbox', { name: /members\.transferModal\.codeLabel/ })
+    await user.type(code, '123')
+    await user.click(screen.getByRole('button', { name: /operation\.cancel/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Transfer ownership' }))
+    expect(
+      await screen.findByRole('button', { name: /members\.transferModal\.sendVerifyCode/ }),
+    ).toBeVisible()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
   it('should close when close button is clicked', async () => {

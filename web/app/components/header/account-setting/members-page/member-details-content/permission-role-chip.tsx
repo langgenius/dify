@@ -4,8 +4,9 @@ import type { SelectorKey } from 'i18next'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { memo } from 'react'
+import { memo, Suspense } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 
 type PermissionRoleChipProps = {
   roleId: string
@@ -24,17 +25,8 @@ const PermissionRoleChip = ({
   onRemove,
   className,
 }: PermissionRoleChipProps) => {
-  const { t } = useTranslation(['common', 'permissionKeys', 'workspaceMembers'])
-  const permissions = permissionKeys
+  const { t } = useTranslation(['common'])
   const canRemoveRole = !isOwner && !!onRemove
-  // Permission keys come from the catalog API, so this is a reviewed open-key boundary with a server-provided fallback.
-  const translatePermissionName = (key: string) =>
-    t(key as SelectorKey, {
-      ns: 'permissionKeys',
-      defaultValue: key,
-    })
-  const permissionLabels = permissions.map(translatePermissionName).join(', ')
-  const hasPermissionLabels = permissionLabels.length > 0
 
   const chipRootClassName = cn(
     'inline-flex h-6 max-w-full min-w-0 items-center gap-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-background-body px-1.5 py-0.5 system-xs-medium text-text-primary shadow-xs transition-colors',
@@ -72,7 +64,36 @@ const PermissionRoleChip = ({
     </span>
   )
 
-  const permissionSummary = (
+  return (
+    <Popover>
+      {chip}
+      <PopoverContent
+        align="start"
+        className="overflow-hidden border-components-panel-border bg-components-tooltip-bg p-0 shadow-lg backdrop-blur-[5px]"
+      >
+        <Suspense fallback={<LoadingPlaceholder className="p-4" />}>
+          <PermissionSummary label={label} permissionKeys={permissionKeys} />
+        </Suspense>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function PermissionSummary({
+  label,
+  permissionKeys,
+}: Pick<PermissionRoleChipProps, 'label' | 'permissionKeys'>) {
+  const { t } = useTranslation(['permissionKeys', 'workspaceMembers'])
+  // Permission keys come from the catalog API, so this is a reviewed open-key boundary with a server-provided fallback.
+  const translatePermissionName = (key: string) =>
+    t(key as SelectorKey, {
+      ns: 'permissionKeys',
+      defaultValue: key,
+    })
+  const permissionLabels = permissionKeys.map(translatePermissionName).join(', ')
+  const hasPermissionLabels = permissionLabels.length > 0
+
+  return (
     <div className="flex w-58 flex-col gap-1 px-4 py-3.5">
       <div className="title-xs-semi-bold leading-4 whitespace-nowrap text-text-primary">
         {label}
@@ -98,18 +119,6 @@ const PermissionRoleChip = ({
         )}
       </div>
     </div>
-  )
-
-  return (
-    <Popover>
-      {chip}
-      <PopoverContent
-        align="start"
-        className="overflow-hidden border-components-panel-border bg-components-tooltip-bg p-0 shadow-lg backdrop-blur-[5px]"
-      >
-        {permissionSummary}
-      </PopoverContent>
-    </Popover>
   )
 }
 

@@ -35,7 +35,7 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
         <div className="mb-1 flex h-6 items-center">
           <Switch
             aria-labelledby={dynamicRegistrationLabelId}
-            className="mr-2"
+            className="me-2"
             checked={isDynamicRegistration}
             onCheckedChange={onDynamicRegistrationChange}
           />

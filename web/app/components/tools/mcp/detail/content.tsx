@@ -138,7 +138,7 @@ const MCPDetailContent: FC<Props> = ({
           <div className="shrink-0 overflow-hidden rounded-xl border border-components-panel-border-subtle">
             <Icon src={detail.icon} />
           </div>
-          <div className="ml-3 w-0 grow">
+          <div className="ms-3 w-0 grow">
             <div className="flex h-5 items-center">
               <div className="truncate system-md-semibold text-text-primary">{detail.name}</div>
             </div>
@@ -150,7 +150,7 @@ const MCPDetailContent: FC<Props> = ({
                       type="button"
                       variant="ghost"
                       size="small"
-                      className="h-auto shrink-0 cursor-pointer rounded bg-transparent p-0 text-left system-xs-regular text-text-secondary hover:bg-transparent"
+                      className="h-auto shrink-0 cursor-pointer rounded bg-transparent p-0 text-start system-xs-regular text-text-secondary hover:bg-transparent"
                       onClick={() => copy(detail.server_identifier || '')}
                     >
                       {detail.server_identifier}

@@ -428,8 +428,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               ) : (
                 <ScrollArea className="relative mt-3 min-h-0 shrink-0 overflow-hidden">
                   <ScrollAreaViewport className="overscroll-contain">
-                    {/* pr-3 reserves a gutter for the 12px overlay scrollbar so it never covers the panel's controls */}
-                    <ScrollAreaContent className="pr-3 pb-3">{metadataPanel}</ScrollAreaContent>
+                    {/* Reserve space at inline-end for the 12px overlay scrollbar. */}
+                    <ScrollAreaContent className="pe-3 pb-3">{metadataPanel}</ScrollAreaContent>
                   </ScrollAreaViewport>
                   <ScrollAreaScrollbar orientation="vertical">
                     <ScrollAreaThumb />

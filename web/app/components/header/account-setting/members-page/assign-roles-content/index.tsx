@@ -1,9 +1,9 @@
 'use client'
+import type { Ref } from 'react'
 import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  Dialog,
-  DialogContent,
+  DialogClose,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -12,21 +12,25 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import WorkspaceRoleCheckboxList from '../../workspace-role-checkbox-list'
+import WorkspaceRolePicker from '../../workspace-role-picker'
 
-type AssignRolesModalProps = {
+type AssignRolesContentProps = {
   selectedRoles: Role[]
   allowMultipleRoles?: boolean
-  onClose: () => void
+  isSubmitting?: boolean
+  hasSubmitError?: boolean
+  searchInputRef: Ref<HTMLInputElement>
   onSubmit: (roles: Role[]) => void
 }
 
-const AssignRolesModalBody = ({
+const AssignRolesContent = ({
   selectedRoles,
   allowMultipleRoles = true,
-  onClose,
+  searchInputRef,
+  isSubmitting = false,
+  hasSubmitError = false,
   onSubmit,
-}: AssignRolesModalProps) => {
+}: AssignRolesContentProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const [selected, setSelected] = useState(selectedRoles)
   const selectedRoleIds = selected.map((role) => role.id)
@@ -49,27 +53,39 @@ const AssignRolesModalBody = ({
       })
 
   const handleConfirm = () => {
-    if (isConfirmDisabled) return
+    if (isConfirmDisabled || isSubmitting) return
 
     onSubmit(selected)
-    onClose()
   }
 
   return (
-    <DialogContent className="h-121" backdropProps={{ forceRender: true }}>
+    <form
+      className="contents"
+      onSubmit={(event) => {
+        event.preventDefault()
+        handleConfirm()
+      }}
+    >
       <DialogHeader>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
         <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
       </DialogHeader>
 
-      <WorkspaceRoleCheckboxList
+      <WorkspaceRolePicker
+        searchInputRef={searchInputRef}
+        readOnly={isSubmitting}
         selectedRoleIds={selectedRoleIds}
         selectedRoles={selected}
         allowMultipleRoles={allowMultipleRoles}
         onSelectedRolesChange={setSelected}
       />
 
+      {hasSubmitError && (
+        <p role="alert" className="px-6 pt-2 system-sm-regular text-text-destructive">
+          {t(($) => $['api.actionFailed'], { ns: 'common' })}
+        </p>
+      )}
       <DialogFooter>
         {allowMultipleRoles && (
           <div className="me-auto system-xs-regular text-text-tertiary">
@@ -79,38 +95,15 @@ const AssignRolesModalBody = ({
             })}
           </div>
         )}
-        <Button variant="secondary" onClick={onClose}>
+        <DialogClose render={<Button variant="secondary" />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
-        </Button>
-        <Button variant="primary" disabled={isConfirmDisabled} onClick={handleConfirm}>
+        </DialogClose>
+        <Button variant="primary" loading={isSubmitting} disabled={isConfirmDisabled} type="submit">
           {t(($) => $['operation.confirm'], { ns: 'common' })}
         </Button>
       </DialogFooter>
-    </DialogContent>
+    </form>
   )
 }
 
-const AssignRolesModal = ({
-  selectedRoles,
-  allowMultipleRoles = true,
-  onClose,
-  onSubmit,
-}: AssignRolesModalProps) => {
-  return (
-    <Dialog
-      open
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) onClose()
-      }}
-    >
-      <AssignRolesModalBody
-        selectedRoles={selectedRoles}
-        allowMultipleRoles={allowMultipleRoles}
-        onClose={onClose}
-        onSubmit={onSubmit}
-      />
-    </Dialog>
-  )
-}
-
-export default AssignRolesModal
+export default AssignRolesContent

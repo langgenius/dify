@@ -1,12 +1,13 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
 import type { Role } from '@/models/access-control'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
-import MemberDetailsModal from '../index'
+import MemberDetailsContent from '../index'
 
 const { mockWorkspaceRoleListHook, mockRolesOfMemberHook } = vi.hoisted(() => ({
   mockWorkspaceRoleListHook: vi.fn(),
@@ -60,10 +61,15 @@ const render = (ui: ReactElement) => {
       }),
       response,
     )
-  return renderWithConsoleQuery(ui, { queryClient })
+  return renderWithConsoleQuery(
+    <Dialog open>
+      <DialogContent>{ui}</DialogContent>
+    </Dialog>,
+    { queryClient },
+  )
 }
 
-describe('MemberDetailsModal', () => {
+describe('MemberDetailsContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(mockRolesOfMemberHook).mockReturnValue({
@@ -102,7 +108,7 @@ describe('MemberDetailsModal', () => {
   describe('Rendering', () => {
     it('should render edit role action when multiple roles are disabled', () => {
       render(
-        <MemberDetailsModal
+        <MemberDetailsContent
           member={member}
           canAssignRoles
           allowMultipleRoles={false}
@@ -121,7 +127,7 @@ describe('MemberDetailsModal', () => {
 
     it('should render singular assigned role label when there is one role', () => {
       render(
-        <MemberDetailsModal
+        <MemberDetailsContent
           member={member}
           canAssignRoles
           onClose={vi.fn()}
@@ -144,7 +150,7 @@ describe('MemberDetailsModal', () => {
       })
 
       render(
-        <MemberDetailsModal
+        <MemberDetailsContent
           member={member}
           canAssignRoles
           onClose={vi.fn()}
@@ -166,7 +172,7 @@ describe('MemberDetailsModal', () => {
       const user = userEvent.setup()
 
       render(
-        <MemberDetailsModal
+        <MemberDetailsContent
           member={member}
           canAssignRoles
           allowMultipleRoles={false}
@@ -186,7 +192,7 @@ describe('MemberDetailsModal', () => {
 
     it('should not show role removal controls when role assignment is not allowed', () => {
       render(
-        <MemberDetailsModal
+        <MemberDetailsContent
           member={member}
           canAssignRoles={false}
           onClose={vi.fn()}
@@ -217,7 +223,7 @@ describe('MemberDetailsModal', () => {
       })
 
       render(
-        <MemberDetailsModal
+        <MemberDetailsContent
           member={member}
           canAssignRoles
           onClose={vi.fn()}
@@ -243,7 +249,7 @@ describe('MemberDetailsModal', () => {
       const handleAssignSubmit = vi.fn()
 
       render(
-        <MemberDetailsModal
+        <MemberDetailsContent
           member={member}
           canAssignRoles
           onClose={vi.fn()}
@@ -252,7 +258,7 @@ describe('MemberDetailsModal', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /members\.memberDetails\.assign/i }))
-      await user.click(await screen.findByRole('checkbox', { name: /Second role/i }))
+      await user.click(await screen.findByRole('option', { name: /Second role/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
 
       expect(handleAssignSubmit).not.toHaveBeenCalled()
@@ -270,7 +276,7 @@ describe('MemberDetailsModal', () => {
       const handleAssignSubmit = vi.fn()
 
       render(
-        <MemberDetailsModal
+        <MemberDetailsContent
           member={member}
           canAssignRoles
           allowMultipleRoles={false}
@@ -280,7 +286,7 @@ describe('MemberDetailsModal', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /common\.operation\.edit/i }))
-      await user.click(await screen.findByRole('radio', { name: /Second role/i }))
+      await user.click(await screen.findByRole('option', { name: /Second role/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 

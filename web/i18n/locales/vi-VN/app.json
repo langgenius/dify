@@ -29,6 +29,7 @@
   "appSelector.noParams": "Không cần thông số",
   "appSelector.params": "THÔNG SỐ ỨNG DỤNG",
   "appSelector.placeholder": "Chọn một ứng dụng...",
+  "appSelector.searchPlaceholder": "Tìm ứng dụng theo tên…",
   "chooseAppFile": "Chọn gói ứng dụng hoặc tệp DSL",
   "deleteAppConfirmContent": "Việc xóa ứng dụng là không thể hoàn tác. Người dùng sẽ không thể truy cập vào ứng dụng của bạn nữa và tất cả cấu hình cũng như nhật ký nhắc sẽ bị xóa vĩnh viễn.",
   "deleteAppConfirmInputLabel": "Để xác nhận, hãy nhập <appName>{{appName}}</appName> vào ô bên dưới:",
