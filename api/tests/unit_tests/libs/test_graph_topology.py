@@ -84,3 +84,21 @@ def test_missing_or_self_parent_does_not_create_an_ancestor() -> None:
     )
     assert topology.upstream_node_ids("missing") == set()
     assert topology.upstream_node_ids("self") == set()
+
+
+def test_incomplete_graph_entries_preserve_valid_containment() -> None:
+    assert GraphTopology.from_graph({}).upstream_node_ids("agent") == set()
+    topology = GraphTopology.from_graph(
+        {
+            "nodes": [
+                None,
+                {"parentId": "container"},
+                {"id": 123},
+                {"id": "container"},
+                {"id": "agent", "parentId": "container"},
+            ],
+            "edges": [],
+        }
+    )
+    assert topology.upstream_node_ids("agent") == {"container"}
+    assert topology.is_upstream(source_node_id="container", target_node_id="agent")
