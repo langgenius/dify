@@ -543,7 +543,7 @@ function SkillCard({
                 </IconButton>
               }
             />
-            <MenuContent className="w-40">
+            <MenuContent align="end" className="w-40">
               {canEdit && (
                 <MenuItem className="gap-2" onClick={handleDuplicate}>
                   <span

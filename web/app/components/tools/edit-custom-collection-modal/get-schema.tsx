@@ -90,7 +90,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
           </span>
           <span className="i-ri-arrow-down-s-line size-3" aria-hidden />
         </MenuTrigger>
-        <MenuContent sideOffset={2} className="min-w-max">
+        <MenuContent align="end" sideOffset={2} className="min-w-max">
           {examples.map((item) => (
             <MenuItem
               key={item.key}

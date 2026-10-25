@@ -336,7 +336,7 @@ const Operations = ({
                 />
               </div>
             </MenuTrigger>
-            <MenuContent className={cn('w-50', className)}>
+            <MenuContent align="end" className={cn('w-50', className)}>
               {canShowPrimarySection && (
                 <>
                   {canShowRenameAction && (

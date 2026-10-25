@@ -316,7 +316,7 @@ function VersionRow({
             >
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </MenuTrigger>
-            <MenuContent className="w-46">
+            <MenuContent align="end" className="w-46">
               <MenuItem onClick={() => setRestoreOpen(true)}>
                 {t(($) => $['skillManagement.detail.restoreVersion'])}
               </MenuItem>

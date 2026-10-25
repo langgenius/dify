@@ -283,6 +283,7 @@ function FileActions({
           <span aria-hidden className="i-ri-more-fill size-4" />
         </MenuTrigger>
         <MenuContent
+          align="end"
           data-skill-file-menu
           onKeyDown={onMenuKeyDown}
           className={skillFileMenuPopupClassName}

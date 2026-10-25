@@ -139,7 +139,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                 {t(($) => $['settings.ipPolicyMore'], { ns: 'common' })}
               </TooltipContent>
             </Tooltip>
-            <MenuContent className="min-w-35">
+            <MenuContent align="end" className="min-w-35">
               <MenuItem
                 disabled={!canMutate}
                 className="system-sm-semibold text-text-secondary"

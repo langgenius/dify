@@ -90,7 +90,7 @@ const DebugItem: FC<DebugItemProps> = ({ modelAndParameter, className, style }) 
               </IconButton>
             }
           />
-          <MenuContent className="min-w-40">
+          <MenuContent align="end" className="min-w-40">
             {showDuplicate && (
               <MenuItem className="system-md-regular" onClick={handleDuplicate}>
                 {t(($) => $.duplicateModel, { ns: 'appDebug' })}

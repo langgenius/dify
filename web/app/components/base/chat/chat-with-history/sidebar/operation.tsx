@@ -50,7 +50,7 @@ const Operation: FC<Props> = ({
         }
         onClick={(e) => e.stopPropagation()}
       />
-      <MenuContent className="min-w-30" onClick={(e) => e.stopPropagation()}>
+      <MenuContent align="end" className="min-w-30" onClick={(e) => e.stopPropagation()}>
         <MenuItem
           className="gap-2 px-2 system-md-regular"
           onClick={(e) => {

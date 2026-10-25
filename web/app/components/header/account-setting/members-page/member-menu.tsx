@@ -90,7 +90,7 @@ const MemberMenu = ({
             </IconButton>
           }
         />
-        <MenuContent className="min-w-45 rounded-xl">
+        <MenuContent align="end" className="min-w-45 rounded-xl">
           {canAssignRoles && (
             <MenuItem
               className="system-sm-medium text-text-secondary"

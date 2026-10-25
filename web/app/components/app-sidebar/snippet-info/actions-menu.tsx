@@ -128,7 +128,7 @@ const SnippetInfoMenu = ({ snippet }: SnippetInfoMenuProps) => {
             </IconButton>
           }
         />
-        <MenuContent className="w-45">
+        <MenuContent align="end" className="w-45">
           {canCreateAndModifySnippet && (
             <>
               <MenuItem className="gap-2" onClick={handleOpenEditDialog}>

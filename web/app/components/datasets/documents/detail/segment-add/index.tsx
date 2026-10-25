@@ -147,7 +147,7 @@ export function SegmentAdd({
         >
           <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4', textColor)} />
         </MenuTrigger>
-        <MenuContent className="min-w-30">
+        <MenuContent align="end" className="min-w-30">
           <MenuItem className="system-md-regular" onClick={() => openSegmentDialog(showBatchModal)}>
             {t(($) => $['list.action.batchAdd'], { ns: 'datasetDocuments' })}
           </MenuItem>

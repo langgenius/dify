@@ -253,7 +253,7 @@ export function SourceActions({
             )}
           />
         </MenuTrigger>
-        <MenuContent className="w-50">
+        <MenuContent align="end" className="w-50">
           {canSync && (
             <MenuItem
               onClick={() => void (syncAction === 'retry' ? retrySource() : syncSource())}

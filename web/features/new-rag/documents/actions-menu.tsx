@@ -290,7 +290,7 @@ export function DocumentActionsMenu({
             )}
           />
         </MenuTrigger>
-        <MenuContent className="w-50">
+        <MenuContent align="end" className="w-50">
           <RenameDocumentMenuItem document={document} onOpen={() => setRenameDialogOpen(true)} />
           <ReprocessDocumentMenuItem document={document} />
           <DownloadDocumentMenuItem document={document} />

@@ -209,7 +209,7 @@ function AgentRosterDrawer({
                           >
                             <span aria-hidden className="i-ri-more-fill size-4" />
                           </MenuTrigger>
-                          <MenuContent className="w-max min-w-44">
+                          <MenuContent align="end" className="w-max min-w-44">
                             <MenuItem
                               className="gap-2 whitespace-nowrap"
                               onClick={onSaveInlineToRoster}

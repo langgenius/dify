@@ -108,7 +108,7 @@ export function VersionItem({
               </IconButton>
             }
           />
-          <MenuContent className="min-w-40">
+          <MenuContent align="end" className="min-w-40">
             {onRestore && (
               <MenuItem
                 disabled={restoreDisabled}

@@ -741,7 +741,7 @@ function WorkflowInlineAgentConfigureMoreAction({
           </button>
         }
       />
-      <MenuContent className="w-max min-w-44">
+      <MenuContent align="end" className="w-max min-w-44">
         <MenuItem className="gap-2 whitespace-nowrap" onClick={onSaveInlineToRoster}>
           <span
             aria-hidden

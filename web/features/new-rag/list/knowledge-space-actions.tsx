@@ -41,7 +41,7 @@ export function KnowledgeSpaceActions({
               </IconButton>
             }
           />
-          <MenuContent className="min-w-46.5">
+          <MenuContent align="end" className="min-w-46.5">
             {canEdit && (
               <MenuLinkItem
                 render={<Link href={newKnowledgeSettingsPath(knowledgeSpace.control_space_id)} />}

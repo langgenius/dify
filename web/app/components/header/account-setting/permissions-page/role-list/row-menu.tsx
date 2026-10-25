@@ -111,7 +111,7 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
             </IconButton>
           }
         />
-        <MenuContent className="min-w-40">
+        <MenuContent align="end" className="min-w-40">
           {hasViewAction && (
             <MenuItem className="system-sm-semibold text-text-secondary" onClick={handleView}>
               {t(($) => $['operation.view'], { ns: 'common' })}

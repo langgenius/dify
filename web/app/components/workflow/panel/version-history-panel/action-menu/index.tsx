@@ -196,7 +196,10 @@ function ActionMenu(props: ActionMenuProps) {
           </IconButton>
         }
       />
-      <MenuContent className="w-max max-w-[calc(100vw-24px)] min-w-46 shadow-shadow-shadow-5">
+      <MenuContent
+        align="end"
+        className="w-max max-w-[calc(100vw-24px)] min-w-46 shadow-shadow-shadow-5"
+      >
         {options.map((option) => (
           <ActionMenuItem key={option.key} item={option} onClick={handleAction} />
         ))}

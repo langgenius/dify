@@ -31,7 +31,7 @@ const MobileOperationMenu = ({
           </IconButton>
         }
       />
-      <MenuContent className="min-w-40">
+      <MenuContent align="end" className="min-w-40">
         <MenuItem className="system-md-regular" onClick={() => handleMenuAction(handleResetChat)}>
           <span className="grow">{t(($) => $['chat.resetChat'], { ns: 'share' })}</span>
         </MenuItem>

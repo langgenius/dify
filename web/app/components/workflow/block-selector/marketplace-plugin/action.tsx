@@ -59,7 +59,7 @@ function OperationMenu({ open, onOpenChange, author, name, version }: Props) {
           </IconButton>
         }
       />
-      <MenuContent className="min-w-44">
+      <MenuContent align="end" className="min-w-44">
         <MenuItem className="system-md-regular" onClick={handleDownload}>
           {t(($) => $['operation.download'], { ns: 'common' })}
         </MenuItem>

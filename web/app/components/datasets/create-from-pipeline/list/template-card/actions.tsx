@@ -48,7 +48,7 @@ const Actions = ({
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
           </MenuTrigger>
-          <MenuContent className="min-w-40">
+          <MenuContent align="end" className="min-w-40">
             <MenuItem
               onClick={() => {
                 openEditModal()

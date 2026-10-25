@@ -173,7 +173,7 @@ export function AgentSkillItem({
             >
               <span aria-hidden className="i-ri-more-fill size-4" />
             </MenuTrigger>
-            <MenuContent className="w-48">
+            <MenuContent align="end" className="w-48">
               {!skill.isMissing && onDownloadSkill && (
                 <MenuItem className="gap-2" onClick={onDownloadSkill}>
                   <span

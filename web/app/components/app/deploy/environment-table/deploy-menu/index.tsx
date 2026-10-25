@@ -57,7 +57,11 @@ export function EnvironmentDeployMenu({
           </Button>
         }
       />
-      <MenuContent aria-busy={isLoading || isRetrying} className="w-42">
+      <MenuContent
+        align={isEmptyState ? undefined : 'end'}
+        aria-busy={isLoading || isRetrying}
+        className="w-42"
+      >
         <MenuGroup>
           <MenuGroupLabel className="py-1">{t(($) => $['card.notDeployed'])}</MenuGroupLabel>
           {isLoading ? (

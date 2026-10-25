@@ -85,7 +85,10 @@ function WorkspaceSwitchControls({
               </IconButton>
             }
           />
-          <MenuContent className="w-40 bg-components-panel-bg-blur! backdrop-blur-[5px]">
+          <MenuContent
+            align="end"
+            className="w-40 bg-components-panel-bg-blur! backdrop-blur-[5px]"
+          >
             <MenuRadioGroup<WorkspaceSort> value={sort} onValueChange={onSortChange}>
               {sortOptions.map((option) => (
                 <MenuRadioItem<WorkspaceSort>

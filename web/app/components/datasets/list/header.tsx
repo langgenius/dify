@@ -145,6 +145,7 @@ const DatasetListHeader = ({
                 }
               />
               <MenuContent
+                align="end"
                 {...getStepByStepTourMenuContentProps({
                   disableMotion: createMenu.controlled,
                   highlightPart: createMenu.controlled

@@ -256,7 +256,7 @@ export function SkillDetailSidebarActions({
         >
           <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
         </MenuTrigger>
-        <MenuContent className="w-40">
+        <MenuContent align="end" className="w-40">
           {canEdit && (
             <MenuItem className="gap-2" onClick={onRename}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />

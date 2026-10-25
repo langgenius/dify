@@ -580,7 +580,7 @@ function CommentThreadComponent({
                 >
                   <RiMoreFill className="size-4" />
                 </MenuTrigger>
-                <MenuContent className="w-36 backdrop-blur-[10px]">
+                <MenuContent align="end" className="w-36 backdrop-blur-[10px]">
                   <MenuItem
                     className="px-3"
                     onClick={(e) => {
@@ -669,7 +669,11 @@ function CommentThreadComponent({
                         >
                           <RiMoreFill className="size-4" />
                         </MenuTrigger>
-                        <MenuContent className="w-36 backdrop-blur-[10px]" data-reply-menu>
+                        <MenuContent
+                          align="end"
+                          className="w-36 backdrop-blur-[10px]"
+                          data-reply-menu
+                        >
                           <MenuItem
                             onClick={(event) => {
                               event.stopPropagation()

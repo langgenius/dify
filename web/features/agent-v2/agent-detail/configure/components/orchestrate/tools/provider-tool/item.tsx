@@ -331,7 +331,7 @@ export const AgentProviderToolItem = memo(
                 </span>
                 <span aria-hidden className="i-ri-more-fill size-4" />
               </MenuTrigger>
-              <MenuContent className="w-44">
+              <MenuContent align="end" className="w-44">
                 <MenuItem variant="destructive" className="gap-2" onClick={onRemoveProvider}>
                   <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
                   <span>{t(($) => $['agentDetail.configure.tools.removeProvider'])}</span>

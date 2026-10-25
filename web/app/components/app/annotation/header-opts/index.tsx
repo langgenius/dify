@@ -180,7 +180,7 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </MenuTrigger>
-        <MenuContent className="w-38.75">
+        <MenuContent align="end" className="w-38.75">
           <OperationsMenu
             list={list}
             onBulkImport={handleShowBulkImportModal}

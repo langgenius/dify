@@ -42,7 +42,7 @@ function ItemOperation({
           className="i-ri-more-fill size-4 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 group-focus-visible/operation:opacity-100 group-data-popup-open/operation:opacity-100"
         />
       </MenuTrigger>
-      <MenuContent className="min-w-30">
+      <MenuContent align="end" className="min-w-30">
         <MenuItem
           className={cn(s.actionItem, 'gap-2 px-3')}
           onClick={(e) => {

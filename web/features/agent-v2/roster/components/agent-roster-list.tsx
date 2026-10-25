@@ -398,7 +398,7 @@ function AgentRosterItem({
                   </IconButton>
                 }
               />
-              <MenuContent className="w-max min-w-40">
+              <MenuContent align="end" className="w-max min-w-40">
                 <AgentCardActionMenuItems
                   kind="menu"
                   isExporting={isExporting}

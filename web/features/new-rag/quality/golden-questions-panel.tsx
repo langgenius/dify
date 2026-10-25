@@ -427,7 +427,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
                             question: item.question,
                           })}
                         />
-                        <MenuContent className="w-50">
+                        <MenuContent align="end" className="w-50">
                           <MenuItem className="gap-2 px-3" onClick={() => void openEdit(item)}>
                             <span aria-hidden className="i-ri-edit-line size-4" />
                             {t(($) => $['qualityPage.edit'], { ns: 'knowledgeQuality' })}

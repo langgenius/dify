@@ -29,7 +29,7 @@ const OperationMenu: FC<Props> = ({ inCard, onOpenChange, onEdit, onRemove }) =>
           </IconButton>
         }
       />
-      <MenuContent className="w-40">
+      <MenuContent align="end" className="w-40">
         <MenuItem onClick={onEdit}>
           <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
           <div className="ms-2 system-md-regular text-text-secondary">

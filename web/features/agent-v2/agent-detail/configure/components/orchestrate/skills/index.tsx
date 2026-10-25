@@ -408,7 +408,7 @@ function WorkspaceAgentSkillItem({
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </MenuTrigger>
-        <MenuContent className="w-48">
+        <MenuContent align="end" className="w-48">
           <MenuItem className="gap-2" onClick={handleOpenInLibrary}>
             <span
               aria-hidden

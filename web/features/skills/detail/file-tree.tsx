@@ -1358,6 +1358,7 @@ export function FileTree({
                   <span aria-hidden className="i-ri-add-line size-4" />
                 </MenuTrigger>
                 <MenuContent
+                  align="end"
                   data-skill-file-menu
                   onKeyDown={handleRootMenuKeyDown}
                   className={skillFileMenuPopupClassName}

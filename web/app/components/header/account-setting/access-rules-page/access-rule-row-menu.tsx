@@ -82,7 +82,7 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
             </IconButton>
           }
         />
-        <MenuContent className="min-w-35">
+        <MenuContent align="end" className="min-w-35">
           {isBuiltIn ? (
             <MenuItem className="system-sm-semibold text-text-secondary" onClick={handleView}>
               {t(($) => $['operation.view'], { ns: 'common' })}

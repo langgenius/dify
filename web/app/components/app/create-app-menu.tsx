@@ -54,6 +54,7 @@ export function CreateAppMenu({
         }
       />
       <MenuContent
+        align="end"
         {...getStepByStepTourMenuContentProps({
           disableMotion: menu.controlled,
           highlightPart: menu.controlled ? stepByStepTourHighlightPart : undefined,

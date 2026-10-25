@@ -291,7 +291,7 @@ function BadCaseRow({
               question: item.question ?? '',
             })}
           />
-          <MenuContent className="w-50">
+          <MenuContent align="end" className="w-50">
             {canEdit &&
               (item.status === 'fixed' ? (
                 <MenuItem className="gap-2 px-3" onClick={() => onPromote(item)}>
