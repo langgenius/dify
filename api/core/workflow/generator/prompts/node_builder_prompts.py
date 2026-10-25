@@ -52,9 +52,9 @@ type, title, desc, selected, position, wrapper fields, edges, or viewport.
 
 Rules:
 - Use only ids from the supplied normalized plan.
-- Placeholder strings use ``{{#node_id.variable#}}``; selector fields use
-  ``["node_id", "variable"]``. Never invent an upstream output. An upstream
-  llm node exposes "text", "reasoning_content" and "usage"; each of its
+- Outside Template Jinja, use ``{{#node_id.variable#}}`` placeholders.
+  Selectors use ``["node_id", "variable"]``. Never invent outputs. An upstream
+  llm exposes "text", "reasoning_content" and "usage"; each of its
   structured-output fields is one segment deeper —
   ``{{#node_id.structured_output.field#}}`` as a placeholder,
   ``["node_id", "structured_output", "field"]`` as a selector — never the
