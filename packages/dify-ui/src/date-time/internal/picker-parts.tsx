@@ -2,7 +2,6 @@
 
 import type { Field } from '@base-ui/react/field'
 import type { BaseUIComponentProps } from '@base-ui/react/internals/types'
-import type { TextDirection } from '../../direction-provider'
 import type { IconButtonProps } from '../../icon-button'
 import type {
   PopoverActions,
@@ -35,7 +34,7 @@ import { useTimeout } from '@base-ui/utils/useTimeout'
 import { visuallyHidden, visuallyHiddenInput } from '@base-ui/utils/visuallyHidden'
 import * as React from 'react'
 import { cn } from '../../cn'
-import { DirectionProvider, useDirection } from '../../direction-provider'
+import { useDirection } from '../../direction-provider'
 import { IconButton } from '../../icon-button'
 import { formLabelClassName } from '../../internal/form-control'
 import { resolveClassName } from '../../internal/resolve-class-name'
@@ -47,8 +46,6 @@ import { arePickerValuesEqual } from './use-picker-value'
 type PickerOpenChangeDetails = Omit<PopoverChangeEventDetails, 'preventUnmountOnClose'>
 
 type PickerFieldProps = Pick<PopoverProps, 'open' | 'defaultOpen'> & {
-  /** Overrides DirectionProvider for this field and its popup; independent of locale. */
-  direction?: TextDirection
   placeholder?: string
   disabled?: boolean
   readOnly?: boolean
@@ -122,8 +119,6 @@ function PickerRoot({
   onClear: (details: PickerChangeEventDetails) => boolean
   onReset: (details: PickerChangeEventDetails) => boolean
 }) {
-  const inheritedDirection = useDirection()
-  const direction = props.direction ?? inheritedDirection
   const field = useFieldRootContext()
   const { clearErrors, elementRef: formElementRef, formRef } = useFormContext()
   const { labelId: fieldLabelId } = useLabelableContext()
@@ -284,122 +279,119 @@ function PickerRoot({
   }, [props.form, formElementRef, resetPicker, resetTimeout])
 
   return (
-    <DirectionProvider direction={direction}>
-      <PickerContext.Provider
-        value={{
-          ...props,
-          disabled,
-          direction,
-          invalid,
-          displayValue,
-          serializedValue,
-          triggerId,
-          valueId: `${id}-value`,
-          labelId:
-            Array.from(new Set([fieldLabelId, labelId].filter(Boolean))).join(' ') || undefined,
-          setLabelId,
-          errorId: errorMessage ? `${id}-error` : '',
-          requiredId: `${id}-required`,
-          triggerRef,
-          clearRef,
-          popupRef,
-          canEdit,
-          focus,
-          releaseFocus,
-          blur,
-          clear: (event) => {
-            if (!canEdit()) return
-            const details = createChangeEventDetails(
-              'clear-press',
-              event.nativeEvent,
-              event.currentTarget,
-            )
-            if (!onClear(details)) return
-            triggerRef.current?.focus()
-            actionsRef.current?.close()
-          },
-          close: () => actionsRef.current?.close(),
+    <PickerContext.Provider
+      value={{
+        ...props,
+        disabled,
+        invalid,
+        displayValue,
+        serializedValue,
+        triggerId,
+        valueId: `${id}-value`,
+        labelId:
+          Array.from(new Set([fieldLabelId, labelId].filter(Boolean))).join(' ') || undefined,
+        setLabelId,
+        errorId: errorMessage ? `${id}-error` : '',
+        requiredId: `${id}-required`,
+        triggerRef,
+        clearRef,
+        popupRef,
+        canEdit,
+        focus,
+        releaseFocus,
+        blur,
+        clear: (event) => {
+          if (!canEdit()) return
+          const details = createChangeEventDetails(
+            'clear-press',
+            event.nativeEvent,
+            event.currentTarget,
+          )
+          if (!onClear(details)) return
+          triggerRef.current?.focus()
+          actionsRef.current?.close()
+        },
+        close: () => actionsRef.current?.close(),
+      }}
+    >
+      {props.required && (
+        <span id={`${id}-required`} style={visuallyHidden}>
+          {props.requiredLabel ?? 'Required'}
+        </span>
+      )}
+      <input
+        {...field.validation.getValidationProps(disabled)}
+        ref={mergedInputRef}
+        style={name ? visuallyHiddenInput : visuallyHidden}
+        aria-hidden="true"
+        tabIndex={-1}
+        type="text"
+        autoComplete="off"
+        name={name}
+        form={props.form}
+        value={serializedValue}
+        required={props.required}
+        disabled={disabled}
+        readOnly={props.readOnly}
+        onChange={() => {}}
+        onFocus={() => triggerRef.current?.focus({ focusVisible: true })}
+        onInvalid={(event) => {
+          event.preventDefault()
+          setValidationAttempted(true)
+          field.setTouched(true)
+          if (triggerId) formRef.current.fields.get(triggerId)?.validate()
+          const firstInvalid = inputRef.current?.form
+            ? Array.from(inputRef.current.form.elements).find((element) =>
+                element.matches('input:invalid, select:invalid, textarea:invalid'),
+              )
+            : undefined
+          if (!firstInvalid || firstInvalid === inputRef.current) triggerRef.current?.focus()
         }}
-      >
-        {props.required && (
-          <span id={`${id}-required`} style={visuallyHidden}>
-            {props.requiredLabel ?? 'Required'}
-          </span>
-        )}
-        <input
-          {...field.validation.getValidationProps(disabled)}
-          ref={mergedInputRef}
-          style={name ? visuallyHiddenInput : visuallyHidden}
-          aria-hidden="true"
-          tabIndex={-1}
-          type="text"
-          autoComplete="off"
-          name={name}
-          form={props.form}
-          value={serializedValue}
-          required={props.required}
-          disabled={disabled}
-          readOnly={props.readOnly}
-          onChange={() => {}}
-          onFocus={() => triggerRef.current?.focus({ focusVisible: true })}
-          onInvalid={(event) => {
-            event.preventDefault()
-            setValidationAttempted(true)
-            field.setTouched(true)
-            if (triggerId) formRef.current.fields.get(triggerId)?.validate()
-            const firstInvalid = inputRef.current?.form
-              ? Array.from(inputRef.current.form.elements).find((element) =>
-                  element.matches('input:invalid, select:invalid, textarea:invalid'),
+      />
+      <Popover
+        open={props.open}
+        defaultOpen={props.defaultOpen}
+        onOpenChange={(open, details) => {
+          if (open && !canEdit()) details.cancel()
+          props.onOpenChange?.(open, details)
+          if (
+            !details.isCanceled &&
+            !open &&
+            (details.reason === 'focus-out' || details.reason === 'outside-press')
+          ) {
+            if (details.reason === 'outside-press') {
+              const document = ownerDocument(inputRef.current)
+              const pressedLabel = [fieldLabelId, labelId].some((id) => {
+                const label = id ? document.getElementById(id) : null
+                return (
+                  label &&
+                  isLabelTextInteraction({
+                    nativeEvent: details.event,
+                    currentTarget: label,
+                  })
                 )
-              : undefined
-            if (!firstInvalid || firstInvalid === inputRef.current) triggerRef.current?.focus()
-          }}
-        />
-        <Popover
-          open={props.open}
-          defaultOpen={props.defaultOpen}
-          onOpenChange={(open, details) => {
-            if (open && !canEdit()) details.cancel()
-            props.onOpenChange?.(open, details)
-            if (
-              !details.isCanceled &&
-              !open &&
-              (details.reason === 'focus-out' || details.reason === 'outside-press')
-            ) {
-              if (details.reason === 'outside-press') {
-                const document = ownerDocument(inputRef.current)
-                const pressedLabel = [fieldLabelId, labelId].some((id) => {
-                  const label = id ? document.getElementById(id) : null
-                  return (
-                    label &&
-                    isLabelTextInteraction({
-                      nativeEvent: details.event,
-                      currentTarget: label,
-                    })
-                  )
-                })
-                if (pressedLabel) return
-              }
-              const target =
-                details.reason === 'outside-press'
-                  ? getTarget(details.event)
-                  : 'relatedTarget' in details.event
-                    ? details.event.relatedTarget
-                    : null
-              blur(target instanceof ownerWindow(inputRef.current).Element ? target : null)
+              })
+              if (pressedLabel) return
             }
-          }}
-          actionsRef={actionsRef}
-        >
-          {children}
-        </Popover>
-        {errorMessage && (
-          <span id={`${id}-error`} role="alert" className="system-xs-regular text-text-destructive">
-            {errorMessage}
-          </span>
-        )}
-      </PickerContext.Provider>
-    </DirectionProvider>
+            const target =
+              details.reason === 'outside-press'
+                ? getTarget(details.event)
+                : 'relatedTarget' in details.event
+                  ? details.event.relatedTarget
+                  : null
+            blur(target instanceof ownerWindow(inputRef.current).Element ? target : null)
+          }
+        }}
+        actionsRef={actionsRef}
+      >
+        {children}
+      </Popover>
+      {errorMessage && (
+        <span id={`${id}-error`} role="alert" className="system-xs-regular text-text-destructive">
+          {errorMessage}
+        </span>
+      )}
+    </PickerContext.Provider>
   )
 }
 
@@ -487,6 +479,7 @@ function PickerTrigger({
 }: PickerTriggerProps) {
   const field = usePickerContext()
   const baseField = useFieldRootContext()
+  const direction = useDirection()
   const triggerId = useLabelableId({ id })
   const focusRef = usePickerFocusRef(field.triggerRef, Boolean(field.disabled || disabled))
   const mergedRef = useMergedRefs(field.triggerRef, ref, focusRef)
@@ -494,7 +487,7 @@ function PickerTrigger({
   return (
     <PopoverTrigger
       id={triggerId}
-      dir={field.direction}
+      dir={direction}
       aria-label={ariaLabel}
       aria-labelledby={
         labelId

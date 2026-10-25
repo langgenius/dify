@@ -152,10 +152,6 @@ it('inherits a local direction override independently of the application languag
             <DateTimePickerLabel>Meeting</DateTimePickerLabel>
             <DateTimePickerTrigger />
           </DateTimePicker>
-          <DatePicker direction="rtl">
-            <DatePickerLabel>Explicit RTL</DatePickerLabel>
-            <DatePickerTrigger />
-          </DatePicker>
         </DirectionProvider>
       </I18nDirectionProvider>
     </I18nextProvider>,
@@ -163,7 +159,6 @@ it('inherits a local direction override independently of the application languag
 
   for (const name of ['Date', 'Time', 'Meeting'])
     expect(screen.getByRole('button', { name })).toHaveAttribute('dir', 'ltr')
-  expect(screen.getByRole('button', { name: 'Explicit RTL' })).toHaveAttribute('dir', 'rtl')
   await user.click(screen.getByRole('button', { name: 'Date' }))
   expect(screen.getByRole('dialog', { name: 'Date' })).toHaveAttribute('dir', 'ltr')
   expect(document.documentElement.dir).toBe('rtl')
