@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
+from redis.lock import Lock as RedisLock
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -452,7 +453,6 @@ def test_cache_hit_never_suppresses_sql_and_cache_failure_is_advisory(db_session
 
 def test_durable_delivery_reloads_current_draft_after_lock_wait(db_session_with_containers: Session) -> None:
     import json
-    from unittest.mock import MagicMock
 
     session = db_session_with_containers
     owner = seed_owner(session, graph=webhook_graph(1))
@@ -462,14 +462,16 @@ def test_durable_delivery_reloads_current_draft_after_lock_wait(db_session_with_
     with factory() as reader:
         stale = require(reader.get(Workflow, draft_id), Workflow)
 
-    def update_after_wait(**_kwargs: object) -> bool:
+    acquire = RedisLock.acquire
+
+    def update_after_wait(lock: RedisLock, *, blocking: bool, blocking_timeout: float) -> bool:
+        acquired = acquire(lock, blocking=blocking, blocking_timeout=blocking_timeout)
+        assert acquired
         with factory.begin() as writer:
             require(writer.get(Workflow, draft_id), Workflow).graph = json.dumps(webhook_graph(2))
-        return True
+        return acquired
 
-    lock = MagicMock()
-    lock.acquire.side_effect = update_after_wait
-    with patch.object(webhook_service.redis_client, "lock", return_value=lock):
+    with patch.object(RedisLock, "acquire", new=update_after_wait):
         WebhookService.sync_webhook_relationships(owner.app, stale, remove_stale=False, reconcile_current_draft=True)
     with factory() as reader:
         assert {row.node_id for row in reader.scalars(select(WorkflowWebhookTrigger))} == {"hook-0", "hook-1"}
@@ -620,8 +622,6 @@ def test_coordination_actual_migration_upgrade_downgrade_and_offline(flask_app_w
 def test_webhook_outage_preserves_accepted_receipt_and_recovers(
     db_session_with_containers: Session, fault: str, hook_count: int
 ) -> None:
-    from unittest.mock import MagicMock
-
     from sqlalchemy import event
 
     session = db_session_with_containers
@@ -635,14 +635,15 @@ def test_webhook_outage_preserves_accepted_receipt_and_recovers(
         if statement.startswith("INSERT INTO workflow_webhook_triggers"):
             raise RuntimeError("relationship SQL fault")
 
-    lock = MagicMock()
-    lock.acquire.return_value = False
+    def deny_acquire(_lock: RedisLock, **_kwargs: object) -> bool:
+        return False
+
     if fault == "relationship-sql":
         event.listen(engine, "before_cursor_execute", fail_insert)
     try:
         with patch.object(process_workflow_draft_coordination, "delay"):
             with (
-                patch.object(webhook_service.redis_client, "lock", return_value=lock)
+                patch.object(RedisLock, "acquire", new=deny_acquire)
                 if fault == "redis-lock"
                 else __import__("contextlib").nullcontext()
             ):
@@ -738,25 +739,28 @@ def test_dsl_package_caller_stages_exact_operation_before_commit(db_session_with
 
 
 def test_builder_prepared_caller_stages_before_commit(db_session_with_containers: Session) -> None:
-    from unittest.mock import Mock
-
     from core.dify_builder.models import Actor, MutationIntent
     from services.dify_builder.dify_port import WorkflowServiceDifyPort
+    from services.dify_builder.native_testing.agent_binding import AgentBindingService
     from services.dify_builder.revision import execution_revision
 
     session = db_session_with_containers
     owner = seed_owner(session, graph=POPULATED_GRAPH)
     assert owner.draft is not None
     candidate = str(uuid4())
-    binding_owner = Mock()
-    binding_owner.sync_prepared_bindings.return_value = {candidate}
     actor = Actor(account_id=owner.account.id, tenant_id=owner.app.tenant_id)
     # Prepared binding materialization is a labeled double; production Builder/Workflow SQL owners are real.
 
-    def prepared(**kwargs: object) -> tuple[Graph, Mock]:
-        return cast(Graph, kwargs["graph"]), binding_owner
+    def prepared(**kwargs: object) -> tuple[Graph, AgentBindingService]:
+        return cast(Graph, kwargs["graph"]), AgentBindingService(require(kwargs["session"], Session))
 
-    with patch("services.dify_builder.dify_port._prepare_native_agent_graph", side_effect=prepared):
+    def sync_prepared(_service: AgentBindingService, **_kwargs: object) -> set[str]:
+        return {candidate}
+
+    with (
+        patch("services.dify_builder.dify_port._prepare_native_agent_graph", new=prepared),
+        patch.object(AgentBindingService, "sync_prepared_bindings", new=sync_prepared),
+    ):
         with patch.object(Coordinator, "kick") as kick:
             result = WorkflowServiceDifyPort().apply_repair(
                 owner.app.id,
