@@ -1622,6 +1622,10 @@ class WorkflowGenerator:
                 config = dict(configs_by_id.get(node_id) or {})
                 for shared_key in ("type", "title", "desc", "selected"):
                     config.pop(shared_key, None)
+                if node_type == BuiltinNodeTypes.LLM and existing is None:
+                    # New generated apps pass final text downstream by default.
+                    # Existing nodes retain the native backward-compatible behavior.
+                    config.setdefault("reasoning_format", "separated")
                 data: dict[str, Any] = {
                     "type": node_type,
                     "title": str(planned.get("label") or node_id),

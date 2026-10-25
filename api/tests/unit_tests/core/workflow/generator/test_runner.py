@@ -24,6 +24,8 @@ from core.workflow.generator.prompts.node_builder_prompts import format_node_out
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from core.workflow.generator.types import GraphDict
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.llm.reasoning import split_reasoning
 from services.workflow_generation.runner import WorkflowGenerator, _find_planned_tool_entry, _parse_node_outputs
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -1964,6 +1966,49 @@ class TestPlannerSchemaValidation:
 
 class TestAssembleParallelGraph:
     """Direct assembly contracts not exercised by the fixture-driven pipeline tests."""
+
+    def test_llm_builder_prompt_documents_new_node_reasoning_default(self):
+        from core.workflow.generator.prompts.node_builder_prompts import get_node_builder_system_prompt
+
+        prompt = get_node_builder_system_prompt("llm")
+        assert "reasoning_format" in prompt
+        assert '"separated"' in prompt
+        assert '"tagged"' in prompt
+        assert "existing" in prompt
+
+    @pytest.mark.parametrize("reasoning_format", [None, "tagged", "separated"])
+    @pytest.mark.parametrize("action", ["add", "keep", "update"])
+    def test_llm_reasoning_default_applies_only_to_new_nodes(self, reasoning_format, action):
+        config = {
+            "model": {"provider": "deepseek", "name": "deepseek-v4-pro", "mode": "chat", "completion_params": {}},
+            "prompt_template": [{"role": "user", "text": "Generate the daily report."}],
+            "context": {"enabled": False},
+        }
+        if reasoning_format is not None:
+            config["reasoning_format"] = reasoning_format
+        existing = {"id": "report", "data": {"type": "llm", "title": "Report", **deepcopy(config)}}
+        graph = WorkflowGenerator._assemble_parallel_graph(
+            plan_nodes=[{"id": "report", "node_type": "llm", "label": "Report", "action": action}],
+            plan_edges=[],
+            configs_by_id={"report": deepcopy(config)},
+            existing_by_id={} if action == "add" else {"report": existing},
+        )
+        data = graph["nodes"][0]["data"]
+        expected = reasoning_format or ("separated" if action == "add" else "tagged")
+        node_data = LLMNodeData.model_validate(data)
+        raw = (
+            "<think>\n<!--dify-deepseek-reasoning-->reasoning\n</think>"
+            "已支付订单数：2；取消订单数：1；实收金额：350.00元"
+        )
+        clean, reasoning = split_reasoning(raw, node_data.reasoning_format)
+        assert clean == (raw.split("</think>")[1] if expected == "separated" else raw)
+        assert node_data.reasoning_format == expected
+        assert bool(reasoning) == (expected == "separated")
+        if action != "add" and reasoning_format is None:
+            assert "reasoning_format" not in data
+        if action == "keep":
+            assert data == existing["data"]
+        assert ("reasoning_format" in config) == (reasoning_format is not None)
 
     def test_loop_children_are_stamped_and_wired_to_loop_start(self):
         plan_nodes = [
