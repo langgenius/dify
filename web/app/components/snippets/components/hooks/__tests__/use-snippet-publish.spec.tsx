@@ -1,31 +1,27 @@
+import type { ReactNode } from 'react'
 import { act, waitFor } from '@testing-library/react'
-import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { CanvasNodesCatalogProbe } from '@/app/components/workflow/__tests__/canvas-nodes-catalog-probe'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import DatasetsDetailProvider from '@/app/components/workflow/datasets-detail-store/provider'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient } from '@/test/console/query-data'
+import { legacyWorkflowVersionHistoryKey } from '@/service/console/workflow-version-cache'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { createDeferred } from '@/test/deferred'
 import { useSnippetPublish } from '../use-snippet-publish'
 
 const mockMutateAsync = vi.fn()
-
-const mockResetWorkflowVersionHistory = vi.fn()
-const mockHandleCheckBeforePublish = vi.fn<() => Promise<boolean>>()
 
 vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),
   },
-}))
-
-vi.mock('@/service/use-workflow', () => ({
-  useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
-  useChecklistBeforePublish: () => ({
-    handleCheckBeforePublish: mockHandleCheckBeforePublish,
-  }),
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
@@ -40,11 +36,46 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const renderPublish = () => {
-  const queryClient = createConsoleQueryClient()
+const historyKey = [...legacyWorkflowVersionHistoryKey, '/snippets/snippet-1/workflows']
+
+const renderPublish = (code = 'def main():\n    return {"answer": "hello"}') => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  queryClient.setQueryData(historyKey, { pages: [{ data: [{ id: 'old-version' }] }] })
+  const nodes = [
+    createNode({
+      id: 'code',
+      data: {
+        type: BlockEnum.Code,
+        title: 'Code',
+        code_language: CodeLanguage.python3,
+        code,
+        variables: [],
+        outputs: { answer: { type: VarType.string, children: null } },
+      },
+    }),
+  ]
+  function PublishProviders({ children }: { children: ReactNode }) {
+    return (
+      <DatasetsDetailProvider nodes={nodes}>
+        <CanvasNodesCatalogProbe />
+        {children}
+      </DatasetsDetailProvider>
+    )
+  }
   return {
-    ...renderWorkflowHook(() => useSnippetPublish({ snippetId: 'snippet-1' }), {
+    ...renderWorkflowCanvasHook(() => useSnippetPublish({ snippetId: 'snippet-1' }), {
       queryClient,
+      nodes,
+      wrapper: PublishProviders,
       resource: { kind: 'snippet', snippetId: 'snippet-1' },
     }),
     queryClient,
@@ -53,8 +84,6 @@ const renderPublish = () => {
 
 describe('useSnippetPublish', () => {
   beforeEach(() => {
-    vi.resetAllMocks()
-    mockHandleCheckBeforePublish.mockResolvedValue(true)
     mockMutateAsync.mockResolvedValue({ created_at: 1_712_345_678 })
   })
 
@@ -99,37 +128,36 @@ describe('useSnippetPublish', () => {
       })
       await waitFor(() => expect(result.current.isPublishing).toBe(false))
 
-      expect(mockHandleCheckBeforePublish).toHaveBeenCalledTimes(1)
       expect(mockMutateAsync).toHaveBeenCalledWith({
         params: { snippet_id: 'snippet-1' },
         body: {},
       })
       expect(queryClient.getQueryData(detailKey)).toMatchObject({ is_published: true })
       expect(store.getState().publishedAt).toBe(1_712_345_678_000)
-      expect(mockResetWorkflowVersionHistory).toHaveBeenCalledTimes(1)
+      expect(queryClient.getQueryData(historyKey)).toBeUndefined()
       expect(toast.success).toHaveBeenCalledWith('snippet.publishSuccess')
     })
 
     it('should not publish the snippet when checklist validation fails', async () => {
-      mockHandleCheckBeforePublish.mockResolvedValue(false)
-
-      const { result, store } = renderPublish()
+      const { result, store, queryClient } = renderPublish('')
 
       await act(async () => {
         await result.current.handlePublish()
       })
 
-      expect(mockHandleCheckBeforePublish).toHaveBeenCalledTimes(1)
       expect(mockMutateAsync).not.toHaveBeenCalled()
+      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('[Code]'))
       expect(store.getState().publishedAt).toBe(0)
-      expect(mockResetWorkflowVersionHistory).not.toHaveBeenCalled()
+      expect(queryClient.getQueryData(historyKey)).toEqual({
+        pages: [{ data: [{ id: 'old-version' }] }],
+      })
       expect(toast.success).not.toHaveBeenCalled()
     })
 
     it('should surface publish errors through toast feedback', async () => {
       mockMutateAsync.mockRejectedValue(new Error('publish failed'))
 
-      const { result, store } = renderPublish()
+      const { result, store, queryClient } = renderPublish()
 
       await act(async () => {
         await result.current.handlePublish()
@@ -137,7 +165,9 @@ describe('useSnippetPublish', () => {
 
       expect(toast.error).toHaveBeenCalledWith('publish failed')
       expect(store.getState().publishedAt).toBe(0)
-      expect(mockResetWorkflowVersionHistory).not.toHaveBeenCalled()
+      expect(queryClient.getQueryData(historyKey)).toEqual({
+        pages: [{ data: [{ id: 'old-version' }] }],
+      })
       expect(toast.success).not.toHaveBeenCalled()
     })
   })
