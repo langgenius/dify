@@ -70,7 +70,7 @@ from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import BuilderPresentation, BuilderText, copy_text, stored_text, text_parts
 from services.dify_builder.application.execution_policy import BuilderExecutionRefusal
 from services.dify_builder.application.runner import Env, Handler, StepResult
-from services.dify_builder.application.testdata import stamp_testdata_http_fixtures
+from services.dify_builder.application.testdata import mock_input_business_context, stamp_testdata_http_fixtures
 from services.dify_builder.application.verification import (
     SUCCESS_REPLY,
     has_output_blocker,
@@ -1335,7 +1335,9 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             steps=[("fix-generate-test-inputs", copy_text(BuilderCopyId.PROGRESS_GENERATE_VALIDATION_INPUTS))],
         )
         progress.activate("fix-generate-test-inputs")
-        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(schema, {}))
+        inputs = without_endpoint_values(
+            graph, env.agent.generate_mock_inputs(schema, {}, business_context=mock_input_business_context(fc))
+        )
         progress.finish()
     else:
         # upload / reuse: payload carries the inputs directly for the slice.

@@ -41,6 +41,8 @@ def generate(
     schema: StartSchema,
     prior_failed: Inputs,
     on_reasoning: Callable[[str], None] | None = None,
+    *,
+    business_context: str = "",
 ) -> Inputs:
     vars_ = _variables(schema)
     if not vars_:
@@ -49,11 +51,20 @@ def generate(
         return _deterministic(vars_)
     system = (
         "You generate plausible TEST inputs for a workflow's start form. Given the input "
-        "variables, return realistic values keyed by each variable's name. Avoid any values "
+        "variables and business context, return realistic values keyed by each variable's name. "
+        "Follow the goal, confirmed requirements, approved plan and field hints when choosing "
+        "sample shapes and values. For text fields carrying JSON, return the JSON as a string. "
+        "These samples are suggestions for user review, not proof of business acceptance. Avoid any values "
         'listed as previously-failing. Reply with ONLY JSON: {"inputs": {"<variable>": <value>}}.'
     )
-    listing = "\n".join(f"- {v['variable']} (type={v.get('type', '?')}) options={v.get('options')}" for v in vars_)
+    listing = "\n".join(
+        f"- {v['variable']} (type={v.get('type', '?')}) options={v.get('options')} "
+        f"label={v.get('label')} hint={v.get('hint')} placeholder={v.get('placeholder')} required={v.get('required')}"
+        for v in vars_
+    )
     user = f"VARIABLES:\n{listing}\n\nPREVIOUSLY-FAILING (avoid): {prior_failed}"
+    if business_context:
+        user += f"\n\nBUSINESS CONTEXT:\n{business_context}"
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
         produced = data.get("inputs")

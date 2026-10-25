@@ -431,7 +431,10 @@ def test_mock_validation_inputs_use_the_workflow_start_schema() -> None:
     }
     captured_schema = {}
 
-    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs) -> dict[str, str]:
+    def generate_mock_inputs(
+        schema: StartSchema, prior_failed: Inputs, *, business_context: str = ""
+    ) -> dict[str, str]:
+        _ = business_context
         _ = prior_failed
         captured_schema.update(schema)
         return {"topic": "mock topic"}
@@ -1065,7 +1068,8 @@ def test_fix_await_testdata_mock_leaves_the_endpoint_for_the_form() -> None:
     env, _ = _new_env()
     env.fake_dify.graph = _endpoint_graph()
 
-    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs) -> Inputs:
+    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs, *, business_context: str = "") -> Inputs:
+        _ = business_context
         _ = schema, prior_failed
         return {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}
 

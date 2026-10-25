@@ -1703,7 +1703,8 @@ def test_run_test_prefills_the_form_with_mock_values() -> None:
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
     fc = DifyBuilderContext(test_input_ref="")
 
-    def generate_mock_inputs(schema: Graph, prior_failed: Graph) -> Inputs:
+    def generate_mock_inputs(schema: Graph, prior_failed: Graph, *, business_context: str = "") -> Inputs:
+        _ = business_context
         del schema, prior_failed
         return {"topic": "A synthetic topic"}
 
@@ -1748,7 +1749,8 @@ def test_run_test_prefill_omits_a_placeholder_endpoint_but_keeps_other_fields() 
         "edges": [],
     }
 
-    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs) -> Inputs:
+    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs, *, business_context: str = "") -> Inputs:
+        _ = business_context
         _ = schema, prior_failed
         return {"topic": "quarterly report", "h_url": "https://api.example.com/invented"}
 
@@ -1800,7 +1802,8 @@ def test_run_test_prefill_omits_a_placeholder_credential_but_keeps_other_fields(
         "edges": [],
     }
 
-    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs) -> Inputs:
+    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs, *, business_context: str = "") -> Inputs:
+        _ = business_context
         _ = schema, prior_failed
         return {"topic": "quarterly report", "h_api_key": "sk-mock-invented"}
 
@@ -1854,7 +1857,8 @@ def test_await_testdata_mock_prepares_input_and_advances() -> None:
     env, _ = _new_env()
     env.fake_dify = FakeBuildDifyPort()
 
-    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs) -> Inputs:
+    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs, *, business_context: str = "") -> Inputs:
+        _ = business_context
         _ = schema, prior_failed
         return {"topic": "hi"}
 
@@ -1917,7 +1921,10 @@ def _endpoint_graph() -> Graph:
     }
 
 
-def _mock_with_an_invented_endpoint(schema: StartSchema, prior_failed: Inputs) -> dict[str, str]:
+def _mock_with_an_invented_endpoint(
+    schema: StartSchema, prior_failed: Inputs, *, business_context: str = ""
+) -> dict[str, str]:
+    _ = business_context
     _ = schema, prior_failed
     return {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}
 

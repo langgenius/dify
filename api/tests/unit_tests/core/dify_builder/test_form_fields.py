@@ -83,7 +83,8 @@ def _query_env(
     dify.graph = {"nodes": [{"id": "start", "data": {"type": "start", "variables": variables or []}}]}
     agent = StubAgent()
 
-    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs) -> Inputs:
+    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs, *, business_context: str = "") -> Inputs:
+        _ = business_context
         _ = prior_failed
         return {v["variable"]: "mock message" for v in schema["variables"] if v["type"] not in {"file", "file-list"}}
 

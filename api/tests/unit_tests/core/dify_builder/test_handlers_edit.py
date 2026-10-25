@@ -1133,7 +1133,8 @@ def test_edit_await_testdata_mock_prepares_and_advances() -> None:
 
     env, _ = _new_env()
 
-    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs) -> Inputs:
+    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs, *, business_context: str = "") -> Inputs:
+        _ = business_context
         _ = schema, prior_failed
         return {"q": "x"}
 
@@ -1173,7 +1174,10 @@ def _endpoint_graph() -> Graph:
     }
 
 
-def _mock_with_an_invented_endpoint(schema: StartSchema, prior_failed: Inputs) -> dict[str, str]:
+def _mock_with_an_invented_endpoint(
+    schema: StartSchema, prior_failed: Inputs, *, business_context: str = ""
+) -> dict[str, str]:
+    _ = business_context
     _ = schema, prior_failed
     return {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}
 

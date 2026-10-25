@@ -83,7 +83,7 @@ class PlaceholderAgent:
         ]
         return intents, Risk(level="low", reason="config-only fix", has_external_side_effect=False)
 
-    def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs) -> Inputs:
+    def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs, *, business_context: str = "") -> Inputs:
         return {"query": "mock"}
 
     # -- Build cognition (Slice 2; fixed, deterministic canned output) --

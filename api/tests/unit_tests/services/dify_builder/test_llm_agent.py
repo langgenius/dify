@@ -270,8 +270,14 @@ def test_llm_agent_generate_mock_inputs_delegates(monkeypatch: pytest.MonkeyPatc
     from services.dify_builder.agent import mock_inputs
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
-    monkeypatch.setattr(mock_inputs, "generate", lambda _m, _s, _p, _reasoning=None: {"q": "x"})
-    assert LlmBuilderAgent("t1", {}).generate_mock_inputs({"variables": []}, {}) == {"q": "x"}
+    monkeypatch.setattr(
+        mock_inputs,
+        "generate",
+        lambda _m, _s, _p, _reasoning=None, *, business_context="": {"q": business_context or "x"},
+    )
+    agent = LlmBuilderAgent("t1", {})
+    assert agent.generate_mock_inputs({"variables": []}, {}) == {"q": "x"}
+    assert agent.generate_mock_inputs({"variables": []}, {}, business_context="Daily orders") == {"q": "Daily orders"}
 
 
 def test_llm_agent_edit_methods_delegate_to_edit(monkeypatch: pytest.MonkeyPatch) -> None:
