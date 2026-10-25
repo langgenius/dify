@@ -53,15 +53,14 @@ vi.mock('react-papaparse', () => ({
 
 function renderGeneration({ ready = true, installed = false } = {}) {
   if (ready) {
-    const state = useWebAppStore.getState()
-    state.updateAppInfo({
-      app_id: 'app-1',
-      mode: 'completion',
-      custom_config: null,
-      site: { title: 'Generator', description: 'Description', default_language: 'en-US' },
-    })
-    state.updateAppParams(
-      createChatConfigFixture({
+    useWebAppStore.setState({
+      appInfo: {
+        app_id: 'app-1',
+        mode: 'completion',
+        custom_config: null,
+        site: { title: 'Generator', description: 'Description', default_language: 'en-US' },
+      },
+      appParams: createChatConfigFixture({
         user_input_form: [
           {
             'text-input': {
@@ -75,8 +74,8 @@ function renderGeneration({ ready = true, installed = false } = {}) {
           },
         ],
       }),
-    )
-    state.updateWebAppAccessMode(AccessMode.PUBLIC)
+      webAppAccessMode: AccessMode.PUBLIC,
+    })
   }
   return renderWithConsoleQuery(<TextGeneration isInstalledApp={installed} />, {
     systemFeatures: { branding: { enabled: false, workspace_logo: '' } },
@@ -89,6 +88,7 @@ beforeEach(() => {
 
 describe('TextGeneration', () => {
   beforeEach(() => {
+    useWebAppStore.setState(useWebAppStore.getInitialState(), true)
     const stopGuard = guardUnexpectedFetch()
     onTestFinished(stopGuard)
   })
