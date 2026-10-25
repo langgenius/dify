@@ -86,6 +86,7 @@ from services.dify_builder.application.verification import (
     is_execution_policy_blocker,
     result_card,
 )
+from services.dify_builder.build_presentation import build_node_summary
 from services.dify_builder.business_acceptance import (
     business_failure_context,
     clear_task_acceptance,
@@ -340,7 +341,12 @@ def _discover_and_offer_resources(
     else:
         progress.add_steps(steps)
     progress.activate("build-discover-resources")
-    options = env.agent.discover_resources(list(fc.plan_items), goal_text=fc.goal_text, requirements=fc.requirements)
+    options = env.agent.discover_resources(
+        list(fc.plan_items),
+        goal_text=fc.goal_text,
+        requirements=fc.requirements,
+        reply_language=fc.reply_language or None,
+    )
     progress.activate("build-prepare-resource-options")
     rs_items = append_card(
         fc,
@@ -642,9 +648,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
     decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_APPROVED_THE_PLAN)))
     execution = progress.finish()
-    change_lines = "\n".join(f"- {change}" for change in changes) or text_parts(
-        "- ", copy_text(BuilderCopyId.BUILD_GRAPH_CREATED)
-    )
+    change_lines = build_node_summary(result, current_graph, to_apply, fc.reply_language)
     turn_items = append_assistant(
         env,
         s,

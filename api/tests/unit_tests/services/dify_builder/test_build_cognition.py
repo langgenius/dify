@@ -2020,3 +2020,116 @@ def test_plan_distinguishes_stop_on_error_from_diagnostic_output() -> None:
     assert "raise" in system
     assert "diagnostic" in system
     assert "error_strategy" in system
+
+
+@pytest.mark.parametrize("reply_language", ["en", "zh-Hans"])
+def test_discovery_grounds_minimal_dependencies_in_native_capabilities(
+    monkeypatch: pytest.MonkeyPatch, reply_language: str
+) -> None:
+    _stub_inventory(monkeypatch, tools=[resources.ResourceRef(id="tool/run", label="Interpreter")])
+    model = _FakeInstance(['{"resource_ids": [], "selection_reasons": {}}'])
+    options = build.discover_resources(
+        model,
+        "tenant",
+        ["code node validates totals", "template node formats totals"],
+        goal_text="Validate totals; if an LLM is necessary prefer the configured model.",
+        mode="advanced-chat",
+        reply_language=reply_language,
+    )
+    assert options == []
+    system = model.calls[0][0][0].get_text_content()
+    assert build._node_vocabulary("advanced-chat") in system
+    assert build.native_build_capability_system_rules() in system
+    assert "smallest set" in system
+    assert "Builder's own reasoning model" in system
+    assert "conditional model preference" in system
+    assert "explicitly required identity" in system
+    assert "every selected resource" in system
+    assert f"BCP-47: {reply_language}" in system
+    assert len(model.calls) == 1
+
+
+@pytest.mark.parametrize(("reply_language", "setup"), [("en", "requires setup"), ("zh-Hans", "需要配置")])
+def test_discovery_projects_localized_business_purposes_without_tool_manuals(
+    monkeypatch: pytest.MonkeyPatch, reply_language: str, setup: str
+) -> None:
+    _stub_inventory(
+        monkeypatch,
+        tools=[
+            resources.ResourceRef(
+                id="tool/post", label="Post", meta="Raw English action manual", readiness="missing_config"
+            )
+        ],
+        models=[resources.ResourceRef(id="provider/model", label="Preferred model", meta="Raw model description")],
+    )
+    tool_reason = "将报告 发送到团队频道。" if reply_language == "zh-Hans" else "Share the report with the team."
+    model_reason = "撰写业务报告。" if reply_language == "zh-Hans" else "Write the business report."
+    model = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "resource_ids": ["tool/post", "provider/model"],
+                    "selection_reasons": {
+                        "tool/post": "  " + tool_reason.replace(" ", "\n") + "  ",
+                        "provider/model": model_reason,
+                        "unknown": "wrong",
+                    },
+                }
+            )
+        ]
+    )
+    options = build.discover_resources(
+        model,
+        "tenant",
+        ["llm node writes report", "tool node posts report"],
+        goal_text="Use the explicitly requested Post integration to share an LLM-written report.",
+        reply_language=reply_language,
+    )
+    assert [(o.id, o.readiness) for o in options] == [("tool/post", "missing_config"), ("provider/model", "ready")]
+    assert options[0].meta.startswith(tool_reason)
+    assert setup in options[0].meta
+    assert "Raw English" not in options[0].meta
+    assert options[1].meta == model_reason
+    assert len(model.calls) == 1
+
+
+@pytest.mark.parametrize("reason", [None, "", "  ", 4, [], {}, "x" * 361])
+@pytest.mark.parametrize(
+    ("reply_language", "fallback"), [("en", "Selection rationale unavailable"), ("zh-Hans", "推荐理由暂不可用")]
+)
+def test_discovery_keeps_selected_tools_with_bounded_localized_reason_fallback(
+    monkeypatch: pytest.MonkeyPatch, reason: object, reply_language: str, fallback: str
+) -> None:
+    from services.dify_builder.trace_diagnostics import scope
+
+    _stub_inventory(
+        monkeypatch, tools=[resources.ResourceRef(id="tool/run", label="Requested interpreter", meta="Raw manual")]
+    )
+    model = _FakeInstance([json.dumps({"resource_ids": ["tool/run"], "selection_reasons": {"tool/run": reason}})])
+    diagnostics: list[dict[str, object]] = []
+    with scope(diagnostics.append, "discover-resources"):
+        options = build.discover_resources(
+            model, "tenant", ["Use the requested interpreter"], reply_language=reply_language
+        )
+    assert [o.id for o in options] == ["tool/run"]
+    assert options[0].meta.startswith(fallback)
+    assert len(options[0].meta) < 180
+    assert [(d["code"], d["fallback_used"]) for d in diagnostics] == [("response_schema_invalid", True)]
+
+
+def test_planner_keeps_conditional_model_preference_separate_from_required_behavior() -> None:
+    goal = "按明确规则校验订单并计算合计，输出固定格式报告；如果需要模型，优先使用指定模型。"
+    requirements = {"rules": "total = price * count", "format": "fixed report"}
+    model = _FakeInstance([_plan_reply(["code node: validate and calculate", "template node: format report"])])
+    plan = build.propose_plan_v1(model, requirements, goal_text=goal, reply_language="zh-Hans")
+    assert plan is not None
+    system = model.calls[0][0][0].get_text_content()
+    source = model.calls[0][0][1].get_text_content()
+    assert "conditional model preference does not require an LLM step" in system
+    assert "native Code for exact parsing, arithmetic and validation" in system
+    assert "Template for deterministic formatting" in system
+    assert "explicit generative or semantic behavior" in system
+    assert "explicitly required model identity" in system
+    assert goal in source
+    assert json.dumps(requirements, ensure_ascii=False) in source
+    assert len(model.calls) == 1
