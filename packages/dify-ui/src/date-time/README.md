@@ -128,8 +128,9 @@ DatePicker and DateTimePicker accept DayPicker locale objects; TimePicker accept
 identifiers. Locale controls formatting and digits, not the calendar system or serialized values.
 Action labels and validation copy have English defaults; consumers translate `labels`, field and
 clear labels, placeholders, `requiredLabel` and `validationMessage`. Direction comes from the
-nearest `DirectionProvider`, independently of locale; wrap a picker in its own provider for a local
-override. Set HTML `dir` for the surrounding layout too.
+nearest `DirectionProvider`, independently of locale, and drives keyboard navigation and layout.
+Pickers do not write `dir`: globally the portaled popup inherits `<html dir>`; for a local RTL
+region, set `dir` on the wrapper and on the portaled content.
 
 With `name`, the committed value participates in native FormData; an empty field submits `''`.
 `form` can associate an external form. Required/invalid fields block native validated submission

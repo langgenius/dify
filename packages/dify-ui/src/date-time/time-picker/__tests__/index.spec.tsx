@@ -272,7 +272,7 @@ it('preserves draft selection after focus leaves and does not select hovered opt
       <TimePicker defaultValue="13:30" onValueChange={changed}>
         <TimePickerLabel className="sr-only">Time</TimePickerLabel>
         <TimePickerTrigger />
-        <TimePickerContent />
+        <TimePickerContent dir="rtl" />
       </TimePicker>
     </DirectionProvider>,
   )

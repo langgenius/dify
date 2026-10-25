@@ -73,7 +73,7 @@ export const RTL: Story = {
     docs: {
       description: {
         story:
-          'Direction comes from the surrounding DirectionProvider and is carried to both calendar and time views, including the portaled popup. Dates use Arabic formatting with English action labels. Changing views preserves the draft; Escape discards it.',
+          'DirectionProvider controls keyboard navigation and layout in both calendar and time views. For a local RTL region, set dir on the wrapper and on the portaled content; global direction is inherited from <html dir>. Dates use Arabic formatting with English action labels. Changing views preserves the draft; Escape discards it.',
       },
     },
   },
@@ -88,7 +88,7 @@ export const RTL: Story = {
         >
           <DateTimePickerLabel className="sr-only">Meeting time</DateTimePickerLabel>
           <DateTimePickerTrigger />
-          <DateTimePickerContent />
+          <DateTimePickerContent dir="rtl" />
         </DateTimePicker>
       </DirectionProvider>
     </div>
@@ -218,7 +218,7 @@ export const PersianNumbers: Story = {
         >
           <DateTimePickerLabel>Meeting</DateTimePickerLabel>
           <DateTimePickerTrigger />
-          <DateTimePickerContent />
+          <DateTimePickerContent dir="rtl" />
         </DateTimePicker>
       </div>
     </DirectionProvider>

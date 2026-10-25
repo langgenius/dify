@@ -385,7 +385,8 @@ it('localizes full dates and reverses horizontal calendar navigation in RTL', as
     <DirectionProvider direction="rtl">
       <DatePicker locale={arTN} defaultValue="2025-01-15">
         <DatePickerLabel className="sr-only">Date</DatePickerLabel>
-        <Parts />
+        <DatePickerTrigger />
+        <DatePickerContent dir="rtl" />
       </DatePicker>
     </DirectionProvider>,
   )

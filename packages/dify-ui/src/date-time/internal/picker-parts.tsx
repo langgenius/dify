@@ -34,7 +34,6 @@ import { useTimeout } from '@base-ui/utils/useTimeout'
 import { visuallyHidden, visuallyHiddenInput } from '@base-ui/utils/visuallyHidden'
 import * as React from 'react'
 import { cn } from '../../cn'
-import { useDirection } from '../../direction-provider'
 import { IconButton } from '../../icon-button'
 import { formLabelClassName } from '../../internal/form-control'
 import { resolveClassName } from '../../internal/resolve-class-name'
@@ -479,7 +478,6 @@ function PickerTrigger({
 }: PickerTriggerProps) {
   const field = usePickerContext()
   const baseField = useFieldRootContext()
-  const direction = useDirection()
   const triggerId = useLabelableId({ id })
   const focusRef = usePickerFocusRef(field.triggerRef, Boolean(field.disabled || disabled))
   const mergedRef = useMergedRefs(field.triggerRef, ref, focusRef)
@@ -487,7 +485,6 @@ function PickerTrigger({
   return (
     <PopoverTrigger
       id={triggerId}
-      dir={direction}
       aria-label={ariaLabel}
       aria-labelledby={
         labelId
@@ -617,7 +614,6 @@ function PickerContent({
   ...props
 }: PickerContentProps & { children: React.ReactNode }) {
   const { labelId, popupRef, focus, blur } = usePickerContext()
-  const direction = useDirection()
   const focusRef = usePickerFocusRef(popupRef)
   const mergedRef = useMergedRefs(popupRef, ref, focusRef)
   return (
@@ -626,7 +622,6 @@ function PickerContent({
       align="start"
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy ?? (ariaLabel ? undefined : labelId)}
-      dir={direction}
       {...mergeProps(
         {
           onFocus: (event: React.FocusEvent<HTMLDivElement>) => focus(event.currentTarget),
