@@ -25,6 +25,7 @@ export type HumanInputSharedNodeType = SharedHumanInputNodeType
 export type UserActionButtonType = SharedUserActionButtonType
 export type UserAction = SharedUserAction
 export type FormInputItemDefault = SharedFormInputItemDefault
+export type StringDefault = SharedFormInputItemDefault
 export type ParagraphFormInput = SharedParagraphFormInput
 export type SelectFormInput = SharedSelectFormInput
 export type FileFormInput = SharedFileFormInput

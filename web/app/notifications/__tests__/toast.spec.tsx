@@ -1,23 +1,32 @@
 import { createToast, createToastManager } from '@langgenius/dify-ui/toast'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AppToastHost } from '../host'
+import { AppToaster } from '../app-toaster'
 
 const copy = vi.fn()
-
-function setup() {
-  const manager = createToastManager()
-  const toast = createToast(manager)
-  render(<AppToastHost manager={manager} timeout={0} />)
-  const user = userEvent.setup()
-  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: copy } })
-  return { toast, user }
-}
+const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+const execCommandDescriptor = Object.getOwnPropertyDescriptor(document, 'execCommand')
 
 beforeEach(() => {
   vi.clearAllMocks()
   Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn(() => false) })
   vi.mocked(copy).mockResolvedValue(undefined)
+})
+
+function setup() {
+  const manager = createToastManager()
+  const toast = createToast(manager)
+  render(<AppToaster manager={manager} timeout={0} />)
+  const user = userEvent.setup()
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: copy } })
+  return { toast, user }
+}
+
+afterEach(() => {
+  if (clipboardDescriptor) Object.defineProperty(navigator, 'clipboard', clipboardDescriptor)
+  else Reflect.deleteProperty(navigator, 'clipboard')
+  if (execCommandDescriptor) Object.defineProperty(document, 'execCommand', execCommandDescriptor)
+  else Reflect.deleteProperty(document, 'execCommand')
 })
 
 it('copies the complete error text and shows feedback in the existing action', async () => {
@@ -55,11 +64,15 @@ it('updates copy content and removes generated actions when the tone changes', a
   act(() => {
     id = toast('First error', { type: 'error' })
   })
+  await user.click(screen.getByRole('button', { name: 'common.operation.copyErrorDetails' }))
   act(() => {
     toast.update(id, { title: 'Updated error' })
   })
-  await user.click(screen.getByRole('button', { name: 'common.operation.copyErrorDetails' }))
-  expect(copy).toHaveBeenCalledWith('Updated error')
+  // Updating the card must not remount the focused copy action.
+  const action = screen.getByRole('button', { name: 'common.operation.copyErrorDetails' })
+  expect(action).toHaveFocus()
+  await user.click(action)
+  expect(copy).toHaveBeenLastCalledWith('Updated error')
   act(() => {
     toast.update(id, { type: 'success', title: 'Recovered' })
   })
@@ -124,8 +137,8 @@ it('keeps scoped managers isolated from each other', async () => {
   const secondToast = createToast(second)
   render(
     <>
-      <AppToastHost manager={first} timeout={0} />
-      <AppToastHost manager={second} timeout={0} />
+      <AppToaster manager={first} timeout={0} />
+      <AppToaster manager={second} timeout={0} />
     </>,
   )
   act(() => {
@@ -177,16 +190,16 @@ it('retains a caller action across upserts and promise failure', async () => {
       })
       .catch(() => {})
   })
-  const failedToast = screen.getByRole('dialog', { name: 'Loading' })
+  const failedToast = screen.getByRole('dialog', { name: 'Failed' })
   await user.click(
     within(failedToast).getByRole('button', { name: 'common.operation.copyErrorDetails' }),
   )
-  expect(copy).toHaveBeenCalledWith('Loading\nFailed')
+  expect(copy).toHaveBeenCalledWith('Failed')
   await user.click(screen.getByRole('button', { name: 'Details' }))
   expect(retry).toHaveBeenCalledTimes(2)
 })
 
-it('copies the resolved string description without retaining loading text', async () => {
+it('copies the resolved string title without retaining loading text', async () => {
   const { toast, user } = setup()
   await act(async () => {
     await toast
@@ -198,7 +211,7 @@ it('copies the resolved string description without retaining loading text', asyn
       .catch(() => {})
   })
   expect(screen.queryByText('Loading')).not.toBeInTheDocument()
-  expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Failed' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'common.operation.copyErrorDetails' }))
   expect(copy).toHaveBeenCalledWith('Failed')
 })

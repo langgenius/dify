@@ -1,5 +1,5 @@
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VarInInspectType } from '@/types/workflow'
 import { createNode } from '../../__tests__/fixtures'
@@ -104,14 +104,15 @@ describe('VariableInspectTrigger', () => {
     expect(store.getState().showVariableInspectPanel).toBe(true)
   })
 
-  it('should block opening while the workflow is read only', () => {
+  it('should block opening while the workflow is read only', async () => {
+    const user = userEvent.setup()
     const { store } = renderTrigger({
       initialStoreState: {
         isRestoring: true,
       },
     })
 
-    fireEvent.click(screen.getByText('workflowDebug.debug.variableInspect.trigger.normal'))
+    await user.click(screen.getByText('workflowDebug.debug.variableInspect.trigger.normal'))
 
     expect(store.getState().showVariableInspectPanel).toBe(false)
   })
@@ -167,7 +168,8 @@ describe('VariableInspectTrigger', () => {
     expect(mockEmit).toHaveBeenCalledWith({ type: EVENT_WORKFLOW_STOP })
   })
 
-  it('should show the running state and open the panel while running', () => {
+  it('should show the running state and open the panel while running', async () => {
+    const user = userEvent.setup()
     const { store } = renderTrigger({
       nodes: [
         createNode({
@@ -186,7 +188,7 @@ describe('VariableInspectTrigger', () => {
       },
     })
 
-    fireEvent.click(screen.getByText('workflowDebug.debug.variableInspect.trigger.running'))
+    await user.click(screen.getByText('workflowDebug.debug.variableInspect.trigger.running'))
 
     expect(
       screen.queryByText('workflowDebug.debug.variableInspect.trigger.clear'),

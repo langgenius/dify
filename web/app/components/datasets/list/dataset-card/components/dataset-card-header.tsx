@@ -1,4 +1,5 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetCardItem } from '../types'
+import type { ChunkingMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -11,14 +12,18 @@ const EXTERNAL_PROVIDER = 'external'
 const docModeInfoClassName =
   'flex min-h-3 items-center gap-x-3 system-2xs-medium-uppercase text-text-tertiary'
 
+const isChunkingMode = (value: string | null): value is ChunkingMode => {
+  return value !== null && Object.hasOwn(DOC_FORM_TEXT, value)
+}
+
 type DatasetCardHeaderProps = {
-  dataset: DataSet
+  dataset: DatasetCardItem
   nameId?: string
 }
 
 // DocModeInfo component - placed before usage
 type DocModeInfoProps = {
-  dataset: DataSet
+  dataset: DatasetCardItem
   isExternalProvider: boolean
   isShowDocModeInfo: boolean
 }
@@ -27,6 +32,11 @@ const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocMode
   const { t } = useTranslation(['dataset'])
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const isPipeline = dataset.embedding_available && dataset.runtime_mode === 'rag_pipeline'
+  const docForm = isChunkingMode(dataset.doc_form) ? dataset.doc_form : null
+  const retrievalSearchMethod =
+    'search_method' in dataset.retrieval_model_dict
+      ? dataset.retrieval_model_dict.search_method
+      : undefined
 
   if (isExternalProvider) {
     return (
@@ -42,9 +52,7 @@ const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocMode
   const indexingText = dataset.indexing_technique
     ? formatIndexingTechniqueAndMethod(
         dataset.indexing_technique as 'economy' | 'high_quality',
-        dataset.retrieval_model_dict?.search_method as Parameters<
-          typeof formatIndexingTechniqueAndMethod
-        >[1],
+        retrievalSearchMethod as Parameters<typeof formatIndexingTechniqueAndMethod>[1],
       )
     : ''
 
@@ -55,12 +63,12 @@ const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocMode
           {t(($) => $['cornerLabel.pipeline'], { ns: 'dataset' })}
         </span>
       )}
-      {isShowDocModeInfo && !!dataset.doc_form && (
+      {isShowDocModeInfo && !!docForm && (
         <span
           className="max-w-full min-w-0 truncate"
-          title={t(($) => $[`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`], { ns: 'dataset' })}
+          title={t(($) => $[`chunkingMode.${DOC_FORM_TEXT[docForm]}`], { ns: 'dataset' })}
         >
-          {t(($) => $[`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`], { ns: 'dataset' })}
+          {t(($) => $[`chunkingMode.${DOC_FORM_TEXT[docForm]}`], { ns: 'dataset' })}
         </span>
       )}
       {isShowDocModeInfo && dataset.indexing_technique && indexingText && (
@@ -83,31 +91,33 @@ const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocMode
 // Main DatasetCardHeader component
 const DatasetCardHeader = ({ dataset, nameId }: DatasetCardHeaderProps) => {
   const isExternalProvider = dataset.provider === EXTERNAL_PROVIDER
+  const docForm = isChunkingMode(dataset.doc_form) ? dataset.doc_form : null
+  const retrievalSearchMethod =
+    'search_method' in dataset.retrieval_model_dict
+      ? dataset.retrieval_model_dict.search_method
+      : undefined
 
   const isShowChunkingModeIcon =
-    dataset.doc_form && (dataset.runtime_mode !== 'rag_pipeline' || dataset.is_published)
+    docForm && (dataset.runtime_mode !== 'rag_pipeline' || dataset.is_published)
   const isShowDocModeInfo = Boolean(
-    dataset.doc_form &&
+    docForm &&
     dataset.indexing_technique &&
-    dataset.retrieval_model_dict?.search_method &&
+    retrievalSearchMethod &&
     (dataset.runtime_mode !== 'rag_pipeline' || dataset.is_published),
   )
 
-  const chunkingModeIcon = dataset.doc_form
-    ? DOC_FORM_ICON_CLASS_WITH_BG[dataset.doc_form]
-    : React.Fragment
+  const chunkingModeIcon = docForm ? DOC_FORM_ICON_CLASS_WITH_BG[docForm] : undefined
   const iconClassName = isExternalProvider ? DOC_FORM_ICON_CLASS_WITH_BG.external : chunkingModeIcon
 
-  const iconInfo = useMemo(
-    () =>
-      dataset.icon_info || {
-        icon: '📙',
-        icon_type: 'emoji' as const,
-        icon_background: '#FFF4ED',
-        icon_url: '',
-      },
-    [dataset.icon_info],
-  )
+  const iconInfo = useMemo(() => {
+    const source = dataset.icon_info
+    return {
+      icon: source?.icon ?? '📙',
+      icon_type: source?.icon_type === 'image' ? ('image' as const) : ('emoji' as const),
+      icon_background: source?.icon_background ?? '#FFF4ED',
+      icon_url: source?.icon_url ?? '',
+    }
+  }, [dataset.icon_info])
 
   return (
     <div
@@ -117,13 +127,7 @@ const DatasetCardHeader = ({ dataset, nameId }: DatasetCardHeaderProps) => {
       )}
     >
       <div className="relative shrink-0">
-        <AppIcon
-          size="large"
-          iconType={iconInfo.icon_type}
-          icon={iconInfo.icon}
-          background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
-          imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
-        />
+        <AppIcon size="large" icon={iconInfo} />
         {(isShowChunkingModeIcon || isExternalProvider) && (
           <div className="absolute -right-1 -bottom-1 z-5">
             <span aria-hidden className={cn(iconClassName, 'size-4')} />

@@ -14,7 +14,6 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { hasPermission } from '@/utils/permission'
 import { useModelProviderListExpanded, useSetModelProviderListExpanded } from '../atoms'
@@ -128,7 +127,9 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
       }),
-      queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
+      }),
       invalidateInstalledPluginList(PluginCategoryEnum.model),
     ])
   }, [invalidateInstalledPluginList, queryClient])

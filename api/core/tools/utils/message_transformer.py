@@ -66,11 +66,11 @@ class ToolFileMessageTransformer:
     @classmethod
     def transform_tool_invoke_messages(
         cls,
-        messages: Generator[ToolInvokeMessage, None, None],
+        messages: Generator[ToolInvokeMessage],
         user_id: str,
         tenant_id: str,
         conversation_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         Transform tool message and handle file download
         """

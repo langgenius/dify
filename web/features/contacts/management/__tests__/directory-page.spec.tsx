@@ -8,7 +8,7 @@ import type {
   ContactsFeatureContextValue,
   ContactView,
 } from '../types'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -248,7 +248,10 @@ describe('ContactsDirectoryPage', () => {
       const { rerender } = render(
         <>
           <ContactAvatar name="Alice" avatar="https://example.com/contact-avatar.png" />
-          <Avatar name="Shared" avatar="https://example.com/shared-avatar.png" />
+          <Avatar>
+            <AvatarImage src={'https://example.com/shared-avatar.png'} alt={'Shared'} />
+            <AvatarFallback>{'Shared'?.[0]?.toLocaleUpperCase()}</AvatarFallback>
+          </Avatar>
         </>,
       )
       await waitFor(() => expect(images).toHaveLength(1))

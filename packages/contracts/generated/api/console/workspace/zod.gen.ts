@@ -3,6 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * ChannelConflictResponse
  */
 export const zChannelConflictResponse = z.object({
@@ -125,11 +141,7 @@ export const zResendCredentials = z.object({
   provider: z.literal('resend').optional().default('resend'),
 })
 
-export const zEmailProviderCredentials = z
-  .object({
-    provider: z.literal('resend'),
-  })
-  .and(zResendCredentials)
+export const zEmailProviderCredentials = zResendCredentials
 
 /**
  * EmailChannelCreatePayload
@@ -184,11 +196,7 @@ export const zResendCredentialsUpdateInput = z.object({
   provider: z.literal('resend'),
 })
 
-export const zEmailProviderCredentialsUpdateInput = z
-  .object({
-    provider: z.literal('resend'),
-  })
-  .and(zResendCredentialsUpdateInput)
+export const zEmailProviderCredentialsUpdateInput = zResendCredentialsUpdateInput
 
 /**
  * EmailChannelUpdatePayload
@@ -252,12 +260,12 @@ export const zWeComCredentialsInput = z.object({
 })
 
 export const zImProviderCredentialsInput = z.discriminatedUnion('provider', [
-  zFeishuCredentialsInput.extend({ provider: z.literal('feishu') }),
-  zLarkCredentialsInput.extend({ provider: z.literal('lark') }),
-  zSlackCredentialsInput.extend({ provider: z.literal('slack') }),
-  zDingTalkCredentialsInput.extend({ provider: z.literal('ding_talk') }),
-  zMsTeamsCredentialsInput.extend({ provider: z.literal('ms_teams') }),
-  zWeComCredentialsInput.extend({ provider: z.literal('we_com') }),
+  zFeishuCredentialsInput,
+  zLarkCredentialsInput,
+  zSlackCredentialsInput,
+  zDingTalkCredentialsInput,
+  zMsTeamsCredentialsInput,
+  zWeComCredentialsInput,
 ])
 
 /**
@@ -335,32 +343,13 @@ export const zWeComCredentialsResponse = z.object({
   secret: zRedacted,
 })
 
-export const zImProviderCredentialsResponse = z.union([
-  z
-    .object({
-      provider: z.union([z.literal('feishu'), z.literal('lark')]),
-    })
-    .and(zFeishuLarkCredentialsResponse),
-  z
-    .object({
-      provider: z.literal('slack'),
-    })
-    .and(zSlackCredentialsResponse),
-  z
-    .object({
-      provider: z.literal('ding_talk'),
-    })
-    .and(zDingTalkCredentialsResponse),
-  z
-    .object({
-      provider: z.literal('ms_teams'),
-    })
-    .and(zMsTeamsCredentialsResponse),
-  z
-    .object({
-      provider: z.literal('we_com'),
-    })
-    .and(zWeComCredentialsResponse),
+export const zImProviderCredentialsResponse = z.discriminatedUnion('provider', [
+  zFeishuLarkCredentialsResponse.extend({ provider: z.literal('feishu') }),
+  zFeishuLarkCredentialsResponse.extend({ provider: z.literal('lark') }),
+  zSlackCredentialsResponse,
+  zDingTalkCredentialsResponse,
+  zMsTeamsCredentialsResponse,
+  zWeComCredentialsResponse,
 ])
 
 /**
@@ -446,12 +435,12 @@ export const zMsTeamsCredentialsUpdateInput = z.object({
 })
 
 export const zImProviderCredentialsUpdateInput = z.discriminatedUnion('provider', [
-  zFeishuCredentialsUpdateInput.extend({ provider: z.literal('feishu') }),
-  zLarkCredentialsUpdateInput.extend({ provider: z.literal('lark') }),
-  zSlackCredentialsUpdateInput.extend({ provider: z.literal('slack') }),
-  zDingTalkCredentialsUpdateInput.extend({ provider: z.literal('ding_talk') }),
-  zMsTeamsCredentialsUpdateInput.extend({ provider: z.literal('ms_teams') }),
-  zWeComCredentialsUpdateInput.extend({ provider: z.literal('we_com') }),
+  zFeishuCredentialsUpdateInput,
+  zLarkCredentialsUpdateInput,
+  zSlackCredentialsUpdateInput,
+  zDingTalkCredentialsUpdateInput,
+  zMsTeamsCredentialsUpdateInput,
+  zWeComCredentialsUpdateInput,
 ])
 
 /**
@@ -470,11 +459,7 @@ export const zResendCredentialsWritable = z.object({
   provider: z.literal('resend').optional().default('resend'),
 })
 
-export const zEmailProviderCredentialsWritable = z
-  .object({
-    provider: z.literal('resend'),
-  })
-  .and(zResendCredentialsWritable)
+export const zEmailProviderCredentialsWritable = zResendCredentialsWritable
 
 /**
  * EmailChannelCreatePayload
@@ -502,11 +487,7 @@ export const zResendCredentialsUpdateInputWritable = z.object({
   provider: z.literal('resend'),
 })
 
-export const zEmailProviderCredentialsUpdateInputWritable = z
-  .object({
-    provider: z.literal('resend'),
-  })
-  .and(zResendCredentialsUpdateInputWritable)
+export const zEmailProviderCredentialsUpdateInputWritable = zResendCredentialsUpdateInputWritable
 
 /**
  * EmailChannelUpdatePayload
@@ -583,12 +564,12 @@ export const zWeComCredentialsInputWritable = z.object({
 })
 
 export const zImProviderCredentialsInputWritable = z.discriminatedUnion('provider', [
-  zFeishuCredentialsInputWritable.extend({ provider: z.literal('feishu') }),
-  zLarkCredentialsInputWritable.extend({ provider: z.literal('lark') }),
-  zSlackCredentialsInputWritable.extend({ provider: z.literal('slack') }),
-  zDingTalkCredentialsInputWritable.extend({ provider: z.literal('ding_talk') }),
-  zMsTeamsCredentialsInputWritable.extend({ provider: z.literal('ms_teams') }),
-  zWeComCredentialsInputWritable.extend({ provider: z.literal('we_com') }),
+  zFeishuCredentialsInputWritable,
+  zLarkCredentialsInputWritable,
+  zSlackCredentialsInputWritable,
+  zDingTalkCredentialsInputWritable,
+  zMsTeamsCredentialsInputWritable,
+  zWeComCredentialsInputWritable,
 ])
 
 /**
@@ -678,12 +659,12 @@ export const zWeComCredentialsUpdateInputWritable = z.object({
 })
 
 export const zImProviderCredentialsUpdateInputWritable = z.discriminatedUnion('provider', [
-  zFeishuCredentialsUpdateInputWritable.extend({ provider: z.literal('feishu') }),
-  zLarkCredentialsUpdateInputWritable.extend({ provider: z.literal('lark') }),
-  zSlackCredentialsUpdateInputWritable.extend({ provider: z.literal('slack') }),
-  zDingTalkCredentialsUpdateInputWritable.extend({ provider: z.literal('ding_talk') }),
-  zMsTeamsCredentialsUpdateInputWritable.extend({ provider: z.literal('ms_teams') }),
-  zWeComCredentialsUpdateInputWritable.extend({ provider: z.literal('we_com') }),
+  zFeishuCredentialsUpdateInputWritable,
+  zLarkCredentialsUpdateInputWritable,
+  zSlackCredentialsUpdateInputWritable,
+  zDingTalkCredentialsUpdateInputWritable,
+  zMsTeamsCredentialsUpdateInputWritable,
+  zWeComCredentialsUpdateInputWritable,
 ])
 
 /**

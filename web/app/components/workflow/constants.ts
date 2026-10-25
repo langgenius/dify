@@ -32,10 +32,10 @@ export const isInWorkflowPage = () => {
   const pathname = globalThis.location.pathname
   return /^\/app\/[^/]+\/workflow$/.test(pathname) || /^\/workflow\/[^/]+$/.test(pathname)
 }
-export const getGlobalVars = (isChatMode: boolean): Var[] => {
+export const getGlobalVars = (isChatflow: boolean): Var[] => {
   const isInWorkflow = isInWorkflowPage()
   const vars: Var[] = [
-    ...(isChatMode
+    ...(isChatflow
       ? [
           {
             variable: 'sys.dialogue_count',
@@ -63,7 +63,7 @@ export const getGlobalVars = (isChatMode: boolean): Var[] => {
       variable: 'sys.workflow_run_id',
       type: VarType.string,
     },
-    ...(isInWorkflow && !isChatMode
+    ...(isInWorkflow && !isChatflow
       ? [
           {
             variable: 'sys.timestamp',
@@ -106,6 +106,7 @@ export const SUPPORT_OUTPUT_VARS_NODE: BlockEnum[] = [
   BlockEnum.TriggerPlugin,
   BlockEnum.LLM,
   BlockEnum.KnowledgeRetrieval,
+  BlockEnum.KnowledgeRetrievalV2,
   BlockEnum.Code,
   BlockEnum.TemplateTransform,
   BlockEnum.HttpRequest,

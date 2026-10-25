@@ -3,15 +3,17 @@ import type {
   ListChannelsResponse,
 } from '@dify/contracts/api/console/workspace/types.gen'
 import type { ComponentProps } from 'react'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { Shape } from '@/app/components/workflow/hooks-store/store'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createStore, Provider } from 'jotai'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { VarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
 import MessageTemplate from '../components/message-template'
 import { createChannelsQueryClient } from './channel-fixtures'
 
@@ -21,10 +23,6 @@ const mocks = vi.hoisted(() => ({
 }))
 
 const originalBody = 'Original body {{#url#}}'
-
-vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
-  useIsChatMode: () => mocks.isChatMode,
-}))
 
 vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({ doSyncWorkflowDraft: mocks.syncDraft }),
@@ -57,6 +55,11 @@ const renderTemplate = (
   overrides: Partial<ComponentProps<typeof MessageTemplate>> = {},
   storeOverrides: Partial<Shape> = {},
   configuredProviders?: ChannelSummary['provider'][],
+  resource: EditorResource = {
+    kind: 'app',
+    appId: 'app-template-test',
+    mode: mocks.isChatMode ? 'advanced-chat' : 'workflow',
+  },
 ) => {
   const props: ComponentProps<typeof MessageTemplate> = {
     nodeId: 'human-input-v2',
@@ -69,18 +72,18 @@ const renderTemplate = (
   }
   const queryClient = createChannelsQueryClient(configuredProviders)
   const hooksStore = createHooksStore({
-    configsMap: {
-      flowId: 'app-template-test',
-      flowType: FlowType.appFlow,
-      fileSettings: { enabled: false },
-    },
     ...storeOverrides,
   })
+  const resourceStore = createStore()
+  resourceStore.set(editorResourceAtom, resource)
   return {
+    resourceStore,
     ...render(
       <QueryClientProvider client={queryClient}>
         <HooksStoreContext value={hooksStore}>
-          <MessageTemplate {...props} />
+          <Provider store={resourceStore}>
+            <MessageTemplate {...props} />
+          </Provider>
         </HooksStoreContext>
       </QueryClientProvider>,
     ),
@@ -527,7 +530,7 @@ describe('Human Input v2 Message Template', () => {
             }
           }),
       )
-      const { hooksStore } = renderTemplate()
+      const { hooksStore, resourceStore } = renderTemplate()
       await openTest(user)
       await sendTest(user)
       expect(mocks.syncDraft).toHaveBeenCalledTimes(1)
@@ -535,12 +538,10 @@ describe('Human Input v2 Message Template', () => {
 
       await act(async () => {
         if (change === 'app changes') {
-          hooksStore.setState({
-            configsMap: {
-              flowId: 'another-app',
-              flowType: FlowType.appFlow,
-              fileSettings: { enabled: false },
-            },
+          resourceStore.set(editorResourceAtom, {
+            kind: 'app',
+            appId: 'another-app',
+            mode: 'workflow',
           })
         } else {
           hooksStore.setState({
@@ -732,31 +733,27 @@ describe('Human Input v2 Message Template', () => {
       reason: 'read-only',
       readonly: true,
       canRun: true,
-      flowType: FlowType.appFlow,
-      flowId: 'app-template-test',
+      resource: { kind: 'app', appId: 'app-template-test', mode: 'workflow' } as const,
     },
     {
       reason: 'no run permission',
       readonly: false,
       canRun: false,
-      flowType: FlowType.appFlow,
-      flowId: 'app-template-test',
+      resource: { kind: 'app', appId: 'app-template-test', mode: 'workflow' } as const,
     },
     {
       reason: 'snippet',
       readonly: false,
       canRun: true,
-      flowType: FlowType.snippet,
-      flowId: 'snippet-1',
+      resource: { kind: 'snippet', snippetId: 'snippet-1' } as const,
     },
     {
       reason: 'missing app ID',
       readonly: false,
       canRun: true,
-      flowType: FlowType.appFlow,
-      flowId: '',
+      resource: { kind: 'app', appId: '', mode: 'workflow' } as const,
     },
-  ])('does not offer test sending for $reason', async ({ readonly, canRun, flowType, flowId }) => {
+  ])('does not offer test sending for $reason', async ({ readonly, canRun, resource }) => {
     const user = userEvent.setup()
     const requests = setupFetch()
     renderTemplate(
@@ -768,8 +765,9 @@ describe('Human Input v2 Message Template', () => {
           canImportExportDSL: true,
           canReleaseAndVersion: true,
         },
-        configsMap: { flowId, flowType, fileSettings: { enabled: false } },
       },
+      undefined,
+      resource,
     )
     await openTemplate(user)
     expect(

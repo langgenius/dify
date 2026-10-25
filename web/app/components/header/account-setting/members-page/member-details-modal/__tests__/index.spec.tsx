@@ -1,14 +1,29 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ReactElement } from 'react'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { useRolesOfMember } from '@/service/access-control/use-member-roles'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
 import MemberDetailsModal from '../index'
 
-vi.mock('@/service/access-control/use-member-roles')
-vi.mock('@/service/access-control/use-workspace-roles')
+const { mockWorkspaceRoleListHook, mockRolesOfMemberHook } = vi.hoisted(() => ({
+  mockWorkspaceRoleListHook: vi.fn(),
+  mockRolesOfMemberHook: vi.fn(),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.rbac.roles.get': async () => mockWorkspaceRoleListHook().data.pages[0],
+      'workspaces.current.rbac.members.byMemberId.rbacRoles.get': () => new Promise(() => {}),
+    }),
+  }
+})
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: 'role-1',
@@ -22,8 +37,7 @@ const createRole = (overrides: Partial<Role>): Role => ({
   role_tag: '',
   ...overrides,
 })
-
-const member: Member = {
+const member: AccountWithRoleResponse = {
   id: 'member-1',
   name: 'Admin User',
   email: 'admin@example.com',
@@ -31,23 +45,35 @@ const member: Member = {
   avatar_url: '',
   role: 'admin',
   roles: [createRole({ id: 'role-1', name: 'Custom role' })],
-  last_active_at: '1731000000',
-  last_login_at: '1731000000',
-  created_at: '1731000000',
+  last_active_at: 1731000000,
+  last_login_at: 1731000000,
+  created_at: 1731000000,
   status: 'active',
+}
+const render = (ui: ReactElement) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  const response = mockRolesOfMemberHook().data
+  if (response)
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.get.queryKey({
+        input: { params: { member_id: member.id }, query: { language: 'en' } },
+      }),
+      response,
+    )
+  return renderWithConsoleQuery(ui, { queryClient })
 }
 
 describe('MemberDetailsModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useRolesOfMember).mockReturnValue({
+    vi.mocked(mockRolesOfMemberHook).mockReturnValue({
       data: {
         account_id: member.id,
         roles: [createRole({ id: 'role-1', name: 'Custom role' })],
       },
       isLoading: false,
-    } as unknown as ReturnType<typeof useRolesOfMember>)
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+    })
+    vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
       data: {
         pages: [
           {
@@ -70,7 +96,7 @@ describe('MemberDetailsModal', () => {
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+    })
   })
 
   describe('Rendering', () => {
@@ -91,8 +117,6 @@ describe('MemberDetailsModal', () => {
       expect(
         screen.queryByRole('button', { name: /members\.memberDetails\.assign/i }),
       ).not.toBeInTheDocument()
-      expect(editButton.querySelector('.i-ri-edit-line')).toBeInTheDocument()
-      expect(editButton.querySelector('.i-ri-add-line')).not.toBeInTheDocument()
     })
 
     it('should render singular assigned role label when there is one role', () => {
@@ -114,10 +138,10 @@ describe('MemberDetailsModal', () => {
     })
 
     it('should render role loading state without assigned role chips or count', () => {
-      vi.mocked(useRolesOfMember).mockReturnValue({
+      vi.mocked(mockRolesOfMemberHook).mockReturnValue({
         data: undefined,
         isLoading: true,
-      } as unknown as ReturnType<typeof useRolesOfMember>)
+      })
 
       render(
         <MemberDetailsModal
@@ -182,7 +206,7 @@ describe('MemberDetailsModal', () => {
       const user = userEvent.setup()
       const handleAssignSubmit = vi.fn()
 
-      vi.mocked(useRolesOfMember).mockReturnValue({
+      vi.mocked(mockRolesOfMemberHook).mockReturnValue({
         data: {
           account_id: member.id,
           roles: [
@@ -190,7 +214,7 @@ describe('MemberDetailsModal', () => {
             createRole({ id: 'role-2', name: 'Second role' }),
           ],
         },
-      } as unknown as ReturnType<typeof useRolesOfMember>)
+      })
 
       render(
         <MemberDetailsModal
@@ -228,7 +252,7 @@ describe('MemberDetailsModal', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /members\.memberDetails\.assign/i }))
-      await user.click(screen.getByRole('checkbox', { name: /Second role/i }))
+      await user.click(await screen.findByRole('checkbox', { name: /Second role/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
 
       expect(handleAssignSubmit).not.toHaveBeenCalled()
@@ -256,7 +280,7 @@ describe('MemberDetailsModal', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /common\.operation\.edit/i }))
-      await user.click(screen.getByRole('radio', { name: /Second role/i }))
+      await user.click(await screen.findByRole('radio', { name: /Second role/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 

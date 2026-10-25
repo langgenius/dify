@@ -347,6 +347,7 @@ class HumanInputFormFilledResponse(StreamResponse):
         Data entity
         """
 
+        form_id: str
         node_id: str
         node_title: str
         rendered_content: str
@@ -366,6 +367,7 @@ class HumanInputFormTimeoutResponse(StreamResponse):
         Data entity
         """
 
+        form_id: str
         node_id: str
         node_title: str
         expiration_time: int

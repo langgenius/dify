@@ -21,7 +21,7 @@ from models.model import AppMode, EndUser
 from models.workflow import WorkflowRun
 from repositories.human_input_v2.delivery_repository import SubmissionAuthType
 from services.human_input_v2.composition import WorkflowHumanInputRuntime
-from tests.unit_tests.model_factories import make_app, make_tenant
+from tests.helpers.unit.model_factories import make_app, make_tenant
 
 
 @pytest.mark.parametrize("invoke_from", [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API])

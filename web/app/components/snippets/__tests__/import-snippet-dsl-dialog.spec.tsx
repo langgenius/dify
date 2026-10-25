@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { httpErrorFromResponse } from '@/service/http-error'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ImportSnippetDSLDialog from '../import-snippet-dsl-dialog'
 
 const serviceMocks = vi.hoisted(() => ({
@@ -36,28 +37,22 @@ vi.mock('@/app/notifications', () => ({
   toast: toastMocks,
 }))
 
-vi.mock('@/service/use-snippets', () => ({
-  useImportSnippetDSLMutation: () => ({
-    isPending: false,
-    mutateAsync: serviceMocks.importMutateAsync,
-  }),
-  useConfirmSnippetImportMutation: () => ({
-    isPending: false,
-    mutateAsync: serviceMocks.confirmMutateAsync,
-  }),
-}))
-
-vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  Uploader: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
-    <button type="button" onClick={() => updateFile(new File(['name: snippet'], 'snippet.yml'))}>
-      {file?.name || 'select-dsl-file'}
-    </button>
-  ),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.customizedSnippets.imports.post': serviceMocks.importMutateAsync,
+      'workspaces.current.customizedSnippets.imports.byImportId.confirm.post':
+        serviceMocks.confirmMutateAsync,
+    }),
+  }
+})
 
 describe('ImportSnippetDSLDialog', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     contextMocks.workspacePermissionKeys = ['snippets.create_and_modify']
   })
 
@@ -74,7 +69,6 @@ describe('ImportSnippetDSLDialog', () => {
     render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
 
     expect(screen.getByRole('dialog', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
-    expect(screen.getByRole('tablist', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'snippet.importFromDSLFile' })).toHaveAttribute(
       'aria-selected',
       'true',
@@ -93,12 +87,13 @@ describe('ImportSnippetDSLDialog', () => {
 
     await waitFor(() => {
       expect(serviceMocks.importMutateAsync).toHaveBeenCalledWith({
-        mode: 'yaml-url',
-        yamlContent: undefined,
-        yamlUrl: 'https://example.com/snippet.yml',
+        body: {
+          mode: 'yaml-url',
+          yaml_content: undefined,
+          yaml_url: 'https://example.com/snippet.yml',
+        },
       })
       expect(onClose).toHaveBeenCalledTimes(1)
-      expect(toastMocks.success).toHaveBeenCalledWith('snippet.importSuccess')
       expect(routerMocks.push).toHaveBeenCalledWith('/snippets/snippet-1/orchestrate')
     })
   })
@@ -121,17 +116,26 @@ describe('ImportSnippetDSLDialog', () => {
 
     render(<ImportSnippetDSLDialog isOpen onClose={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'select-dsl-file' }))
+    await user.upload(
+      document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      new File(['name: snippet'], 'snippet.yml', { type: 'application/yaml' }),
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     expect(await screen.findByText('snippet.dslVersionMismatchTitle')).toBeInTheDocument()
+    expect(serviceMocks.importMutateAsync).toHaveBeenCalledExactlyOnceWith({
+      body: { mode: 'yaml-content', yaml_content: 'name: snippet', yaml_url: undefined },
+    })
+    expect(routerMocks.push).not.toHaveBeenCalled()
     expect(screen.getByText('0.9.0')).toBeInTheDocument()
     expect(screen.getByText('1.0.0')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() => {
-      expect(serviceMocks.confirmMutateAsync).toHaveBeenCalledWith({ importId: 'import-1' })
+      expect(serviceMocks.confirmMutateAsync).toHaveBeenCalledWith({
+        params: { import_id: 'import-1' },
+      })
       expect(routerMocks.push).toHaveBeenCalledWith('/snippets/snippet-2/orchestrate')
     })
   })
@@ -143,13 +147,46 @@ describe('ImportSnippetDSLDialog', () => {
 
     render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
 
-    await user.click(screen.getByRole('button', { name: 'select-dsl-file' }))
+    await user.upload(
+      document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      new File(['name: snippet'], 'snippet.yml', { type: 'application/yaml' }),
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     await waitFor(() => {
       expect(toastMocks.error).toHaveBeenCalledWith('invalid yaml')
       expect(onClose).not.toHaveBeenCalled()
+      expect(routerMocks.push).not.toHaveBeenCalled()
     })
+  })
+
+  it.each(['import', 'confirm'])('leaves HTTP %s failures to the request layer', async (step) => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    const error = await httpErrorFromResponse(
+      Response.json({ message: 'Invalid DSL' }, { status: 400 }),
+    )
+    if (step === 'import') serviceMocks.importMutateAsync.mockRejectedValue(error)
+    else {
+      serviceMocks.importMutateAsync.mockResolvedValue({ id: 'import-1', status: 'pending' })
+      serviceMocks.confirmMutateAsync.mockRejectedValue(error)
+    }
+
+    render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
+    await user.upload(
+      document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      new File(['name: snippet'], 'snippet.yml', { type: 'application/yaml' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    if (step === 'confirm') {
+      await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
+      expect(serviceMocks.confirmMutateAsync).toHaveBeenCalledWith({
+        params: { import_id: 'import-1' },
+      })
+    }
+    expect(serviceMocks.importMutateAsync).toHaveBeenCalledOnce()
+    expect(toastMocks.error).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('should disable import without snippet create permission', async () => {

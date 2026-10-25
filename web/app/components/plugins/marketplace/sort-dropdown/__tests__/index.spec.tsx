@@ -38,14 +38,6 @@ describe('SortDropdown', () => {
     mockSort = { sortBy: 'install_count', sortOrder: 'DESC' }
   })
 
-  it('renders the selected sort option in the trigger', () => {
-    render(<SortDropdown />)
-
-    const trigger = screen.getByRole('button', { name: 'Sort by Most Popular' })
-    expect(within(trigger).getByText('Sort by')).toBeInTheDocument()
-    expect(within(trigger).getByText('Most Popular')).toBeInTheDocument()
-  })
-
   it('falls back to the default option when the current sort is invalid', () => {
     mockSort = { sortBy: 'unknown', sortOrder: 'ASC' }
 
@@ -54,41 +46,23 @@ describe('SortDropdown', () => {
     expect(screen.getByText('Most Popular')).toBeInTheDocument()
   })
 
-  it('opens the menu and renders all sort options', async () => {
-    const user = userEvent.setup()
-    render(<SortDropdown />)
-
-    await user.click(screen.getByRole('button', { name: 'Sort by Most Popular' }))
-
-    const content = await screen.findByRole('menu')
-    expect(within(content).getByText('Most Popular')).toBeInTheDocument()
-    expect(within(content).getByText('Recently Updated')).toBeInTheDocument()
-    expect(within(content).getByText('Newly Released')).toBeInTheDocument()
-    expect(within(content).getByText('First Released')).toBeInTheDocument()
-  })
-
-  it('exposes the currently selected sort option', async () => {
-    const user = userEvent.setup()
-    render(<SortDropdown />)
-
-    await user.click(screen.getByRole('button', { name: 'Sort by Most Popular' }))
-
-    expect(screen.getByRole('menuitemradio', { name: 'Most Popular' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
-    expect(screen.getByRole('menuitemradio', { name: 'Recently Updated' })).toHaveAttribute(
-      'aria-checked',
-      'false',
-    )
-  })
-
   it('updates the sort and closes the menu when an option is selected', async () => {
     const user = userEvent.setup()
     render(<SortDropdown />)
 
     await user.click(screen.getByRole('button', { name: 'Sort by Most Popular' }))
-    await user.click(await screen.findByRole('menuitemradio', { name: 'Recently Updated' }))
+    const menu = within(await screen.findByRole('menu'))
+    expect(menu.getByRole('menuitemradio', { name: 'Most Popular' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(menu.getByRole('menuitemradio', { name: 'Recently Updated' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    )
+    expect(menu.getByRole('menuitemradio', { name: 'Newly Released' })).toBeInTheDocument()
+    expect(menu.getByRole('menuitemradio', { name: 'First Released' })).toBeInTheDocument()
+    await user.click(menu.getByRole('menuitemradio', { name: 'Recently Updated' }))
 
     expect(mockHandleSortChange).toHaveBeenCalledWith({
       sortBy: 'version_updated_at',

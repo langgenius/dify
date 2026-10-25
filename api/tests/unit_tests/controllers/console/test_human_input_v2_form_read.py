@@ -36,8 +36,8 @@ from repositories.human_input_v2.recipient_repository import ContactRecipientSub
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_account, make_tenant
 
 _NOW = datetime(2030, 1, 1)
 _TOKEN = "console-v2-read-token"
@@ -116,7 +116,9 @@ def console_form(sqlite_session_factory: sessionmaker[Session], monkeypatch: pyt
 
     @manager.unauthorized_handler
     def unauthorized() -> Response:
-        return Response("{}", status=401, mimetype="application/json")
+        return Response(
+            '{"code":"unauthorized","message":"Login required","status":401}', status=401, mimetype="application/json"
+        )
 
     scenario = ConsoleForm(app.test_client(), sqlite_session_factory, form, recipient, ContactId(identity.id), account)
 

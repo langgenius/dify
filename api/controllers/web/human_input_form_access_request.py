@@ -7,7 +7,7 @@ version when the service implementation is added.
 
 from __future__ import annotations
 
-from typing import override
+from typing import NoReturn
 
 from flask import request
 from flask_restx import Resource
@@ -19,6 +19,21 @@ from controllers.common.human_input_v2_contracts import (
     FormUploadTokenResponse,
     HumanInputV2FormSubmitRequest,
 )
+from controllers.common.human_input_v2_errors import (
+    HumanInputAccessDeliveryError,
+    HumanInputAccessRateLimitError,
+    HumanInputExpiredChallengeError,
+    HumanInputInvalidOtpError,
+    HumanInputStaleChallengeError,
+    HumanInputV2InvalidInputError,
+    HumanInputV2UnavailableError,
+    HumanInputV2WorkflowNotActiveError,
+    PublicHumanInputV2ExpiredError,
+    PublicHumanInputV2NotFoundError,
+    PublicHumanInputV2SubmittedError,
+    email_otp_http_error,
+    public_form_http_error,
+)
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
@@ -26,40 +41,16 @@ from controllers.web.human_input_file_upload import InvalidUploadTokenForbiddenE
 from core.db.session_factory import session_factory
 from factories.human_input_v2_form_presentation import build_form_presentation
 from libs.datetime_utils import to_utc_timestamp
-from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
 from libs.helper import dump_response, extract_remote_ip
 from services.human_input_file_upload_service import InvalidUploadTokenError
 from services.human_input_v2.email_otp_composition import build_email_otp_service
-from services.human_input_v2.email_otp_service import EmailOtpError, OtpFailure
+from services.human_input_v2.email_otp_service import EmailOtpError
 from services.human_input_v2.file_upload_service import build_file_upload_service
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
-    HumanInputFormErrorCode,
     HumanInputSubmissionService,
 )
-
-
-class _EmailOtpHTTPError(BaseHTTPException):
-    def __init__(self, error: EmailOtpError) -> None:
-        self.error_code = error.reason.value
-        self.code = {
-            OtpFailure.NOT_FOUND: 404,
-            OtpFailure.EXPIRED: 412,
-            OtpFailure.SUBMITTED: 412,
-            OtpFailure.RATE_LIMIT: 429,
-            OtpFailure.DELIVERY: 503,
-            OtpFailure.UNAVAILABLE: 503,
-        }.get(error.reason, 400)
-        super().__init__(description="Unable to complete email verification.")
-        self._retry_after = error.retry_after
-
-    @override
-    def get_headers(self, environ=None, scope=None):
-        headers = super().get_headers(environ, scope)
-        if self._retry_after is not None:
-            headers.append(("Retry-After", str(self._retry_after)))
-        return headers
-
 
 register_schema_models(web_ns, HumanInputV2FormSubmitRequest)
 register_response_schema_models(
@@ -71,21 +62,15 @@ register_response_schema_models(
 )
 
 
-def _public_form_error_response(error: HumanInputFormError) -> tuple[dict[str, str], int]:
-    code, status = {
-        HumanInputFormErrorCode.NOT_FOUND: (OtpFailure.NOT_FOUND.value, 404),
-        HumanInputFormErrorCode.ALREADY_SUBMITTED: (OtpFailure.SUBMITTED.value, 412),
-        HumanInputFormErrorCode.EXPIRED: (OtpFailure.EXPIRED.value, 412),
-        HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE: (HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE.value, 409),
-        HumanInputFormErrorCode.INVALID_INPUT: (HumanInputFormErrorCode.INVALID_INPUT.value, 400),
-    }[error.code]
-    return {"code": code, "message": "The form is unavailable or the submission could not be accepted."}, status
+def _raise_public_form_error(error: HumanInputFormError) -> NoReturn:
+    raise public_form_http_error(error) from error
 
 
 @web_ns.route("/form/human-input/v2/public/<string:form_token>")
 class HumanInputV2FormApi(Resource):
     """Read or submit a Human Input v2 form without sharing v1 submission logic."""
 
+    @error_responses(PublicHumanInputV2NotFoundError, PublicHumanInputV2SubmittedError, PublicHumanInputV2ExpiredError)
     @web_ns.doc(
         description="Read a public v2 form definition by delivery token without an OTP or login session.",
         security=[],
@@ -97,7 +82,7 @@ class HumanInputV2FormApi(Resource):
         try:
             form = service.get_public_form(form_token=form_token)
         except HumanInputFormError as error:
-            return _public_form_error_response(error)
+            _raise_public_form_error(error)
         presentation = build_form_presentation(form.resolved_form)
         return dump_response(
             FormDefinitionResponse,
@@ -110,6 +95,17 @@ class HumanInputV2FormApi(Resource):
             },
         )
 
+    @error_responses(
+        PublicHumanInputV2NotFoundError,
+        PublicHumanInputV2SubmittedError,
+        PublicHumanInputV2ExpiredError,
+        HumanInputV2WorkflowNotActiveError,
+        HumanInputV2InvalidInputError,
+        HumanInputExpiredChallengeError,
+        HumanInputInvalidOtpError,
+        HumanInputStaleChallengeError,
+        HumanInputV2UnavailableError,
+    )
     @web_ns.expect(web_ns.models[HumanInputV2FormSubmitRequest.__name__])
     @web_ns.doc(
         description="Submit a form with inputs, an action, and email verification proof.",
@@ -138,9 +134,9 @@ class HumanInputV2FormApi(Resource):
                 ip_address=extract_remote_ip(request),
             )
         except EmailOtpError as error:
-            raise _EmailOtpHTTPError(error) from None
+            raise email_otp_http_error(error) from error
         except HumanInputFormError as error:
-            return _public_form_error_response(error)
+            _raise_public_form_error(error)
         return FormSubmitResponse().model_dump(mode="json")
 
 
@@ -148,13 +144,19 @@ class HumanInputV2FormApi(Resource):
 class HumanInputV2FormUploadTokenApi(Resource):
     """Issue an upload token for an active Human Input v2 form."""
 
+    @error_responses(
+        PublicHumanInputV2NotFoundError,
+        PublicHumanInputV2SubmittedError,
+        PublicHumanInputV2ExpiredError,
+        InvalidUploadTokenForbiddenError,
+    )
     @web_ns.response(200, "Success", web_ns.models[FormUploadTokenResponse.__name__])
     @web_ns.doc(security=[], responses={404: "Form not found", 412: "Already submitted or expired"})
     def post(self, form_token: str):
         try:
             grant = build_file_upload_service().issue_public_upload_token(form_token)
         except HumanInputFormError as error:
-            return _public_form_error_response(error)
+            _raise_public_form_error(error)
         except InvalidUploadTokenError as error:
             raise InvalidUploadTokenForbiddenError() from error
         return FormUploadTokenResponse(
@@ -164,12 +166,20 @@ class HumanInputV2FormUploadTokenApi(Resource):
 
 @web_ns.route("/form/human-input/v2/public/<string:form_token>/access-request")
 class FormAccessRequestApi(Resource):
+    @error_responses(
+        PublicHumanInputV2NotFoundError,
+        PublicHumanInputV2SubmittedError,
+        PublicHumanInputV2ExpiredError,
+        HumanInputAccessRateLimitError,
+        HumanInputAccessDeliveryError,
+        HumanInputV2UnavailableError,
+    )
     @web_ns.response(200, "Success", web_ns.models[FormAccessRequestResponse.__name__])
     def post(self, form_token: str):
         try:
             challenge = build_email_otp_service().request_access(form_token)
         except EmailOtpError as error:
-            raise _EmailOtpHTTPError(error) from None
+            raise email_otp_http_error(error) from error
         return FormAccessRequestResponse(
             challenge_token=challenge.challenge_token,
             expires_in_seconds=challenge.expires_in_seconds,

@@ -58,7 +58,7 @@ from tests.unit_tests.services.human_input_v2.test_form_delivery_runtime import 
 
 pytest_plugins = (
     "tests.unit_tests.services.human_input_v2.test_form_delivery_runtime",
-    "tests.unit_tests.extensions.test_ext_blueprints_openapi",
+    "tests.unit_tests.extensions.test_ext_blueprints",
 )
 
 _SIGNING_SECRET = "slack-test-signing-secret"

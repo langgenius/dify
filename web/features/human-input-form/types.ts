@@ -11,7 +11,7 @@ export type HumanInputFormDefinition = {
   branding?: HumanInputFormBranding
   formContent: string
   inputs: FormInputItem[]
-  resolvedDefaultValues: Record<string, HumanInputResolvedValue>
+  resolvedDefaultValues: Record<string, unknown>
   actions: UserAction[]
   expirationTime: number
 }

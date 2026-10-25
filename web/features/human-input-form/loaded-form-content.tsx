@@ -362,13 +362,7 @@ const LoadedFormContent = ({
       <div className="mx-auto w-full max-w-180 px-4 py-4 sm:px-6">
         {branding && (
           <div className="flex w-full items-center gap-3 py-3">
-            <AppIcon
-              size="small"
-              iconType={branding.site.icon_type}
-              icon={branding.site.icon}
-              background={branding.site.icon_background}
-              imageUrl={branding.site.icon_url}
-            />
+            <AppIcon size="small" icon={branding.site} />
             <div className="grow system-xl-semibold text-text-primary">{branding.site.title}</div>
           </div>
         )}

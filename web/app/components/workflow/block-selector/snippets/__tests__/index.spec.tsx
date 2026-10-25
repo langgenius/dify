@@ -1,18 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import Snippets from '../index'
 
 const mockUseInfiniteSnippetList = vi.fn()
 const mockHandleInsertSnippet = vi.fn()
-
-vi.mock('ahooks', async () => {
-  const actual = await vi.importActual<typeof import('ahooks')>('ahooks')
-  return {
-    ...actual,
-    useInfiniteScroll: vi.fn(),
-  }
-})
 
 vi.mock('@/service/use-snippets', () => ({
   useInfiniteSnippetList: (...args: unknown[]) => mockUseInfiniteSnippetList(...args),
@@ -24,17 +19,18 @@ vi.mock('../use-insert-snippet', () => ({
   }),
 }))
 
-vi.mock('../snippet-detail-card', () => ({
-  default: ({ snippet }: { snippet: { name: string } }) => <div>{`preview:${snippet.name}`}</div>,
+vi.mock('@/service/use-snippet-workflows', () => ({
+  useSnippetPublishedWorkflow: () => ({ data: undefined }),
 }))
 
-vi.mock('../snippet-tags-filter', () => ({
-  default: ({ value, onChange }: { value: string[]; onChange: (value: string[]) => void }) => (
-    <button type="button" onClick={() => onChange(['tag-1'])}>
-      {`tag-filter:${value.join(',')}`}
-    </button>
-  ),
-}))
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.tags.get.queryKey({ input: { query: { type: 'snippet' } } }),
+    [{ id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: '' }],
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 describe('Snippets', () => {
   beforeEach(() => {
@@ -86,7 +82,7 @@ describe('Snippets', () => {
                   description: 'Snippet description',
                   type: 'group',
                   is_published: true,
-                  version: '1.0.0',
+                  version: 1,
                   use_count: 3,
                   tags: [],
                   input_fields: [],
@@ -123,7 +119,8 @@ describe('Snippets', () => {
       const user = userEvent.setup()
       render(<Snippets searchText="" />)
 
-      await user.click(screen.getByRole('button', { name: 'tag-filter:' }))
+      await user.click(await screen.findByRole('button', { name: 'common.tag.placeholder' }))
+      await user.click(await screen.findByRole('checkbox', { name: 'Sales' }))
 
       await waitFor(() => {
         expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith({
@@ -162,12 +159,10 @@ describe('Snippets', () => {
 
       expect(onSearchTextChange).toHaveBeenLastCalledWith('review')
 
-      await user.tab()
       const clearButton = screen.getByRole('button', {
         name: 'workflow.tabs.clearSnippetSearch',
       })
-      expect(clearButton).toHaveFocus()
-      await user.keyboard('{Enter}')
+      await user.click(clearButton)
 
       expect(onSearchTextChange).toHaveBeenLastCalledWith('')
     })
@@ -185,7 +180,7 @@ describe('Snippets', () => {
                   description: 'Snippet description',
                   type: 'group',
                   is_published: true,
-                  version: '1.0.0',
+                  version: 1,
                   use_count: 3,
                   tags: [],
                   input_fields: [],
@@ -226,7 +221,7 @@ describe('Snippets', () => {
                   description: '',
                   type: 'group',
                   is_published: true,
-                  version: '1.0.0',
+                  version: 1,
                   use_count: 3,
                   tags: [],
                   input_fields: [],
@@ -253,7 +248,7 @@ describe('Snippets', () => {
       await user.tab()
 
       expect(screen.getByRole('button', { name: 'No Description' })).toHaveFocus()
-      expect(await screen.findByText('preview:No Description')).toBeInTheDocument()
+      expect(await screen.findByText('snippet.unknownUser')).toBeInTheDocument()
     })
   })
 })

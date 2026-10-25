@@ -5,7 +5,7 @@ import type {
   AgentReferencingWorkflowResponse,
   AgentReferencingWorkflowsResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { AgentConfigurePublishResult } from '../../../use-agent-configure-sync'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
@@ -29,7 +29,7 @@ import { AgentVersionRestore } from '../../version-restore'
 import { AgentPublishImpactDetails } from './publish-impact-details'
 import { AgentPublishSuccess } from './publish-success'
 
-const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
+const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies HotkeyChord
 
 type AgentConfigurePublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
 

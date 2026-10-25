@@ -67,13 +67,15 @@ _EXECUTION = "00000000-0000-0000-0000-000000000006"
 
 
 def _pause_state(form_id: str, *, node_version: str = "2") -> str:
+    from core.app.app_config.entities import WorkflowUIBasedAppConfig
+    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
     from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
     from core.workflow.nodes.human_input.session_binding import default_session_binding
     from graphon.entities.pause_reason import HitlRequired
-    from graphon.runtime import GraphRuntimeState
-    from tests.unit_tests.core.app.layers.test_pause_state_persist_layer import TestPauseStatePersistenceLayer
+    from graphon.runtime import RuntimeState
+    from models.model import AppMode
 
-    runtime = GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+    runtime = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
     runtime.graph_execution.pause(
         HitlRequired(
             session_id=default_session_binding.issue_session_id_for_form(node_version, form_id),
@@ -83,7 +85,21 @@ def _pause_state(form_id: str, *, node_version: str = "2") -> str:
     )
     return WorkflowResumptionContext(
         generate_entity=_WorkflowGenerateEntityWrapper(
-            entity=TestPauseStatePersistenceLayer._create_generate_entity(_RUN)
+            entity=WorkflowAppGenerateEntity(
+                task_id="task-1",
+                inputs={},
+                files=[],
+                user_id=str(_ACCOUNT),
+                stream=True,
+                invoke_from=InvokeFrom.DEBUGGER,
+                workflow_execution_id=_RUN,
+                app_config=WorkflowUIBasedAppConfig(
+                    tenant_id=str(_TENANT),
+                    app_id=_APP,
+                    workflow_id="workflow",
+                    app_mode=AppMode.WORKFLOW,
+                ),
+            )
         ),
         serialized_graph_runtime_state=runtime.dumps(),
     ).dumps()
@@ -127,15 +143,14 @@ def test_factory_runs_v2_and_reuses_persisted_approval(context: Context, monkeyp
     from core.workflow.node_factory import DifyNodeFactory
     from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormRequiredEvent
     from core.workflow.system_variables import SystemVariableKey, system_variable_selector
-    from graphon.entities import GraphInitParams
-    from graphon.graph_events import NodeRunPauseRequestedEvent
-    from graphon.runtime import GraphRuntimeState
+    from graphon.engine_events import NodeRunPauseRequestedEvent
+    from graphon.runtime import InitParams, RuntimeState
 
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
     pool = VariablePool()
     pool.add(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID), _RUN)
     factory = DifyNodeFactory(
-        GraphInitParams(
+        InitParams(
             workflow_id="workflow",
             graph_config={"nodes": [], "edges": []},
             run_context=build_dify_run_context(
@@ -147,7 +162,7 @@ def test_factory_runs_v2_and_reuses_persisted_approval(context: Context, monkeyp
             ),
             call_depth=0,
         ),
-        GraphRuntimeState(variable_pool=pool, start_at=0),
+        RuntimeState(workflow_id="workflow", variable_pool=pool, start_at=0),
     )
     node_data = _node(Initiator()).model_dump(mode="json")
     if selected is not None:
@@ -1323,14 +1338,16 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     from core.workflow.nodes.human_input.entities import FormDefinition
     from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
     from graphon.entities import WorkflowStartReason
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import RuntimeState
     from models.human_input import HumanInputForm as LegacyForm
     from models.human_input import HumanInputFormRecipient
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services import workflow_event_snapshot_service
     from services.human_input_v2.composition import build_human_input_delivery_service
     from services.human_input_v2.runtime import DifyHumanInputRuntime
-    from tests.unit_tests.core.app.apps.common.test_workflow_response_converter_human_input import _build_converter
+    from tests.unit_tests.core.app.apps.common.test_workflow_response_converter import (
+        _workflow_response_converter_human_input_build_converter as _build_converter,
+    )
 
     with context.sessions() as session:
         for model in (LegacyForm, HumanInputFormRecipient):
@@ -1376,6 +1393,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     events = workflow_event_snapshot_service._build_paused_snapshot_events(
         workflow_run=run,
         node_snapshots=[],
+        node_executions={},
         task_id="task",
         message_context=None,
         pause_entity=pause,
@@ -1404,7 +1422,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
             reasons=[reason], outputs={}, paused_nodes=["approval"], human_input_v2_forms={prepared.form.id: prepared}
         ),
         task_id="task",
-        graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0),
+        graph_runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0),
     )
     live_required = next(event.data for event in live if isinstance(event, HumanInputRequiredResponse))
     live_paused = next(event.data for event in live if isinstance(event, WorkflowPauseStreamResponse))
@@ -1445,7 +1463,7 @@ def test_pause_snapshot_resolves_mixed_versions_in_checkpoint_order(context: Con
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
     from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
     from graphon.entities.pause_reason import HitlRequired, SchedulingPause
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import RuntimeState
     from models.human_input import HumanInputForm as LegacyForm
     from models.human_input import HumanInputFormRecipient
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
@@ -1485,7 +1503,7 @@ def test_pause_snapshot_resolves_mixed_versions_in_checkpoint_order(context: Con
             )
         )
     resumption = WorkflowResumptionContext.loads(_pause_state(created.form.id))
-    runtime = GraphRuntimeState.from_snapshot(resumption.serialized_graph_runtime_state)
+    runtime = RuntimeState.from_snapshot(resumption.serialized_graph_runtime_state)
     runtime.graph_execution.pause(HitlRequired(session_id=legacy_id, node_id="legacy-node", node_title="Legacy title"))
     scheduling = SchedulingPause(message="Scheduled wait")
     runtime.graph_execution.pause(scheduling)
@@ -1529,7 +1547,7 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(contex
     from core.workflow.nodes.human_input.entities import FormDefinition
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
     from graphon.entities.pause_reason import HitlRequired
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import RuntimeState
     from machinery.context import RequestContext
     from models.human_input import HumanInputForm as LegacyForm
     from models.human_input import HumanInputFormRecipient, RecipientType
@@ -1578,7 +1596,7 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(contex
         )
 
     resumption = WorkflowResumptionContext.loads(_pause_state(created.form.id))
-    runtime = GraphRuntimeState.from_snapshot(resumption.serialized_graph_runtime_state)
+    runtime = RuntimeState.from_snapshot(resumption.serialized_graph_runtime_state)
     runtime.graph_execution.pause(HitlRequired(session_id=legacy_id, node_id="legacy-node", node_title="Legacy title"))
     state = resumption.model_copy(update={"serialized_graph_runtime_state": runtime.dumps()}).dumps()
     monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", Mock())
@@ -2319,13 +2337,14 @@ def test_im_callback_redelivery_republishes_cards_after_workflow_resume(context:
 
 
 def test_console_approve_http_commits_before_resuming(context: Context, console_approval, monkeypatch):
-    from functools import partial
     from inspect import unwrap
 
     from flask import Flask
+    from flask_restx import Resource
 
     from controllers.console import console_ns
     from core.db.session_factory import session_factory
+    from libs.external_api import ExternalApi
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
     form_id, token = console_approval
@@ -2342,20 +2361,21 @@ def test_console_approve_http_commits_before_resuming(context: Context, console_
 
     monkeypatch.setattr(resume_app_execution, "apply_async", publish)
     app = Flask(__name__)
+    api = ExternalApi(app)
     # Exercise the registered transport and real service, isolating only Console
     # login admission and the async broker from the approval behavior.
-    for resource, urls, _, _ in console_ns.resources:
-        if "/form/human-input/v2/<string:form_token>" in urls:
-            handler = unwrap(resource.post)
-            with context.sessions() as session:
-                account = session.get(Account, _ACCOUNT)
-            app.add_url_rule(
-                "/form/human-input/v2/<string:form_token>",
-                view_func=partial(handler, resource(), current_user=account),
-                endpoint="approve",
-                methods=["POST"],
-            )
-            break
+    resource = next(
+        resource for resource, urls, _, _ in console_ns.resources if "/form/human-input/v2/<string:form_token>" in urls
+    )
+    handler = unwrap(resource.post)
+    with context.sessions() as session:
+        account = session.get(Account, _ACCOUNT)
+
+    class ApprovalEndpoint(Resource):
+        def post(self, form_token):
+            return handler(resource(), current_user=account, form_token=form_token)
+
+    api.add_resource(ApprovalEndpoint, "/form/human-input/v2/<string:form_token>")
     client = app.test_client()
     response = client.post(f"/form/human-input/v2/{token}", json={"inputs": {"note": "Approved"}, "action": "approve"})
     assert response.status_code == 200
@@ -2702,22 +2722,21 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
     from core.db.session_factory import session_factory
     from core.workflow.node_factory import DifyNodeFactory
     from core.workflow.system_variables import SystemVariableKey, system_variable_selector
-    from graphon.entities import GraphInitParams
-    from graphon.graph import Graph
-    from graphon.graph_engine import GraphEngine
-    from graphon.graph_engine.command_channels import InMemoryChannel
-    from graphon.graph_events import (
+    from graphon.engine import Engine
+    from graphon.engine.command import InMemoryChannel
+    from graphon.engine_events import (
         GraphRunFailedEvent,
         GraphRunPausedEvent,
         GraphRunSucceededEvent,
         NodeRunFailedEvent,
         NodeRunStartedEvent,
     )
+    from graphon.graph import Graph
     from graphon.nodes.end.end_node import EndNode
     from graphon.nodes.end.entities import EndNodeData
     from graphon.nodes.start import StartNode
     from graphon.nodes.start.entities import StartNodeData
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
     from repositories.human_input_v2.email_channel.ports import EmailProviderOperationError
 
@@ -2733,8 +2752,8 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
     providers[1].side_effect = send
     pool = VariablePool()
     pool.add(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID), _RUN)
-    state = GraphRuntimeState(variable_pool=pool, start_at=0)
-    params = GraphInitParams(
+    state = RuntimeState(workflow_id="workflow", variable_pool=pool, start_at=0)
+    params = InitParams(
         workflow_id="workflow",
         graph_config={"nodes": [], "edges": []},
         run_context=build_dify_run_context(
@@ -2755,14 +2774,14 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
     start = StartNode(
         node_id="start",
         data=StartNodeData(title="Start", variables=[]),
-        graph_init_params=params,
-        graph_runtime_state=state,
+        init_params=params,
+        runtime_state=state,
     )
     end = EndNode(
         node_id="end",
         data=EndNodeData(title="End", outputs=[]),
-        graph_init_params=params,
-        graph_runtime_state=state,
+        init_params=params,
+        runtime_state=state,
     )
     graph = (
         Graph.new()
@@ -2771,10 +2790,9 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
         .add_node(end, from_node_id="approval", source_handle="approve")
         .build()
     )
-    engine = GraphEngine(
-        workflow_id="workflow",
+    engine = Engine(
         graph=graph,
-        graph_runtime_state=state,
+        runtime_state=state,
         command_channel=InMemoryChannel(),
     )
     events = []
@@ -2836,10 +2854,9 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
                 normalized_submission_data={},
             )
         resumed = list(
-            GraphEngine(
-                workflow_id="workflow",
+            Engine(
                 graph=graph,
-                graph_runtime_state=state,
+                runtime_state=state,
                 command_channel=InMemoryChannel(),
             ).run()
         )
@@ -2952,7 +2969,9 @@ def web_app_approval(context: Context, monkeypatch):
     from core.db.session_factory import session_factory
     from libs.external_api import ExternalApi
     from libs.passport import PassportService
-    from models.model import App, AppMode, CustomizeTokenStrategy, Site
+    from models.agent import Agent, AgentConfigRevision, AgentConfigSnapshot
+    from models.model import App, AppMode, AppModelConfig, CustomizeTokenStrategy, Site
+    from models.workflow import Workflow
     from repositories.human_input_v2.delivery_repository import (
         DeliveryCreateParams,
         InitiatorSnapshot,
@@ -2964,7 +2983,7 @@ def web_app_approval(context: Context, monkeypatch):
 
     end_user_id = str(uuid4())
     with context.sessions.begin() as session:
-        for model in (App, Site):
+        for model in (App, Site, AppModelConfig, Workflow, AgentConfigSnapshot, AgentConfigRevision, Agent):
             model.__table__.create(session.get_bind())
         session.add_all(
             [
@@ -2973,8 +2992,19 @@ def web_app_approval(context: Context, monkeypatch):
                     tenant_id=_TENANT,
                     name="Web approval",
                     mode=AppMode.WORKFLOW,
+                    workflow_id="published-approval-workflow",
                     enable_site=True,
                     enable_api=True,
+                ),
+                Workflow(
+                    id="published-approval-workflow",
+                    tenant_id=_TENANT,
+                    app_id=_APP,
+                    type="workflow",
+                    version="published",
+                    graph="{}",
+                    features="{}",
+                    created_by=str(_ACCOUNT),
                 ),
                 Site(
                     app_id=_APP,

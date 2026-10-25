@@ -5,7 +5,7 @@ import type {
   SkillFileResponse,
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react'
+import type { ChangeEvent, InputEvent, KeyboardEvent } from 'react'
 import type { SkillFileMutationCoordinator } from './shared'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -39,7 +39,6 @@ import {
   findBrokenMarkdownReferenceRangeAtCaret,
   findFileByPath,
   findMarkdownReferenceRangeAtCaret,
-  getAsyncSkillErrorPayload,
   getContentEditableCaretAnchor,
   getErrorCode,
   getErrorDetailNumber,
@@ -97,7 +96,7 @@ export function FileEditor({
   onOpenBuilder,
   onOpenVersions,
   onPublish,
-  onRestoreVersion,
+  onVersionRestored,
   onExitVersion,
   onCloseFile,
   onDraftDetailChange,
@@ -122,7 +121,7 @@ export function FileEditor({
   onOpenBuilder?: () => void
   onOpenVersions: () => void
   onPublish: () => void
-  onRestoreVersion: () => void
+  onVersionRestored: () => void
   onExitVersion: () => void
   onCloseFile: (path: string) => void
   onDraftDetailChange: (detail: SkillDetailResponse) => void
@@ -370,26 +369,19 @@ export function FileEditor({
         onDraftDetailChange(nextCachedDetail)
         return true
       } catch (error) {
-        const errorPayload = await getAsyncSkillErrorPayload(error)
-        if (getErrorCode(errorPayload ?? error) === 'skill_name_conflict') {
+        if (getErrorCode(error) === 'skill_name_conflict') {
           toast.error(
             t(($) => $['skillManagement.errors.nameConflict'], {
-              name: getErrorDetailString(errorPayload ?? error, 'name') ?? '',
+              name: getErrorDetailString(error, 'name') ?? '',
             }),
           )
           setSaveStatus('error')
           return false
         }
-        if (getErrorCode(errorPayload ?? error) === 'skill_conflict') {
+        if (getErrorCode(error) === 'skill_conflict') {
           try {
-            const currentUpdatedAt = getErrorDetailNumber(
-              errorPayload ?? error,
-              'current_updated_at',
-            )
-            const currentFileContent = getErrorDetailString(
-              errorPayload ?? error,
-              'current_file_content',
-            )
+            const currentUpdatedAt = getErrorDetailNumber(error, 'current_updated_at')
+            const currentFileContent = getErrorDetailString(error, 'current_file_content')
             let latestDetail: SkillDetailResponse | undefined
             try {
               latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId, {
@@ -675,7 +667,7 @@ export function FileEditor({
     })
   }
 
-  const handleLiveBodyEditorInput = (event: FormEvent<HTMLDivElement>) => {
+  const handleLiveBodyEditorInput = (event: InputEvent<HTMLDivElement>) => {
     const nextBody = serializeMarkdownLiveEditorNode(event.currentTarget).replace(/\u00A0/g, ' ')
     const nextCaretOffset = getMarkdownLiveEditorSelectionOffset(event.currentTarget)
     const nextContent = replaceMarkdownBody(draftContentRef.current, nextBody)
@@ -1189,8 +1181,7 @@ export function FileEditor({
                       <div
                         className="w-full space-y-0.5"
                         onBlurCapture={(event) => {
-                          if (event.currentTarget.contains(event.relatedTarget as Node | null))
-                            return
+                          if (event.currentTarget.contains(event.relatedTarget)) return
 
                           handleAddMetadata(
                             metadataKeyDraftRef.current,
@@ -1513,8 +1504,7 @@ export function FileEditor({
       {readonly && selectedVersion && (
         <VersionActionBar
           version={selectedVersion}
-          restoring={publishing}
-          onRestore={onRestoreVersion}
+          onRestored={onVersionRestored}
           onExit={onExitVersion}
         />
       )}

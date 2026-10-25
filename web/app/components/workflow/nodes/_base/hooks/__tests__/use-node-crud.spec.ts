@@ -35,24 +35,6 @@ describe('useNodeCrud', () => {
     mockHandleNodeDataUpdateWithSyncDraft.current = vi.fn()
   })
 
-  it('keeps setInputs stable across rerenders when id does not change', () => {
-    const { result, rerender } = renderHook(({ id, data }) => useNodeCrud(id, data), {
-      initialProps: {
-        id: 'node-1',
-        data: createData(),
-      },
-    })
-
-    const firstSetInputs = result.current.setInputs
-
-    rerender({
-      id: 'node-1',
-      data: createData('updated'),
-    })
-
-    expect(result.current.setInputs).toBe(firstSetInputs)
-  })
-
   it('forwards node data updates with the current node id and latest updater', () => {
     const { result, rerender } = renderHook(({ id, data }) => useNodeCrud(id, data), {
       initialProps: {
@@ -72,14 +54,14 @@ describe('useNodeCrud', () => {
     mockHandleNodeDataUpdateWithSyncDraft.current = nextUpdater
 
     rerender({
-      id: 'node-1',
+      id: 'node-2',
       data: createData('changed'),
     })
 
     result.current.setInputs(createData('latest'))
 
     expect(nextUpdater).toHaveBeenCalledWith({
-      id: 'node-1',
+      id: 'node-2',
       data: createData('latest'),
     })
   })

@@ -4,7 +4,12 @@ const mocks = vi.hoisted(() => ({ legacyPost: vi.fn(), approveV2: vi.fn() }))
 vi.mock('../base', () => ({ get: vi.fn(), post: mocks.legacyPost }))
 vi.mock('../console', () => ({
   consoleClient: {
-    form: { humanInput: { v2: { byFormToken: { post: mocks.approveV2 } } } },
+    form: {
+      humanInput: {
+        byFormToken: { post: mocks.legacyPost },
+        v2: { byFormToken: { post: mocks.approveV2 } },
+      },
+    },
   },
 }))
 
@@ -24,7 +29,10 @@ describe('Console human input submission', () => {
   it('preserves legacy node submission', async () => {
     const data = { action: 'approve', inputs: { note: 'Approved' } }
     await submitHumanInputForm('legacy-token', data)
-    expect(mocks.legacyPost).toHaveBeenCalledWith('/form/human_input/legacy-token', { body: data })
+    expect(mocks.legacyPost).toHaveBeenCalledWith({
+      params: { form_token: 'legacy-token' },
+      body: data,
+    })
     expect(mocks.approveV2).not.toHaveBeenCalled()
   })
 })

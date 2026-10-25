@@ -13,7 +13,7 @@ import * as React from 'react'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { useStore } from '@/app/components/workflow/store'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { VersionHistoryContextMenuOptions } from '../../../types'
@@ -31,7 +31,7 @@ type ActionMenuProps = {
 const useActionMenu = (props: ActionMenuProps) => {
   const { workflowId, isNamedVersion, canImportExportDSL } = props
   const { t } = useTranslation(['app', 'common', 'workflow', 'workflowHistory'])
-  const pipelineId = useStore((s) => s.pipelineId)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -64,7 +64,7 @@ const useActionMenu = (props: ActionMenuProps) => {
             name: t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflowHistory' }),
           },
       // todo: pipeline support export specific version DSL
-      ...(canImportExportDSL && !pipelineId
+      ...(canImportExportDSL && resourceKind !== 'knowledge-pipeline'
         ? [
             {
               key: VersionHistoryContextMenuOptions.exportDSL,
@@ -85,7 +85,7 @@ const useActionMenu = (props: ActionMenuProps) => {
     plan,
     canImportExportDSL,
     isNamedVersion,
-    pipelineId,
+    resourceKind,
     shouldShowUpgrade,
     t,
     workflowId,
@@ -202,11 +202,7 @@ function ActionMenu(props: ActionMenuProps) {
           </IconButton>
         }
       />
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        className="w-max max-w-[calc(100vw-24px)] min-w-46 shadow-shadow-shadow-5"
-      >
+      <DropdownMenuContent className="w-max max-w-[calc(100vw-24px)] min-w-46 shadow-shadow-shadow-5">
         {options.map((option) => (
           <ActionMenuItem key={option.key} item={option} onClick={handleAction} />
         ))}

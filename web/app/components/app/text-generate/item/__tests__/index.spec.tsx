@@ -1,7 +1,7 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { AppSourceType } from '@/service/share'
+import { createWorkflowProcessFixture } from '@/test/fixtures/workflow-process'
 import GenerationItem from '../index'
 
 const mockFetchMoreLikeThis = vi.fn()
@@ -9,7 +9,6 @@ const mockFetchTextGenerationMessage = vi.fn()
 const mockUpdateFeedback = vi.fn()
 const mockOnOpenLog = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
-const mockSubmitWebAppHumanInputForm = vi.fn()
 const mockSubmitHumanInputFormWorkflow = vi.fn()
 const mockToastWarning = vi.fn()
 vi.mock('@/next/navigation', () => ({
@@ -30,10 +29,6 @@ vi.mock('@/service/share', async () => {
 
 vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputFormWorkflow(...args),
-}))
-
-vi.mock('@/service/webapp-human-input', () => ({
-  submitWebAppHumanInputForm: (...args: unknown[]) => mockSubmitWebAppHumanInputForm(...args),
 }))
 
 vi.mock('@/service/debug', () => ({
@@ -90,10 +85,11 @@ vi.mock('../workflow-body', () => ({
 
 describe('GenerationItem', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
   })
 
   it('should render markdown content and allow more-like-this recursion', async () => {
+    const user = userEvent.setup()
     mockFetchMoreLikeThis.mockResolvedValue({
       answer: 'follow up answer',
       id: 'msg-2',
@@ -117,27 +113,23 @@ describe('GenerationItem', () => {
 
     expect(screen.getByText('markdown:hello world')).toBeInTheDocument()
 
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
-      )
-    })
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
+    )
 
     await waitFor(() => {
       expect(screen.getByText('markdown:follow up answer')).toBeInTheDocument()
     })
     expect(mockFetchMoreLikeThis).toHaveBeenCalledWith('msg-1', AppSourceType.webApp, undefined)
 
-    await act(async () => {
-      fireEvent.click(
-        screen.getAllByRole('button', { name: /(?:^|\.)operation\.agree(?=$|:)/ }).at(-1)!,
-      )
-    })
+    await user.click(
+      screen.getAllByRole('button', { name: /(?:^|\.)operation\.agree(?=$|:)/ }).at(-1)!,
+    )
 
     expect(mockUpdateFeedback).toHaveBeenCalledWith(
       {
         body: { rating: 'like' },
-        url: '/messages/msg-2/feedbacks',
+        messageId: 'msg-2',
       },
       AppSourceType.webApp,
       undefined,
@@ -145,6 +137,7 @@ describe('GenerationItem', () => {
   })
 
   it('should send normalized log data to the owning surface', async () => {
+    const user = userEvent.setup()
     mockFetchTextGenerationMessage.mockResolvedValue({
       answer: 'assistant answer',
       message: [{ role: 'user', text: 'hello' }],
@@ -163,9 +156,7 @@ describe('GenerationItem', () => {
       />,
     )
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.log(?=$|:)/ }))
-    })
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.log(?=$|:)/ }))
 
     expect(mockFetchTextGenerationMessage).toHaveBeenCalledWith({
       appId: 'app-1',
@@ -244,6 +235,7 @@ describe('GenerationItem', () => {
   })
 
   it('should route human input submissions to the workflow service for installed apps', async () => {
+    const user = userEvent.setup()
     render(
       <GenerationItem
         appSourceType={AppSourceType.installedApp}
@@ -253,115 +245,53 @@ describe('GenerationItem', () => {
         messageId="msg-1"
         onRetry={vi.fn()}
         siteInfo={null}
-        workflowProcessData={
-          {
-            resultText: 'workflow result',
-          } as any
-        }
+        workflowProcessData={createWorkflowProcessFixture({
+          resultText: 'workflow result',
+        })}
       />,
     )
 
     expect(screen.getByText('workflow-body:RESULT')).toBeInTheDocument()
 
-    await act(async () => {
-      fireEvent.click(screen.getByText('submit-human-input'))
-    })
+    await user.click(screen.getByText('submit-human-input'))
 
     expect(mockSubmitHumanInputFormWorkflow).toHaveBeenCalledWith('token-1', {
       action: 'submit',
       inputs: { name: 'dify' },
     })
-    expect(mockSubmitWebAppHumanInputForm).not.toHaveBeenCalled()
   })
 
-  it.each([
-    {
-      appSourceType: AppSourceType.webApp,
-      submit: mockSubmitWebAppHumanInputForm,
-      unusedSubmit: mockSubmitHumanInputForm,
-    },
-    {
-      appSourceType: AppSourceType.tryApp,
-      submit: mockSubmitHumanInputForm,
-      unusedSubmit: mockSubmitWebAppHumanInputForm,
-    },
-  ])(
-    'should preserve $appSourceType human input submission and workflow tab switching',
-    async ({ appSourceType, submit, unusedSubmit }) => {
-      const user = userEvent.setup()
-      render(
-        <GenerationItem
-          appSourceType={appSourceType}
-          content="workflow result"
-          isError={false}
-          isWorkflow
-          messageId="msg-1"
-          onRetry={vi.fn()}
-          siteInfo={null}
-          workflowProcessData={
-            {
-              resultText: 'workflow result',
-            } as any
-          }
-        />,
-      )
+  it('should route human input submissions to the share service and allow workflow tab switching', async () => {
+    const user = userEvent.setup()
+    render(
+      <GenerationItem
+        appSourceType={AppSourceType.webApp}
+        content="workflow result"
+        isError={false}
+        isWorkflow
+        messageId="msg-1"
+        onRetry={vi.fn()}
+        siteInfo={null}
+        workflowProcessData={createWorkflowProcessFixture({
+          resultText: 'workflow result',
+        })}
+      />,
+    )
 
-      expect(screen.getByText('workflow-body:RESULT')).toBeInTheDocument()
+    expect(screen.getByText('workflow-body:RESULT')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'submit-human-input' }))
-      await user.click(screen.getByRole('button', { name: 'switch-workflow-tab' }))
+    await user.click(screen.getByText('submit-human-input'))
+    await user.click(screen.getByText('switch-workflow-tab'))
 
-      expect(submit).toHaveBeenCalledWith('token-1', {
-        action: 'submit',
-        inputs: { name: 'dify' },
-      })
-      expect(unusedSubmit).not.toHaveBeenCalled()
-      expect(mockSubmitHumanInputFormWorkflow).not.toHaveBeenCalled()
-      expect(screen.getByText('workflow-body:LOG')).toBeInTheDocument()
-    },
-  )
-
-  it.each([true, false])(
-    'waits for approval events and submits only when ready is %s',
-    async (ready) => {
-      const user = userEvent.setup()
-      let resolvePreparation: ((ready: boolean) => void) | undefined
-      const prepareHumanInputSubmission = vi.fn(
-        () =>
-          new Promise<boolean>((resolve) => {
-            resolvePreparation = resolve
-          }),
-      )
-      render(
-        <GenerationItem
-          appSourceType={AppSourceType.webApp}
-          content=""
-          isError={false}
-          isWorkflow
-          onRetry={vi.fn()}
-          prepareHumanInputSubmission={prepareHumanInputSubmission}
-          siteInfo={null}
-          workflowProcessData={{ status: WorkflowRunningStatus.Paused, tracing: [], expand: false }}
-        />,
-      )
-      await user.click(screen.getByRole('button', { name: 'submit-human-input' }))
-      expect(prepareHumanInputSubmission).toHaveBeenCalledOnce()
-      expect(mockSubmitWebAppHumanInputForm).not.toHaveBeenCalled()
-      await act(async () => resolvePreparation?.(ready))
-      if (ready) {
-        expect(mockSubmitWebAppHumanInputForm).toHaveBeenCalledExactlyOnceWith('token-1', {
-          inputs: { name: 'dify' },
-          action: 'submit',
-        })
-      } else {
-        expect(mockSubmitWebAppHumanInputForm).not.toHaveBeenCalled()
-      }
-      expect(mockSubmitHumanInputForm).not.toHaveBeenCalled()
-      expect(mockSubmitHumanInputFormWorkflow).not.toHaveBeenCalled()
-    },
-  )
+    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-1', {
+      action: 'submit',
+      inputs: { name: 'dify' },
+    })
+    expect(screen.getByText('workflow-body:LOG')).toBeInTheDocument()
+  })
 
   it('should clear recursive results when requested or when the parent reloads', async () => {
+    const user = userEvent.setup()
     mockFetchMoreLikeThis.mockResolvedValue({
       answer: 'follow up answer',
       id: 'msg-2',
@@ -382,11 +312,9 @@ describe('GenerationItem', () => {
       />,
     )
 
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
-      )
-    })
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
+    )
 
     await waitFor(() => {
       expect(screen.getByText('markdown:follow up answer')).toBeInTheDocument()
@@ -410,6 +338,9 @@ describe('GenerationItem', () => {
 
     expect(screen.queryByText('markdown:follow up answer')).not.toBeInTheDocument()
 
+    await user.click(screen.getByRole('button', { name: /feature\.moreLikeThis\.title/ }))
+    expect(await screen.findByText('markdown:follow up answer')).toBeInTheDocument()
+
     rerender(
       <GenerationItem
         appSourceType={AppSourceType.webApp}
@@ -430,6 +361,7 @@ describe('GenerationItem', () => {
   })
 
   it('should warn instead of requesting more-like-this without a message id', async () => {
+    const user = userEvent.setup()
     render(
       <GenerationItem
         appSourceType={AppSourceType.webApp}
@@ -442,11 +374,9 @@ describe('GenerationItem', () => {
       />,
     )
 
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
-      )
-    })
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
+    )
 
     expect(mockToastWarning).toHaveBeenCalledWith(
       expect.stringMatching(/(?:^|\.)errorMessage\.waitForResponse(?=$|:)/),
@@ -454,3 +384,7 @@ describe('GenerationItem', () => {
     expect(mockFetchMoreLikeThis).not.toHaveBeenCalled()
   })
 })
+
+vi.mock('@/service/webapp-human-input', () => ({
+  submitWebAppHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
+}))

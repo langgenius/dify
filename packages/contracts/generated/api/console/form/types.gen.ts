@@ -9,6 +9,26 @@ export type ConsoleHumanInputV2FormDefinitionResponse = {
   resolved_form: ResolvedForm
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type AlreadySubmittedError = ErrorResponse & {
+  code: 'already_submitted'
+  status: 409
+}
+
+export type ExpiredError = ErrorResponse & {
+  code: 'expired'
+  status: 410
+}
+
 export type ConsoleHumanInputV2SubmitPayload = {
   action: string
   inputs: {
@@ -20,22 +40,44 @@ export type ConsoleHumanInputV2SubmitResponse = {
   [key: string]: unknown
 }
 
+export type InvalidInputError = ErrorResponse & {
+  code: 'invalid_input'
+  status: 400
+}
+
+export type WorkflowNotActiveError = ErrorResponse & {
+  code: 'workflow_not_active'
+  status: 409
+}
+
 export type ConsoleHumanInputFormDefinitionResponse = {
   [key: string]: unknown
 }
 
+export type HumanInputFormSubmittedError = ErrorResponse & {
+  code: 'human_input_form_submitted'
+  status: 412
+}
+
 export type HumanInputFormSubmitPayload = {
   action: string
-  form_inputs: {
-    [key: string]: unknown
-  }
   inputs: {
-    [key: string]: unknown
+    [key: string]: JsonValue
   }
 }
 
 export type ConsoleHumanInputFormSubmitResponse = {
   [key: string]: unknown
+}
+
+export type InvalidFormDataError = ErrorResponse & {
+  code: 'invalid_form_data'
+  status: 400
+}
+
+export type HumanInputFormExpiredError = ErrorResponse & {
+  code: 'human_input_form_expired'
+  status: 412
 }
 
 export type ResolvedForm = {
@@ -121,11 +163,15 @@ export type GetFormHumanInputV2ByFormTokenData = {
 }
 
 export type GetFormHumanInputV2ByFormTokenErrors = {
-  401: unknown
-  404: unknown
-  409: unknown
-  410: unknown
+  401: ErrorResponse
+  404: ErrorResponse
+  409: AlreadySubmittedError | ErrorResponse
+  410: ExpiredError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetFormHumanInputV2ByFormTokenError =
+  GetFormHumanInputV2ByFormTokenErrors[keyof GetFormHumanInputV2ByFormTokenErrors]
 
 export type GetFormHumanInputV2ByFormTokenResponses = {
   200: ConsoleHumanInputV2FormDefinitionResponse
@@ -143,6 +189,16 @@ export type PostFormHumanInputV2ByFormTokenData = {
   url: '/form/human-input/v2/{form_token}'
 }
 
+export type PostFormHumanInputV2ByFormTokenErrors = {
+  400: InvalidInputError | ErrorResponse
+  409: AlreadySubmittedError | WorkflowNotActiveError | ErrorResponse
+  410: ExpiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputV2ByFormTokenError =
+  PostFormHumanInputV2ByFormTokenErrors[keyof PostFormHumanInputV2ByFormTokenErrors]
+
 export type PostFormHumanInputV2ByFormTokenResponses = {
   200: ConsoleHumanInputV2SubmitResponse
 }
@@ -159,6 +215,14 @@ export type GetFormHumanInputByFormTokenData = {
   url: '/form/human_input/{form_token}'
 }
 
+export type GetFormHumanInputByFormTokenErrors = {
+  412: HumanInputFormSubmittedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetFormHumanInputByFormTokenError =
+  GetFormHumanInputByFormTokenErrors[keyof GetFormHumanInputByFormTokenErrors]
+
 export type GetFormHumanInputByFormTokenResponses = {
   200: ConsoleHumanInputFormDefinitionResponse
 }
@@ -174,6 +238,15 @@ export type PostFormHumanInputByFormTokenData = {
   query?: never
   url: '/form/human_input/{form_token}'
 }
+
+export type PostFormHumanInputByFormTokenErrors = {
+  400: InvalidFormDataError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputByFormTokenError =
+  PostFormHumanInputByFormTokenErrors[keyof PostFormHumanInputByFormTokenErrors]
 
 export type PostFormHumanInputByFormTokenResponses = {
   200: ConsoleHumanInputFormSubmitResponse

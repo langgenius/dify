@@ -1,10 +1,10 @@
 import type { ReactElement } from 'react'
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
+import ErrorBoundary from '@/app/components/base/error-boundary'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { expectLoadingButton } from '@/test/button'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { encryptPassword } from '@/utils/encryption'
 import InstallForm from './installForm'
 
@@ -17,32 +17,46 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }))
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const responses = {
+    'setup.get': vi.fn(),
+    'setup.post': vi.fn(),
+    'init.get': vi.fn(),
+    'login.post': vi.fn(),
+  }
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, responses),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, responses),
+  }
+})
 
-vi.mock('@/service/common', () => ({
-  fetchSetupStatus: vi.fn(),
-  fetchInitValidateStatus: vi.fn(),
-  setup: vi.fn(),
-  login: vi.fn(),
-}))
+const mockFetchSetupStatus = vi.mocked(consoleClient.setup.get)
+const mockFetchInitValidateStatus = vi.mocked(consoleClient.init.get)
+const mockSetup = vi.mocked(consoleClient.setup.post)
+const mockLogin = vi.mocked(consoleClient.login.post)
 
-const mockFetchSetupStatus = vi.mocked(fetchSetupStatus)
-const mockFetchInitValidateStatus = vi.mocked(fetchInitValidateStatus)
-const mockSetup = vi.mocked(setup)
-const mockLogin = vi.mocked(login)
+const createDeferredResponse = <T,>() => {
+  let resolve: (value: T) => void
+  const promise = new Promise<T>((onResolve) => {
+    resolve = onResolve
+  })
+  return { promise, resolve: (value: T) => resolve(value) }
+}
 
 const prepareLoadedState = () => {
-  mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' } as SetupStatusResponse)
+  mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' })
   mockFetchInitValidateStatus.mockResolvedValue({
     status: 'finished',
-  } as InitValidateStatusResponse)
+  })
 }
 
 describe('InstallForm', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     prepareLoadedState()
   })
 
@@ -61,6 +75,93 @@ describe('InstallForm', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.setAdminAccount')
     expect(screen.getByRole('button', { name: /login\.installBtn/ })).toBeInTheDocument()
   })
+
+  it('waits for both bootstrap checks before showing the account form', async () => {
+    const setupStatus =
+      createDeferredResponse<Awaited<ReturnType<typeof consoleClient.setup.get>>>()
+    const initStatus = createDeferredResponse<Awaited<ReturnType<typeof consoleClient.init.get>>>()
+    mockFetchSetupStatus.mockReturnValue(setupStatus.promise)
+    mockFetchInitValidateStatus.mockReturnValue(initStatus.promise)
+
+    render(<InstallForm />)
+
+    expect(screen.queryByLabelText('login.email')).not.toBeInTheDocument()
+    expect(mockFetchInitValidateStatus).not.toHaveBeenCalled()
+
+    await act(async () => setupStatus.resolve({ step: 'not_started' }))
+    await waitFor(() => expect(mockFetchInitValidateStatus).toHaveBeenCalledTimes(1))
+    expect(screen.queryByLabelText('login.email')).not.toBeInTheDocument()
+
+    await act(async () => initStatus.resolve({ status: 'finished' }))
+    expect(await screen.findByLabelText('login.email')).toBeInTheDocument()
+  })
+
+  it('redirects to initialization without showing the account form', async () => {
+    mockFetchInitValidateStatus.mockResolvedValue({ status: 'not_started' })
+
+    render(<InstallForm />)
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/init'))
+    expect(screen.queryByLabelText('login.email')).not.toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('revalidates cached bootstrap state before displaying or redirecting', async () => {
+    const queryClient = createConsoleQueryClient()
+    queryClient.setQueryData(consoleQuery.setup.get.queryKey(), { step: 'finished' })
+    queryClient.setQueryData(consoleQuery.init.get.queryKey(), { status: 'not_started' })
+    const setupStatus =
+      createDeferredResponse<Awaited<ReturnType<typeof consoleClient.setup.get>>>()
+    const initStatus = createDeferredResponse<Awaited<ReturnType<typeof consoleClient.init.get>>>()
+    mockFetchSetupStatus.mockReturnValue(setupStatus.promise)
+    mockFetchInitValidateStatus.mockReturnValue(initStatus.promise)
+
+    renderWithConsoleQuery(<InstallForm />, { queryClient })
+
+    expect(mockPush).not.toHaveBeenCalled()
+    expect(mockFetchInitValidateStatus).not.toHaveBeenCalled()
+    expect(screen.queryByLabelText('login.email')).not.toBeInTheDocument()
+
+    await act(async () => setupStatus.resolve({ step: 'not_started' }))
+    await waitFor(() => expect(mockFetchInitValidateStatus).toHaveBeenCalledTimes(1))
+    expect(mockPush).not.toHaveBeenCalled()
+    expect(screen.queryByLabelText('login.email')).not.toBeInTheDocument()
+
+    await act(async () => initStatus.resolve({ status: 'finished' }))
+    expect(await screen.findByLabelText('login.email')).toBeInTheDocument()
+    expect(mockPush).not.toHaveBeenCalled()
+    expect(queryClient.getQueryData(consoleQuery.setup.get.queryKey())).toEqual({
+      step: 'not_started',
+    })
+    expect(queryClient.getQueryData(consoleQuery.init.get.queryKey())).toEqual({
+      status: 'finished',
+    })
+  })
+
+  it.each(['setup', 'init'] as const)(
+    'passes a failed %s check to the error boundary',
+    async (stage) => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const failedCheck = stage === 'setup' ? mockFetchSetupStatus : mockFetchInitValidateStatus
+      failedCheck.mockRejectedValue(new Error('Bootstrap unavailable'))
+
+      try {
+        render(
+          <ErrorBoundary fallback={<div role="alert">Bootstrap unavailable</div>}>
+            <InstallForm />
+          </ErrorBoundary>,
+        )
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Bootstrap unavailable')
+        expect(screen.queryByLabelText('login.email')).not.toBeInTheDocument()
+        expect(mockPush).not.toHaveBeenCalled()
+        expect(failedCheck).toHaveBeenCalledTimes(1)
+        if (stage === 'setup') expect(mockFetchInitValidateStatus).not.toHaveBeenCalled()
+      } finally {
+        consoleError.mockRestore()
+      }
+    },
+  )
 
   it('should reveal and hide the password with an accessible action', async () => {
     const user = userEvent.setup()
@@ -132,8 +233,8 @@ describe('InstallForm', () => {
   })
 
   it('should submit and redirect to the console root on successful login', async () => {
-    mockSetup.mockResolvedValue({ result: 'success' } as any)
-    mockLogin.mockResolvedValue({ result: 'success', data: { access_token: 'token' } } as any)
+    mockSetup.mockResolvedValue({ result: 'success' })
+    mockLogin.mockResolvedValue({ result: 'success', data: 'token' })
 
     render(<InstallForm />)
 
@@ -161,7 +262,6 @@ describe('InstallForm', () => {
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith({
-        url: '/login',
         body: {
           email: 'admin@example.com',
           password: encryptPassword('Password123'),
@@ -175,13 +275,11 @@ describe('InstallForm', () => {
   })
 
   it('should redirect to sign in when login fails', async () => {
-    mockSetup.mockResolvedValue({ result: 'success' } as any)
+    mockSetup.mockResolvedValue({ result: 'success' })
     mockLogin.mockResolvedValue({
       result: 'fail',
       data: 'error',
-      code: 'login_failed',
-      message: 'login failed',
-    } as any)
+    })
 
     render(<InstallForm />)
 
@@ -199,12 +297,16 @@ describe('InstallForm', () => {
   })
 
   it('should disable submit while request is in flight', async () => {
-    let resolveSetup: ((value: any) => void) | undefined
-    const setupPromise = new Promise((resolve) => {
-      resolveSetup = resolve
-    })
-    mockSetup.mockReturnValue(setupPromise as any)
-    mockLogin.mockResolvedValue({ result: 'success', data: { access_token: 'token' } } as any)
+    let resolveSetup:
+      | ((value: Awaited<ReturnType<typeof consoleClient.setup.post>>) => void)
+      | undefined
+    const setupPromise = new Promise<Awaited<ReturnType<typeof consoleClient.setup.post>>>(
+      (resolve) => {
+        resolveSetup = resolve
+      },
+    )
+    mockSetup.mockReturnValue(setupPromise)
+    mockLogin.mockResolvedValue({ result: 'success', data: 'token' })
 
     render(<InstallForm />)
 
@@ -232,12 +334,14 @@ describe('InstallForm', () => {
   })
 
   it('should redirect to sign in when setup is finished', async () => {
-    mockFetchSetupStatus.mockResolvedValue({ step: 'finished' } as SetupStatusResponse)
+    mockFetchSetupStatus.mockResolvedValue({ step: 'finished' })
 
     render(<InstallForm />)
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/signin')
     })
+    expect(mockFetchInitValidateStatus).not.toHaveBeenCalled()
+    expect(screen.queryByLabelText('login.email')).not.toBeInTheDocument()
   })
 })

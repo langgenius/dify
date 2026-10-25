@@ -87,7 +87,7 @@ def _lock_current_identity(session: Session, channel_id: IMChannelId, identity_i
             HumanInputIMIdentity.channel_id == str(channel_id),
             HumanInputIMIdentity.id == str(identity_id),
         )
-        .values(updated_at=HumanInputIMIdentity.updated_at)
+        .values({HumanInputIMIdentity.updated_at: HumanInputIMIdentity.updated_at})
         .execution_options(autoflush=False, synchronize_session=False)
     )
     if not isinstance(result, CursorResult):

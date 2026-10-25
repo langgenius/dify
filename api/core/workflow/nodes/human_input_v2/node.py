@@ -12,19 +12,23 @@ from typing import assert_never, override
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from factories.human_input_v2_form_presentation import render_filled_content
-from graphon.entities.graph_init_params import GraphInitParams
+from graphon.engine_events import NodeEvent
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionStatus
-from graphon.graph_events import GraphNodeEventBase
-from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
-from graphon.node_events.node import HumanInputFormFilledEvent, HumanInputFormTimeoutEvent, PauseRequestedEvent
+from graphon.node_events import NodeEventPayload, NodeRunResult, StreamCompletedEvent
+from graphon.node_events.node import PauseRequestedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
-from graphon.runtime.graph_runtime_state import GraphRuntimeState
+from graphon.runtime.init_params import InitParams
+from graphon.runtime.runtime_state import RuntimeState
 from graphon.variables.segments import Segment, StringSegment
 
 from .entities import HUMAN_INPUT_V2_VERSION, DynamicEmail, HumanInputNodeData
-from .events import NodeRunHumanInputV2FormRequiredEvent
+from .events import (
+    NodeRunHumanInputV2FormFilledEvent,
+    NodeRunHumanInputV2FormRequiredEvent,
+    NodeRunHumanInputV2FormTimeoutEvent,
+)
 from .runtime import HumanInputDeliveryError, HumanInputRuntime
 
 
@@ -37,15 +41,15 @@ class HumanInputNode(Node[HumanInputNodeData]):
         node_id: str,
         data: HumanInputNodeData,
         *,
-        graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
+        init_params: InitParams,
+        runtime_state: RuntimeState,
         human_input_runtime: HumanInputRuntime,
     ) -> None:
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
         self._human_input_runtime = human_input_runtime
 
@@ -55,13 +59,13 @@ class HumanInputNode(Node[HumanInputNodeData]):
         return HUMAN_INPUT_V2_VERSION
 
     @override
-    def _run(self) -> Generator[NodeEventBase | GraphNodeEventBase, None, None]:
+    def _run(self) -> Generator[NodeEventPayload | NodeEvent]:
         """Consume persisted form outcomes; only completion events select edges."""
         try:
             prepared = self._human_input_runtime.prepare_form(
                 node_execution_id=self.execution_id,
                 node_data=self.node_data,
-                variable_pool=self.graph_runtime_state.variable_pool,
+                variable_pool=self.runtime_state.variable_pool,
             )
         except HumanInputDeliveryError as error:
             yield StreamCompletedEvent(
@@ -101,7 +105,12 @@ class HumanInputNode(Node[HumanInputNodeData]):
                 action = next(action for action in resolved.actions if action.id == submission.selected_action_id)
                 inputs = submission.normalized_submission_data
                 content = render_filled_content(resolved, inputs)
-                yield HumanInputFormFilledEvent(
+                yield NodeRunHumanInputV2FormFilledEvent(
+                    id=self.execution_id,
+                    node_id=self.id,
+                    node_type=self.node_type,
+                    node_version=self.version(),
+                    form_id=form.id,
                     node_title=resolved.title,
                     action_id=action.id,
                     action_text=action.title,
@@ -119,7 +128,15 @@ class HumanInputNode(Node[HumanInputNodeData]):
                     )
                 )
             case HumanInputFormStatus.TIMEOUT:
-                yield HumanInputFormTimeoutEvent(node_title=resolved.title, expiration_time=form.expiration_time)
+                yield NodeRunHumanInputV2FormTimeoutEvent(
+                    id=self.execution_id,
+                    node_id=self.id,
+                    node_type=self.node_type,
+                    node_version=self.version(),
+                    form_id=form.id,
+                    node_title=resolved.title,
+                    expiration_time=form.expiration_time,
+                )
                 yield StreamCompletedEvent(
                     node_run_result=NodeRunResult(
                         status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -130,7 +147,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
             case HumanInputFormStatus.EXPIRED:
                 # A node failure can take an error branch. Global expiration must
                 # stop the graph itself, without dispatching a completion event.
-                self.graph_runtime_state.graph_execution.abort(f"Human input form globally expired: {form.id}")
+                self.runtime_state.graph_execution.abort(f"Human input form globally expired: {form.id}")
             case _:
                 assert_never(form.status)
 

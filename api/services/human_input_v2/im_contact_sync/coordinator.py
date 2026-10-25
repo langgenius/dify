@@ -726,7 +726,7 @@ class IMChannelReconciliationService:
                 HumanInputIMChannel.config_version == self._channel.config_version,
                 HumanInputIMChannel.provider == self._channel.provider,
             )
-            .values(updated_at=HumanInputIMChannel.updated_at)
+            .values({HumanInputIMChannel.updated_at: HumanInputIMChannel.updated_at})
             .execution_options(autoflush=False, synchronize_session=False)
         )
         if not isinstance(result, CursorResult):
@@ -746,7 +746,7 @@ class IMChannelReconciliationService:
                 *predicates,
                 HumanInputIMSyncRun.status.in_((IMSyncRunStatus.QUEUED, IMSyncRunStatus.RUNNING)),
             )
-            .values(updated_at=HumanInputIMSyncRun.updated_at)
+            .values({HumanInputIMSyncRun.updated_at: HumanInputIMSyncRun.updated_at})
             .execution_options(autoflush=False, synchronize_session=False)
         )
         if not isinstance(result, CursorResult):

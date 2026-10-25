@@ -1,6 +1,6 @@
 'use client'
 import type { LegacyHumanInputFormData } from '@/features/human-input-form/types'
-import type { HumanInputFormError } from '@/service/use-share'
+import { ORPCError } from '@orpc/client'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -28,10 +28,10 @@ const FormContent = () => {
       ? formData.site.custom_config.replace_webapp_logo
       : null
 
-  const expired = (error as HumanInputFormError | null)?.code === 'human_input_form_expired'
-  const submitted = (error as HumanInputFormError | null)?.code === 'human_input_form_submitted'
-  const rateLimitExceeded =
-    (error as HumanInputFormError | null)?.code === 'web_form_rate_limit_exceeded'
+  const errorCode = error instanceof ORPCError ? error.code : undefined
+  const expired = errorCode === 'human_input_form_expired'
+  const submitted = errorCode === 'human_input_form_submitted'
+  const rateLimitExceeded = errorCode === 'web_form_rate_limit_exceeded'
   const documentTitle = isLoading
     ? t(($) => $.loading, { ns: 'common' })
     : success

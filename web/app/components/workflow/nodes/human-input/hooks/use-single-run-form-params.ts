@@ -3,18 +3,19 @@ import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answe
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
-import { zFormInputConfig, zUserActionConfig } from '@dify/contracts/api/web/zod.gen'
+import { zFormInputConfig, zUserActionConfig } from '@dify/contracts/api/console/apps/zod.gen'
+import { useMutation } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { toast } from '@/app/notifications'
-import { consoleClient } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
+import { consoleQuery } from '@/service/console'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
 import { isHumanInputV2NodeData } from '../../human-input-v2/types'
-import { normalizeHumanInputFormInput } from '../shared/types'
+import { selectHumanInputFormPreview } from '../query-select'
 import { getHumanInputFormDependencySelectors, isOutput } from '../utils'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -34,6 +35,18 @@ const useSingleRunFormParams = ({
   getInputVars,
   setRunInputData,
 }: Params) => {
+  const { mutateAsync: previewWorkflowForm } = useMutation(
+    consoleQuery.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.preview.post.mutationOptions(),
+  )
+  const { mutateAsync: previewChatflowForm } = useMutation(
+    consoleQuery.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form.preview.post.mutationOptions(),
+  )
+  const { mutateAsync: submitWorkflowForm } = useMutation(
+    consoleQuery.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(),
+  )
+  const { mutateAsync: submitChatflowForm } = useMutation(
+    consoleQuery.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(),
+  )
   const { t } = useTranslation(['workflow', 'workflowHumanInput', 'common'])
   const { inputs } = useNodeCrud<HumanInputSharedNodeType>(id, payload)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
@@ -76,9 +89,9 @@ const useSingleRunFormParams = ({
       .filter((arr) => arr.length > 0)
   }
 
-  const appDetail = useAppStore((s) => s.appDetail)
-  const appId = appDetail?.id
-  const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
+  const resource = useAtomValue(editorResourceAtom)
+  const appId = resource.kind === 'app' ? resource.appId : undefined
+  const isWorkflowMode = resource.kind === 'app' && resource.mode === 'workflow'
   const isV2 = isHumanInputV2NodeData(payload)
   const [formSession, setFormSession] = useState({ appId, id, isSingleRun: payload._isSingleRun })
   if (
@@ -111,10 +124,6 @@ const useSingleRunFormParams = ({
       isMountedRef.current = false
     }
   }, [appId, id, payload._isSingleRun])
-  const api = isWorkflowMode
-    ? consoleClient.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form
-    : consoleClient.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form
-
   const handleFetchFormContent = useCallback(
     async (values: Record<string, string>) => {
       if (!appId) return null
@@ -139,33 +148,31 @@ const useSingleRunFormParams = ({
       const requestParamsObj = Object.fromEntries(
         Object.entries(values).filter(([, value]) => value !== undefined),
       )
-      const response = await api.preview.post({
+      const previewForm = isWorkflowMode ? previewWorkflowForm : previewChatflowForm
+      const response = await previewForm({
         params: { app_id: appId, node_id: id },
         body: { inputs: requestParamsObj },
       })
       if (!isMountedRef.current || generation !== generationSequenceRef.current) return null
-      const data: HumanInputFormData = {
+      const data = selectHumanInputFormPreview({
         ...response,
-        inputs: (response.inputs ?? []).map((input) =>
-          normalizeHumanInputFormInput(zFormInputConfig.parse(input)),
-        ),
-        actions: (response.actions ?? []).map((action) => {
-          const parsed = zUserActionConfig.parse(action)
-          return { ...parsed, button_style: parsed.button_style ?? 'default' }
-        }),
-        form_token: response.form_token ?? null,
-        display_in_ui: response.display_in_ui ?? true,
-        expiration_time: response.expiration_time ?? null,
-        // The preview endpoint documents this legacy field as an opaque mapping.
-        // Preserve the server's file/scalar defaults just as the existing renderer expects.
-        resolved_default_values: (response.resolved_default_values ??
-          {}) as HumanInputFormData['resolved_default_values'],
-      }
+        inputs: response.inputs?.map((input) => zFormInputConfig.parse(input)),
+        actions: response.actions?.map((action) => zUserActionConfig.parse(action)),
+      })
       setFormData(data)
       setRequiredInputs(requestParamsObj)
       return data
     },
-    [api, appId, id, isV2, doSyncWorkflowDraft, t],
+    [
+      appId,
+      id,
+      isWorkflowMode,
+      previewWorkflowForm,
+      previewChatflowForm,
+      isV2,
+      doSyncWorkflowDraft,
+      t,
+    ],
   )
 
   const handleSubmitHumanInputForm = useCallback(
@@ -174,10 +181,10 @@ const useSingleRunFormParams = ({
       form_inputs: Record<string, HumanInputFieldValue> | undefined
       action: string
     }) => {
-      const formInputs = formData?.inputs?.length ? formData.inputs : inputs.inputs
-
       if (!appId) return
-      await api.run.post({
+      const formInputs = formData?.inputs?.length ? formData.inputs : inputs.inputs
+      const submitForm = isWorkflowMode ? submitWorkflowForm : submitChatflowForm
+      await submitForm({
         params: { app_id: appId, node_id: id },
         body: {
           inputs: requiredInputs,
@@ -186,7 +193,16 @@ const useSingleRunFormParams = ({
         },
       })
     },
-    [api, appId, id, formData?.inputs, inputs.inputs, requiredInputs],
+    [
+      appId,
+      id,
+      isWorkflowMode,
+      submitWorkflowForm,
+      submitChatflowForm,
+      formData?.inputs,
+      inputs.inputs,
+      requiredInputs,
+    ],
   )
 
   const handleShowGeneratedForm = async (formValue: Record<string, string>) => {

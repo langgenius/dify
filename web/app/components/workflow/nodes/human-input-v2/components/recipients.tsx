@@ -438,7 +438,7 @@ const RecipientsContent = ({
                 'rounded-[5px] bg-util-colors-blue-blue-50 text-text-accent',
               invalid && 'bg-state-destructive-hover text-text-destructive',
               !readonly &&
-                'border-0 text-left focus-visible:ring-1 focus-visible:ring-state-accent-solid',
+                'border-0 text-start focus-visible:ring-1 focus-visible:ring-state-accent-solid',
             )
             const chipContent = (
               <>
@@ -509,7 +509,7 @@ const RecipientsContent = ({
                 )}
                 {recipient.type === 'all_workspace_contacts' &&
                   workspace?.contactCount !== undefined && (
-                    <span className="pr-1 text-text-tertiary">{workspace.contactCount}</span>
+                    <span className="pe-1 text-text-tertiary">{workspace.contactCount}</span>
                   )}
                 {invalid && (
                   <span className="sr-only">
@@ -685,14 +685,14 @@ const RecipientsContent = ({
           </div>
         )}
         {!readonly && (
-          <div className="flex min-h-9 items-center gap-1 py-1.5 pr-2.5 pl-1.5">
+          <div className="flex min-h-9 items-center gap-1 py-1.5 ps-1.5 pe-2.5">
             <Popover open={open} onOpenChange={handleOpenChange}>
               <PopoverTrigger
                 render={
                   <Button
                     variant="ghost"
                     size="small"
-                    className="gap-1 pr-1.5 pl-1.25 text-text-tertiary"
+                    className="gap-1 ps-1.25 pe-1.5 text-text-tertiary"
                   >
                     <span className="i-ri-account-circle-line size-3.5" aria-hidden />
                     {t(($) => $['nodes.humanInputV2.recipients.addContact'], { ns: 'workflow' })}
@@ -702,7 +702,8 @@ const RecipientsContent = ({
               <PopoverContent
                 initialFocus={searchFromInput ? false : undefined}
                 finalFocus={searchFromInput ? recipientInputRef : undefined}
-                placement="bottom-start"
+                side="bottom"
+                align="start"
                 sideOffset={4}
                 className="w-80 bg-components-panel-bg-blur p-0 backdrop-blur-[5px]"
               >
@@ -825,7 +826,7 @@ const RecipientsContent = ({
                             type="button"
                             disabled={added}
                             aria-disabled={!!conflictingContact || undefined}
-                            className="flex min-h-10 w-full items-center gap-2 rounded-lg border-0 bg-transparent py-1 pr-3 pl-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid"
+                            className="flex min-h-10 w-full items-center gap-2 rounded-lg border-0 bg-transparent py-1 ps-2 pe-3 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid"
                             onClick={() => {
                               if (!conflictingContact)
                                 add({ type: 'contact', contact_id: option.id })
@@ -891,7 +892,7 @@ const RecipientsContent = ({
                         ns: 'workflow',
                       })}
                       disabled={selectedKeys.has('initiator')}
-                      className="flex min-h-10 w-full items-center gap-2 rounded-lg border-0 bg-transparent py-1 pr-3 pl-2 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:opacity-50"
+                      className="flex min-h-10 w-full items-center gap-2 rounded-lg border-0 bg-transparent py-1 ps-2 pe-3 text-start hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:opacity-50"
                       onClick={() => add({ type: 'initiator' })}
                     >
                       <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-util-colors-indigo-indigo-500 text-text-primary-on-surface">
@@ -921,7 +922,7 @@ const RecipientsContent = ({
                         },
                       )}
                       disabled={selectedKeys.has('all_workspace_contacts')}
-                      className="flex min-h-10 w-full items-center gap-2 rounded-lg border-0 bg-transparent py-1 pr-3 pl-2 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:opacity-50"
+                      className="flex min-h-10 w-full items-center gap-2 rounded-lg border-0 bg-transparent py-1 ps-2 pe-3 text-start hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:opacity-50"
                       onClick={() => add({ type: 'all_workspace_contacts' })}
                     >
                       <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-util-colors-indigo-indigo-500 text-text-primary-on-surface">
@@ -942,7 +943,7 @@ const RecipientsContent = ({
                               ns: 'workflow',
                             })}
                           {workspace?.contactCount !== undefined && (
-                            <span className="ml-0.5 inline-flex min-w-4 items-center justify-center rounded-[5px] bg-components-badge-bg-dimm px-1 py-0.5 align-middle system-2xs-medium-uppercase text-text-tertiary inset-ring-1 inset-ring-divider-deep">
+                            <span className="ms-0.5 inline-flex min-w-4 items-center justify-center rounded-[5px] bg-components-badge-bg-dimm px-1 py-0.5 align-middle system-2xs-medium-uppercase text-text-tertiary inset-ring-1 inset-ring-divider-deep">
                               {workspace.contactCount}
                             </span>
                           )}
@@ -974,7 +975,7 @@ const RecipientsContent = ({
                   ref={variableTriggerRef}
                   variant="ghost"
                   size="small"
-                  className="gap-1 pr-1.5 pl-1.25 text-text-tertiary"
+                  className="gap-1 ps-1.25 pe-1.5 text-text-tertiary"
                 >
                   <span
                     className="i-custom-vender-line-others-global-variable size-3.5"
@@ -992,7 +993,7 @@ const RecipientsContent = ({
                 if (next !== value) onChange(next)
               }}
             />
-            <div className="ml-auto flex shrink-0 items-center gap-1">
+            <div className="ms-auto flex shrink-0 items-center gap-1">
               <Infotip>
                 <InfotipTrigger
                   aria-label={t(($) => $['nodes.humanInputV2.recipients.title'], {
@@ -1120,7 +1121,7 @@ const RecipientsContent = ({
                       aria-pressed={
                         editor.draft.type === 'contact' && editor.draft.contact_id === option.id
                       }
-                      className="flex w-full items-center justify-between rounded-md border-0 bg-transparent px-2 py-1 text-left system-xs-regular text-text-secondary hover:bg-state-base-hover focus-visible:bg-state-base-hover"
+                      className="flex w-full items-center justify-between rounded-md border-0 bg-transparent px-2 py-1 text-start system-xs-regular text-text-secondary hover:bg-state-base-hover focus-visible:bg-state-base-hover"
                       onClick={() => {
                         setEditor(
                           (current) =>
@@ -1240,7 +1241,7 @@ const RecipientsContent = ({
                   ns: 'workflow',
                   recipient: getRecipientLabel(value[editor.index]!) || editor.draft.type,
                 })}
-                className="mr-auto text-text-destructive"
+                className="me-auto text-text-destructive"
                 onClick={() => {
                   onChange(removeRecipient(value, editor.index!))
                   closeEditor()

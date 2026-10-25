@@ -19,6 +19,7 @@ from typing import NamedTuple, assert_never
 from pydantic import EmailStr, NaiveDatetime, SecretStr, TypeAdapter, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.db.session_factory import session_factory as default_session_factory
 from core.helper import encrypter
 from core.human_input_v2.entities import DebugChannel
@@ -39,7 +40,7 @@ from core.workflow.nodes.human_input_v2.node import HumanInputNode
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, PreparedForm
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variable_loader import VariableLoader, load_into_variable_pool
 from graphon.variables.segments import StringSegment
 from graphon.variables.template_resolution import convert_template
@@ -553,6 +554,3 @@ def load_prepared_forms(
             token = SecretStr(plaintext)
         prepared[form.id] = PreparedForm(form, token)
     return prepared
-
-
-from configs import dify_config

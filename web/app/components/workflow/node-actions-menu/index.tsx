@@ -107,7 +107,7 @@ function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
   }
 
   return (
-    <DropdownMenuPositioner placement="bottom-end">
+    <DropdownMenuPositioner align="end">
       <DropdownMenuPopup
         finalFocus={() => (deletingRef.current ? (flowStore.getState().domNode ?? true) : true)}
         className={`${NODE_ACTIONS_MENU_WIDTH_CLASS_NAME} border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 shadow-lg backdrop-blur-[5px]`}
@@ -128,14 +128,21 @@ function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
               <Popover modal="trap-focus">
                 <DropdownMenuItem
                   closeOnClick={false}
-                  render={<PopoverTrigger nativeButton={false} render={<div />} />}
+                  // The menu row owns the focus treatment, so the trigger adds no ring.
+                  render={
+                    <PopoverTrigger
+                      nativeButton={false}
+                      className="focus-visible:ring-0"
+                      render={<div />}
+                    />
+                  }
                   className="data-popup-open:bg-state-base-hover"
                 >
                   {t(($) => $['panel.changeBlock'], { ns: 'workflow' })}
                 </DropdownMenuItem>
                 <PopoverPortal>
                   <PopoverBackdrop />
-                  <PopoverPositioner placement="right-start" positionMethod="fixed">
+                  <PopoverPositioner side="right" align="start" positionMethod="fixed">
                     <ChangeBlockPopup
                       nodeId={model.id}
                       nodeData={model.data}

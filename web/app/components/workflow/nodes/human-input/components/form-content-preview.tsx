@@ -4,17 +4,17 @@ import type { FormInputItem, UserAction } from '../types'
 import { zFormInputConfig, zUserActionConfig } from '@dify/contracts/api/web/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Badge from '@/app/components/base/badge'
 import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { Markdown } from '@/app/components/base/markdown'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { consoleClient } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { normalizeHumanInputFormInput } from '../shared/types'
 import { Note, rehypeNotes, rehypeVariable, Variable } from './variable-in-markdown'
 
@@ -116,7 +116,8 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
 
 const ServerFormContentPreview = (props: FormContentPreviewProps & { nodeId: string }) => {
   const { t } = useTranslation(['workflow', 'common'])
-  const app = useAppStore((state) => state.appDetail)
+  const resource = useAtomValue(editorResourceAtom)
+  const app = resource.kind === 'app' ? { id: resource.appId, mode: resource.mode } : undefined
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const panelWidth = useStore((state) => state.panelWidth)
   const [result, setResult] = React.useState<{
@@ -150,7 +151,7 @@ const ServerFormContentPreview = (props: FormContentPreviewProps & { nodeId: str
       }
       if (cancelled) return
       const api =
-        app.mode === AppModeEnum.WORKFLOW
+        app.mode === 'workflow'
           ? consoleClient.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form
           : consoleClient.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form
       const response = await api.preview.post({

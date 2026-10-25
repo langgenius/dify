@@ -1,39 +1,56 @@
-import type { TextNode } from 'lexical'
+import {
+  $createParagraphNode,
+  $createRangeSelection,
+  $createTextNode,
+  $getRoot,
+  createEditor,
+} from 'lexical'
 import { getSelectedNode, urlRegExp } from '../utils'
 
-const mockIsAtNodeEnd = vi.hoisted(() => vi.fn())
-
-vi.mock('@lexical/selection', () => ({
-  $isAtNodeEnd: (...args: unknown[]) => mockIsAtNodeEnd(...args),
-}))
-
 describe('note editor utils', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  it('selects the shared text node for a range within it', () => {
+    const editor = createEditor({
+      onError: (error) => {
+        throw error
+      },
+    })
+    editor.update(
+      () => {
+        const node = $createTextNode('Example')
+        $getRoot().append($createParagraphNode().append(node))
+        const selection = $createRangeSelection()
+        selection.anchor.set(node.getKey(), 1, 'text')
+        selection.focus.set(node.getKey(), 4, 'text')
+        expect(getSelectedNode(selection)).toBe(node)
+      },
+      { discrete: true },
+    )
   })
 
-  it('returns the shared node directly when anchor and focus point to the same node', () => {
-    const node = { key: 'same-node' } as unknown as TextNode
-    const selection = {
-      anchor: { getNode: () => node },
-      focus: { getNode: () => node },
-      isBackward: () => false,
-    } as never
-
-    expect(getSelectedNode(selection)).toBe(node)
+  it('selects the focus node for a backward range ending within an earlier node', () => {
+    const editor = createEditor({
+      onError: (error) => {
+        throw error
+      },
+    })
+    editor.update(
+      () => {
+        const first = $createTextNode('First')
+        const second = $createTextNode('Second')
+        $getRoot().append(
+          $createParagraphNode().append(first),
+          $createParagraphNode().append(second),
+        )
+        const selection = $createRangeSelection()
+        selection.anchor.set(second.getKey(), 3, 'text')
+        selection.focus.set(first.getKey(), 2, 'text')
+        expect(getSelectedNode(selection)).toBe(first)
+      },
+      { discrete: true },
+    )
   })
 
-  it('chooses the focus node when selecting backward from the middle of the node', () => {
-    const anchorNode = { key: 'anchor' } as unknown as TextNode
-    const focusNode = { key: 'focus' } as unknown as TextNode
-    mockIsAtNodeEnd.mockReturnValue(false)
-    const selection = {
-      anchor: { getNode: () => anchorNode },
-      focus: { getNode: () => focusNode },
-      isBackward: () => true,
-    } as never
-
-    expect(getSelectedNode(selection)).toBe(focusNode)
+  it('recognizes a document URL', () => {
     expect(urlRegExp.test('https://dify.ai/docs')).toBe(true)
   })
 })

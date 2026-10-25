@@ -1,6 +1,6 @@
 'use client'
 
-import type { Member } from '@/models/common'
+import type { AccountWithRoleResponse as Member } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -10,7 +10,7 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { useState } from 'react'
@@ -71,10 +71,10 @@ export function MemberRemovalContactImpactDialog({
       <AlertDialogContent backdropProps={{ forceRender: true }}>
         <div className="flex flex-col gap-4 px-6 pt-6 pb-4">
           <div>
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogTitle>
               {t(($) => $['memberRemoval.title'], { memberName: member.name || member.email })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2 w-full system-sm-regular wrap-break-word text-text-tertiary">
+            <AlertDialogDescription>
               {t(
                 ($) =>
                   $[
@@ -86,11 +86,15 @@ export function MemberRemovalContactImpactDialog({
             </AlertDialogDescription>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-divider-subtle bg-background-default-subtle p-3">
-            <Avatar
-              avatar={member.avatar_url || null}
-              name={member.name || member.email}
-              size="lg"
-            />
+            <Avatar size="lg">
+              <AvatarImage
+                src={(member.avatar_url || null) ?? undefined}
+                alt={member.name || member.email}
+              />
+              <AvatarFallback>
+                {(member.name || member.email)?.[0]?.toLocaleUpperCase()}
+              </AvatarFallback>
+            </Avatar>
             <span className="min-w-0">
               <span className="block truncate system-sm-medium text-text-secondary">
                 {member.name || member.email}

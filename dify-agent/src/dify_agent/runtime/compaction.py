@@ -8,6 +8,7 @@ unused ``max_tokens=1`` values below solely to satisfy that validation; they are
 not one-token Dify policy thresholds.
 """
 
+from dify_agent.runtime.context import Deps
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai_harness.compaction import ClearToolResults, SummarizingCompaction, TieredCompaction
 
@@ -16,7 +17,7 @@ def build_compaction_capability(
     *,
     context_window_tokens: int | None,
     model_settings: ModelSettings | None,
-) -> TieredCompaction[None] | None:
+) -> TieredCompaction[Deps] | None:
     """Build compaction for the effective model window, or disable it when unknown."""
     if context_window_tokens is None:
         return None

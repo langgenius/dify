@@ -1,3 +1,5 @@
+from flask import request
+
 from core.rbac import RBACPermission, RBACResourceScope
 
 from .checks import RBAC_CHECKS_ATTR, RBACCheck, enforce_rbac_checks
@@ -28,4 +30,11 @@ __all__ = [
     "ResourceLocator",
     "Workspace",
     "enforce_rbac_checks",
+    "rbac_language",
 ]
+
+
+def rbac_language() -> str | None:
+    """Read and normalize the optional RBAC label language from the query string."""
+    value = (request.args.get("language") or "").strip().lower()
+    return value if value in {"en", "ja", "zh"} else None

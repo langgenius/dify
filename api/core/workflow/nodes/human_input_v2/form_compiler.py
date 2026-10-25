@@ -27,7 +27,7 @@ from core.workflow.nodes.human_input.entities import (
     StringSource,
 )
 from core.workflow.nodes.human_input.enums import ValueSourceType
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.segments import Segment
 from graphon.variables.template_resolution import convert_template
 

@@ -7,14 +7,16 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -161,20 +163,9 @@ export function CliToolDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden p-0">
-        <div className="relative px-6 pt-6 pb-3">
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute inset-e-6 top-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+      <DialogContent className="w-160">
+        <DialogHeader>
+          <DialogTitle>
             {t(
               ($) =>
                 $[
@@ -184,15 +175,13 @@ export function CliToolDialog({
                 ],
             )}
           </DialogTitle>
-          <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+          <DialogDescription>
             {t(($) => $['agentDetail.configure.tools.cliDialog.description'])}
           </DialogDescription>
-        </div>
-        <Form<CliToolFormValues>
-          className="min-h-0 flex-1 overflow-y-auto px-6 py-3"
-          onFormSubmit={handleSubmit}
-        >
-          <div className="flex flex-col gap-4">
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <Form<CliToolFormValues> className="contents" onFormSubmit={handleSubmit}>
+          <DialogBody className="flex flex-col gap-4">
             <Field name="installCommand">
               <FieldLabel>
                 {t(($) => $['agentDetail.configure.tools.cliDialog.installCommand.label'])}
@@ -245,36 +234,32 @@ export function CliToolDialog({
                 showScope={false}
               />
             </div>
-          </div>
-          <div className="flex items-center gap-3 py-8">
+          </DialogBody>
+          <DialogFooter>
             <a
               href={docLink()}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex min-w-0 flex-1 items-center gap-1 system-xs-regular text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              className="me-auto inline-flex min-w-0 items-center gap-1 system-xs-regular text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
               <span>{t(($) => $['agentDetail.configure.tools.cliDialog.learnMore'])}</span>
               <span aria-hidden className="i-ri-external-link-line size-3" />
             </a>
-            <div className="flex shrink-0 items-center gap-3">
-              {mode === 'edit' && tool && onDeleteCliTool && (
-                <div className="flex items-center gap-3">
-                  <Button type="button" tone="destructive" onClick={handleDelete}>
-                    {tCommon(($) => $['operation.remove'])}
-                  </Button>
-                  <div className="h-4 w-px bg-divider-regular" aria-hidden />
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Button type="button" onClick={handleCancel}>
-                  {tCommon(($) => $['operation.cancel'])}
+            {mode === 'edit' && tool && onDeleteCliTool && (
+              <>
+                <Button type="button" tone="destructive" onClick={handleDelete}>
+                  {tCommon(($) => $['operation.remove'])}
                 </Button>
-                <Button type="submit" variant="primary">
-                  {tCommon(($) => $[mode === 'edit' ? 'operation.save' : 'operation.add'])}
-                </Button>
-              </div>
-            </div>
-          </div>
+                <div className="h-4 w-px bg-divider-regular" aria-hidden />
+              </>
+            )}
+            <Button type="button" onClick={handleCancel}>
+              {tCommon(($) => $['operation.cancel'])}
+            </Button>
+            <Button type="submit" variant="primary">
+              {tCommon(($) => $[mode === 'edit' ? 'operation.save' : 'operation.add'])}
+            </Button>
+          </DialogFooter>
         </Form>
         <div className="flex items-start justify-center gap-1 border-t-[0.5px] border-divider-subtle bg-background-soft px-2 py-3">
           <span aria-hidden className="mt-0.5 i-ri-lock-2-fill size-3 text-text-tertiary" />

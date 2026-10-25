@@ -1,5 +1,5 @@
-import type { AvatarProps, AvatarSize } from '@langgenius/dify-ui/avatar'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import type { AvatarSize } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 
 const avatarColors = [
@@ -16,7 +16,10 @@ const avatarColors = [
   'bg-components-icon-bg-midnight-solid',
 ] as const
 
-type RecipientAvatarProps = Pick<AvatarProps, 'avatar' | 'name' | 'className'> & {
+type RecipientAvatarProps = {
+  avatar?: string | null
+  name: string
+  className?: string
   identity: string
   size: Extract<AvatarSize, 'xxs' | 'sm' | 'xl'>
 }
@@ -28,7 +31,7 @@ export function RecipientAvatar({ identity, avatar, name, size, className }: Rec
   )
 
   return (
-    <AvatarRoot
+    <Avatar
       size={size}
       className={cn(
         'inset-ring-[0.5px] inset-ring-divider-regular',
@@ -38,7 +41,6 @@ export function RecipientAvatar({ identity, avatar, name, size, className }: Rec
     >
       {avatar && <AvatarImage key={avatar.split('?')[0]} keepMounted src={avatar} alt={name} />}
       <AvatarFallback
-        size={size}
         className={cn(
           'bg-linear-to-br from-components-avatar-bg-mask-stop-0 to-components-avatar-bg-mask-stop-100 leading-[1.2]',
           size === 'xxs'
@@ -52,6 +54,6 @@ export function RecipientAvatar({ identity, avatar, name, size, className }: Rec
           {name[0]?.toLocaleUpperCase()}
         </span>
       </AvatarFallback>
-    </AvatarRoot>
+    </Avatar>
   )
 }

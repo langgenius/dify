@@ -2,7 +2,7 @@
 
 import type { AvatarProps } from '@langgenius/dify-ui/avatar'
 import type { ContactIMBinding, ContactIMIdentity, ContactView } from './types'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -53,9 +53,9 @@ export function ContactAvatar({
   className,
   name,
   size = 'md',
-}: Omit<AvatarProps, 'onLoadingStatusChange'>) {
+}: Pick<AvatarProps, 'size' | 'className'> & { avatar: string | null; name: string }) {
   return (
-    <AvatarRoot
+    <Avatar
       size={size}
       className={cn('data-loading:bg-background-section-burn', className)}
       render={(props, { imageLoadingStatus }) => (
@@ -79,14 +79,13 @@ export function ContactAvatar({
         />
       )}
       <AvatarFallback
-        size={size}
         render={(props, { imageLoadingStatus }) => (
           <span {...props}>
             {(!avatar || imageLoadingStatus === 'error') && name?.[0]?.toLocaleUpperCase()}
           </span>
         )}
       />
-    </AvatarRoot>
+    </Avatar>
   )
 }
 
@@ -145,7 +144,7 @@ function IMIdentityAvatar({
     0,
   )
   return (
-    <AvatarRoot
+    <Avatar
       size={size}
       className={cn(
         'border border-divider-regular',
@@ -153,7 +152,6 @@ function IMIdentityAvatar({
       )}
     >
       <AvatarFallback
-        size={size}
         className={cn(
           'bg-linear-to-br from-components-avatar-bg-mask-stop-0 to-components-avatar-bg-mask-stop-100 leading-[1.2] font-semibold',
           size === 'sm' ? 'text-[13px]' : 'text-xs',
@@ -163,7 +161,7 @@ function IMIdentityAvatar({
           {name[0]?.toLocaleUpperCase()}
         </span>
       </AvatarFallback>
-    </AvatarRoot>
+    </Avatar>
   )
 }
 
@@ -223,11 +221,11 @@ function ContactIMBindingEditor({
       }}
       className="relative flex flex-col"
     >
-      <div className="pt-6 pr-14 pb-2 pl-6">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+      <div className="ps-6 pe-14 pt-6 pb-2">
+        <DialogTitle>
           {t(($) => $['imBinding.changeTitle'], { provider: providerLabel })}
         </DialogTitle>
-        <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+        <DialogDescription>
           {centrallyManaged
             ? t(($) => $['imBinding.modeDescription'], {
                 name: contact.name,
@@ -241,7 +239,7 @@ function ContactIMBindingEditor({
           <IconButton
             aria-label={t(($) => $['action.close'])}
             size="lg"
-            className="absolute top-5 right-5"
+            className="absolute inset-e-5 top-5"
             disabled={saving}
           >
             <span aria-hidden className="i-ri-close-line size-4.5" />
@@ -265,7 +263,7 @@ function ContactIMBindingEditor({
                 <Radio value="organization" />
                 {t(($) => $['imBinding.organizationMode'])}
               </label>
-              <div className="ml-6 flex h-9 items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2.5 system-xs-regular text-text-tertiary">
+              <div className="ms-6 flex h-9 items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2.5 system-xs-regular text-text-tertiary">
                 {organizationIdentity ? (
                   <>
                     <IMIdentityAvatar identity={organizationIdentity} size="xs" />
@@ -294,7 +292,7 @@ function ContactIMBindingEditor({
           </RadioGroup>
         )}
         {(!centrallyManaged || mode === 'workspace') && (
-          <div className={cn(centrallyManaged && 'mt-1.5 ml-6')}>
+          <div className={cn(centrallyManaged && 'ms-6 mt-1.5')}>
             <Combobox
               items={options}
               filter={null}
@@ -314,7 +312,7 @@ function ContactIMBindingEditor({
             >
               <ComboboxTrigger
                 aria-label={t(($) => $['imBinding.contactLabel'])}
-                className="h-9 gap-2 rounded-lg py-1.5 pr-2.5 pl-1.5"
+                className="h-9 gap-2 rounded-lg py-1.5 ps-1.5 pe-2.5"
               >
                 {identity ? (
                   <span className="flex min-w-0 items-center gap-1.5">
@@ -348,10 +346,10 @@ function ContactIMBindingEditor({
                     }}
                   >
                     <div className="p-2 pb-1">
-                      <ComboboxInputGroup className="h-8 border-0 shadow-none hover:bg-components-input-bg-normal has-[input:focus]:bg-components-input-bg-normal has-[input:focus]:shadow-none has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-state-accent-solid data-focused:bg-components-input-bg-normal data-focused:shadow-none data-popup-open:bg-components-input-bg-normal">
+                      <ComboboxInputGroup className="h-8 border-0 shadow-none hover:bg-components-input-bg-normal has-[input:focus]:bg-components-input-bg-normal has-[input:focus]:shadow-none data-focused:bg-components-input-bg-normal data-focused:shadow-none data-popup-open:bg-components-input-bg-normal">
                         <span
                           aria-hidden
-                          className="ml-2 i-ri-search-line size-4 shrink-0 text-text-quaternary"
+                          className="ms-2 i-ri-search-line size-4 shrink-0 text-text-quaternary"
                         />
                         <ComboboxInput
                           aria-label={t(($) => $['imBinding.searchProvider'], {
@@ -360,7 +358,7 @@ function ContactIMBindingEditor({
                           placeholder={t(($) => $['imBinding.searchProvider'], {
                             provider: providerLabel,
                           })}
-                          className="h-8 py-0 pl-1.5"
+                          className="h-8 py-0 ps-1.5"
                         />
                       </ComboboxInputGroup>
                     </div>
@@ -392,13 +390,13 @@ function ContactIMBindingEditor({
                         <ComboboxItem
                           key={option.id}
                           value={option}
-                          className="flex h-8 gap-2 py-1 pr-3 pl-2"
+                          className="flex h-8 gap-2 py-1 ps-2 pe-3"
                         >
                           <IMIdentityAvatar identity={option} />
                           <span className="min-w-0 flex-1 truncate system-sm-medium">
                             {option.display_name || option.email || option.provider_user_id}
                           </span>
-                          <span className="max-w-1/2 shrink-0 truncate text-right system-xs-regular text-text-quaternary">
+                          <span className="max-w-1/2 shrink-0 truncate text-end system-xs-regular text-text-quaternary">
                             {option.email || option.provider_user_id}
                           </span>
                         </ComboboxItem>
@@ -520,7 +518,7 @@ function ContactIMChannels({
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
                 {provider === 'email' ? (
-                  <span className="truncate pr-1 system-xs-regular text-text-tertiary">
+                  <span className="truncate pe-1 system-xs-regular text-text-tertiary">
                     {contact.email}
                   </span>
                 ) : unbound ? (
@@ -601,7 +599,7 @@ function ContactIMChannels({
           if (!busy) setOpen(nextOpen)
         }}
       >
-        <DialogContent className="w-120 p-0">
+        <DialogContent className="w-120">
           {editingProvider && (
             <ContactIMBindingEditor
               key={`${editingProvider}:${context.imBindingCentrallyManaged}`}
@@ -675,7 +673,7 @@ export function ContactDetailsPanel({
       aria-label={t(($) => $['details.title'])}
       className="relative z-20 flex h-full w-80 max-w-full shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg"
     >
-      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+      <div className="absolute inset-e-2 top-2 z-10 flex items-center gap-1">
         {canManage && contact.type !== 'workspace' && (
           <DropdownMenu>
             <DropdownMenuTrigger

@@ -54,7 +54,7 @@ from services.human_input_v2.submission_service import (
     HumanInputSubmissionService,
 )
 from services.remote_file_service import RemoteFileService
-from tests.unit_tests.model_factories import make_account, make_app, make_end_user, make_tenant
+from tests.helpers.unit.model_factories import make_account, make_app, make_end_user, make_tenant
 
 
 @dataclass

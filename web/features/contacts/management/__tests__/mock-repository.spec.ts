@@ -502,7 +502,7 @@ describe('contacts API repository', () => {
     })
 
     expect(result.has_more).toBe(true)
-    expect(vi.mocked(contacts.get).mock.calls[0]?.[0].query?.group).toBeUndefined()
+    expect(vi.mocked(contacts.get).mock.calls[0]?.[0]?.query?.group).toBeUndefined()
   })
 
   it('fetches details independently and distinguishes not-found from an unavailable API', async () => {

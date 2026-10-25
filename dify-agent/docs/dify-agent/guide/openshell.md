@@ -203,7 +203,7 @@ your deployment:
   images predate it, build them from the checkout using `api/Dockerfile` and
   `dify-agent/Dockerfile`, and update the corresponding Compose service image
   references. Building the runtime image alone does not update these services.
-  Keep the Agent Backend's glibc ≥ 2.39 base (`python:3.12-slim-trixie` in its
+  Keep the Agent Backend's glibc ≥ 2.39 base (`python:3.13-slim-trixie` in its
   Dockerfile): the bundled OpenShell wheel requires it.
 - The gateway endpoint must be reachable from the `agent_backend` container.
   For a gateway on the Docker host, use `host.docker.internal:17670`, not

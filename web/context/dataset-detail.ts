@@ -1,14 +1,14 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { QueryObserverResult, RefetchOptions } from '@tanstack/react-query'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { DataSet } from '@/models/datasets'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 
 type DatasetDetailContextValue = {
   indexingTechnique?: IndexingType
-  dataset?: DataSet
+  dataset?: DatasetDetailWithPartialMembersResponse
   mutateDatasetRes?: (
     options?: RefetchOptions | undefined,
-  ) => Promise<QueryObserverResult<DataSet, Error>>
+  ) => Promise<QueryObserverResult<DatasetDetailWithPartialMembersResponse, Error>>
 }
 const DatasetDetailContext = createContext<DatasetDetailContextValue>({})
 

@@ -3,6 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * VectorSpaceLimitationModel
  */
 export const zVectorSpaceLimitationModel = z.object({
@@ -101,6 +117,7 @@ export const zFeatureModel = z.object({
   education: zEducationModel.default({ activated: false, enabled: false }),
   enable_skill: z.boolean().default(true),
   human_input_email_delivery_enabled: z.boolean().default(false),
+  im_binding_centrally_managed: z.boolean().default(false),
   is_allow_transfer_workspace: z.boolean().default(true),
   knowledge_pipeline: zKnowledgePipeline.default({ publish_enabled: false }),
   members: zLimitationModel.default({ limit: 1, size: 0 }),

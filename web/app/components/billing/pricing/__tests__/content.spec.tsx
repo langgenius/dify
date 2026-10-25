@@ -6,22 +6,26 @@ import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   createConsoleQueryWrapper,
+  seedEducationStatus,
   seedFeatures,
 } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { PricingContent } from '../content'
 
-const openBillingWindow = vi.hoisted(() => vi.fn())
-vi.mock('@/hooks/use-async-window-open', () => ({ useAsyncWindowOpen: () => openBillingWindow }))
+let billingPopup: {
+  location: { href: string }
+  opener: Window | null
+  close: ReturnType<typeof vi.fn>
+}
+beforeEach(() => {
+  billingPopup = { location: { href: '' }, opener: window, close: vi.fn() }
+  vi.spyOn(window, 'open').mockImplementation(() => billingPopup as unknown as Window)
+})
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
 }))
 
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: () => 'en-US',
-}))
 vi.mock('../plans/self-hosted-plan-item/list', () => ({ SelfHostedPlanFeatures: () => null }))
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -160,6 +164,58 @@ it('shows yearly pricing immediately for a cached eligible education account', (
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
+it.each(['year', 'month'] as const)(
+  'takes an active education subscription directly to Team checkout with %s billing',
+  async (interval) => {
+    const user = userEvent.setup()
+    const { queryClient, show } = setup()
+    seedFeatures(queryClient, {
+      billing: { subscription: { plan: 'professional', interval: 'year' } },
+      education: { enabled: true, activated: true },
+    })
+    seedEducationStatus(queryClient, { is_student: true })
+    const checkoutUrl = 'https://billing.example.com/team-checkout'
+    const checkout = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ url: checkoutUrl }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
+    show()
+    if (interval === 'month') await user.click(screen.getByRole('switch'))
+
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith(checkoutUrl))
+    expect(checkout).toHaveBeenCalledTimes(1)
+    const requestUrl = new URL((checkout.mock.calls[0]?.[0] as Request).url)
+    expect(requestUrl.pathname).toBe('/console/api/billing/subscription')
+    expect(requestUrl.searchParams.get('plan')).toBe('team')
+    expect(requestUrl.searchParams.get('interval')).toBe(interval)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  },
+)
+
+it('offers education pricing before Team checkout when the discount has not been activated', async () => {
+  const user = userEvent.setup()
+  const { queryClient, show } = setup()
+  seedFeatures(queryClient, { education: { enabled: true, activated: false } })
+  seedEducationStatus(queryClient, { is_student: true })
+  const checkout = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    new Response(JSON.stringify({ url: 'https://billing.example.com/team-checkout' }), {
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  )
+  show()
+
+  await user.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
+
+  expect(
+    await screen.findByRole('dialog', { name: 'education.educationPricingConfirm.title' }),
+  ).toBeVisible()
+  expect(checkout).not.toHaveBeenCalled()
+})
+
 it('keeps plan information visible after a request failure and restores billing on retry', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()
@@ -191,7 +247,6 @@ it('keeps plan information visible after a request failure and restores billing 
 
 afterEach(() => {
   vi.restoreAllMocks()
-  openBillingWindow.mockReset()
 })
 
 it('keeps the current paid plan billing action available while education loads or fails', async () => {
@@ -201,7 +256,7 @@ it('keeps the current paid plan billing action available while education loads o
     queries: { retry: false, retryOnMount: false, staleTime: Infinity },
   })
   seedFeatures(queryClient, {
-    billing: { subscription: { plan: 'professional' } },
+    billing: { subscription: { plan: 'professional', interval: 'month' } },
     education: { enabled: true },
   })
   let rejectEducation!: (error: Error) => void
@@ -220,12 +275,11 @@ it('keeps the current paid plan billing action available while education loads o
         headers: { 'Content-Type': 'application/json' },
       }),
   )
-  openBillingWindow.mockImplementation((getUrl: () => Promise<string>) => getUrl())
   show()
   expect(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' })).toBeEnabled()
   expect(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' })).toBeDisabled()
   await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
-  await waitFor(() => expect(openBillingWindow).toHaveResolvedWith('https://billing.example.com'))
+  await waitFor(() => expect(billingPopup.location.href).toBe('https://billing.example.com'))
   await act(async () => {
     rejectEducation(new Error('Unavailable'))
     await request
@@ -253,6 +307,57 @@ it('uses the visible billing label to name and toggle the switch', async () => {
   expect(screen.getByText('$59')).toBeVisible()
 })
 
+it.each([
+  ['professional', 'month', 'year'],
+  ['professional', 'year', 'month'],
+  ['team', 'month', 'year'],
+  ['team', 'year', 'month'],
+] as const)(
+  'checks out %s when changing from %s to %s',
+  async (plan, currentInterval, selectedInterval) => {
+    const user = userEvent.setup()
+    const { queryClient, show } = setup()
+    seedFeatures(queryClient, {
+      billing: { subscription: { plan, interval: currentInterval } },
+    })
+    const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
+    const fetchCheckout = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ url: 'https://checkout.example.com' }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    show()
+    if (selectedInterval === 'year') await user.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('https://checkout.example.com'))
+    const request = fetchCheckout.mock.calls[0]?.[0]
+    const requestUrl = request instanceof Request ? request.url : String(request)
+    expect(requestUrl).toContain('/billing/subscription')
+    expect(requestUrl).toContain(`plan=${plan}`)
+    expect(requestUrl).toContain(`interval=${selectedInterval}`)
+    expect(window.open).not.toHaveBeenCalled()
+  },
+)
+
+it.each(['month', 'year'] as const)(
+  'opens the portal for the current %s subscription',
+  async (interval) => {
+    const user = userEvent.setup()
+    const { queryClient, show } = setup()
+    seedFeatures(queryClient, {
+      billing: { subscription: { plan: 'professional', interval } },
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ url: 'https://billing.example.com' }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    show()
+    if (interval === 'year') await user.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    await waitFor(() => expect(billingPopup.location.href).toBe('https://billing.example.com'))
+  },
+)
 it('includes the marketplace in the Premium purchase link name', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()

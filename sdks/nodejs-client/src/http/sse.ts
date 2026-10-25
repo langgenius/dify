@@ -1,6 +1,7 @@
 import type { Readable } from 'node:stream'
 import type { BinaryStream, DifyStream, Headers, JsonValue, StreamEvent } from '../types/common'
 import { StringDecoder } from 'node:string_decoder'
+import { APIError } from '../errors/dify-error'
 import { isRecord } from '../internal/type-guards'
 
 const toBufferChunk = (chunk: unknown): Buffer => {
@@ -74,11 +75,11 @@ export const parseSseStream = async function* <T>(stream: Readable): AsyncIterab
       continue
     }
     if (line.startsWith('event:')) {
-      eventName = line.slice('event:'.length).trim()
+      eventName = line.slice('event:'.length).replace(/^ /, '')
       continue
     }
     if (line.startsWith('data:')) {
-      dataLines.push(line.slice('data:'.length).trimStart())
+      dataLines.push(line.slice('data:'.length).replace(/^ /, ''))
       continue
     }
   }
@@ -92,6 +93,10 @@ const extractTextFromEvent = (data: unknown): string => {
   }
   if (!isRecord(data)) {
     return ''
+  }
+  // Workflow apps stream their text output as `text_chunk` events, which nest it under `data`.
+  if (data.event === 'text_chunk') {
+    return isRecord(data.data) && typeof data.data.text === 'string' ? data.data.text : ''
   }
   if (typeof data.answer === 'string') {
     return data.answer
@@ -120,6 +125,23 @@ export const createSseStream = <T>(
     toText: async () => {
       let text = ''
       for await (const event of iterable) {
+        if (isRecord(event.data) && event.data.event === 'error') {
+          throw new APIError(
+            typeof event.data.message === 'string'
+              ? event.data.message
+              : 'Stream returned an error',
+            {
+              statusCode: typeof event.data.status === 'number' ? event.data.status : undefined,
+              responseBody: event.data,
+              requestId: meta.requestId,
+            },
+          )
+        }
+        // Output moderation sends `message_replace` with the full answer that replaces everything streamed so far.
+        if (isRecord(event.data) && event.data.event === 'message_replace') {
+          text = typeof event.data.answer === 'string' ? event.data.answer : ''
+          continue
+        }
         text += extractTextFromEvent(event.data)
       }
       return text

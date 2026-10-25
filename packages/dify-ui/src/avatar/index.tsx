@@ -1,59 +1,52 @@
 'use client'
 
-import type { ImageLoadingStatus } from '@base-ui/react/avatar'
+import type { VariantProps } from 'class-variance-authority'
+import type * as React from 'react'
 import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
+import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 
-const avatarSizeClasses = {
-  xxs: { root: 'size-4', text: 'text-[7px]' },
-  xs: { root: 'size-5', text: 'text-[8px]' },
-  sm: { root: 'size-6', text: 'text-[10px]' },
-  md: { root: 'size-8', text: 'text-xs' },
-  lg: { root: 'size-9', text: 'text-sm' },
-  xl: { root: 'size-10', text: 'text-base' },
-  '2xl': { root: 'size-12', text: 'text-xl' },
-  '3xl': { root: 'size-16', text: 'text-2xl' },
-} as const
+const avatarSizeVariants = cva('', {
+  variants: {
+    size: {
+      xxs: '[--avatar-font-size:7px] [--avatar-size:--spacing(4)]',
+      xs: '[--avatar-font-size:8px] [--avatar-size:--spacing(5)]',
+      sm: '[--avatar-font-size:10px] [--avatar-size:--spacing(6)]',
+      md: '[--avatar-font-size:var(--text-xs)] [--avatar-size:--spacing(8)]',
+      lg: '[--avatar-font-size:var(--text-sm)] [--avatar-size:--spacing(9)]',
+      xl: '[--avatar-font-size:var(--text-base)] [--avatar-size:--spacing(10)]',
+      '2xl': '[--avatar-font-size:var(--text-xl)] [--avatar-size:--spacing(12)]',
+      '3xl': '[--avatar-font-size:var(--text-2xl)] [--avatar-size:--spacing(16)]',
+    },
+  },
+})
 
-type AvatarSize = keyof typeof avatarSizeClasses
+const avatarClassName =
+  'relative inline-flex size-[var(--avatar-size,--spacing(8))] shrink-0 items-center justify-center overflow-hidden rounded-full align-middle text-[length:var(--avatar-font-size,var(--text-xs))] ring-components-panel-bg select-none group-[&]/avatar-group:ring-1'
 
-type AvatarProps = {
-  name: string
-  avatar: string | null
-  size?: AvatarSize
-  className?: string
-  onLoadingStatusChange?: (status: ImageLoadingStatus) => void
-}
+type AvatarSize = NonNullable<VariantProps<typeof avatarSizeVariants>['size']>
+type AvatarProps = BaseAvatar.Root.Props & { size?: AvatarSize }
 
-type AvatarRootProps = BaseAvatar.Root.Props & {
-  size?: AvatarSize
-}
-function AvatarRoot({ size = 'md', className, ...props }: AvatarRootProps) {
+function Avatar({ size, className, ...props }: AvatarProps) {
   return (
     <BaseAvatar.Root
       className={(state) =>
-        cn(
-          'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-600 select-none',
-          avatarSizeClasses[size].root,
-          resolveClassName(className, state),
-        )
+        cn(avatarClassName, avatarSizeVariants({ size }), resolveClassName(className, state))
       }
       {...props}
     />
   )
 }
 
-type AvatarFallbackProps = BaseAvatar.Fallback.Props & {
-  size?: AvatarSize
-}
-function AvatarFallback({ size = 'md', className, ...props }: AvatarFallbackProps) {
+type AvatarFallbackProps = BaseAvatar.Fallback.Props
+
+function AvatarFallback({ className, ...props }: AvatarFallbackProps) {
   return (
     <BaseAvatar.Fallback
       className={(state) =>
         cn(
-          'flex size-full items-center justify-center font-medium text-white',
-          avatarSizeClasses[size].text,
+          'absolute inset-0 flex size-full items-center justify-center bg-primary-600 font-medium text-white',
           resolveClassName(className, state),
         )
       }
@@ -63,28 +56,62 @@ function AvatarFallback({ size = 'md', className, ...props }: AvatarFallbackProp
 }
 
 type AvatarImageProps = BaseAvatar.Image.Props
+
 function AvatarImage({ className, ...props }: AvatarImageProps) {
   return (
     <BaseAvatar.Image
       className={(state) =>
-        cn('absolute inset-0 size-full object-cover', resolveClassName(className, state))
+        cn(
+          'absolute inset-0 size-full object-cover data-error:invisible data-loading:invisible',
+          resolveClassName(className, state),
+        )
       }
       {...props}
     />
   )
 }
 
-function Avatar({ name, avatar, size = 'md', className, onLoadingStatusChange }: AvatarProps) {
+type AvatarGroupProps = React.ComponentProps<'span'> & { size?: AvatarSize }
+
+function AvatarGroup({ size, className, ...props }: AvatarGroupProps) {
   return (
-    <AvatarRoot size={size} className={className}>
-      {avatar && (
-        <AvatarImage src={avatar} alt={name} onLoadingStatusChange={onLoadingStatusChange} />
+    <span
+      className={cn(
+        'group/avatar-group isolate inline-flex items-center -space-x-1 align-middle',
+        avatarSizeVariants({ size }),
+        className,
       )}
-      <AvatarFallback size={size}>{name?.[0]?.toLocaleUpperCase()}</AvatarFallback>
-    </AvatarRoot>
+      {...props}
+    />
   )
 }
 
-export { Avatar, AvatarFallback, AvatarImage, AvatarRoot }
+type AvatarGroupCountProps = React.ComponentProps<'span'> & { size?: AvatarSize }
 
-export type { AvatarFallbackProps, AvatarImageProps, AvatarProps, AvatarRootProps, AvatarSize }
+function AvatarGroupCount({ size, className, children, ...props }: AvatarGroupCountProps) {
+  return (
+    <span
+      className={cn(
+        avatarClassName,
+        avatarSizeVariants({ size }),
+        'bg-components-icon-bg-midnight-solid',
+        className,
+      )}
+      {...props}
+    >
+      <span className="bg-linear-to-b from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold text-transparent opacity-90">
+        {children}
+      </span>
+    </span>
+  )
+}
+
+export { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage }
+export type {
+  AvatarFallbackProps,
+  AvatarGroupCountProps,
+  AvatarGroupProps,
+  AvatarImageProps,
+  AvatarProps,
+  AvatarSize,
+}

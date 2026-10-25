@@ -3,9 +3,65 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AlreadySubmittedError
+ */
+export const zAlreadySubmittedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('already_submitted'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * ExpiredError
+ */
+export const zExpiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('expired'),
+    status: z.literal(410),
+  }),
+)
+
+/**
  * ConsoleHumanInputV2SubmitResponse
  */
 export const zConsoleHumanInputV2SubmitResponse = z.record(z.string(), z.unknown())
+
+/**
+ * InvalidInputError
+ */
+export const zInvalidInputError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_input'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * WorkflowNotActiveError
+ */
+export const zWorkflowNotActiveError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_not_active'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * ConsoleHumanInputFormDefinitionResponse
@@ -13,18 +69,41 @@ export const zConsoleHumanInputV2SubmitResponse = z.record(z.string(), z.unknown
 export const zConsoleHumanInputFormDefinitionResponse = z.record(z.string(), z.unknown())
 
 /**
- * HumanInputFormSubmitPayload
+ * HumanInputFormSubmittedError
+ *
+ * This form has already been submitted by another user, form_id={form_id}
  */
-export const zHumanInputFormSubmitPayload = z.object({
-  action: z.string(),
-  form_inputs: z.record(z.string(), z.unknown()),
-  inputs: z.record(z.string(), z.unknown()),
-})
+export const zHumanInputFormSubmittedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_submitted'),
+    status: z.literal(412),
+  }),
+)
 
 /**
  * ConsoleHumanInputFormSubmitResponse
  */
 export const zConsoleHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
+
+/**
+ * InvalidFormDataError
+ */
+export const zInvalidFormDataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_form_data'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * HumanInputFormExpiredError
+ */
+export const zHumanInputFormExpiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_expired'),
+    status: z.literal(412),
+  }),
+)
 
 export const zJsonValue = z.unknown()
 
@@ -32,6 +111,16 @@ export const zJsonValue = z.unknown()
  * ConsoleHumanInputV2SubmitPayload
  */
 export const zConsoleHumanInputV2SubmitPayload = z.object({
+  action: z.string(),
+  inputs: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * HumanInputFormSubmitPayload
+ *
+ * Legacy Human Input v1 submit payload shared by existing runtime surfaces.
+ */
+export const zHumanInputFormSubmitPayload = z.object({
   action: z.string(),
   inputs: z.record(z.string(), zJsonValue),
 })
@@ -130,11 +219,11 @@ export const zFileListInput = z.object({
 })
 
 export const zFormPart = z.discriminatedUnion('type', [
-  zMarkdownFragment.extend({ type: z.literal('markdown_fragment') }),
-  zParagraphInput.extend({ type: z.literal('paragraph_input') }),
-  zSelectInput.extend({ type: z.literal('select_input') }),
-  zFileInput.extend({ type: z.literal('file_input') }),
-  zFileListInput.extend({ type: z.literal('file_list_input') }),
+  zMarkdownFragment,
+  zParagraphInput,
+  zSelectInput,
+  zFileInput,
+  zFileListInput,
 ])
 
 /**

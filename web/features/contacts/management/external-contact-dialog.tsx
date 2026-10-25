@@ -1,7 +1,7 @@
 'use client'
 
 import type { ContactView } from './types'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -72,7 +72,7 @@ function ContactAvatar({
   name: string
 }) {
   return (
-    <AvatarRoot
+    <Avatar
       className={cn(
         'size-24 border-2 border-components-panel-bg data-loading:bg-background-section-burn',
         fallbackName ? 'bg-text-accent' : 'bg-components-avatar-default-avatar-bg',
@@ -99,7 +99,6 @@ function ContactAvatar({
         />
       )}
       <AvatarFallback
-        size="3xl"
         className={cn(
           'relative overflow-hidden rounded-full inset-ring-[0.5px] inset-ring-divider-regular',
           fallbackName && 'text-5xl leading-[1.2] font-semibold',
@@ -115,13 +114,13 @@ function ContactAvatar({
                 <img
                   alt=""
                   src={defaultAvatarPeople}
-                  className="absolute top-[21.43%] left-1/8 h-[121.43%] w-3/4 max-w-none"
+                  className="absolute inset-s-1/8 top-[21.43%] h-[121.43%] w-3/4 max-w-none"
                 />
               ))}
           </span>
         )}
       />
-    </AvatarRoot>
+    </Avatar>
   )
 }
 
@@ -277,12 +276,12 @@ export function ExternalContactDialog({
       onOpenChange={(nextOpen) => !nextOpen && closeDialog()}
       disablePointerDismissal={busy}
     >
-      <DialogContent className="w-104 max-w-[calc(100vw-2rem)] border-0 p-0 ring-[0.5px] ring-components-panel-border">
+      <DialogContent className="w-104 max-w-[calc(100vw-2rem)]">
         <DialogClose
           render={
             <IconButton
               aria-label={t(($) => $['action.close'])}
-              className="absolute top-5 right-5"
+              className="absolute inset-e-5 top-5"
               disabled={busy}
               size="lg"
             >
@@ -290,8 +289,8 @@ export function ExternalContactDialog({
             </IconButton>
           }
         />
-        <div className="h-14.5 pt-6 pr-14 pb-3 pl-6">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+        <div className="h-14.5 ps-6 pe-14 pt-6 pb-3">
+          <DialogTitle>
             {t(($) => $[contact ? 'external.editTitle' : 'external.title'])}
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -308,10 +307,10 @@ export function ExternalContactDialog({
                 avatar={avatarUrl}
                 fallbackName={draft.displayName.trim()}
                 name=""
-                className="absolute -top-33 left-0 size-108 opacity-20 blur-[80px]"
+                className="absolute inset-s-0 -top-33 size-108 opacity-20 blur-[80px]"
               />
-              <img alt="" src={avatarInnerRing} className="absolute top-5.5 left-38.5 size-31" />
-              <img alt="" src={avatarOuterRing} className="absolute top-1.5 left-34.5 size-39" />
+              <img alt="" src={avatarInnerRing} className="absolute inset-s-38.5 top-5.5 size-31" />
+              <img alt="" src={avatarOuterRing} className="absolute inset-s-34.5 top-1.5 size-39" />
             </div>
             <button
               type="button"
@@ -326,7 +325,7 @@ export function ExternalContactDialog({
                 fallbackName={draft.displayName.trim()}
                 name={draft.displayName}
               />
-              <span className="absolute right-0 bottom-0 flex size-8 items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text shadow-xs backdrop-blur-[5px]">
+              <span className="absolute inset-e-0 bottom-0 flex size-8 items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text shadow-xs backdrop-blur-[5px]">
                 <span
                   aria-hidden
                   className={

@@ -7,7 +7,7 @@ from typing import override
 
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, HumanInputRuntime, PreparedForm
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
 
 from .delivery_service import HumanInputDeliveryService

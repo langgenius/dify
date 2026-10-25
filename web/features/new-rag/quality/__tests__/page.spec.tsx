@@ -1,0 +1,1366 @@
+import type { KnowledgeFsProductPermission } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { createHttpError } from '@/service/http-error'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
+import { QualityPage } from '../page'
+
+// The evaluation panel and report have their own suite; this page only routes to them.
+vi.mock('../quality-evaluation-panel', () => ({
+  EvaluationReport: ({ onBack, runId }: { onBack: () => void; runId: string }) => (
+    <div>
+      Report {runId}
+      <button type="button" onClick={onBack}>
+        Back to evaluations
+      </button>
+    </div>
+  ),
+  QualityEvaluationPanel: ({ onOpenReport }: { onOpenReport: (runId: string) => void }) => (
+    <div>
+      Evaluation panel
+      <button type="button" onClick={() => onOpenReport('run-1')}>
+        Open report
+      </button>
+    </div>
+  ),
+}))
+
+const serviceMock = vi.hoisted(() => ({
+  bulkImport: vi.fn(),
+  createGolden: vi.fn(),
+  deleteGolden: vi.fn(),
+  getBadCase: vi.fn(),
+  getBadCases: vi.fn(),
+  getGolden: vi.fn(),
+  getTraceReference: vi.fn(),
+  matchEvidence: vi.fn(),
+  updateBadCase: vi.fn(),
+  updateGolden: vi.fn(),
+}))
+
+const routerMock = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+}))
+
+const navigationMock = vi.hoisted(() => ({
+  run: undefined as string | undefined,
+  tab: undefined as string | undefined,
+}))
+const knowledgeSpacePermissionState = vi.hoisted(() => ({
+  keys: ['knowledge_space_edit'] as KnowledgeFsProductPermission[],
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => routerMock,
+}))
+
+vi.mock('@/app/notifications', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const space = 'knowledgeFs.spaces.byControlSpaceId'
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      [`${space}.goldenQuestions.evidenceMatches.post`]: serviceMock.matchEvidence,
+      [`${space}.quality.badCases.byBadCaseId.get`]: serviceMock.getBadCase,
+      [`${space}.quality.badCases.byBadCaseId.patch`]: serviceMock.updateBadCase,
+      [`${space}.quality.badCases.byBadCaseId.traceReference.get`]: serviceMock.getTraceReference,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      [`${space}.goldenQuestions.bulkImport.post`]: serviceMock.bulkImport,
+      [`${space}.goldenQuestions.byQuestionId.delete`]: serviceMock.deleteGolden,
+      [`${space}.goldenQuestions.byQuestionId.patch`]: serviceMock.updateGolden,
+      [`${space}.goldenQuestions.get`]: serviceMock.getGolden,
+      [`${space}.goldenQuestions.evidenceMatches.post`]: serviceMock.matchEvidence,
+      [`${space}.goldenQuestions.post`]: serviceMock.createGolden,
+      [`${space}.quality.badCases.get`]: serviceMock.getBadCases,
+    }),
+  }
+})
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
+
+function delayedCsvFile(name: string, content: string) {
+  const gate = deferred<void>()
+  const file = new File([content], name, { type: 'text/csv' })
+  Object.defineProperty(file, 'text', { value: () => gate.promise.then(() => content) })
+  return { file, finishReading: () => gate.resolve() }
+}
+
+function renderPage() {
+  const onUrlUpdate = vi.fn()
+  const searchParams = new URLSearchParams({
+    ...(navigationMock.run ? { run: navigationMock.run } : {}),
+    ...(navigationMock.tab ? { tab: navigationMock.tab } : {}),
+  }).toString()
+  const rendered = renderWithConsoleQuery(
+    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
+      <KnowledgeSpaceTestProvider
+        space={createKnowledgeSpaceFixture({ permission_keys: knowledgeSpacePermissionState.keys })}
+      >
+        <QualityPage />
+      </KnowledgeSpaceTestProvider>
+    </NuqsTestingAdapter>,
+  )
+  return { ...rendered, onUrlUpdate }
+}
+
+describe('QualityPage', () => {
+  beforeEach(() => {
+    knowledgeSpacePermissionState.keys = ['knowledge_space_edit']
+    navigationMock.run = undefined
+    navigationMock.tab = undefined
+    serviceMock.getGolden.mockResolvedValue({
+      data: [
+        {
+          annotation: 'Must cite the refund clause.',
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'golden-1',
+          question: 'What is the refund policy?',
+          tags: ['billing'],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+    serviceMock.getBadCases.mockResolvedValue({
+      data: [
+        {
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'bad-1',
+          question: 'Refund after activation',
+          reason: 'coverage gap',
+          revision: 1,
+          status: 'open',
+          tags: ['billing'],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+    serviceMock.createGolden.mockResolvedValue({
+      annotation: 'Expected answer',
+      created_at: '2026-07-29T00:00:00Z',
+      id: 'golden-2',
+      question: 'New question',
+      tags: ['billing'],
+      updated_at: '2026-07-29T00:00:00Z',
+    })
+    serviceMock.matchEvidence.mockResolvedValue({ candidates: [], evidence: '', matched: false })
+    serviceMock.bulkImport.mockResolvedValue({ active_count: 0, draft_count: 0, items: [] })
+    serviceMock.getTraceReference.mockResolvedValue({ trace_id: 'trace-42' })
+    serviceMock.getBadCase.mockResolvedValue({
+      created_at: '2026-07-28T00:00:00Z',
+      id: 'bad-1',
+      question: 'Refund after activation',
+      reason: 'coverage gap',
+      replay_run_id: null,
+      revision: 1,
+      status: 'open',
+      tags: ['billing'],
+      updated_at: '2026-07-28T00:00:00Z',
+    })
+  })
+
+  it('does not load golden questions or bad cases for the evaluation tab', async () => {
+    navigationMock.tab = 'evaluations'
+
+    renderPage()
+
+    expect(await screen.findByText('Evaluation panel')).toBeInTheDocument()
+    expect(serviceMock.getGolden).not.toHaveBeenCalled()
+    expect(serviceMock.getBadCases).not.toHaveBeenCalled()
+  })
+
+  it('keeps quality mutations hidden for viewers while preserving trace access', async () => {
+    const user = userEvent.setup()
+    knowledgeSpacePermissionState.keys = []
+    const rendered = renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    expect(
+      screen.queryByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
+      }),
+    ).not.toBeInTheDocument()
+
+    rendered.unmount()
+    navigationMock.tab = 'bad-cases'
+    renderPage()
+    await screen.findByText('Refund after activation')
+    await user.click(
+      screen.getByRole('button', {
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
+      }),
+    )
+    expect(
+      await screen.findByRole('menuitem', {
+        name: 'knowledgeQuality.qualityPage.openTrace',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'knowledgeQuality.qualityPage.replay' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'knowledgeQuality.qualityPage.ignore' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps the selected tab in the URL without adding history entries', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = renderPage()
+
+    const goldenTab = await screen.findByRole('tab', {
+      name: 'knowledgeQuality.qualityPage.goldenTab',
+    })
+    const badCasesTab = screen.getByRole('tab', {
+      name: 'knowledgeQuality.qualityPage.badCasesTab',
+    })
+    expect(goldenTab).toHaveAttribute('aria-selected', 'true')
+    await user.click(badCasesTab)
+
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('tab')).toBe('bad-cases')
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].options.history).toBe('replace')
+  })
+
+  it('owns evaluation report navigation in the URL', async () => {
+    const user = userEvent.setup()
+    navigationMock.tab = 'evaluations'
+    const { onUrlUpdate } = renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Open report' }))
+
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('run')).toBe('run-1'),
+    )
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].options.history).toBe('push')
+  })
+
+  it('renders a URL-selected evaluation report outside the tab chrome', async () => {
+    const user = userEvent.setup()
+    navigationMock.run = 'run-1'
+    navigationMock.tab = 'evaluations'
+    const { onUrlUpdate } = renderPage()
+
+    expect(await screen.findByText('Report run-1')).toBeInTheDocument()
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Back to evaluations' }))
+
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('run')).toBeNull(),
+    )
+  })
+
+  it('renders an empty golden-question annotation without an empty interactive control', async () => {
+    serviceMock.getGolden.mockResolvedValue({
+      data: [
+        {
+          annotation: '',
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'golden-1',
+          question: 'What is the refund policy?',
+          tags: ['billing'],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '' })).not.toBeInTheDocument()
+  })
+
+  it('renders persisted quality data and creates a golden question through the API', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByText('What is the refund policy?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
+    await user.type(
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.questionPlaceholder'),
+      'New question',
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
+
+    await waitFor(() => expect(serviceMock.createGolden).toHaveBeenCalled())
+    expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
+      body: {
+        annotation: '',
+        expected_evidence_ids: [],
+        match_policy: 'all',
+        question: 'New question',
+        tags: [],
+      },
+      params: { control_space_id: 'space-1' },
+    })
+  })
+
+  it('submits comma-separated tags', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
+    await user.type(
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.questionPlaceholder'),
+      'New question',
+    )
+    await user.type(
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.annotationPlaceholder'),
+      'Expected answer',
+    )
+    const dialog = screen.getByRole('dialog')
+    const tagsInput = within(dialog).getByPlaceholderText(
+      'knowledgeQuality.qualityPage.tagsPlaceholder',
+    )
+    await user.type(tagsInput, 'billing, sso')
+
+    expect(tagsInput).toHaveValue('billing, sso')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
+
+    await waitFor(() =>
+      expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
+        body: {
+          annotation: 'Expected answer',
+          expected_evidence_ids: [],
+          match_policy: 'all',
+          question: 'New question',
+          tags: ['billing', 'sso'],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+  })
+
+  it('uses a human-readable search only to select the persisted evidence node id', async () => {
+    serviceMock.matchEvidence.mockResolvedValue({
+      candidates: [
+        {
+          document_asset_id: 'document-1',
+          node_id: 'node-1',
+          projection_id: 'projection-1',
+          score: 0.91,
+          section_path: ['Refund policy'],
+          text: 'Customers can request a refund within 30 days.',
+        },
+      ],
+      evidence: 'refund within 30 days',
+      matched: true,
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
+    await user.type(
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.questionPlaceholder'),
+      'When can I request a refund?',
+    )
+    await user.type(
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.annotationPlaceholder'),
+      'The answer must cite the refund window.',
+    )
+    await user.type(
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.evidencePlaceholder'),
+      'refund within 30 days',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.findEvidence' }),
+    )
+    await user.click(await screen.findByText('Customers can request a refund within 30 days.'))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
+
+    expect(serviceMock.matchEvidence.mock.calls[0]?.[0]).toEqual({
+      body: { evidence: 'refund within 30 days' },
+      params: { control_space_id: 'space-1' },
+    })
+    await waitFor(() =>
+      expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
+        body: {
+          annotation: 'The answer must cite the refund window.',
+          expected_evidence_ids: ['node-1'],
+          match_policy: 'all',
+          question: 'When can I request a refund?',
+          tags: [],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+  })
+
+  it('keeps one evidence match policy selected and submits the chosen value', async () => {
+    serviceMock.matchEvidence.mockResolvedValue({
+      candidates: [
+        {
+          document_asset_id: 'document-1',
+          node_id: 'node-1',
+          projection_id: 'projection-1',
+          score: 0.91,
+          section_path: ['Refund policy'],
+          text: 'Customers can request a refund within 30 days.',
+        },
+        {
+          document_asset_id: 'document-2',
+          node_id: 'node-2',
+          projection_id: 'projection-2',
+          score: 0.82,
+          section_path: ['Cancellation policy'],
+          text: 'Subscriptions can be cancelled before renewal.',
+        },
+      ],
+      evidence: 'refund and cancellation policy',
+      matched: true,
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
+    await user.type(
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.questionPlaceholder'),
+      'When can I request a refund?',
+    )
+    await user.type(
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.annotationPlaceholder'),
+      'The answer must cite both policies.',
+    )
+    await user.type(
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.evidencePlaceholder'),
+      'refund and cancellation policy',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.findEvidence' }),
+    )
+    await user.click(
+      await screen.findByRole('checkbox', {
+        name: /Customers can request a refund within 30 days\./,
+      }),
+    )
+    await user.click(
+      screen.getByRole('checkbox', {
+        name: /Subscriptions can be cancelled before renewal\./,
+      }),
+    )
+
+    const matchPolicy = screen.getByRole('radiogroup', {
+      name: 'knowledgeQuality.qualityPage.matchPolicyLabel',
+    })
+    expect(matchPolicy).toBeRequired()
+    const all = within(matchPolicy).getByRole('radio', {
+      name: 'knowledgeQuality.qualityPage.matchPolicy.all',
+    })
+    const any = within(matchPolicy).getByRole('radio', {
+      name: 'knowledgeQuality.qualityPage.matchPolicy.any',
+    })
+    expect(all).toHaveAttribute('type', 'button')
+    expect(any).toHaveAttribute('type', 'button')
+    expect(all).toBeChecked()
+    expect(any).not.toBeChecked()
+
+    await user.click(all)
+    expect(all).toBeChecked()
+    await user.click(any)
+    expect(all).not.toBeChecked()
+    expect(any).toBeChecked()
+    expect(serviceMock.createGolden).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
+
+    await waitFor(() =>
+      expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
+        body: {
+          annotation: 'The answer must cite both policies.',
+          expected_evidence_ids: ['node-1', 'node-2'],
+          match_policy: 'any',
+          question: 'When can I request a refund?',
+          tags: [],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+  })
+
+  it('parses a CSV and sends all rows through one bulk-import mutation', async () => {
+    serviceMock.bulkImport.mockResolvedValue({ active_count: 1, draft_count: 1, items: [] })
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }))
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]')
+    expect(fileInput).not.toBeNull()
+    await user.upload(
+      fileInput!,
+      new File(
+        [
+          'question,evidence,tags\nWhat is the refund window?,Refunds are available for 30 days,"billing,policy"\nHow is SSO enabled?,Enable SSO in settings,enterprise',
+        ],
+        'golden-questions.csv',
+        { type: 'text/csv' },
+      ),
+    )
+
+    expect(await screen.findByText('What is the refund window?')).toBeInTheDocument()
+    const importButtons = screen.getAllByRole('button', {
+      name: 'knowledgeQuality.qualityPage.importCsv',
+    })
+    await user.click(importButtons.at(-1)!)
+
+    await waitFor(() =>
+      expect(serviceMock.bulkImport.mock.calls[0]?.[0]).toEqual({
+        body: {
+          rows: [
+            {
+              evidence: 'Refunds are available for 30 days',
+              question: 'What is the refund window?',
+              tags: ['billing', 'policy'],
+            },
+            {
+              evidence: 'Enable SSO in settings',
+              question: 'How is SSO enabled?',
+              tags: ['enterprise'],
+            },
+          ],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+  })
+
+  it('requires only the question and allows an empty annotation', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
+
+    expect(screen.getByText('knowledgeQuality.qualityPage.questionRequired')).toBeInTheDocument()
+    expect(
+      screen.queryByText('knowledgeQuality.qualityPage.annotationRequired'),
+    ).not.toBeInTheDocument()
+    expect(serviceMock.createGolden).not.toHaveBeenCalled()
+
+    await user.type(
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.questionPlaceholder'),
+      'New question',
+    )
+    expect(
+      screen.queryByText('knowledgeQuality.qualityPage.questionRequired'),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
+
+    await waitFor(() =>
+      expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
+        body: {
+          annotation: '',
+          expected_evidence_ids: [],
+          match_policy: 'all',
+          question: 'New question',
+          tags: [],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+  })
+
+  it('explains when evidence matching is unavailable instead of showing an unknown error', async () => {
+    serviceMock.matchEvidence.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 503 })),
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
+    await user.type(
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.evidencePlaceholder'),
+      'refund within 30 days',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.findEvidence' }),
+    )
+
+    expect(
+      await screen.findByText('knowledgeQuality.qualityPage.noEvidenceMatch'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('dataset.unknownError')).not.toBeInTheDocument()
+  })
+
+  it('reveals the full annotation and submits edits through the update contract', async () => {
+    const user = userEvent.setup()
+    serviceMock.updateGolden.mockResolvedValue({})
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    const annotation = screen.getByRole('button', { name: 'Must cite the refund clause.' })
+    await user.hover(annotation)
+    await waitFor(() => expect(screen.getAllByText('Must cite the refund clause.')).toHaveLength(2))
+
+    await user.click(
+      screen.getByRole('button', {
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'knowledgeQuality.qualityPage.edit' }),
+    )
+    const annotationInput = screen.getByPlaceholderText(
+      'knowledgeQuality.qualityPage.annotationPlaceholder',
+    )
+    const tagsInput = screen.getByPlaceholderText('knowledgeQuality.qualityPage.tagsPlaceholder')
+    expect(tagsInput).toHaveValue('billing')
+    await user.click(tagsInput)
+    expect(tagsInput).toHaveFocus()
+    await user.clear(tagsInput)
+    await user.type(tagsInput, 'billing, sso')
+    await user.clear(annotationInput)
+    await user.type(annotationInput, 'Updated expected answer')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
+
+    await waitFor(() =>
+      expect(serviceMock.updateGolden).toHaveBeenCalledWith({
+        body: {
+          annotation: 'Updated expected answer',
+          expected_evidence_ids: [],
+          match_policy: 'all',
+          question: 'What is the refund policy?',
+          tags: ['billing', 'sso'],
+        },
+        params: { control_space_id: 'space-1', question_id: 'golden-1' },
+      }),
+    )
+    expect(
+      screen.queryByRole('dialog', { name: 'knowledgeQuality.qualityPage.editTitle' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('resolves and displays saved evidence passages while keeping the search query ephemeral', async () => {
+    serviceMock.getGolden.mockResolvedValue({
+      data: [
+        {
+          annotation: 'Must cite both permission rules.',
+          created_at: '2026-07-28T00:00:00Z',
+          evidence_text: '权限',
+          expected_evidence_ids: ['node-1', 'node-2'],
+          id: 'golden-1',
+          match_policy: 'all',
+          question: 'Who can change permissions?',
+          status: 'active',
+          tags: ['permissions'],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+    serviceMock.matchEvidence.mockImplementation(
+      async ({ body }: { body: { evidence?: string; node_ids?: string[] } }) => {
+        if (body.node_ids) {
+          return {
+            candidates: [
+              {
+                document_asset_id: 'document-1',
+                node_id: 'node-1',
+                section_path: ['Permissions', 'Owners'],
+                text: 'Workspace owners can change member permissions.',
+              },
+              {
+                document_asset_id: 'document-1',
+                node_id: 'node-2',
+                section_path: ['Permissions', 'Admins'],
+                text: 'Administrators can assign application roles.',
+              },
+            ],
+            evidence: '',
+            matched: false,
+          }
+        }
+        return { candidates: [], evidence: body.evidence ?? '', matched: false }
+      },
+    )
+    serviceMock.updateGolden.mockResolvedValue({})
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Who can change permissions?')
+    await user.click(
+      screen.getByRole('button', {
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'knowledgeQuality.qualityPage.edit' }),
+    )
+
+    expect(await screen.findByText('Workspace owners can change member permissions.')).toBeVisible()
+    expect(screen.getByText('Administrators can assign application roles.')).toBeVisible()
+    expect(serviceMock.matchEvidence.mock.calls[0]?.[0]).toEqual({
+      body: { node_ids: ['node-1', 'node-2'] },
+      params: { control_space_id: 'space-1' },
+    })
+
+    const search = screen.getByRole('searchbox', {
+      name: 'knowledgeQuality.qualityPage.findEvidence',
+    })
+    expect(search).toHaveValue('')
+    await user.type(search, '权限')
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.findEvidence' }),
+    )
+    await waitFor(() => expect(search).toHaveValue(''))
+    expect(screen.getByText('Workspace owners can change member permissions.')).toBeVisible()
+    expect(screen.getByText('Administrators can assign application roles.')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }))
+    await waitFor(() =>
+      expect(serviceMock.updateGolden).toHaveBeenCalledWith({
+        body: {
+          annotation: 'Must cite both permission rules.',
+          expected_evidence_ids: ['node-1', 'node-2'],
+          match_policy: 'all',
+          question: 'Who can change permissions?',
+          tags: ['permissions'],
+        },
+        params: { control_space_id: 'space-1', question_id: 'golden-1' },
+      }),
+    )
+  })
+
+  it('resolves the protected trace reference before navigating', async () => {
+    const user = userEvent.setup()
+    navigationMock.tab = 'bad-cases'
+    renderPage()
+
+    await screen.findByText('Refund after activation')
+    await user.click(
+      await screen.findByRole('button', {
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'knowledgeQuality.qualityPage.openTrace',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(serviceMock.getTraceReference).toHaveBeenCalledWith({
+        params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+      }),
+    )
+    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/retrieval?trace=trace-42')
+  })
+
+  it('presents legacy retrieval-test reasons that duplicated the question as retrieval misses', async () => {
+    serviceMock.getBadCases.mockResolvedValue({
+      data: [
+        {
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'bad-legacy-retrieval-test',
+          question: 'Why is the Earth square?',
+          reason: 'Why is the Earth square?',
+          revision: 1,
+          status: 'open',
+          tags: ['retrieval-test'],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+    navigationMock.tab = 'bad-cases'
+
+    renderPage()
+
+    expect(await screen.findAllByText('Why is the Earth square?')).toHaveLength(1)
+    expect(
+      screen.getByText('knowledgeSpace.qualityPage.reasonValues.retrievalMiss'),
+    ).toBeInTheDocument()
+  })
+
+  it('loads the next page of golden questions through the cursor contract', async () => {
+    serviceMock.getGolden.mockImplementation(
+      async (input: { query?: { cursor?: string } } | undefined) =>
+        input?.query?.cursor === 'golden-cursor-2'
+          ? {
+              data: [
+                {
+                  annotation: 'Second-page answer',
+                  created_at: '2026-07-27T00:00:00Z',
+                  id: 'golden-2',
+                  question: 'Second-page question',
+                  tags: [],
+                  updated_at: '2026-07-27T00:00:00Z',
+                },
+              ],
+              next_cursor: null,
+            }
+          : {
+              data: [
+                {
+                  annotation: 'Must cite the refund clause.',
+                  created_at: '2026-07-28T00:00:00Z',
+                  id: 'golden-1',
+                  question: 'What is the refund policy?',
+                  tags: ['billing'],
+                  updated_at: '2026-07-28T00:00:00Z',
+                },
+              ],
+              next_cursor: 'golden-cursor-2',
+            },
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+
+    expect(await screen.findByText('Second-page question')).toBeInTheDocument()
+    expect(serviceMock.getGolden).toHaveBeenLastCalledWith({
+      params: { control_space_id: 'space-1' },
+      query: { cursor: 'golden-cursor-2', limit: 50 },
+    })
+  })
+
+  it('keeps loading bad cases when a page only contains dismissed rows', async () => {
+    serviceMock.getBadCases.mockImplementation(
+      async (input: { query?: { cursor?: string } } | undefined) =>
+        input?.query?.cursor === 'bad-case-cursor-2'
+          ? {
+              data: [
+                {
+                  created_at: '2026-07-27T00:00:00Z',
+                  id: 'bad-2',
+                  question: 'Visible second-page case',
+                  reason: 'retrieval miss',
+                  revision: 1,
+                  status: 'open',
+                  tags: [],
+                  updated_at: '2026-07-27T00:00:00Z',
+                },
+              ],
+              next_cursor: null,
+            }
+          : {
+              data: [
+                {
+                  created_at: '2026-07-28T00:00:00Z',
+                  id: 'bad-dismissed',
+                  question: 'Dismissed first-page case',
+                  reason: 'resolved',
+                  revision: 2,
+                  status: 'dismissed',
+                  tags: [],
+                  updated_at: '2026-07-28T00:00:00Z',
+                },
+              ],
+              next_cursor: 'bad-case-cursor-2',
+            },
+    )
+    navigationMock.tab = 'bad-cases'
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(
+      await screen.findByText('knowledgeQuality.qualityPage.badCasesEmptyTitle'),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+
+    expect(await screen.findByText('Visible second-page case')).toBeInTheDocument()
+    expect(serviceMock.getBadCases).toHaveBeenLastCalledWith({
+      params: { control_space_id: 'space-1' },
+      query: { cursor: 'bad-case-cursor-2', limit: 50 },
+    })
+  })
+
+  it('requires confirmation and clears hidden selections when switching tabs', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(
+      screen.getByRole('checkbox', {
+        name: /knowledgeQuality\.qualityPage\.selectQuestion/,
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.deleteEllipsis' }),
+    )
+
+    expect(serviceMock.deleteGolden).not.toHaveBeenCalled()
+    expect(screen.getByText('common.operation.deleteConfirmTitle')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(
+      screen.getByRole('tab', { name: /knowledgeQuality\.qualityPage\.badCasesTab/ }),
+    )
+
+    expect(
+      screen.queryByRole('button', { name: 'knowledgeQuality.qualityPage.deleteEllipsis' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('opens the source trace in retrieval test and requests one retest', async () => {
+    navigationMock.tab = 'bad-cases'
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Refund after activation')
+    await user.click(
+      screen.getByRole('button', {
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'knowledgeQuality.qualityPage.replay',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith(
+        '/datasets/new/space-1/retrieval?retest=trace-42&trace=trace-42',
+      ),
+    )
+    expect(serviceMock.createGolden).not.toHaveBeenCalled()
+    expect(serviceMock.updateBadCase).not.toHaveBeenCalled()
+  })
+
+  it('ignores a bad case by dismissing it without creating a golden question', async () => {
+    let ignored = false
+    serviceMock.getBadCases.mockImplementation(async () => ({
+      data: [
+        {
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'bad-1',
+          question: 'Refund after activation',
+          reason: 'coverage gap',
+          revision: ignored ? 2 : 1,
+          status: ignored ? 'dismissed' : 'open',
+          tags: ['billing'],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    }))
+    serviceMock.updateBadCase.mockImplementation(async () => {
+      ignored = true
+      return {
+        ...(await serviceMock.getBadCase()),
+        revision: 2,
+        status: 'dismissed',
+      }
+    })
+    navigationMock.tab = 'bad-cases'
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Refund after activation')
+    await user.click(
+      screen.getByRole('button', {
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'knowledgeQuality.qualityPage.ignore',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(serviceMock.updateBadCase).toHaveBeenCalledWith({
+        body: {
+          expected_revision: 1,
+          status: 'dismissed',
+          tags: ['billing'],
+        },
+        params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+      }),
+    )
+    await waitFor(() =>
+      expect(screen.queryByText('Refund after activation')).not.toBeInTheDocument(),
+    )
+    expect(serviceMock.createGolden).not.toHaveBeenCalled()
+  })
+
+  it('creates a golden question and dismisses its source bad case', async () => {
+    serviceMock.getBadCase.mockResolvedValue({
+      created_at: '2026-07-28T00:00:00Z',
+      id: 'bad-1',
+      question: 'Refund after activation',
+      reason: 'coverage gap',
+      replay_run_id: null,
+      revision: 1,
+      status: 'open',
+      tags: ['billing', 'golden-question:deleted-golden'],
+      updated_at: '2026-07-28T00:00:00Z',
+    })
+    serviceMock.createGolden.mockResolvedValue({
+      annotation: 'coverage gap',
+      created_at: '2026-07-29T00:00:00Z',
+      id: 'replacement-golden',
+      question: 'Refund after activation',
+      tags: ['billing'],
+      updated_at: '2026-07-29T00:00:00Z',
+    })
+    serviceMock.updateBadCase.mockResolvedValue({
+      ...(await serviceMock.getBadCase()),
+      revision: 2,
+      status: 'dismissed',
+      tags: ['billing'],
+    })
+    navigationMock.tab = 'bad-cases'
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Refund after activation')
+    await user.click(
+      screen.getByRole('button', {
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'knowledgeQuality.qualityPage.toGolden',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.promote' }))
+
+    await waitFor(() => expect(serviceMock.createGolden).toHaveBeenCalledTimes(1))
+    expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
+      body: {
+        annotation: '',
+        expected_evidence_ids: [],
+        match_policy: 'all',
+        question: 'Refund after activation',
+        source_bad_case_id: 'bad-1',
+        tags: ['billing'],
+      },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(serviceMock.updateBadCase.mock.calls[0]?.[0]).toEqual({
+      body: {
+        expected_revision: 1,
+        status: 'dismissed',
+        tags: ['billing'],
+      },
+      params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+    })
+  })
+
+  it('resumes a partially promoted bad case without creating a duplicate', async () => {
+    navigationMock.tab = 'bad-cases'
+    serviceMock.updateBadCase
+      .mockRejectedValueOnce(new Error('dismiss failed'))
+      .mockResolvedValueOnce({ status: 'dismissed' })
+    serviceMock.deleteGolden.mockRejectedValueOnce(new Error('rollback failed'))
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Refund after activation')
+    await user.click(
+      screen.getByRole('button', {
+        name: /knowledgeQuality\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'knowledgeQuality.qualityPage.toGolden',
+      }),
+    )
+    const promote = screen.getByRole('button', {
+      name: 'knowledgeQuality.qualityPage.promote',
+    })
+
+    await user.click(promote)
+    await screen.findByText('dataset.unknownError')
+    await user.click(promote)
+
+    await waitFor(() => expect(serviceMock.updateBadCase).toHaveBeenCalledTimes(2))
+    expect(serviceMock.createGolden).toHaveBeenCalledTimes(1)
+    expect(serviceMock.deleteGolden).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps only failed items selected after a partial bulk delete', async () => {
+    serviceMock.getGolden.mockResolvedValue({
+      data: [
+        {
+          annotation: '',
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'golden-1',
+          question: 'First question',
+          tags: [],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+        {
+          annotation: '',
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'golden-2',
+          question: 'Second question',
+          tags: [],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+    serviceMock.deleteGolden.mockImplementation(
+      async (input: { params: { question_id: string } }) => {
+        if (input.params.question_id === 'golden-2') throw new Error('temporary failure')
+      },
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('First question')
+    await user.click(
+      screen.getByRole('checkbox', { name: 'knowledgeQuality.qualityPage.selectAll' }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.deleteEllipsis' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() => expect(serviceMock.deleteGolden).toHaveBeenCalledTimes(2))
+    expect(
+      screen.getByRole('checkbox', {
+        hidden: true,
+        name: /knowledgeQuality\.qualityPage\.selectQuestion.*First question/,
+      }),
+    ).not.toBeChecked()
+    expect(
+      screen.getByRole('checkbox', {
+        hidden: true,
+        name: /knowledgeQuality\.qualityPage\.selectQuestion.*Second question/,
+      }),
+    ).toBeChecked()
+
+    serviceMock.deleteGolden.mockResolvedValue(undefined)
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() => expect(serviceMock.deleteGolden).toHaveBeenCalledTimes(3))
+    expect(serviceMock.deleteGolden.mock.calls[2]?.[0]).toMatchObject({
+      params: { question_id: 'golden-2' },
+    })
+  })
+
+  it('exposes golden questions and bad cases as tables with column headers', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    const goldenTable = await screen.findByRole('table', {
+      name: 'knowledgeQuality.qualityPage.goldenTab',
+    })
+    expect(
+      within(goldenTable)
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent),
+    ).toEqual([
+      'knowledgeSpace.qualityPage.question',
+      'knowledgeQuality.qualityPage.statusLabel',
+      'knowledgeQuality.qualityPage.tags',
+      'knowledgeQuality.qualityPage.annotation',
+      'knowledgeQuality.qualityPage.updated',
+    ])
+    expect(
+      within(goldenTable).getByRole('rowheader', { name: 'What is the refund policy?' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'knowledgeQuality.qualityPage.badCasesTab' }))
+    const badCasesTable = await screen.findByRole('table', {
+      name: 'knowledgeQuality.qualityPage.badCasesTab',
+    })
+    expect(within(badCasesTable).getAllByRole('columnheader')).toHaveLength(4)
+    expect(
+      within(badCasesTable).getByRole('rowheader', { name: 'Refund after activation' }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps only the latest CSV selection when an earlier read finishes later', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }))
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]')!
+    const first = delayedCsvFile(
+      'first.csv',
+      'question,evidence,tags\nFirst file question,First evidence,',
+    )
+    const second = delayedCsvFile(
+      'second.csv',
+      'question,evidence,tags\nSecond file question,Second evidence,',
+    )
+    await user.upload(fileInput, first.file)
+    await user.upload(fileInput, second.file)
+
+    second.finishReading()
+    expect(await screen.findByText('Second file question')).toBeInTheDocument()
+    first.finishReading()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(screen.queryByText('First file question')).not.toBeInTheDocument()
+    expect(screen.getByText('second.csv')).toBeInTheDocument()
+    await user.click(
+      screen.getAllByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }).at(-1)!,
+    )
+    await waitFor(() =>
+      expect(serviceMock.bulkImport.mock.calls[0]?.[0].body.rows).toEqual([
+        expect.objectContaining({ evidence: 'Second evidence', question: 'Second file question' }),
+      ]),
+    )
+  })
+
+  it('withdraws loaded CSV rows while a replacement file is being read', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }))
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]')!
+    await user.upload(
+      fileInput,
+      new File(['question,evidence,tags\nFirst file question,First evidence,'], 'first.csv', {
+        type: 'text/csv',
+      }),
+    )
+    expect(await screen.findByText('First file question')).toBeInTheDocument()
+    const second = delayedCsvFile(
+      'second.csv',
+      'question,evidence,tags\nSecond file question,Second evidence,',
+    )
+    await user.upload(fileInput, second.file)
+
+    const importButton = screen
+      .getAllByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' })
+      .at(-1)!
+    expect(screen.queryByText('First file question')).not.toBeInTheDocument()
+    expect(importButton).toBeDisabled()
+    await user.click(importButton)
+    expect(serviceMock.bulkImport).not.toHaveBeenCalled()
+
+    second.finishReading()
+    expect(await screen.findByText('Second file question')).toBeInTheDocument()
+    expect(importButton).toBeEnabled()
+  })
+
+  it('locks the CSV selection while an import is in flight', async () => {
+    const importResult = deferred<{ active_count: number; draft_count: number; items: [] }>()
+    serviceMock.bulkImport.mockReturnValue(importResult.promise)
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }))
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]')!
+    await user.upload(
+      fileInput,
+      new File(['question,evidence,tags\nFirst file question,First evidence,'], 'first.csv', {
+        type: 'text/csv',
+      }),
+    )
+    await screen.findByText('First file question')
+    const importButton = screen
+      .getAllByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' })
+      .at(-1)!
+    await user.click(importButton)
+    await waitFor(() => expect(serviceMock.bulkImport).toHaveBeenCalledTimes(1))
+
+    expect(fileInput).toBeDisabled()
+    await user.upload(
+      fileInput,
+      new File(['question,evidence,tags\nSecond file question,Second evidence,'], 'second.csv', {
+        type: 'text/csv',
+      }),
+    )
+    expect(screen.getByText('First file question')).toBeInTheDocument()
+    expect(importButton).toHaveAttribute('aria-disabled', 'true')
+
+    importResult.resolve({ active_count: 0, draft_count: 1, items: [] })
+    expect(
+      await screen.findByText('knowledgeQuality.qualityPage.importComplete'),
+    ).toBeInTheDocument()
+  })
+
+  it('freezes the golden-question draft while a save is pending', async () => {
+    const saved = deferred<unknown>()
+    serviceMock.createGolden.mockReturnValue(saved.promise)
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
+    const dialog = screen.getByRole('dialog')
+    const question = within(dialog).getByPlaceholderText(
+      'knowledgeQuality.qualityPage.questionPlaceholder',
+    )
+    await user.type(question, 'New question')
+    const save = within(dialog).getByRole('button', { name: 'knowledgeQuality.qualityPage.save' })
+    await user.click(save)
+    await waitFor(() => expect(serviceMock.createGolden).toHaveBeenCalledTimes(1))
+
+    expect(save).toHaveAttribute('aria-disabled', 'true')
+    expect(save).not.toHaveAttribute('disabled')
+    expect(question).toBeDisabled()
+    expect(
+      within(dialog).getByPlaceholderText('knowledgeQuality.qualityPage.annotationPlaceholder'),
+    ).toBeDisabled()
+    expect(
+      within(dialog).getByPlaceholderText('knowledgeQuality.qualityPage.tagsPlaceholder'),
+    ).toBeDisabled()
+    await user.type(question, ' edited')
+    expect(question).toHaveValue('New question')
+
+    saved.resolve({})
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('freezes the promotion draft while the golden question is being created', async () => {
+    const created = deferred<unknown>()
+    serviceMock.createGolden.mockReturnValue(created.promise)
+    navigationMock.tab = 'bad-cases'
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Refund after activation')
+    await user.click(
+      screen.getByRole('button', { name: /knowledgeQuality\.qualityPage\.questionActions/ }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'knowledgeQuality.qualityPage.toGolden' }),
+    )
+    const dialog = screen.getByRole('dialog')
+    await user.click(
+      within(dialog).getByRole('button', { name: 'knowledgeQuality.qualityPage.promote' }),
+    )
+    await waitFor(() => expect(serviceMock.createGolden).toHaveBeenCalledTimes(1))
+
+    expect(
+      within(dialog).getByPlaceholderText('knowledgeQuality.qualityPage.questionPlaceholder'),
+    ).toBeDisabled()
+    expect(
+      within(dialog).getByPlaceholderText('knowledgeQuality.qualityPage.annotationPlaceholder'),
+    ).toBeDisabled()
+  })
+})

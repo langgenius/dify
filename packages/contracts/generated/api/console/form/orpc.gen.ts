@@ -3,6 +3,15 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAlreadySubmittedError,
+  zExpiredError,
+  zHumanInputFormExpiredError,
+  zHumanInputFormSubmittedError,
+  zInvalidFormDataError,
+  zInvalidInputError,
+  zWorkflowNotActiveError,
+} from './zod.gen.ts'
+import {
   zGetFormHumanInputByFormTokenPath,
   zGetFormHumanInputByFormTokenResponse,
   zGetFormHumanInputV2ByFormTokenPath,
@@ -29,6 +38,10 @@ export const get = oc
   })
   .input(z.object({ params: zGetFormHumanInputV2ByFormTokenPath }))
   .output(zGetFormHumanInputV2ByFormTokenResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+  })
 
 export const post = oc
   .route({
@@ -45,6 +58,12 @@ export const post = oc
     }),
   )
   .output(zPostFormHumanInputV2ByFormTokenResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+    invalid_input: { status: 400, data: zInvalidInputError },
+    workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
+  })
 
 export const byFormToken = {
   get,
@@ -72,6 +91,7 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
   .output(zGetFormHumanInputByFormTokenResponse)
+  .errors({ human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError } })
 
 /**
  * Submit human input form by form token
@@ -104,6 +124,11 @@ export const post2 = oc
     }),
   )
   .output(zPostFormHumanInputByFormTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_form_data: { status: 400, data: zInvalidFormDataError },
+  })
 
 export const byFormToken2 = {
   get: get2,

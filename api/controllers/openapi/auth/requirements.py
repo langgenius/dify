@@ -9,9 +9,9 @@ Per-request caching belongs in `loaders.py`, which stores into `Context`.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from enum import IntEnum
-from typing import ClassVar, override
+from typing import ClassVar, Final, override
 
 from flask import request
 from sqlalchemy.orm import Session
@@ -19,19 +19,30 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from constants.oauth_bearer import Scope
-from controllers.common.rbac import RBACCheck, enforce_rbac_checks
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace, enforce_rbac_checks
 from controllers.openapi._audit import emit_wrong_surface
-from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
+from controllers.openapi._errors import (
+    AppModeMismatch,
+    MemberLicenseExceeded,
+    MemberLimitExceeded,
+    PluginInstallForbidden,
+    ServiceApiDisabled,
+    WebAppAccessRequiresEE,
+)
+from controllers.openapi._models import Hint
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
-from controllers.openapi.auth.subjects import Subject
+from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject, Subject
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
-from models.account import TenantAccountRole
+from models import AppMode
+from models.account import TenantAccountRole, TenantPluginInstallPermission
 from models.enums import CreatorUserRole
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 from services.entities.feature_entities import LicenseStatus
 from services.errors.workspace import WorkspaceInvitationQuotaError, WorkspaceMemberLicenseQuotaError
+from services.feature_service import FeatureService
+from services.plugin.plugin_permission_service import PluginPermissionService
 from services.system_feature_service import SystemFeatureService
 
 _DEAD_LICENSE_STATUSES = frozenset({LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST})
@@ -80,13 +91,21 @@ def assert_license_valid() -> None:
         raise Forbidden("license_invalid")
 
 
+# The routes live in `app_info`, which imports this module, so the op ids are spelled out; a test pins them.
+SET_SERVICE_API_OP: Final = "set.service_api"
+SET_AGENT_SERVICE_API_OP: Final = "set.service_api.agent"
+
+
 class CheckAppApiEnabled(Requirement):
     rank = Rank.EARLY
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if not load_app(ctx).enable_api:
-            raise Forbidden("service_api_disabled")
+        app = load_app(ctx)
+        if not app.enable_api:
+            op = SET_AGENT_SERVICE_API_OP if app.mode == AppMode.AGENT else SET_SERVICE_API_OP
+            hint = Hint(summary="Turn the Service API on", op=op, input={"app_id": app.id, "enabled": True})
+            raise ServiceApiDisabled(hints=[hint])
 
 
 class CheckWorkspaceMember(Requirement):
@@ -157,6 +176,50 @@ class CheckRBACPermission(Requirement):
         )
 
 
+EDITOR_ROLES: Final = frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})
+ADMIN_ROLES: Final = frozenset({TenantAccountRole.ADMIN, TenantAccountRole.OWNER})
+
+
+class CheckAppMode(Requirement):
+    """Ranked ahead of RBAC so a mode mismatch answers 422 whether RBAC is on or off."""
+
+    rank = Rank.EARLY
+
+    def __init__(self, *modes: AppMode) -> None:
+        self.modes = frozenset(modes)
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if load_app(ctx).mode not in self.modes:
+            raise AppModeMismatch()
+
+
+class CheckWebAppAuthEnterprise(Requirement):
+    @staticmethod
+    def available() -> bool:
+        return (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
+            and SystemFeatureService.get_public_system_features().webapp_auth.enabled
+        )
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if not self.available():
+            raise WebAppAccessRequiresEE()
+
+
+class CheckAppQuota(Requirement):
+    """The console's `billing_resource="apps"` gate."""
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return
+        apps = FeatureService.get_features(load_workspace(ctx).id, exclude_vector_space=True).apps
+        if 0 < apps.limit <= apps.size:
+            raise Forbidden("The number of apps has reached the limit of your subscription.")
+
+
 class CheckWorkspaceRole(Requirement):
     """The workspace-role gate that predates RBAC. Inert wherever RBAC is on;
     a route that needs a check there declares a `CheckRBACPermission` beside this.
@@ -175,6 +238,34 @@ class CheckWorkspaceRole(Requirement):
             raise Forbidden("insufficient workspace role")
 
 
+class CheckPluginInstallSetting(Requirement):
+    """The console's `plugin_permission_required(install_required=True)`: the workspace's
+    "who can install plugins" setting. Inert wherever RBAC is on, as in the console.
+    A setting value this code does not know is refused.
+    """
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if subject.caller_role is not CreatorUserRole.ACCOUNT:
+            return
+        if dify_config.RBAC_ENABLED:
+            return
+        setting = PluginPermissionService.get_permission(load_workspace(ctx).id, session=session)
+        if setting is None:
+            return
+        match setting.install_permission:
+            case TenantPluginInstallPermission.EVERYONE:
+                return
+            case TenantPluginInstallPermission.ADMINS:
+                if load_workspace_role(ctx) in ADMIN_ROLES:
+                    return
+                raise PluginInstallForbidden("Plugin install is limited to admins in this workspace.")
+            case TenantPluginInstallPermission.NOBODY:
+                raise PluginInstallForbidden("Plugin install is turned off in this workspace.")
+            case unknown:
+                raise PluginInstallForbidden(f"Plugin install setting {unknown!r} is not known to this server.")
+
+
 class CheckAppAccess(Requirement):
     """Run-scope comes from the declaration site, so it is not re-checked here.
 
@@ -184,6 +275,8 @@ class CheckAppAccess(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if isinstance(subject, ResourceAccessSubject):
+            return
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return
         access_mode = self._access_mode(load_app(ctx).id)
@@ -222,3 +315,59 @@ class ResolveCaller(Requirement):
         if not subject.mounts_caller(ctx):
             return
         load_caller(ctx)
+
+
+Roles = frozenset[TenantAccountRole] | None
+"""The pre-RBAC workspace-role gate; None declares none."""
+
+WORKSPACE_READ_GUARDS: Final[tuple[Requirement, ...]] = (
+    CheckSubject(allowed=(AccountSubject,)),
+    CheckScope(Scope.WORKSPACE_READ),
+    CheckWorkspaceMember(),
+)
+
+
+def _role_gate(roles: Roles) -> tuple[Requirement, ...]:
+    return (CheckWorkspaceRole(roles),) if roles is not None else ()
+
+
+def workspace_write_guards(
+    permission: RBACPermission, *, roles: Roles, extra: tuple[Requirement, ...] = ()
+) -> tuple[Requirement, ...]:
+    """Guards for an account-only write to the workspace."""
+    return (
+        CheckSubject(allowed=(AccountSubject,)),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckWorkspaceMember(),
+        CheckRBACPermission(RBACCheck(permission, Workspace())),
+        *_role_gate(roles),
+        *extra,
+    )
+
+
+def _app_guards(
+    head: tuple[Requirement, ...], check: RBACCheck, *, scope: Scope, modes: Collection[AppMode], roles: Roles
+) -> tuple[Requirement, ...]:
+    return (
+        *head,
+        *((CheckAppMode(*modes),) if modes else ()),
+        CheckScope(scope),
+        CheckRBACPermission(check),
+        *_role_gate(roles),
+    )
+
+
+def account_app_guards(
+    permission: RBACPermission, *, scope: Scope, roles: Roles, modes: Collection[AppMode] = ()
+) -> tuple[Requirement, ...]:
+    """Guards for an account-only op on one app; `modes` limits it to apps of those modes."""
+    head = (CheckSubject(allowed=(AccountSubject,)), CheckAppApiEnabled(), CheckWorkspaceMember())
+    return _app_guards(head, RBACCheck(permission, PlainApp()), scope=scope, modes=modes, roles=roles)
+
+
+def account_settings_guards(
+    check: RBACCheck, *, scope: Scope, modes: Collection[AppMode], roles: Roles
+) -> tuple[Requirement, ...]:
+    """App-settings guards. No `CheckAppApiEnabled`, so an admin can always switch the Service API back on."""
+    head = (CheckSubject(allowed=(AccountSubject,)), CheckWorkspaceMember())
+    return _app_guards(head, check, scope=scope, modes=modes, roles=roles)

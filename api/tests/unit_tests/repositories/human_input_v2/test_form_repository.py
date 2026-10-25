@@ -149,7 +149,11 @@ def test_get_forms_by_ids_with_empty_ids_returns_no_forms(form_engine: Engine) -
         )
 
 
-@pytest.mark.parametrize(("other_tenant", "other_app"), [(TenantId(str(uuid4())), _APP), (_TENANT, str(uuid4()))])
+@pytest.mark.parametrize(
+    ("other_tenant", "other_app"),
+    [(TenantId(str(uuid4())), _APP), (_TENANT, str(uuid4()))],
+    ids=["other-tenant", "other-app"],
+)
 def test_all_operations_are_owner_scoped(form_engine: Engine, other_tenant: TenantId, other_app: str) -> None:
     params = _params(expiration_time=naive_utc_now() - timedelta(hours=1))
     form = _create(form_engine, params)

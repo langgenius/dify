@@ -1,6 +1,6 @@
 'use client'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -10,7 +10,7 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,23 +19,21 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { useOptionalContactsManagement } from '@/features/contacts/management/composition-context'
 import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
 import { MemberRemovalContactImpactDialog } from '@/features/contacts/management/member-removal-dialog'
-import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
-import { deleteMemberOrCancelInvitation } from '@/service/common'
-import { invalidateHumanInputContactQueries } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
+import { consoleClient, consoleQuery, invalidateHumanInputContactQueries } from '@/service/console'
+import { createSelectedRolePlaceholder } from '../workspace-role-list-query'
 import AssignRolesModal from './assign-roles-modal'
 
 type MemberMenuProps = {
-  member: Member
+  member: AccountWithRoleResponse
   isCurrentUser: boolean
   canTransferOwnership?: boolean
   allowMultipleRoles?: boolean
@@ -43,7 +41,7 @@ type MemberMenuProps = {
 }
 
 type MembersCache = {
-  accounts: Member[] | null
+  accounts: AccountWithRoleResponse[] | null
 }
 
 const MemberMenu = ({
@@ -56,7 +54,6 @@ const MemberMenu = ({
   const { t } = useTranslation(['common', 'workspaceMembers', 'contacts'])
   const queryClient = useQueryClient()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const [open, setOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -74,18 +71,22 @@ const MemberMenu = ({
     contactsManagement.repository.supportsMemberManagement !== false,
   )
 
-  const selectedRoles = member.roles || []
+  const selectedRoles = useMemo(
+    () => (member.roles ?? []).map(createSelectedRolePlaceholder),
+    [member.roles],
+  )
   const memberName = member.name || member.email
   const assignRolesLabel = allowMultipleRoles
     ? t(($) => $['members.assignRoles'], { ns: 'workspaceMembers', defaultValue: 'Assign Roles' })
     : t(($) => $['members.editRole'], { ns: 'workspaceMembers', defaultValue: 'Edit Role' })
 
   const handleOpenAssignRoles = useCallback(() => {
-    setOpen(false)
     setAssignModalOpen(true)
   }, [])
 
-  const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
+  const { mutateAsync: updateRolesOfMember } = useMutation(
+    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions(),
+  )
 
   const handleAssignRolesSubmit = useCallback(
     (roles: Role[]) => {
@@ -94,10 +95,7 @@ const MemberMenu = ({
         : roles.slice(0, 1).map((role) => role.id)
 
       updateRolesOfMember(
-        {
-          memberId: member.id,
-          roleIds,
-        },
+        { params: { member_id: member.id }, body: { role_ids: roleIds } },
         {
           onSuccess: () => {
             toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
@@ -109,17 +107,19 @@ const MemberMenu = ({
   )
 
   const handleOpenRemoveConfirm = useCallback(() => {
-    setOpen(false)
     setRemoveConfirmOpen(true)
   }, [])
 
   const handleRemove = useCallback(async () => {
     setRemoving(true)
     try {
-      await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
-      void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
+      await consoleClient.workspaces.current.members.byMemberId.delete({
+        params: { member_id: member.id },
+      })
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.members.get.key(),
+      })
       void invalidateHumanInputContactQueries(queryClient, contactsManagement.context?.workspaceId)
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setRemoveConfirmOpen(false)
     } catch {
     } finally {
@@ -129,7 +129,7 @@ const MemberMenu = ({
 
   const handleContactsRemovalSuccess = useCallback(() => {
     queryClient.setQueriesData<MembersCache>(
-      { queryKey: commonQueryKeys.members },
+      { queryKey: consoleQuery.workspaces.current.members.get.key() },
       (cachedMembers) => {
         if (!cachedMembers?.accounts) return cachedMembers
         return {
@@ -142,7 +142,6 @@ const MemberMenu = ({
   }, [member.id, queryClient, t])
 
   const handleTransferOwnership = useCallback(() => {
-    setOpen(false)
     onTransferOwnership?.()
   }, [onTransferOwnership])
 
@@ -150,7 +149,7 @@ const MemberMenu = ({
 
   return (
     <div>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           render={
             <IconButton
@@ -165,7 +164,7 @@ const MemberMenu = ({
             </IconButton>
           }
         />
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-45 rounded-xl">
+        <DropdownMenuContent className="min-w-45 rounded-xl">
           {canAssignRoles && (
             <DropdownMenuItem
               className="system-sm-medium text-text-secondary"
@@ -212,7 +211,7 @@ const MemberMenu = ({
           >
             {showContactsRemovalDesign ? (
               <div className="flex flex-col gap-3 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full title-2xl-semi-bold wrap-break-word text-text-primary">
+                <AlertDialogTitle>
                   {currentWorkspace.name
                     ? t(($) => $['memberRemoval.workspaceTitle'], {
                         ns: 'contacts',
@@ -222,8 +221,14 @@ const MemberMenu = ({
                     : t(($) => $['memberRemoval.title'], { ns: 'contacts', memberName })}
                 </AlertDialogTitle>
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2.5 rounded-xl bg-background-section-burn py-2 pr-2 pl-3">
-                    <Avatar avatar={member.avatar_url || null} name={memberName} size="md" />
+                  <div className="flex items-center gap-2.5 rounded-xl bg-background-section-burn py-2 ps-3 pe-2">
+                    <Avatar size="md">
+                      <AvatarImage
+                        src={(member.avatar_url || null) ?? undefined}
+                        alt={memberName}
+                      />
+                      <AvatarFallback>{memberName?.[0]?.toLocaleUpperCase()}</AvatarFallback>
+                    </Avatar>
                     <div className="min-w-0 py-0.5">
                       <div className="system-md-medium wrap-break-word text-text-secondary">
                         {memberName}
@@ -233,10 +238,7 @@ const MemberMenu = ({
                       </div>
                     </div>
                   </div>
-                  <AlertDialogDescription
-                    render={<div />}
-                    className="system-md-regular wrap-break-word text-text-secondary"
-                  >
+                  <AlertDialogDescription render={<div />}>
                     <p>
                       {t(($) => $['memberRemoval.accessImpact'], { ns: 'contacts', memberName })}
                     </p>
@@ -246,13 +248,13 @@ const MemberMenu = ({
               </div>
             ) : (
               <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                <AlertDialogTitle>
                   {t(($) => $['members.removeFromTeamConfirmTitle'], {
                     ns: 'workspaceMembers',
                     memberName,
                   })}
                 </AlertDialogTitle>
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                <AlertDialogDescription>
                   {t(($) => $['members.removeFromTeamConfirmDescription'], {
                     ns: 'workspaceMembers',
                   })}

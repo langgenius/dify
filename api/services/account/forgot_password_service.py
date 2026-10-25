@@ -1,5 +1,6 @@
 """Application service implementing the account forgot-password use case."""
 
+from contextlib import AbstractContextManager
 from typing import Protocol
 
 from services.account_errors import (
@@ -54,9 +55,7 @@ class ForgotPasswordNotificationGateway(Protocol):
 
 
 class ForgotPasswordSendLimiter(Protocol):
-    def is_limited(self, email: str) -> bool: ...
-
-    def record(self, email: str) -> None: ...
+    def reserve(self, email: str) -> AbstractContextManager[bool]: ...
 
     @property
     def retry_after_minutes(self) -> int: ...
@@ -115,25 +114,25 @@ class AccountForgotPasswordService:
             raise AccountNotFoundError
         destination = account.email if account is not None else normalized_email
         registration_allowed = self._registration.is_registration_allowed()
-        if self._send_limits.is_limited(destination):
-            raise ForgotPasswordSendRateLimitError(self._send_limits.retry_after_minutes)
+        with self._send_limits.reserve(destination) as acquired:
+            if not acquired:
+                raise ForgotPasswordSendRateLimitError(self._send_limits.retry_after_minutes)
 
-        code = self._codes.generate()
-        token = self._tokens.issue(
-            ForgotPasswordVerificationToken(
+            code = self._codes.generate()
+            token = self._tokens.issue(
+                ForgotPasswordVerificationToken(
+                    email=destination,
+                    code=code,
+                    account_id=account.id if account is not None else None,
+                )
+            )
+            self._notifications.send(
                 email=destination,
                 code=code,
-                account_id=account.id if account is not None else None,
+                language=language,
+                account_exists=account is not None,
+                registration_allowed=registration_allowed,
             )
-        )
-        self._notifications.send(
-            email=destination,
-            code=code,
-            language=language,
-            account_exists=account is not None,
-            registration_allowed=registration_allowed,
-        )
-        self._send_limits.record(destination)
         return token
 
     def verify_code(

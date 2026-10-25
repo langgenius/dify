@@ -48,13 +48,13 @@ const Actions = ({
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
             className={cn(
               'flex size-8 cursor-pointer items-center justify-center rounded-lg p-0 shadow-xs shadow-shadow-shadow-3',
-              'outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover',
+              'data-popup-open:bg-state-base-hover',
             )}
             onClick={(e) => e.stopPropagation()}
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-40">
+          <DropdownMenuContent className="min-w-40">
             <DropdownMenuItem
               onClick={() => {
                 openEditModal()

@@ -5,17 +5,19 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from '@langgenius/dify-ui/context-menu'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FlowType } from '@/types/common'
+import {
+  editorResourceKindAtom,
+  isChatflowAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from './hooks-store'
 import { useDSL } from './hooks/use-DSL'
 import { useNodesInteractions } from './hooks/use-nodes-interactions'
-import { useIsChatMode } from './hooks/use-workflow'
 import { useWorkflowMoveMode } from './hooks/use-workflow-panel-interactions'
 import { useWorkflowStartRun } from './hooks/use-workflow-start-run'
 import { TEST_RUN_MENU_HOTKEY } from './hotkeys'
-import { isSnippetCanvas } from './nodes/_base/hooks/snippet-input-field-vars'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
 import { handleWorkflowMenuKeyDown } from './shortcuts/handle-workflow-menu-key-down'
@@ -40,8 +42,8 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
   const { isCommentModeAvailable } = useWorkflowMoveMode()
   const { exportCheck } = useDSL()
   const accessControl = useHooksStore((s) => s.accessControl)
-  const flowType = useHooksStore((s) => s.configsMap?.flowType)
-  const isChatMode = useIsChatMode()
+  const resourceKind = useAtomValue(editorResourceKindAtom)
+  const isChatflow = useAtomValue(isChatflowAtom)
   const workflowOperationReadOnly = !!(
     workflowRunningData?.result.status === WorkflowRunningStatus.Running ||
     workflowRunningData?.result.status === WorkflowRunningStatus.Paused ||
@@ -49,7 +51,7 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
     isRestoring
   )
   const canEditWorkflow = accessControl.canEdit && !workflowOperationReadOnly
-  const shouldHideImportApp = flowType === FlowType.snippet || isSnippetCanvas()
+  const shouldHideImportApp = resourceKind === 'snippet'
 
   const addBlockTrigger = (
     <ContextMenuItem
@@ -66,11 +68,11 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
   )
 
   const handleRunAction = useCallback(() => {
-    if (isChatMode) handleWorkflowStartRunInChatflow()
+    if (isChatflow) handleWorkflowStartRunInChatflow()
     else handleStartWorkflowRun()
 
     onClose()
-  }, [isChatMode, handleWorkflowStartRunInChatflow, handleStartWorkflowRun, onClose])
+  }, [isChatflow, handleWorkflowStartRunInChatflow, handleStartWorkflowRun, onClose])
 
   if (!isPanelContextMenu) return null
 
@@ -94,6 +96,8 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
         {canEditWorkflow && (
           <AddBlock
             renderTrigger={addBlockTrigger}
+            // The menu row owns the focus treatment, so the trigger adds no ring.
+            triggerClassName="focus-visible:ring-0"
             onClose={onClose}
             isolateKeyboardEvents
             sideOffset={-36}
@@ -135,10 +139,10 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
             className="justify-between gap-4 px-3 text-text-secondary"
             onClick={handleRunAction}
           >
-            {isChatMode
+            {isChatflow
               ? t(($) => $['common.debugAndPreview'], { ns: 'workflow' })
               : t(($) => $['common.run'], { ns: 'workflow' })}
-            {!isChatMode && <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} />}
+            {!isChatflow && <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} />}
           </ContextMenuItem>
         )}
       </ContextMenuGroup>

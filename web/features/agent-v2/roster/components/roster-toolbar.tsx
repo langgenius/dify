@@ -78,7 +78,7 @@ function RosterSearchFilter() {
   return (
     <SearchInput
       aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })}
-      className="h-8 w-full min-w-0 sm:w-50 [&_button]:text-text-secondary [&_input::placeholder]:text-text-secondary"
+      className="h-8 w-full min-w-0 sm:w-50"
       placeholder={t(($) => $['roster.searchPlaceholder'], { ns: 'agentRoster' })}
       value={keyword}
       onValueChange={(value) => {

@@ -123,7 +123,6 @@ def test_dispatch_human_input_email_task_skips_when_feature_disabled(
 def test_dispatch_human_input_email_task_skips_when_mail_not_inited(monkeypatch: pytest.MonkeyPatch) -> None:
     mail = _DummyMail()
     mail._inited = False
-    form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id=None)
     dispatcher = MagicMock()
 
     monkeypatch.setattr(task_module, "mail", mail)

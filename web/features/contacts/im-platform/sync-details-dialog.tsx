@@ -1,7 +1,7 @@
 'use client'
 
 import type { ContactImSafeReason, ContactImSyncResult } from './types'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -160,24 +160,22 @@ export function ContactImSyncDetailsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="flex h-180 max-h-[calc(100dvh-2rem)] w-[693px] flex-col overflow-hidden! p-0!"
+        className="h-180 max-h-[calc(100dvh-2rem)] w-[693px] overflow-hidden!"
       >
         <DialogClose
           render={
             <IconButton
               aria-label={tCommon(($) => $['operation.close'])}
-              className="absolute top-5 right-5"
+              className="absolute inset-e-5 top-5"
               size="lg"
             >
               <span aria-hidden className="i-ri-close-line size-4.5" />
             </IconButton>
           }
         />
-        <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['imPlatform.details.title'])}
-          </DialogTitle>
-          <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+        <div className="shrink-0 ps-6 pe-14 pt-6 pb-3">
+          <DialogTitle>{t(($) => $['imPlatform.details.title'])}</DialogTitle>
+          <DialogDescription>
             {run
               ? run.status === ContactImSyncStatus.Success
                 ? run.startedBy
@@ -289,13 +287,13 @@ export function ContactImSyncDetailsDialog({
             )}
 
             <div className="min-h-0 flex-1 overflow-auto px-6 pt-2 pb-6">
-              <table className="w-full table-fixed border-collapse text-left">
+              <table className="w-full table-fixed border-collapse text-start">
                 <thead className="sticky top-0 z-10 bg-background-section-burn">
                   <tr>
-                    <th className="w-1/2 rounded-l-lg px-3 py-1.5 system-xs-medium-uppercase text-text-tertiary">
+                    <th className="w-1/2 rounded-s-lg px-3 py-1.5 system-xs-medium-uppercase text-text-tertiary">
                       {t(($) => $['imPlatform.details.column.contact'])}
                     </th>
-                    <th className="w-1/2 rounded-r-lg px-3 py-1.5 system-xs-medium-uppercase text-text-tertiary">
+                    <th className="w-1/2 rounded-e-lg px-3 py-1.5 system-xs-medium-uppercase text-text-tertiary">
                       {t(($) => $['imPlatform.details.column.platform'])}
                     </th>
                   </tr>
@@ -306,11 +304,15 @@ export function ContactImSyncDetailsDialog({
                       <td className="px-3 py-1.5">
                         <div className="flex items-center gap-2.5">
                           {item.matchedContact && (
-                            <Avatar
-                              avatar={item.matchedContact.avatarUrl ?? null}
-                              name={item.matchedContact.name}
-                              size="md"
-                            />
+                            <Avatar size="md">
+                              <AvatarImage
+                                src={item.matchedContact.avatarUrl ?? null ?? undefined}
+                                alt={item.matchedContact.name}
+                              />
+                              <AvatarFallback>
+                                {item.matchedContact.name?.[0]?.toLocaleUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
                           )}
                           <div className="min-w-0">
                             <div className="truncate system-md-medium text-text-secondary">
@@ -328,7 +330,7 @@ export function ContactImSyncDetailsDialog({
                         <div className="flex flex-wrap items-center gap-2">
                           <span
                             className={cn(
-                              'inline-flex max-w-full items-center gap-1 rounded-md border py-0.75 pr-2 pl-1 system-sm-regular',
+                              'inline-flex max-w-full items-center gap-1 rounded-md border py-0.75 ps-1 pe-2 system-sm-regular',
                               resultToneClassNames[item.result],
                               item.result === SyncResult.Added && 'text-text-secondary',
                             )}

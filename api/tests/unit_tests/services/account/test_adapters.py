@@ -1,12 +1,19 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, call, create_autospec, patch
 
 import pytest
+from redis import RedisError
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Unauthorized
 
 from extensions.ext_redis import RedisClientWrapper
+from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from services.account.adapters import (
+    AccountIdentityGateway,
     BillingAccountActivationEligibility,
     BillingAccountEducationGateway,
     BillingAccountEmailPolicyGateway,
@@ -27,6 +34,7 @@ from services.entities.account_entities import (
     AccountEducationAutocomplete,
     AccountEducationStatus,
 )
+from tests.helpers.unit.account_domain import AccountDomain
 
 
 def test_invitation_token_store_reads_workspace_invitation_key(
@@ -82,6 +90,53 @@ def test_invitation_token_store_revokes_its_redis_key(redis_transport: tuple[Red
     email_hash = sha256(b"invitee@example.com").hexdigest()
     commands.assert_any_call("DEL", f"member_invite_token:workspace-1, {email_hash}:token-1")
     assert commands.call_count == 1
+
+
+def test_invitation_token_store_marks_membership_use_with_token_ttl(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = [1200, b"OK"]
+    lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
+
+    assert RedisInvitationTokenStore(redis=redis).consume_membership(lookup) is True
+
+    assert commands.call_args_list[0].args == ("PTTL", "member_invite:token:token-1")
+    set_args = commands.call_args_list[1].args
+    assert set_args[:3] == ("SET", "member_invite:token:token-1:membership_used", "1")
+    assert "NX" in set_args
+    assert set_args[set_args.index("PX") + 1] == 1200
+
+
+@pytest.mark.parametrize("ttl", [-2, -1, 0])
+def test_invitation_token_store_refuses_membership_use_without_live_token(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], ttl: int
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = ttl
+    lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
+
+    assert RedisInvitationTokenStore(redis=redis).consume_membership(lookup) is False
+
+    assert commands.call_count == 1
+    assert commands.call_args.args == ("PTTL", "member_invite:token:token-1")
+
+
+@pytest.mark.parametrize(("stored", "expected"), [(b"1", True), (None, False)])
+def test_invitation_token_store_reports_membership_use(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], stored: bytes | None, expected: bool
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = stored
+    lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="token-1")
+
+    assert RedisInvitationTokenStore(redis=redis).is_membership_consumed(lookup) is expected
+
+    commands.assert_called_once_with(
+        "GET",
+        "member_invite:token:token-1:membership_used",
+        keys=["member_invite:token:token-1:membership_used"],
+    )
 
 
 def test_billing_eligibility_skips_gateway_when_disabled() -> None:
@@ -341,3 +396,80 @@ def test_verification_notifier_preserves_rate_limit_before_enqueuing_email(
     assert [call.args[0] for call in commands.call_args_list] == ["ZREMRANGEBYSCORE", "ZCARD"]
     assert error.value.retry_after_minutes == 1
     mail_task.delay.assert_not_called()
+
+
+@pytest.mark.parametrize("has_normal", [True, False])
+def test_identity_resolves_normal_workspace_and_detaches_it(
+    account_domain: AccountDomain, sqlite_session_factory: sessionmaker[Session], has_normal: bool
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="User", email="u@example.com")
+        archived = Tenant(name="Archived", status=TenantStatus.ARCHIVE)
+        session.add_all(
+            [
+                account,
+                archived,
+                TenantAccountJoin(
+                    account_id=account.id, tenant_id=archived.id, role=TenantAccountRole.NORMAL, current=True
+                ),
+            ]
+        )
+        if has_normal:
+            normal = Tenant(name="Normal")
+            session.add_all(
+                [normal, TenantAccountJoin(account_id=account.id, tenant_id=normal.id, role=TenantAccountRole.EDITOR)]
+            )
+        account_id = account.id
+    loaded = account_domain.repository.load_identity(account_id, now=datetime(2026, 1, 1))
+    if has_normal:
+        assert loaded is not None
+        assert loaded.current_tenant is not None
+        assert loaded.current_tenant.name == "Normal"
+        assert loaded.role == TenantAccountRole.EDITOR
+    else:
+        assert loaded is None
+    with sqlite_session_factory() as session:
+        current = session.scalars(select(TenantAccountJoin).where(TenantAccountJoin.current.is_(True))).all()
+        assert len(current) == int(has_normal)
+
+
+@pytest.mark.parametrize("redis_claim", [True, False, RedisError("offline")])
+def test_activity_refresh_is_gated_but_fails_open(
+    account_domain: AccountDomain, sqlite_session: Session, redis_claim: bool | RedisError
+) -> None:
+    now = naive_utc_now()
+    account = Account(name="User", email="u@example.com")
+    account.last_active_at = now - timedelta(hours=1)
+    tenant = Tenant(name="Normal")
+    sqlite_session.add_all(
+        [
+            account,
+            tenant,
+            TenantAccountJoin(account_id=account.id, tenant_id=tenant.id, role=TenantAccountRole.OWNER, current=True),
+        ]
+    )
+    sqlite_session.commit()
+    account_id, old_active = account.id, account.last_active_at
+    redis = create_autospec(RedisClientWrapper, instance=True)
+    if isinstance(redis_claim, RedisError):
+        redis.set.side_effect = redis_claim
+    else:
+        redis.set.return_value = redis_claim
+    gateway = AccountIdentityGateway(accounts=account_domain.repository, redis=redis)
+    loaded = gateway.load_user(account_id)
+    assert loaded is not None
+    sqlite_session.expire_all()
+    assert (account.last_active_at > old_active) == (redis_claim is not False)
+    assert redis.set.call_args.kwargs == {"ex": 600, "nx": True}
+
+
+def test_identity_rejects_banned_and_missing_accounts(account_domain: AccountDomain, sqlite_session: Session) -> None:
+    account = Account(name="Banned", email="b@example.com", status=AccountStatus.BANNED)
+    sqlite_session.add(account)
+    sqlite_session.commit()
+    gateway = AccountIdentityGateway(
+        accounts=account_domain.repository, redis=create_autospec(RedisClientWrapper, instance=True)
+    )
+    with pytest.raises(Unauthorized, match="banned"):
+        gateway.load_user(account.id)
+    assert gateway.load_user("missing") is None

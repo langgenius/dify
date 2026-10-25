@@ -11,7 +11,7 @@ from core.workflow.nodes.human_input.session_binding import default_session_bind
 from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
 from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from graphon.entities.pause_reason import HitlRequired
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.factory import DifyAPIRepositoryFactory
 from services.human_input_v2.form_service import load_prepared_forms
@@ -19,7 +19,7 @@ from services.human_input_v2.form_service import load_prepared_forms
 
 @dataclass(frozen=True)
 class WorkflowPauseSnapshot:
-    runtime_state: GraphRuntimeState
+    runtime_state: RuntimeState
     reasons: Sequence[PauseReason]
     v2_forms: Mapping[str, PreparedForm]
 
@@ -37,7 +37,7 @@ def load_workflow_pause_snapshot(
     """
     if context is None:
         context = WorkflowResumptionContext.loads(pause.get_state().decode())
-    state = GraphRuntimeState.from_snapshot(context.serialized_graph_runtime_state)
+    state = RuntimeState.from_snapshot(context.serialized_graph_runtime_state)
     graph_reasons = state.graph_execution.pause_reasons
     v2_ids: list[str] = []
     has_v1 = False
@@ -70,7 +70,8 @@ def load_workflow_pause_snapshot(
             continue
         version, form_id = default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
         if version == "1":
-            reasons.append(legacy[form_id])
+            if (legacy_reason := legacy.get(form_id)) is not None:
+                reasons.append(legacy_reason)
             continue
         prepared = forms.get(form_id)
         if prepared is None:

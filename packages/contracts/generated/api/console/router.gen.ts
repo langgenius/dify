@@ -26,6 +26,7 @@ import { form } from './form/orpc.gen.ts'
 import { init } from './init/orpc.gen.ts'
 import { installedApps } from './installed-apps/orpc.gen.ts'
 import { instructionGenerate } from './instruction-generate/orpc.gen.ts'
+import { knowledgeFs } from './knowledge-fs/orpc.gen.ts'
 import { login } from './login/orpc.gen.ts'
 import { logout } from './logout/orpc.gen.ts'
 import { notification } from './notification/orpc.gen.ts'
@@ -37,6 +38,7 @@ import { rag } from './rag/orpc.gen.ts'
 import { refreshToken } from './refresh-token/orpc.gen.ts'
 import { remoteFiles } from './remote-files/orpc.gen.ts'
 import { resetPassword } from './reset-password/orpc.gen.ts'
+import { resourceAccessTokens } from './resource-access-tokens/orpc.gen.ts'
 import { ruleCodeGenerate } from './rule-code-generate/orpc.gen.ts'
 import { ruleGenerate } from './rule-generate/orpc.gen.ts'
 import { ruleStructuredOutputGenerate } from './rule-structured-output-generate/orpc.gen.ts'
@@ -82,6 +84,7 @@ const communityContract = {
   init,
   installedApps,
   instructionGenerate,
+  knowledgeFs,
   login,
   logout,
   notification,
@@ -93,6 +96,7 @@ const communityContract = {
   refreshToken,
   remoteFiles,
   resetPassword,
+  resourceAccessTokens,
   ruleCodeGenerate,
   ruleGenerate,
   ruleStructuredOutputGenerate,

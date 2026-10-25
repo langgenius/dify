@@ -1,4 +1,8 @@
-import type { ChildChunkDetail, ParentMode, SegmentDetailModel } from '@/models/datasets'
+import type {
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type { ParentMode } from '@/models/datasets'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -7,7 +11,7 @@ import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { DocumentContext } from '../../context'
 import Completed from '../index'
 
-const childChunk: ChildChunkDetail = {
+const childChunk: ChildChunkResponse = {
   id: 'child-1',
   segment_id: 'segment-1',
   position: 1,
@@ -18,7 +22,7 @@ const childChunk: ChildChunkDetail = {
   type: 'automatic',
 }
 
-const segment: SegmentDetailModel = {
+const segment: SegmentResponse = {
   id: 'segment-1',
   document_id: 'document-1',
   position: 1,
@@ -40,6 +44,9 @@ const segment: SegmentDetailModel = {
   completed_at: 1700000000,
   error: null,
   stopped_at: 0,
+  answer: null,
+  summary: null,
+  updated_by: null,
   updated_at: 1700000000,
   attachments: [],
   child_chunks: [childChunk],

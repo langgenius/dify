@@ -57,7 +57,7 @@ from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchem
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
 from services.human_input_v2.email_otp_service import EmailOtpService
-from tests.unit_tests.model_factories import make_tenant
+from tests.helpers.unit.model_factories import make_tenant
 
 _NOW = datetime(2030, 1, 1)
 _TOKEN = "public-v2-read-token"

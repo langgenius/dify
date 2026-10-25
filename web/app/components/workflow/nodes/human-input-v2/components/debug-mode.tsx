@@ -57,7 +57,7 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
     >
       <div
         className={cn(
-          'relative flex h-9 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pr-2.5 pl-2 shadow-xs',
+          'relative flex h-9 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg ps-2 pe-2.5 shadow-xs',
           readonly && 'opacity-70',
         )}
       >
@@ -114,7 +114,8 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
             }
           />
           <PopoverContent
-            placement="bottom-end"
+            side="bottom"
+            align="end"
             sideOffset={4}
             className="w-60! bg-components-panel-bg-blur p-1! backdrop-blur-[5px]"
           >
@@ -157,7 +158,7 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
                           disabled={isLastChannel || readonly}
                           onCheckedChange={() => toggleChannel(channel)}
                         />
-                        <ContactChannelIcon provider={channel} className="ml-1 size-4 shrink-0" />
+                        <ContactChannelIcon provider={channel} className="ms-1 size-4 shrink-0" />
                         <span
                           id={`${errorId}-${channel}-label`}
                           className="shrink-0 system-md-regular text-text-secondary"
@@ -186,7 +187,7 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
             })}
           </PopoverContent>
         </Popover>
-        <div className="relative h-3 w-1.25 shrink-0 border-l border-divider-regular" />
+        <div className="relative h-3 w-1.25 shrink-0 border-s border-divider-regular" />
         <Switch
           aria-label={t(($) => $['nodes.humanInputV2.debug.toggle'], { ns: 'workflow' })}
           aria-describedby={missingSelection ? errorId : undefined}

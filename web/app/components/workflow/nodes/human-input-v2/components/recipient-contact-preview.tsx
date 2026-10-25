@@ -44,7 +44,8 @@ export function RecipientContactPreview({
     >
       <PopoverTrigger render={children} openOnHover delay={300} closeDelay={150} />
       <PopoverContent
-        placement="left-start"
+        side="left"
+        align="start"
         sideOffset={4}
         className="flex w-60 flex-col gap-2 bg-components-tooltip-bg p-4 backdrop-blur-[5px]"
       >

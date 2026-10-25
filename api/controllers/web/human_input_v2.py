@@ -7,6 +7,13 @@ token locates the form; the app passport establishes who may read or submit it.
 from pydantic import BaseModel, ConfigDict, JsonValue
 from werkzeug.exceptions import NotFound
 
+from controllers.common.human_input_v2_errors import (
+    HumanInputV2AlreadySubmittedError,
+    HumanInputV2ExpiredError,
+    HumanInputV2InvalidInputError,
+    HumanInputV2WorkflowNotActiveError,
+    form_http_error,
+)
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
@@ -15,11 +22,11 @@ from core.db.session_factory import session_factory
 from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import TenantId
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp
 from models.model import App, EndUser
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
-    HumanInputFormErrorCode,
     HumanInputSubmissionService,
     WebAppFormActor,
 )
@@ -53,19 +60,9 @@ def _web_app_actor(app_model: App, end_user: EndUser) -> WebAppFormActor:
     return WebAppFormActor(tenant_id=TenantId(app_model.tenant_id), app_id=app_model.id, end_user_id=end_user.id)
 
 
-def _form_error_response(exc: HumanInputFormError) -> tuple[dict[str, str], int]:
-    status = {
-        HumanInputFormErrorCode.NOT_FOUND: 404,
-        HumanInputFormErrorCode.ALREADY_SUBMITTED: 409,
-        HumanInputFormErrorCode.EXPIRED: 410,
-        HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE: 409,
-        HumanInputFormErrorCode.INVALID_INPUT: 400,
-    }[exc.code]
-    return {"code": exc.code.value, "message": "The approval could not be accepted."}, status
-
-
 @web_ns.route("/form/human-input/v2/<string:form_token>")
 class WebAppHumanInputV2FormApi(WebApiResource):
+    @error_responses(HumanInputV2AlreadySubmittedError, HumanInputV2ExpiredError)
     @web_ns.doc(
         "get_web_app_human_input_v2_form",
         description="Read a v2 form using the original EndUser's Web App passport.",
@@ -78,7 +75,7 @@ class WebAppHumanInputV2FormApi(WebApiResource):
         try:
             form = service.get_web_app_form(actor=actor, form_token=form_token)
         except HumanInputFormError as exc:
-            return _form_error_response(exc)
+            raise form_http_error(exc, message="The approval could not be accepted.") from exc
         return dump_response(
             WebAppHumanInputV2FormDefinitionResponse,
             {
@@ -87,6 +84,12 @@ class WebAppHumanInputV2FormApi(WebApiResource):
             },
         )
 
+    @error_responses(
+        HumanInputV2AlreadySubmittedError,
+        HumanInputV2ExpiredError,
+        HumanInputV2WorkflowNotActiveError,
+        HumanInputV2InvalidInputError,
+    )
     @web_ns.doc(
         "submit_web_app_human_input_v2_form",
         description="Submit a v2 form using the original EndUser's Web App passport.",
@@ -110,5 +113,5 @@ class WebAppHumanInputV2FormApi(WebApiResource):
                 actor=actor, form_token=form_token, action=payload.action, inputs=payload.inputs
             )
         except HumanInputFormError as exc:
-            return _form_error_response(exc)
+            raise form_http_error(exc, message="The approval could not be accepted.") from exc
         return WebAppHumanInputV2SubmitResponse().model_dump(mode="json")

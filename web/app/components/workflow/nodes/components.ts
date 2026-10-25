@@ -16,6 +16,7 @@ import { HumanInputV2Node } from './human-input-v2/node'
 import IfElseNode from './if-else/node'
 import IterationNode from './iteration/node'
 import KnowledgeBaseNode from './knowledge-base/node'
+import KnowledgeRetrievalV2Node from './knowledge-retrieval-v2/node'
 import KnowledgeRetrievalNode from './knowledge-retrieval/node'
 import ListFilterNode from './list-operator/node'
 import LLMNode from './llm/node'
@@ -48,6 +49,7 @@ export const NodeComponentMap = {
   [BlockEnum.Answer]: AnswerNode,
   [BlockEnum.LLM]: LLMNode,
   [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrievalNode,
+  [BlockEnum.KnowledgeRetrievalV2]: KnowledgeRetrievalV2Node,
   [BlockEnum.QuestionClassifier]: QuestionClassifierNode,
   [BlockEnum.IfElse]: IfElseNode,
   [BlockEnum.Code]: CodeNode,

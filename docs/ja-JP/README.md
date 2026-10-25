@@ -157,6 +157,11 @@ Difyでは、あらゆる形の貢献を歓迎しています。
 - [GitHub Issues](https://github.com/langgenius/dify/issues)：再現可能なバグの報告と開発作業の追跡にご利用ください。Issueを作成する前に[コントリビューションガイド](./CONTRIBUTING.md)をお読みください。
 - [Discord](https://discord.gg/FngNHpbcY7)：リアルタイムで会話し、アプリを共有し、他のDifyユーザーと交流できます。
 - [X](https://x.com/dify_ai)：リリース情報やプロジェクトの最新情報を確認できます。
+
+## スター履歴
+
+[![スター履歴グラフ](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![スター履歴グラフ](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
+
 ## ライセンス
 
 このリポジトリは、Dify Open Source License にいくつかの追加制限を加えた[Difyオープンソースライセンス](../../LICENSE)の下で利用可能です。

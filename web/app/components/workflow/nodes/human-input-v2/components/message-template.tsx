@@ -20,16 +20,16 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getInputVars } from '@/app/components/base/prompt-editor/constants'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
 import { isENV } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { VarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
 import { isOutput } from '../../human-input/utils'
 import { getRequestURLCount } from '../message-template-utils'
 import useConfiguredChannels from '../use-configured-channels'
@@ -81,9 +81,9 @@ const MessageTemplate = ({
   const [testError, setTestError] = useState<string>()
   const [savingForTest, setSavingForTest] = useState(false)
   const canRun = useHooksStore((state) => state.accessControl.canRun)
-  const flowId = useHooksStore((state) => state.configsMap?.flowId)
-  const flowType = useHooksStore((state) => state.configsMap?.flowType)
-  const isChatMode = useIsChatMode()
+  const resource = useAtomValue(editorResourceAtom)
+  const flowId = resource.kind === 'app' ? resource.appId : undefined
+  const isChatMode = resource.kind === 'app' && resource.mode === 'advanced-chat'
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const testMutation = useMutation(
     (isChatMode
@@ -93,7 +93,7 @@ const MessageTemplate = ({
           .post
     ).mutationOptions({ retry: false }),
   )
-  const canTest = !readonly && canRun && flowType === FlowType.appFlow && !!flowId && !!nodeId
+  const canTest = !readonly && canRun && resource.kind === 'app' && !!flowId && !!nodeId
   const pending = savingForTest || testMutation.isPending
   const pendingRef = useRef(false)
   const canTestRef = useRef(canTest)
@@ -280,7 +280,7 @@ const MessageTemplate = ({
           <button
             ref={triggerRef}
             type="button"
-            className="min-w-0 truncate rounded-sm border-0 bg-transparent p-0 text-left system-sm-medium text-text-secondary focus-visible:ring-1 focus-visible:ring-state-accent-solid"
+            className="min-w-0 truncate rounded-sm border-0 bg-transparent p-0 text-start system-sm-medium text-text-secondary focus-visible:ring-1 focus-visible:ring-state-accent-solid"
             onClick={() => handleOpen()}
           >
             {t(($) => $['nodes.humanInputV2.template.title'], { ns: 'workflow' })}
@@ -318,16 +318,16 @@ const MessageTemplate = ({
           if (!nextOpen) close()
         }}
       >
-        <DialogContent className="w-[calc(100vw-2rem)]! max-w-[720px]! overflow-hidden! border-0! p-0! inset-ring-[0.5px] inset-ring-components-panel-border">
+        <DialogContent className="w-[calc(100vw-2rem)]! max-w-[720px]! overflow-hidden!">
           <form
             onSubmit={(event) => {
               event.preventDefault()
               save()
             }}
           >
-            <header className="relative flex h-[78px] items-start pt-6 pr-14 pb-3 pl-6">
+            <header className="relative flex h-[78px] items-start ps-6 pe-14 pt-6 pb-3">
               <div className="space-y-1">
-                <DialogTitle className="text-[18px] leading-[1.2] font-semibold text-text-primary">
+                <DialogTitle>
                   {t(($) => $['nodes.humanInputV2.template.title'], { ns: 'workflow' })}
                 </DialogTitle>
                 <p className="system-xs-regular text-text-tertiary">
@@ -336,7 +336,7 @@ const MessageTemplate = ({
               </div>
               <IconButton
                 size="lg"
-                className="absolute top-5 right-5"
+                className="absolute inset-e-5 top-5"
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                 disabled={pending}
                 onClick={close}
@@ -513,7 +513,7 @@ const MessageTemplate = ({
             <footer className="flex h-[76px] items-center justify-end gap-2 px-6 pt-5 pb-6">
               {canTest && (
                 <Button
-                  className="mr-auto"
+                  className="me-auto"
                   disabled={pending}
                   aria-expanded={showTest}
                   onClick={() => setShowTest(!showTest)}

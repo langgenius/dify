@@ -62,7 +62,7 @@ from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchem
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
 from tasks.app_generate.workflow_execute_task import resume_app_execution
-from tests.unit_tests.model_factories import make_account, make_app, make_tenant
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant
 
 _NOW = naive_utc_now().replace(microsecond=0)
 _TOKEN = "service-approval-token"
@@ -364,6 +364,62 @@ def test_preserves_paragraph_json_values_and_ignores_extra_input_fields(approval
                 "note": note,
                 "choice": "Yes",
             }
+
+
+@pytest.mark.parametrize("approval", ["1"], indirect=True)
+@pytest.mark.parametrize(
+    ("note", "rendered_note"),
+    [
+        ("  Unchanged  ", "  Unchanged  "),
+        (123, "123"),
+        (False, "False"),
+        (None, ""),
+        ({"detail": "approved"}, "{'detail': 'approved'}"),
+        (["approved"], "['approved']"),
+    ],
+)
+def test_v1_json_paragraph_submission_resumes_the_node(approval: Approval, note: JsonValue, rendered_note: str) -> None:
+    from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
+    from core.workflow.nodes.human_input.callback import DifyHITLCallback
+    from core.workflow.nodes.human_input.constants import OUTPUT_FIELD_RENDERED_CONTENT
+    from core.workflow.nodes.human_input.entities import HumanInputNodeData
+    from graphon.enums import WorkflowNodeExecutionStatus
+    from graphon.nodes.human_input.human_input_node import HumanInputNode
+    from graphon.runtime import RuntimeState, VariablePool
+    from graphon.runtime.init_params import InitParams
+
+    response = approval.submit(inputs={"note": note, "choice": "Yes"})
+    assert response.status_code == 200, response.json
+    with approval.sessions() as session:
+        form = session.get(LegacyForm, approval.form_id)
+        assert form is not None
+        definition = FormDefinition.model_validate_json(form.form_definition)
+    node_data = HumanInputNodeData(
+        title="Review",
+        form_content=definition.form_content,
+        inputs=definition.inputs,
+        user_actions=definition.user_actions,
+    )
+    repository = HumanInputFormRepositoryImpl(
+        tenant_id=approval.tenant_id, app_id=approval.app_id, workflow_execution_id=approval.run_id
+    )
+    node = HumanInputNode(
+        node_id="approval",
+        data=node_data,
+        init_params=InitParams(
+            workflow_id="workflow-1", graph_config={}, run_context={"workflow_run_id": approval.run_id}, call_depth=0
+        ),
+        runtime_state=RuntimeState(workflow_id="workflow-1", variable_pool=VariablePool(), start_at=0),
+        hitl_callback=DifyHITLCallback(
+            form_repository=repository, node_data=node_data, workflow_execution_id=approval.run_id
+        ),
+    )
+    node.bind_execution_id(approval.form_id)
+    completed = list(node.run())[-1].node_run_result
+    assert completed.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert completed.edge_source_handle == "approve"
+    assert completed.outputs["note"].to_object() == note
+    assert completed.outputs[OUTPUT_FIELD_RENDERED_CONTENT].to_object() == f"Review {rendered_note}: Yes"
 
 
 @pytest.mark.parametrize(

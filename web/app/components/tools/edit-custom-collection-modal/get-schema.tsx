@@ -42,8 +42,6 @@ const GetSchema: FC<Props> = ({ onChange }) => {
     }
   }
 
-  const [showExamples, setShowExamples] = useState(false)
-
   return (
     <div className="flex w-56 justify-end gap-1">
       <Popover open={showImportFromUrl} onOpenChange={setShowImportFromUrl}>
@@ -54,7 +52,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
           </span>
         </PopoverTrigger>
         <PopoverContent
-          placement="bottom-start"
+          align="start"
           sideOffset={2}
           className="w-75 p-2"
           aria-label={t(($) => $['createTool.importFromUrl'], { ns: 'tools' })}
@@ -90,20 +88,19 @@ const GetSchema: FC<Props> = ({ onChange }) => {
           </form>
         </PopoverContent>
       </Popover>
-      <DropdownMenu open={showExamples} onOpenChange={setShowExamples}>
+      <DropdownMenu>
         <DropdownMenuTrigger render={<Button size="small" />}>
           <span className="system-xs-medium text-text-secondary">
             {t(($) => $['createTool.examples'], { ns: 'tools' })}
           </span>
           <span className="i-ri-arrow-down-s-line size-3" aria-hidden />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={2} className="min-w-max">
+        <DropdownMenuContent sideOffset={2} className="min-w-max">
           {examples.map((item) => (
             <DropdownMenuItem
               key={item.key}
               onClick={() => {
                 onChange(item.content)
-                setShowExamples(false)
               }}
               className="system-sm-regular whitespace-nowrap text-text-secondary"
             >

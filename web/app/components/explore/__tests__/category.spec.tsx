@@ -1,90 +1,50 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import Category from '../category'
 
+const props = {
+  list: ['Writing', 'Recommended'],
+  value: 'Recommended',
+  onChange: vi.fn(),
+  allCategoriesEn: 'Recommended',
+}
+
 describe('Category', () => {
-  const allCategoriesEn = 'Recommended'
-
-  const renderComponent = (overrides: Partial<React.ComponentProps<typeof Category>> = {}) => {
-    const props: React.ComponentProps<typeof Category> = {
-      list: ['Writing', 'Recommended'],
-      value: allCategoriesEn,
-      onChange: vi.fn(),
-      allCategoriesEn,
-      ...overrides,
+  it('selects a category and returns to the single all-categories option', async () => {
+    const user = userEvent.setup()
+    function Categories() {
+      const [value, setValue] = useState('Recommended')
+      return <Category {...props} value={value} onChange={setValue} />
     }
-    return {
-      props,
-      ...render(<Category {...props} />),
-    }
-  }
+    render(<Categories />)
+    const categories = within(screen.getByRole('radiogroup', { name: 'explore.tryApp.category' }))
+    const all = categories.getByRole('radio', { name: 'explore.apps.allCategories' })
+    const writing = categories.getByRole('radio', { name: 'explore.category.Writing' })
+    expect(categories.getAllByRole('radio')).toHaveLength(2)
+    expect(all).toHaveAttribute('aria-checked', 'true')
 
-  describe('Rendering', () => {
-    it('should render all categories item and translated categories', () => {
-      renderComponent()
-
-      expect(screen.getByText('explore.apps.allCategories')).toBeInTheDocument()
-      expect(screen.getByText('explore.category.Writing')).toBeInTheDocument()
-    })
-
-    it('should not render allCategoriesEn again inside the category list', () => {
-      renderComponent()
-
-      const recommendedItems = screen.getAllByText('explore.apps.allCategories')
-      expect(recommendedItems).toHaveLength(1)
-    })
+    await user.click(writing)
+    expect(writing).toHaveAttribute('aria-checked', 'true')
+    expect(all).toHaveAttribute('aria-checked', 'false')
+    await user.click(all)
+    expect(all).toHaveAttribute('aria-checked', 'true')
+    expect(writing).toHaveAttribute('aria-checked', 'false')
   })
 
-  describe('Props', () => {
-    it('should call onChange with category value when category item is clicked', async () => {
-      const user = userEvent.setup()
-      const { props } = renderComponent()
-
-      await user.click(screen.getByText('explore.category.Writing'))
-
-      expect(props.onChange).toHaveBeenCalledWith('Writing')
-    })
-
-    it('should call onChange with allCategoriesEn when all categories is clicked', async () => {
-      const user = userEvent.setup()
-      const { props } = renderComponent({ value: 'Writing' })
-
-      await user.click(screen.getByText('explore.apps.allCategories'))
-
-      expect(props.onChange).toHaveBeenCalledWith(allCategoriesEn)
-    })
+  it('falls back to all categories when the selected category is absent', () => {
+    render(<Category {...props} value="Unknown" />)
+    expect(screen.getByRole('radio', { name: 'explore.apps.allCategories' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
   })
 
-  describe('Edge Cases', () => {
-    it('should treat unknown value as all categories selection', () => {
-      renderComponent({ value: 'Unknown' })
-
-      const allCategoriesItem = screen.getByRole('radio', { name: /explore\.apps\.allCategories/ })
-      expect(allCategoriesItem).toHaveAttribute('aria-checked', 'true')
-    })
-
-    it('should render raw category name when i18n key does not exist', () => {
-      renderComponent({ list: ['CustomCategory', 'Recommended'] })
-
-      expect(screen.getByText('CustomCategory')).toBeInTheDocument()
-    })
-  })
-
-  describe('Accessibility', () => {
-    it('should render categories as a radio group', () => {
-      renderComponent({ value: 'Writing' })
-
-      expect(
-        screen.getByRole('radiogroup', { name: 'explore.tryApp.category' }),
-      ).toBeInTheDocument()
-      expect(screen.getByRole('radio', { name: /explore\.apps\.allCategories/ })).toHaveAttribute(
-        'aria-checked',
-        'false',
-      )
-      expect(screen.getByRole('radio', { name: 'explore.category.Writing' })).toHaveAttribute(
-        'aria-checked',
-        'true',
-      )
-    })
+  it('uses the raw name and value for untranslated categories', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<Category {...props} list={['CustomCategory']} onChange={onChange} />)
+    await user.click(screen.getByRole('radio', { name: 'CustomCategory' }))
+    expect(onChange).toHaveBeenCalledWith('CustomCategory')
   })
 })

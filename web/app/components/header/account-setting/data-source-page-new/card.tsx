@@ -1,4 +1,7 @@
-import type { DataSourceAuth, DataSourceCredential } from './types'
+import type {
+  DatasourceCredentialResponse,
+  DatasourceProviderAuthResponse,
+} from '@dify/contracts/api/console/auth/types.gen'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import {
   AlertDialog,
@@ -6,9 +9,11 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { memo, useCallback, useRef } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { memo, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { ApiKeyModal, usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
@@ -17,18 +22,19 @@ import { CollectionType } from '@/app/components/tools/types'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import { useGetDataSourceOAuthUrl } from '@/service/use-datasource'
+import { consoleQuery } from '@/service/console'
 import Configure from './configure'
 import { useDataSourceAuthUpdate } from './hooks'
 import Item from './item'
 import DataSourcePluginActions from './plugin-actions'
+import { providerConfigToFormSchema } from './utils'
 
 const getPluginVersion = (uniqueIdentifier?: string) => {
   return uniqueIdentifier?.match(/:([^:@]+)@/)?.[1]
 }
 
 type CardProps = {
-  item: DataSourceAuth
+  item: DatasourceProviderAuthResponse
   disabled?: boolean
   pluginDetail?: PluginDetail
   onPluginUpdate?: (isDelete?: boolean) => void
@@ -39,6 +45,10 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
   const renderI18nObject = useRenderI18nObject()
   const { icon, label, credentials_list, credential_schema } = item
   const providerLabel = renderI18nObject(label)
+  const credentialFormSchemas = useMemo(
+    () => credential_schema.map(providerConfigToFormSchema),
+    [credential_schema],
+  )
   const fallbackPluginVersion = getPluginVersion(item.plugin_unique_identifier)
   const pluginPayload = {
     category: AuthCategory.datasource,
@@ -64,9 +74,14 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
     pendingOperationCredentialId,
   } = usePluginAuthAction(pluginPayload, handleAuthUpdate)
   const changeCredentialIdRef = useRef<string | undefined>(undefined)
-  const { mutateAsync: getPluginOAuthUrl } = useGetDataSourceOAuthUrl(pluginPayload.provider)
+  const { mutateAsync: getPluginOAuthUrl } = useMutation(
+    consoleQuery.oauth.plugin.byProviderId.datasource.getAuthorizationUrl.get.mutationOptions(),
+  )
   const handleOAuth = useCallback(async () => {
-    const { authorization_url } = await getPluginOAuthUrl(changeCredentialIdRef.current)
+    const { authorization_url } = await getPluginOAuthUrl({
+      params: { provider_id: pluginPayload.provider },
+      query: { credential_id: changeCredentialIdRef.current },
+    })
 
     if (authorization_url) {
       openOAuthPopup(authorization_url, handleAuthUpdate)
@@ -75,7 +90,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
   const handleAction = useCallback(
     (
       action: string,
-      credentialItem: DataSourceCredential,
+      credentialItem: DatasourceCredentialResponse,
       renamePayload?: { credential_id: string; name: string },
     ) => {
       if (action === 'edit') {
@@ -172,11 +187,11 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
       )}
       <AlertDialog open={!!deleteCredentialId} onOpenChange={(open) => !open && closeConfirm()}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -198,7 +213,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
             pendingOperationCredentialId.current = null
           }}
           onUpdate={handleAuthUpdate}
-          formSchemas={credential_schema}
+          formSchemas={credentialFormSchemas}
           editValues={editValues}
           onRemove={handleRemove}
           disabled={disabled || doingAction || !canManageCredential}

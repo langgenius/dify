@@ -1,19 +1,23 @@
+import type { ReactElement, ReactNode } from 'react'
 import type { ModelAndParameter } from '../../types'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Log from '@/app/components/base/chat/chat/log'
 import { TransferMethod } from '@/app/components/base/chat/types'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../../types'
 import { DebugWithMultipleModelContextProvider } from '../context-provider'
 import TextGenerationItem from '../text-generation-item'
 
 const mockUseDebugConfigurationContext = vi.fn()
-const mockModelListQuery = vi.fn()
+const modelListResponse = vi.fn()
 const mockUseFeatures = vi.fn()
 const mockUseTextGeneration = vi.fn()
-const mockUseEventEmitterContextContext = vi.fn()
-const mockPromptVariablesToUserInputsForm = vi.fn()
 const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
@@ -27,17 +31,10 @@ let capturedTextGenerationProps: {
   className?: string
 } | null = null
 
-let eventSubscriptionCallback:
-  | ((v: { type: string; payload?: Record<string, unknown> }) => void)
-  | null = null
+let emitDebugEvent: ((v: { type: string; payload?: Record<string, unknown> }) => void) | null = null
 
 vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useQuery: () => mockModelListQuery(),
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
@@ -52,15 +49,6 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
     error: mockToastError,
   },
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => mockUseEventEmitterContextContext(),
-}))
-
-vi.mock('@/utils/model-config', () => ({
-  promptVariablesToUserInputsForm: (...args: unknown[]) =>
-    mockPromptVariablesToUserInputsForm(...args),
 }))
 
 vi.mock('@/app/components/app/text-generate/item', () => ({
@@ -82,6 +70,28 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
     )
   },
 }))
+
+function EventSource({ children }: { children: ReactNode }) {
+  const { eventEmitter } = useEventEmitterContextContext()
+  emitDebugEvent = (event) => eventEmitter!.emit(event)
+  return children
+}
+
+function render(ui: ReactElement) {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+    }).queryKey,
+    modelListResponse(),
+  )
+  return renderWithConsoleQuery(
+    <EventEmitterContextProvider>
+      <EventSource>{ui}</EventSource>
+    </EventEmitterContextProvider>,
+    { queryClient },
+  )
+}
 
 const createModelAndParameter = (
   overrides: Partial<ModelAndParameter> = {},
@@ -116,7 +126,7 @@ const createDefaultMocks = () => {
     datasetConfigs: { retrieval_model: 'single' },
   })
 
-  mockModelListQuery.mockReturnValue({
+  modelListResponse.mockReturnValue({
     data: [
       {
         provider: 'openai',
@@ -148,20 +158,6 @@ const createDefaultMocks = () => {
     isResponding: false,
     messageId: 'msg-123',
   })
-
-  mockUseEventEmitterContextContext.mockReturnValue({
-    eventEmitter: {
-      useSubscription: (
-        callback: (v: { type: string; payload?: Record<string, unknown> }) => void,
-      ) => {
-        eventSubscriptionCallback = callback
-      },
-    },
-  })
-
-  mockPromptVariablesToUserInputsForm.mockReturnValue([
-    { variable: 'name', label: 'Name', type: 'text-input', required: true },
-  ])
 }
 
 const renderComponent = (props: Partial<{ modelAndParameter: ModelAndParameter }> = {}) => {
@@ -174,9 +170,9 @@ const renderComponent = (props: Partial<{ modelAndParameter: ModelAndParameter }
 
 describe('TextGenerationItem', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     capturedTextGenerationProps = null
-    eventSubscriptionCallback = null
+    emitDebugEvent = null
     createDefaultMocks()
   })
 
@@ -200,25 +196,6 @@ describe('TextGenerationItem', () => {
   })
 
   describe('rendering', () => {
-    it('should render TextGeneration component', () => {
-      renderComponent()
-
-      expect(screen.getByTestId('text-generation')).toBeInTheDocument()
-    })
-
-    it('should pass completion content to TextGeneration', () => {
-      mockUseTextGeneration.mockReturnValue({
-        completion: 'Hello World',
-        handleSend: vi.fn(),
-        isResponding: false,
-        messageId: 'msg-1',
-      })
-
-      renderComponent()
-
-      expect(screen.getByTestId('content')).toHaveTextContent('Hello World')
-    })
-
     it('should show loading when no completion and responding', () => {
       mockUseTextGeneration.mockReturnValue({
         completion: '',
@@ -243,32 +220,6 @@ describe('TextGenerationItem', () => {
       renderComponent()
 
       expect(screen.getByTestId('is-loading')).toHaveTextContent('no')
-    })
-
-    it('should pass isResponding to TextGeneration', () => {
-      mockUseTextGeneration.mockReturnValue({
-        completion: 'Text',
-        handleSend: vi.fn(),
-        isResponding: true,
-        messageId: 'msg-1',
-      })
-
-      renderComponent()
-
-      expect(screen.getByTestId('is-responding')).toHaveTextContent('yes')
-    })
-
-    it('should pass messageId to TextGeneration', () => {
-      mockUseTextGeneration.mockReturnValue({
-        completion: 'Text',
-        handleSend: vi.fn(),
-        isResponding: false,
-        messageId: 'msg-456',
-      })
-
-      renderComponent()
-
-      expect(screen.getByTestId('message-id')).toHaveTextContent('msg-456')
     })
   })
 
@@ -298,8 +249,17 @@ describe('TextGenerationItem', () => {
 
       renderComponent()
 
-      // Config is built internally - we verify through the component rendering
-      expect(capturedTextGenerationProps).not.toBeNull()
+      emitDebugEvent?.({
+        type: APP_CHAT_WITH_MULTIPLE_MODEL,
+        payload: { message: 'Generate', files: [] },
+      })
+      expect(mockUseTextGeneration().handleSend).toHaveBeenCalledWith(
+        'apps/app-123/completion-messages',
+        expect.objectContaining({
+          model_config: expect.objectContaining({ pre_prompt: 'My Template' }),
+        }),
+        expect.any(Object),
+      )
     })
 
     it('should use empty pre_prompt in advanced mode', () => {
@@ -327,7 +287,22 @@ describe('TextGenerationItem', () => {
 
       renderComponent()
 
-      expect(capturedTextGenerationProps).not.toBeNull()
+      emitDebugEvent?.({
+        type: APP_CHAT_WITH_MULTIPLE_MODEL,
+        payload: { message: 'Generate', files: [] },
+      })
+      expect(mockUseTextGeneration().handleSend).toHaveBeenCalledWith(
+        'apps/app-123/completion-messages',
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            pre_prompt: '',
+            prompt_type: 'advanced',
+            chat_prompt_config: { custom: true },
+            completion_prompt_config: { custom: true },
+          }),
+        }),
+        expect.any(Object),
+      )
     })
 
     it('should find context variable from prompt_variables', () => {
@@ -358,7 +333,17 @@ describe('TextGenerationItem', () => {
 
       renderComponent()
 
-      expect(capturedTextGenerationProps).not.toBeNull()
+      emitDebugEvent?.({
+        type: APP_CHAT_WITH_MULTIPLE_MODEL,
+        payload: { message: 'Generate', files: [] },
+      })
+      expect(mockUseTextGeneration().handleSend).toHaveBeenCalledWith(
+        'apps/app-123/completion-messages',
+        expect.objectContaining({
+          model_config: expect.objectContaining({ dataset_query_variable: 'context' }),
+        }),
+        expect.any(Object),
+      )
     })
   })
 
@@ -385,8 +370,27 @@ describe('TextGenerationItem', () => {
 
       renderComponent()
 
-      // postDatasets is used in config.dataset_configs.datasets
-      expect(capturedTextGenerationProps).not.toBeNull()
+      emitDebugEvent?.({
+        type: APP_CHAT_WITH_MULTIPLE_MODEL,
+        payload: { message: 'Generate', files: [] },
+      })
+      expect(mockUseTextGeneration().handleSend).toHaveBeenCalledWith(
+        'apps/app-123/completion-messages',
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            dataset_configs: {
+              retrieval_model: 'multiple',
+              datasets: {
+                datasets: [
+                  { dataset: { enabled: true, id: 'ds-1' } },
+                  { dataset: { enabled: true, id: 'ds-2' } },
+                ],
+              },
+            },
+          }),
+        }),
+        expect.any(Object),
+      )
     })
   })
 
@@ -402,7 +406,7 @@ describe('TextGenerationItem', () => {
 
       renderComponent()
 
-      eventSubscriptionCallback?.({
+      emitDebugEvent?.({
         type: APP_CHAT_WITH_MULTIPLE_MODEL,
         payload: { message: 'Generate text', files: [] },
       })
@@ -435,7 +439,7 @@ describe('TextGenerationItem', () => {
 
       renderComponent()
 
-      eventSubscriptionCallback?.({
+      emitDebugEvent?.({
         type: 'OTHER_EVENT',
         payload: {},
       })
@@ -462,7 +466,7 @@ describe('TextGenerationItem', () => {
 
       renderComponent({ modelAndParameter })
 
-      eventSubscriptionCallback?.({
+      emitDebugEvent?.({
         type: APP_CHAT_WITH_MULTIPLE_MODEL,
         payload: { message: 'Test', files: [] },
       })
@@ -498,7 +502,7 @@ describe('TextGenerationItem', () => {
         { id: 'f2', transfer_method: TransferMethod.remote_url, url: 'https://example.com/file' },
       ]
 
-      eventSubscriptionCallback?.({
+      emitDebugEvent?.({
         type: APP_CHAT_WITH_MULTIPLE_MODEL,
         payload: { message: 'Test', files },
       })
@@ -548,7 +552,7 @@ describe('TextGenerationItem', () => {
 
       renderComponent()
 
-      eventSubscriptionCallback?.({
+      emitDebugEvent?.({
         type: APP_CHAT_WITH_MULTIPLE_MODEL,
         payload: { message: 'Test', files: [{ id: 'f1' }] },
       })
@@ -573,34 +577,9 @@ describe('TextGenerationItem', () => {
 
       renderComponent()
 
-      eventSubscriptionCallback?.({
+      emitDebugEvent?.({
         type: APP_CHAT_WITH_MULTIPLE_MODEL,
         payload: { message: 'Test', files: [] },
-      })
-
-      expect(handleSend).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.not.objectContaining({
-          files: expect.anything(),
-        }),
-        expect.objectContaining({ onNotifyError: expect.any(Function) }),
-      )
-    })
-
-    it('should not include files when files is undefined', () => {
-      const handleSend = vi.fn()
-      mockUseTextGeneration.mockReturnValue({
-        completion: '',
-        handleSend,
-        isResponding: false,
-        messageId: null,
-      })
-
-      renderComponent()
-
-      eventSubscriptionCallback?.({
-        type: APP_CHAT_WITH_MULTIPLE_MODEL,
-        payload: { message: 'Test' },
       })
 
       expect(handleSend).toHaveBeenCalledWith(
@@ -623,7 +602,7 @@ describe('TextGenerationItem', () => {
         messageId: null,
       })
 
-      mockModelListQuery.mockReturnValue({
+      modelListResponse.mockReturnValue({
         data: [
           {
             provider: 'openai',
@@ -642,7 +621,7 @@ describe('TextGenerationItem', () => {
 
       renderComponent({ modelAndParameter })
 
-      eventSubscriptionCallback?.({
+      emitDebugEvent?.({
         type: APP_CHAT_WITH_MULTIPLE_MODEL,
         payload: { message: 'Test', files: [] },
       })
@@ -659,8 +638,10 @@ describe('TextGenerationItem', () => {
         expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
+  })
 
-    it('should handle provider not found', () => {
+  describe('promptVariablesToUserInputsForm', () => {
+    it('sends the generated input schema with the completion request', () => {
       const handleSend = vi.fn()
       mockUseTextGeneration.mockReturnValue({
         completion: '',
@@ -668,88 +649,6 @@ describe('TextGenerationItem', () => {
         isResponding: false,
         messageId: null,
       })
-
-      mockModelListQuery.mockReturnValue({
-        data: [],
-      })
-
-      renderComponent()
-
-      eventSubscriptionCallback?.({
-        type: APP_CHAT_WITH_MULTIPLE_MODEL,
-        payload: { message: 'Test', files: [] },
-      })
-
-      expect(handleSend).toHaveBeenCalled()
-    })
-  })
-
-  describe('edge cases', () => {
-    it('should handle null eventEmitter', () => {
-      mockUseEventEmitterContextContext.mockReturnValue({
-        eventEmitter: null,
-      })
-
-      expect(() => renderComponent()).not.toThrow()
-    })
-
-    it('should handle empty prompt_variables', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({
-        isAdvancedMode: false,
-        modelConfig: {
-          configs: { prompt_template: '', prompt_variables: [] },
-        },
-        appId: 'app-123',
-        inputs: {},
-        promptMode: 'simple',
-        speechToTextConfig: {},
-        introduction: '',
-        suggestedQuestionsAfterAnswerConfig: {},
-        citationConfig: {},
-        externalDataToolsConfig: [],
-        chatPromptConfig: {},
-        completionPromptConfig: {},
-        dataSets: [],
-        datasetConfigs: {},
-      })
-
-      expect(() => renderComponent()).not.toThrow()
-    })
-
-    it('should handle no context variable found', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({
-        isAdvancedMode: false,
-        modelConfig: {
-          configs: {
-            prompt_template: '',
-            prompt_variables: [
-              { key: 'var1', name: 'Var1', type: 'string', is_context_var: false },
-            ],
-          },
-        },
-        appId: 'app-123',
-        inputs: {},
-        promptMode: 'simple',
-        speechToTextConfig: {},
-        introduction: '',
-        suggestedQuestionsAfterAnswerConfig: {},
-        citationConfig: {},
-        externalDataToolsConfig: [],
-        chatPromptConfig: {},
-        completionPromptConfig: {},
-        dataSets: [],
-        datasetConfigs: {},
-      })
-
-      renderComponent()
-
-      // Should use empty string for dataset_query_variable
-      expect(capturedTextGenerationProps).not.toBeNull()
-    })
-  })
-
-  describe('promptVariablesToUserInputsForm', () => {
-    it('should call promptVariablesToUserInputsForm with prompt_variables', () => {
       const promptVariables = [
         { key: 'name', name: 'Name', type: 'string' },
         { key: 'age', name: 'Age', type: 'number' },
@@ -776,7 +675,30 @@ describe('TextGenerationItem', () => {
 
       renderComponent()
 
-      expect(mockPromptVariablesToUserInputsForm).toHaveBeenCalledWith(promptVariables)
+      emitDebugEvent?.({
+        type: APP_CHAT_WITH_MULTIPLE_MODEL,
+        payload: { message: 'Generate text', files: [] },
+      })
+      expect(handleSend).toHaveBeenCalledWith(
+        'apps/app-123/completion-messages',
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            user_input_form: [
+              {
+                'text-input': expect.objectContaining({
+                  variable: 'name',
+                  label: 'Name',
+                  required: true,
+                }),
+              },
+              {
+                number: expect.objectContaining({ variable: 'age', label: 'Age', required: true }),
+              },
+            ],
+          }),
+        }),
+        expect.any(Object),
+      )
     })
   })
 })

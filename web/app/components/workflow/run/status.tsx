@@ -2,12 +2,13 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { useDocLink } from '@/context/i18n'
 import { resolveConsoleHumanInputFormURL } from '@/features/console-human-input-form/links'
-import { useWorkflowPausedDetails } from '@/service/use-log'
+import { consoleQuery } from '@/service/console'
 import { basePath } from '@/utils/var'
 
 type ResultProps = {
@@ -33,10 +34,14 @@ const StatusPanel: FC<ResultProps> = ({
 }) => {
   const { t } = useTranslation(['runLog', 'workflow', 'appLog', 'workflowHumanInput'])
   const docLink = useDocLink()
-  const { data: pausedDetails } = useWorkflowPausedDetails({
-    workflowRunId: workflowRunId || '',
-    enabled: status === 'paused',
-  })
+  const { data: pausedDetails } = useQuery(
+    consoleQuery.workflow.byWorkflowRunId.pauseDetails.get.queryOptions({
+      input:
+        status === 'paused' && workflowRunId
+          ? { params: { workflow_run_id: workflowRunId } }
+          : skipToken,
+    }),
+  )
 
   const pausedReasons = useMemo(() => {
     const reasons: string[] = []
@@ -57,7 +62,7 @@ const StatusPanel: FC<ResultProps> = ({
     const hasHumanInputNode = paused_nodes.some((node) => node.pause_type.type === 'human_input')
     if (hasHumanInputNode) {
       paused_nodes.forEach((node) => {
-        if (node.pause_type.type === 'human_input') {
+        if (node.pause_type.type === 'human_input' && node.pause_type.backstage_input_url) {
           inputURLs.push(
             resolveConsoleHumanInputFormURL(node.pause_type.backstage_input_url, basePath),
           )

@@ -27,7 +27,6 @@ export function useChangeProviderPriority(
     consoleQuery.workspaces.current.modelProviders.byProvider.preferredProviderType.post.mutationOptions(
       {
         onSuccess: () => {
-          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           queryClient.invalidateQueries({
             queryKey: modelProviderModelListQueryKey,
             exact: true,
@@ -46,6 +45,7 @@ export function useChangeProviderPriority(
     ),
   )
   const handleChangePriority = (key: PreferredProviderTypeEnum) => {
+    if (!providerName) return
     changePriority({
       params: { provider: providerName },
       body: { preferred_provider_type: key },

@@ -3,6 +3,13 @@
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, JsonValue
 
+from controllers.common.human_input_v2_errors import (
+    HumanInputV2AlreadySubmittedError,
+    HumanInputV2ExpiredError,
+    HumanInputV2InvalidInputError,
+    HumanInputV2WorkflowNotActiveError,
+    form_http_error,
+)
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
@@ -11,12 +18,12 @@ from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import AccountId
 from fields.base import ResponseModel
 from libs.datetime_utils import to_utc_timestamp
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models.account import Account
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
-    HumanInputFormErrorCode,
     HumanInputSubmissionService,
 )
 
@@ -47,6 +54,7 @@ register_response_schema_models(
 
 @console_ns.route("/form/human-input/v2/<string:form_token>")
 class ConsoleHumanInputV2FormApi(Resource):
+    @error_responses(HumanInputV2AlreadySubmittedError, HumanInputV2ExpiredError)
     @setup_required
     @login_required
     @account_initialization_required
@@ -62,12 +70,7 @@ class ConsoleHumanInputV2FormApi(Resource):
         try:
             form = service.get_console_form(account_id=AccountId(current_user.id), form_token=form_token)
         except HumanInputFormError as exc:
-            status = {
-                HumanInputFormErrorCode.NOT_FOUND: 404,
-                HumanInputFormErrorCode.ALREADY_SUBMITTED: 409,
-                HumanInputFormErrorCode.EXPIRED: 410,
-            }[exc.code]
-            return {"code": exc.code.value, "message": "The form could not be retrieved."}, status
+            raise form_http_error(exc, message="The form could not be retrieved.") from exc
         return dump_response(
             ConsoleHumanInputV2FormDefinitionResponse,
             {
@@ -76,6 +79,12 @@ class ConsoleHumanInputV2FormApi(Resource):
             },
         )
 
+    @error_responses(
+        HumanInputV2AlreadySubmittedError,
+        HumanInputV2ExpiredError,
+        HumanInputV2WorkflowNotActiveError,
+        HumanInputV2InvalidInputError,
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -93,12 +102,5 @@ class ConsoleHumanInputV2FormApi(Resource):
                 inputs=payload.inputs,
             )
         except HumanInputFormError as exc:
-            status = {
-                HumanInputFormErrorCode.NOT_FOUND: 404,
-                HumanInputFormErrorCode.ALREADY_SUBMITTED: 409,
-                HumanInputFormErrorCode.EXPIRED: 410,
-                HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE: 409,
-                HumanInputFormErrorCode.INVALID_INPUT: 400,
-            }[exc.code]
-            return {"code": exc.code.value, "message": "The approval could not be accepted."}, status
+            raise form_http_error(exc, message="The approval could not be accepted.") from exc
         return ConsoleHumanInputV2SubmitResponse().model_dump(mode="json")

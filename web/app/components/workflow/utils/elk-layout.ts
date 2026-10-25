@@ -201,8 +201,6 @@ type ElkEdgeShape = {
   id: string
   sources: string[]
   targets: string[]
-  sourcePort?: string
-  targetPort?: string
 }
 
 let edgeCounter = 0
@@ -215,10 +213,8 @@ const createEdge = (
   targetPort?: string,
 ): ElkEdgeShape => ({
   id: nextEdgeId(),
-  sources: [source],
-  targets: [target],
-  sourcePort,
-  targetPort,
+  sources: [sourcePort ?? source],
+  targets: [targetPort ?? target],
 })
 
 const collectLayout = (graph: ElkNode, predicate: (id: string) => boolean): LayoutResult => {
@@ -366,7 +362,11 @@ const normaliseBounds = (layout: LayoutResult): LayoutResult => {
  * Build ELK nodes with output ports (sorted for branching types)
  * and edges ordered by a DFS traversal that follows port order.
  */
-const buildPortAwareGraph = (nodes: Node[], edges: Edge[]) => {
+const buildPortAwareGraph = (nodes: Node[], originEdges: Edge[]) => {
+  const nodeIdSet = new Set(nodes.map((node) => node.id))
+  const edges = originEdges.filter(
+    (edge) => nodeIdSet.has(edge.source) && nodeIdSet.has(edge.target),
+  )
   const outEdgesByNode = new Map<string, Edge[]>()
   edges.forEach((edge) => {
     if (!outEdgesByNode.has(edge.source)) outEdgesByNode.set(edge.source, [])
@@ -389,16 +389,20 @@ const buildPortAwareGraph = (nodes: Node[], edges: Edge[]) => {
 
     sortedOutEdgesByNode.set(node.id, outEdges)
 
-    const ports: ElkPortShape[] = outEdges.map((edge, index) => {
-      const portId = `${node.id}-out-${edge.sourceHandle || index}`
+    const ports: ElkPortShape[] = []
+    const portIds = new Set<string>()
+    outEdges.forEach((edge) => {
+      const portId = `${node.id}-out-${edge.sourceHandle || edge.id}`
       sourcePortMap.set(edge.id, portId)
-      return {
+      if (portIds.has(portId)) return
+      portIds.add(portId)
+      ports.push({
         id: portId,
         layoutOptions: {
           'elk.port.side': 'EAST',
-          'elk.port.index': String(index),
+          'elk.port.index': String(ports.length),
         },
-      }
+      })
     })
 
     elkNodes.push({
@@ -414,7 +418,6 @@ const buildPortAwareGraph = (nodes: Node[], edges: Edge[]) => {
 
   // DFS in port order to determine the definitive vertical ordering of nodes.
   // forceNodeModelOrder makes ELK respect the children-array order within each layer.
-  const nodeIdSet = new Set(nodes.map((n) => n.id))
   const visited = new Set<string>()
   const orderedIds: string[] = []
 

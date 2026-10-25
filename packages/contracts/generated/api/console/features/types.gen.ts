@@ -14,6 +14,7 @@ export type FeatureModel = {
   education: EducationModel
   enable_skill: boolean
   human_input_email_delivery_enabled: boolean
+  im_binding_centrally_managed: boolean
   is_allow_transfer_workspace: boolean
   knowledge_pipeline: KnowledgePipeline
   members: LimitationModel
@@ -21,6 +22,16 @@ export type FeatureModel = {
   trigger_event: Quota
   webapp_copyright_enabled: boolean
   workspace_members: LicenseLimitationModel
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
 }
 
 export type VectorSpaceLimitationModel = {
@@ -73,6 +84,12 @@ export type GetFeaturesData = {
   url: '/features'
 }
 
+export type GetFeaturesErrors = {
+  default: ErrorResponse
+}
+
+export type GetFeaturesError = GetFeaturesErrors[keyof GetFeaturesErrors]
+
 export type GetFeaturesResponses = {
   200: FeatureModel
 }
@@ -85,6 +102,13 @@ export type GetFeaturesVectorSpaceData = {
   query?: never
   url: '/features/vector-space'
 }
+
+export type GetFeaturesVectorSpaceErrors = {
+  default: ErrorResponse
+}
+
+export type GetFeaturesVectorSpaceError =
+  GetFeaturesVectorSpaceErrors[keyof GetFeaturesVectorSpaceErrors]
 
 export type GetFeaturesVectorSpaceResponses = {
   200: VectorSpaceLimitationModel

@@ -1,5 +1,5 @@
+import type { AccountWithRoleResponse as Member } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ContactsFeatureContextValue } from '../types'
-import type { Member } from '@/models/common'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -11,11 +11,11 @@ import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenar
 const member: Member = {
   avatar: '',
   avatar_url: '',
-  created_at: '1731000000',
+  created_at: 1731000000,
   email: 'owner@example.com',
   id: 'member-owner',
-  last_active_at: '1731000000',
-  last_login_at: '1731000000',
+  last_active_at: 1731000000,
+  last_login_at: 1731000000,
   name: 'Ralph Edwards',
   role: 'admin',
   roles: [],

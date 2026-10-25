@@ -9,6 +9,16 @@ export type ListChannelProvidersResponse = {
   im_providers: Array<ChannelProvider>
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type ListChannelsResponse = {
   channels: Array<ChannelSummary>
 }
@@ -103,9 +113,7 @@ export type ChannelSummary = {
   webhook_url: string | null
 }
 
-export type EmailProviderCredentials = {
-  provider: 'resend'
-} & ResendCredentials
+export type EmailProviderCredentials = ResendCredentials
 
 export type SenderName = string
 
@@ -122,9 +130,7 @@ export type ResendCredentialsResponse = {
   provider: 'resend'
 }
 
-export type EmailProviderCredentialsUpdateInput = {
-  provider: 'resend'
-} & ResendCredentialsUpdateInput
+export type EmailProviderCredentialsUpdateInput = ResendCredentialsUpdateInput
 
 export type ConfigVersion = string
 
@@ -368,13 +374,9 @@ export type ImChannelReplacementPayloadWritable = {
   expected_config_version: ConfigVersion
 }
 
-export type EmailProviderCredentialsWritable = {
-  provider: 'resend'
-} & ResendCredentialsWritable
+export type EmailProviderCredentialsWritable = ResendCredentialsWritable
 
-export type EmailProviderCredentialsUpdateInputWritable = {
-  provider: 'resend'
-} & ResendCredentialsUpdateInputWritable
+export type EmailProviderCredentialsUpdateInputWritable = ResendCredentialsUpdateInputWritable
 
 export type ImProviderCredentialsInputWritable =
   | ({
@@ -525,6 +527,13 @@ export type GetWorkspaceCurrentHumanInputV2ChannelProvidersData = {
   url: '/workspace/current/human-input/v2/channel-providers'
 }
 
+export type GetWorkspaceCurrentHumanInputV2ChannelProvidersErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspaceCurrentHumanInputV2ChannelProvidersError =
+  GetWorkspaceCurrentHumanInputV2ChannelProvidersErrors[keyof GetWorkspaceCurrentHumanInputV2ChannelProvidersErrors]
+
 export type GetWorkspaceCurrentHumanInputV2ChannelProvidersResponses = {
   200: ListChannelProvidersResponse
 }
@@ -538,6 +547,13 @@ export type GetWorkspaceCurrentHumanInputV2ChannelsData = {
   query?: never
   url: '/workspace/current/human-input/v2/channels'
 }
+
+export type GetWorkspaceCurrentHumanInputV2ChannelsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspaceCurrentHumanInputV2ChannelsError =
+  GetWorkspaceCurrentHumanInputV2ChannelsErrors[keyof GetWorkspaceCurrentHumanInputV2ChannelsErrors]
 
 export type GetWorkspaceCurrentHumanInputV2ChannelsResponses = {
   200: ListChannelsResponse
@@ -553,6 +569,13 @@ export type PostWorkspaceCurrentHumanInputV2ChannelsEmailData = {
   url: '/workspace/current/human-input/v2/channels/email'
 }
 
+export type PostWorkspaceCurrentHumanInputV2ChannelsEmailErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsEmailError =
+  PostWorkspaceCurrentHumanInputV2ChannelsEmailErrors[keyof PostWorkspaceCurrentHumanInputV2ChannelsEmailErrors]
+
 export type PostWorkspaceCurrentHumanInputV2ChannelsEmailResponses = {
   200: EmailChannelMutationResponse
 }
@@ -566,6 +589,13 @@ export type PostWorkspaceCurrentHumanInputV2ChannelsEmailTestData = {
   query?: never
   url: '/workspace/current/human-input/v2/channels/email/test'
 }
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsEmailTestErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsEmailTestError =
+  PostWorkspaceCurrentHumanInputV2ChannelsEmailTestErrors[keyof PostWorkspaceCurrentHumanInputV2ChannelsEmailTestErrors]
 
 export type PostWorkspaceCurrentHumanInputV2ChannelsEmailTestResponses = {
   200: ChannelTestResponse
@@ -586,7 +616,8 @@ export type DeleteWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdData = {
 }
 
 export type DeleteWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdErrors = {
-  409: ChannelConflictResponse
+  409: ChannelConflictResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdError =
@@ -608,6 +639,13 @@ export type GetWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdData = {
   url: '/workspace/current/human-input/v2/channels/email/{channel_id}'
 }
 
+export type GetWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdError =
+  GetWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdErrors[keyof GetWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdErrors]
+
 export type GetWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdResponses = {
   200: EmailChannelDetailResponse
 }
@@ -625,7 +663,8 @@ export type PutWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdData = {
 }
 
 export type PutWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdErrors = {
-  409: ChannelConflictResponse
+  409: ChannelConflictResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PutWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdError =
@@ -648,7 +687,8 @@ export type PostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestData = {
 }
 
 export type PostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestErrors = {
-  409: ChannelConflictResponse
+  409: ChannelConflictResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestError =
@@ -668,6 +708,13 @@ export type PostWorkspaceCurrentHumanInputV2ChannelsImData = {
   url: '/workspace/current/human-input/v2/channels/im'
 }
 
+export type PostWorkspaceCurrentHumanInputV2ChannelsImErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsImError =
+  PostWorkspaceCurrentHumanInputV2ChannelsImErrors[keyof PostWorkspaceCurrentHumanInputV2ChannelsImErrors]
+
 export type PostWorkspaceCurrentHumanInputV2ChannelsImResponses = {
   200: ImChannelMutationResponse
 }
@@ -681,6 +728,13 @@ export type PostWorkspaceCurrentHumanInputV2ChannelsImTestData = {
   query?: never
   url: '/workspace/current/human-input/v2/channels/im/test'
 }
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsImTestErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspaceCurrentHumanInputV2ChannelsImTestError =
+  PostWorkspaceCurrentHumanInputV2ChannelsImTestErrors[keyof PostWorkspaceCurrentHumanInputV2ChannelsImTestErrors]
 
 export type PostWorkspaceCurrentHumanInputV2ChannelsImTestResponses = {
   200: ChannelTestResponse
@@ -701,7 +755,8 @@ export type DeleteWorkspaceCurrentHumanInputV2ChannelsImByChannelIdData = {
 }
 
 export type DeleteWorkspaceCurrentHumanInputV2ChannelsImByChannelIdErrors = {
-  409: ChannelConflictResponse
+  409: ChannelConflictResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteWorkspaceCurrentHumanInputV2ChannelsImByChannelIdError =
@@ -723,6 +778,13 @@ export type GetWorkspaceCurrentHumanInputV2ChannelsImByChannelIdData = {
   url: '/workspace/current/human-input/v2/channels/im/{channel_id}'
 }
 
+export type GetWorkspaceCurrentHumanInputV2ChannelsImByChannelIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspaceCurrentHumanInputV2ChannelsImByChannelIdError =
+  GetWorkspaceCurrentHumanInputV2ChannelsImByChannelIdErrors[keyof GetWorkspaceCurrentHumanInputV2ChannelsImByChannelIdErrors]
+
 export type GetWorkspaceCurrentHumanInputV2ChannelsImByChannelIdResponses = {
   200: ImChannelDetailResponse
 }
@@ -740,7 +802,8 @@ export type PutWorkspaceCurrentHumanInputV2ChannelsImByChannelIdData = {
 }
 
 export type PutWorkspaceCurrentHumanInputV2ChannelsImByChannelIdErrors = {
-  409: ChannelConflictResponse
+  409: ChannelConflictResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PutWorkspaceCurrentHumanInputV2ChannelsImByChannelIdError =
@@ -763,7 +826,8 @@ export type PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdReplacementData
 }
 
 export type PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdReplacementErrors = {
-  409: ChannelConflictResponse
+  409: ChannelConflictResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdReplacementError =
@@ -786,8 +850,9 @@ export type PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestData = {
 }
 
 export type PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestErrors = {
-  400: unknown
-  409: ChannelConflictResponse
+  400: ErrorResponse
+  409: ChannelConflictResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkspaceCurrentHumanInputV2ChannelsImByChannelIdTestError =

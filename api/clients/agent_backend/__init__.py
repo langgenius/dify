@@ -17,7 +17,6 @@ from clients.agent_backend.errors import (
 )
 from clients.agent_backend.event_adapter import (
     AgentBackendAgentMessageDeltaInternalEvent,
-    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendInternalEvent,
     AgentBackendInternalEventType,
     AgentBackendRunCancelledInternalEvent,
@@ -57,7 +56,6 @@ __all__ = [
     "WORKFLOW_USER_PROMPT_LAYER_ID",
     "AgentBackendAgentAppRunInput",
     "AgentBackendAgentMessageDeltaInternalEvent",
-    "AgentBackendDeferredToolCallInternalEvent",
     "AgentBackendError",
     "AgentBackendHTTPError",
     "AgentBackendInternalEvent",

@@ -45,7 +45,6 @@ from services.agent.roster_package_entities import (
     ROSTER_AGENT_PACKAGE_FORMAT,
     ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
     RosterAgentPackageApp,
-    RosterAgentPackageAudit,
     RosterAgentPackageExport,
     RosterAgentPackageManifest,
 )
@@ -68,8 +67,8 @@ class RosterAgentPackageExporter:
         self._dependency_provider = dependency_provider or DependenciesAnalysisService.generate_dependencies
 
     def export(self, *, tenant_id: str, agent_id: str, version_id: UUID | None) -> RosterAgentPackageExport:
-        app, resources, audit = self.collect(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
-        return self._build_archive(app=app, audit=audit, resources=resources)
+        app, resources = self.collect(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
+        return self._build_archive(app=app, resources=resources)
 
     def export_yaml(self, *, tenant_id: str, agent_id: str, version_id: UUID) -> str:
         """Reuse the standard YAML export semantics, including omitted asset references."""
@@ -103,7 +102,7 @@ class RosterAgentPackageExporter:
 
     def collect(
         self, *, tenant_id: str, agent_id: str, version_id: UUID | None
-    ) -> tuple[AgentAppDsl, AgentPackageResourceExporter, RosterAgentPackageAudit]:
+    ) -> tuple[AgentAppDsl, AgentPackageResourceExporter]:
         """Collect configuration and resource references without serializing a package."""
         resources = AgentPackageResourceExporter(storage_backend=self._storage)
         with session_factory.create_session() as session:
@@ -158,19 +157,17 @@ class RosterAgentPackageExporter:
                 site_data = SiteDsl.from_site(site).model_dump(mode="json")
                 resources.collect_icon(session=session, tenant_id=tenant_id, metadata=site_data)
                 app.site = SiteDsl.model_validate(site_data)
-            audit = RosterAgentPackageAudit(ref=agent.id)
             dependency_ids = extract_agent_soul_dependencies(package.soul)
 
         resources.collect_workspace_skills()
         app.dependencies = self._dependency_provider(tenant_id, dependency_ids)
-        return app, resources, audit
+        return app, resources
 
     def _build_archive(
         self,
         *,
         app: AgentAppDsl,
         resources: AgentPackageResourceExporter,
-        audit: RosterAgentPackageAudit | None = None,
     ) -> RosterAgentPackageExport:
         # Ownership is transferred to RosterAgentPackageExport.
         output = cast(
@@ -188,7 +185,6 @@ class RosterAgentPackageExporter:
                 manifest = RosterAgentPackageManifest(
                     format=ROSTER_AGENT_PACKAGE_FORMAT,
                     format_version=ROSTER_AGENT_PACKAGE_FORMAT_VERSION,
-                    audit=audit,
                     apps=[
                         RosterAgentPackageApp(
                             path="app.yaml", size=len(app_bytes), sha256=hashlib.sha256(app_bytes).hexdigest()

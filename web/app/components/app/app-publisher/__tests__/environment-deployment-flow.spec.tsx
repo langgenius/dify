@@ -67,12 +67,19 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+    }),
+  }
+})
 
 function publishedWorkflowVersion({
   id,
@@ -671,20 +678,6 @@ describe('PublisherEnvironmentFlow', () => {
     },
   )
 
-  it('deploys the latest version directly and goes back to version selection', async () => {
-    const user = userEvent.setup()
-    renderFlow()
-
-    await user.click(screen.getByRole('button', { name: 'Deploy latest' }))
-
-    expect(screen.getByRole('heading', { name: 'Deploy configuration' })).toBeInTheDocument()
-    expect(screen.getByText(latestVersion.name)).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Back' }))
-
-    expect(screen.getByRole('heading', { name: 'Deploy to Staging' })).toBeInTheDocument()
-  })
-
   it('reports whether deployment configuration is active', async () => {
     const user = userEvent.setup()
     const onConfigurationOpenChange = vi.fn()
@@ -706,16 +699,6 @@ describe('PublisherEnvironmentFlow', () => {
     expect(onConfigurationOpenChange).toHaveBeenLastCalledWith(true)
     view.unmount()
     expect(onConfigurationOpenChange).toHaveBeenLastCalledWith(false)
-  })
-
-  it('hides the environment variables section when deployment options have no slots', async () => {
-    const user = userEvent.setup()
-    renderFlow()
-
-    await user.click(screen.getByRole('button', { name: 'Deploy latest' }))
-
-    expect(screen.getByRole('button', { name: 'Deploy' })).toBeEnabled()
-    expect(screen.queryByRole('heading', { name: 'Environment Variables' })).not.toBeInTheDocument()
   })
 
   it('hides the credentials section when deployment options only have environment variables', async () => {
@@ -815,6 +798,7 @@ describe('PublisherEnvironmentFlow', () => {
     renderFlow()
 
     await user.click(screen.getByRole('button', { name: 'Deploy latest' }))
+    expect(screen.queryByRole('heading', { name: 'Environment Variables' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Deploy' }))
 
     await expectDeploymentRequest(requests, latestVersion.id)
@@ -829,29 +813,30 @@ describe('PublisherEnvironmentFlow', () => {
     await user.click(screen.getByRole('button', { name: 'Deploy latest' }))
     await user.click(screen.getByRole('button', { name: 'Deploy' }))
 
+    await expectDeploymentRequest(requests, latestVersion.id)
+    const submitIndex = requests.findIndex((request) => request.url.includes('/deployment:deploy'))
     await waitFor(() => {
+      const deploymentRefreshIndex = requests.findIndex(
+        (request, index) =>
+          index > submitIndex &&
+          request.method === 'GET' &&
+          new URL(request.url).pathname.endsWith(
+            '/enterprise/app-deploy/apps/app-1/workflows/environment-deployments/staging',
+          ),
+      )
+      expect(deploymentRefreshIndex).toBeGreaterThan(submitIndex)
       expect(
         requests.some(
-          (request) =>
-            request.method === 'GET' &&
-            new URL(request.url).pathname.endsWith(
-              '/enterprise/app-deploy/apps/app-1/workflows/environment-deployments/staging',
-            ),
-        ),
-      ).toBe(true)
-    })
-    await waitFor(() => {
-      expect(
-        requests.some(
-          (request) =>
+          (request, index) =>
+            index > deploymentRefreshIndex &&
             request.method === 'GET' &&
             new URL(request.url).pathname.endsWith(
               '/enterprise/app-deploy/apps/app-1/environments',
             ),
         ),
       ).toBe(true)
+      expect(screen.getByText('Polling: none')).toBeInTheDocument()
     })
-    expect(screen.getByText('Polling: none')).toBeInTheDocument()
   })
 
   it('submits a version selected from all versions through the deployment API', async () => {

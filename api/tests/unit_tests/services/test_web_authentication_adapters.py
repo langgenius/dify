@@ -20,7 +20,7 @@ from services.web_authentication_service import WebEmailDeliveryRateLimitError
 
 def token_gateway(*, limited: bool = False) -> tuple[TokenManagerWebAuthenticationGateway, MagicMock]:
     limiter = MagicMock()
-    limiter.is_rate_limited.return_value = limited
+    limiter.reserve.return_value.__enter__.return_value = not limited
     limiter.time_window = 600
     return (
         TokenManagerWebAuthenticationGateway(
@@ -122,10 +122,10 @@ def test_send_reset_password_code_rejects_rate_limited_email() -> None:
     assert exc_info.value.retry_after_minutes == 10
     generate.assert_not_called()
     send_mail.assert_not_called()
-    limiter.increment_rate_limit.assert_not_called()
+    limiter.reserve.assert_called_once_with("user@example.com")
 
 
-def test_send_reset_password_code_persists_challenge_queues_mail_and_increments_limit() -> None:
+def test_send_reset_password_code_persists_challenge_and_queues_mail_within_reservation() -> None:
     gateway, limiter = token_gateway()
 
     with (
@@ -147,7 +147,8 @@ def test_send_reset_password_code_persists_challenge_queues_mail_and_increments_
         additional_data={"code": "654321"},
     )
     send_mail.assert_called_once_with(language="zh-Hans", to="user@example.com", code="654321")
-    limiter.increment_rate_limit.assert_called_once_with("user@example.com")
+    limiter.reserve.assert_called_once_with("user@example.com")
+    limiter.reserve.return_value.__exit__.assert_called_once_with(None, None, None)
 
 
 def test_token_lookup_returns_none_when_token_manager_has_no_data() -> None:
@@ -541,3 +542,20 @@ def test_login_failure_audit_writes_structured_warning() -> None:
         LoginFailureReason.INVALID_CREDENTIALS,
         "203.0.113.1",
     )
+
+
+@pytest.mark.parametrize("failure_stage", ["token", "notification"])
+def test_reset_password_failure_exits_the_reservation_with_the_original_error(failure_stage: str) -> None:
+    gateway, limiter = token_gateway()
+    error = RuntimeError("temporary failure")
+    with (
+        patch("services.web_authentication_adapters.TokenManager.generate_token", return_value="token") as generate,
+        patch("services.web_authentication_adapters.send_reset_password_mail_task.delay") as send_mail,
+    ):
+        (generate if failure_stage == "token" else send_mail).side_effect = error
+        with pytest.raises(RuntimeError, match="temporary failure"):
+            gateway.send_reset_password_code(account_id="account-1", email="user@example.com", language="en-US")
+
+    exit_args = limiter.reserve.return_value.__exit__.call_args.args
+    assert exit_args[0] is RuntimeError
+    assert exit_args[1] is error

@@ -16,7 +16,7 @@ from core.human_input_v2.shared.values import AccountId, IMBindingId, TenantId
 from core.workflow.human_input_adapter import EmailDeliveryConfig
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData, MessageTemplateConfig
 from graphon.runtime import VariablePool
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.template_resolution import VARIABLE_PATTERN, convert_template
 from models.workflow import NodeNotFoundError, Workflow, WorkflowDataError
 from repositories.human_input_v2.delivery_repository import EmailTargetSnapshot, IMMessageType, IMUserTargetSnapshot

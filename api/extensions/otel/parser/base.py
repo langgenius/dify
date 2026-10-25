@@ -17,9 +17,9 @@ from pydantic import BaseModel
 from configs import dify_config
 from enums import DeploymentEdition
 from extensions.otel.semconv.gen_ai import ChainAttributes, GenAIAttributes
+from graphon.engine_events import NodeEvent
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File
-from graphon.graph_events import GraphNodeEventBase
 from graphon.nodes.base.node import Node
 from graphon.variables import Segment
 
@@ -90,7 +90,7 @@ class NodeOTelParser(Protocol):
     """Parser interface for node-specific OpenTelemetry enrichment."""
 
     def parse(
-        self, *, node: Node, span: "Span", error: Exception | None, result_event: GraphNodeEventBase | None = None
+        self, *, node: Node, span: "Span", error: Exception | None, result_event: NodeEvent | None = None
     ) -> None: ...
 
 
@@ -98,7 +98,7 @@ class DefaultNodeOTelParser:
     """Fallback parser used when no node-specific parser is registered."""
 
     def parse(
-        self, *, node: Node, span: "Span", error: Exception | None, result_event: GraphNodeEventBase | None = None
+        self, *, node: Node, span: "Span", error: Exception | None, result_event: NodeEvent | None = None
     ) -> None:
         span.set_attribute("node.id", node.id)
         if node.execution_id:

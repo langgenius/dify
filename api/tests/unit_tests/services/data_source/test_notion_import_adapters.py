@@ -27,7 +27,7 @@ from services.data_source.credential_gateway import (
 from services.data_source.entities.notion_import import NotionPageType
 from services.data_source.notion_import_adapters import PluginNotionSourceGateway
 from services.data_source.notion_import_application_service import NotionImportCredentialUnavailableError
-from tests.unit_tests.core.datasource.factories import datasource_entity, provider_entity
+from tests.helpers.unit.core.datasource.factories import datasource_entity, provider_entity
 
 type CredentialCalls = list[tuple[str, str, str, str, str]]
 
@@ -113,7 +113,7 @@ def _runtime(
         user_id: str,
         datasource_parameters: dict[str, object],
         provider_type: str,
-    ) -> Generator[OnlineDocumentPagesMessage, None, None]:
+    ) -> Generator[OnlineDocumentPagesMessage]:
         calls.append((user_id, datasource_parameters, provider_type))
         yield from messages
 

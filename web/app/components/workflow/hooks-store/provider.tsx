@@ -15,7 +15,13 @@ export const HooksStoreContextProvider = ({
   const [store] = useState(() => createHooksStore(restProps))
   const d3Selection = useStore((s) => s.d3Selection)
   const d3Zoom = useStore((s) => s.d3Zoom)
-  const { accessControl, exportCheck, handleExportDSL, isExporting = false } = restProps
+  const {
+    fileSettings,
+    accessControl,
+    exportCheck,
+    handleExportDSL,
+    isExporting = false,
+  } = restProps
 
   useEffect(() => {
     if (d3Selection && d3Zoom) store.getState().refreshAll(restProps)
@@ -27,8 +33,9 @@ export const HooksStoreContextProvider = ({
       ...(exportCheck && { exportCheck }),
       ...(handleExportDSL && { handleExportDSL }),
       isExporting,
+      fileSettings,
     })
-  }, [accessControl, exportCheck, handleExportDSL, isExporting, store])
+  }, [fileSettings, accessControl, exportCheck, handleExportDSL, isExporting, store])
 
   return <HooksStoreContext.Provider value={store}>{children}</HooksStoreContext.Provider>
 }

@@ -7,7 +7,7 @@ from typing import Protocol
 
 from pydantic import SecretStr
 
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from repositories.human_input_v2.form_repository import Form
 
 from .entities import HumanInputNodeData

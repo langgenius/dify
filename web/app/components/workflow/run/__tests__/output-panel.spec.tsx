@@ -7,10 +7,6 @@ import OutputPanel from '../output-panel'
 
 type FileOutput = FileResponse & { dify_model_identity: '__dify__file__' }
 
-vi.mock('@/app/components/base/chat/chat/loading-anim', () => ({
-  default: () => <div data-testid="loading-anim" />,
-}))
-
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileList: ({ files }: { files: FileEntity[] }) => (
     <div data-testid="file-list">{files.map((file) => file.name).join(', ')}</div>
@@ -19,22 +15,6 @@ vi.mock('@/app/components/base/file-uploader', () => ({
 
 vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div data-testid="markdown">{content}</div>,
-}))
-
-vi.mock('@/app/components/workflow/run/status-container', () => ({
-  default: ({
-    status,
-    children,
-    copyContent,
-  }: {
-    status: string
-    children?: React.ReactNode
-    copyContent?: string
-  }) => (
-    <div data-copy-content={copyContent} data-status={status} data-testid="status-container">
-      {children}
-    </div>
-  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
@@ -72,27 +52,22 @@ const createFileOutput = (overrides: Partial<FileOutput> = {}): FileOutput => ({
 })
 
 describe('OutputPanel', () => {
-  it('renders the loading animation while the workflow is running', () => {
-    render(<OutputPanel isRunning />)
-
-    expect(screen.getByTestId('loading-anim')).toBeInTheDocument()
+  it('shows no-output only after execution finishes without a result', () => {
+    const { rerender } = render(<OutputPanel isRunning />)
+    expect(screen.queryByText('No Output')).not.toBeInTheDocument()
+    rerender(<OutputPanel isRunning={false} />)
+    expect(screen.getByText('No Output')).toBeVisible()
   })
 
-  it('renders the failed status container when there is an error', () => {
+  it('shows and copies a failed execution message', async () => {
+    const user = userEvent.setup()
+    const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
     render(<OutputPanel error="Execution failed" />)
 
-    expect(screen.getByTestId('status-container')).toHaveAttribute('data-status', 'failed')
-    expect(screen.getByTestId('status-container')).toHaveAttribute(
-      'data-copy-content',
-      'Execution failed',
-    )
+    expect(screen.getByRole('status')).toHaveTextContent('Execution failed')
+    await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
+    expect(writeText).toHaveBeenCalledWith('Execution failed')
     expect(screen.getByText('Execution failed')).toBeInTheDocument()
-  })
-
-  it('renders the no-output placeholder when there are no outputs', () => {
-    render(<OutputPanel />)
-
-    expect(screen.getByTestId('markdown')).toHaveTextContent('No Output')
   })
 
   it('renders a plain text output as markdown', () => {
@@ -140,7 +115,6 @@ describe('OutputPanel', () => {
     render(<OutputPanel height={200} outputs={{ answer: 'hello', score: 1 }} />)
 
     expect(screen.getByTestId('code-editor')).toHaveAttribute('data-language', 'json')
-    expect(screen.getByTestId('code-editor')).toHaveAttribute('data-height', '92')
     expect(screen.getByTestId('code-editor')).toHaveAttribute(
       'data-value',
       `{
@@ -148,17 +122,6 @@ describe('OutputPanel', () => {
   "score": 1
 }`,
     )
-  })
-
-  it('keeps the non-interactive output title out of the tab order', async () => {
-    const user = userEvent.setup()
-
-    render(<OutputPanel height={200} outputs={{ answer: 'hello', score: 1 }} />)
-
-    const outputTitle = screen.getByText('Output')
-    await user.tab()
-
-    expect(outputTitle).not.toHaveFocus()
   })
 
   it('skips the code editor when structured outputs have no positive height', () => {

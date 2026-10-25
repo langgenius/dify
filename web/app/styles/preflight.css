@@ -350,11 +350,22 @@ textarea::placeholder {
 }
 
 /*
-Set the default cursor for buttons.
+Use a pointer for buttons, selection controls, and tabs.
+Labels opt in at the call site: only labels that toggle a control should get a pointer.
 */
 
 button,
 [role='button'] {
+  cursor: pointer;
+}
+
+:is([role='switch'], [role='checkbox'], [role='radio'], [role='tab']):not(
+  :disabled,
+  [aria-disabled='true'],
+  [aria-readonly='true'],
+  [data-disabled],
+  [data-readonly]
+) {
   cursor: pointer;
 }
 

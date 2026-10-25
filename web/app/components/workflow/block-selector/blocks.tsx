@@ -38,7 +38,7 @@ const Blocks = ({
   availableBlocksTypes = [],
   blocks: blocksFromProps,
 }: BlocksProps) => {
-  const { t } = useTranslation(['workflow', 'workflowLogic'])
+  const { t } = useTranslation(['workflow', 'workflowLogic', 'navigation'])
   const store = useStoreApi()
   const blocksFromHooks = useBlocks()
   const [previewCardHandle] = useState(() => createPreviewCardHandle<BlockPreviewPayload>())
@@ -170,13 +170,13 @@ const Blocks = ({
                       aria-describedby={describedBy || undefined}
                       aria-disabled={isHumanInputDisabled}
                       data-disabled={isHumanInputDisabled || undefined}
-                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden data-[disabled]:cursor-not-allowed data-[disabled]:text-text-disabled data-[disabled]:hover:bg-transparent"
+                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden data-[disabled]:cursor-not-allowed data-[disabled]:text-text-disabled data-[disabled]:hover:bg-transparent"
                       onClick={() => {
                         if (!isHumanInputDisabled) onSelect(block.metaData.type)
                       }}
                     >
                       <BlockIcon
-                        className={cn('mr-2 shrink-0', isHumanInputDisabled && 'opacity-30')}
+                        className={cn('me-2 shrink-0', isHumanInputDisabled && 'opacity-30')}
                         type={block.metaData.type}
                       />
                       <span
@@ -193,13 +193,21 @@ const Blocks = ({
                             ns: 'workflow',
                           })}
                           size="xs"
-                          className="ml-2 shrink-0 px-[5px] py-[3px]"
+                          className="ms-2 shrink-0 px-[5px] py-[3px]"
+                        />
+                      )}
+                      {block.metaData.type === BlockEnum.KnowledgeRetrievalV2 && (
+                        <Badge
+                          size="xs"
+                          variant="dimm"
+                          text={t(($) => $['menus.status'], { ns: 'navigation' })}
+                          className="ms-2 shrink-0"
                         />
                       )}
                       {block.metaData.type === BlockEnum.LoopEnd && (
                         <Badge
                           text={t(($) => $['nodes.loop.loopNode'], { ns: 'workflowLogic' })}
-                          className="ml-2 shrink-0"
+                          className="ms-2 shrink-0"
                         />
                       )}
                     </button>
@@ -244,7 +252,7 @@ type BlockPreviewCardProps = {
 }
 
 function BlockPreviewCard({ payload }: BlockPreviewCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const migration = useHumanInputMigration()
   if (!payload) return null
 

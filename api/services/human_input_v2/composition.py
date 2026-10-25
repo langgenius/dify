@@ -16,7 +16,7 @@ from core.human_input_v2.shared.values import AccountId, TenantId
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, HumanInputRuntime, PreparedForm
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc
 from models.workflow import WorkflowRun
 

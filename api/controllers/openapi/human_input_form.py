@@ -194,10 +194,25 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
                 submission_user_id=submission_user_id,
                 submission_end_user_id=submission_end_user_id,
             )
-        except FormNotFoundError:
-            raise HumanInputFormNotFound()
+        except FormNotFoundError as caught_error:
+            raise HumanInputFormNotFound() from caught_error
 
-        return FormSubmitResponse()
+        if form.workflow_run_id is None:
+            return FormSubmitResponse()
+        # `workflow_events` imports this module for `with_form_hints`.
+        from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
+
+        follow = Hint(
+            summary="Follow the resumed run",
+            op=op_of(OpenApiWorkflowEventsApi.get),
+            input={
+                "app_id": ctx.app.id,
+                "task_id": form.workflow_run_id,
+                "include_state_snapshot": True,
+                "continue_on_pause": False,
+            },
+        )
+        return FormSubmitResponse(hints=[follow])
 
 
 def form_hints(*, op: str, app_id: str, response: HumanInputRequiredResponse) -> list[Hint]:
@@ -219,7 +234,7 @@ def form_hints(*, op: str, app_id: str, response: HumanInputRequiredResponse) ->
     ]
 
 
-def with_form_hints(events: Iterable[str], *, app_id: str) -> Generator[str, None, None]:
+def with_form_hints(events: Iterable[str], *, app_id: str) -> Generator[str]:
     """A run stream whose `human_input_required` events carry hints that target the submit route above."""
 
     op = op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)

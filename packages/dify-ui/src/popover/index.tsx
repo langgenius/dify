@@ -1,64 +1,63 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
-import { floatingPopupAnimationClassName } from '../overlay-shared'
-import { parsePlacement } from '../placement'
+import { focusRingClassName } from '../internal/focus'
+import { floatingPopupAnimationClassName, positionerClassName } from '../internal/overlay'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const Popover = BasePopover.Root
 const PopoverArrow = BasePopover.Arrow
 const PopoverPortal = BasePopover.Portal
-const PopoverTrigger = BasePopover.Trigger
 const PopoverClose = BasePopover.Close
 const PopoverTitle = BasePopover.Title
 const PopoverDescription = BasePopover.Description
+// Transition container for one popup shared by several triggers; unstyled passthrough.
+const PopoverViewport = BasePopover.Viewport
 const createPopoverHandle = BasePopover.createHandle
 
 type PopoverActions = BasePopover.Root.Actions
 
 type PopoverProps<Payload = unknown> = BasePopover.Root.Props<Payload>
+type PopoverChangeEventReason = BasePopover.Root.ChangeEventReason
+type PopoverChangeEventDetails = BasePopover.Root.ChangeEventDetails
 type PopoverArrowProps = BasePopover.Arrow.Props
 type PopoverPortalProps = BasePopover.Portal.Props
 type PopoverHandle<Payload = unknown> = BasePopover.Handle<Payload>
 type PopoverTriggerProps<Payload = unknown> = BasePopover.Trigger.Props<Payload>
+
+function PopoverTrigger<Payload = unknown>({ className, ...props }: PopoverTriggerProps<Payload>) {
+  return (
+    <BasePopover.Trigger
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
 type PopoverCloseProps = BasePopover.Close.Props
 type PopoverTitleProps = BasePopover.Title.Props
 type PopoverDescriptionProps = BasePopover.Description.Props
+type PopoverViewportProps = BasePopover.Viewport.Props
 
 type PopoverBackdropProps = BasePopover.Backdrop.Props
 
 function PopoverBackdrop({ className, ...props }: PopoverBackdropProps) {
   return (
     <BasePopover.Backdrop
-      className={(state) => cn('fixed inset-0 z-50', resolveClassName(className, state))}
+      className={(state) => cn('fixed inset-0', resolveClassName(className, state))}
       {...props}
     />
   )
 }
 
-type PopoverPositionerProps = Omit<BasePopover.Positioner.Props, 'side' | 'align'> & {
-  placement?: Placement
-}
+type PopoverPositionerProps = BasePopover.Positioner.Props
 
-function PopoverPositioner({
-  className,
-  placement = 'bottom',
-  sideOffset = 8,
-  alignOffset = 0,
-  ...props
-}: PopoverPositionerProps) {
-  const { side, align } = parsePlacement(placement)
-
+function PopoverPositioner({ className, sideOffset = 8, ...props }: PopoverPositionerProps) {
   return (
     <BasePopover.Positioner
-      side={side}
-      align={align}
       sideOffset={sideOffset}
-      alignOffset={alignOffset}
-      className={(state) => cn('z-50 outline-hidden', resolveClassName(className, state))}
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -82,21 +81,27 @@ function PopoverPopup({ className, ...props }: PopoverPopupProps) {
 }
 
 type PopoverContentProps = Omit<PopoverPopupProps, 'children'> &
-  Pick<PopoverPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+  Pick<PopoverPositionerProps, 'alignOffset' | 'side' | 'align' | 'sideOffset'> & {
     children: React.ReactNode
   }
 
 function PopoverContent({
   children,
-  placement = 'bottom',
-  sideOffset = 8,
-  alignOffset = 0,
+  side,
+  align,
+  sideOffset,
+  alignOffset,
   className,
   ...props
 }: PopoverContentProps) {
   return (
     <PopoverPortal>
-      <PopoverPositioner placement={placement} sideOffset={sideOffset} alignOffset={alignOffset}>
+      <PopoverPositioner
+        side={side}
+        align={align}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+      >
         <PopoverPopup
           className={(state) =>
             cn(
@@ -126,11 +131,14 @@ export {
   PopoverPositioner,
   PopoverTitle,
   PopoverTrigger,
+  PopoverViewport,
 }
 export type {
   PopoverActions,
   PopoverArrowProps,
   PopoverBackdropProps,
+  PopoverChangeEventDetails,
+  PopoverChangeEventReason,
   PopoverCloseProps,
   PopoverContentProps,
   PopoverDescriptionProps,
@@ -141,4 +149,5 @@ export type {
   PopoverProps,
   PopoverTitleProps,
   PopoverTriggerProps,
+  PopoverViewportProps,
 }

@@ -19,6 +19,11 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.common.human_input_v2_errors import (
+    PublicHumanInputV2ExpiredError,
+    PublicHumanInputV2NotFoundError,
+    PublicHumanInputV2SubmittedError,
+)
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.human_input_file_upload import (
@@ -27,8 +32,9 @@ from controllers.web.human_input_file_upload import (
     InvalidUploadTokenForbiddenError,
     InvalidUploadTokenUnauthorizedError,
 )
-from controllers.web.human_input_form_access_request import _public_form_error_response
+from controllers.web.human_input_form_access_request import _raise_public_form_error
 from fields.file_fields import FileWithSignedUrl
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from services import remote_file_service as remote_errors
 from services.errors import file as file_errors
@@ -41,6 +47,26 @@ register_response_schema_models(web_ns, FileWithSignedUrl)
 
 @web_ns.route("/human-input/v2/files")
 class HumanInputV2FileUploadApi(Resource):
+    @error_responses(
+        InvalidUploadTokenUnauthorizedError,
+        InvalidUploadTokenBadRequestError,
+        InvalidUploadTokenForbiddenError,
+        PublicHumanInputV2NotFoundError,
+        PublicHumanInputV2SubmittedError,
+        PublicHumanInputV2ExpiredError,
+        NoFileUploadedError,
+        FilenameNotExistsError,
+        TooManyFilesError,
+        FileTooLargeError,
+        UnsupportedFileTypeError,
+        BlockedFileExtensionError,
+        RemoteFileAccessDeniedError,
+        RemoteFileInvalidResponseError,
+        RemoteFileInvalidUrlError,
+        RemoteFileNotFoundError,
+        RemoteFileUnavailableError,
+        RemoteFileUrlBlockedError,
+    )
     @web_ns.doc(
         description="Upload a file or a remote URL using a v2 upload grant.",
         consumes=["multipart/form-data"],
@@ -79,6 +105,26 @@ register_schema_models(web_ns, HumanInputV2RemoteUploadPayload)
 
 @web_ns.route("/human-input/v2/files/remote")
 class HumanInputV2RemoteFileUploadApi(Resource):
+    @error_responses(
+        InvalidUploadTokenUnauthorizedError,
+        InvalidUploadTokenBadRequestError,
+        InvalidUploadTokenForbiddenError,
+        PublicHumanInputV2NotFoundError,
+        PublicHumanInputV2SubmittedError,
+        PublicHumanInputV2ExpiredError,
+        NoFileUploadedError,
+        FilenameNotExistsError,
+        TooManyFilesError,
+        FileTooLargeError,
+        UnsupportedFileTypeError,
+        BlockedFileExtensionError,
+        RemoteFileAccessDeniedError,
+        RemoteFileInvalidResponseError,
+        RemoteFileInvalidUrlError,
+        RemoteFileNotFoundError,
+        RemoteFileUnavailableError,
+        RemoteFileUrlBlockedError,
+    )
     @web_ns.doc(
         description="Fetch a remote file using a v2 upload grant.",
         security=[],
@@ -110,7 +156,7 @@ def _upload_file(*, remote: bool):
     except InvalidUploadTokenError as error:
         raise InvalidUploadTokenForbiddenError() from error
     except HumanInputFormError as error:
-        return _public_form_error_response(error)
+        _raise_public_form_error(error)
     try:
         if remote:
             payload = HumanInputV2RemoteUploadPayload.model_validate(web_ns.payload or {})

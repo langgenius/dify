@@ -1,20 +1,26 @@
+import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
+import type { ListFilterNodeType } from '@/app/components/workflow/nodes/list-operator/types'
+import type { Node } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
 import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { FlowType } from '@/types/common'
-import { TabType } from '../../types'
+import { BlockEnum, ErrorHandleMode, VarType } from '@/app/components/workflow/types'
 import useLastRun from '../use-last-run'
 
 const mockHandleSyncWorkflowDraft = vi.fn()
-const mockShowSingleRun = vi.fn()
 const mockHandleRun = vi.fn()
-const mockHideSingleRun = vi.fn()
-const mockInvalidLastRun = vi.fn()
-const mockFetchInspectVars = vi.fn()
+const mockIterationChildren = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/workflow/nodes/human-input/hooks/use-single-run-form-params', () => ({
-  default: () => ({}),
-}))
+vi.mock('../../../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../../hooks/use-workflow')>()
+  return {
+    ...actual,
+    useWorkflow: () => ({
+      getIterationNodeChildren: mockIterationChildren,
+      getBeforeNodesInSameBranch: () => [],
+    }),
+    useIsNodeInIteration: () => ({ isNodeInIteration: () => false }),
+  }
+})
 
 vi.mock('../../../../../../hooks/use-nodes-sync-draft', async (importOriginal) => {
   const actual =
@@ -44,7 +50,7 @@ vi.mock('../../../../../../hooks/use-inspect-vars-crud', () => ({
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-one-step-run', () => ({
   default: () => ({
-    hideSingleRun: mockHideSingleRun,
+    hideSingleRun: vi.fn(),
     handleRun: mockHandleRun,
     getInputVars: vi.fn(() => []),
     toVarInputs: vi.fn(() => []),
@@ -52,7 +58,7 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-one-step-run', () => ({
     runInputData: {},
     runInputDataRef: { current: {} },
     setRunInputData: vi.fn(),
-    showSingleRun: mockShowSingleRun,
+    showSingleRun: vi.fn(),
     runResult: {},
     iterationRunResult: [],
     loopRunResult: [],
@@ -62,144 +68,77 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-one-step-run', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidLastRun: () => mockInvalidLastRun,
+  useInvalidateLastRun: () => vi.fn(),
 }))
 
 describe('useLastRun', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFetchInspectVars.mockResolvedValue(undefined)
+    mockHandleSyncWorkflowDraft.mockReset()
   })
 
-  it.each([undefined, '2'])(
-    'shows persisted variables after V2 form submission and preserves V1 last-run behavior (%s)',
-    async (version) => {
-      const { result, store } = renderWorkflowHook(
-        () =>
-          useLastRun({
-            id: 'human-input-node',
-            flowId: 'flow-id',
-            flowType: FlowType.appFlow,
-            data: { type: BlockEnum.HumanInput, title: 'Human Input', desc: '', version },
-            defaultRunInputData: {},
-            isPaused: false,
-          }),
-        { hooksStoreProps: { fetchInspectVars: mockFetchInspectVars } },
-      )
-      await act(async () => {
-        store.getState().setNodesWithInspectVars([
-          {
-            nodeId: 'human-input-node',
-            title: 'Human Input',
-            nodeType: BlockEnum.HumanInput,
-            nodePayload: { type: BlockEnum.HumanInput, title: 'Human Input', desc: '' },
-            vars: [],
-            isValueFetched: true,
-          },
-        ])
-        await result.current.handleAfterCustomSingleRun()
-      })
-      expect(mockHideSingleRun).toHaveBeenCalledOnce()
-      if (version === '2') {
-        expect(store.getState().showVariableInspectPanel).toBe(true)
-        expect(store.getState().currentFocusNodeId).toBeNull()
-        expect(mockFetchInspectVars).toHaveBeenCalledWith({})
-        expect(result.current.tabType).toBe(TabType.settings)
-        expect(mockInvalidLastRun).not.toHaveBeenCalled()
-      } else {
-        expect(result.current.tabType).toBe(TabType.lastRun)
-        expect(store.getState().nodesWithInspectVars[0]?.isValueFetched).toBe(true)
-        expect(mockInvalidLastRun).toHaveBeenCalledOnce()
-        expect(mockFetchInspectVars).not.toHaveBeenCalled()
-      }
-    },
-  )
-
-  it('waits for the real variable list refresh before opening a first V2 result with no cached node', async () => {
-    let resolveRefresh!: () => void
-    mockFetchInspectVars.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveRefresh = resolve
-        }),
-    )
-    const { result, store } = renderWorkflowHook(
-      () =>
-        useLastRun({
-          id: 'human-input-node',
-          flowId: 'flow-id',
-          flowType: FlowType.appFlow,
-          data: { type: BlockEnum.HumanInput, title: 'Human Input', desc: '', version: '2' },
-          defaultRunInputData: {},
-          isPaused: false,
-        }),
-      { hooksStoreProps: { fetchInspectVars: mockFetchInspectVars } },
-    )
-    expect(store.getState().nodesWithInspectVars).toEqual([])
-    act(() => {
-      store.getState().setCurrentFocusNodeId('previous-node')
-    })
-    let completion!: Promise<void>
-    act(() => {
-      completion = result.current.handleAfterCustomSingleRun()
-    })
-    expect(mockFetchInspectVars).toHaveBeenCalledWith({})
-    expect(store.getState().showVariableInspectPanel).toBe(false)
-    expect(mockHideSingleRun).not.toHaveBeenCalled()
-    await act(async () => {
-      resolveRefresh()
-      await completion
-    })
-    expect(store.getState().showVariableInspectPanel).toBe(true)
-    expect(store.getState().currentFocusNodeId).toBeNull()
-    expect(mockHideSingleRun).toHaveBeenCalledOnce()
-  })
-
-  it('keeps the V2 form open when refreshing persisted results fails', async () => {
-    mockFetchInspectVars.mockRejectedValueOnce(new Error('Variables unavailable'))
-    const { result, store } = renderWorkflowHook(
-      () =>
-        useLastRun({
-          id: 'human-input-node',
-          flowId: 'flow-id',
-          flowType: FlowType.appFlow,
-          data: { type: BlockEnum.HumanInput, title: 'Human Input', desc: '', version: '2' },
-          defaultRunInputData: {},
-          isPaused: false,
-        }),
-      { hooksStoreProps: { fetchInspectVars: mockFetchInspectVars } },
-    )
-    await act(async () => {
-      await expect(result.current.handleAfterCustomSingleRun()).rejects.toThrow(
-        'Variables unavailable',
-      )
-    })
-    expect(store.getState().showVariableInspectPanel).toBe(false)
-    expect(mockHideSingleRun).not.toHaveBeenCalled()
-  })
-
-  it('syncs the draft before opening a custom single-run form', () => {
+  it('submits list inputs from the real container form using selector keys', async () => {
+    const child: Node<ListFilterNodeType> = {
+      id: 'list',
+      position: { x: 0, y: 0 },
+      data: {
+        type: BlockEnum.ListFilter,
+        title: 'List',
+        desc: '',
+        variable: ['source', 'items'],
+        var_type: VarType.arrayNumber,
+        item_var_type: VarType.number,
+        filter_by: {
+          enabled: true,
+          conditions: [{ key: '', comparison_operator: '≥', value: '{{#source.minimum#}}' }],
+        },
+        extract_by: { enabled: true, serial: '{{#source.serial#}}' },
+        order_by: { enabled: false, key: '', value: 'asc' },
+        limit: { enabled: false },
+      },
+    }
+    mockIterationChildren.mockReturnValue([child])
+    mockHandleSyncWorkflowDraft.mockImplementation((_force, _sync, options) => options.onSuccess())
+    const data: IterationNodeType = {
+      type: BlockEnum.Iteration,
+      title: 'Iteration',
+      desc: '',
+      start_node_id: 'iteration-start',
+      iterator_selector: ['source', 'items'],
+      iterator_input_type: VarType.arrayNumber,
+      output_selector: ['list', 'result'],
+      output_type: VarType.arrayNumber,
+      is_parallel: false,
+      parallel_nums: 1,
+      error_handle_mode: ErrorHandleMode.Terminated,
+      flatten_output: false,
+      _children: [{ nodeId: 'list', nodeType: BlockEnum.ListFilter }],
+      _isShowTips: false,
+    }
     const { result } = renderWorkflowHook(() =>
       useLastRun({
-        id: 'data-source-node',
-        flowId: 'flow-id',
-        flowType: FlowType.appFlow,
-        data: {
-          type: BlockEnum.DataSource,
-          title: 'Data Source',
-          desc: '',
-        },
+        id: 'iteration',
+        resource: { kind: 'app', appId: 'flow-id', mode: 'workflow' },
+        data,
         defaultRunInputData: {},
         isPaused: false,
       }),
     )
 
-    act(() => {
-      result.current.handleSingleRun()
+    await act(async () => {
+      await result.current.handleRunWithParams({
+        'source.items': [1, 2],
+        'source.minimum': 0,
+        'source.serial': 1,
+        'iteration.input_selector': [1, 2],
+      })
     })
 
-    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true)
-    expect(mockShowSingleRun).toHaveBeenCalledTimes(1)
-    expect(mockHandleRun).not.toHaveBeenCalled()
+    expect(mockHandleRun).toHaveBeenCalledWith({
+      'list.#source.items#': [1, 2],
+      'list.#source.minimum#': 0,
+      'list.#source.serial#': 1,
+      'iteration.input_selector': [1, 2],
+    })
   })
 })
