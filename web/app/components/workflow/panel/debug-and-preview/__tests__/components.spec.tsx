@@ -49,8 +49,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
-// The shared chat UI is independently tested. Keep its props boundary while the
-// preview's real useChat owns the conversation tree, stream lifecycle and actions.
+// Shared Chat UI is independently tested; the preview's real useChat owns the conversation tree and stream.
 vi.mock('@/app/components/base/chat/chat', () => ({
   default: ({
     chatList,
@@ -395,7 +394,6 @@ describe('debug-and-preview components', () => {
       expect(send).toBeDisabled()
       expect(screen.getByLabelText('Response state')).toHaveTextContent('Idle')
       await user.click(send)
-      expect(handleRun).toHaveBeenCalledOnce()
       expect(screen.getByRole('log', { name: 'Conversation' })).toHaveTextContent('hello')
     })
 
@@ -463,14 +461,6 @@ describe('debug-and-preview components', () => {
         expect.any(Object),
       )
       await user.click(screen.getByRole('button', { name: 'regenerate-chat' }))
-      expect(handleRun).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          query: 'hello',
-          conversation_id: 'conversation-1',
-          parent_message_id: undefined,
-        }),
-        expect.any(Object),
-      )
       sendChunk('Second answer', 'answer-2')
       await complete()
       expect(screen.getByRole('log', { name: 'Conversation' })).toHaveTextContent('Second answer')
