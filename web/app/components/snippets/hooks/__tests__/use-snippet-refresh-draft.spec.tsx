@@ -53,6 +53,7 @@ const localViewport = { x: 80, y: 60, zoom: 0.8 }
 function setup() {
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { enable_collaboration_mode: false },
+    appDslVersion: '0.6.0',
   })
   seedModelProviderQueries(queryClient)
   seedToolProviders(queryClient, {
