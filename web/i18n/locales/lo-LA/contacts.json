@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "ລ້າງຄ່າທີ່ບັນທຶກໄວ້",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "ຄ່າທີ່ບັນທຶກໄວ້ນີ້ຈະຖືກລ້າງເມື່ອທ່ານບັນທຶກ.",
+  "imPlatform.bindingDialog.replacementRequired": "ຂໍ້ມູນຢັ້ງຢືນນີ້ເປັນຂອງອົງກອນອື່ນ. ກັບໄປທີ່ລາຍການຊ່ອງທາງ ແລະໃຊ້ ແທນທີ່ ເພື່ອເຊື່ອມຕໍ່.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "ບັນທຶກການຕັ້ງຄ່າແລ້ວ ແຕ່ບໍ່ສາມາດໂຫຼດລາຍລະອຽດໄດ້. ກະລຸນາປິດກ່ອງໂຕ້ຕອບນີ້ ແລ້ວເປີດຄືນ.",
+  "imPlatform.bindingDialog.undoClearCredential": "ຍົກເລີກການລ້າງ"
+}

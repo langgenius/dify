@@ -180,7 +180,7 @@ const useRefreshCompletedContactImSync = (run: ContactImSyncRunView | null | und
         ),
       }),
       queryClient.invalidateQueries({
-        queryKey: [...contactImPlatformQueryKeys.syncRun(run.id, repository.queryKey), 'items'],
+        queryKey: contactImPlatformQueryKeys.syncItemsPrefix(run.id, repository.queryKey),
       }),
     ])
   }, [
@@ -280,6 +280,7 @@ export const useSaveContactImCredentials = () => {
   const inFlightRef = useRef(false)
 
   const mutation = useMutation({
+    retry: false,
     mutationFn: () => {
       const input = commandRef.current
       commandRef.current = null
@@ -292,6 +293,13 @@ export const useSaveContactImCredentials = () => {
       })
     },
     onSuccess: invalidateOrganizationQueries,
+    onError: async (error) => {
+      if (
+        error instanceof ContactImRepositoryError &&
+        error.code === ContactImRepositoryErrorCode.SavedDetailsUnavailable
+      )
+        await invalidateOrganizationQueries()
+    },
   })
 
   const saveCredentials = async (input: SaveCredentialsInput) => {

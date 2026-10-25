@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "सहेजा गया मान साफ़ करें",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "सहेजने पर यह सहेजा गया मान साफ़ हो जाएगा।",
+  "imPlatform.bindingDialog.replacementRequired": "ये क्रेडेंशियल किसी अन्य संगठन के हैं। चैनल पर वापस जाएँ और उसे कनेक्ट करने के लिए बदलें का उपयोग करें।",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "कॉन्फ़िगरेशन सहेज लिया गया है, लेकिन उसका विवरण लोड नहीं हो सका। यह संवाद बंद करके फिर खोलें।",
+  "imPlatform.bindingDialog.undoClearCredential": "साफ़ करना पूर्ववत करें"
+}

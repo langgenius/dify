@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "Xóa giá trị đã lưu",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Giá trị đã lưu này sẽ bị xóa khi bạn lưu.",
+  "imPlatform.bindingDialog.replacementRequired": "Thông tin xác thực này thuộc về một tổ chức khác. Quay lại Kênh và dùng Thay thế để kết nối tổ chức đó.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Đã lưu cấu hình nhưng không thể tải thông tin chi tiết. Hãy đóng hộp thoại này rồi mở lại.",
+  "imPlatform.bindingDialog.undoClearCredential": "Hoàn tác xóa"
+}

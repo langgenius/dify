@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "Počisti shranjeno vrednost",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Ta shranjena vrednost bo ob shranjevanju počiščena.",
+  "imPlatform.bindingDialog.replacementRequired": "Ti prijavni podatki pripadajo drugi organizaciji. Vrnite se na kanale in za povezavo uporabite Zamenjaj.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Konfiguracija je bila shranjena, vendar podrobnosti ni bilo mogoče naložiti. Zaprite to pogovorno okno in ga znova odprite.",
+  "imPlatform.bindingDialog.undoClearCredential": "Razveljavi čiščenje"
+}

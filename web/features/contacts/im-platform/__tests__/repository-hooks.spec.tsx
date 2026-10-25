@@ -19,7 +19,12 @@ import { createContactImMockRepository } from '../mock/repository'
 import { ContactImMockScenario } from '../mock/scenarios'
 import { contactImPlatformQueryKeys } from '../query-keys'
 import { createContactImSyncApi } from '../repository'
-import { ContactImProvider, ContactImSyncStatus } from '../types'
+import {
+  ContactImProvider,
+  ContactImRepositoryError,
+  ContactImRepositoryErrorCode,
+  ContactImSyncStatus,
+} from '../types'
 
 const organization = {
   canManage: true,
@@ -150,6 +155,87 @@ describe('Contact IM repository hooks', () => {
     expect(JSON.stringify(consoleSpies.flatMap((spy) => spy.mock.calls))).not.toContain(secret)
 
     for (const spy of consoleSpies) spy.mockRestore()
+    queryClient.clear()
+  })
+
+  it('refreshes persisted channel state when saving succeeds but reloading its details fails', async () => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.Connected,
+    })
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValue(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.SavedDetailsUnavailable),
+      )
+    const { queryClient, wrapper } = createHarness(
+      repository,
+      new QueryClient({
+        defaultOptions: {
+          mutations: { retry: 2, retryDelay: 0 },
+          queries: { retry: false },
+        },
+      }),
+    )
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useSaveContactImCredentials(), { wrapper })
+    const secret = 'discard-after-persisted-save'
+    let error: unknown
+
+    await act(async () => {
+      error = await result.current
+        .saveCredentials({
+          provider: ContactImProvider.Slack,
+          channelId: 'channel-1',
+          expectedConfigVersion: 'snapshot',
+          replaceActiveProvider: false,
+          secret,
+          values: {},
+        })
+        .catch((caught: unknown) => caught)
+    })
+
+    expect(error).toMatchObject({ code: 'saved_details_unavailable' })
+    expect(save).toHaveBeenCalledTimes(1)
+    for (const queryKey of [
+      consoleQuery.workspace.current.humanInput.v2.channels.key(),
+      consoleQuery.workspaces.current.humanInput.contactOptions.key(),
+      contactImPlatformQueryKeys.integrations(organization.organizationId, repository.queryKey),
+      contactImPlatformQueryKeys.activeSync(organization.organizationId, repository.queryKey),
+    ])
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey })
+    expect(JSON.stringify(queryClient.getMutationCache().getAll())).not.toContain(secret)
+    queryClient.clear()
+  })
+
+  it.each([
+    ContactImRepositoryErrorCode.MutationFailed,
+    ContactImRepositoryErrorCode.ConfigurationUpdated,
+    ContactImRepositoryErrorCode.ReplacementRequired,
+  ])('does not refresh or repeat a save rejected with %s', async (code) => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.Connected,
+    })
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValue(new ContactImRepositoryError(code))
+    const { queryClient, wrapper } = createHarness(repository)
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useSaveContactImCredentials(), { wrapper })
+
+    await act(async () => {
+      await result.current
+        .saveCredentials({
+          provider: ContactImProvider.Slack,
+          replaceActiveProvider: false,
+          values: {},
+        })
+        .catch(() => undefined)
+    })
+
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(invalidateQueries).not.toHaveBeenCalled()
     queryClient.clear()
   })
 

@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "清除已儲存的值",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "儲存時將清除此已儲存的值。",
+  "imPlatform.bindingDialog.replacementRequired": "這些憑證屬於另一個組織。請返回頻道清單，使用「取代」來連線。",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "設定已儲存，但無法載入詳細資料。請關閉此對話方塊後重新開啟。",
+  "imPlatform.bindingDialog.undoClearCredential": "復原清除"
+}

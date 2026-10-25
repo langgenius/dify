@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "Gespeicherten Wert löschen",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Dieser gespeicherte Wert wird beim Speichern gelöscht.",
+  "imPlatform.bindingDialog.replacementRequired": "Diese Zugangsdaten gehören zu einer anderen Organisation. Kehren Sie zu den Kanälen zurück und wählen Sie Ersetzen, um sie zu verbinden.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Die Konfiguration wurde gespeichert, aber ihre Details konnten nicht geladen werden. Schließen Sie diesen Dialog und öffnen Sie ihn erneut.",
+  "imPlatform.bindingDialog.undoClearCredential": "Löschen rückgängig machen"
+}

@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "Limpar valor salvo",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Este valor salvo será apagado ao salvar.",
+  "imPlatform.bindingDialog.replacementRequired": "Estas credenciais pertencem a outra organização. Volte para Canais e use Substituir para conectá-la.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "A configuração foi salva, mas não foi possível carregar seus detalhes. Feche esta janela e abra-a novamente.",
+  "imPlatform.bindingDialog.undoClearCredential": "Desfazer limpeza"
+}

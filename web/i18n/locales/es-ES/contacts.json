@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "Borrar valor guardado",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Este valor guardado se borrará al guardar.",
+  "imPlatform.bindingDialog.replacementRequired": "Estas credenciales pertenecen a otra organización. Vuelve a Canales y usa Reemplazar para conectarla.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "La configuración se ha guardado, pero no se han podido cargar sus detalles. Cierra este diálogo y vuelve a abrirlo.",
+  "imPlatform.bindingDialog.undoClearCredential": "Deshacer borrado"
+}

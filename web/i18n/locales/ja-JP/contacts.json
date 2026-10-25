@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "保存済みの値をクリア",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "保存すると、この保存済みの値がクリアされます。",
+  "imPlatform.bindingDialog.replacementRequired": "この認証情報は別の組織に属しています。チャネル一覧に戻り、「置き換え」を使って接続してください。",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "設定は保存されましたが、詳細を読み込めませんでした。このダイアログを閉じて、再度開いてください。",
+  "imPlatform.bindingDialog.undoClearCredential": "クリアを取り消す"
+}

@@ -26,11 +26,12 @@ export const contactImPlatformQueryKeys = {
     pageSize?: number,
   ) =>
     [
-      ...contactImPlatformQueryKeys.syncRun(runId, repositoryKey),
-      'items',
+      ...contactImPlatformQueryKeys.syncItemsPrefix(runId, repositoryKey),
       result ?? 'all',
       pageSize ?? 'default',
     ] as const,
+  syncItemsPrefix: (runId: string, repositoryKey: string) =>
+    [...contactImPlatformQueryKeys.syncRun(runId, repositoryKey), 'items'] as const,
   syncRun: (runId: string, repositoryKey: string) =>
     [...contactImPlatformQueryKeys.all, repositoryKey, 'sync-run', runId] as const,
 }

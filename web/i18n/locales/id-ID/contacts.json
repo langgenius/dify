@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "Hapus nilai tersimpan",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Nilai tersimpan ini akan dihapus saat Anda menyimpan.",
+  "imPlatform.bindingDialog.replacementRequired": "Kredensial ini milik organisasi lain. Kembali ke Kanal dan gunakan Ganti untuk menghubungkannya.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Konfigurasi telah disimpan, tetapi detailnya tidak dapat dimuat. Tutup dialog ini lalu buka kembali.",
+  "imPlatform.bindingDialog.undoClearCredential": "Urungkan penghapusan"
+}

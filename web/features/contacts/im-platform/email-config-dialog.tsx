@@ -17,8 +17,14 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-u
 import { useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
+import { canRetainCredential } from './credential-draft'
 import { useSaveContactImCredentials, useTestContactImConnection } from './hooks'
-import { ContactImProvider, ContactImRepositoryError, ContactImRepositoryErrorCode } from './types'
+import {
+  ContactImProvider,
+  ContactImProviderField,
+  ContactImRepositoryError,
+  ContactImRepositoryErrorCode,
+} from './types'
 
 type EmailConfigValues = {
   senderEmail: string
@@ -51,12 +57,21 @@ export function ContactEmailConfigDialog({
   const [apiKey, setApiKey] = useState('')
   const [testSucceeded, setTestSucceeded] = useState(false)
   const isPending = saveCredentials.isPending || testConnection.isPending
-  const canRetainSecret = !provider.requiresFreshCredentials && integration?.secretConfigured
-  const retainSecret = Boolean(canRetainSecret && !apiKey.trim())
+  const savedDetailsUnavailable =
+    saveCredentials.error instanceof ContactImRepositoryError &&
+    saveCredentials.error.code === ContactImRepositoryErrorCode.SavedDetailsUnavailable
+  const credentialsDisabled = isPending || savedDetailsUnavailable
+  const canRetainField = (field: ContactImProviderField) =>
+    canRetainCredential(integration, field, provider.requiresFreshCredentials)
+  const canRetainSecret = canRetainField(ContactImProviderField.Secret)
   const safeErrorMessage = (error: unknown, fallback: string) => {
     if (!(error instanceof ContactImRepositoryError)) return fallback
     if (error.code === ContactImRepositoryErrorCode.ConfigurationUpdated)
       return t(($) => $['imPlatform.configurationUpdated'])
+    if (error.code === ContactImRepositoryErrorCode.SavedDetailsUnavailable)
+      return t(($) => $['imPlatform.bindingDialog.savedDetailsUnavailable'])
+    if (error.code === ContactImRepositoryErrorCode.ReplacementRequired)
+      return t(($) => $['imPlatform.bindingDialog.replacementRequired'])
     return error.statusDescription ?? fallback
   }
 
@@ -64,8 +79,10 @@ export function ContactEmailConfigDialog({
     throw new Error('ContactEmailConfigDialog requires the Email provider definition')
 
   const command = () => ({
+    channelId: integration?.channelId,
+    expectedConfigVersion: integration?.configVersion,
     provider: provider.provider,
-    retainSecret,
+    clearedFields: [],
     secret: apiKey.trim() || undefined,
     values: {
       senderEmail: values.senderEmail.trim(),
@@ -82,7 +99,7 @@ export function ContactEmailConfigDialog({
   }
 
   const handleTestConnection = async () => {
-    if (isPending || !validateForm()) return
+    if (credentialsDisabled || !validateForm()) return
 
     setTestSucceeded(false)
     try {
@@ -94,7 +111,7 @@ export function ContactEmailConfigDialog({
   }
 
   const handleSave = async () => {
-    if (isPending) return
+    if (credentialsDisabled) return
     setTestSucceeded(false)
     try {
       await saveCredentials.saveCredentials({
@@ -105,8 +122,15 @@ export function ContactEmailConfigDialog({
       })
       setApiKey('')
       onOpenChange(false)
-    } catch {
-      // Preserve the draft so the user can correct the credentials and retry.
+    } catch (error) {
+      if (
+        error instanceof ContactImRepositoryError &&
+        error.code === ContactImRepositoryErrorCode.SavedDetailsUnavailable
+      ) {
+        setApiKey('')
+        testConnection.reset()
+      }
+      // Ordinary write failures keep the draft available for correction and retry.
     }
   }
 
@@ -120,13 +144,13 @@ export function ContactEmailConfigDialog({
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!"
+        className="max-h-[calc(100dvh-2rem)] w-[520px] overflow-hidden!"
       >
         <DialogClose
           render={
             <IconButton
               aria-label={tCommon(($) => $['operation.close'])}
-              className="absolute top-5 right-5"
+              className="absolute inset-e-5 top-5"
               disabled={isPending}
               size="lg"
             >
@@ -134,11 +158,9 @@ export function ContactEmailConfigDialog({
             </IconButton>
           }
         />
-        <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['imPlatform.email.title'])}
-          </DialogTitle>
-          <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+        <div className="shrink-0 space-y-1 ps-6 pe-14 pt-6 pb-3">
+          <DialogTitle>{t(($) => $['imPlatform.email.title'])}</DialogTitle>
+          <DialogDescription>
             <Trans
               ns="contacts"
               i18nKey={($) => $['imPlatform.email.description']}
@@ -221,8 +243,8 @@ export function ContactEmailConfigDialog({
                   </FieldDescription>
                 </div>
                 <Input
-                  required
-                  disabled={isPending}
+                  required={!canRetainField(ContactImProviderField.SenderEmail)}
+                  disabled={credentialsDisabled}
                   autoComplete="email"
                   placeholder="sybil@dify.ai"
                   type="email"
@@ -253,8 +275,8 @@ export function ContactEmailConfigDialog({
                   </FieldDescription>
                 </div>
                 <Input
-                  required
-                  disabled={isPending}
+                  required={!canRetainField(ContactImProviderField.SenderName)}
+                  disabled={credentialsDisabled}
                   maxLength={255}
                   autoComplete="organization"
                   placeholder="sybil"
@@ -294,9 +316,11 @@ export function ContactEmailConfigDialog({
                   </FieldDescription>
                 </div>
                 <Input
-                  disabled={isPending}
+                  disabled={credentialsDisabled}
                   autoComplete="new-password"
-                  placeholder={t(($) => $['imPlatform.email.apiKeyPlaceholder'])}
+                  placeholder={
+                    canRetainSecret ? '••••••••' : t(($) => $['imPlatform.email.apiKeyPlaceholder'])
+                  }
                   required={!canRetainSecret}
                   type="password"
                   value={apiKey}
@@ -339,7 +363,7 @@ export function ContactEmailConfigDialog({
 
           <div className="mt-auto flex shrink-0 items-center justify-between gap-3 px-6 pt-5 pb-6">
             <Button
-              disabled={saveCredentials.isPending}
+              disabled={saveCredentials.isPending || savedDetailsUnavailable}
               loading={testConnection.isPending}
               onClick={handleTestConnection}
             >
@@ -356,7 +380,7 @@ export function ContactEmailConfigDialog({
                 type="submit"
                 className="min-w-18"
                 variant="primary"
-                disabled={testConnection.isPending}
+                disabled={testConnection.isPending || savedDetailsUnavailable}
                 loading={saveCredentials.isPending}
               >
                 {saveCredentials.isPending

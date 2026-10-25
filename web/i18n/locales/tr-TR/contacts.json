@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "Kayıtlı değeri temizle",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Kaydettiğinizde bu kayıtlı değer temizlenecek.",
+  "imPlatform.bindingDialog.replacementRequired": "Bu kimlik bilgileri başka bir kuruluşa ait. Kanallara dönün ve bağlamak için Değiştir seçeneğini kullanın.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Yapılandırma kaydedildi ancak ayrıntıları yüklenemedi. Bu iletişim kutusunu kapatıp yeniden açın.",
+  "imPlatform.bindingDialog.undoClearCredential": "Temizlemeyi geri al"
+}

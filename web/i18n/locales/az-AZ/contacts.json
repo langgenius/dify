@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "Saxlanmış dəyəri sil",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Yadda saxladıqda bu saxlanmış dəyər silinəcək.",
+  "imPlatform.bindingDialog.replacementRequired": "Bu giriş məlumatları başqa təşkilata aiddir. Kanallara qayıdın və ona qoşulmaq üçün Əvəz et seçin.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Konfiqurasiya saxlanıldı, lakin təfərrüatları yükləmək mümkün olmadı. Bu dialoqu bağlayıb yenidən açın.",
+  "imPlatform.bindingDialog.undoClearCredential": "Silməni geri al"
+}

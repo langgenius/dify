@@ -866,7 +866,7 @@ describe('Contacts channel credential API contracts', () => {
     vi.spyOn(repository, 'getProviderDefinitions').mockResolvedValue(
       definitions.map((definition) => ({
         ...definition,
-        requiresFreshCredentials: true,
+        requiresFreshCredentials: false,
         callbackUrl: null,
         requiredFields:
           definition.provider === ContactImProvider.Slack
@@ -896,6 +896,20 @@ describe('Contacts channel credential API contracts', () => {
         ...integration,
         channelId: `${integration.provider}-channel`,
         configVersion: 'version-at-open',
+        configuredFields:
+          integration.provider === ContactImProvider.Slack
+            ? [
+                ContactImProviderField.ClientId,
+                ContactImProviderField.Secret,
+                ContactImProviderField.SigningSecret,
+                ContactImProviderField.BotToken,
+                ContactImProviderField.AppToken,
+              ]
+            : [
+                ContactImProviderField.SenderEmail,
+                ContactImProviderField.SenderName,
+                ContactImProviderField.Secret,
+              ],
         callbackUrl:
           integration.provider === ContactImProvider.Slack
             ? 'https://example.dify.test/actual-webhook'
@@ -913,22 +927,16 @@ describe('Contacts channel credential API contracts', () => {
   }
 
   const fillSlackCredentials = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.type(
-      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientId'),
-      'slack-client',
-    )
-    await user.type(
-      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret'),
-      'test-client-secret',
-    )
-    await user.type(
-      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.signingSecret'),
-      'test-signing-secret',
-    )
-    await user.type(
-      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.botToken'),
-      'xoxb-test-only',
-    )
+    for (const [field, value] of [
+      ['clientId', 'slack-client'],
+      ['clientSecret', 'test-client-secret'],
+      ['signingSecret', 'test-signing-secret'],
+      ['botToken', 'xoxb-test-only'],
+    ]) {
+      const input = screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`)
+      await user.clear(input)
+      await user.type(input, value!)
+    }
   }
 
   const openConfigured = async (user: ReturnType<typeof userEvent.setup>, provider: string) => {
@@ -938,6 +946,409 @@ describe('Contacts channel credential API contracts', () => {
       }),
     )
   }
+
+  const createSavedFeishuRepository = async () => {
+    const { repository, slack } = await createApiShapeRepository()
+    const feishu = {
+      ...slack,
+      provider: ContactImProvider.Feishu,
+      channelId: 'feishu-channel',
+      callbackUrl: 'https://example.dify.test/feishu-webhook',
+      configuredValues: { appId: 'saved-feishu-app' },
+      configuredFields: [
+        ContactImProviderField.AppId,
+        ContactImProviderField.Secret,
+        ContactImProviderField.VerificationToken,
+        ContactImProviderField.EncryptKey,
+      ],
+    }
+    vi.mocked(repository.getIntegrations).mockResolvedValue([feishu])
+    return { repository, feishu }
+  }
+
+  it('clears and locks Feishu credential drafts when saving succeeded but loading the saved details failed', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createSavedFeishuRepository()
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValue(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.SavedDetailsUnavailable),
+      )
+    const testConnection = vi.spyOn(repository, 'testConnection')
+    renderSurface({ repository })
+    await openConfigured(user, 'Feishu')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    for (const field of ['secret', 'verificationToken', 'encryptKey'])
+      await user.type(
+        screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`),
+        `saved-${field}`,
+      )
+    const saveButton = screen.getByRole('button', {
+      name: 'contacts.imPlatform.bindingDialog.saveAndContinue',
+    })
+    const testButton = screen.getByRole('button', {
+      name: 'contacts.imPlatform.action.testConnection',
+    })
+    await user.click(saveButton)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.bindingDialog.savedDetailsUnavailable',
+    )
+    expect(
+      screen.queryByText('contacts.imPlatform.bindingDialog.saveFailed'),
+    ).not.toBeInTheDocument()
+    for (const field of ['secret', 'verificationToken', 'encryptKey']) {
+      const input = screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`)
+      expect(input).toHaveValue('')
+      expect(input).toBeDisabled()
+    }
+    expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')).toBeDisabled()
+    expect(saveButton).toBeDisabled()
+    expect(testButton).toBeDisabled()
+    await user.click(saveButton)
+    await user.click(testButton)
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(testConnection).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('clears and locks the Email API key after saving when the saved channel details are unavailable', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValue(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.SavedDetailsUnavailable),
+      )
+    const testConnection = vi.spyOn(repository, 'testConnection')
+    renderSurface({ repository })
+    await openConfigured(user, 'Email')
+    const apiKey = screen.getByLabelText('contacts.imPlatform.email.apiKey')
+    await user.type(apiKey, 'already-persisted-resend-key')
+    const saveButton = screen.getByRole('button', { name: 'contacts.imPlatform.action.save' })
+    const testButton = screen.getByRole('button', {
+      name: 'contacts.imPlatform.action.testConnection',
+    })
+    await user.click(saveButton)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.bindingDialog.savedDetailsUnavailable',
+    )
+    expect(apiKey).toHaveValue('')
+    for (const field of ['apiKey', 'senderEmail', 'senderName'])
+      expect(screen.getByLabelText(`contacts.imPlatform.email.${field}`)).toBeDisabled()
+    expect(saveButton).toBeDisabled()
+    expect(testButton).toBeDisabled()
+    await user.click(saveButton)
+    await user.click(testButton)
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(testConnection).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('explains a different-organization credential conflict and preserves the editable draft', async () => {
+    const user = userEvent.setup()
+    const { repository, feishu } = await createSavedFeishuRepository()
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValueOnce(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.ReplacementRequired),
+      )
+      .mockResolvedValue(feishu)
+    renderSurface({ repository })
+    await openConfigured(user, 'Feishu')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    const appId = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')
+    const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')
+    await user.clear(appId)
+    await user.type(appId, 'different-organization-app')
+    await user.type(secret, 'correctable-app-secret')
+    const saveButton = screen.getByRole('button', {
+      name: 'contacts.imPlatform.bindingDialog.saveAndContinue',
+    })
+    await user.click(saveButton)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.bindingDialog.replacementRequired',
+    )
+    expect(screen.queryByText('contacts.imPlatform.configurationUpdated')).not.toBeInTheDocument()
+    expect(appId).toHaveValue('different-organization-app')
+    expect(appId).toBeEnabled()
+    expect(secret).toHaveValue('correctable-app-secret')
+    expect(secret).toBeEnabled()
+    expect(saveButton).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+    ).toBeEnabled()
+    await user.clear(appId)
+    await user.type(appId, 'corrected-organization-app')
+    await user.click(saveButton)
+
+    expect(
+      await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback'),
+    ).toBeInTheDocument()
+    expect(save).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        secret: 'correctable-app-secret',
+        values: { appId: 'corrected-organization-app' },
+      }),
+    )
+  })
+
+  it('tests and retries a saved Feishu token update without requesting its unchanged App Secret', async () => {
+    const user = userEvent.setup()
+    const { repository, feishu } = await createSavedFeishuRepository()
+    const testConnection = vi.spyOn(repository, 'testConnection').mockResolvedValue(feishu)
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValueOnce(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed),
+      )
+      .mockResolvedValue(feishu)
+    renderSurface({ repository })
+    await openConfigured(user, 'Feishu')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')
+    const token = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.verificationToken')
+    expect(secret).toHaveValue('')
+    expect(secret).not.toBeRequired()
+    expect(screen.getAllByText('contacts.imPlatform.bindingDialog.secretConfigured')).toHaveLength(
+      3,
+    )
+    await user.type(token, 'rotated-verification-token')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+    )
+
+    expect(await screen.findByText('contacts.imPlatform.email.testSucceeded')).toBeInTheDocument()
+    const expectedUpdate = expect.objectContaining({
+      provider: ContactImProvider.Feishu,
+      channelId: 'feishu-channel',
+      expectedConfigVersion: 'version-at-open',
+      values: { appId: 'saved-feishu-app', verificationToken: 'rotated-verification-token' },
+    })
+    expect(testConnection).toHaveBeenCalledExactlyOnceWith(expectedUpdate)
+    expect(testConnection.mock.calls[0]?.[0]?.secret).toBeUndefined()
+    expect(testConnection.mock.calls[0]?.[0]).not.toHaveProperty('retainSecret')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.bindingDialog.saveFailed',
+    )
+    expect(token).toHaveValue('rotated-verification-token')
+    expect(secret).toHaveValue('')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    expect(await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback')).toHaveValue(
+      feishu.callbackUrl,
+    )
+    expect(save).toHaveBeenNthCalledWith(2, expectedUpdate)
+    expect(save.mock.calls[1]?.[0]?.secret).toBeUndefined()
+    expect(save.mock.calls[1]?.[0]).not.toHaveProperty('retainSecret')
+  })
+
+  it('marks an optional saved credential for clearing and sends an explicit clear only on save', async () => {
+    const user = userEvent.setup()
+    const { repository, feishu } = await createSavedFeishuRepository()
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValueOnce(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed),
+      )
+      .mockResolvedValue(feishu)
+    renderSurface({ repository })
+    await openConfigured(user, 'Feishu')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    const token = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.verificationToken')
+    await user.click(
+      screen.getByRole('button', { name: /field\.verificationToken.*clearSavedCredential/ }),
+    )
+
+    expect(token).toBeDisabled()
+    expect(
+      screen.getByText('contacts.imPlatform.bindingDialog.credentialWillBeCleared'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /field\.verificationToken.*undoClearCredential/ }),
+    ).toBeEnabled()
+    expect(
+      screen.queryByRole('button', { name: /field\.secret.*clearSavedCredential/ }),
+    ).not.toBeInTheDocument()
+    expect(save).not.toHaveBeenCalled()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.bindingDialog.saveFailed',
+    )
+    expect(token).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /field\.verificationToken.*undoClearCredential/ }),
+    ).toBeEnabled()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    expect(
+      await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback'),
+    ).toBeInTheDocument()
+    expect(save).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        channelId: 'feishu-channel',
+        expectedConfigVersion: 'version-at-open',
+        clearedFields: [ContactImProviderField.VerificationToken],
+        values: expect.objectContaining({ appId: 'saved-feishu-app' }),
+      }),
+    )
+    expect(save.mock.calls[0]?.[0]?.secret).toBeUndefined()
+  })
+
+  it('undoes a pending clear and allows replacing that optional saved credential', async () => {
+    const user = userEvent.setup()
+    const { repository, feishu } = await createSavedFeishuRepository()
+    const save = vi.spyOn(repository, 'saveCredentials').mockResolvedValue(feishu)
+    renderSurface({ repository })
+    await openConfigured(user, 'Feishu')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    const token = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.verificationToken')
+    await user.click(
+      screen.getByRole('button', { name: /field\.verificationToken.*clearSavedCredential/ }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: /field\.verificationToken.*undoClearCredential/ }),
+    )
+
+    expect(token).toBeEnabled()
+    expect(token).toHaveValue('')
+    expect(
+      screen.queryByText('contacts.imPlatform.bindingDialog.credentialWillBeCleared'),
+    ).not.toBeInTheDocument()
+    expect(save).not.toHaveBeenCalled()
+    await user.type(token, 'replacement-after-undo')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    expect(
+      await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback'),
+    ).toBeInTheDocument()
+    expect(save).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        clearedFields: [],
+        values: { appId: 'saved-feishu-app', verificationToken: 'replacement-after-undo' },
+      }),
+    )
+  })
+
+  it('still requires every mandatory credential when creating a Slack channel', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    vi.mocked(repository.getIntegrations).mockResolvedValue([])
+    const save = vi.spyOn(repository, 'saveCredentials')
+    renderSurface({ repository })
+    await user.click(await screen.findByRole('button', { name: /Slack.*connect/i }))
+    for (const field of ['clientId', 'clientSecret', 'signingSecret', 'botToken'])
+      expect(
+        screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`),
+      ).toBeRequired()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    expect(save).not.toHaveBeenCalled()
+    expect(screen.getAllByText('contacts.imPlatform.bindingDialog.required')).toHaveLength(4)
+  })
+
+  it('uses legacy secretConfigured only for the primary secret when field metadata is absent', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    const integrations = await repository.getIntegrations(organization.organizationId)
+    vi.mocked(repository.getIntegrations).mockResolvedValue(
+      integrations.map((integration) => ({ ...integration, configuredFields: undefined })),
+    )
+    renderSurface({ repository })
+    await openConfigured(user, 'Slack')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+
+    expect(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret'),
+    ).not.toBeRequired()
+    expect(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.signingSecret'),
+    ).toBeRequired()
+    expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.botToken')).toBeRequired()
+    expect(
+      screen.getByText('contacts.imPlatform.bindingDialog.secretConfigured'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /clearSavedCredential/ })).not.toBeInTheDocument()
+  })
+
+  it('still requires a new App Secret when replacing Slack with Feishu', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    const save = vi.spyOn(repository, 'saveCredentials')
+    renderSurface({ repository })
+    await user.click(await screen.findByRole('button', { name: /Feishu.*replace/i }))
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.replacement.confirm' }),
+    )
+    expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')).toBeRequired()
+    expect(
+      screen.queryByText('contacts.imPlatform.bindingDialog.secretConfigured'),
+    ).not.toBeInTheDocument()
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'),
+      'replacement-feishu-app',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    expect(save).not.toHaveBeenCalled()
+    expect(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret'),
+    ).toHaveAccessibleDescription('contacts.imPlatform.bindingDialog.required')
+  })
+
+  it('updates Email sender details with a blank API key and captures its saved channel version', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    const email = (await repository.getIntegrations(organization.organizationId)).find(
+      (integration) => integration.provider === ContactImProvider.Email,
+    )
+    if (!email) throw new Error('Configured Email fixture is required')
+    const save = vi.spyOn(repository, 'saveCredentials').mockResolvedValue(email)
+    renderSurface({ repository })
+    await openConfigured(user, 'Email')
+    const senderEmail = screen.getByLabelText('contacts.imPlatform.email.senderEmail')
+    const senderName = screen.getByLabelText('contacts.imPlatform.email.senderName')
+    expect(senderEmail).not.toBeRequired()
+    expect(screen.getByLabelText('contacts.imPlatform.email.apiKey')).not.toBeRequired()
+    await user.clear(senderEmail)
+    await user.clear(senderName)
+    await user.type(senderName, 'Renamed sender')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(save).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        provider: ContactImProvider.Email,
+        channelId: 'email-channel',
+        expectedConfigVersion: 'version-at-open',
+        clearedFields: [],
+        values: { senderEmail: '', senderName: 'Renamed sender' },
+      }),
+    )
+    expect(save.mock.calls[0]?.[0]?.secret).toBeUndefined()
+    expect(save.mock.calls[0]?.[0]).not.toHaveProperty('retainSecret')
+  })
 
   it('uses the saved channel callback and reopens it without re-entering credentials', async () => {
     const user = userEvent.setup()
@@ -953,7 +1364,7 @@ describe('Contacts channel credential API contracts', () => {
       getIntegrations.mockResolvedValue([saved])
       return saved
     })
-    const testConnection = vi.spyOn(repository, 'testConnection')
+    const testConnection = vi.spyOn(repository, 'testConnection').mockResolvedValue(saved)
     renderSurface({ repository })
     await user.click(await screen.findByRole('button', { name: /Slack.*connect/i }))
     expect(
@@ -993,7 +1404,13 @@ describe('Contacts channel credential API contracts', () => {
     await user.click(
       screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
     )
-    expect(testConnection).not.toHaveBeenCalled()
+    expect(testConnection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channelId: saved.channelId,
+        expectedConfigVersion: saved.configVersion,
+        provider: ContactImProvider.Slack,
+      }),
+    )
     await user.click(
       screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
     )
@@ -1005,7 +1422,7 @@ describe('Contacts channel credential API contracts', () => {
     )
     expect(copy).toHaveBeenLastCalledWith(saved.callbackUrl)
     expect(save).toHaveBeenCalledTimes(1)
-    expect(testConnection).not.toHaveBeenCalled()
+    expect(testConnection).toHaveBeenCalledTimes(1)
   })
 
   it('updates the newly replaced channel when returning from callbacks to edit credentials', async () => {
@@ -1017,6 +1434,8 @@ describe('Contacts channel credential API contracts', () => {
       channelId: 'replacement-feishu-channel',
       configVersion: 'feishu-version-1',
       displayIdentifier: 'cli_replacement',
+      configuredValues: { appId: 'cli_replacement' },
+      configuredFields: [ContactImProviderField.AppId, ContactImProviderField.Secret],
       callbackUrl: 'https://backend.example/callbacks/human-input/v2/im/feishu-only-hook',
     }
     const getIntegrations = vi.mocked(repository.getIntegrations)
@@ -1063,15 +1482,10 @@ describe('Contacts channel credential API contracts', () => {
     )
     const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')
     expect(secret).toHaveValue('')
-    expect(secret).toBeRequired()
+    expect(secret).not.toBeRequired()
     const appId = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')
     await user.clear(appId)
     await user.type(appId, 'cli_replacement_updated')
-    await user.click(
-      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
-    )
-    expect(save).toHaveBeenCalledTimes(1)
-    await user.type(secret, 'updated-app-secret')
     await user.click(
       screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
     )
@@ -1085,11 +1499,11 @@ describe('Contacts channel credential API contracts', () => {
         expectedConfigVersion: saved.configVersion,
         provider: ContactImProvider.Feishu,
         replaceActiveProvider: false,
-        retainSecret: false,
-        secret: 'updated-app-secret',
         values: { appId: 'cli_replacement_updated' },
       }),
     )
+    expect(save.mock.calls[1]?.[0]?.secret).toBeUndefined()
+    expect(save.mock.calls[1]?.[0]).not.toHaveProperty('retainSecret')
     await user.click(
       screen.getByRole('button', { name: 'contacts.imPlatform.action.copyCallback' }),
     )
@@ -1170,7 +1584,7 @@ describe('Contacts channel credential API contracts', () => {
     )
   })
 
-  it('requires fresh Slack credentials for edits, masks every secret, and sends the captured config version', async () => {
+  it('updates one saved Slack secret while retaining the other masked credentials', async () => {
     const user = userEvent.setup()
     const { repository, slack } = await createApiShapeRepository()
     const save = vi.spyOn(repository, 'saveCredentials').mockResolvedValue(slack)
@@ -1178,47 +1592,49 @@ describe('Contacts channel credential API contracts', () => {
     await openConfigured(user, 'Slack')
     await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
     expect(
-      screen.getByText('contacts.imPlatform.bindingDialog.freshCredentials'),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByText('contacts.imPlatform.bindingDialog.secretConfigured'),
+      screen.queryByText('contacts.imPlatform.bindingDialog.freshCredentials'),
     ).not.toBeInTheDocument()
-    for (const field of ['clientSecret', 'signingSecret', 'botToken', 'appToken'])
-      expect(
-        screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`),
-      ).toHaveAttribute('type', 'password')
+    expect(screen.getAllByText('contacts.imPlatform.bindingDialog.secretConfigured')).toHaveLength(
+      4,
+    )
+    for (const field of ['clientSecret', 'signingSecret', 'botToken', 'appToken']) {
+      const input = screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`)
+      expect(input).toHaveAttribute('type', 'password')
+      expect(input).toHaveValue('')
+      expect(input).not.toBeRequired()
+    }
     expect(
       screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appToken'),
     ).not.toBeRequired()
+    expect(
+      screen.getByRole('button', { name: /field\.appToken.*clearSavedCredential/ }),
+    ).toBeEnabled()
+    expect(screen.getAllByRole('button', { name: /clearSavedCredential/ })).toHaveLength(1)
     const clientId = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientId')
-    await user.type(clientId, 'changed-client')
-    await user.click(
-      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    expect(clientId).not.toBeRequired()
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.signingSecret'),
+      'rotated-signing-secret',
     )
-    expect(save).not.toHaveBeenCalled()
-    await user.clear(clientId)
-    await fillSlackCredentials(user)
     await user.click(
       screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
     )
     expect(
       await screen.findByRole('button', { name: 'contacts.imPlatform.bindingDialog.finish' }),
     ).toBeInTheDocument()
-    expect(screen.queryByDisplayValue('test-client-secret')).not.toBeInTheDocument()
-    expect(save).toHaveBeenCalledWith({
-      organizationId: organization.organizationId,
-      provider: ContactImProvider.Slack,
-      channelId: 'slack-channel',
-      expectedConfigVersion: 'version-at-open',
-      replaceActiveProvider: false,
-      retainSecret: false,
-      secret: 'test-client-secret',
-      values: {
-        clientId: 'slack-client',
-        signingSecret: 'test-signing-secret',
-        botToken: 'xoxb-test-only',
-      },
-    })
+    expect(screen.queryByDisplayValue('rotated-signing-secret')).not.toBeInTheDocument()
+    expect(save).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        organizationId: organization.organizationId,
+        provider: ContactImProvider.Slack,
+        channelId: 'slack-channel',
+        expectedConfigVersion: 'version-at-open',
+        replaceActiveProvider: false,
+        values: { signingSecret: 'rotated-signing-secret' },
+      }),
+    )
+    expect(save.mock.calls[0]?.[0]?.secret).toBeUndefined()
+    expect(save.mock.calls[0]?.[0]).not.toHaveProperty('retainSecret')
   })
 
   it('uses the server webhook and never reports a failed connection test as success', async () => {
@@ -1295,7 +1711,6 @@ describe('Contacts channel credential API contracts', () => {
         replaceActiveProvider: true,
         channelId: 'slack-channel',
         expectedConfigVersion: 'version-at-open',
-        retainSecret: false,
       }),
     )
     expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')).toHaveValue(
@@ -1364,7 +1779,6 @@ describe('Contacts channel credential API contracts', () => {
       2,
       expect.objectContaining({
         provider: ContactImProvider.Feishu,
-        retainSecret: false,
         secret: 'retained-app-secret',
         values: {
           appId: 'corrected-app',
@@ -1409,7 +1823,6 @@ describe('Contacts channel credential API contracts', () => {
       2,
       expect.objectContaining({
         provider: ContactImProvider.Email,
-        retainSecret: false,
         secret: 'retained-resend-key',
         values: { senderEmail: 'approvals@acme.com', senderName: 'Corrected sender' },
       }),
@@ -1443,7 +1856,7 @@ describe('Contacts channel credential API contracts', () => {
     })
   })
 
-  it('requires a fresh Resend key for edits and keeps sender details after a failed test', async () => {
+  it('tests saved Email credentials in channel context and keeps drafts after a failed test', async () => {
     const user = userEvent.setup()
     const { repository } = await createApiShapeRepository()
     const testConnection = vi
@@ -1452,13 +1865,25 @@ describe('Contacts channel credential API contracts', () => {
     renderSurface({ repository })
     await openConfigured(user, 'Email')
     const apiKey = screen.getByLabelText('contacts.imPlatform.email.apiKey')
-    expect(apiKey).toBeRequired()
+    expect(apiKey).not.toBeRequired()
     expect(apiKey).toHaveValue('')
-    expect(screen.getByLabelText('contacts.imPlatform.email.senderName')).toBeRequired()
+    expect(screen.getByLabelText('contacts.imPlatform.email.senderName')).not.toBeRequired()
     await user.click(
       screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
     )
-    expect(testConnection).not.toHaveBeenCalled()
+    expect(
+      await screen.findByText('contacts.imPlatform.bindingDialog.testFailed'),
+    ).toBeInTheDocument()
+    expect(testConnection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: ContactImProvider.Email,
+        channelId: 'email-channel',
+        expectedConfigVersion: 'version-at-open',
+        values: { senderEmail: 'approvals@acme.com', senderName: 'Acme' },
+      }),
+    )
+    expect(testConnection.mock.calls[0]?.[0]?.secret).toBeUndefined()
+    expect(testConnection.mock.calls[0]?.[0]).not.toHaveProperty('retainSecret')
     await user.type(apiKey, 'resend-test-only')
     await user.click(
       screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
@@ -1473,7 +1898,8 @@ describe('Contacts channel credential API contracts', () => {
     )
     expect(testConnection).toHaveBeenCalledWith(
       expect.objectContaining({
-        retainSecret: false,
+        channelId: 'email-channel',
+        expectedConfigVersion: 'version-at-open',
         secret: 'resend-test-only',
         values: { senderEmail: 'approvals@acme.com', senderName: 'Acme' },
       }),

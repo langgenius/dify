@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "Wyczyść zapisaną wartość",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Ta zapisana wartość zostanie wyczyszczona podczas zapisywania.",
+  "imPlatform.bindingDialog.replacementRequired": "Te dane uwierzytelniające należą do innej organizacji. Wróć do kanałów i użyj opcji Zastąp, aby ją połączyć.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Konfiguracja została zapisana, ale nie udało się wczytać jej szczegółów. Zamknij to okno i otwórz je ponownie.",
+  "imPlatform.bindingDialog.undoClearCredential": "Cofnij wyczyszczenie"
+}

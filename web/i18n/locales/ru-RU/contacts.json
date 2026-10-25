@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "Очистить сохранённое значение",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Это сохранённое значение будет очищено при сохранении.",
+  "imPlatform.bindingDialog.replacementRequired": "Эти учётные данные принадлежат другой организации. Вернитесь к каналам и используйте «Заменить», чтобы подключить её.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Конфигурация сохранена, но загрузить её сведения не удалось. Закройте это диалоговое окно и откройте снова.",
+  "imPlatform.bindingDialog.undoClearCredential": "Отменить очистку"
+}

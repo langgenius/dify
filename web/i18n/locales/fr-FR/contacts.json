@@ -1,0 +1,7 @@
+{
+  "imPlatform.bindingDialog.clearSavedCredential": "Effacer la valeur enregistrée",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Cette valeur enregistrée sera effacée lors de la sauvegarde.",
+  "imPlatform.bindingDialog.replacementRequired": "Ces identifiants appartiennent à une autre organisation. Revenez aux canaux et utilisez Remplacer pour la connecter.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "La configuration a été enregistrée, mais ses détails n’ont pas pu être chargés. Fermez cette boîte de dialogue et rouvrez-la.",
+  "imPlatform.bindingDialog.undoClearCredential": "Annuler l’effacement"
+}

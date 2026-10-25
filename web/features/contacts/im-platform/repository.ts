@@ -1,7 +1,12 @@
 import type {
   ChannelSummary,
+  EmailChannelDetailResponse,
+  EmailProviderCredentialsUpdateInputWritable,
   EmailProviderCredentialsWritable,
+  ImChannelDetailResponse,
   ImProviderCredentialsInputWritable,
+  ImProviderCredentialsUpdateInputWritable,
+  UnchangedInput,
 } from '@dify/contracts/api/console/workspace/types.gen'
 import type { ImSyncResultItem, ImSyncRun } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ContactsImPlatformOrganizationContext } from './context'
@@ -21,6 +26,7 @@ import type {
   SaveContactImCredentialsCommand,
   TestContactImConnectionCommand,
 } from './types'
+import { zChannelConflictResponse } from '@dify/contracts/api/console/workspace/zod.gen'
 import { z } from 'zod'
 import { consoleClient } from '@/service/console'
 import {
@@ -294,7 +300,26 @@ function emailSettingsFor(command: TestContactImConnectionCommand) {
   return { sender_email, sender_name }
 }
 
-function credentialsFor(command: TestContactImConnectionCommand) {
+function updateEmailSettingsFor(command: TestContactImConnectionCommand) {
+  const unchanged: UnchangedInput = { type: 'unchanged' }
+  return {
+    sender_email: command.values.senderEmail?.trim() || unchanged,
+    sender_name: command.values.senderName?.trim() || unchanged,
+  }
+}
+
+function validateClearedFields(command: TestContactImConnectionCommand) {
+  for (const field of command.clearedFields ?? []) {
+    const definition = providerMetadata[command.provider].fields.find(
+      (item) => item.field === field,
+    )
+    if (!definition || definition.required)
+      throw new ContactImRepositoryError(ContactImRepositoryErrorCode.InvalidCommand)
+  }
+}
+
+function createCredentialsFor(command: TestContactImConnectionCommand) {
+  validateClearedFields(command)
   const required = (field: ContactImProviderField) => {
     const value = (field === 'secret' ? command.secret : command.values[field])?.trim()
     if (!value)
@@ -302,7 +327,7 @@ function credentialsFor(command: TestContactImConnectionCommand) {
     return value
   }
   const optional = (field: Exclude<ContactImProviderField, 'secret'>) =>
-    command.values[field]?.trim() || null
+    command.clearedFields?.includes(field) ? null : command.values[field]?.trim() || null
   switch (command.provider) {
     case 'email':
       return {
@@ -351,6 +376,64 @@ function credentialsFor(command: TestContactImConnectionCommand) {
   }
 }
 
+function updateCredentialsFor(
+  command: TestContactImConnectionCommand,
+): EmailProviderCredentialsUpdateInputWritable | ImProviderCredentialsUpdateInputWritable {
+  validateClearedFields(command)
+  const unchanged: UnchangedInput = { type: 'unchanged' }
+  const value = (field: ContactImProviderField) =>
+    (field === 'secret' ? command.secret : command.values[field])?.trim() || unchanged
+  const optional = (field: Exclude<ContactImProviderField, 'secret'>) =>
+    command.clearedFields?.includes(field) ? null : value(field)
+
+  switch (command.provider) {
+    case 'email':
+      return {
+        provider: 'resend',
+        api_key: value('secret'),
+      }
+    case 'feishu':
+    case 'lark':
+      return {
+        provider: command.provider,
+        app_id: value('appId'),
+        app_secret: value('secret'),
+        encrypt_key: optional('encryptKey'),
+        verification_token: optional('verificationToken'),
+      }
+    case 'slack':
+      return {
+        provider: 'slack',
+        client_id: value('clientId'),
+        client_secret: value('secret'),
+        signing_secret: value('signingSecret'),
+        bot_token: value('botToken'),
+        app_token: optional('appToken'),
+      }
+    case 'dingtalk':
+      return {
+        provider: 'ding_talk',
+        corp_id: value('corpId'),
+        client_id: value('clientId'),
+        client_secret: value('secret'),
+      }
+    case 'ms_teams':
+      return {
+        provider: 'ms_teams',
+        tenant_id: value('tenantId'),
+        client_id: value('clientId'),
+        client_secret: value('secret'),
+      }
+    case 'we_com':
+      return {
+        provider: 'we_com',
+        corp_id: value('corpId'),
+        agent_id: value('agentId'),
+        secret: value('secret'),
+      }
+  }
+}
+
 const channelProviderErrorSchema = z.object({
   code: z.literal('bad_request'),
   message: z.string().min(1),
@@ -375,8 +458,22 @@ async function channelRequest<T>(request: () => Promise<T>): Promise<T> {
       typeof error === 'object' && error !== null && 'status' in error ? error.status : undefined
     if (status === 403)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.NoPermission)
-    if (status === 409)
-      throw new ContactImRepositoryError(ContactImRepositoryErrorCode.ConfigurationUpdated)
+    if (status === 409) {
+      let replacementRequired = false
+      if (error instanceof Response) {
+        try {
+          const conflict = zChannelConflictResponse.safeParse(await error.clone().json())
+          replacementRequired = conflict.success && conflict.data.code === 'replacement_required'
+        } catch {
+          // Missing or malformed conflict details still require refreshing the saved configuration.
+        }
+      }
+      throw new ContactImRepositoryError(
+        replacementRequired
+          ? ContactImRepositoryErrorCode.ReplacementRequired
+          : ContactImRepositoryErrorCode.ConfigurationUpdated,
+      )
+    }
     throw new ContactImRepositoryError(
       ContactImRepositoryErrorCode.MutationFailed,
       await channelProviderErrorMessage(error),
@@ -403,6 +500,7 @@ export function createContactImApiRepository(
     capabilities: { directorySync: provider !== 'email' },
     channelKind: provider === 'email' ? 'email' : 'im',
     configuredValues: {},
+    configuredFields: [],
     displayIdentifier: null,
     lastCheckedAt: null,
     lastSync: null,
@@ -418,7 +516,6 @@ export function createContactImApiRepository(
     configVersion: summary.config_version,
     callbackUrl: summary.webhook_url,
     displayIdentifier: summary.display_identifier,
-    secretConfigured: true,
     status:
       summary.status === 'connected' || summary.status === 'configured'
         ? summary.status
@@ -427,31 +524,77 @@ export function createContactImApiRepository(
           : 'connection_error',
     statusDescription: summary.status_description,
   })
+  const toDetailView = (
+    detail: EmailChannelDetailResponse | ImChannelDetailResponse,
+  ): ContactImIntegrationView => {
+    const integration = toView(detail.summary)
+    const configuredFields: ContactImProviderField[] = []
+    const configuredValues: ContactImIntegrationView['configuredValues'] = {}
+    const configured = (field: ContactImProviderField, present = true) => {
+      if (present) configuredFields.push(field)
+    }
+    const plain = (field: Exclude<ContactImProviderField, 'secret'>, value: string) => {
+      configuredValues[field] = value
+      configured(field, Boolean(value))
+    }
+    if ('sender_email' in detail) {
+      plain('senderEmail', detail.sender_email)
+      plain('senderName', detail.sender_name)
+      configured('secret', Boolean(detail.credentials.api_key))
+    } else {
+      const credentials = detail.credentials
+      switch (credentials.provider) {
+        case 'feishu':
+        case 'lark':
+          plain('appId', credentials.app_id)
+          configured('secret', Boolean(credentials.app_secret))
+          configured('verificationToken', credentials.verification_token !== null)
+          configured('encryptKey', credentials.encrypt_key !== null)
+          break
+        case 'slack':
+          plain('clientId', credentials.client_id)
+          configured('secret', Boolean(credentials.client_secret))
+          configured('signingSecret', Boolean(credentials.signing_secret))
+          configured('botToken', Boolean(credentials.bot_token))
+          configured('appToken', credentials.app_token !== null)
+          break
+        case 'ding_talk':
+          plain('corpId', credentials.corp_id)
+          plain('clientId', credentials.client_id)
+          configured('secret', Boolean(credentials.client_secret))
+          break
+        case 'ms_teams':
+          plain('tenantId', credentials.tenant_id)
+          plain('clientId', credentials.client_id)
+          configured('secret', Boolean(credentials.client_secret))
+          break
+        case 'we_com':
+          plain('corpId', credentials.corp_id)
+          plain('agentId', credentials.agent_id)
+          configured('secret', Boolean(credentials.secret))
+          break
+      }
+    }
+    return {
+      ...integration,
+      configuredFields,
+      configuredValues,
+      secretConfigured: configuredFields.includes('secret'),
+    }
+  }
+  const getDetail = async (summary: ChannelSummary) => {
+    const input = { params: { channel_id: summary.id } }
+    const detail =
+      summary.kind === 'email'
+        ? await client.channels.email.byChannelId.get(input, requestOptions)
+        : await client.channels.im.byChannelId.get(input, requestOptions)
+    return toDetailView(detail)
+  }
   const getIntegrations = async (organizationId: string) => {
     guard(organizationId)
     return channelRequest(async () => {
       const { channels } = await client.channels.get(undefined, requestOptions)
-      return Promise.all(
-        channels.map(async (summary) => {
-          const integration = toView(summary)
-          if (summary.kind === 'email') {
-            const detail = await client.channels.email.byChannelId.get(
-              {
-                params: { channel_id: summary.id },
-              },
-              requestOptions,
-            )
-            return {
-              ...toView(detail.summary),
-              configuredValues: {
-                senderEmail: detail.sender_email,
-                senderName: detail.sender_name,
-              },
-            }
-          }
-          return integration
-        }),
-      )
+      return Promise.all(channels.map(getDetail))
     })
   }
   return {
@@ -475,7 +618,7 @@ export function createContactImApiRepository(
               displayName: metadata.name,
               provider,
               requiredFields: metadata.fields,
-              requiresFreshCredentials: true,
+              requiresFreshCredentials: false,
               unavailableReason: null,
             }
           },
@@ -487,7 +630,6 @@ export function createContactImApiRepository(
     },
     async saveCredentials(command) {
       guard(command.organizationId)
-      const credentials = credentialsFor(command)
       if (command.channelId && !command.expectedConfigVersion)
         throw new ContactImRepositoryError(ContactImRepositoryErrorCode.ConfigurationUpdated)
       if (command.replaceActiveProvider && !command.channelId)
@@ -496,46 +638,86 @@ export function createContactImApiRepository(
         const params = command.channelId ? { channel_id: command.channelId } : null
         const version = command.expectedConfigVersion
         let response
-        if (credentials.provider === 'resend') {
-          response =
-            params && version
-              ? await client.channels.email.byChannelId.put(
-                  {
-                    params,
-                    body: {
-                      ...emailSettingsFor(command),
-                      credentials,
-                      expected_config_version: version,
-                    },
-                  },
-                  requestOptions,
-                )
-              : await client.channels.email.post(
-                  { body: { ...emailSettingsFor(command), credentials } },
-                  requestOptions,
-                )
-        } else if (params && version) {
-          const input = { params, body: { credentials, expected_config_version: version } }
-          response = command.replaceActiveProvider
-            ? await client.channels.im.byChannelId.replacement.post(input, requestOptions)
-            : await client.channels.im.byChannelId.put(input, requestOptions)
+        if (params && version && !command.replaceActiveProvider) {
+          const credentials = updateCredentialsFor(command)
+          if (credentials.provider === 'resend') {
+            response = await client.channels.email.byChannelId.put(
+              {
+                params,
+                body: {
+                  ...updateEmailSettingsFor(command),
+                  credentials,
+                  expected_config_version: version,
+                },
+              },
+              requestOptions,
+            )
+          } else {
+            response = await client.channels.im.byChannelId.put(
+              { params, body: { credentials, expected_config_version: version } },
+              requestOptions,
+            )
+          }
         } else {
-          response = await client.channels.im.post({ body: { credentials } }, requestOptions)
+          const credentials = createCredentialsFor(command)
+          if (credentials.provider === 'resend') {
+            if (command.replaceActiveProvider)
+              throw new ContactImRepositoryError(ContactImRepositoryErrorCode.InvalidCommand)
+            response = await client.channels.email.post(
+              { body: { ...emailSettingsFor(command), credentials } },
+              requestOptions,
+            )
+          } else if (params && version) {
+            response = await client.channels.im.byChannelId.replacement.post(
+              { params, body: { credentials, expected_config_version: version } },
+              requestOptions,
+            )
+          } else {
+            response = await client.channels.im.post({ body: { credentials } }, requestOptions)
+          }
         }
-        return toView(response.summary)
+        try {
+          return await getDetail(response.summary)
+        } catch {
+          throw new ContactImRepositoryError(ContactImRepositoryErrorCode.SavedDetailsUnavailable)
+        }
       })
     },
     async testConnection(command) {
       guard(command.organizationId)
-      const credentials = credentialsFor(command)
+      if (command.channelId && !command.expectedConfigVersion)
+        throw new ContactImRepositoryError(ContactImRepositoryErrorCode.ConfigurationUpdated)
       return channelRequest(async () => {
-        const response =
-          credentials.provider === 'resend'
-            ? await client.channels.email.test.post(
-                { body: { ...emailSettingsFor(command), credentials } },
-                requestOptions,
-              )
-            : await client.channels.im.test.post({ body: { credentials } }, requestOptions)
+        let response
+        if (command.channelId && command.expectedConfigVersion) {
+          const credentials = updateCredentialsFor(command)
+          const input = {
+            params: { channel_id: command.channelId },
+            body: { credentials, expected_config_version: command.expectedConfigVersion },
+          }
+          response =
+            credentials.provider === 'resend'
+              ? await client.channels.email.byChannelId.test.post(
+                  {
+                    ...input,
+                    body: { ...input.body, ...updateEmailSettingsFor(command), credentials },
+                  },
+                  requestOptions,
+                )
+              : await client.channels.im.byChannelId.test.post(
+                  { ...input, body: { ...input.body, credentials } },
+                  requestOptions,
+                )
+        } else {
+          const credentials = createCredentialsFor(command)
+          response =
+            credentials.provider === 'resend'
+              ? await client.channels.email.test.post(
+                  { body: { ...emailSettingsFor(command), credentials } },
+                  requestOptions,
+                )
+              : await client.channels.im.test.post({ body: { credentials } }, requestOptions)
+        }
         if (response.status !== 'connected')
           throw new ContactImRepositoryError(
             ContactImRepositoryErrorCode.MutationFailed,

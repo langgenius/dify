@@ -123,7 +123,9 @@ export const ContactImRepositoryErrorCode = {
   PermissionLoadFailed: 'permission_load_failed',
   ProviderLoadFailed: 'provider_load_failed',
   ProviderUnavailable: 'provider_unavailable',
+  ReplacementRequired: 'replacement_required',
   RequiredFieldsMissing: 'required_fields_missing',
+  SavedDetailsUnavailable: 'saved_details_unavailable',
   SyncAlreadyRunning: 'sync_already_running',
   SyncNotAllowed: 'sync_not_allowed',
   SyncRunNotFound: 'sync_run_not_found',
@@ -197,6 +199,7 @@ export type ContactImIntegrationView = {
   capabilities: ContactImProviderCapabilities
   channelKind: ContactChannelKind
   configuredValues: Partial<Record<Exclude<ContactImProviderField, 'secret'>, string>>
+  configuredFields?: ContactImProviderField[]
   displayIdentifier: string | null
   lastCheckedAt: string | null
   lastSync: ContactImSyncRunView | null
@@ -240,7 +243,8 @@ export type SaveContactImCredentialsCommand = {
   organizationId: string
   provider: ContactImProvider
   replaceActiveProvider: boolean
-  retainSecret: boolean
+  retainSecret?: boolean
+  clearedFields?: ContactImProviderField[]
   secret?: string
   values: Partial<Record<Exclude<ContactImProviderField, 'secret'>, string>>
 }
@@ -262,7 +266,8 @@ export type ContactImProviderCommand = ContactImOrganizationCommand & {
 }
 
 export type TestContactImConnectionCommand = ContactImProviderCommand & {
-  retainSecret: boolean
+  retainSecret?: boolean
+  clearedFields?: ContactImProviderField[]
   secret?: string
   values: Partial<Record<Exclude<ContactImProviderField, 'secret'>, string>>
 }
