@@ -1,12 +1,14 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppCardInteractionsProps } from './app-card/interactions'
 import { useTranslation } from 'react-i18next'
 import { APP_LIST_GRID_CLASS_NAME } from './constants'
 import { StarredAppCard } from './starred-app-card'
 
 type StarredAppListProps = {
   apps: AppPartial[]
+  onDelete: AppCardInteractionsProps['onDelete']
   stepByStepTourCardTarget?: string
   stepByStepTourCardHighlightPart?: string
   stepByStepTourHighlightedCardCount?: number
@@ -29,6 +31,7 @@ export function AppListSectionHeading({ id, label }: { id: string; label: string
 
 export function StarredAppList({
   apps,
+  onDelete,
   stepByStepTourCardTarget,
   stepByStepTourCardHighlightPart,
   stepByStepTourHighlightedCardCount = 0,
@@ -54,6 +57,7 @@ export function StarredAppList({
           <StarredAppCard
             key={app.id}
             app={app}
+            onDelete={onDelete}
             stepByStepTourCardTarget={index === 0 ? stepByStepTourCardTarget : undefined}
             stepByStepTourCardHighlightPart={
               index < stepByStepTourHighlightedCardCount

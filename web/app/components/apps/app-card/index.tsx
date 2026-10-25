@@ -1,6 +1,7 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppCardInteractionsProps } from './interactions'
 import type { WorkflowOnlineUser } from '@/models/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -13,7 +14,6 @@ import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { StudioListLink } from '@/features/studio-list-navigation/navigation'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -23,12 +23,14 @@ import {
   hasPermission,
 } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
+import { StudioListLink } from '../list-navigation'
 import { AppCardInteractions } from './interactions'
 
 const EMPTY_ONLINE_USERS: WorkflowOnlineUser[] = []
 
 type AppCardProps = {
   app: AppPartial
+  onDelete: AppCardInteractionsProps['onDelete']
   onlineUsers?: WorkflowOnlineUser[]
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuOpen?: boolean
@@ -40,6 +42,7 @@ type AppCardProps = {
 export const AppCard = memo(
   ({
     app,
+    onDelete,
     onlineUsers = EMPTY_ONLINE_USERS,
     onOpenTagManagement,
     stepByStepTourActionMenuOpen = false,
@@ -198,6 +201,7 @@ export const AppCard = memo(
         ) : (
           <AppCardInteractions
             app={app}
+            onDelete={onDelete}
             stepByStepTourActionMenuOpen={stepByStepTourActionMenuOpen}
             stepByStepTourActionMenuHighlightPart={stepByStepTourActionMenuHighlightPart}
           >

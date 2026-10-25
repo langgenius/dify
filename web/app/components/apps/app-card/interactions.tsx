@@ -8,7 +8,6 @@ import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { MouseEvent, ReactElement } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
-import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ContextMenu,
@@ -34,7 +33,6 @@ import dynamic from 'next/dynamic'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppMetadataForm } from '@/app/components/app/app-metadata'
-import { DeleteAppForm } from '@/app/components/app/delete-app-form'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import {
@@ -239,9 +237,10 @@ function AppCardOperationsMenuItems({
   )
 }
 
-type AppCardInteractionsProps = {
+export type AppCardInteractionsProps = {
   app: AppPartial
   children: ReactElement
+  onDelete: (app: Pick<AppPartial, 'id' | 'name'>, trigger: HTMLButtonElement | null) => void
   stepByStepTourActionMenuOpen?: boolean
   stepByStepTourActionMenuHighlightPart?: string
 }
@@ -249,6 +248,7 @@ type AppCardInteractionsProps = {
 export function AppCardInteractions({
   app,
   children,
+  onDelete,
   stepByStepTourActionMenuOpen = false,
   stepByStepTourActionMenuHighlightPart,
 }: AppCardInteractionsProps) {
@@ -262,9 +262,6 @@ export function AppCardInteractions({
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { push } = useRouter()
   const { mutate: copyApp } = useMutation(consoleQuery.apps.byAppId.copy.post.mutationOptions())
-  const deletion = useMutation(
-    consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
-  )
   const { mutate: starApp, isPending: isStarring } = useMutation(
     consoleQuery.apps.byAppId.star.post.mutationOptions(),
   )
@@ -272,20 +269,18 @@ export function AppCardInteractions({
     consoleQuery.apps.byAppId.star.delete.mutationOptions(),
   )
 
+  const moreButtonRef = useRef<HTMLButtonElement>(null)
   const editActionsRef = useRef<DialogActions>(null)
   const edit = useMutation(
     consoleQuery.apps.byAppId.put.mutationOptions({ context: { silent: true } }),
   )
   const editNameRef = useRef<HTMLInputElement>(null)
-  const [activeDialog, setActiveDialog] = useState<
-    'delete' | 'duplicate' | 'edit' | 'switch' | null
-  >(null)
+  const [activeDialog, setActiveDialog] = useState<'duplicate' | 'edit' | 'switch' | null>(null)
   const operationsMenu = useStepByStepTourControlledDropdown({
     allowTriggerCloseWhileControlled: false,
     controlledOpen: stepByStepTourActionMenuOpen,
   })
   const isOperationsMenuOpen = operationsMenu.open
-  const setIsOperationsMenuOpen = operationsMenu.onOpenChange
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
   const {
     exportAppDsl,
@@ -312,39 +307,6 @@ export function AppCardInteractions({
     [app.permission_keys, maintainerPermissionOptions],
   )
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
-
-  const handleShowEditModal = useCallback(() => {
-    setIsOperationsMenuOpen(false)
-    queueMicrotask(() => {
-      setActiveDialog('edit')
-    })
-  }, [setIsOperationsMenuOpen])
-
-  const handleShowDuplicateModal = useCallback(() => {
-    setIsOperationsMenuOpen(false)
-    queueMicrotask(() => {
-      setActiveDialog('duplicate')
-    })
-  }, [setIsOperationsMenuOpen])
-
-  const handleShowSwitchModal = useCallback(() => {
-    setIsOperationsMenuOpen(false)
-    queueMicrotask(() => {
-      setActiveDialog('switch')
-    })
-  }, [setIsOperationsMenuOpen])
-
-  const handleShowDeleteConfirm = useCallback(() => {
-    setIsOperationsMenuOpen(false)
-    queueMicrotask(() => {
-      setActiveDialog('delete')
-    })
-  }, [setIsOperationsMenuOpen])
-
-  const handleOpenAccessConfig = useCallback(() => {
-    setIsOperationsMenuOpen(false)
-    push(`/app/${app.id}/access-config`)
-  }, [app.id, push, setIsOperationsMenuOpen])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = ({
     name,
@@ -401,7 +363,6 @@ export function AppCardInteractions({
     if (isExporting) return
 
     resetExport()
-    setIsOperationsMenuOpen(false)
     const isWorkflowApp = app.mode === 'workflow' || app.mode === 'advanced-chat'
     const result = isWorkflowApp
       ? await exportWorkflowAppDsl({ appId: app.id, appName: app.name })
@@ -460,12 +421,12 @@ export function AppCardInteractions({
     shouldShowAccessConfigOption,
     shouldShowDeleteOption,
     isExporting,
-    onEdit: handleShowEditModal,
-    onDuplicate: handleShowDuplicateModal,
+    onEdit: () => setActiveDialog('edit'),
+    onDuplicate: () => setActiveDialog('duplicate'),
     onExport: exportCheck,
-    onSwitch: handleShowSwitchModal,
-    onDelete: handleShowDeleteConfirm,
-    onAccessConfig: handleOpenAccessConfig,
+    onSwitch: () => setActiveDialog('switch'),
+    onDelete: () => onDelete({ id: app.id, name: app.name }, moreButtonRef.current),
+    onAccessConfig: () => push(`/app/${app.id}/access-config`),
   }
 
   return (
@@ -524,9 +485,10 @@ export function AppCardInteractions({
             <DropdownMenu
               modal={false}
               open={isOperationsMenuOpen}
-              onOpenChange={setIsOperationsMenuOpen}
+              onOpenChange={operationsMenu.onOpenChange}
             >
               <DropdownMenuTrigger
+                ref={moreButtonRef}
                 render={
                   <IconButton
                     size="lg"
@@ -607,37 +569,6 @@ export function AppCardInteractions({
           }}
         />
       )}
-      <AlertDialog
-        open={activeDialog === 'delete'}
-        onOpenChange={(open, details) => {
-          if (!open && deletion.isPending) details.cancel()
-          else if (!open) setActiveDialog(null)
-        }}
-        onOpenChangeComplete={(open) => {
-          if (!open) deletion.reset()
-        }}
-      >
-        <AlertDialogContent>
-          <DeleteAppForm
-            appName={app.name}
-            isPending={deletion.isPending}
-            error={
-              deletion.isError
-                ? `${t(($) => $.appDeleteFailed, { ns: 'app' })}: ${deletion.error.message}`
-                : undefined
-            }
-            onSubmit={() => {
-              if (deletion.isPending) return
-              deletion.mutate(
-                { params: { app_id: app.id } },
-                {
-                  onSuccess: () => setActiveDialog(null),
-                },
-              )
-            }}
-          />
-        </AlertDialogContent>
-      </AlertDialog>
       {secretEnvList.length > 0 && (
         <AppExportConfirmModal
           envList={secretEnvList}

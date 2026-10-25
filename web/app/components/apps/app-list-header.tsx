@@ -15,12 +15,12 @@ import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
-import { useStudioListHref } from '@/features/studio-list-navigation'
-import { StudioListLink } from '@/features/studio-list-navigation/navigation'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
 import CreatorsFilter from './creators-filter'
+import { StudioListLink } from './list-navigation'
+import { useStudioListHref } from './list-navigation-state'
 import { StudioListHeader } from './studio-list-header'
 
 type AppListQuery = NonNullable<GetAppsData['query']>
