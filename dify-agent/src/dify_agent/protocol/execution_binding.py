@@ -55,8 +55,22 @@ class DestroyExecutionBindingRequest(BaseModel):
         return self
 
 
+class KeepAliveExecutionBindingRequest(BaseModel):
+    binding_ref: str = Field(min_length=1)
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class KeepAliveExecutionBindingResponse(BaseModel):
+    supported: bool
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
 __all__ = [
     "CreateExecutionBindingRequest",
     "CreateExecutionBindingResponse",
     "DestroyExecutionBindingRequest",
+    "KeepAliveExecutionBindingRequest",
+    "KeepAliveExecutionBindingResponse",
 ]

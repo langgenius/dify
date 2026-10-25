@@ -2757,3 +2757,393 @@ def test_expired_terminal_context_requires_actual_owned_terminal_workflow(
     else:
         with pytest.raises(BuilderExecutionPolicyError, match="native_expired"):
             store.load_terminal_context(ref=owner.ref)
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        None,
+        "unknown",
+        "claimed",
+        "cancelled",
+        "expired",
+        "inactive",
+        "terminal",
+        "sdk-running",
+        "checkpoint",
+        "race",
+        "unbound",
+        "access-revoked",
+        "physical-completed",
+        "physical-unresolved",
+        "outcome-unknown",
+        "unsupported",
+        "missing",
+        "soft-limit",
+        "foreign-owner",
+        "new-retest",
+        "stale-generation",
+        "stale-pin",
+        "configuration",
+        "interaction",
+    ],
+)
+def test_waiting_binding_retention_is_health_only_and_fails_closed(
+    declining: CompletedOwner, mocker: pytest_mock.MockerFixture, fault: str | None, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Real SQL exclusion fences; protected storage/SDK are explicit bounded ports."""
+    from types import SimpleNamespace
+
+    from celery.exceptions import SoftTimeLimitExceeded
+    from sqlalchemy import event
+
+    from models.dify_builder_native_tests import NativeEffectDispatchClaim, NativeEffectOutcome, NativeTestInvocation
+
+    owner = declining
+    commands = owner.commands
+    from graphon.entities.pause_reason import SchedulingPause
+
+    assert owner.paused is not None
+    owner.paused.runtime.graph_execution.pause_reasons = [SchedulingPause(message="agent_tool_approval")]
+    wait = commands.continuation._stored_waits(ref=owner.ref)[0]
+    protected = commands.api.store.load_agent_association(ref=owner.ref, parent_node=wait.parent_node, wait=wait)
+    with owner.factory.begin() as sql:
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert request is not None
+        root = sql.scalar(select(NativeInvocationState))
+        assert root is not None
+        root.wait_reason, root.pending_ids = (
+            fault if fault in {"configuration", "interaction"} else "approval",
+            ["pending"],
+        )
+        operation = sql.scalar(select(NativeEffectOperation))
+        assert operation is not None
+        # A completed historical effect must not prevent the next manual wait.
+        operation.state = "completed"
+        operation.result_ref = "completed-result"
+        invocation = sql.scalar(select(NativeTestInvocation))
+        assert invocation is not None
+        invocation.bindings = {} if fault == "unbound" else {"_agent_confirmed_workspace_v1": {"owned": True}}
+        if fault in {"physical-completed", "physical-unresolved", "outcome-unknown"}:
+            sql.add(
+                NativeEffectDispatchClaim(
+                    tenant_id=operation.tenant_id,
+                    request_id=operation.request_id,
+                    invocation_id=operation.invocation_id,
+                    operation_id=operation.id,
+                    attempt_id="attempt",
+                    claimed_at=datetime.now(UTC),
+                )
+            )
+            if fault != "physical-unresolved":
+                sql.add(
+                    NativeEffectOutcome(
+                        tenant_id=operation.tenant_id,
+                        request_id=operation.request_id,
+                        invocation_id=operation.invocation_id,
+                        operation_id=operation.id,
+                        attempt_id="attempt",
+                        outcome="unknown" if fault == "outcome-unknown" else "completed",
+                        result_ref="completed-result",
+                    )
+                )
+        if fault == "new-retest":
+            sql.add(
+                DifyBuilderExecutionRequest(
+                    id=str(uuid4()),
+                    tenant_id=request.tenant_id,
+                    actor_id=request.actor_id,
+                    app_id=request.app_id,
+                    workflow_id=request.workflow_id,
+                    session_id=request.session_id,
+                    test_input_id=request.test_input_id,
+                    context=request.context,
+                    context_digest=request.context_digest,
+                    state="running",
+                    created_at=datetime(2099, 1, 1),
+                )
+            )
+        if fault in {"unknown", "claimed"}:
+            operation.state = fault
+        elif fault == "cancelled":
+            scope = sql.get(NativeTestScope, owner.request_id)
+            assert scope is not None
+            scope.cancelled = True
+        elif fault == "expired":
+            scope = sql.get(NativeTestScope, owner.request_id)
+            assert scope is not None
+            scope.expires_at = datetime(2000, 1, 1)
+        elif fault == "inactive":
+            invocation = sql.scalar(select(NativeTestInvocation))
+            assert invocation is not None
+            invocation.active = False
+        elif fault == "terminal":
+            request.state = "sealed"
+    commands._request = ConfirmedAgentCommands._request.__get__(commands)
+    prepared = SimpleNamespace(
+        workspace=protected.association.workspace.model_copy(update={"pinned_snapshot_id": "stale"})
+        if fault == "stale-pin"
+        else protected.association.workspace
+    )
+    mocker.patch.object(commands.api.store, "_agent_prepare", return_value=prepared)
+    recheck = mocker.patch.object(commands.api.store, "_agent_recheck")
+    mocker.patch.object(
+        commands.api.store,
+        "_agent_refresh_access",
+        side_effect=BuilderExecutionPolicyError("agent_access_denied") if fault == "access-revoked" else None,
+    )
+    selected_checkpoint = SimpleNamespace(model_dump=lambda **_: {"checkpoint": True})
+    selected = SimpleNamespace(checkpoint=selected_checkpoint)
+    expected_digest = canonical_digest({"checkpoint": True})
+    wait = wait.model_copy(update={"checkpoint_digest": expected_digest if fault != "checkpoint" else "f" * 64})
+    payload = commands.api.store.read_checkpoint(
+        ref=owner.ref, checkpoint=CheckpointRef(checkpoint_id="checkpoint", payload_digest="d" * 64)
+    )
+    payload = payload.model_copy(
+        update={"agent_associations": (wait,), "generation": 999 if fault == "stale-generation" else payload.generation}
+    )
+    mocker.patch.object(commands.api.store, "read_checkpoint", return_value=payload)
+    mocker.patch.object(commands.continuation, "_selected", return_value=selected)
+    owner.child_status = "running" if fault == "sdk-running" else "waiting"
+    if fault == "race":
+
+        def select_then_cancel(**_: object) -> SimpleNamespace:
+            with owner.factory.begin() as sql:
+                scope = sql.get(NativeTestScope, owner.request_id)
+                assert scope is not None
+                scope.cancelled = True
+            return selected
+
+        mocker.patch.object(commands.continuation, "_selected", side_effect=select_then_cancel)
+    if fault == "soft-limit":
+        mocker.patch.object(commands.continuation, "_selected", side_effect=SoftTimeLimitExceeded())
+    from dify_agent.protocol.execution_binding import KeepAliveExecutionBindingResponse
+
+    health = mocker.patch.object(
+        commands.backend.client,
+        "keep_alive_execution_binding_sync",
+        return_value=KeepAliveExecutionBindingResponse(supported=fault != "unsupported"),
+        side_effect=RuntimeError("secret-provider-body-must-not-log") if fault == "missing" else None,
+    )
+    before: list[tuple[str, str | None]] = []
+    with owner.factory() as sql:
+        before = [(r.state, r.result_ref) for r in sql.scalars(select(NativeEffectOperation))]
+    statements: list[str] = []
+    depth = 0
+
+    def begin(_) -> None:
+        nonlocal depth
+        depth += 1
+
+    def end(_) -> None:
+        nonlocal depth
+        depth -= 1
+
+    def capture(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
+        statements.append(statement)
+
+    engine = owner.factory.kw["bind"]
+    event.listen(engine, "begin", begin)
+    event.listen(engine, "rollback", end)
+    event.listen(engine, "commit", end)
+    event.listen(engine, "before_cursor_execute", capture)
+    original_status = commands.backend.client.get_run_sync.side_effect
+
+    def read_status(run_id: str) -> RunStatusResponse:
+        assert depth == 0
+        return original_status(run_id)
+
+    commands.backend.client.get_run_sync.side_effect = read_status
+
+    def health_check(_request) -> KeepAliveExecutionBindingResponse:
+        assert depth == 0
+        if fault == "missing":
+            raise RuntimeError("secret-provider-body-must-not-log")
+        return KeepAliveExecutionBindingResponse(supported=fault != "unsupported")
+
+    health.side_effect = health_check
+    succeeds = fault in {None, "physical-completed", "configuration", "interaction"}
+    actor = (
+        owner.case.actor
+        if fault != "foreign-owner"
+        else Actor(account_id=str(uuid4()), tenant_id=owner.case.actor.tenant_id)
+    )
+    try:
+        if fault == "soft-limit":
+            with pytest.raises(SoftTimeLimitExceeded):
+                commands.keep_alive_waiting_binding(
+                    actor=actor, session_id=owner.session.id, request_id=owner.request_id
+                )
+        else:
+            assert (
+                commands.keep_alive_waiting_binding(
+                    actor=actor, session_id=owner.session.id, request_id=owner.request_id
+                )
+                is succeeds
+            )
+    finally:
+        event.remove(engine, "begin", begin)
+        event.remove(engine, "rollback", end)
+        event.remove(engine, "commit", end)
+        event.remove(engine, "before_cursor_execute", capture)
+    assert depth == 0
+    if fault != "race":  # This port deliberately commits cancellation while the SDK read is in flight.
+        assert all(statement.lstrip().upper().startswith("SELECT") for statement in statements)
+    assert "secret-provider-body-must-not-log" not in caplog.text
+    if fault == "missing":
+        assert "waiting binding retention unavailable" in caplog.text
+    assert health.call_count == (1 if succeeds or fault in {"unsupported", "missing"} else 0)
+    if succeeds:
+        assert health.call_args.args[0].binding_ref == protected.association.workspace.backend_binding_ref
+        recheck.assert_called_once()
+    with owner.factory() as sql:
+        assert [(r.state, r.result_ref) for r in sql.scalars(select(NativeEffectOperation))] == before
+
+
+def test_waiting_binding_task_selects_bounded_owned_wait_without_recovery(
+    declining: CompletedOwner, mocker: pytest_mock.MockerFixture
+) -> None:
+    from extensions import ext_redis
+    from schedule import dify_builder_reconcile_task as task
+    from services.dify_builder import wiring
+
+    owner = declining
+    mocker.patch.object(task, "_session_factory", return_value=owner.factory)
+    mocker.patch.object(ext_redis.redis_client, "get", return_value=None)
+    mocker.patch.object(ext_redis.redis_client, "set", return_value=True)
+    service = mocker.Mock(spec=["keep_alive_waiting_binding"])
+    service.keep_alive_waiting_binding.return_value = True
+    mocker.patch.object(wiring, "build_native_test_api_service", return_value=service)
+    assert task.retain_waiting_agent_bindings(limit=1) == 1
+    service.keep_alive_waiting_binding.assert_called_once_with(
+        actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id
+    )
+    with owner.factory.begin() as sql:
+        root = sql.scalar(select(NativeInvocationState))
+        assert root is not None
+        root.state = "unknown"
+    service.keep_alive_waiting_binding.reset_mock()
+    assert task.retain_waiting_agent_bindings(limit=1) == 0
+    service.keep_alive_waiting_binding.assert_not_called()
+
+
+@pytest.mark.parametrize("profile", ["builder-agent-confirmed-v1", "builder-native-v1"])
+def test_profiled_retention_only_forwards_the_confirmed_owner(
+    completed: CompletedOwner, mocker: pytest_mock.MockerFixture, profile: str
+) -> None:
+    from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
+
+    owner = completed
+    with owner.factory.begin() as sql:
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert request is not None
+        request.context = {**request.context, "profile": {"profile_id": profile}}
+    health = mocker.patch.object(owner.commands, "keep_alive_waiting_binding", return_value=True)
+    service = ProfiledNativeTestCommands(
+        sessions=owner.factory,
+        actor=owner.case.actor,
+        confirmed_factory=lambda: owner.commands,
+        legacy_factory=lambda: owner.commands.api,
+    )
+    assert service.keep_alive_waiting_binding(
+        actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id
+    ) is (profile == "builder-agent-confirmed-v1")
+    assert health.call_count == (1 if profile == "builder-agent-confirmed-v1" else 0)
+    with pytest.raises(BuilderExecutionPolicyError, match="native_owner_mismatch"):
+        service.keep_alive_waiting_binding(actor=owner.case.actor, session_id=str(uuid4()), request_id=owner.request_id)
+
+
+@pytest.mark.parametrize("initial_cursor", [None, b"invalid\xff", b"x" * 4096])
+def test_waiting_binding_cursor_reaches_101st_owner_after_a_blocked_prefix(
+    declining: CompletedOwner, mocker: pytest_mock.MockerFixture, initial_cursor: bytes | None
+) -> None:
+    from uuid import UUID
+
+    from extensions import ext_redis
+    from models.dify_builder_native_tests import NativeTestInvocation
+    from schedule import dify_builder_reconcile_task as task
+    from services.dify_builder import wiring
+
+    owner = declining
+    with owner.factory.begin() as sql:
+        source = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert source is not None
+        for index in range(1, 101):
+            identity = str(UUID(int=index))
+            sql.add(
+                DifyBuilderExecutionRequest(
+                    id=identity,
+                    tenant_id=source.tenant_id,
+                    actor_id=source.actor_id,
+                    app_id=source.app_id,
+                    workflow_id=source.workflow_id,
+                    session_id=source.session_id,
+                    test_input_id=source.test_input_id,
+                    context=source.context,
+                    context_digest=source.context_digest,
+                    state="waiting",
+                )
+            )
+            sql.add(
+                NativeTestScope(
+                    tenant_id=source.tenant_id,
+                    request_id=identity,
+                    generation=0,
+                    task_approved=True,
+                    cancelled=False,
+                    expires_at=datetime(2099, 1, 1),
+                    max_calls=1,
+                    max_dispatches=1,
+                    max_cost_units=1,
+                    budget_limits={},
+                    budget_spent={},
+                    profile={},
+                )
+            )
+            sql.add(
+                NativeTestInvocation(
+                    tenant_id=source.tenant_id, request_id=identity, invocation_id="root", active=True, bindings={}
+                )
+            )
+            sql.add(
+                NativeInvocationState(
+                    tenant_id=source.tenant_id,
+                    request_id=identity,
+                    invocation_id="root",
+                    context_object_id="context",
+                    generation=0,
+                    state="waiting",
+                    pending_ids=["pending"],
+                    resolution=[],
+                )
+            )
+    cursor: dict[str, bytes] = (
+        {} if initial_cursor is None else {"dify_builder:waiting_binding_retention:cursor": initial_cursor}
+    )
+    seen: list[str] = []
+
+    def store_cursor(key: str, value: str, *, ex: int) -> bool:
+        assert ex == 3600
+        cursor[key] = value.encode()
+        return True
+
+    def retain(*, actor: Actor, session_id: str, request_id: str) -> bool:
+        assert request_id.encode() in cursor.values()  # Advance before a slow/failed attempt.
+        assert actor == owner.case.actor
+        assert session_id == owner.session.id
+        seen.append(request_id)
+        return request_id == owner.request_id
+
+    mocker.patch.object(task, "_session_factory", return_value=owner.factory)
+    mocker.patch.object(ext_redis.redis_client, "get", side_effect=cursor.get)
+    mocker.patch.object(ext_redis.redis_client, "set", side_effect=store_cursor)
+    service = mocker.Mock(spec=["keep_alive_waiting_binding"])
+    service.keep_alive_waiting_binding.side_effect = retain
+    mocker.patch.object(wiring, "build_native_test_api_service", return_value=service)
+    assert task.retain_waiting_agent_bindings(limit=100) == 0
+    assert len(seen) == 100
+    assert task.retain_waiting_agent_bindings(limit=100) == 1
+    assert seen[-1] == owner.request_id
+    assert len(seen) == 101
+    assert task.retain_waiting_agent_bindings(limit=1) == 0  # Empty suffix wraps once.
+    assert seen[-1] == str(UUID(int=1))
