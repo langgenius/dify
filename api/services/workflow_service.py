@@ -277,7 +277,12 @@ class WorkflowService:
         )
 
     def get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
-        """Return the app draft while holding its row lock for the caller's transaction."""
+        """Lock and refresh the app draft for the caller's transaction.
+
+        A previously loaded identity-map instance may predate another committed
+        edit. Refresh it under the lock before checking its hash or merging an
+        environment patch. Normal query autoflush preserves pending local writes.
+        """
         return session.scalar(
             select(Workflow)
             .where(
@@ -285,6 +290,7 @@ class WorkflowService:
                 Workflow.app_id == app_model.id,
                 Workflow.version == Workflow.VERSION_DRAFT,
             )
+            .execution_options(populate_existing=True)
             .limit(1)
             .with_for_update()
         )
@@ -440,9 +446,11 @@ class WorkflowService:
         portable package references can be materialized atomically after the
         draft workflow has received its target-workspace id.
 
-        Existing drafts are row-locked before the hash check. Collaborative
-        graph-only saves preserve independently persisted draft fields, while
-        an explicit per-ID environment patch is merged with the graph.
+        Existing drafts are row-locked and refreshed before the hash check.
+        Public graph-only saves preserve independently persisted draft fields,
+        while an explicit per-ID environment patch is merged with the graph.
+        Trusted internal callers retain full replacement by default; a new draft
+        always consumes the initial configuration, including in graph-only mode.
 
         Public unconfirmed saves require an empty graph to match an already-empty
         draft. The False default preserves trusted DSL import initialization and
@@ -466,8 +474,8 @@ class WorkflowService:
             if previous_graph is None or previous_graph.get("nodes") != [] or previous_graph.get("edges") != []:
                 raise EmptyWorkflowConfirmationRequiredError("Saving an empty workflow requires force=true.")
 
-        # Collaboration persists features and variables through dedicated endpoints. A graph save
-        # must not overwrite those newer database values with another collaborator's stale cache.
+        # The public editor persists features and variables through dedicated endpoints.
+        # Its graph save must not overwrite newer values with a stale cached snapshot.
         if not graph_only or not workflow:
             self.validate_features_structure(app_model=app_model, features=features)
 

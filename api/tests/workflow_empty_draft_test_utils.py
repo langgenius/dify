@@ -172,10 +172,10 @@ def assert_saved_empty(
         assert draft.graph_dict == {"nodes": [], "edges": []}
         assert draft.unique_hash == response["hash"]
         assert draft.created_by == owner.account.id
-        if collaborative and owner.draft is not None:
+        if owner.draft is not None:
             assert json.loads(draft.serialized_features) == {"file_upload": {"enabled": False}}
         else:
-            # Regular saves validate the omitted feature settings into their disabled defaults.
+            # New drafts validate initial feature settings into their disabled defaults.
             # Read raw persisted JSON so the model's compatibility getter cannot mask a bad write.
             assert json.loads(draft.serialized_features) == {
                 "file_upload": {},
@@ -188,9 +188,9 @@ def assert_saved_empty(
             assert [(variable.name, variable.value) for variable in draft.environment_variables] == [
                 ("SERVER_VALUE", "keep-env")
             ]
-            assert [(variable.name, variable.value) for variable in draft.conversation_variables] == (
-                [("topic", "keep-conversation")] if collaborative else []
-            )
+            assert [(variable.name, variable.value) for variable in draft.conversation_variables] == [
+                ("topic", "keep-conversation")
+            ]
         else:
             assert draft.environment_variables == []
             assert draft.conversation_variables == []

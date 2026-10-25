@@ -628,7 +628,7 @@ class DraftWorkflowApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @console_ns.doc("sync_draft_workflow")
-    @console_ns.doc(description="Sync draft workflow configuration")
+    @console_ns.doc(description="Save draft graph and environment patches; initialize configuration for new drafts")
     @console_ns.expect(console_ns.models[SyncDraftWorkflowPayload.__name__])
     @console_ns.response(
         200,
@@ -642,7 +642,12 @@ class DraftWorkflowApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     def post(self, current_user: Account, app_model: App):
         """
-        Sync draft workflow. Empty initialization or clearing requires force=true;
+        Save the graph and explicit environment-variable patches. Existing draft
+        features and conversation variables are owned by their dedicated endpoints;
+        the submitted snapshots only initialize a new draft. Legacy clients that
+        edit configuration through this POST must use those dedicated endpoints.
+
+        Empty initialization or clearing requires force=true;
         an already-empty draft may be saved with its current hash without force.
         """
         content_type = request.headers.get("Content-Type", "")
@@ -691,7 +696,9 @@ class DraftWorkflowApi(Resource):
                 environment_variable_upserts=environment_variable_upserts,
                 deleted_environment_variable_ids=deleted_environment_variable_ids,
                 preserve_environment_variables=True,
-                graph_only=args_model.is_collaborative,
+                # Both editor modes submit cached configuration alongside the graph.
+                # Only a new draft consumes those initial features/conversation values.
+                graph_only=True,
                 require_empty_graph_confirmation=not args_model.force,
             )
         except WorkflowHashNotEqualError as caught_error:
