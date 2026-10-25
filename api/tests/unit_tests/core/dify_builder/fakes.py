@@ -566,7 +566,8 @@ class StubAgent(DifyBuilderAgent):
         return intents, Risk(level=self.risk_level, reason="config-only fix", has_external_side_effect=False)
 
     @override
-    def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs) -> Inputs:
+    def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs, *, business_context: str = "") -> Inputs:
+        _ = business_context
         return {"report_pdf": "mock.pdf"}
 
     @override

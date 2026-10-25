@@ -486,7 +486,9 @@ class NoModelAgent(StubAgent):
         raise AssertionError(f"confirmed outcome must not be repaired: {diagnosis.root_cause}")
 
     @override
-    def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs) -> NoReturn:
+    def generate_mock_inputs(
+        self, schema: StartSchema, prior_failed: Inputs, *, business_context: str = ""
+    ) -> NoReturn:
         raise AssertionError("confirmed test must use the saved input")
 
 
