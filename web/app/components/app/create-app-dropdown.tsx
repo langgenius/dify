@@ -2,13 +2,13 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
 import {
   getStepByStepTourDropdownMenuContentProps,
@@ -38,8 +38,8 @@ export function CreateAppDropdown({
   })
 
   return (
-    <DropdownMenu modal={false} open={menu.open} onOpenChange={menu.onOpenChange}>
-      <DropdownMenuTrigger
+    <Menu modal={false} open={menu.open} onOpenChange={menu.onOpenChange}>
+      <MenuTrigger
         render={
           <Button
             data-step-by-step-tour-target={stepByStepTourTarget}
@@ -53,7 +53,7 @@ export function CreateAppDropdown({
           </Button>
         }
       />
-      <DropdownMenuContent
+      <MenuContent
         {...getStepByStepTourDropdownMenuContentProps({
           disableMotion: menu.controlled,
           highlightPart: menu.controlled ? stepByStepTourHighlightPart : undefined,
@@ -62,9 +62,9 @@ export function CreateAppDropdown({
         })}
       >
         {(onCreateBlank || onCreateTemplate) && (
-          <DropdownMenuGroup className="py-1">
+          <MenuGroup className="py-1">
             {onCreateBlank && (
-              <DropdownMenuItem
+              <MenuItem
                 className="py-1 system-md-regular text-text-secondary"
                 onClick={onCreateBlank}
               >
@@ -75,10 +75,10 @@ export function CreateAppDropdown({
                 <span className="min-w-0 flex-1 truncate px-1">
                   {t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
                 </span>
-              </DropdownMenuItem>
+              </MenuItem>
             )}
             {onCreateTemplate && (
-              <DropdownMenuItem
+              <MenuItem
                 className="py-1 system-md-regular text-text-secondary"
                 onClick={onCreateTemplate}
               >
@@ -89,16 +89,14 @@ export function CreateAppDropdown({
                 <span className="min-w-0 flex-1 truncate px-1">
                   {t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
                 </span>
-              </DropdownMenuItem>
+              </MenuItem>
             )}
-          </DropdownMenuGroup>
+          </MenuGroup>
         )}
-        {onImportDSL && (onCreateBlank || onCreateTemplate) && (
-          <DropdownMenuSeparator className="my-0" />
-        )}
+        {onImportDSL && (onCreateBlank || onCreateTemplate) && <MenuSeparator className="my-0" />}
         {onImportDSL && (
-          <DropdownMenuGroup className="py-1">
-            <DropdownMenuItem className="h-auto items-start py-1.5" onClick={onImportDSL}>
+          <MenuGroup className="py-1">
+            <MenuItem className="h-auto items-start py-1.5" onClick={onImportDSL}>
               <span className="flex h-5 shrink-0 items-center py-0.5">
                 <span aria-hidden className="i-ri-file-upload-line size-4 text-text-secondary" />
               </span>
@@ -110,10 +108,10 @@ export function CreateAppDropdown({
                   {t(($) => $.importAppDescription, { ns: 'app' })}
                 </span>
               </span>
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
+            </MenuItem>
+          </MenuGroup>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }

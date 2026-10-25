@@ -1,12 +1,6 @@
 'use client'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuLinkItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { memo } from 'react'
@@ -49,8 +43,8 @@ function OperationDropdown({ open, onOpenChange, author, name, version }: Props)
   }
 
   return (
-    <DropdownMenu open={open} onOpenChange={onOpenChange}>
-      <DropdownMenuTrigger
+    <Menu open={open} onOpenChange={onOpenChange}>
+      <MenuTrigger
         render={
           <IconButton
             variant="ghost"
@@ -65,20 +59,20 @@ function OperationDropdown({ open, onOpenChange, author, name, version }: Props)
           </IconButton>
         }
       />
-      <DropdownMenuContent className="min-w-44">
-        <DropdownMenuItem className="system-md-regular" onClick={handleDownload}>
+      <MenuContent className="min-w-44">
+        <MenuItem className="system-md-regular" onClick={handleDownload}>
           {t(($) => $['operation.download'], { ns: 'common' })}
-        </DropdownMenuItem>
-        <DropdownMenuLinkItem
+        </MenuItem>
+        <MenuLinkItem
           className="system-md-regular"
           href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })}
           target="_blank"
           rel="noopener noreferrer"
         >
           {t(($) => $['operation.viewDetails'], { ns: 'common' })}
-        </DropdownMenuLinkItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuLinkItem>
+      </MenuContent>
+    </Menu>
   )
 }
 

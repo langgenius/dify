@@ -1,12 +1,12 @@
 'use client'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useTranslation } from '#i18n'
 import { useMarketplaceSort } from '../atoms'
 
@@ -40,16 +40,16 @@ const SortDropdown = () => {
     options[0]!
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="flex h-8 cursor-pointer items-center gap-1 rounded-lg bg-state-base-hover-alt px-2 pr-3">
+    <Menu>
+      <MenuTrigger className="flex h-8 cursor-pointer items-center gap-1 rounded-lg bg-state-base-hover-alt px-2 pr-3">
         <span className="system-sm-regular text-text-secondary">
           {t(($) => $['marketplace.sortBy'], { ns: 'plugin' })}
         </span>
         <span className="system-sm-medium text-text-primary">{selectedOption.text}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-text-tertiary" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="px-1">
-        <DropdownMenuRadioGroup
+      </MenuTrigger>
+      <MenuContent align="start" className="px-1">
+        <MenuRadioGroup
           value={`${selectedOption.value}-${selectedOption.order}`}
           onValueChange={(nextValue) => {
             const option = options.find((option) => `${option.value}-${option.order}` === nextValue)
@@ -57,19 +57,19 @@ const SortDropdown = () => {
           }}
         >
           {options.map((option) => (
-            <DropdownMenuRadioItem
+            <MenuRadioItem
               key={`${option.value}-${option.order}`}
               value={`${option.value}-${option.order}`}
               closeOnClick
               className="justify-between pl-3 system-md-regular text-text-primary"
             >
               {option.text}
-              <DropdownMenuRadioItemIndicator />
-            </DropdownMenuRadioItem>
+              <MenuRadioItemIndicator />
+            </MenuRadioItem>
           ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 

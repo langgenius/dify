@@ -2,24 +2,24 @@ import type * as React from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
-  DropdownMenu,
-  DropdownMenuClear,
-  DropdownMenuContent,
-  DropdownMenuEmpty,
-  DropdownMenuFilterProvider,
-  DropdownMenuInput,
-  DropdownMenuInputGroup,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuList,
-  DropdownMenuPopup,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
+  Menu,
+  MenuClear,
+  MenuContent,
+  MenuEmpty,
+  MenuFilterProvider,
+  MenuInput,
+  MenuInputGroup,
+  MenuItem,
+  MenuLinkItem,
+  MenuList,
+  MenuPopup,
+  MenuPortal,
+  MenuPositioner,
+  MenuSeparator,
+  MenuSubmenu,
+  MenuSubmenuContent,
+  MenuSubmenuTrigger,
+  MenuTrigger,
 } from '../index'
 
 const renderWithSafeViewport = (ui: React.ReactNode) =>
@@ -27,30 +27,30 @@ const renderWithSafeViewport = (ui: React.ReactNode) =>
 
 function FilterableMenu({ items = ['Rename workspace', 'Manage billing'] }: { items?: string[] }) {
   return (
-    <DropdownMenuFilterProvider>
-      <DropdownMenu open>
-        <DropdownMenuTrigger>Workspace actions</DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuInputGroup>
+    <MenuFilterProvider>
+      <Menu open>
+        <MenuTrigger>Workspace actions</MenuTrigger>
+        <MenuContent>
+          <MenuInputGroup>
             <span aria-hidden="true" data-testid="search-icon">
               🔍
             </span>
-            <DropdownMenuInput aria-label="Filter actions" />
-            <DropdownMenuClear data-testid="clear" />
-          </DropdownMenuInputGroup>
-          <DropdownMenuEmpty>No actions match</DropdownMenuEmpty>
-          <DropdownMenuList>
+            <MenuInput aria-label="Filter actions" />
+            <MenuClear data-testid="clear" />
+          </MenuInputGroup>
+          <MenuEmpty>No actions match</MenuEmpty>
+          <MenuList>
             {items.map((item) => (
-              <DropdownMenuItem key={item}>{item}</DropdownMenuItem>
+              <MenuItem key={item}>{item}</MenuItem>
             ))}
-          </DropdownMenuList>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </DropdownMenuFilterProvider>
+          </MenuList>
+        </MenuContent>
+      </Menu>
+    </MenuFilterProvider>
   )
 }
 
-describe('dropdown-menu wrapper', () => {
+describe('menu wrapper', () => {
   describe('filtering', () => {
     it('should focus the filter input when the input group surface is pressed', async () => {
       const screen = await renderWithSafeViewport(<FilterableMenu />)
@@ -139,15 +139,15 @@ describe('dropdown-menu wrapper', () => {
     })
   })
 
-  describe('DropdownMenuContent', () => {
+  describe('MenuContent', () => {
     it('should position content at bottom-end with default placement when props are omitted', async () => {
       const screen = await renderWithSafeViewport(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem>Content action</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>,
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuItem>Content action</MenuItem>
+          </MenuContent>
+        </Menu>,
       )
 
       await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'bottom')
@@ -159,12 +159,12 @@ describe('dropdown-menu wrapper', () => {
 
     it('should apply custom placement when custom positioning props are provided', async () => {
       const screen = await renderWithSafeViewport(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" sideOffset={12} alignOffset={-3}>
-            <DropdownMenuItem>Custom content</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>,
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent side="top" align="start" sideOffset={12} alignOffset={-3}>
+            <MenuItem>Custom content</MenuItem>
+          </MenuContent>
+        </Menu>,
       )
 
       await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'top')
@@ -178,12 +178,12 @@ describe('dropdown-menu wrapper', () => {
       const handlePopupClick = vi.fn()
 
       const screen = await render(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent id="dropdown-content-popup" onClick={handlePopupClick}>
-            <DropdownMenuItem>Passthrough content</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>,
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent id="dropdown-content-popup" onClick={handlePopupClick}>
+            <MenuItem>Passthrough content</MenuItem>
+          </MenuContent>
+        </Menu>,
       )
 
       await screen.getByRole('menu').click()
@@ -194,16 +194,16 @@ describe('dropdown-menu wrapper', () => {
 
     it('should support explicit anatomy when the positioner needs custom props', async () => {
       const screen = await renderWithSafeViewport(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuPositioner data-testid="custom-positioner" side="top" align="start">
-              <DropdownMenuPopup>
-                <DropdownMenuItem>Anatomy action</DropdownMenuItem>
-              </DropdownMenuPopup>
-            </DropdownMenuPositioner>
-          </DropdownMenuPortal>
-        </DropdownMenu>,
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuPortal>
+            <MenuPositioner data-testid="custom-positioner" side="top" align="start">
+              <MenuPopup>
+                <MenuItem>Anatomy action</MenuItem>
+              </MenuPopup>
+            </MenuPositioner>
+          </MenuPortal>
+        </Menu>,
       )
 
       await expect
@@ -215,20 +215,20 @@ describe('dropdown-menu wrapper', () => {
     })
   })
 
-  describe('DropdownMenuSubContent', () => {
+  describe('MenuSubmenuContent', () => {
     it('should place sub-content inline-end-start when side and align are omitted', async () => {
       const screen = await renderWithSafeViewport(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuSub open>
-              <DropdownMenuSubTrigger>More actions</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuItem>Sub action</DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          </DropdownMenuContent>
-        </DropdownMenu>,
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuSubmenu open>
+              <MenuSubmenuTrigger>More actions</MenuSubmenuTrigger>
+              <MenuSubmenuContent>
+                <MenuItem>Sub action</MenuItem>
+              </MenuSubmenuContent>
+            </MenuSubmenu>
+          </MenuContent>
+        </Menu>,
       )
 
       const submenu = screen.getByRole('menu', { name: 'More actions' })
@@ -251,12 +251,12 @@ describe('dropdown-menu wrapper', () => {
       const handlePopupClick = vi.fn()
 
       const screen = await render(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuSub open>
-              <DropdownMenuSubTrigger>More actions</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuSubmenu open>
+              <MenuSubmenuTrigger>More actions</MenuSubmenuTrigger>
+              <MenuSubmenuContent
                 side="right"
                 align="end"
                 sideOffset={6}
@@ -264,11 +264,11 @@ describe('dropdown-menu wrapper', () => {
                 id="dropdown-sub-popup"
                 onClick={handlePopupClick}
               >
-                <DropdownMenuItem>Custom sub action</DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          </DropdownMenuContent>
-        </DropdownMenu>,
+                <MenuItem>Custom sub action</MenuItem>
+              </MenuSubmenuContent>
+            </MenuSubmenu>
+          </MenuContent>
+        </Menu>,
       )
 
       await screen.getByRole('menu', { name: 'More actions' }).click()
@@ -286,17 +286,17 @@ describe('dropdown-menu wrapper', () => {
     })
   })
 
-  describe('DropdownMenuSubTrigger', () => {
+  describe('MenuSubmenuTrigger', () => {
     it('should render submenu trigger content when trigger children are provided', async () => {
       const screen = await render(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuSub open>
-              <DropdownMenuSubTrigger>Trigger item</DropdownMenuSubTrigger>
-            </DropdownMenuSub>
-          </DropdownMenuContent>
-        </DropdownMenu>,
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuSubmenu open>
+              <MenuSubmenuTrigger>Trigger item</MenuSubmenuTrigger>
+            </MenuSubmenu>
+          </MenuContent>
+        </Menu>,
       )
 
       await expect
@@ -310,21 +310,21 @@ describe('dropdown-menu wrapper', () => {
         const handleClick = vi.fn()
 
         const screen = await render(
-          <DropdownMenu open>
-            <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuSub open>
-                <DropdownMenuSubTrigger
+          <Menu open>
+            <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+            <MenuContent>
+              <MenuSubmenu open>
+                <MenuSubmenuTrigger
                   variant={variant}
                   aria-label="submenu action"
                   id={`submenu-trigger-${variant}`}
                   onClick={handleClick}
                 >
                   Trigger item
-                </DropdownMenuSubTrigger>
-              </DropdownMenuSub>
-            </DropdownMenuContent>
-          </DropdownMenu>,
+                </MenuSubmenuTrigger>
+              </MenuSubmenu>
+            </MenuContent>
+          </Menu>,
         )
 
         await screen.getByRole('menuitem', { name: 'submenu action' }).click()
@@ -339,26 +339,26 @@ describe('dropdown-menu wrapper', () => {
     )
   })
 
-  describe('DropdownMenuItem', () => {
+  describe('MenuItem', () => {
     it.each(['default', 'destructive'] as const)(
       'should remain interactive and set data-variant when variant is %s',
       async (variant) => {
         const handleClick = vi.fn()
 
         const screen = await render(
-          <DropdownMenu open>
-            <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
+          <Menu open>
+            <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+            <MenuContent>
+              <MenuItem
                 variant={variant}
                 aria-label="menu action"
                 id={`menu-item-${variant}`}
                 onClick={handleClick}
               >
                 Item label
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>,
+              </MenuItem>
+            </MenuContent>
+          </Menu>,
         )
 
         await screen.getByRole('menuitem', { name: 'menu action' }).click()
@@ -373,21 +373,17 @@ describe('dropdown-menu wrapper', () => {
     )
   })
 
-  describe('DropdownMenuLinkItem', () => {
+  describe('MenuLinkItem', () => {
     it('should render as anchor and keep href/target attributes when link props are provided', async () => {
       const screen = await render(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuLinkItem
-              href="https://example.com/docs"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuLinkItem href="https://example.com/docs" target="_blank" rel="noopener noreferrer">
               Docs
-            </DropdownMenuLinkItem>
-          </DropdownMenuContent>
-        </DropdownMenu>,
+            </MenuLinkItem>
+          </MenuContent>
+        </Menu>,
       )
 
       const link = screen.getByRole('menuitem', { name: 'Docs' }).element()
@@ -399,18 +395,18 @@ describe('dropdown-menu wrapper', () => {
 
     it('should keep link semantics and not leak closeOnClick prop when closeOnClick is false', async () => {
       const screen = await render(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuLinkItem
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuLinkItem
               href="https://example.com/docs"
               closeOnClick={false}
               aria-label="docs link"
             >
               Docs
-            </DropdownMenuLinkItem>
-          </DropdownMenuContent>
-        </DropdownMenu>,
+            </MenuLinkItem>
+          </MenuContent>
+        </Menu>,
       )
 
       const link = screen.getByRole('menuitem', { name: 'docs link' }).element()
@@ -421,14 +417,14 @@ describe('dropdown-menu wrapper', () => {
 
     it('should preserve link semantics when render prop uses a custom anchor element', async () => {
       const screen = await render(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuLinkItem render={<a href="/account" />} aria-label="account link">
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuLinkItem render={<a href="/account" />} aria-label="account link">
               Account settings
-            </DropdownMenuLinkItem>
-          </DropdownMenuContent>
-        </DropdownMenu>,
+            </MenuLinkItem>
+          </MenuContent>
+        </Menu>,
       )
 
       const link = screen.getByRole('menuitem', { name: 'account link' }).element()
@@ -443,10 +439,10 @@ describe('dropdown-menu wrapper', () => {
         const handleClick = vi.fn()
 
         const screen = await render(
-          <DropdownMenu open>
-            <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuLinkItem
+          <Menu open>
+            <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+            <MenuContent>
+              <MenuLinkItem
                 variant={variant}
                 href="https://example.com/docs"
                 aria-label="docs link"
@@ -457,9 +453,9 @@ describe('dropdown-menu wrapper', () => {
                 }}
               >
                 Docs
-              </DropdownMenuLinkItem>
-            </DropdownMenuContent>
-          </DropdownMenu>,
+              </MenuLinkItem>
+            </MenuContent>
+          </Menu>,
         )
 
         await screen.getByRole('menuitem', { name: 'docs link' }).click()
@@ -473,17 +469,17 @@ describe('dropdown-menu wrapper', () => {
     )
   })
 
-  describe('DropdownMenuSeparator', () => {
+  describe('MenuSeparator', () => {
     it('should keep surrounding menu rows rendered when separator is placed between items', async () => {
       const screen = await render(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem>First action</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Second action</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>,
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuItem>First action</MenuItem>
+            <MenuSeparator />
+            <MenuItem>Second action</MenuItem>
+          </MenuContent>
+        </Menu>,
       )
 
       await expect
@@ -499,19 +495,17 @@ describe('dropdown-menu wrapper', () => {
 
 it('resolves submenu popup classes with the popup state', async () => {
   const screen = await render(
-    <DropdownMenu open>
-      <DropdownMenuTrigger>Open audit menu</DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuSub open>
-          <DropdownMenuSubTrigger>More audit actions</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent
-            className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}
-          >
-            <DropdownMenuItem>Audit action</DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-      </DropdownMenuContent>
-    </DropdownMenu>,
+    <Menu open>
+      <MenuTrigger>Open audit menu</MenuTrigger>
+      <MenuContent>
+        <MenuSubmenu open>
+          <MenuSubmenuTrigger>More audit actions</MenuSubmenuTrigger>
+          <MenuSubmenuContent className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}>
+            <MenuItem>Audit action</MenuItem>
+          </MenuSubmenuContent>
+        </MenuSubmenu>
+      </MenuContent>
+    </Menu>,
   )
 
   await expect

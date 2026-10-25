@@ -17,14 +17,8 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -194,35 +188,35 @@ function AgentCardActionMenuItems({
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tAgent } = useTranslation(['agentV2'])
-  const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
-  const MenuSeparator = kind === 'context' ? ContextMenuSeparator : DropdownMenuSeparator
+  const ActionItem = kind === 'context' ? ContextMenuItem : MenuItem
+  const ActionSeparator = kind === 'context' ? ContextMenuSeparator : MenuSeparator
 
   return (
     <>
       {onEdit && (
-        <MenuItem className="gap-2" onClick={onEdit}>
+        <ActionItem className="gap-2" onClick={onEdit}>
           <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
           <span>{t(($) => $['roster.editInfo'], { ns: 'agentRoster' })}</span>
-        </MenuItem>
+        </ActionItem>
       )}
       {onDuplicate && (
-        <MenuItem className="gap-2" onClick={onDuplicate}>
+        <ActionItem className="gap-2" onClick={onDuplicate}>
           <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
           <span>{tCommon(($) => $['operation.duplicate'])}</span>
-        </MenuItem>
+        </ActionItem>
       )}
       {onExport && (
-        <MenuItem className="gap-2" disabled={isExporting} onClick={onExport}>
+        <ActionItem className="gap-2" disabled={isExporting} onClick={onExport}>
           <span aria-hidden className="i-ri-download-line size-4 shrink-0 text-text-tertiary" />
           <span>{tAgent(($) => $.exportAgent)}</span>
-        </MenuItem>
+        </ActionItem>
       )}
-      {onDelete && (onEdit || onDuplicate || onExport) && <MenuSeparator />}
+      {onDelete && (onEdit || onDuplicate || onExport) && <ActionSeparator />}
       {onDelete && (
-        <MenuItem variant="destructive" className="gap-2" onClick={onDelete}>
+        <ActionItem variant="destructive" className="gap-2" onClick={onDelete}>
           <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
           <span>{tCommon(($) => $['operation.delete'])}</span>
-        </MenuItem>
+        </ActionItem>
       )}
     </>
   )
@@ -389,8 +383,8 @@ function AgentRosterItem({
       {hasActions && (
         <div className="pointer-events-none absolute inset-e-[-0.5px] top-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 rtl:bg-[linear-gradient(293deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] [@media(hover:none)]:opacity-100">
           <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger
+            <Menu modal={false}>
+              <MenuTrigger
                 render={
                   <IconButton
                     aria-label={t(($) => $['roster.moreActions'], {
@@ -404,7 +398,7 @@ function AgentRosterItem({
                   </IconButton>
                 }
               />
-              <DropdownMenuContent className="w-max min-w-40">
+              <MenuContent className="w-max min-w-40">
                 <AgentCardActionMenuItems
                   kind="dropdown"
                   isExporting={isExporting}
@@ -413,8 +407,8 @@ function AgentRosterItem({
                   onExport={capabilities.canImportExportDSL ? handleExport : undefined}
                   onDelete={capabilities.canDelete ? () => onDelete(itemRef.current) : undefined}
                 />
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </MenuContent>
+            </Menu>
           </div>
         </div>
       )}

@@ -5,20 +5,20 @@ import type { Theme } from '@/app/components/base/theme-selector'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuItem,
+  MenuLinkItem,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuSeparator,
+  MenuSubmenu,
+  MenuSubmenuContent,
+  MenuSubmenuTrigger,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useQueryState } from 'nuqs'
@@ -65,7 +65,7 @@ function MainNavRadioItemContent({ iconClassName, label }: MainNavRadioItemConte
       >
         {label}
       </span>
-      <DropdownMenuRadioItemIndicator />
+      <MenuRadioItemIndicator />
     </>
   )
 }
@@ -77,39 +77,39 @@ function AppearanceSubmenu() {
     theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system'
 
   return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger className="mx-0 px-3 py-1">
+    <MenuSubmenu>
+      <MenuSubmenuTrigger className="mx-0 px-3 py-1">
         <MenuItemContent
           iconClassName="i-ri-sun-line"
           label={t(($) => $['account.appearanceLabel'], { ns: 'accountSettings' })}
         />
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent sideOffset={6} className="max-h-90 w-34.75 px-1">
-        <DropdownMenuRadioGroup<Theme>
+      </MenuSubmenuTrigger>
+      <MenuSubmenuContent sideOffset={6} className="max-h-90 w-34.75 px-1">
+        <MenuRadioGroup<Theme>
           value={currentTheme}
           onValueChange={(nextTheme) => setTheme(nextTheme)}
         >
-          <DropdownMenuRadioItem<Theme> value="light" className="mx-0 py-1">
+          <MenuRadioItem<Theme> value="light" className="mx-0 py-1">
             <MainNavRadioItemContent
               iconClassName="i-ri-sun-line"
               label={t(($) => $['account.appearanceLight'], { ns: 'accountSettings' })}
             />
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem<Theme> value="dark" className="mx-0 py-1">
+          </MenuRadioItem>
+          <MenuRadioItem<Theme> value="dark" className="mx-0 py-1">
             <MainNavRadioItemContent
               iconClassName="i-ri-moon-line"
               label={t(($) => $['account.appearanceDark'], { ns: 'accountSettings' })}
             />
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem<Theme> value="system" className="mx-0 py-1">
+          </MenuRadioItem>
+          <MenuRadioItem<Theme> value="system" className="mx-0 py-1">
             <MainNavRadioItemContent
               iconClassName="i-ri-computer-line"
               label={t(($) => $['account.appearanceSystem'], { ns: 'accountSettings' })}
             />
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
+          </MenuRadioItem>
+        </MenuRadioGroup>
+      </MenuSubmenuContent>
+    </MenuSubmenu>
   )
 }
 
@@ -138,7 +138,7 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
 
   return (
     <>
-      <DropdownMenuGroup className="p-1">
+      <MenuGroup className="p-1">
         <div className="flex items-center gap-3 rounded-xl bg-linear-to-b from-background-section-burn to-background-section p-3">
           <div className="flex min-w-0 grow flex-col gap-1">
             <div className="flex min-w-0 items-center gap-1">
@@ -167,32 +167,26 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
             <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
           </Avatar>
         </div>
-      </DropdownMenuGroup>
-      <DropdownMenuGroup className="p-1">
-        <DropdownMenuLinkItem
-          className="mx-0 justify-between px-3 py-1"
-          render={<Link href="/account" />}
-        >
+      </MenuGroup>
+      <MenuGroup className="p-1">
+        <MenuLinkItem className="mx-0 justify-between px-3 py-1" render={<Link href="/account" />}>
           <MenuItemContent
             iconClassName="i-ri-account-circle-line"
             label={t(($) => $['account.account'], { ns: 'accountSettings' })}
             trailing={<ExternalLinkIndicator />}
           />
-        </DropdownMenuLinkItem>
-        <DropdownMenuItem
-          className="mx-0 px-3 py-1"
-          onClick={() => setSettingsDestination('preferences')}
-        >
+        </MenuLinkItem>
+        <MenuItem className="mx-0 px-3 py-1" onClick={() => setSettingsDestination('preferences')}>
           <MenuItemContent
             iconClassName="i-ri-equalizer-2-line"
             label={t(($) => $['settings.preferences'], { ns: 'navigation' })}
           />
-        </DropdownMenuItem>
+        </MenuItem>
         <AppearanceSubmenu />
-      </DropdownMenuGroup>
-      <DropdownMenuSeparator className="my-0" />
-      <DropdownMenuGroup className="p-1">
-        <DropdownMenuItem
+      </MenuGroup>
+      <MenuSeparator className="my-0" />
+      <MenuGroup className="p-1">
+        <MenuItem
           className="mx-0 px-3 py-1"
           onClick={() => {
             onLogout()
@@ -202,8 +196,8 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
             iconClassName="i-ri-shut-down-line"
             label={t(($) => $['userProfile.logout'], { ns: 'common' })}
           />
-        </DropdownMenuItem>
-      </DropdownMenuGroup>
+        </MenuItem>
+      </MenuGroup>
     </>
   )
 }
@@ -223,7 +217,7 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
 
   return (
     <div>
-      <DropdownMenu
+      <Menu
         onOpenChange={(open, { event }) => {
           if (open)
             keyboardNavigationRef.current =
@@ -231,7 +225,7 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
               (event.type === 'click' && 'detail' in event && event.detail === 0)
         }}
       >
-        <DropdownMenuTrigger
+        <MenuTrigger
           ref={triggerRef}
           onKeyDownCapture={(event) => {
             if (event.key !== 'Escape') keyboardNavigationRef.current = true
@@ -241,7 +235,7 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
             ariaLabel: t(($) => $['account.account'], { ns: 'accountSettings' }),
           })}
         />
-        <DropdownMenuContent
+        <MenuContent
           ref={popupRef}
           onKeyDownCapture={(event) => {
             if (event.key !== 'Escape') keyboardNavigationRef.current = true
@@ -282,8 +276,8 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
           className={mainNavMenuPopupClassName}
         >
           <MainNavMenuContent onLogout={() => logout()} />
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
     </div>
   )
 }

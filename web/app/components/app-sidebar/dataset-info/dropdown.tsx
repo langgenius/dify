@@ -1,14 +1,8 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -118,8 +112,8 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   if (!canShowOperations) return null
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <IconButton
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
@@ -130,39 +124,39 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
           </IconButton>
         }
       />
-      <DropdownMenuContent
+      <MenuContent
         side={expand ? 'bottom' : 'right'}
         align={expand ? 'end' : 'start'}
         className="w-50"
       >
         {datasetACLCapabilities.canEdit && (
-          <DropdownMenuItem onClick={() => setRenameOpen(true)}>
+          <MenuItem onClick={() => setRenameOpen(true)}>
             <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
             {t(($) => $['operation.edit'], { ns: 'common' })}
-          </DropdownMenuItem>
+          </MenuItem>
         )}
         {datasetACLCapabilities.canImportExportDSL && dataset.runtime_mode === 'rag_pipeline' && (
-          <DropdownMenuItem onClick={() => void handleExportPipeline()}>
+          <MenuItem onClick={() => void handleExportPipeline()}>
             <span aria-hidden className="i-ri-file-download-line size-4 text-text-tertiary" />
             {t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
-          </DropdownMenuItem>
+          </MenuItem>
         )}
         {datasetACLCapabilities.canAccessConfig && (
-          <DropdownMenuItem onClick={openAccessConfig}>
+          <MenuItem onClick={openAccessConfig}>
             <span aria-hidden className="i-ri-lock-2-line size-4 text-text-tertiary" />
             {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
-          </DropdownMenuItem>
+          </MenuItem>
         )}
         {datasetACLCapabilities.canDelete && (
           <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+            <MenuSeparator />
+            <MenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
               <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
               {t(($) => $['operation.delete'], { ns: 'common' })}
-            </DropdownMenuItem>
+            </MenuItem>
           </>
         )}
-      </DropdownMenuContent>
+      </MenuContent>
       <RenameDatasetModal
         open={renameOpen}
         dataset={dataset}
@@ -202,7 +196,7 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
           />
         </AlertDialogContent>
       </AlertDialog>
-    </DropdownMenu>
+    </Menu>
   )
 }
 

@@ -1,13 +1,7 @@
 import type { OperationName } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -241,12 +235,12 @@ const Operations = ({
     [canViewSettings, datasetId, detail.id, router],
   )
   const settingsMenuItem = (
-    <DropdownMenuItem className={menuActionClassName} onClick={handleSettingsClick}>
+    <MenuItem className={menuActionClassName} onClick={handleSettingsClick}>
       <span aria-hidden className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
       <span className="text-sm text-text-secondary">
         {t(($) => $['list.action.settings'], { ns: 'datasetDocuments' })}
       </span>
-    </DropdownMenuItem>
+    </MenuItem>
   )
   const enabledLabel = `${t(($) => $['list.status.enabled'], { ns: 'datasetDocuments' })}: ${name}`
   const renderListSwitch = () => {
@@ -318,8 +312,8 @@ const Operations = ({
       )}
       {hasOperationsMenu && (
         <>
-          <DropdownMenu>
-            <DropdownMenuTrigger
+          <Menu>
+            <MenuTrigger
               aria-label={t(($) => $['operation.more'], { ns: 'common' })}
               className={cn(
                 isListScene
@@ -341,20 +335,20 @@ const Operations = ({
                   className="i-ri-more-fill size-4 text-components-button-secondary-text"
                 />
               </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className={cn('w-50', className)}>
+            </MenuTrigger>
+            <MenuContent className={cn('w-50', className)}>
               {canShowPrimarySection && (
                 <>
                   {canShowRenameAction && (
-                    <DropdownMenuItem className={menuActionClassName} onClick={handleShowRename}>
+                    <MenuItem className={menuActionClassName} onClick={handleShowRename}>
                       <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
                       <span className="text-sm text-text-secondary">
                         {t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
                       </span>
-                    </DropdownMenuItem>
+                    </MenuItem>
                   )}
                   {canShowSummaryAction && (
-                    <DropdownMenuItem
+                    <MenuItem
                       className={menuActionClassName}
                       onClick={() => handleMenuOperation('summary')}
                     >
@@ -365,11 +359,11 @@ const Operations = ({
                       <span className="text-sm text-text-secondary">
                         {t(($) => $['list.action.summary'], { ns: 'datasetDocuments' })}
                       </span>
-                    </DropdownMenuItem>
+                    </MenuItem>
                   )}
                   {canShowSettingsAction && settingsMenuItem}
                   {canShowDownloadAction && (
-                    <DropdownMenuItem className={menuActionClassName} onClick={handleDownloadClick}>
+                    <MenuItem className={menuActionClassName} onClick={handleDownloadClick}>
                       <span
                         aria-hidden
                         className="i-ri-download-2-line size-4 text-text-tertiary"
@@ -377,10 +371,10 @@ const Operations = ({
                       <span className="text-sm text-text-secondary">
                         {t(($) => $['list.action.download'], { ns: 'datasetDocuments' })}
                       </span>
-                    </DropdownMenuItem>
+                    </MenuItem>
                   )}
                   {canShowSyncAction && (
-                    <DropdownMenuItem
+                    <MenuItem
                       className={menuActionClassName}
                       onClick={() => handleMenuOperation('sync')}
                     >
@@ -388,15 +382,15 @@ const Operations = ({
                       <span className="text-sm text-text-secondary">
                         {t(($) => $['list.action.sync'], { ns: 'datasetDocuments' })}
                       </span>
-                    </DropdownMenuItem>
+                    </MenuItem>
                   )}
                   {(canShowStatusSection || canShowDeleteAction) && (
-                    <DropdownMenuSeparator className="h-[0.5px] w-full shrink-0 bg-divider-regular" />
+                    <MenuSeparator className="h-[0.5px] w-full shrink-0 bg-divider-regular" />
                   )}
                 </>
               )}
               {canShowPauseAction && (
-                <DropdownMenuItem
+                <MenuItem
                   className={menuActionClassName}
                   onClick={() => handleMenuOperation('pause')}
                 >
@@ -404,10 +398,10 @@ const Operations = ({
                   <span className="text-sm text-text-secondary">
                     {t(($) => $['list.action.pause'], { ns: 'datasetDocuments' })}
                   </span>
-                </DropdownMenuItem>
+                </MenuItem>
               )}
               {canShowResumeAction && (
-                <DropdownMenuItem
+                <MenuItem
                   className={menuActionClassName}
                   onClick={() => handleMenuOperation('resume')}
                 >
@@ -415,10 +409,10 @@ const Operations = ({
                   <span className="text-sm text-text-secondary">
                     {t(($) => $['list.action.resume'], { ns: 'datasetDocuments' })}
                   </span>
-                </DropdownMenuItem>
+                </MenuItem>
               )}
               {canShowArchiveAction && (
-                <DropdownMenuItem
+                <MenuItem
                   className={menuActionClassName}
                   onClick={() => handleMenuOperation('archive')}
                 >
@@ -426,10 +420,10 @@ const Operations = ({
                   <span className="text-sm text-text-secondary">
                     {t(($) => $['list.action.archive'], { ns: 'datasetDocuments' })}
                   </span>
-                </DropdownMenuItem>
+                </MenuItem>
               )}
               {canShowUnarchiveAction && (
-                <DropdownMenuItem
+                <MenuItem
                   className={menuActionClassName}
                   onClick={() => handleMenuOperation('un_archive')}
                 >
@@ -437,10 +431,10 @@ const Operations = ({
                   <span className="text-sm text-text-secondary">
                     {t(($) => $['list.action.unarchive'], { ns: 'datasetDocuments' })}
                   </span>
-                </DropdownMenuItem>
+                </MenuItem>
               )}
               {canShowDeleteAction && (
-                <DropdownMenuItem
+                <MenuItem
                   variant="destructive"
                   className={menuDeleteActionClassName}
                   onClick={handleDeleteClick}
@@ -452,10 +446,10 @@ const Operations = ({
                   <span className="text-sm text-text-secondary group-data-highlighted:text-text-destructive">
                     {t(($) => $['list.action.delete'], { ns: 'datasetDocuments' })}
                   </span>
-                </DropdownMenuItem>
+                </MenuItem>
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </MenuContent>
+          </Menu>
         </>
       )}
 

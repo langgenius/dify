@@ -1,18 +1,18 @@
 'use client'
-import type { DropdownMenuContentProps } from '@langgenius/dify-ui/dropdown-menu'
+import type { MenuContentProps } from '@langgenius/dify-ui/menu'
 import type { SiteInfo } from '@/models/share'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroupLabel,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuContent,
+  MenuGroupLabel,
+  MenuItem,
+  MenuLinkItem,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { useState } from 'react'
@@ -25,7 +25,7 @@ import { webAppLogout } from '@/service/webapp-auth'
 import InfoModal from './info-modal'
 
 type Props = Readonly<
-  Pick<DropdownMenuContentProps, 'side' | 'align'> & {
+  Pick<MenuContentProps, 'side' | 'align'> & {
     data?: SiteInfo
     hideLogout?: boolean
   }
@@ -52,8 +52,8 @@ function MenuDropdown({ data, side, align, hideLogout }: Props) {
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
+      <Menu>
+        <MenuTrigger
           render={
             <IconButton
               aria-label={t(($) => $['operation.more'], { ns: 'common' })}
@@ -64,15 +64,15 @@ function MenuDropdown({ data, side, align, hideLogout }: Props) {
             </IconButton>
           }
         />
-        <DropdownMenuContent side={side} align={align} className="w-56">
-          <DropdownMenuRadioGroup
+        <MenuContent side={side} align={align} className="w-56">
+          <MenuRadioGroup
             value={theme ?? 'system'}
             onValueChange={setTheme}
             className="flex items-center gap-2 px-3 system-md-regular text-text-secondary"
           >
-            <DropdownMenuGroupLabel className="grow px-0 py-0 system-md-regular text-text-secondary normal-case">
+            <MenuGroupLabel className="grow px-0 py-0 system-md-regular text-text-secondary normal-case">
               {t(($) => $['theme.theme'], { ns: 'common' })}
-            </DropdownMenuGroupLabel>
+            </MenuGroupLabel>
             <div className="flex items-center rounded-[10px] bg-components-segmented-control-bg-normal p-0.5">
               {(['system', 'light', 'dark'] as const).map((value, index) => (
                 <React.Fragment key={value}>
@@ -87,7 +87,7 @@ function MenuDropdown({ data, side, align, hideLogout }: Props) {
                       }
                     />
                   )}
-                  <DropdownMenuRadioItem
+                  <MenuRadioItem
                     value={value}
                     aria-label={t(
                       ($) =>
@@ -113,14 +113,14 @@ function MenuDropdown({ data, side, align, hideLogout }: Props) {
                         }
                       />
                     </span>
-                  </DropdownMenuRadioItem>
+                  </MenuRadioItem>
                 </React.Fragment>
               ))}
             </div>
-          </DropdownMenuRadioGroup>
-          <DropdownMenuSeparator />
+          </MenuRadioGroup>
+          <MenuSeparator />
           {data?.privacy_policy && (
-            <DropdownMenuLinkItem
+            <MenuLinkItem
               className="system-md-regular"
               href={data.privacy_policy}
               target="_blank"
@@ -129,22 +129,22 @@ function MenuDropdown({ data, side, align, hideLogout }: Props) {
               <span className="grow">
                 {t(($) => $['chat.privacyPolicyMiddle'], { ns: 'share' })}
               </span>
-            </DropdownMenuLinkItem>
+            </MenuLinkItem>
           )}
-          <DropdownMenuItem className="system-md-regular" onClick={handleOpenInfoModal}>
+          <MenuItem className="system-md-regular" onClick={handleOpenInfoModal}>
             {t(($) => $['userProfile.about'], { ns: 'common' })}
-          </DropdownMenuItem>
+          </MenuItem>
           {!(
             hideLogout ||
             webAppAccessMode === AccessMode.EXTERNAL_MEMBERS ||
             webAppAccessMode === AccessMode.PUBLIC
           ) && (
-            <DropdownMenuItem className="system-md-regular" onClick={handleLogout}>
+            <MenuItem className="system-md-regular" onClick={handleLogout}>
               {t(($) => $['userProfile.logout'], { ns: 'common' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
       {show && (
         <InfoModal
           isShow={show}

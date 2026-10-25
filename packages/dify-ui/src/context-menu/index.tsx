@@ -20,17 +20,18 @@ import {
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const ContextMenu = BaseContextMenu.Root
+const ContextMenuPortal = BaseContextMenu.Portal
 const ContextMenuTrigger = BaseContextMenu.Trigger
-const ContextMenuSub = BaseContextMenu.SubmenuRoot
+const ContextMenuSubmenu = BaseContextMenu.SubmenuRoot
 const ContextMenuGroup = BaseContextMenu.Group
 type ContextMenuProps = BaseContextMenu.Root.Props
 type ContextMenuActions = BaseContextMenu.Root.Actions
 type ContextMenuChangeEventReason = BaseContextMenu.Root.ChangeEventReason
 type ContextMenuChangeEventDetails = BaseContextMenu.Root.ChangeEventDetails
 type ContextMenuTriggerProps = BaseContextMenu.Trigger.Props
-type ContextMenuSubProps = BaseContextMenu.SubmenuRoot.Props
-type ContextMenuSubChangeEventReason = BaseContextMenu.SubmenuRoot.ChangeEventReason
-type ContextMenuSubChangeEventDetails = BaseContextMenu.SubmenuRoot.ChangeEventDetails
+type ContextMenuSubmenuProps = BaseContextMenu.SubmenuRoot.Props
+type ContextMenuSubmenuChangeEventReason = BaseContextMenu.SubmenuRoot.ChangeEventReason
+type ContextMenuSubmenuChangeEventDetails = BaseContextMenu.SubmenuRoot.ChangeEventDetails
 type ContextMenuGroupProps = BaseContextMenu.Group.Props
 type ContextMenuRadioGroupChangeEventReason = BaseContextMenu.RadioGroup.ChangeEventReason
 type ContextMenuRadioGroupChangeEventDetails = BaseContextMenu.RadioGroup.ChangeEventDetails
@@ -51,8 +52,37 @@ function ContextMenuRadioGroup<Value = unknown>(
   return <BaseContextMenu.RadioGroup {...props} />
 }
 
-type ContextMenuContentProps = Omit<BaseContextMenu.Popup.Props, 'children'> &
-  Pick<BaseContextMenu.Positioner.Props, 'side' | 'align' | 'sideOffset' | 'alignOffset'> & {
+type ContextMenuPortalProps = BaseContextMenu.Portal.Props
+type ContextMenuPositionerProps = BaseContextMenu.Positioner.Props
+type ContextMenuPopupProps = BaseContextMenu.Popup.Props
+
+function ContextMenuPositioner({ className, ...props }: ContextMenuPositionerProps) {
+  return (
+    <BaseContextMenu.Positioner
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
+
+function ContextMenuPopup({ className, ...props }: ContextMenuPopupProps) {
+  return (
+    <BaseContextMenu.Popup
+      className={(state) =>
+        cn(
+          menuPopupBaseClassName,
+          menuPopupSurfaceClassName,
+          floatingPopupAnimationClassName,
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    />
+  )
+}
+
+type ContextMenuContentProps = Omit<ContextMenuPopupProps, 'children'> &
+  Pick<ContextMenuPositionerProps, 'side' | 'align' | 'sideOffset' | 'alignOffset'> & {
     children: React.ReactNode
   }
 
@@ -66,29 +96,18 @@ function ContextMenuContent({
   ...props
 }: ContextMenuContentProps) {
   return (
-    <BaseContextMenu.Portal>
-      <BaseContextMenu.Positioner
+    <ContextMenuPortal>
+      <ContextMenuPositioner
         side={side}
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={positionerClassName}
       >
-        <BaseContextMenu.Popup
-          className={(state) =>
-            cn(
-              menuPopupBaseClassName,
-              menuPopupSurfaceClassName,
-              floatingPopupAnimationClassName,
-              resolveClassName(className, state),
-            )
-          }
-          {...props}
-        >
+        <ContextMenuPopup className={className} {...props}>
           {children}
-        </BaseContextMenu.Popup>
-      </BaseContextMenu.Positioner>
-    </BaseContextMenu.Portal>
+        </ContextMenuPopup>
+      </ContextMenuPositioner>
+    </ContextMenuPortal>
   )
 }
 
@@ -194,16 +213,16 @@ function ContextMenuRadioItemIndicator({
 
 type ContextMenuRadioItemIndicatorProps = Omit<BaseContextMenu.RadioItemIndicator.Props, 'children'>
 
-type ContextMenuSubTriggerProps = BaseContextMenu.SubmenuTrigger.Props & {
+type ContextMenuSubmenuTriggerProps = BaseContextMenu.SubmenuTrigger.Props & {
   variant?: ContextMenuItemVariant
 }
 
-function ContextMenuSubTrigger({
+function ContextMenuSubmenuTrigger({
   className,
   variant = 'default',
   children,
   ...props
-}: ContextMenuSubTriggerProps) {
+}: ContextMenuSubmenuTriggerProps) {
   return (
     <BaseContextMenu.SubmenuTrigger
       data-variant={variant}
@@ -221,9 +240,9 @@ function ContextMenuSubTrigger({
   )
 }
 
-type ContextMenuSubContentProps = ContextMenuContentProps
+type ContextMenuSubmenuContentProps = ContextMenuContentProps
 
-function ContextMenuSubContent({
+function ContextMenuSubmenuContent({
   children,
   side,
   align,
@@ -231,31 +250,20 @@ function ContextMenuSubContent({
   alignOffset,
   className,
   ...props
-}: ContextMenuSubContentProps) {
+}: ContextMenuSubmenuContentProps) {
   return (
-    <BaseContextMenu.Portal>
-      <BaseContextMenu.Positioner
+    <ContextMenuPortal>
+      <ContextMenuPositioner
         side={side}
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={positionerClassName}
       >
-        <BaseContextMenu.Popup
-          className={(state) =>
-            cn(
-              menuPopupBaseClassName,
-              menuPopupSurfaceClassName,
-              floatingPopupAnimationClassName,
-              resolveClassName(className, state),
-            )
-          }
-          {...props}
-        >
+        <ContextMenuPopup className={className} {...props}>
           {children}
-        </BaseContextMenu.Popup>
-      </BaseContextMenu.Positioner>
-    </BaseContextMenu.Portal>
+        </ContextMenuPopup>
+      </ContextMenuPositioner>
+    </ContextMenuPortal>
   )
 }
 
@@ -292,13 +300,16 @@ export {
   ContextMenuGroupLabel,
   ContextMenuItem,
   ContextMenuLinkItem,
+  ContextMenuPopup,
+  ContextMenuPortal,
+  ContextMenuPositioner,
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
   ContextMenuRadioItemIndicator,
   ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
+  ContextMenuSubmenu,
+  ContextMenuSubmenuContent,
+  ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
 }
 
@@ -315,6 +326,9 @@ export type {
   ContextMenuGroupProps,
   ContextMenuItemProps,
   ContextMenuLinkItemProps,
+  ContextMenuPopupProps,
+  ContextMenuPortalProps,
+  ContextMenuPositionerProps,
   ContextMenuProps,
   ContextMenuRadioGroupChangeEventDetails,
   ContextMenuRadioGroupChangeEventReason,
@@ -322,10 +336,10 @@ export type {
   ContextMenuRadioItemIndicatorProps,
   ContextMenuRadioItemProps,
   ContextMenuSeparatorProps,
-  ContextMenuSubChangeEventDetails,
-  ContextMenuSubChangeEventReason,
-  ContextMenuSubContentProps,
-  ContextMenuSubProps,
-  ContextMenuSubTriggerProps,
+  ContextMenuSubmenuChangeEventDetails,
+  ContextMenuSubmenuChangeEventReason,
+  ContextMenuSubmenuContentProps,
+  ContextMenuSubmenuProps,
+  ContextMenuSubmenuTriggerProps,
   ContextMenuTriggerProps,
 }

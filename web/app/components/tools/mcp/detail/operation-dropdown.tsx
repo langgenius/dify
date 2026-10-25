@@ -1,13 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -22,8 +17,8 @@ const OperationDropdown: FC<Props> = ({ inCard, onOpenChange, onEdit, onRemove }
   const { t } = useTranslation(['common', 'tools'])
 
   return (
-    <DropdownMenu onOpenChange={onOpenChange}>
-      <DropdownMenuTrigger
+    <Menu onOpenChange={onOpenChange}>
+      <MenuTrigger
         render={
           <IconButton
             size={inCard ? 'lg' : 'md'}
@@ -34,14 +29,14 @@ const OperationDropdown: FC<Props> = ({ inCard, onOpenChange, onEdit, onRemove }
           </IconButton>
         }
       />
-      <DropdownMenuContent className="w-40">
-        <DropdownMenuItem onClick={onEdit}>
+      <MenuContent className="w-40">
+        <MenuItem onClick={onEdit}>
           <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
           <div className="ms-2 system-md-regular text-text-secondary">
             {t(($) => $['mcp.operation.edit'], { ns: 'tools' })}
           </div>
-        </DropdownMenuItem>
-        <DropdownMenuItem
+        </MenuItem>
+        <MenuItem
           className="data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
           onClick={onRemove}
         >
@@ -49,9 +44,9 @@ const OperationDropdown: FC<Props> = ({ inCard, onOpenChange, onEdit, onRemove }
           <div className="ms-2 system-md-regular text-inherit">
             {t(($) => $['mcp.operation.remove'], { ns: 'tools' })}
           </div>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuItem>
+      </MenuContent>
+    </Menu>
   )
 }
 export default React.memo(OperationDropdown)

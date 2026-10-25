@@ -5,13 +5,13 @@ import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { RiAddCircleFill, RiArrowDownSLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
@@ -145,7 +145,7 @@ const InstallPluginDropdown = ({
   }
 
   return (
-    <DropdownMenu
+    <Menu
       open={!disabled && isMenuOpen}
       onOpenChange={(open) => setIsMenuOpen(disabled ? false : open)}
       modal={false}
@@ -159,7 +159,7 @@ const InstallPluginDropdown = ({
           onChange={handleFileChange}
           accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
         />
-        <DropdownMenuTrigger
+        <MenuTrigger
           render={
             <Button
               variant={triggerVariant}
@@ -175,21 +175,19 @@ const InstallPluginDropdown = ({
             </Button>
           }
         />
-        <DropdownMenuContent align="start" className={cn('w-50 pb-2', popupClassName)}>
-          <DropdownMenuGroup>
-            <DropdownMenuGroupLabel>
-              {t(($) => $.installFrom, { ns: 'plugin' })}
-            </DropdownMenuGroupLabel>
+        <MenuContent align="start" className={cn('w-50 pb-2', popupClassName)}>
+          <MenuGroup>
+            <MenuGroupLabel>{t(($) => $.installFrom, { ns: 'plugin' })}</MenuGroupLabel>
             {installMethods.map(({ icon: Icon, text, action }) => (
-              <DropdownMenuItem key={action} onClick={() => handleInstallMethodSelect(action)}>
+              <MenuItem key={action} onClick={() => handleInstallMethodSelect(action)}>
                 <div className="flex items-center gap-1">
                   <Icon className="size-4 text-text-tertiary" />
                   <span className="px-1 system-md-regular text-text-secondary">{text}</span>
                 </div>
-              </DropdownMenuItem>
+              </MenuItem>
             ))}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
+          </MenuGroup>
+        </MenuContent>
       </div>
       {selectedAction === 'github' && (
         <InstallFromGitHub
@@ -209,7 +207,7 @@ const InstallPluginDropdown = ({
       {/* {pluginLists.map((item: any) => (
         <div key={item.id} onClick={() => handleUninstall(item.id)}>{item.name} 卸载</div>
       ))} */}
-    </DropdownMenu>
+    </Menu>
   )
 }
 

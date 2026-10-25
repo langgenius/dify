@@ -2,13 +2,13 @@
 
 import type { AgentAppPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuLinkItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuLinkItem,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
@@ -28,8 +28,8 @@ export function AgentWorkflowReferencesDropdown({
   const { t } = useTranslation(['agentRoster'])
 
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger className="pointer-events-auto relative -m-1 flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md p-1 before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:content-[''] hover:before:bg-state-base-hover data-popup-open:before:bg-state-base-hover">
+    <Menu modal={false}>
+      <MenuTrigger className="pointer-events-auto relative -m-1 flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md p-1 before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:content-[''] hover:before:bg-state-base-hover data-popup-open:before:bg-state-base-hover">
         <span
           aria-hidden
           className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary"
@@ -38,15 +38,15 @@ export function AgentWorkflowReferencesDropdown({
           {t(($) => $['roster.references.trigger'], { ns: 'agentRoster', name: agentName })}:{' '}
         </span>
         <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-66 p-1">
-        <DropdownMenuGroup>
-          <DropdownMenuGroupLabel className="flex w-full min-w-0 truncate pt-2 pr-3 pb-1.5 pl-2 system-xs-medium normal-case">
+      </MenuTrigger>
+      <MenuContent align="start" className="w-66 p-1">
+        <MenuGroup>
+          <MenuGroupLabel className="flex w-full min-w-0 truncate pt-2 pr-3 pb-1.5 pl-2 system-xs-medium normal-case">
             {t(($) => $['roster.references.label'], { ns: 'agentRoster', name: agentName })}
-          </DropdownMenuGroupLabel>
+          </MenuGroupLabel>
           {publishedReferences.map((reference) => {
             return (
-              <DropdownMenuLinkItem
+              <MenuLinkItem
                 key={reference.app_id}
                 render={
                   <Link
@@ -73,11 +73,11 @@ export function AgentWorkflowReferencesDropdown({
                   aria-hidden
                   className="i-ri-external-link-line size-3 shrink-0 text-text-quaternary group-data-highlighted:text-text-secondary [&:dir(rtl)]:-scale-x-100"
                 />
-              </DropdownMenuLinkItem>
+              </MenuLinkItem>
             )
           })}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuGroup>
+      </MenuContent>
+    </Menu>
   )
 }

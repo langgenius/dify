@@ -1,9 +1,4 @@
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
@@ -93,17 +88,17 @@ describe('getStepByStepTourDropdownMenuContentProps', () => {
     const onBackgroundClick = vi.fn()
 
     render(
-      <DropdownMenu open>
-        <DropdownMenuTrigger>Open menu</DropdownMenuTrigger>
-        <DropdownMenuContent
+      <Menu open>
+        <MenuTrigger>Open menu</MenuTrigger>
+        <MenuContent
           {...getStepByStepTourDropdownMenuContentProps({
             highlightPart: 'tour-menu',
             interactionMode: 'presentation',
           })}
         >
-          <DropdownMenuItem onClick={onAction}>Delete</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>,
+          <MenuItem onClick={onAction}>Delete</MenuItem>
+        </MenuContent>
+      </Menu>,
     )
     document.addEventListener('click', onBackgroundClick)
     try {
@@ -128,17 +123,17 @@ describe('getStepByStepTourDropdownMenuContentProps', () => {
     const onBackgroundClick = vi.fn()
 
     render(
-      <DropdownMenu open>
-        <DropdownMenuTrigger>Open menu</DropdownMenuTrigger>
-        <DropdownMenuContent
+      <Menu open>
+        <MenuTrigger>Open menu</MenuTrigger>
+        <MenuContent
           {...getStepByStepTourDropdownMenuContentProps({
             highlightPart: 'tour-menu',
             interactionMode: 'interactive',
           })}
         >
-          <DropdownMenuItem onClick={onAction}>Create</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>,
+          <MenuItem onClick={onAction}>Create</MenuItem>
+        </MenuContent>
+      </Menu>,
     )
     document.addEventListener('click', onBackgroundClick)
     try {

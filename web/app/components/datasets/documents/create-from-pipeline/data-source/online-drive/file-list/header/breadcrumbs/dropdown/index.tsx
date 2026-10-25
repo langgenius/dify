@@ -1,11 +1,6 @@
 import { BreadcrumbItem, BreadcrumbSeparator } from '@langgenius/dify-ui/breadcrumb'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -21,8 +16,8 @@ const Dropdown = ({ startIndex, breadcrumbs, onBreadcrumbClick }: DropdownProps)
   return (
     <>
       <BreadcrumbItem className="shrink-0">
-        <DropdownMenu>
-          <DropdownMenuTrigger
+        <Menu>
+          <MenuTrigger
             render={
               <IconButton
                 aria-label={t(($) => $['operation.more'], { ns: 'common' })}
@@ -32,18 +27,18 @@ const Dropdown = ({ startIndex, breadcrumbs, onBreadcrumbClick }: DropdownProps)
               </IconButton>
             }
           />
-          <DropdownMenuContent align="start" className="w-34 px-1">
+          <MenuContent align="start" className="w-34 px-1">
             {breadcrumbs.map((breadcrumb, index) => (
-              <DropdownMenuItem
+              <MenuItem
                 key={breadcrumbs.slice(0, index + 1).join('/')}
                 className="px-3 py-1.5 system-md-regular"
                 onClick={() => onBreadcrumbClick(startIndex + index)}
               >
                 {breadcrumb}
-              </DropdownMenuItem>
+              </MenuItem>
             ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </MenuContent>
+        </Menu>
       </BreadcrumbItem>
       <BreadcrumbSeparator className="system-xs-regular text-divider-deep" />
     </>

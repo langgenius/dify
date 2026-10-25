@@ -1,4 +1,4 @@
-import { DropdownMenuItem, DropdownMenuLinkItem } from '@langgenius/dify-ui/dropdown-menu'
+import { MenuItem, MenuLinkItem } from '@langgenius/dify-ui/menu'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
@@ -59,7 +59,7 @@ export default function SupportMenu() {
   return (
     <>
       {shouldShowUpgradeContact && (
-        <DropdownMenuItem
+        <MenuItem
           className="mx-0 h-8 gap-1 px-3 py-1"
           onClick={() => {
             setPricing('open')
@@ -78,10 +78,10 @@ export default function SupportMenu() {
               </span>
             }
           />
-        </DropdownMenuItem>
+        </MenuItem>
       )}
       {!shouldShowUpgradeContact && hasDedicatedChannel && hasZendeskWidget && (
-        <DropdownMenuItem
+        <MenuItem
           className="mx-0 h-8 gap-1 px-3 py-1"
           onClick={() => {
             void zendeskRuntime.open(deploymentEdition).catch(() => {
@@ -93,10 +93,10 @@ export default function SupportMenu() {
             iconClassName="i-ri-chat-smile-2-line"
             label={t(($) => $['userProfile.contactUs'], { ns: 'common' })}
           />
-        </DropdownMenuItem>
+        </MenuItem>
       )}
       {!shouldShowUpgradeContact && hasDedicatedChannel && !hasZendeskWidget && supportMailLink && (
-        <DropdownMenuLinkItem
+        <MenuLinkItem
           className="mx-0 h-8 gap-1 px-3 py-1"
           href={supportMailLink}
           rel="noopener noreferrer"
@@ -107,9 +107,9 @@ export default function SupportMenu() {
             label={t(($) => $['userProfile.emailSupport'], { ns: 'common' })}
             trailing={<ExternalLinkIndicator />}
           />
-        </DropdownMenuLinkItem>
+        </MenuLinkItem>
       )}
-      <DropdownMenuLinkItem
+      <MenuLinkItem
         className="mx-0 h-8 gap-1 px-3 py-1"
         href="https://discord.gg/5AEfbxcd9k"
         rel="noopener noreferrer"
@@ -120,7 +120,7 @@ export default function SupportMenu() {
           label={t(($) => $['userProfile.discord'], { ns: 'common' })}
           trailing={<ExternalLinkIndicator />}
         />
-      </DropdownMenuLinkItem>
+      </MenuLinkItem>
     </>
   )
 }

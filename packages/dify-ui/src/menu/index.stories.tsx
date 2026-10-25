@@ -2,35 +2,35 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 import {
-  createDropdownMenuHandle,
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuCheckboxItemIndicator,
-  DropdownMenuClear,
-  DropdownMenuContent,
-  DropdownMenuEmpty,
-  DropdownMenuFilterProvider,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuInput,
-  DropdownMenuInputGroup,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuList,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
+  createMenuHandle,
+  Menu,
+  MenuCheckboxItem,
+  MenuCheckboxItemIndicator,
+  MenuClear,
+  MenuContent,
+  MenuEmpty,
+  MenuFilterProvider,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuInput,
+  MenuInputGroup,
+  MenuItem,
+  MenuLinkItem,
+  MenuList,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuSeparator,
+  MenuSubmenu,
+  MenuSubmenuContent,
+  MenuSubmenuTrigger,
+  MenuTrigger,
 } from '.'
 import { DirectionProvider } from '../direction-provider'
 
 function TriggerButton({ label = 'Open Menu' }: { label?: string }) {
   return (
-    <DropdownMenuTrigger
+    <MenuTrigger
       render={
         <button
           type="button"
@@ -39,113 +39,113 @@ function TriggerButton({ label = 'Open Menu' }: { label?: string }) {
       }
     >
       {label}
-    </DropdownMenuTrigger>
+    </MenuTrigger>
   )
 }
 
 const meta = {
-  title: 'Base/UI/DropdownMenu',
-  component: DropdownMenu,
+  title: 'Base/UI/Menu',
+  component: Menu,
   parameters: {
     layout: 'centered',
     docs: {
       description: {
         component:
-          'Compound dropdown menu built on Base UI Menu. Supports items, separators, group labels, submenus, radio groups, checkbox items, destructive items, disabled states, and filtering. Filtering is a Base UI preview feature: wrap `DropdownMenu` in `DropdownMenuFilterProvider`, place `DropdownMenuInput` in a `DropdownMenuInputGroup` inside the content, and put the items in `DropdownMenuList`. The popup then becomes a dialog that holds the searchbox and the menu.',
+          'Compound dropdown menu built on Base UI Menu. Supports items, separators, group labels, submenus, radio groups, checkbox items, destructive items, disabled states, and filtering. Filtering is a Base UI preview feature: wrap `Menu` in `MenuFilterProvider`, place `MenuInput` in a `MenuInputGroup` inside the content, and put the items in `MenuList`. The popup then becomes a dialog that holds the searchbox and the menu.',
       },
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof DropdownMenu>
+} satisfies Meta<typeof Menu>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
   render: () => (
-    <DropdownMenu>
+    <Menu>
       <TriggerButton />
-      <DropdownMenuContent>
-        <DropdownMenuItem>Edit</DropdownMenuItem>
-        <DropdownMenuItem>Duplicate</DropdownMenuItem>
-        <DropdownMenuItem>Archive</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <MenuContent>
+        <MenuItem>Edit</MenuItem>
+        <MenuItem>Duplicate</MenuItem>
+        <MenuItem>Archive</MenuItem>
+      </MenuContent>
+    </Menu>
   ),
 }
 
 export const WithSeparator: Story = {
   render: () => (
-    <DropdownMenu>
+    <Menu>
       <TriggerButton />
-      <DropdownMenuContent>
-        <DropdownMenuItem>Cut</DropdownMenuItem>
-        <DropdownMenuItem>Copy</DropdownMenuItem>
-        <DropdownMenuItem>Paste</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>Select All</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>Find and Replace</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <MenuContent>
+        <MenuItem>Cut</MenuItem>
+        <MenuItem>Copy</MenuItem>
+        <MenuItem>Paste</MenuItem>
+        <MenuSeparator />
+        <MenuItem>Select All</MenuItem>
+        <MenuSeparator />
+        <MenuItem>Find and Replace</MenuItem>
+      </MenuContent>
+    </Menu>
   ),
 }
 
 export const WithGroupLabel: Story = {
   render: () => (
-    <DropdownMenu>
+    <Menu>
       <TriggerButton />
-      <DropdownMenuContent>
-        <DropdownMenuGroup>
-          <DropdownMenuGroupLabel>Actions</DropdownMenuGroupLabel>
-          <DropdownMenuItem>Edit</DropdownMenuItem>
-          <DropdownMenuItem>Duplicate</DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuGroupLabel>Export</DropdownMenuGroupLabel>
-          <DropdownMenuItem>Export as PDF</DropdownMenuItem>
-          <DropdownMenuItem>Export as CSV</DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <MenuContent>
+        <MenuGroup>
+          <MenuGroupLabel>Actions</MenuGroupLabel>
+          <MenuItem>Edit</MenuItem>
+          <MenuItem>Duplicate</MenuItem>
+        </MenuGroup>
+        <MenuSeparator />
+        <MenuGroup>
+          <MenuGroupLabel>Export</MenuGroupLabel>
+          <MenuItem>Export as PDF</MenuItem>
+          <MenuItem>Export as CSV</MenuItem>
+        </MenuGroup>
+      </MenuContent>
+    </Menu>
   ),
 }
 
 export const WithDestructiveItem: Story = {
   render: () => (
-    <DropdownMenu>
+    <Menu>
       <TriggerButton />
-      <DropdownMenuContent>
-        <DropdownMenuItem>Edit</DropdownMenuItem>
-        <DropdownMenuItem>Duplicate</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <MenuContent>
+        <MenuItem>Edit</MenuItem>
+        <MenuItem>Duplicate</MenuItem>
+        <MenuSeparator />
+        <MenuItem variant="destructive">Delete</MenuItem>
+      </MenuContent>
+    </Menu>
   ),
 }
 
 export const WithSubmenu: Story = {
   render: () => (
-    <DropdownMenu>
+    <Menu>
       <TriggerButton />
-      <DropdownMenuContent>
-        <DropdownMenuItem>New File</DropdownMenuItem>
-        <DropdownMenuItem>Open</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Share</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuItem>Email</DropdownMenuItem>
-            <DropdownMenuItem>Slack</DropdownMenuItem>
-            <DropdownMenuItem>Copy Link</DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>Download</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <MenuContent>
+        <MenuItem>New File</MenuItem>
+        <MenuItem>Open</MenuItem>
+        <MenuSeparator />
+        <MenuSubmenu>
+          <MenuSubmenuTrigger>Share</MenuSubmenuTrigger>
+          <MenuSubmenuContent>
+            <MenuItem>Email</MenuItem>
+            <MenuItem>Slack</MenuItem>
+            <MenuItem>Copy Link</MenuItem>
+          </MenuSubmenuContent>
+        </MenuSubmenu>
+        <MenuSeparator />
+        <MenuItem>Download</MenuItem>
+      </MenuContent>
+    </Menu>
   ),
 }
 
@@ -166,21 +166,21 @@ export const RTL: Story = {
         dir="rtl"
         className="flex min-h-64 w-[min(36rem,calc(100vw-2rem))] items-start"
       >
-        <DropdownMenu>
+        <Menu>
           <TriggerButton label="الإجراءات" />
-          <DropdownMenuContent lang="ar" dir="rtl">
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
+          <MenuContent lang="ar" dir="rtl">
+            <MenuSubmenu>
+              <MenuSubmenuTrigger>
                 <span>مشاركة</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent lang="ar" dir="rtl">
-                <DropdownMenuItem>البريد الإلكتروني</DropdownMenuItem>
-                <DropdownMenuItem>نسخ الرابط</DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-            <DropdownMenuItem>تنزيل</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              </MenuSubmenuTrigger>
+              <MenuSubmenuContent lang="ar" dir="rtl">
+                <MenuItem>البريد الإلكتروني</MenuItem>
+                <MenuItem>نسخ الرابط</MenuItem>
+              </MenuSubmenuContent>
+            </MenuSubmenu>
+            <MenuItem>تنزيل</MenuItem>
+          </MenuContent>
+        </Menu>
       </div>
     </DirectionProvider>
   ),
@@ -227,25 +227,25 @@ function WithRadioItemsDemo() {
   const [density, setDensity] = React.useState<Density>('comfortable')
 
   return (
-    <DropdownMenu>
+    <Menu>
       <TriggerButton label={`Density: ${density}`} />
-      <DropdownMenuContent>
-        <DropdownMenuRadioGroup<Density> value={density} onValueChange={setDensity}>
-          <DropdownMenuRadioItem<Density> value="compact">
+      <MenuContent>
+        <MenuRadioGroup<Density> value={density} onValueChange={setDensity}>
+          <MenuRadioItem<Density> value="compact">
             Compact
-            <DropdownMenuRadioItemIndicator />
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem<Density> value="comfortable">
+            <MenuRadioItemIndicator />
+          </MenuRadioItem>
+          <MenuRadioItem<Density> value="comfortable">
             Comfortable
-            <DropdownMenuRadioItemIndicator />
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem<Density> value="spacious">
+            <MenuRadioItemIndicator />
+          </MenuRadioItem>
+          <MenuRadioItem<Density> value="spacious">
             Spacious
-            <DropdownMenuRadioItemIndicator />
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <MenuRadioItemIndicator />
+          </MenuRadioItem>
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 
@@ -259,23 +259,23 @@ function WithCheckboxItemsDemo() {
   const [showStatusBar, setShowStatusBar] = React.useState(true)
 
   return (
-    <DropdownMenu>
+    <Menu>
       <TriggerButton label="View Options" />
-      <DropdownMenuContent>
-        <DropdownMenuCheckboxItem checked={showToolbar} onCheckedChange={setShowToolbar}>
+      <MenuContent>
+        <MenuCheckboxItem checked={showToolbar} onCheckedChange={setShowToolbar}>
           Toolbar
-          <DropdownMenuCheckboxItemIndicator />
-        </DropdownMenuCheckboxItem>
-        <DropdownMenuCheckboxItem checked={showSidebar} onCheckedChange={setShowSidebar}>
+          <MenuCheckboxItemIndicator />
+        </MenuCheckboxItem>
+        <MenuCheckboxItem checked={showSidebar} onCheckedChange={setShowSidebar}>
           Sidebar
-          <DropdownMenuCheckboxItemIndicator />
-        </DropdownMenuCheckboxItem>
-        <DropdownMenuCheckboxItem checked={showStatusBar} onCheckedChange={setShowStatusBar}>
+          <MenuCheckboxItemIndicator />
+        </MenuCheckboxItem>
+        <MenuCheckboxItem checked={showStatusBar} onCheckedChange={setShowStatusBar}>
           Status Bar
-          <DropdownMenuCheckboxItemIndicator />
-        </DropdownMenuCheckboxItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <MenuCheckboxItemIndicator />
+        </MenuCheckboxItem>
+      </MenuContent>
+    </Menu>
   )
 }
 
@@ -285,64 +285,60 @@ export const WithCheckboxItems: Story = {
 
 export const WithDisabledItems: Story = {
   render: () => (
-    <DropdownMenu>
+    <Menu>
       <TriggerButton />
-      <DropdownMenuContent>
-        <DropdownMenuItem>Edit</DropdownMenuItem>
-        <DropdownMenuItem disabled>Duplicate</DropdownMenuItem>
-        <DropdownMenuItem>Archive</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>Restore</DropdownMenuItem>
-        <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <MenuContent>
+        <MenuItem>Edit</MenuItem>
+        <MenuItem disabled>Duplicate</MenuItem>
+        <MenuItem>Archive</MenuItem>
+        <MenuSeparator />
+        <MenuItem disabled>Restore</MenuItem>
+        <MenuItem variant="destructive">Delete</MenuItem>
+      </MenuContent>
+    </Menu>
   ),
 }
 
 export const WithIcons: Story = {
   render: () => (
-    <DropdownMenu>
+    <Menu>
       <TriggerButton />
-      <DropdownMenuContent>
-        <DropdownMenuItem>
+      <MenuContent>
+        <MenuItem>
           <span aria-hidden className="i-ri-pencil-line size-4 shrink-0 text-text-tertiary" />
           Edit
-        </DropdownMenuItem>
-        <DropdownMenuItem>
+        </MenuItem>
+        <MenuItem>
           <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
           Duplicate
-        </DropdownMenuItem>
-        <DropdownMenuItem>
+        </MenuItem>
+        <MenuItem>
           <span aria-hidden className="i-ri-archive-line size-4 shrink-0 text-text-tertiary" />
           Archive
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive">
+        </MenuItem>
+        <MenuSeparator />
+        <MenuItem variant="destructive">
           <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
           Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuItem>
+      </MenuContent>
+    </Menu>
   ),
 }
 
 export const WithLinkItems: Story = {
   render: () => (
-    <DropdownMenu>
+    <Menu>
       <TriggerButton label="Open links" />
-      <DropdownMenuContent>
-        <DropdownMenuLinkItem href="https://docs.dify.ai" rel="noopener noreferrer" target="_blank">
+      <MenuContent>
+        <MenuLinkItem href="https://docs.dify.ai" rel="noopener noreferrer" target="_blank">
           Dify Docs
-        </DropdownMenuLinkItem>
-        <DropdownMenuLinkItem
-          href="https://roadmap.dify.ai"
-          rel="noopener noreferrer"
-          target="_blank"
-        >
+        </MenuLinkItem>
+        <MenuLinkItem href="https://roadmap.dify.ai" rel="noopener noreferrer" target="_blank">
           Product Roadmap
-        </DropdownMenuLinkItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuLinkItem>
+      </MenuContent>
+    </Menu>
   ),
 }
 
@@ -353,76 +349,76 @@ function ComplexDemo() {
   const [showArchived, setShowArchived] = React.useState(false)
 
   return (
-    <DropdownMenu>
+    <Menu>
       <TriggerButton label="Actions" />
-      <DropdownMenuContent>
-        <DropdownMenuGroup>
-          <DropdownMenuGroupLabel>Edit</DropdownMenuGroupLabel>
-          <DropdownMenuItem>
+      <MenuContent>
+        <MenuGroup>
+          <MenuGroupLabel>Edit</MenuGroupLabel>
+          <MenuItem>
             <span aria-hidden className="i-ri-pencil-line size-4 shrink-0 text-text-tertiary" />
             Rename
-          </DropdownMenuItem>
-          <DropdownMenuItem>
+          </MenuItem>
+          <MenuItem>
             <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
             Duplicate
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled>
+          </MenuItem>
+          <MenuItem disabled>
             <span aria-hidden className="i-ri-lock-line size-4 shrink-0 text-text-tertiary" />
             Move to Workspace
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
+          </MenuItem>
+        </MenuGroup>
+        <MenuSeparator />
+        <MenuSubmenu>
+          <MenuSubmenuTrigger>
             <span aria-hidden className="i-ri-share-line size-4 shrink-0 text-text-tertiary" />
             Share
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuItem>
+          </MenuSubmenuTrigger>
+          <MenuSubmenuContent>
+            <MenuItem>
               <span aria-hidden className="i-ri-mail-line size-4 shrink-0 text-text-tertiary" />
               Email
-            </DropdownMenuItem>
-            <DropdownMenuItem>
+            </MenuItem>
+            <MenuItem>
               <span aria-hidden className="i-ri-chat-1-line size-4 shrink-0 text-text-tertiary" />
               Slack
-            </DropdownMenuItem>
-            <DropdownMenuItem>
+            </MenuItem>
+            <MenuItem>
               <span aria-hidden className="i-ri-link size-4 shrink-0 text-text-tertiary" />
               Copy Link
-            </DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuGroupLabel>Sort by</DropdownMenuGroupLabel>
-          <DropdownMenuRadioGroup<SortOrder> value={sortOrder} onValueChange={setSortOrder}>
-            <DropdownMenuRadioItem<SortOrder> value="newest">
+            </MenuItem>
+          </MenuSubmenuContent>
+        </MenuSubmenu>
+        <MenuSeparator />
+        <MenuGroup>
+          <MenuGroupLabel>Sort by</MenuGroupLabel>
+          <MenuRadioGroup<SortOrder> value={sortOrder} onValueChange={setSortOrder}>
+            <MenuRadioItem<SortOrder> value="newest">
               Newest first
-              <DropdownMenuRadioItemIndicator />
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem<SortOrder> value="oldest">
+              <MenuRadioItemIndicator />
+            </MenuRadioItem>
+            <MenuRadioItem<SortOrder> value="oldest">
               Oldest first
-              <DropdownMenuRadioItemIndicator />
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem<SortOrder> value="name">
+              <MenuRadioItemIndicator />
+            </MenuRadioItem>
+            <MenuRadioItem<SortOrder> value="name">
               Name
-              <DropdownMenuRadioItemIndicator />
-            </DropdownMenuRadioItem>
-          </DropdownMenuRadioGroup>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuCheckboxItem checked={showArchived} onCheckedChange={setShowArchived}>
+              <MenuRadioItemIndicator />
+            </MenuRadioItem>
+          </MenuRadioGroup>
+        </MenuGroup>
+        <MenuSeparator />
+        <MenuCheckboxItem checked={showArchived} onCheckedChange={setShowArchived}>
           <span aria-hidden className="i-ri-archive-line size-4 shrink-0 text-text-tertiary" />
           Show Archived
-          <DropdownMenuCheckboxItemIndicator />
-        </DropdownMenuCheckboxItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive">
+          <MenuCheckboxItemIndicator />
+        </MenuCheckboxItem>
+        <MenuSeparator />
+        <MenuItem variant="destructive">
           <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
           Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuItem>
+      </MenuContent>
+    </Menu>
   )
 }
 
@@ -431,29 +427,27 @@ export const Complex: Story = {
 }
 
 function DetachedTriggerDemo() {
-  const [handle] = React.useState(() => createDropdownMenuHandle<{ name: string }>())
+  const [handle] = React.useState(() => createMenuHandle<{ name: string }>())
   const [selected, setSelected] = React.useState('')
   return (
     <React.Fragment>
-      <DropdownMenuTrigger
+      <MenuTrigger
         handle={handle}
         payload={{ name: 'Report' }}
         className="rounded-lg border border-divider-subtle px-3 py-1.5"
       >
         Report actions
-      </DropdownMenuTrigger>
-      <DropdownMenu handle={handle}>
+      </MenuTrigger>
+      <Menu handle={handle}>
         {({ payload }) => (
-          <DropdownMenuContent>
-            <DropdownMenuGroup>
-              <DropdownMenuGroupLabel>{payload?.name}</DropdownMenuGroupLabel>
-              <DropdownMenuItem onClick={() => setSelected(payload?.name ?? '')}>
-                Archive
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
+          <MenuContent>
+            <MenuGroup>
+              <MenuGroupLabel>{payload?.name}</MenuGroupLabel>
+              <MenuItem onClick={() => setSelected(payload?.name ?? '')}>Archive</MenuItem>
+            </MenuGroup>
+          </MenuContent>
         )}
-      </DropdownMenu>
+      </Menu>
       <output aria-label="Archived document">{selected}</output>
     </React.Fragment>
   )
@@ -501,89 +495,86 @@ function FilterableDemo() {
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <DropdownMenuFilterProvider>
-        <DropdownMenu>
+      <MenuFilterProvider>
+        <Menu>
           <TriggerButton label="Workspace actions" />
-          <DropdownMenuContent className="w-64">
-            <DropdownMenuInputGroup>
+          <MenuContent className="w-64">
+            <MenuInputGroup>
               <span
                 aria-hidden
                 className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
               />
-              <DropdownMenuInput aria-label="Filter actions" placeholder="Filter actions…" />
-              <DropdownMenuClear />
-            </DropdownMenuInputGroup>
-            <DropdownMenuEmpty>No actions match</DropdownMenuEmpty>
-            <DropdownMenuList>
+              <MenuInput aria-label="Filter actions" placeholder="Filter actions…" />
+              <MenuClear />
+            </MenuInputGroup>
+            <MenuEmpty>No actions match</MenuEmpty>
+            <MenuList>
               {filterableActionGroups.map((group, index) => (
-                <DropdownMenuGroup key={group.label}>
-                  {index > 0 && <DropdownMenuSeparator />}
-                  <DropdownMenuGroupLabel>{group.label}</DropdownMenuGroupLabel>
+                <MenuGroup key={group.label}>
+                  {index > 0 && <MenuSeparator />}
+                  <MenuGroupLabel>{group.label}</MenuGroupLabel>
                   {group.actions.map((action) => (
-                    <DropdownMenuItem
+                    <MenuItem
                       key={action}
                       variant={group.label === 'Danger zone' ? 'destructive' : 'default'}
                       onClick={() => setLastAction(action)}
                     >
                       {action}
-                    </DropdownMenuItem>
+                    </MenuItem>
                   ))}
                   {index === 0 && (
                     <React.Fragment>
                       {/* A submenu without its own provider stays unfiltered. */}
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>Move to</DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent>
-                          <DropdownMenuList>
+                      <MenuSubmenu>
+                        <MenuSubmenuTrigger>Move to</MenuSubmenuTrigger>
+                        <MenuSubmenuContent>
+                          <MenuList>
                             {moveTargets.map((target) => (
-                              <DropdownMenuItem
+                              <MenuItem
                                 key={target}
                                 onClick={() => setLastAction(`Move to ${target}`)}
                               >
                                 {target}
-                              </DropdownMenuItem>
+                              </MenuItem>
                             ))}
-                          </DropdownMenuList>
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
+                          </MenuList>
+                        </MenuSubmenuContent>
+                      </MenuSubmenu>
                       {/* A submenu wrapped in its own provider filters with its own input. */}
-                      <DropdownMenuFilterProvider>
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>Share with</DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuInputGroup>
+                      <MenuFilterProvider>
+                        <MenuSubmenu>
+                          <MenuSubmenuTrigger>Share with</MenuSubmenuTrigger>
+                          <MenuSubmenuContent>
+                            <MenuInputGroup>
                               <span
                                 aria-hidden
                                 className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
                               />
-                              <DropdownMenuInput
-                                aria-label="Filter teams"
-                                placeholder="Filter teams…"
-                              />
-                              <DropdownMenuClear />
-                            </DropdownMenuInputGroup>
-                            <DropdownMenuEmpty>No teams match</DropdownMenuEmpty>
-                            <DropdownMenuList>
+                              <MenuInput aria-label="Filter teams" placeholder="Filter teams…" />
+                              <MenuClear />
+                            </MenuInputGroup>
+                            <MenuEmpty>No teams match</MenuEmpty>
+                            <MenuList>
                               {shareTargets.map((target) => (
-                                <DropdownMenuItem
+                                <MenuItem
                                   key={target}
                                   onClick={() => setLastAction(`Share with ${target}`)}
                                 >
                                   {target}
-                                </DropdownMenuItem>
+                                </MenuItem>
                               ))}
-                            </DropdownMenuList>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                      </DropdownMenuFilterProvider>
+                            </MenuList>
+                          </MenuSubmenuContent>
+                        </MenuSubmenu>
+                      </MenuFilterProvider>
                     </React.Fragment>
                   )}
-                </DropdownMenuGroup>
+                </MenuGroup>
               ))}
-            </DropdownMenuList>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </DropdownMenuFilterProvider>
+            </MenuList>
+          </MenuContent>
+        </Menu>
+      </MenuFilterProvider>
       <p role="status" aria-label="Last action" className="system-xs-regular text-text-tertiary">
         {lastAction ?? 'No action yet'}
       </p>
@@ -597,7 +588,7 @@ export const Filterable: Story = {
       story: { autoplay: false },
       description: {
         story:
-          'Filtering is a Base UI preview feature. Opening with a click or the keyboard focuses the input; opening on hover does not, so the on-screen keyboard stays hidden. Arrow keys move the highlight while the input keeps focus, Enter runs the highlighted action, Tab closes the menu, and Shift+Tab returns focus to the trigger. Groups without matches hide, and the empty state announces when nothing matches. Place the separator between groups inside the later group so it hides with the groups before it. A submenu trigger matches like an item; a submenu stays unfiltered unless its `DropdownMenuSub` is wrapped in its own `DropdownMenuFilterProvider` with its own input, as "Share with" is. In LTR, the right arrow opens a submenu and focuses its input when it has one, the left arrow closes it from an empty input and returns focus to the parent input, and each level keeps its own query. RTL reverses these horizontal keys. Pass `autoHighlight` to highlight the first match while typing.',
+          'Filtering is a Base UI preview feature. Opening with a click or the keyboard focuses the input; opening on hover does not, so the on-screen keyboard stays hidden. Arrow keys move the highlight while the input keeps focus, Enter runs the highlighted action, Tab closes the menu, and Shift+Tab returns focus to the trigger. Groups without matches hide, and the empty state announces when nothing matches. Place the separator between groups inside the later group so it hides with the groups before it. A submenu trigger matches like an item; a submenu stays unfiltered unless its `MenuSubmenu` is wrapped in its own `MenuFilterProvider` with its own input, as "Share with" is. In LTR, the right arrow opens a submenu and focuses its input when it has one, the left arrow closes it from an empty input and returns focus to the parent input, and each level keeps its own query. RTL reverses these horizontal keys. Pass `autoHighlight` to highlight the first match while typing.',
       },
     },
   },

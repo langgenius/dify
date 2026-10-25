@@ -76,9 +76,13 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
   `onOpenChange` when the answer must be explicit. `AlertDialogHeader` holds the title and
   description; anything the user fills in or reviews before answering goes in `AlertDialogBody`.
 - Use `Drawer` for side-panel interactions that follow the drawer model.
-- Use `DropdownMenu` for button-triggered action lists and `ContextMenu` for context actions.
-  A long action list filters with `DropdownMenuFilterProvider`; choosing a value is
+- Use `Menu` for button-triggered action lists and `ContextMenu` for context actions.
+  A long action list filters with `MenuFilterProvider`; choosing a value is
   [`Combobox`] in [Selection].
+  Both menu families expose `Portal`, `Positioner`, and `Popup` parts for custom composition.
+  Their `Content` and `SubmenuContent` conveniences retain the standard styling and positioning.
+  `ContextMenuPositioner` follows upstream defaults; `ContextMenuContent` sets both offsets to
+  zero, while `ContextMenuSubmenuContent` sets `sideOffset` to 4 and inherits `alignOffset`.
 - Use [`Tooltip`] for a supplementary visual label on a control that already has a primary
   action and an accessible name. Use `Infotip` when the information icon's action is to open
   the explanation. Text length alone does not determine the component. Follow the

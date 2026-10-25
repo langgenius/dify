@@ -11,14 +11,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -123,8 +117,8 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
+      <Menu>
+        <MenuTrigger
           render={
             <IconButton
               aria-label={t(($) => $['operation.more'], { ns: 'common' })}
@@ -134,39 +128,37 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
             </IconButton>
           }
         />
-        <DropdownMenuContent className="w-45 p-1">
+        <MenuContent className="w-45 p-1">
           {canCreateAndModifySnippet && (
             <>
-              <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>
+              <MenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>
                 <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
                 <span className="grow">{t(($) => $['menu.editInfo'])}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="mx-0 gap-2" onClick={handleExportSnippet}>
+              </MenuItem>
+              <MenuItem className="mx-0 gap-2" onClick={handleExportSnippet}>
                 <span
                   aria-hidden
                   className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
                 />
                 <span className="grow">{t(($) => $['menu.exportSnippet'])}</span>
-              </DropdownMenuItem>
+              </MenuItem>
             </>
           )}
           {canManageSnippet && (
             <>
-              {canCreateAndModifySnippet && (
-                <DropdownMenuSeparator className="my-1! bg-divider-subtle" />
-              )}
-              <DropdownMenuItem
+              {canCreateAndModifySnippet && <MenuSeparator className="my-1! bg-divider-subtle" />}
+              <MenuItem
                 className="mx-0 gap-2"
                 variant="destructive"
                 onClick={() => setIsDeleteDialogOpen(true)}
               >
                 <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
                 <span className="grow">{t(($) => $['menu.deleteSnippet'])}</span>
-              </DropdownMenuItem>
+              </MenuItem>
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
 
       {isEditDialogOpen && (
         <CreateSnippetDialog

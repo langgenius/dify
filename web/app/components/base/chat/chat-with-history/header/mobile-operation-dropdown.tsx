@@ -1,10 +1,5 @@
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
 
 type Props = Readonly<{
@@ -24,8 +19,8 @@ const MobileOperationDropdown = ({
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <IconButton
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
@@ -36,23 +31,20 @@ const MobileOperationDropdown = ({
           </IconButton>
         }
       />
-      <DropdownMenuContent className="min-w-40">
-        <DropdownMenuItem
-          className="system-md-regular"
-          onClick={() => handleMenuAction(handleResetChat)}
-        >
+      <MenuContent className="min-w-40">
+        <MenuItem className="system-md-regular" onClick={() => handleMenuAction(handleResetChat)}>
           <span className="grow">{t(($) => $['chat.resetChat'], { ns: 'share' })}</span>
-        </DropdownMenuItem>
+        </MenuItem>
         {!hideViewChatSettings && (
-          <DropdownMenuItem
+          <MenuItem
             className="system-md-regular"
             onClick={() => handleMenuAction(handleViewChatSettings)}
           >
             <span className="grow">{t(($) => $['chat.viewChatSettings'], { ns: 'share' })}</span>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 

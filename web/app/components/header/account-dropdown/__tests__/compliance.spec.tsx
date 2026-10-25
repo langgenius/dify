@@ -1,8 +1,4 @@
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render as renderWithoutPricing, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -65,12 +61,12 @@ describe('Compliance', () => {
 
   const renderCompliance = () => {
     return renderWithQueryClient(
-      <DropdownMenu open={true} onOpenChange={() => {}}>
-        <DropdownMenuTrigger>open</DropdownMenuTrigger>
-        <DropdownMenuContent>
+      <Menu open={true} onOpenChange={() => {}}>
+        <MenuTrigger>open</MenuTrigger>
+        <MenuContent>
           <Compliance />
-        </DropdownMenuContent>
-      </DropdownMenu>,
+        </MenuContent>
+      </Menu>,
     )
   }
 

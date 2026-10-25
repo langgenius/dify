@@ -2,14 +2,14 @@
 
 import type { ReactNode } from 'react'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLinkItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuContent,
+  MenuLinkItem,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,7 +24,7 @@ type DropdownItemProps = {
 
 function DropdownItem({ href, icon, text }: DropdownItemProps) {
   return (
-    <DropdownMenuLinkItem
+    <MenuLinkItem
       href={href}
       target="_blank"
       rel="noopener noreferrer"
@@ -33,7 +33,7 @@ function DropdownItem({ href, icon, text }: DropdownItemProps) {
       {icon}
       <span className="system-sm-medium text-text-secondary">{text}</span>
       <span className="ml-auto i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary" />
-    </DropdownMenuLinkItem>
+    </MenuLinkItem>
   )
 }
 
@@ -92,9 +92,9 @@ export function SubmitRequestDropdownMenu({
   const guideLabel = t(($) => $['marketplace.home.guide'], { ns: 'plugin' })
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <Menu open={open} onOpenChange={setOpen}>
       <Tooltip disabled={open}>
-        <DropdownMenuTrigger
+        <MenuTrigger
           render={
             <TooltipTrigger
               render={
@@ -113,10 +113,10 @@ export function SubmitRequestDropdownMenu({
           {guideLabel}
         </TooltipContent>
       </Tooltip>
-      <DropdownMenuContent className="min-w-50 p-1">
+      <MenuContent className="min-w-50 p-1">
         {options.map((option, index) => (
           <Fragment key={option.href}>
-            {dividerAfterFirst && index === 1 && <DropdownMenuSeparator className="my-1" />}
+            {dividerAfterFirst && index === 1 && <MenuSeparator className="my-1" />}
             <DropdownItem
               href={option.href}
               icon={option.icon}
@@ -124,8 +124,8 @@ export function SubmitRequestDropdownMenu({
             />
           </Fragment>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 

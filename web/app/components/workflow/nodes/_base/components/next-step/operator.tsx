@@ -1,14 +1,14 @@
 import type { CommonNodeType, OnSelectBlock } from '@/app/components/workflow/types'
 import { buttonVariants } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuItem,
-  DropdownMenuPopup,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuItem,
+  MenuPopup,
+  MenuPortal,
+  MenuPositioner,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { intersection } from 'es-toolkit/array'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -40,7 +40,7 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
   )
 
   const triggerElement = (
-    <DropdownMenuItem
+    <MenuItem
       nativeButton
       render={<button type="button" />}
       closeOnClick={false}
@@ -52,7 +52,7 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
       })}
     >
       {t(($) => $['panel.change'], { ns: 'workflow' })}
-    </DropdownMenuItem>
+    </MenuItem>
   )
 
   return (
@@ -83,8 +83,8 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
   const { handleNodeDelete, handleNodeDisconnect } = useNodesInteractions()
 
   return (
-    <DropdownMenu open={open} onOpenChange={onOpenChange}>
-      <DropdownMenuTrigger
+    <Menu open={open} onOpenChange={onOpenChange}>
+      <MenuTrigger
         render={
           <IconButton
             variant="secondary"
@@ -96,13 +96,13 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
           </IconButton>
         }
       />
-      <DropdownMenuPortal>
-        <DropdownMenuPositioner align="end" alignOffset={-4}>
-          <DropdownMenuPopup>
+      <MenuPortal>
+        <MenuPositioner align="end" alignOffset={-4}>
+          <MenuPopup>
             <div className="min-w-30 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
               <div className="p-1">
                 <ChangeItem data={data} nodeId={nodeId} sourceHandle={sourceHandle} />
-                <DropdownMenuItem
+                <MenuItem
                   className="mx-0"
                   onClick={() => {
                     onOpenChange(false)
@@ -110,10 +110,10 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
                   }}
                 >
                   {t(($) => $['common.disconnect'], { ns: 'workflow' })}
-                </DropdownMenuItem>
+                </MenuItem>
               </div>
               <div className="p-1">
-                <DropdownMenuItem
+                <MenuItem
                   className="mx-0"
                   onClick={() => {
                     onOpenChange(false)
@@ -121,13 +121,13 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
                   }}
                 >
                   {t(($) => $['operation.delete'], { ns: 'common' })}
-                </DropdownMenuItem>
+                </MenuItem>
               </div>
             </div>
-          </DropdownMenuPopup>
-        </DropdownMenuPositioner>
-      </DropdownMenuPortal>
-    </DropdownMenu>
+          </MenuPopup>
+        </MenuPositioner>
+      </MenuPortal>
+    </Menu>
   )
 }
 

@@ -1,4 +1,4 @@
-import type { DropdownMenuContentProps } from '@langgenius/dify-ui/dropdown-menu'
+import type { MenuContentProps } from '@langgenius/dify-ui/menu'
 import type { SyntheticEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useState } from 'react'
@@ -30,7 +30,7 @@ export const getStepByStepTourDropdownMenuContentProps = ({
   interactionMode = 'interactive',
   className,
 }: StepByStepTourDropdownMenuContentProps): Pick<
-  DropdownMenuContentProps,
+  MenuContentProps,
   | 'aria-hidden'
   | 'className'
   | 'onClick'

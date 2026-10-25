@@ -2,12 +2,12 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactNode } from 'react'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import {
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  MenuGroup,
+  MenuItem,
+  MenuSubmenu,
+  MenuSubmenuContent,
+  MenuSubmenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
@@ -167,7 +167,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
   if (docName !== DocName.GDPR && plan === undefined) return null
 
   return (
-    <DropdownMenuItem
+    <MenuItem
       className="h-10 justify-between py-1 pr-2 pl-1"
       closeOnClick={!isCurrentPlanCanDownload}
       disabled={isPending}
@@ -184,24 +184,24 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
         downloadText={t(($) => $['operation.download'], { ns: 'common' })}
         upgradeText={t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
       />
-    </DropdownMenuItem>
+    </MenuItem>
   )
 }
 
-// Submenu-only: this component must be rendered within an existing DropdownMenu root.
+// Submenu-only: this component must be rendered within an existing Menu root.
 export default function Compliance() {
   const { t } = useTranslation(['common'])
 
   return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger className="mx-0 h-8 gap-1 px-3 py-1">
+    <MenuSubmenu>
+      <MenuSubmenuTrigger className="mx-0 h-8 gap-1 px-3 py-1">
         <MenuItemContent
           iconClassName="i-ri-verified-badge-line"
           label={t(($) => $['userProfile.compliance'], { ns: 'common' })}
         />
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className="w-84.25 divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs">
-        <DropdownMenuGroup className="py-1">
+      </MenuSubmenuTrigger>
+      <MenuSubmenuContent className="w-84.25 divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs">
+        <MenuGroup className="py-1">
           <ComplianceDocRowItem
             icon={<span aria-hidden className="i-custom-public-common-soc2 size-7 shrink-0" />}
             label={t(($) => $['compliance.soc2Type1'], { ns: 'common' })}
@@ -222,8 +222,8 @@ export default function Compliance() {
             label={t(($) => $['compliance.gdpr'], { ns: 'common' })}
             docName={DocName.GDPR}
           />
-        </DropdownMenuGroup>
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
+        </MenuGroup>
+      </MenuSubmenuContent>
+    </MenuSubmenu>
   )
 }

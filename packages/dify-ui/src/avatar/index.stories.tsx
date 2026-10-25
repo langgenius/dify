@@ -1,13 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, waitFor, within } from 'storybook/test'
 import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage } from '.'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLinkItem,
-  DropdownMenuTrigger,
-} from '../dropdown-menu'
 import { IconButton } from '../icon-button'
+import { Menu, MenuContent, MenuLinkItem, MenuTrigger } from '../menu'
 
 const avatarUrl = 'https://i.pravatar.cc/96?u=avatar-default'
 
@@ -216,14 +211,14 @@ export const Collaborators: Story = {
     docs: {
       description: {
         story:
-          'A Design Kit collaborator control: 24px avatars inside a rounded panel button with a 12px chevron. Compose the trigger with IconButton through render to retain button styling and cursor behavior. This capsule supplies its own dimensions instead of an IconButton square size. DropdownMenu owns keyboard navigation, expanded state, and focus restoration; the avatars inside its named trigger are decorative. The example links represent collaborator profiles.',
+          'A Design Kit collaborator control: 24px avatars inside a rounded panel button with a 12px chevron. Compose the trigger with IconButton through render to retain button styling and cursor behavior. This capsule supplies its own dimensions instead of an IconButton square size. Menu owns keyboard navigation, expanded state, and focus restoration; the avatars inside its named trigger are decorative. The example links represent collaborator profiles.',
       },
     },
   },
   render: () => (
     <div className="flex min-h-32 items-center justify-center rounded-xl bg-background-section p-8">
-      <DropdownMenu>
-        <DropdownMenuTrigger
+      <Menu>
+        <MenuTrigger
           render={
             <IconButton
               aria-label="View 4 collaborators"
@@ -249,17 +244,17 @@ export const Collaborators: Story = {
             </IconButton>
           }
         />
-        <DropdownMenuContent>
+        <MenuContent>
           {collaborators.map((person) => (
-            <DropdownMenuLinkItem key={person.name} href={person.href}>
+            <MenuLinkItem key={person.name} href={person.href}>
               <Avatar size="sm" aria-hidden="true">
                 <AvatarFallback className={person.color}>{person.initial}</AvatarFallback>
               </Avatar>
               {person.name}
-            </DropdownMenuLinkItem>
+            </MenuLinkItem>
           ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
     </div>
   ),
   play: async ({ canvas, canvasElement, userEvent }) => {

@@ -1,22 +1,22 @@
 'use client'
-import type { DropdownMenuContentProps } from '@langgenius/dify-ui/dropdown-menu'
+import type { MenuContentProps } from '@langgenius/dify-ui/menu'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuLinkItem,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { PluginSource } from '../types'
 
 type OperationDropdownProps = Readonly<
-  Pick<DropdownMenuContentProps, 'side' | 'align'> & {
+  Pick<MenuContentProps, 'side' | 'align'> & {
     source: PluginSource
     onInfo: () => void
     onCheckVersion: () => void
@@ -70,8 +70,8 @@ export function OperationDropdown({
     return null
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <IconButton
             aria-label={
@@ -84,29 +84,26 @@ export function OperationDropdown({
           </IconButton>
         }
       />
-      <DropdownMenuContent side={side} align={align} className={cn('w-48 py-1', popupClassName)}>
+      <MenuContent side={side} align={align} className={cn('w-48 py-1', popupClassName)}>
         {showInfo && (
-          <DropdownMenuItem
-            className="px-2 py-1 system-md-regular text-text-secondary"
-            onClick={onInfo}
-          >
+          <MenuItem className="px-2 py-1 system-md-regular text-text-secondary" onClick={onInfo}>
             <span className="min-w-0 grow truncate px-1 py-0.5">
               {t(($) => $['detailPanel.operation.info'], { ns: 'plugin' })}
             </span>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
         {showCheckVersionAction && (
-          <DropdownMenuItem
+          <MenuItem
             className="px-2 py-1 system-md-regular text-text-secondary"
             onClick={onCheckVersion}
           >
             <span className="min-w-0 grow truncate px-1 py-0.5">
               {t(($) => $['detailPanel.operation.checkUpdate'], { ns: 'plugin' })}
             </span>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
         {showMarketplaceDetail && (
-          <DropdownMenuLinkItem
+          <MenuLinkItem
             className="px-2 py-1 system-md-regular text-text-secondary"
             href={detailUrl}
             target="_blank"
@@ -116,21 +113,21 @@ export function OperationDropdown({
               {t(($) => $['detailPanel.operation.viewDetail'], { ns: 'plugin' })}
             </span>
             <span className="i-ri-arrow-right-up-line size-3.5 shrink-0 text-text-tertiary" />
-          </DropdownMenuLinkItem>
+          </MenuLinkItem>
         )}
         {onViewReadme && (
-          <DropdownMenuItem
+          <MenuItem
             className="px-2 py-1 system-md-regular text-text-secondary"
             onClick={onViewReadme}
           >
             <span className="min-w-0 grow truncate px-1 py-0.5">
               {t(($) => $['detailPanel.operation.viewReadme'], { ns: 'plugin' })}
             </span>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
-        {showSeparator && <DropdownMenuSeparator />}
+        {showSeparator && <MenuSeparator />}
         {showRemoveAction && (
-          <DropdownMenuItem
+          <MenuItem
             className={cn(
               'px-2 py-1 system-md-regular text-text-secondary',
               destructiveRemove &&
@@ -146,9 +143,9 @@ export function OperationDropdown({
             >
               {t(($) => $['detailPanel.operation.remove'], { ns: 'plugin' })}
             </span>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }

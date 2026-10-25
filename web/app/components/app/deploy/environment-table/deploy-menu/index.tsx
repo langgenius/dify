@@ -3,13 +3,13 @@
 import type { OpenDeploymentDialog } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useAtomValue } from 'jotai'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -43,8 +43,8 @@ export function EnvironmentDeployMenu({
   const triggerRef = useRef<HTMLButtonElement | null>(null)
 
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger
+    <Menu modal={false}>
+      <MenuTrigger
         render={
           <Button
             ref={triggerRef}
@@ -57,11 +57,9 @@ export function EnvironmentDeployMenu({
           </Button>
         }
       />
-      <DropdownMenuContent aria-busy={isLoading || isRetrying} className="w-42 p-1">
-        <DropdownMenuGroup>
-          <DropdownMenuGroupLabel className="px-2 py-1">
-            {t(($) => $['card.notDeployed'])}
-          </DropdownMenuGroupLabel>
+      <MenuContent aria-busy={isLoading || isRetrying} className="w-42 p-1">
+        <MenuGroup>
+          <MenuGroupLabel className="px-2 py-1">{t(($) => $['card.notDeployed'])}</MenuGroupLabel>
           {isLoading ? (
             <LoadingPlaceholder className="h-7" />
           ) : isError ? (
@@ -69,7 +67,7 @@ export function EnvironmentDeployMenu({
               <p role="alert" className="px-2 py-1.5 system-xs-regular text-text-destructive">
                 {t(($) => $['common.loadFailed'])}
               </p>
-              <DropdownMenuItem
+              <MenuItem
                 closeOnClick={false}
                 disabled={isRetrying}
                 className="mx-0 h-6 w-fit justify-center rounded-md text-xs font-medium text-components-button-ghost-text"
@@ -83,7 +81,7 @@ export function EnvironmentDeployMenu({
                     className="i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
                   />
                 )}
-              </DropdownMenuItem>
+              </MenuItem>
             </div>
           ) : undeployedEnvironments.length === 0 ? (
             <p role="status" className="px-2 py-1.5 system-xs-regular text-text-tertiary">
@@ -93,7 +91,7 @@ export function EnvironmentDeployMenu({
           {!isLoading &&
             !isError &&
             undeployedEnvironments.map((environment) => (
-              <DropdownMenuItem
+              <MenuItem
                 key={environment.id}
                 className="mx-0 gap-2 py-1.5"
                 onClick={() => {
@@ -114,10 +112,10 @@ export function EnvironmentDeployMenu({
                 <span className="grow truncate system-md-regular text-text-secondary">
                   {environment.display_name}
                 </span>
-              </DropdownMenuItem>
+              </MenuItem>
             ))}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuGroup>
+      </MenuContent>
+    </Menu>
   )
 }

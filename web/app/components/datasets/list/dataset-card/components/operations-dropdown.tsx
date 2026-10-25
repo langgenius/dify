@@ -1,12 +1,6 @@
 import type { DatasetCardItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -96,8 +90,8 @@ const OperationsDropdown = ({
           : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100',
       )}
     >
-      <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
-        <DropdownMenuTrigger
+      <Menu modal={false} open={open} onOpenChange={setOpen}>
+        <MenuTrigger
           ref={triggerRef}
           className={cn(
             'inline-flex size-9 cursor-pointer items-center justify-center rounded-[10px] border-[0.5px]',
@@ -109,8 +103,8 @@ const OperationsDropdown = ({
           aria-label={t(($) => $['operation.more'], { ns: 'common' })}
         >
           <span aria-hidden className="i-ri-more-fill size-5 text-text-tertiary" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
+        </MenuTrigger>
+        <MenuContent
           {...getStepByStepTourDropdownMenuContentProps({
             highlightPart: stepByStepTourHighlightPart,
             interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
@@ -119,45 +113,45 @@ const OperationsDropdown = ({
         >
           {canUpgrade && (
             <>
-              <DropdownMenuItem
+              <MenuItem
                 className="gap-2 text-text-accent"
                 onClick={() => knowledgeUpgrade.requestUpgrade(dataset, triggerRef)}
               >
                 <span aria-hidden className="i-ri-arrow-up-circle-line size-4" />
                 {t(($) => $['upgrade.menuLabel'], { ns: 'knowledgeUpgrade' })}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              </MenuItem>
+              <MenuSeparator />
             </>
           )}
           {datasetACLCapabilities.canEdit && (
-            <DropdownMenuItem className="gap-2" onClick={openRenameModal}>
+            <MenuItem className="gap-2" onClick={openRenameModal}>
               <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
               {t(($) => $['operation.edit'], { ns: 'common' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {dataset.runtime_mode === 'rag_pipeline' && datasetACLCapabilities.canImportExportDSL && (
-            <DropdownMenuItem className="gap-2" onClick={() => handleExportPipeline()}>
+            <MenuItem className="gap-2" onClick={() => handleExportPipeline()}>
               <span aria-hidden className="i-ri-file-download-line size-4 text-text-tertiary" />
               {t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {datasetACLCapabilities.canAccessConfig && (
-            <DropdownMenuItem className="gap-2" onClick={openAccessConfig}>
+            <MenuItem className="gap-2" onClick={openAccessConfig}>
               <span aria-hidden className="i-ri-lock-line size-4 text-text-tertiary" />
               {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {datasetACLCapabilities.canDelete && (
             <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2" variant="destructive" onClick={onDelete}>
+              <MenuSeparator />
+              <MenuItem className="gap-2" variant="destructive" onClick={onDelete}>
                 <span aria-hidden className="i-ri-delete-bin-line size-4" />
                 {t(($) => $['operation.delete'], { ns: 'common' })}
-              </DropdownMenuItem>
+              </MenuItem>
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
     </div>
   )
 }

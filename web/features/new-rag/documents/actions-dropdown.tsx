@@ -12,14 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { Input } from '@langgenius/dify-ui/input'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useAtomValueRawSync } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -63,14 +57,14 @@ function RenameDocumentMenuItem({
   const busy = useDocumentRowActionBusy(document.id)
 
   return (
-    <DropdownMenuItem
+    <MenuItem
       className="mb-px h-7 gap-2 px-2 system-sm-medium"
       disabled={!canEdit || busy}
       onClick={onOpen}
     >
       <span aria-hidden className="i-ri-edit-line size-4" />
       {tCommon(($) => $['operation.rename'])}
-    </DropdownMenuItem>
+    </MenuItem>
   )
 }
 
@@ -143,7 +137,7 @@ function RetryDocumentMenuItem({ document }: { document: LogicalDocument }) {
   const unavailableReasonId = `new-document-${document.id}-actions-unavailable`
 
   return (
-    <DropdownMenuItem
+    <MenuItem
       aria-describedby={disabled ? unavailableReasonId : undefined}
       className="mb-px h-7 gap-2 px-2 system-sm-medium"
       disabled={busy || disabled}
@@ -151,7 +145,7 @@ function RetryDocumentMenuItem({ document }: { document: LogicalDocument }) {
     >
       <span aria-hidden className="i-ri-restart-line size-4" />
       {t(($) => $.retryTask)}
-    </DropdownMenuItem>
+    </MenuItem>
   )
 }
 
@@ -163,7 +157,7 @@ function ReindexDocumentMenuItem({ document }: { document: LogicalDocument }) {
   const disabled = !canEdit || !documentCanReindex(status)
 
   return (
-    <DropdownMenuItem
+    <MenuItem
       aria-describedby={disabled ? `new-document-${document.id}-actions-unavailable` : undefined}
       className="mb-px h-7 gap-2 px-2 system-sm-medium"
       disabled={busy || disabled}
@@ -171,7 +165,7 @@ function ReindexDocumentMenuItem({ document }: { document: LogicalDocument }) {
     >
       <span aria-hidden className="i-ri-loop-left-line size-4" />
       {t(($) => $.reindexDocument, { ns: 'knowledgeDocuments' })}
-    </DropdownMenuItem>
+    </MenuItem>
   )
 }
 
@@ -192,7 +186,7 @@ function DownloadDocumentMenuItem({ document }: { document: LogicalDocument }) {
   const disabled = !canDownload || documentSnapshotPending || !documentCanDownload(document, status)
 
   return (
-    <DropdownMenuItem
+    <MenuItem
       aria-describedby={disabled ? `new-document-${document.id}-actions-unavailable` : undefined}
       className="mb-px h-7 gap-2 px-2 system-sm-medium"
       disabled={busy || disabled}
@@ -200,7 +194,7 @@ function DownloadDocumentMenuItem({ document }: { document: LogicalDocument }) {
     >
       <span aria-hidden className="i-ri-download-line size-4" />
       {t(($) => $.downloadDocuments, { ns: 'knowledgeDocuments' })}
-    </DropdownMenuItem>
+    </MenuItem>
   )
 }
 
@@ -214,7 +208,7 @@ function ToggleDocumentAvailabilityMenuItem({ document }: { document: LogicalDoc
     !canEdit || document.status === 'deleting' || !documentCanToggleAvailability(status)
 
   return (
-    <DropdownMenuItem
+    <MenuItem
       aria-describedby={disabled ? `new-document-${document.id}-actions-unavailable` : undefined}
       className="mb-px h-7 gap-2 px-2 system-sm-medium"
       disabled={busy || disabled}
@@ -228,7 +222,7 @@ function ToggleDocumentAvailabilityMenuItem({ document }: { document: LogicalDoc
         )}
       />
       {document.enabled ? t(($) => $.disableSource) : t(($) => $.enable, { ns: 'dataset' })}
-    </DropdownMenuItem>
+    </MenuItem>
   )
 }
 
@@ -245,7 +239,7 @@ function RemoveDocumentMenuItem({
   const disabled = !canEdit || document.status === 'deleting'
 
   return (
-    <DropdownMenuItem
+    <MenuItem
       aria-describedby={disabled ? `new-document-${document.id}-actions-unavailable` : undefined}
       className="h-7 gap-2 px-2 system-sm-medium"
       disabled={busy || disabled}
@@ -254,7 +248,7 @@ function RemoveDocumentMenuItem({
     >
       <span aria-hidden className="i-ri-delete-bin-line size-4" />
       {tCommon(($) => $['operation.delete'])}
-    </DropdownMenuItem>
+    </MenuItem>
   )
 }
 
@@ -274,8 +268,8 @@ export function DocumentActionsDropdown({
 
   return (
     <>
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger
+      <Menu modal={false}>
+        <MenuTrigger
           aria-label={t(($) => $.documentActions, {
             ns: 'knowledgeDocuments',
             name: document.title,
@@ -295,16 +289,16 @@ export function DocumentActionsDropdown({
                 : 'i-ri-more-fill',
             )}
           />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-50">
+        </MenuTrigger>
+        <MenuContent className="w-50">
           <RenameDocumentMenuItem document={document} onOpen={() => setRenameDialogOpen(true)} />
           <ReprocessDocumentMenuItem document={document} />
           <DownloadDocumentMenuItem document={document} />
           <ToggleDocumentAvailabilityMenuItem document={document} />
-          <DropdownMenuSeparator className="my-px" />
+          <MenuSeparator className="my-px" />
           <RemoveDocumentMenuItem document={document} onOpen={onRemove} />
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
       <span id={unavailableReasonId} className="sr-only">
         {t(($) => $.documentActionsUnavailable, { ns: 'knowledgeDocuments' })}
       </span>
