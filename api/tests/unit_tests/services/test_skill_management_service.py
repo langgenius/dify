@@ -365,6 +365,47 @@ def test_list_skills_keyword_matches_display_name() -> None:
     assert [item["name"] for item in result["data"]] == ["employee-onboarding"]
 
 
+def test_list_skills_keyword_treats_like_wildcards_literally() -> None:
+    """Searching for literal ``%`` / ``_`` must not act as SQL LIKE wildcards (#44737)."""
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(
+            name="percent-literal",
+            display_name="Percent literal",
+            description="Report % growth every quarter.",
+        ),
+    )
+    service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(
+            name="underscore-literal",
+            display_name="Underscore literal",
+            description="Handles my_key naming.",
+        ),
+    )
+    service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(
+            name="plain-skill",
+            display_name="Plain skill",
+            description="my key without wildcards.",
+        ),
+    )
+
+    percent_hits = service.list_skills(tenant_id=TENANT, keyword="%")
+    assert [item["name"] for item in percent_hits["data"]] == ["percent-literal"]
+
+    underscore_hits = service.list_skills(tenant_id=TENANT, keyword="my_key")
+    assert [item["name"] for item in underscore_hits["data"]] == ["underscore-literal"]
+
+    plain_hits = service.list_skills(tenant_id=TENANT, keyword="my key")
+    assert [item["name"] for item in plain_hits["data"]] == ["plain-skill"]
+
+
 def test_list_skills_returns_pagination_metadata() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     for name in ["alpha-skill", "beta-skill", "gamma-skill"]:
