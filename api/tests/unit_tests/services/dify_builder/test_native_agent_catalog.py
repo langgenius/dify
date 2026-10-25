@@ -263,8 +263,9 @@ def test_selected_agent_uses_existing_resource_option_and_fresh_binding(monkeypa
 
 
 @pytest.mark.parametrize("reason", [None, "", "  ", 7, [], {"reason": "review"}, "x" * 361])
+@pytest.mark.parametrize("reply_language", ["en", "zh-Hans"])
 def test_agent_recommendation_preserves_selection_with_an_unavailable_reason_note(
-    monkeypatch: pytest.MonkeyPatch, reason: object
+    monkeypatch: pytest.MonkeyPatch, reason: object, reply_language: str
 ) -> None:
     from services.dify_builder.agent import build, resources
 
@@ -290,20 +291,26 @@ def test_agent_recommendation_preserves_selection_with_an_unavailable_reason_not
             "selection_reasons": {
                 "agent:reviewer:snapshot:digest": reason,
                 "agent:unknown": "Invented candidate",
-                "provider/model": "Must not change existing model metadata",
+                "provider/model": "Write the requested report.",
             },
         },
     )
 
-    options = build.discover_resources(object(), "tenant", ["Review the report"])
+    options = build.discover_resources(object(), "tenant", ["Review the report"], reply_language=reply_language)
 
     assert [option.id for option in options] == ["agent:reviewer:snapshot:digest", "provider/model"]
-    assert options[0].meta == (
-        "Published version 3; reference eligible for this member; capability: report risk review. "
-        "Selection rationale unavailable; review the declared capability against your goal before confirming."
-    )
+    if reply_language == "zh-Hans":
+        assert options[0].meta == (
+            "推荐理由暂不可用；请在确认前核对已声明的能力是否符合目标。 "
+            "Published version 3; reference eligible for this member; capability: report risk review."
+        )
+    else:
+        assert options[0].meta == (
+            "Published version 3; reference eligible for this member; capability: report risk review. "
+            "Selection rationale unavailable; review the declared capability against your goal before confirming."
+        )
     assert options[0].readiness == "missing_config"
-    assert options[1].meta == "Configured model"
+    assert options[1].meta == "Write the requested report."
 
 
 @pytest.mark.parametrize("reason_map", [None, [], {}, "malformed"])

@@ -466,6 +466,13 @@ def test_plan_approval_approve_builds_graph_and_reveals_nodes() -> None:
     assert not any(i.kind in {"change_set", "plan"} for i in res.items)
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
     assert "Workflow built on the canvas" in english_text(assistant.payload["reply_text"])
+    summary = english_text(assistant.payload["reply_text"])
+    assert "Affected nodes:" in summary
+    assert "Knowledge Retrieval" in summary
+    assert "＋" not in summary
+    assert "→" not in summary
+    assert res.context.change_set is not None
+    assert "＋ start" in res.context.change_set.diff
     assert len(assistant.payload["execution"]["activities"]) == 3
 
 
@@ -2250,7 +2257,12 @@ class _ResourceAgent(PlaceholderAgent):
 
     @override
     def discover_resources(
-        self, plan_items: list[str], *, goal_text: str, requirements: dict[str, object]
+        self,
+        plan_items: list[str],
+        *,
+        goal_text: str,
+        requirements: dict[str, object],
+        reply_language: str | None = None,
     ) -> list[ResourceOption]:
         return self.options
 
@@ -2307,7 +2319,12 @@ class _GapAgent(PlaceholderAgent):
 
     @override
     def discover_resources(
-        self, plan_items: list[str], *, goal_text: str, requirements: dict[str, object]
+        self,
+        plan_items: list[str],
+        *,
+        goal_text: str,
+        requirements: dict[str, object],
+        reply_language: str | None = None,
     ) -> list[ResourceOption]:
         return self.options
 

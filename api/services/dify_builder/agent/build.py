@@ -545,7 +545,12 @@ def propose_plan_v1(
     system = (
         "You are a Dify workflow planner. Given the original goal and confirmed requirements, "
         "propose an ordered list of concise build steps. Preserve requested actions and outputs; "
-        "requirements may refine the goal, but do not silently resolve conflicting instructions.\n\n"
+        "requirements may refine the goal, but do not silently resolve conflicting instructions. "
+        "Use native Code for exact parsing, arithmetic and validation, and Template for deterministic formatting. "
+        "A conditional model preference does not require an LLM step. "
+        "Preserve explicit generative or semantic behavior "
+        "and any explicitly required model identity; choose an LLM when those requirements call for one. "
+        "Do not add generative rewriting to a fixed-format report just to use a preferred model.\n\n"
         "Every step MUST be implementable by exactly one of these Dify node types, and you "
         "may plan ONLY in these terms:\n\n"
         f"{_node_vocabulary(mode)}\n\n"
@@ -610,10 +615,12 @@ def discover_resources(
     goal_text: str = "",
     requirements: dict[str, Any] | None = None,
     account_id: str | None = None,
+    mode: str = "workflow",
+    reply_language: str | None = None,
 ) -> list[ResourceOption]:
     """Recommend installed tools and models for the plan.
 
-    Agent recommendations include a bounded model rationale grounded in their
+    Recommendations include a bounded localized business rationale grounded in
     public capability declarations, or an explicit note when unavailable so
     selected identities survive a malformed explanation. Discovery eligibility is server-owned and
     is separate from runtime setup/authorization, which binding and execution
@@ -633,7 +640,16 @@ def discover_resources(
         return []
     system = (
         "You are a Dify workflow resource recommender. From the AVAILABLE resources, pick the "
-        "ids relevant to the original goal, confirmed requirements and plan. A mention alone "
+        "smallest set of ids needed for the original goal, confirmed requirements and plan, or an "
+        "explicitly required identity. Compare each declared business capability to work not covered by native nodes. "
+        "Native Code, branching and Template do not require similarly named plugins. "
+        "The Builder's own reasoning model is not a workflow model dependency. Recommend a model only for an "
+        "actual generative or semantic workflow step, or an explicitly required model identity; "
+        "a conditional model preference "
+        "does not require adding such a step. Do not add plan behavior to justify resources. "
+        "Preserve explicitly requested tool, model and published Agent identities "
+        "even when native capabilities overlap. "
+        "A mention alone "
         "does not require a resource; respect optional and negative source instructions. "
         "Each is listed with its readiness: 'ready' or 'missing_config' (installed in this workspace "
         "but it requires setup -- its credentials are not authorized for this member, or the "
@@ -644,19 +660,24 @@ def discover_resources(
         "lifecycle needs explicit evidence. "
         "Use ONLY listed ids. Copy each complete id verbatim, including every Agent snapshot/digest suffix; "
         "do not shorten an Agent id to its UUID. Reply with ONLY JSON: "
-        '{"resource_ids": ["<id>", ...], "selection_reasons": {"<selected Agent id>": "<reason>"}}.'
+        '{"resource_ids": ["<id>", ...], "selection_reasons": {"<selected resource id>": "<reason>"}}.'
     )
     if inv.agent_source_error:
         system += " Published Agent catalog is unavailable; do not infer that the workspace has no Agents."
     system += (
         " Agent resources are published Workspace Agents; their node-job outputs must be declared by the caller. "
-        "For each selected Agent id, provide a nonempty selection_reasons entry of at most 360 characters explaining "
-        "how its declared capability (with the supplied provenance) fits the original goal and plan. "
+        "For every selected resource (tool, model or Agent), provide a nonempty selection_reasons entry "
+        "of at most 360 characters explaining "
+        "the requested business outcome and why its declared capability (with supplied provenance) is useful there. "
+        "Explain native overlap versus required external capability where material. "
         "Use capability declarations, not name similarity; do not invent capabilities or output schemas. "
         "Reasons must describe capability relevance only, never grant permission or claim runtime readiness. "
         "Reference eligibility is established only by the actor-scoped catalog, and runtime authorization remains "
         "unverified even when setup metadata says ready. Omit reasons for unselected ids."
     )
+    system += "\n\n# Native workflow build vocabulary\n\n" + _node_vocabulary(mode)
+    system += "\n\n" + native_build_capability_system_rules()
+    system += llm.json_language_instruction("selection_reasons business explanations", reply_language=reply_language)
     listing = "\n".join(_discovery_line(rid, kind, ref) for rid, (kind, ref) in catalog.items())
     user = f"{_cognition_source(goal_text, requirements)}\n\nPLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
     try:
@@ -687,21 +708,20 @@ def discover_resources(
                 selected_sources[rid] = raw_id
         chosen_ids = list(selected_sources)
         reasons = data.get("selection_reasons")
-        agent_reasons = {
+        selection_reasons = {
             rid: " ".join(reason.split())
             for rid in chosen_ids
-            if catalog[rid][0] == "agent"
-            and isinstance(reasons, dict)
+            if isinstance(reasons, dict)
             and isinstance(reason := reasons.get(selected_sources[rid]), str)
             and 0 < len(reason.strip()) <= 360
         }
-        if any(catalog[rid][0] == "agent" and rid not in agent_reasons for rid in chosen_ids):
+        if any(rid not in selection_reasons for rid in chosen_ids):
             trace_diagnostics.report("response_schema_invalid", fallback_used=True)
     except Exception:
         trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         logger.warning("dify_builder: resource recommendation failed; recommending none", exc_info=True)
         chosen_ids = []
-        agent_reasons = {}
+        selection_reasons = {}
     # Recommending nothing is the honest answer when there is no signal -- no
     # model, a failed call, or a model that picked none. The old code fell back
     # to the whole tenant inventory, and because the client pre-checks every
@@ -711,20 +731,33 @@ def discover_resources(
     options: list[ResourceOption] = []
     for rid in chosen_ids:
         kind, ref = catalog[rid]
-        meta = ref.meta
+        chinese = bool(reply_language and reply_language.lower().startswith("zh"))
+        reason = selection_reasons.get(rid)
+        fallback = (
+            "推荐理由暂不可用；请在确认前核对已声明的能力是否符合目标。"
+            if chinese
+            else "Selection rationale unavailable; review the declared capability against your goal before confirming."
+        )
+        meta = reason or fallback
         if kind == "agent":
-            # A missing explanation is a model format failure, not evidence
-            # that a valid selected Agent does not match. Preserve its server
-            # facts and expose the missing rationale at the confirmation gate.
+            # Public provenance and eligibility facts remain server-owned, even
+            # when a model rationale is absent or malformed.
             note = (
-                f"Selection rationale (model): {agent_reasons[rid]}"
-                if rid in agent_reasons
-                else (
-                    "Selection rationale unavailable; "
-                    "review the declared capability against your goal before confirming."
-                )
+                (f"推荐理由（模型）：{reason}" if chinese else f"Selection rationale (model): {reason}")
+                if reason
+                else fallback
             )
-            meta = f"{meta} {note}".strip()
+            meta = f"{note} {ref.meta}".strip() if chinese else f"{ref.meta} {note}".strip()
+        elif ref.readiness == "missing_config":
+            # Only catalog metadata decides setup. Do not repeat the tool's
+            # raw action manual or let model prose assert authorization.
+            unverified = resources.AUTHORIZATION_UNVERIFIED_NOTE in ref.meta
+            setup = (
+                ("需要配置：授权尚未核实。" if unverified else "需要配置：运行前请在工作区授权凭据。")
+                if chinese
+                else (resources.AUTHORIZATION_UNVERIFIED_NOTE if unverified else resources.SETUP_REQUIRED_NOTE)
+            )
+            meta = f"{meta} {setup}"
         options.append(ResourceOption(id=rid, label=ref.label, meta=meta, kind=kind, readiness=ref.readiness))
     return options
 
