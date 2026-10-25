@@ -4,6 +4,7 @@ from io import BytesIO
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
 import yaml
@@ -1482,3 +1483,34 @@ def test_pending_import_does_not_report_creation_or_cache_marker(
     assert result.status == ImportStatus.PENDING
     assert not result.app_created
     assert "app_created" not in cache.call_args.args[2]
+
+
+@pytest.mark.parametrize("overwrite", [False, True])
+def test_confirmed_import_reports_creation_only_for_new_apps(
+    unbound_session: Session, monkeypatch: pytest.MonkeyPatch, overwrite: bool
+) -> None:
+    pending_imports: dict[str, str] = {}
+    monkeypatch.setattr(
+        "services.app_dsl_service.redis_client.setex",
+        lambda key, _expiry, value: pending_imports.__setitem__(key, value),
+    )
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending_imports.get)
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending_imports.pop)
+    existing = _app(mode=AppMode.WORKFLOW)
+    service = AppDslService(unbound_session)
+    monkeypatch.setattr(service, "_load_app_for_overwrite", lambda _account, _app_id: existing)
+    monkeypatch.setattr(service, "_validate_workflow_overwrite", lambda _app, _data: None)
+    monkeypatch.setattr(service, "_create_or_update_app", lambda *, app, **_kwargs: app or _app(app_id=str(uuid4())))
+    pending = service.import_app(
+        account=_account(),
+        import_mode="yaml-content",
+        yaml_content=_PENDING_WORKFLOW_DSL,
+        app_id=existing.id if overwrite else None,
+    )
+    assert pending.status == ImportStatus.PENDING
+
+    result = service.confirm_import(import_id=pending.id, account=_account())
+
+    assert result.status == ImportStatus.COMPLETED
+    assert result.app_created is not overwrite
+    assert (result.app_id == existing.id) is overwrite
