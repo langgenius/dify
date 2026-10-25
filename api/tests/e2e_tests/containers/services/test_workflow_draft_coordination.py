@@ -109,6 +109,9 @@ def test_console_receipt_survives_later_commit(
             draft.graph = __import__("json").dumps(later_graph)
 
     assert db.session().expire_on_commit is True
+    with workflow_api.session_factory.create_session() as receipt_session:
+        assert receipt_session.get_bind() is session.get_bind()
+        assert receipt_session.expire_on_commit is False
     api = workflow_api.DraftWorkflowApi()
     with patch(
         "services.agent.retirement_service.WorkflowAgentRetirementService.retire_unowned", side_effect=later_commit
@@ -118,6 +121,8 @@ def test_console_receipt_survives_later_commit(
         ):
             response = inspect.unwrap(api.post)(api, owner.account, app_model=owner.app)
     assert response["hash"] == receipt
+    with factory() as reader:
+        assert require(reader.get(Workflow, draft_id), Workflow).graph_dict == later_graph
 
 
 def stage_record(session: Session, owner: DraftOwner, *, candidates: Iterable[str] = (), emit: bool = True) -> str:
@@ -673,6 +678,11 @@ def test_restore_console_receipt_uses_accepted_snapshot(
     draft_id, source_id = owner.draft.id, owner.app.workflow_id
     expected_hash = require(session.get(Workflow, source_id), Workflow).unique_hash
     factory = sessionmaker(bind=session.get_bind())
+
+    assert db.session().expire_on_commit is True
+    with workflow_api.session_factory.create_session() as receipt_session:
+        assert receipt_session.get_bind() is session.get_bind()
+        assert receipt_session.expire_on_commit is False
 
     def later_commit(**_kwargs: object) -> None:
         with factory.begin() as writer:
