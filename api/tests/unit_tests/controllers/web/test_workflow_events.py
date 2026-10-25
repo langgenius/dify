@@ -14,7 +14,7 @@ from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
-from tests.unit_tests.model_factories import make_end_user
+from tests.helpers.unit.model_factories import make_end_user
 
 
 def _workflow_app() -> App:

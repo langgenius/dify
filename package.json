@@ -17,17 +17,20 @@
     "lint:tailwind:fix": "TAILWIND_CANONICAL_CLASSES=true vp lint --fix web packages/dify-ui",
     "lint:eslint": "eslint --concurrency=auto",
     "lint:eslint:fix": "eslint --fix --concurrency=auto",
-    "lint:eslint:quiet": "eslint --quiet --concurrency=auto"
+    "lint:eslint:quiet": "eslint --quiet --concurrency=auto",
+    "type-check": "tsrs --noEmit"
   },
   "devDependencies": {
     "@dify/tooling": "workspace:*",
     "@iconify-json/heroicons": "catalog:",
+    "@iconify-json/logos": "catalog:",
     "@iconify-json/ri": "catalog:",
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",
     "concurrently": "catalog:",
     "eslint": "catalog:",
     "knip": "catalog:",
+    "tsrs": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

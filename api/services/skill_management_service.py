@@ -4794,7 +4794,14 @@ class SkillManagementService:
                 text_parts.append(source[index + 1])
             index += 2
 
-        text = re.sub(r"[ \t]+\n", "\n", "".join(text_parts))
+        raw_text = "".join(text_parts)
+        text = re.sub(
+            r"([\uD800-\uDBFF])([\uDC00-\uDFFF])",
+            lambda m: chr(0x10000 + ((ord(m.group(1)) - 0xD800) << 10) + (ord(m.group(2)) - 0xDC00)),
+            raw_text,
+        )
+        text = re.sub(r"[\uD800-\uDFFF]", "\ufffd", text)
+        text = re.sub(r"[ \t]+\n", "\n", text)
         text = re.sub(r"\n{3,}", "\n\n", text).strip()
         if len(text) > max_chars:
             return f"{text[:max_chars]}\n[TRUNCATED]"

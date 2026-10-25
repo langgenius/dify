@@ -1,8 +1,18 @@
 import type { ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { InputVarType, SupportUploadFileTypes, VarType } from '@/app/components/workflow/types'
-import { TransferMethod } from '@/types/app'
+import {
+  createEdge,
+  createNode,
+  createStartNode,
+} from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import InputField from '../input-field'
 
 vi.mock('react-i18next', async (importOriginal) => {
@@ -34,59 +44,66 @@ vi.mock('react-i18next', async (importOriginal) => {
   }
 })
 
-type VarReferencePickerProps = {
-  onChange: (value: string[]) => void
-  filterVar?: (payload: { type: VarType }) => boolean
+const render = (ui: React.ReactElement) => {
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
+  seedModelProviderQueries(queryClient, [])
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture(),
+  )
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  const start = createStartNode({ id: 'start', data: { variables: [] } })
+  const code = createNode({
+    id: 'code',
+    data: {
+      title: 'Available values',
+      type: BlockEnum.Code,
+      outputs: {
+        text: { type: VarType.string, children: null },
+        old_text: { type: VarType.string, children: null },
+        choices: { type: VarType.arrayString, children: null },
+        files: { type: VarType.arrayFile, children: null },
+      },
+    },
+  })
+  const current = createNode({
+    id: 'human',
+    data: { type: BlockEnum.HumanInput, title: 'Human input' },
+  })
+  return renderWorkflowFlowComponent(ui, {
+    queryClient,
+    nodes: [start, code, current],
+    edges: [
+      createEdge({
+        source: 'start',
+        target: 'code',
+        data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Code },
+      }),
+      createEdge({
+        source: 'code',
+        target: 'human',
+        data: { sourceType: BlockEnum.Code, targetType: BlockEnum.HumanInput },
+      }),
+    ],
+  })
 }
 
-let fileUploadSettingMaxLength: number | undefined = 4
-
-// Variable discovery is tested by the picker owner; expose only allowed choices here.
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({ onChange, filterVar }: VarReferencePickerProps) => (
-    <>
-      {[
-        { name: 'pick-variable', type: VarType.arrayString },
-        { name: 'String variable', type: VarType.string },
-        { name: 'File list variable', type: VarType.arrayFile },
-      ]
-        .filter((variable) => !filterVar || filterVar(variable))
-        .map((variable) => (
-          <button key={variable.name} type="button" onClick={() => onChange(['node-a', 'var-a'])}>
-            {variable.name}
-          </button>
-        ))}
-    </>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', () => ({
-  __esModule: true,
-  default: ({
-    onChange,
-  }: {
-    onChange: (payload: {
-      allowed_file_extensions: string[]
-      allowed_file_types: SupportUploadFileTypes[]
-      allowed_file_upload_methods: TransferMethod[]
-      max_length?: number
-    }) => void
-  }) => (
-    <button
-      type="button"
-      onClick={() =>
-        onChange({
-          allowed_file_extensions: ['.pdf'],
-          allowed_file_types: [SupportUploadFileTypes.document],
-          allowed_file_upload_methods: [TransferMethod.local_file],
-          max_length: fileUploadSettingMaxLength,
-        })
-      }
-    >
-      file-upload-setting
-    </button>
-  ),
-}))
+async function configureFile(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(
+    screen.getByRole('checkbox', { name: 'appDebug.variableConfig.file.custom.name' }),
+  )
+  await user.type(
+    screen.getByRole('textbox', { name: 'appDebug.variableConfig.file.custom.name' }),
+    '.pdf{Enter}',
+  )
+  await user.click(screen.getByRole('radio', { name: 'appDebug.variableConfig.localUpload' }))
+}
 
 const createPayload = (overrides?: Partial<ParagraphFormInput>): ParagraphFormInput => ({
   type: InputVarType.paragraph,
@@ -102,14 +119,13 @@ const createPayload = (overrides?: Partial<ParagraphFormInput>): ParagraphFormIn
 describe('InputField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    fileUploadSettingMaxLength = 4
   })
 
   it('saves only from the field surface and ignores composition', () => {
     const onChange = vi.fn()
     render(
       <InputField
-        nodeId="node-scope"
+        nodeId="human"
         isEdit={false}
         payload={createPayload()}
         onChange={onChange}
@@ -130,7 +146,7 @@ describe('InputField', () => {
     const onChange = vi.fn()
     render(
       <InputField
-        nodeId="node-type-label"
+        nodeId="human"
         isEdit
         payload={createPayload()}
         onChange={onChange}
@@ -161,7 +177,7 @@ describe('InputField', () => {
 
     render(
       <InputField
-        nodeId="node-1"
+        nodeId="human"
         isEdit
         payload={createPayload()}
         onChange={onChange}
@@ -188,7 +204,7 @@ describe('InputField', () => {
 
     render(
       <InputField
-        nodeId="node-duplicate-name"
+        nodeId="human"
         isEdit={false}
         payload={createPayload()}
         unavailableVariableNames={['existing_name']}
@@ -221,7 +237,7 @@ describe('InputField', () => {
 
     render(
       <InputField
-        nodeId="node-3"
+        nodeId="human"
         isEdit={false}
         payload={createPayload()}
         onChange={vi.fn()}
@@ -238,14 +254,7 @@ describe('InputField', () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
-    render(
-      <InputField
-        nodeId="node-default-payload"
-        isEdit={false}
-        onChange={onChange}
-        onCancel={vi.fn()}
-      />,
-    )
+    render(<InputField nodeId="human" isEdit={false} onChange={onChange} onCancel={vi.fn()} />)
 
     const nameInput = screen.getAllByRole('textbox')[0]
     await user.type(nameInput!, 'generated_name')
@@ -273,7 +282,7 @@ describe('InputField', () => {
 
     render(
       <InputField
-        nodeId="node-4"
+        nodeId="human"
         isEdit={false}
         payload={createPayload({
           default: {
@@ -306,12 +315,12 @@ describe('InputField', () => {
 
     render(
       <InputField
-        nodeId="node-5-1"
+        nodeId="human"
         isEdit={false}
         payload={createPayload({
           default: {
             type: 'variable',
-            selector: ['node-y', 'var-y'],
+            selector: ['code', 'text'],
             value: '',
           },
         })}
@@ -334,7 +343,7 @@ describe('InputField', () => {
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange.mock.calls[0]![0].default).toEqual({
       type: 'constant',
-      selector: ['node-y', 'var-y'],
+      selector: ['code', 'text'],
       value: '',
     })
   })
@@ -345,12 +354,12 @@ describe('InputField', () => {
 
     render(
       <InputField
-        nodeId="node-5"
+        nodeId="human"
         isEdit={false}
         payload={createPayload({
           default: {
             type: 'variable',
-            selector: ['node-x', 'old'],
+            selector: ['code', 'old_text'],
             value: '',
           },
         })}
@@ -359,7 +368,8 @@ describe('InputField', () => {
       />,
     )
 
-    await user.click(screen.getByText('String variable'))
+    await user.click(screen.getByRole('button', { name: /Available values.*old_text/ }))
+    await user.click(within(await screen.findByRole('dialog')).getByText('text', { exact: true }))
     await user.click(
       screen.getByRole('button', {
         name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
@@ -369,7 +379,7 @@ describe('InputField', () => {
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange.mock.calls[0]![0].default).toEqual({
       type: 'variable',
-      selector: ['node-a', 'var-a'],
+      selector: ['code', 'text'],
       value: '',
     })
   })
@@ -380,7 +390,7 @@ describe('InputField', () => {
 
     render(
       <InputField
-        nodeId="node-7"
+        nodeId="human"
         isEdit={false}
         payload={createPayload()}
         onChange={onChange}
@@ -425,7 +435,7 @@ describe('InputField', () => {
 
     render(
       <InputField
-        nodeId="node-8"
+        nodeId="human"
         isEdit={false}
         payload={createPayload()}
         onChange={onChange}
@@ -480,7 +490,7 @@ describe('InputField', () => {
 
     render(
       <InputField
-        nodeId="node-9"
+        nodeId="human"
         isEdit={false}
         payload={createPayload()}
         onChange={onChange}
@@ -530,7 +540,7 @@ describe('InputField', () => {
 
     render(
       <InputField
-        nodeId="node-10"
+        nodeId="human"
         isEdit={false}
         payload={createPayload()}
         onChange={onChange}
@@ -559,7 +569,8 @@ describe('InputField', () => {
     await user.click(
       screen.getByText(/workflowHumanInput\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
     )
-    await user.click(screen.getByText('pick-variable'))
+    await user.click(screen.getByRole('button', { name: /common.setVarValuePlaceholder/ }))
+    await user.click(await screen.findByText('choices'))
     await user.click(
       screen.getByText(
         /workflowHumanInput\.nodes\.humanInput\.insertInputField\.useConstantInstead/i,
@@ -577,7 +588,7 @@ describe('InputField', () => {
       output_variable_name: 'valid_name',
       option_source: {
         type: 'constant',
-        selector: ['node-a', 'var-a'],
+        selector: ['code', 'choices'],
         value: ['alpha', 'beta'],
       },
     })
@@ -588,7 +599,7 @@ describe('InputField', () => {
 
     render(
       <InputField
-        nodeId="node-11"
+        nodeId="human"
         isEdit={false}
         payload={createPayload()}
         onChange={vi.fn()}
@@ -608,9 +619,10 @@ describe('InputField', () => {
       screen.getByText(/workflowHumanInput\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
     )
 
-    expect(screen.getByRole('button', { name: 'pick-variable' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'String variable' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'File list variable' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /common.setVarValuePlaceholder/ }))
+    expect(await screen.findByText('choices')).toBeInTheDocument()
+    expect(screen.queryByText('text', { exact: true })).not.toBeInTheDocument()
+    expect(screen.queryByText('files', { exact: true })).not.toBeInTheDocument()
   })
 
   it('should save single file upload settings', async () => {
@@ -619,7 +631,7 @@ describe('InputField', () => {
 
     render(
       <InputField
-        nodeId="node-13"
+        nodeId="human"
         isEdit={false}
         payload={createPayload()}
         onChange={onChange}
@@ -635,7 +647,7 @@ describe('InputField', () => {
     await user.click(
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.single-file\b/ }),
     )
-    await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
+    await configureFile(user)
     await user.click(
       screen.getByRole('button', {
         name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
@@ -647,7 +659,7 @@ describe('InputField', () => {
       type: InputVarType.singleFile,
       output_variable_name: 'valid_name',
       allowed_file_extensions: ['.pdf'],
-      allowed_file_types: ['document'],
+      allowed_file_types: ['custom'],
       allowed_file_upload_methods: ['local_file'],
     })
   })
@@ -658,7 +670,7 @@ describe('InputField', () => {
 
     render(
       <InputField
-        nodeId="node-14"
+        nodeId="human"
         isEdit={false}
         payload={createPayload()}
         onChange={onChange}
@@ -674,7 +686,14 @@ describe('InputField', () => {
     await user.click(
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.multi-files\b/ }),
     )
-    await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
+    await configureFile(user)
+    const limit = screen.getByRole('spinbutton', {
+      name: 'appDebug.variableConfig.maxNumberOfUploads',
+    })
+    await user.click(limit)
+    await user.tab()
+    expect(screen.getByRole('slider')).toHaveFocus()
+    await user.keyboard('{ArrowLeft}')
     await user.click(
       screen.getByRole('button', {
         name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
@@ -686,7 +705,7 @@ describe('InputField', () => {
       type: InputVarType.multiFiles,
       output_variable_name: 'valid_name',
       allowed_file_extensions: ['.pdf'],
-      allowed_file_types: ['document'],
+      allowed_file_types: ['custom'],
       allowed_file_upload_methods: ['local_file'],
       number_limits: 4,
     })
@@ -695,11 +714,10 @@ describe('InputField', () => {
   it('should normalize empty file-list upload limit on save', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    fileUploadSettingMaxLength = Number.NaN
 
     render(
       <InputField
-        nodeId="node-14-normalize"
+        nodeId="human"
         isEdit={false}
         payload={createPayload()}
         onChange={onChange}
@@ -715,7 +733,11 @@ describe('InputField', () => {
     await user.click(
       await screen.findByRole('option', { name: /appDebug\.variableConfig\.multi-files\b/ }),
     )
-    await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
+    await user.clear(
+      screen.getByRole('spinbutton', {
+        name: 'appDebug.variableConfig.maxNumberOfUploads',
+      }),
+    )
     await user.click(
       screen.getByRole('button', {
         name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,

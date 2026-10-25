@@ -38,7 +38,7 @@ import ResourceAccessTokenPage from './resource-access-token-page'
 import WorkflowLogArchivesPage from './workflow-log-archives-page'
 
 const iconClassName = `
-  size-4 shrink-0 sm:mr-2
+  size-4 shrink-0 sm:me-2
 `
 
 type IAccountSettingProps = {
@@ -215,7 +215,7 @@ export default function AccountSetting({
       onClose={onCancelAction}
     >
       <div className="mx-auto flex h-screen w-full max-w-270 px-4">
-        <div className="flex w-11 shrink-0 flex-col pr-2 sm:w-56 sm:pr-6 sm:pl-4">
+        <div className="flex w-11 shrink-0 flex-col pe-2 sm:w-56 sm:ps-4 sm:pe-6">
           <div className="invisible mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary sm:visible">
             {t(($) => $['settings.settings'], { ns: 'navigation' })}
           </div>
@@ -240,7 +240,7 @@ export default function AccountSetting({
                       type="button"
                       key={item.key}
                       className={cn(
-                        'mb-0.5 flex h-8 w-full items-center justify-center rounded-lg px-2 text-left text-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:justify-start sm:px-3',
+                        'mb-0.5 flex h-8 w-full items-center justify-center rounded-lg px-2 text-start text-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:justify-start sm:px-3',
                         activeMenu === item.key
                           ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active'
                           : 'system-sm-medium text-components-menu-item-text',
@@ -264,11 +264,11 @@ export default function AccountSetting({
         <div className="relative flex min-h-0 min-w-0 flex-1">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 left-full w-screen bg-components-panel-bg"
+            className="pointer-events-none absolute inset-y-0 inset-s-full w-screen bg-components-panel-bg"
           />
           <ScrollArea className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-components-panel-bg">
             {activeMenu !== ACCOUNT_SETTING_TAB.IP_POLICIES && (
-              <div className="mx-4 flex min-h-15 shrink-0 items-end bg-components-panel-bg pt-8 pr-12 pb-2 sm:mx-8">
+              <div className="mx-4 flex min-h-15 shrink-0 items-end bg-components-panel-bg pe-12 pt-8 pb-2 sm:mx-8">
                 <div className="min-w-0 flex-1">
                   <h3 className="title-2xl-semi-bold text-text-primary">
                     {activeItem?.title ?? activeItem?.name}

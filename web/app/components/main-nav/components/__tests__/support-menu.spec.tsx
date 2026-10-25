@@ -1,10 +1,6 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { Mock } from 'vite-plus/test'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -104,12 +100,12 @@ describe('SupportMenu', () => {
       ...(withPlan ? { features: { billing: { subscription: { plan } } } } : {}),
     })
     return render(
-      <DropdownMenu open={true} onOpenChange={() => {}}>
-        <DropdownMenuTrigger>open</DropdownMenuTrigger>
-        <DropdownMenuContent>
+      <Menu open={true} onOpenChange={() => {}}>
+        <MenuTrigger>open</MenuTrigger>
+        <MenuContent>
           <SupportMenu />
-        </DropdownMenuContent>
-      </DropdownMenu>,
+        </MenuContent>
+      </Menu>,
       { wrapper },
     )
   }

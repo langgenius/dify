@@ -17,3 +17,4 @@
 /packages/contracts/generated/**  linguist-generated
 /api/openapi/markdown/**          linguist-generated
 *.generated.ts                    linguist-generated
+/oxlint-suppressions.json         linguist-generated

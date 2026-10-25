@@ -90,11 +90,16 @@ const InstallFromMarketplace = ({
         <div className="flex h-5 items-center justify-between">
           <button
             type="button"
-            className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left system-md-semibold text-text-primary"
+            className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-start system-md-semibold text-text-primary"
             onClick={handleToggle}
             aria-expanded={!collapse}
           >
-            <span className={cn('i-ri-arrow-down-s-line size-4', collapse && '-rotate-90')} />
+            <span
+              className={cn(
+                'i-ri-arrow-down-s-line size-4',
+                collapse && '-rotate-90 rtl:rotate-90',
+              )}
+            />
             {t(($) => $['modelProvider.installProvider'], { ns: 'modelProvider' })}
           </button>
           <div className="flex items-center gap-1">
@@ -108,7 +113,10 @@ const InstallFromMarketplace = ({
                 onClick={onOpenMarketplace}
               >
                 {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
-                <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+                <span
+                  className="i-ri-arrow-right-up-line size-4 [&:dir(rtl)]:-scale-x-100"
+                  aria-hidden="true"
+                />
               </button>
             ) : (
               <Link
@@ -118,7 +126,10 @@ const InstallFromMarketplace = ({
                 className="inline-flex items-center system-sm-medium text-text-accent"
               >
                 {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
-                <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+                <span
+                  className="i-ri-arrow-right-up-line size-4 [&:dir(rtl)]:-scale-x-100"
+                  aria-hidden="true"
+                />
               </Link>
             )}
           </div>
