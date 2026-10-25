@@ -27,7 +27,19 @@ from services import workflow_variable_reference_validator as variable_reference
 from services.app.access import AppAccessFilter
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.controllers.error_body import raised_error
-from tests.workflow_empty_draft_test_utils import POPULATED_GRAPH, post_empty_draft, seed_owner, workflow_rows
+from tests.workflow_empty_draft_test_utils import (
+    POPULATED_GRAPH,
+    EmptyDraftDatabase,
+    post_empty_draft,
+    seed_owner,
+    workflow_rows,
+)
+
+
+@pytest.fixture(autouse=True)
+def _workflow_write_database(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    """Keep the controller's explicit receipt Session on the test database."""
+    monkeypatch.setattr(workflow_module, "db", EmptyDraftDatabase(sqlite_session))
 
 
 @pytest.fixture(autouse=True)
@@ -355,6 +367,10 @@ def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch
     assert response["result"] == "success"
     assert sync_draft_workflow.call_args.kwargs["environment_variables"] == []
     assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
+    assert sync_draft_workflow.call_args.kwargs["graph_only"] is True
+    write_session = sync_draft_workflow.call_args.kwargs["session"]
+    assert isinstance(write_session, Session)
+    assert write_session.expire_on_commit is False
 
 
 @pytest.mark.parametrize("content_type", ["application/json", "text/plain"], ids=["json", "beacon"])
@@ -610,11 +626,12 @@ def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: 
 
 def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = _make_workflow(updated_at=None, created_at=datetime(2024, 1, 1))
+    restore_workflow = Mock(return_value=workflow)
 
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(restore_published_workflow_to_draft=lambda **_kwargs: workflow),
+        lambda: SimpleNamespace(restore_published_workflow_to_draft=restore_workflow),
     )
 
     api = workflow_module.DraftWorkflowRestoreApi()
@@ -633,6 +650,9 @@ def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: py
 
     assert response["result"] == "success"
     assert response["hash"] == workflow.unique_hash
+    write_session = restore_workflow.call_args.kwargs["session"]
+    assert isinstance(write_session, Session)
+    assert write_session.expire_on_commit is False
 
 
 def test_restore_published_workflow_to_draft_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

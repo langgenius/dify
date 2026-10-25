@@ -171,6 +171,8 @@ class TestCelerySSLConfiguration:
         mock_config.AGENT_SANDBOX_METERING_ENABLED = False
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
         mock_config.ENABLE_DIFY_BUILDER_RECONCILER = False
+        mock_config.ENABLE_WORKFLOW_DRAFT_COORDINATION_TASK = True
+        mock_config.WORKFLOW_DRAFT_COORDINATION_INTERVAL = 60
         mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
         mock_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
@@ -223,6 +225,8 @@ class TestCelerySSLConfiguration:
         mock_config.AGENT_SANDBOX_METERING_ENABLED = False
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
         mock_config.ENABLE_DIFY_BUILDER_RECONCILER = False
+        mock_config.ENABLE_WORKFLOW_DRAFT_COORDINATION_TASK = True
+        mock_config.WORKFLOW_DRAFT_COORDINATION_INTERVAL = 60
         mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
         mock_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
@@ -269,3 +273,7 @@ class TestCelerySSLConfiguration:
         assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (
             "tasks.delete_conversation_task.sweep_deleted_conversations"
         )
+        draft_sweeper = celery_app.conf["beat_schedule"]["workflow_draft_coordination_sweeper"]
+        assert draft_sweeper["task"] == "tasks.workflow_draft_coordination_task.sweep_workflow_draft_coordination"
+        assert draft_sweeper["schedule"].total_seconds() == 60
+        assert draft_sweeper["options"] == {"queue": "workflow"}

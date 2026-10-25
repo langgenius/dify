@@ -40,6 +40,8 @@ from services.app_package_service import AppPackageManifest, AppPackageService
 from services.entities.dsl_entities import ImportStatus
 from services.errors.base import NoPermissionError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.workflow_service import WorkflowService
+from tests.unit_tests.audio_runtime_fixtures import record_calls
 from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_upload_file, make_workflow
 
 
@@ -60,6 +62,7 @@ class _MemoryStorage:
 def storage(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _MemoryStorage:
     backend = _MemoryStorage()
     monkeypatch.setattr("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine))
+    monkeypatch.setattr("services.workflow.draft_coordination_service.db", SimpleNamespace(engine=sqlite_engine))
     monkeypatch.setattr(
         "services.app_package_service.AgentPackageResourceExporter",
         lambda: AgentPackageResourceExporter(storage_backend=backend),
@@ -457,7 +460,13 @@ def test_overwrite_replaces_inline_agents_and_reports_previous_owners(
     )
     sqlite_session.commit()
     retirement = Mock()
-    monkeypatch.setattr("services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned", retirement)
+    monkeypatch.setattr(
+        "services.workflow.draft_coordination_service.WorkflowAgentRetirementService.retire_unowned", retirement
+    )
+    syncs: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        WorkflowService, "sync_draft_workflow", record_calls(WorkflowService.sync_draft_workflow, syncs)
+    )
     updated = _import(sqlite_session, content, app_id=original.app_id)
     assert updated.status == ImportStatus.COMPLETED, updated.error
     assert updated.app_id == original.app_id
@@ -468,6 +477,10 @@ def test_overwrite_replaces_inline_agents_and_reports_previous_owners(
     )
     assert len(new_agents) == len(old_agents) == 2
     assert not (new_agents & old_agents)
+    assert len(syncs) == 1
+    assert syncs[0]["session"] is sqlite_session
+    assert syncs[0]["commit"] is False
+    assert syncs[0]["sync_agent_bindings"] is False
     retirement.assert_called_once_with(tenant_id="tenant-2", agent_ids=old_agents, account_id="account-1")
 
 
