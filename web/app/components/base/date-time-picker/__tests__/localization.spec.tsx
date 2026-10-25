@@ -105,7 +105,7 @@ it('updates time formatting and popup labels from the application language witho
   expect(screen.getByRole('option', { name: '۳۰' })).toHaveAttribute('aria-selected', 'true')
 })
 
-it('inherits application direction and localizes the calendar while preserving label overrides', async () => {
+it('localizes the calendar from the application language while preserving label overrides', async () => {
   const user = userEvent.setup()
   const i18n = await createI18n('fa-IR')
   render(
