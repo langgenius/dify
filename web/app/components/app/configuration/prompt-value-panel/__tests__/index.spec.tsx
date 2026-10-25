@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { FeaturesContext } from '@/app/components/base/features/context'
+import { useFeatures } from '@/app/components/base/features/hooks'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { imageUpload } from '@/app/components/base/image-uploader/utils'
 import ConfigContext from '@/context/debug-configuration'
@@ -51,6 +52,11 @@ const defaultProps: IPromptValuePanelProps = {
   onVisionFilesChange: vi.fn(),
 }
 
+function FeaturesModalProbe() {
+  const showFeaturesModal = useFeatures((state) => state.showFeaturesModal)
+  return showFeaturesModal ? <div role="dialog" aria-label="workflow.common.features" /> : null
+}
+
 const renderPanel = (
   options: {
     context?: Partial<typeof baseContextValue>
@@ -74,14 +80,12 @@ const renderPanel = (
       </ConfigContext.Provider>
     )
   }
-  return {
-    featuresStore,
-    ...render(
-      <FeaturesContext value={featuresStore}>
-        <ControlledPanel />
-      </FeaturesContext>,
-    ),
-  }
+  return render(
+    <FeaturesContext value={featuresStore}>
+      <ControlledPanel />
+      <FeaturesModalProbe />
+    </FeaturesContext>,
+  )
 }
 
 describe('PromptValuePanel', () => {
@@ -124,7 +128,7 @@ describe('PromptValuePanel', () => {
 
   it('hydrates default values, supports advanced prompt gating, and toggles the feature panel', async () => {
     const user = userEvent.setup()
-    const { featuresStore } = renderPanel({
+    renderPanel({
       context: {
         isAdvancedMode: true,
         modelModeType: ModelModeType.chat,
@@ -152,8 +156,11 @@ describe('PromptValuePanel', () => {
     expect(screen.getByRole('textbox', { name: 'Text Var' })).toHaveValue('default text')
     expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
 
+    expect(
+      screen.queryByRole('dialog', { name: 'workflow.common.features' }),
+    ).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'appDebug.feature.bar.empty' }))
-    expect(featuresStore.getState().showFeaturesModal).toBe(true)
+    expect(await screen.findByRole('dialog', { name: 'workflow.common.features' })).toBeVisible()
   })
 
   it('disables run for advanced completion mode when the completion prompt is empty', () => {
